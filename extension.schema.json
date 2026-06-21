@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://irodori.dev/schemas/extension.schema.json",
+  "title": "Irodori Table Extension Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "version", "entry", "permissions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "license": {
+      "type": "string"
+    },
+    "entry": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "keybindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keybinding"
+          }
+        },
+        "themes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileContribution"
+          }
+        },
+        "drivers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileContribution"
+          }
+        },
+        "resultRenderers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileContribution"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "keybinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "key"],
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "fileContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

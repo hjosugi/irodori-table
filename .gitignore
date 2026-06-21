@@ -1,0 +1,14 @@
+.local/
+ref/
+
+# Build and package outputs
+target/
+dist/
+build/
+out/
+node_modules/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
