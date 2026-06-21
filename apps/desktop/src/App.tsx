@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   Bolt,
   ChevronDown,
@@ -20,28 +19,11 @@ import {
   Table2,
   TerminalSquare,
 } from "lucide-react";
+import {
+  workspaceSnapshot,
+  type WorkspaceSnapshot,
+} from "./generated/irodori-api";
 import "./App.css";
-
-type DbObject = {
-  name: string;
-  kind: "table" | "view" | "procedure";
-  rows?: string;
-};
-
-type Connection = {
-  id: string;
-  name: string;
-  engine: string;
-  status: "connected" | "idle";
-  latencyMs: number;
-  proxy: string;
-  objects: DbObject[];
-};
-
-type WorkspaceSnapshot = {
-  connections: Connection[];
-  activeConnectionId: string;
-};
 
 const fallbackSnapshot: WorkspaceSnapshot = {
   activeConnectionId: "local-pg",
@@ -130,7 +112,7 @@ function App() {
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
-    invoke<WorkspaceSnapshot>("workspace_snapshot")
+    workspaceSnapshot()
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
         setActiveConnectionId(nextSnapshot.activeConnectionId);

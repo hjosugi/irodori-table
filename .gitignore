@@ -1,5 +1,7 @@
 .local/
 ref/
+knowledge/*.sqlite
+knowledge/*.sqlite-*
 
 # Build and package outputs
 target/

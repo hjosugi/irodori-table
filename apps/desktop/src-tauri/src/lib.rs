@@ -1,90 +1,116 @@
-#[derive(serde::Serialize)]
-struct DbObject {
-    name: &'static str,
-    kind: &'static str,
-    rows: Option<&'static str>,
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+#[derive(Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+enum DbObjectKind {
+    Table,
+    View,
+    Procedure,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+enum ConnectionStatus {
+    Connected,
+    Idle,
+}
+
+#[derive(Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+struct DbObject {
+    name: String,
+    kind: DbObjectKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    rows: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
 struct Connection {
-    id: &'static str,
-    name: &'static str,
-    engine: &'static str,
-    status: &'static str,
+    id: String,
+    name: String,
+    engine: String,
+    status: ConnectionStatus,
     latency_ms: u16,
-    proxy: &'static str,
+    proxy: String,
     objects: Vec<DbObject>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
 struct WorkspaceSnapshot {
     connections: Vec<Connection>,
-    active_connection_id: &'static str,
+    active_connection_id: String,
 }
 
 #[tauri::command]
 fn workspace_snapshot() -> WorkspaceSnapshot {
     WorkspaceSnapshot {
-        active_connection_id: "local-pg",
+        active_connection_id: "local-pg".into(),
         connections: vec![
             Connection {
-                id: "local-pg",
-                name: "Local Warehouse",
-                engine: "PostgreSQL 16",
-                status: "connected",
+                id: "local-pg".into(),
+                name: "Local Warehouse".into(),
+                engine: "PostgreSQL 16".into(),
+                status: ConnectionStatus::Connected,
                 latency_ms: 3,
-                proxy: "direct",
+                proxy: "direct".into(),
                 objects: vec![
                     DbObject {
-                        name: "orders",
-                        kind: "table",
-                        rows: Some("1.2M"),
+                        name: "orders".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("1.2M".into()),
                     },
                     DbObject {
-                        name: "customers",
-                        kind: "table",
-                        rows: Some("83K"),
+                        name: "customers".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("83K".into()),
                     },
                     DbObject {
-                        name: "invoice_lines",
-                        kind: "table",
-                        rows: Some("4.8M"),
+                        name: "invoice_lines".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("4.8M".into()),
                     },
                     DbObject {
-                        name: "recent_revenue",
-                        kind: "view",
+                        name: "recent_revenue".into(),
+                        kind: DbObjectKind::View,
                         rows: None,
                     },
                     DbObject {
-                        name: "refresh_rollups",
-                        kind: "procedure",
+                        name: "refresh_rollups".into(),
+                        kind: DbObjectKind::Procedure,
                         rows: None,
                     },
                 ],
             },
             Connection {
-                id: "oracle-dev",
-                name: "Oracle Dev",
-                engine: "Oracle 23ai",
-                status: "idle",
+                id: "oracle-dev".into(),
+                name: "Oracle Dev".into(),
+                engine: "Oracle 23ai".into(),
+                status: ConnectionStatus::Idle,
                 latency_ms: 18,
-                proxy: "ssh > socks5",
+                proxy: "ssh > socks5".into(),
                 objects: vec![
                     DbObject {
-                        name: "APP_USERS",
-                        kind: "table",
-                        rows: Some("42K"),
+                        name: "APP_USERS".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("42K".into()),
                     },
                     DbObject {
-                        name: "LEDGER_ENTRY",
-                        kind: "table",
-                        rows: Some("9.1M"),
+                        name: "LEDGER_ENTRY".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("9.1M".into()),
                     },
                     DbObject {
-                        name: "PKG_BILLING",
-                        kind: "procedure",
+                        name: "PKG_BILLING".into(),
+                        kind: DbObjectKind::Procedure,
                         rows: None,
                     },
                 ],
@@ -100,4 +126,40 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![workspace_snapshot])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod typegen {
+    use super::*;
+    use std::{fs, path::Path};
+
+    #[test]
+    fn export_typescript_bindings() {
+        let cfg = ts_rs::Config::default();
+        let declarations = [
+            export_decl::<DbObjectKind>(&cfg),
+            export_decl::<ConnectionStatus>(&cfg),
+            export_decl::<DbObject>(&cfg),
+            export_decl::<Connection>(&cfg),
+            export_decl::<WorkspaceSnapshot>(&cfg),
+        ]
+        .join("\n\n");
+        let output = format!(
+            "// @generated by cargo test export_typescript_bindings. Do not edit.\n\
+             import {{ invoke }} from \"@tauri-apps/api/core\";\n\n\
+             {declarations}\n\n\
+             export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {{\n\
+             \treturn invoke<WorkspaceSnapshot>(\"workspace_snapshot\");\n\
+             }}\n"
+        );
+        let path = Path::new("../src/generated/irodori-api.ts");
+
+        fs::create_dir_all(path.parent().expect("generated path has parent"))
+            .expect("create generated TypeScript directory");
+        fs::write(path, output).expect("write generated TypeScript bindings");
+    }
+
+    fn export_decl<T: ts_rs::TS>(cfg: &ts_rs::Config) -> String {
+        T::decl(cfg).replacen("type ", "export type ", 1)
+    }
 }

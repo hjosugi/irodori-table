@@ -1,0 +1,402 @@
+[
+  {
+    "id": "postgres-release-notes-current",
+    "name": "PostgreSQL current release notes",
+    "product": "PostgreSQL",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://www.postgresql.org/docs/current/release.html",
+    "cadence": "weekly",
+    "notes": "Track supported versions, current release notes, migration issues, SQL features, and behavior changes."
+  },
+  {
+    "id": "postgres-docs-current",
+    "name": "PostgreSQL current documentation",
+    "product": "PostgreSQL",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://www.postgresql.org/docs/current/",
+    "cadence": "weekly",
+    "notes": "Reference for SQL syntax, introspection catalogs, psql behavior, and server features."
+  },
+  {
+    "id": "sqlite-changes",
+    "name": "SQLite release history",
+    "product": "SQLite",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://sqlite.org/changes.html",
+    "cadence": "weekly",
+    "notes": "Track SQLite language, CLI, API, planner, JSON, FTS, and WASM changes."
+  },
+  {
+    "id": "sqlite-docs",
+    "name": "SQLite documentation index",
+    "product": "SQLite",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://sqlite.org/docs.html",
+    "cadence": "weekly",
+    "notes": "Reference for pragmas, SQL syntax, virtual tables, file format, and extensions."
+  },
+  {
+    "id": "mysql-release-notes",
+    "name": "MySQL current release notes",
+    "product": "MySQL",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://dev.mysql.com/doc/relnotes/mysql/9.7/en/",
+    "cadence": "weekly",
+    "notes": "Track current MySQL release notes and upgrade issues."
+  },
+  {
+    "id": "mysql-reference",
+    "name": "MySQL current reference manual",
+    "product": "MySQL",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://dev.mysql.com/doc/refman/9.7/en/",
+    "cadence": "weekly",
+    "notes": "Reference for SQL syntax, information_schema, performance_schema, authentication, and replication."
+  },
+  {
+    "id": "mariadb-release-notes",
+    "name": "MariaDB release notes",
+    "product": "MariaDB",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://mariadb.com/kb/en/release-notes/",
+    "cadence": "weekly",
+    "notes": "Track MariaDB version-specific features and compatibility differences from MySQL."
+  },
+  {
+    "id": "oracle-26ai-docs",
+    "name": "Oracle AI Database 26ai documentation",
+    "product": "Oracle",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/",
+    "cadence": "weekly",
+    "notes": "Track 26ai documentation, SQL reference, behavior changes, release notes, and driver links."
+  },
+  {
+    "id": "oracle-26ai-whats-new",
+    "name": "Oracle AI Database 26ai what's new",
+    "product": "Oracle",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/nfcoa/",
+    "cadence": "weekly",
+    "notes": "Track Oracle 26ai new features relevant to completion, introspection, and editor workflows."
+  },
+  {
+    "id": "sqlserver-docs",
+    "name": "SQL Server documentation",
+    "product": "SQL Server",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://learn.microsoft.com/en-us/sql/sql-server/",
+    "cadence": "weekly",
+    "notes": "Reference for SQL Server engine behavior, T-SQL, security, and tooling."
+  },
+  {
+    "id": "tsql-reference",
+    "name": "Transact-SQL reference",
+    "product": "SQL Server",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-reference",
+    "cadence": "weekly",
+    "notes": "Reference for T-SQL syntax, functions, and dialect-specific completion."
+  },
+  {
+    "id": "duckdb-docs-stable",
+    "name": "DuckDB stable docs",
+    "product": "DuckDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://duckdb.org/docs/stable/",
+    "cadence": "weekly",
+    "notes": "Reference for DuckDB SQL, extensions, local file workflows, and CLI behavior."
+  },
+  {
+    "id": "duckdb-release-notes",
+    "name": "DuckDB release notes",
+    "product": "DuckDB",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://duckdb.org/docs/stable/dev/release_calendar.html",
+    "cadence": "weekly",
+    "notes": "Track DuckDB release cadence and new local analytics features."
+  },
+  {
+    "id": "clickhouse-docs",
+    "name": "ClickHouse docs",
+    "product": "ClickHouse",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://clickhouse.com/docs",
+    "cadence": "weekly",
+    "notes": "Reference for ClickHouse SQL, functions, engines, settings, and system tables."
+  },
+  {
+    "id": "snowflake-release-notes",
+    "name": "Snowflake release notes",
+    "product": "Snowflake",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://docs.snowflake.com/en/release-notes",
+    "cadence": "weekly",
+    "notes": "Track cloud SQL feature changes and syntax updates."
+  },
+  {
+    "id": "bigquery-release-notes",
+    "name": "BigQuery release notes",
+    "product": "BigQuery",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://cloud.google.com/bigquery/docs/release-notes",
+    "cadence": "weekly",
+    "notes": "Track BigQuery SQL, job, auth, and storage changes."
+  },
+  {
+    "id": "mongodb-release-notes",
+    "name": "MongoDB release notes",
+    "product": "MongoDB",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://www.mongodb.com/docs/manual/release-notes/",
+    "cadence": "weekly",
+    "notes": "Track MongoDB server, query language, aggregation, and shell changes."
+  },
+  {
+    "id": "redis-release-notes",
+    "name": "Redis release notes",
+    "product": "Redis",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://redis.io/docs/latest/operate/oss_and_stack/stack-with-enterprise/release-notes/",
+    "cadence": "weekly",
+    "notes": "Track Redis/Redis Stack command and module changes."
+  },
+  {
+    "id": "trino-release-notes",
+    "name": "Trino release notes",
+    "product": "Trino",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://trino.io/docs/current/release.html",
+    "cadence": "weekly",
+    "notes": "Track Trino SQL, connector, and type-system changes."
+  },
+  {
+    "id": "firebird-release-notes",
+    "name": "Firebird release notes",
+    "product": "Firebird",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://firebirdsql.org/en/release-notes/",
+    "cadence": "weekly",
+    "notes": "Track Firebird SQL and engine changes."
+  },
+  {
+    "id": "cockroachdb-release-notes",
+    "name": "CockroachDB release notes",
+    "product": "CockroachDB",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://www.cockroachlabs.com/docs/releases/",
+    "cadence": "weekly",
+    "notes": "Track CockroachDB SQL compatibility, migrations, and operational changes."
+  },
+  {
+    "id": "yugabytedb-docs",
+    "name": "YugabyteDB documentation",
+    "product": "YugabyteDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.yugabyte.com/",
+    "cadence": "weekly",
+    "notes": "Track distributed SQL concepts, YSQL/YCQL behavior, topology, security, operations, and client features."
+  },
+  {
+    "id": "yugabytedb-release-notes",
+    "name": "YugabyteDB release notes",
+    "product": "YugabyteDB",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://docs.yugabyte.com/preview/releases/",
+    "cadence": "weekly",
+    "notes": "Track YugabyteDB release changes affecting PostgreSQL compatibility, distributed behavior, and tooling."
+  },
+  {
+    "id": "yugabytedb-ysql-api",
+    "name": "YugabyteDB YSQL API reference",
+    "product": "YugabyteDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.yugabyte.com/stable/api/ysql/",
+    "cadence": "weekly",
+    "notes": "Reference for YSQL syntax, PostgreSQL-compatible behavior, functions, types, and statement support."
+  },
+  {
+    "id": "influxdb3-sql",
+    "name": "InfluxDB 3 SQL query docs",
+    "product": "InfluxDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/",
+    "cadence": "weekly",
+    "notes": "Track SQL support, time-series query patterns, aggregate/window behavior, and metadata operations."
+  },
+  {
+    "id": "influxdb3-client-libraries",
+    "name": "InfluxDB 3 client libraries",
+    "product": "InfluxDB",
+    "category": "database",
+    "sourceType": "driver_docs",
+    "url": "https://docs.influxdata.com/influxdb3/core/reference/client-libraries/v3/",
+    "cadence": "weekly",
+    "notes": "Track supported client APIs and driver behavior for time-series adapters."
+  },
+  {
+    "id": "neo4j-browser-docs",
+    "name": "Neo4j Browser documentation",
+    "product": "Neo4j",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://neo4j.com/docs/browser/",
+    "cadence": "monthly",
+    "notes": "Track Cypher editor, tabular result, graph visualization, and graph developer workflow expectations."
+  },
+  {
+    "id": "neo4j-cypher-manual",
+    "name": "Neo4j Cypher manual",
+    "product": "Neo4j",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://neo4j.com/docs/cypher-manual/current/",
+    "cadence": "weekly",
+    "notes": "Reference for Cypher syntax, functions, indexes, constraints, procedures, and completion metadata."
+  },
+  {
+    "id": "mongodb-compass",
+    "name": "MongoDB Compass product docs",
+    "product": "MongoDB Compass",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://www.mongodb.com/products/tools/compass",
+    "cadence": "monthly",
+    "notes": "Track document database GUI expectations for browsing, aggregation, explain, indexes, and editing."
+  },
+  {
+    "id": "redisinsight",
+    "name": "RedisInsight product page",
+    "product": "RedisInsight",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://redis.io/insight/",
+    "cadence": "monthly",
+    "notes": "Track key-value GUI expectations, command workbench, Redis Stack modules, and production-safe editing."
+  },
+  {
+    "id": "dbgate",
+    "name": "DbGate product docs",
+    "product": "DbGate",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://dbgate.org/",
+    "cadence": "monthly",
+    "notes": "Track OSS database client workflows, supported sources, extension ideas, and license-compatible reference surface."
+  },
+  {
+    "id": "dbeaver-supported-databases",
+    "name": "DBeaver supported databases",
+    "product": "DBeaver",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://dbeaver.com/databases/",
+    "cadence": "monthly",
+    "notes": "Track broad database coverage expectations across SQL, NoSQL, time-series, graph, and cloud sources."
+  },
+  {
+    "id": "ts-rs",
+    "name": "ts-rs Rust to TypeScript bindings",
+    "product": "ts-rs",
+    "category": "tooling",
+    "sourceType": "oss_project",
+    "url": "https://github.com/Aleph-Alpha/ts-rs",
+    "cadence": "monthly",
+    "notes": "Track Rust-to-TypeScript generation, Serde compatibility, release changes, and license fit."
+  },
+  {
+    "id": "specta",
+    "name": "Specta Rust type export",
+    "product": "Specta",
+    "category": "tooling",
+    "sourceType": "oss_project",
+    "url": "https://github.com/specta-rs/specta",
+    "cadence": "monthly",
+    "notes": "Track TypeScript, Zod, JSON Schema, OpenAPI, and Tauri-adjacent type export capabilities."
+  },
+  {
+    "id": "typeshare",
+    "name": "Typeshare multi-language bindings",
+    "product": "Typeshare",
+    "category": "tooling",
+    "sourceType": "oss_project",
+    "url": "https://github.com/1Password/typeshare",
+    "cadence": "monthly",
+    "notes": "Track CLI-oriented Rust type sharing and future SDK language generation ideas."
+  },
+  {
+    "id": "schemars",
+    "name": "Schemars JSON Schema generation",
+    "product": "Schemars",
+    "category": "tooling",
+    "sourceType": "oss_project",
+    "url": "https://github.com/GREsau/schemars",
+    "cadence": "monthly",
+    "notes": "Track JSON Schema generation from Rust and Serde compatibility for runtime validation."
+  },
+  {
+    "id": "datagrip-features",
+    "name": "DataGrip feature reference",
+    "product": "DataGrip",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://www.jetbrains.com/datagrip/features/",
+    "cadence": "monthly",
+    "notes": "Track highly rated SQL IDE features and AI/completion expectations."
+  },
+  {
+    "id": "dbeaver-sql-editor",
+    "name": "DBeaver SQL editor docs",
+    "product": "DBeaver",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://dbeaver.com/docs/dbeaver/SQL-Editor/",
+    "cadence": "monthly",
+    "notes": "Track SQL editor, AI, execution, templates, variables, and scripts."
+  },
+  {
+    "id": "dbvisualizer-features",
+    "name": "DbVisualizer feature overview",
+    "product": "DbVisualizer",
+    "category": "db_client",
+    "sourceType": "product_docs",
+    "url": "https://www.dbvis.com/features/",
+    "cadence": "monthly",
+    "notes": "Track SQL editor, AI, data management, workflow, and security features."
+  },
+  {
+    "id": "github-copilot-mcp",
+    "name": "GitHub Copilot MCP docs",
+    "product": "GitHub Copilot",
+    "category": "ai",
+    "sourceType": "spec",
+    "url": "https://docs.github.com/en/copilot/concepts/context/mcp",
+    "cadence": "monthly",
+    "notes": "Track Copilot-compatible MCP integration path for Irodori."
+  }
+]

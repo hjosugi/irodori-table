@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "icons": "node tools/generate-icons.mjs",
+    "typegen": "cargo test --manifest-path src-tauri/Cargo.toml export_typescript_bindings",
+    "build": "npm run typegen && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },

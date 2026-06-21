@@ -7,6 +7,7 @@ Irodori Table should be easy to extend without learning the internals of the des
 - Let users add drivers, commands, themes, formatters, result renderers, AI providers, proxy transports, and panels.
 - Make TypeScript extensions the easiest path, with Rust/Wasm available for high-performance pieces.
 - Keep APIs small, documented, versioned, and stable.
+- Generate extension-facing TypeScript types from Rust/schema sources so SDK docs, runtime permissions, and desktop command payloads stay aligned.
 - Support local development with fast reload and useful logs.
 - Use capability-scoped permissions so extensions can ask for only what they need.
 - Let extension authors choose their own license.
@@ -45,20 +46,34 @@ The initial schema lives at [`extension.schema.json`](../extension.schema.json).
 
 - Commands: register command IDs, keybindings, command palette entries, and context menu actions.
 - Database drivers: add engines behind the same connection/query/introspection traits as built-in drivers.
+- Data-source adapters: add SQL, distributed SQL, time-series, graph, document, key-value, search, warehouse, and local embedded sources without waiting for core releases.
 - SQL dialects: provide keywords, parser metadata, formatter hooks, snippets, completion enrichers, and explain-plan adapters.
+- Graph dialects: provide Cypher-like syntax metadata, label/relationship/property completion, procedure metadata, and query-result graph renderers.
+- Time-series dialects: provide time range helpers, bucket/measurement metadata, downsampling hints, aggregate/window snippets, and frame renderers.
 - Result renderers: add grid actions, custom cell renderers, export formats, and side-by-side diff views.
 - Themes: import or provide workbench colors, editor token colors, semantic colors, and icon mappings.
 - Proxy transports: add connection hops such as SSH variants, cloud tunnels, or custom enterprise proxies.
 - Panels: add side panels, bottom panels, inspectors, and object-browser actions.
 - AI providers: add opt-in local or remote assistance with explicit privacy disclosure.
+- MCP providers: expose selected Irodori capabilities to Copilot-compatible and MCP-compatible tools with explicit permission boundaries.
 
 ## Developer Experience
 
 - `irodori extension init` scaffolds a `MIT OR 0BSD` TypeScript extension.
 - `irodori extension dev` runs an extension in a watched local workspace.
-- Extensions get typed APIs, example tests, and a fake database harness.
+- Extensions get generated typed APIs, example tests, and fake source harnesses for SQL, time-series, graph, document, and KV adapters.
 - Logs and permission prompts are visible from a developer panel.
 - Extension packages should be simple zip/tar archives with manifest, code, assets, and license.
+
+## Type Generation
+
+The extension SDK should use the same Rust/TypeScript bridge described in [`type-bridge-handoff.md`](type-bridge-handoff.md).
+
+- Rust and schema definitions are the source of truth.
+- JSON payloads use frontend-friendly `camelCase`.
+- Generated SDK files are deterministic and checked in CI.
+- Permission scopes, command payloads, result-grid models, data-source adapter contracts, and theme contracts should be generated or schema-backed.
+- Runtime validation should be available for extension boundaries because extension payloads are less trusted than internal desktop calls.
 
 ## Safety Rules
 
