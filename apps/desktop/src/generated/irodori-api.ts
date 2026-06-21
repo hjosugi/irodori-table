@@ -13,7 +13,7 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**

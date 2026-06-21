@@ -42,6 +42,28 @@ services:
       timeout: 3s
       retries: 40
 
+  # Wire-compatible engines Irodori drives through the same sqlx drivers.
+  # Start with: docker compose -f samples/compose.yaml --profile extra up -d
+  cockroachdb:
+    image: docker.io/cockroachdb/cockroach:latest
+    profiles: ["extra"]
+    command: ["start-single-node", "--insecure"]
+    ports:
+      - "26257:26257"   # postgres://root@localhost:26257/defaultdb?sslmode=disable
+
+  mariadb:
+    image: docker.io/library/mariadb:11
+    profiles: ["extra"]
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_USER: irodori
+      MARIADB_PASSWORD: irodori
+      MARIADB_DATABASE: samples
+    ports:
+      - "13306:3306"
+    volumes:
+      - ./mysql:/docker-entrypoint-initdb.d:ro
+
   # Heavy (~2GB) and only a connection target for the Oracle thin-driver spike.
   oracle:
     image: docker.io/gvenzl/oracle-free:slim

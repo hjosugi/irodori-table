@@ -123,8 +123,6 @@ fn workspace_snapshot() -> WorkspaceSnapshot {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Register the postgres/mysql/sqlite drivers for sqlx's Any pool once.
-    db::install_drivers();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(db::DbState::default())

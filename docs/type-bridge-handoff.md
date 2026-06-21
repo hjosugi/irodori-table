@@ -2,6 +2,10 @@
 
 Last checked: 2026-06-21 JST.
 
+The standalone generator lives in the sibling repo `/mnt/data/workspace/typebridge`
+(developed in its own session). This document is the Irodori-side contract: how
+Irodori consumes the bridge and keeps `apps/desktop/src/generated/` in sync.
+
 Irodori should keep Rust structs idiomatic in Rust, keep JSON payloads idiomatic in TypeScript, and avoid hand-written duplicate types.
 
 The immediate boundary is visible in the desktop prototype:

@@ -1,19 +1,28 @@
 //! Real database connectivity.
 //!
-//! PostgreSQL, MySQL, and SQLite share one code path through sqlx's `Any` driver.
-//! Oracle is deliberately not wired here yet: the plan is a pure-Rust *thin* TNS
-//! driver that needs no Oracle Instant Client (the same idea as A5:SQL Mk-2's
-//! "direct connection" mode), built by inheriting the permissively licensed
-//! `oracle-rs` crate. Until that spike (SRC-004) lands, Oracle returns a clear,
-//! honest error instead of pretending to work.
+//! PostgreSQL, MySQL/MariaDB, and SQLite each use their **native** sqlx pool
+//! (`PgPool`/`MySqlPool`/`SqlitePool`) with explicit per-type decoding, so
+//! decimals, dates/timestamps, uuids, json, and binary come through correctly.
+//! (The earlier `Any`-driver path could only see int/bigint/text.) This follows
+//! the Beekeeper-studied lesson: route value decoding through native drivers by
+//! column type, and force exact numerics/temporals to strings to avoid precision
+//! and timezone loss.
+//!
+//! Postgres-wire engines (CockroachDB, YugabyteDB, Redshift, TimescaleDB) and
+//! MySQL-wire engines (MariaDB, TiDB) reuse the same drivers. Oracle is pending a
+//! pure-Rust thin TNS driver (no Instant Client); see the data-source strategy.
 
 use std::collections::HashMap;
 use std::time::Instant;
 
-use serde::{Deserialize, Serialize};
 use futures_util::TryStreamExt;
-use sqlx::any::{AnyPoolOptions, AnyRow};
-use sqlx::{Column, Row, ValueRef};
+use serde::{Deserialize, Serialize};
+use sqlx::mysql::{MySqlPool, MySqlPoolOptions, MySqlRow};
+use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
+use sqlx::sqlite::{SqlitePool, SqlitePoolOptions, SqliteRow};
+use sqlx::types::chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+use sqlx::types::{BigDecimal, Uuid};
+use sqlx::{Column, Row, TypeInfo, ValueRef};
 use tokio::sync::Mutex;
 use ts_rs::TS;
 
@@ -25,6 +34,61 @@ pub enum DbEngine {
     Mysql,
     Sqlite,
     Oracle,
+    // Postgres-wire compatible — handled by the same sqlx postgres driver.
+    #[serde(rename = "cockroachdb")]
+    #[ts(rename = "cockroachdb")]
+    CockroachDb,
+    #[serde(rename = "yugabytedb")]
+    #[ts(rename = "yugabytedb")]
+    YugabyteDb,
+    Redshift,
+    #[serde(rename = "timescaledb")]
+    #[ts(rename = "timescaledb")]
+    Timescale,
+    // MySQL-wire compatible — handled by the same sqlx mysql driver.
+    #[serde(rename = "mariadb")]
+    #[ts(rename = "mariadb")]
+    MariaDb,
+    #[serde(rename = "tidb")]
+    #[ts(rename = "tidb")]
+    TiDb,
+}
+
+/// The wire protocol an engine speaks — i.e. which sqlx driver handles it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Wire {
+    Postgres,
+    Mysql,
+    Sqlite,
+    Oracle,
+}
+
+impl DbEngine {
+    fn wire(self) -> Wire {
+        match self {
+            DbEngine::Postgres
+            | DbEngine::CockroachDb
+            | DbEngine::YugabyteDb
+            | DbEngine::Redshift
+            | DbEngine::Timescale => Wire::Postgres,
+            DbEngine::Mysql | DbEngine::MariaDb | DbEngine::TiDb => Wire::Mysql,
+            DbEngine::Sqlite => Wire::Sqlite,
+            DbEngine::Oracle => Wire::Oracle,
+        }
+    }
+
+    fn default_port(self) -> u16 {
+        match self {
+            DbEngine::Postgres | DbEngine::Timescale => 5432,
+            DbEngine::CockroachDb => 26257,
+            DbEngine::YugabyteDb => 5433,
+            DbEngine::Redshift => 5439,
+            DbEngine::Mysql | DbEngine::MariaDb => 3306,
+            DbEngine::TiDb => 4000,
+            DbEngine::Oracle => 1521,
+            DbEngine::Sqlite => 0,
+        }
+    }
 }
 
 /// How to reach a database. Either give structured fields or a raw `url`/DSN.
@@ -64,8 +128,7 @@ pub struct ConnectionInfo {
     pub server_version: String,
 }
 
-/// One query's results as a column header plus JSON cells, so the frontend can
-/// render any shape without a per-type binding. Rich typing is a later ticket.
+/// One query's results as a column header plus JSON cells.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
@@ -83,17 +146,19 @@ pub struct QueryResult {
     pub message: Option<String>,
 }
 
-/// Open connection pools keyed by connection id. Lives in Tauri managed state.
-#[derive(Default)]
-pub struct DbState {
-    pools: Mutex<HashMap<String, sqlx::AnyPool>>,
+/// A live connection: one native pool, tagged by wire family. Cloneable because
+/// every sqlx pool is an `Arc` handle.
+#[derive(Clone)]
+enum EnginePool {
+    Postgres(PgPool),
+    Mysql(MySqlPool),
+    Sqlite(SqlitePool),
 }
 
-/// Register sqlx's postgres/mysql/sqlite `Any` drivers exactly once per process.
-pub fn install_drivers() {
-    use std::sync::Once;
-    static ONCE: Once = Once::new();
-    ONCE.call_once(sqlx::any::install_default_drivers);
+/// Open pools keyed by connection id. Lives in Tauri managed state.
+#[derive(Default)]
+pub struct DbState {
+    pools: Mutex<HashMap<String, EnginePool>>,
 }
 
 fn percent_encode(input: &str) -> String {
@@ -113,8 +178,8 @@ fn build_url(p: &ConnectionProfile) -> Result<String, String> {
     if let Some(url) = &p.url {
         return Ok(url.clone());
     }
-    match p.engine {
-        DbEngine::Sqlite => {
+    match p.engine.wire() {
+        Wire::Sqlite => {
             let path = p
                 .database
                 .clone()
@@ -122,15 +187,15 @@ fn build_url(p: &ConnectionProfile) -> Result<String, String> {
                 .ok_or("SQLite needs a database file path (set `database`)")?;
             Ok(format!("sqlite://{path}?mode=rwc"))
         }
-        DbEngine::Postgres => Ok(build_tcp_url("postgres", p, 5432)),
-        DbEngine::Mysql => Ok(build_tcp_url("mysql", p, 3306)),
-        DbEngine::Oracle => Err(oracle_pending_message()),
+        Wire::Postgres => Ok(build_tcp_url("postgres", p)),
+        Wire::Mysql => Ok(build_tcp_url("mysql", p)),
+        Wire::Oracle => Err(oracle_pending_message()),
     }
 }
 
-fn build_tcp_url(scheme: &str, p: &ConnectionProfile, default_port: u16) -> String {
+fn build_tcp_url(scheme: &str, p: &ConnectionProfile) -> String {
     let host = p.host.clone().unwrap_or_else(|| "localhost".into());
-    let port = p.port.unwrap_or(default_port);
+    let port = p.port.unwrap_or_else(|| p.engine.default_port());
     let db = p.database.clone().unwrap_or_default();
     let auth = match (&p.user, &p.password) {
         (Some(u), Some(pw)) if !pw.is_empty() => {
@@ -149,37 +214,51 @@ fn oracle_pending_message() -> String {
         .to_string()
 }
 
-async fn fetch_version(pool: &sqlx::AnyPool, engine: DbEngine) -> String {
-    let sql = match engine {
-        DbEngine::Sqlite => "select sqlite_version()",
+async fn fetch_version(pool: &EnginePool) -> String {
+    let sql = match pool {
+        EnginePool::Sqlite(_) => "select sqlite_version()",
         _ => "select version()",
     };
-    match sqlx::query(sql).fetch_one(pool).await {
-        Ok(row) => any_cell_to_json(&row, 0)
-            .as_str()
-            .map(str::to_string)
-            .unwrap_or_else(|| "unknown".into()),
-        Err(_) => "unknown".into(),
-    }
+    let scalar = match pool {
+        EnginePool::Postgres(p) => sqlx::query_scalar::<_, String>(sql).fetch_one(p).await.ok(),
+        EnginePool::Mysql(p) => sqlx::query_scalar::<_, String>(sql).fetch_one(p).await.ok(),
+        EnginePool::Sqlite(p) => sqlx::query_scalar::<_, String>(sql).fetch_one(p).await.ok(),
+    };
+    scalar.unwrap_or_else(|| "unknown".into())
 }
 
 pub async fn connect_impl(
     state: &DbState,
     profile: ConnectionProfile,
 ) -> Result<ConnectionInfo, String> {
-    install_drivers();
-    if profile.engine == DbEngine::Oracle {
-        return Err(oracle_pending_message());
-    }
     let url = build_url(&profile)?;
-    // SQLite is single-writer; one connection avoids file-lock surprises.
-    let max = if profile.engine == DbEngine::Sqlite { 1 } else { 5 };
-    let pool = AnyPoolOptions::new()
-        .max_connections(max)
-        .connect(&url)
-        .await
-        .map_err(|e| format!("connect failed: {e}"))?;
-    let server_version = fetch_version(&pool, profile.engine).await;
+    let pool = match profile.engine.wire() {
+        Wire::Postgres => EnginePool::Postgres(
+            PgPoolOptions::new()
+                .max_connections(5)
+                .connect(&url)
+                .await
+                .map_err(|e| format!("connect failed: {e}"))?,
+        ),
+        Wire::Mysql => EnginePool::Mysql(
+            MySqlPoolOptions::new()
+                .max_connections(5)
+                .connect(&url)
+                .await
+                .map_err(|e| format!("connect failed: {e}"))?,
+        ),
+        // SQLite is single-writer; one connection avoids file-lock surprises.
+        Wire::Sqlite => EnginePool::Sqlite(
+            SqlitePoolOptions::new()
+                .max_connections(1)
+                .connect(&url)
+                .await
+                .map_err(|e| format!("connect failed: {e}"))?,
+        ),
+        Wire::Oracle => return Err(oracle_pending_message()),
+    };
+
+    let server_version = fetch_version(&pool).await;
     state.pools.lock().await.insert(profile.id.clone(), pool);
     Ok(ConnectionInfo {
         id: profile.id,
@@ -190,9 +269,39 @@ pub async fn connect_impl(
 
 /// Default page size when the caller does not pass `max_rows`. Keeps memory
 /// bounded so a `select *` over a 10M-row table cannot exhaust RAM (the
-/// TablePlus problem). Full extraction goes through run-to-file (IO-001), and a
+/// TablePlus problem). Full extraction goes through run-to-file (IO-001); a
 /// later ticket adds optional disk offload for very large windows (EXEC-010).
 const DEFAULT_MAX_ROWS: usize = 10_000;
+
+/// Stream rows from one native pool, decoding each cell with `$decode`, and stop
+/// at `$cap` rows. Yields `(columns, rows, truncated)`.
+macro_rules! run_stream {
+    ($pool:expr, $sql:expr, $cap:expr, $decode:path) => {{
+        let mut stream = sqlx::query($sql).fetch($pool);
+        let mut columns: Vec<String> = Vec::new();
+        let mut out_rows: Vec<Vec<serde_json::Value>> = Vec::new();
+        let mut truncated = false;
+        while let Some(row) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("query failed: {e}"))?
+        {
+            if columns.is_empty() {
+                columns = row.columns().iter().map(|c| c.name().to_string()).collect();
+            }
+            if out_rows.len() >= $cap {
+                truncated = true;
+                break;
+            }
+            let mut cells = Vec::with_capacity(row.columns().len());
+            for i in 0..row.columns().len() {
+                cells.push($decode(&row, i));
+            }
+            out_rows.push(cells);
+        }
+        (columns, out_rows, truncated)
+    }};
+}
 
 pub async fn run_query_impl(
     state: &DbState,
@@ -200,7 +309,7 @@ pub async fn run_query_impl(
     sql: String,
     max_rows: Option<usize>,
 ) -> Result<QueryResult, String> {
-    // Clone the pool out of the lock so the query does not hold the mutex.
+    // Clone the pool handle out of the lock so the query does not hold the mutex.
     let pool = {
         let guard = state.pools.lock().await;
         guard
@@ -212,41 +321,17 @@ pub async fn run_query_impl(
     let cap = max_rows.unwrap_or(DEFAULT_MAX_ROWS);
     let start = Instant::now();
 
-    // Stream rows instead of buffering the whole result set, and stop at `cap`.
-    let mut stream = sqlx::query(&sql).fetch(&pool);
-    let mut columns: Vec<String> = Vec::new();
-    let mut out_rows: Vec<Vec<serde_json::Value>> = Vec::new();
-    let mut truncated = false;
-
-    while let Some(row) = stream
-        .try_next()
-        .await
-        .map_err(|e| format!("query failed: {e}"))?
-    {
-        if columns.is_empty() {
-            columns = row
-                .columns()
-                .iter()
-                .map(|c| c.name().to_string())
-                .collect();
-        }
-        if out_rows.len() >= cap {
-            truncated = true;
-            break;
-        }
-        let mut cells = Vec::with_capacity(row.columns().len());
-        for idx in 0..row.columns().len() {
-            cells.push(any_cell_to_json(&row, idx));
-        }
-        out_rows.push(cells);
-    }
-    drop(stream);
+    let (columns, rows, truncated) = match &pool {
+        EnginePool::Postgres(p) => run_stream!(p, &sql, cap, pg_cell_to_json),
+        EnginePool::Mysql(p) => run_stream!(p, &sql, cap, my_cell_to_json),
+        EnginePool::Sqlite(p) => run_stream!(p, &sql, cap, sqlite_cell_to_json),
+    };
 
     let elapsed_ms = start.elapsed().as_millis() as u64;
-    let row_count = out_rows.len() as u64;
+    let row_count = rows.len() as u64;
     Ok(QueryResult {
         columns,
-        rows: out_rows,
+        rows,
         row_count,
         elapsed_ms,
         truncated,
@@ -256,41 +341,16 @@ pub async fn run_query_impl(
 
 pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(), String> {
     if let Some(pool) = state.pools.lock().await.remove(&connection_id) {
-        pool.close().await;
+        match pool {
+            EnginePool::Postgres(p) => p.close().await,
+            EnginePool::Mysql(p) => p.close().await,
+            EnginePool::Sqlite(p) => p.close().await,
+        }
     }
     Ok(())
 }
 
-/// Decode one cell to JSON. sqlx's `Any` value kinds are limited, so we try the
-/// supported widths in order and fall back to text. Rich type mapping (dates,
-/// decimals, arrays, JSON) is a later ticket.
-fn any_cell_to_json(row: &AnyRow, idx: usize) -> serde_json::Value {
-    use serde_json::Value;
-    if let Ok(raw) = row.try_get_raw(idx) {
-        if raw.is_null() {
-            return Value::Null;
-        }
-    }
-    if let Ok(v) = row.try_get::<i64, _>(idx) {
-        return Value::from(v);
-    }
-    if let Ok(v) = row.try_get::<i32, _>(idx) {
-        return Value::from(v);
-    }
-    if let Ok(v) = row.try_get::<f64, _>(idx) {
-        return Value::from(v);
-    }
-    if let Ok(v) = row.try_get::<bool, _>(idx) {
-        return Value::Bool(v);
-    }
-    if let Ok(v) = row.try_get::<String, _>(idx) {
-        return Value::String(v);
-    }
-    if let Ok(v) = row.try_get::<Vec<u8>, _>(idx) {
-        return Value::String(format!("\\x{}", hex_encode(&v)));
-    }
-    Value::String("<unsupported type>".into())
-}
+// ---- Per-engine cell decoding -------------------------------------------------
 
 fn hex_encode(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
@@ -300,7 +360,124 @@ fn hex_encode(bytes: &[u8]) -> String {
     s
 }
 
-// ---- Tauri commands -------------------------------------------------------
+/// Decode a PostgreSQL cell by column type. Exact numerics/temporals become
+/// strings to preserve precision and timezone.
+fn pg_cell_to_json(row: &PgRow, i: usize) -> serde_json::Value {
+    use serde_json::Value;
+    if row.try_get_raw(i).map(|v| v.is_null()).unwrap_or(true) {
+        return Value::Null;
+    }
+    let ty = row.column(i).type_info().name();
+    match ty {
+        "BOOL" => row.try_get::<bool, _>(i).map(Value::Bool).unwrap_or(Value::Null),
+        "INT2" => row.try_get::<i16, _>(i).map(|v| Value::from(v as i64)).unwrap_or(Value::Null),
+        "INT4" => row.try_get::<i32, _>(i).map(|v| Value::from(v as i64)).unwrap_or(Value::Null),
+        "INT8" => row.try_get::<i64, _>(i).map(Value::from).unwrap_or(Value::Null),
+        "FLOAT4" => row.try_get::<f32, _>(i).map(|v| Value::from(v as f64)).unwrap_or(Value::Null),
+        "FLOAT8" => row.try_get::<f64, _>(i).map(Value::from).unwrap_or(Value::Null),
+        "NUMERIC" => row
+            .try_get::<BigDecimal, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "UUID" => row
+            .try_get::<Uuid, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "JSON" | "JSONB" => row.try_get::<Value, _>(i).unwrap_or(Value::Null),
+        "TIMESTAMPTZ" => row
+            .try_get::<DateTime<Utc>, _>(i)
+            .map(|v| Value::String(v.to_rfc3339()))
+            .unwrap_or(Value::Null),
+        "TIMESTAMP" => row
+            .try_get::<NaiveDateTime, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "DATE" => row
+            .try_get::<NaiveDate, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "TIME" => row
+            .try_get::<NaiveTime, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "BYTEA" => row
+            .try_get::<Vec<u8>, _>(i)
+            .map(|b| Value::String(format!("\\x{}", hex_encode(&b))))
+            .unwrap_or(Value::Null),
+        "TEXT" | "VARCHAR" | "BPCHAR" | "NAME" | "CHAR" | "CITEXT" => {
+            row.try_get::<String, _>(i).map(Value::String).unwrap_or(Value::Null)
+        }
+        // Arrays and less-common types: best-effort text, else a tagged placeholder.
+        _ => row
+            .try_get::<String, _>(i)
+            .map(Value::String)
+            .or_else(|_| row.try_get::<i64, _>(i).map(Value::from))
+            .or_else(|_| row.try_get::<f64, _>(i).map(Value::from))
+            .unwrap_or_else(|_| Value::String(format!("<{ty}>"))),
+    }
+}
+
+/// Decode a MySQL/MariaDB cell by column type.
+fn my_cell_to_json(row: &MySqlRow, i: usize) -> serde_json::Value {
+    use serde_json::Value;
+    if row.try_get_raw(i).map(|v| v.is_null()).unwrap_or(true) {
+        return Value::Null;
+    }
+    let ty = row.column(i).type_info().name();
+    match ty {
+        "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" | "YEAR" => {
+            row.try_get::<i64, _>(i).map(Value::from).unwrap_or(Value::Null)
+        }
+        "FLOAT" => row.try_get::<f32, _>(i).map(|v| Value::from(v as f64)).unwrap_or(Value::Null),
+        "DOUBLE" => row.try_get::<f64, _>(i).map(Value::from).unwrap_or(Value::Null),
+        "DECIMAL" | "NEWDECIMAL" => row
+            .try_get::<BigDecimal, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "JSON" => row.try_get::<Value, _>(i).unwrap_or(Value::Null),
+        "DATETIME" | "TIMESTAMP" => row
+            .try_get::<NaiveDateTime, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "DATE" => row
+            .try_get::<NaiveDate, _>(i)
+            .map(|v| Value::String(v.to_string()))
+            .unwrap_or(Value::Null),
+        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BINARY" | "VARBINARY" => row
+            .try_get::<Vec<u8>, _>(i)
+            .map(|b| Value::String(format!("\\x{}", hex_encode(&b))))
+            .unwrap_or(Value::Null),
+        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => {
+            row.try_get::<String, _>(i).map(Value::String).unwrap_or(Value::Null)
+        }
+        // Unsigned ints, TIME, and surprises: ladder through supported decodes.
+        _ => row
+            .try_get::<i64, _>(i)
+            .map(Value::from)
+            .or_else(|_| row.try_get::<f64, _>(i).map(Value::from))
+            .or_else(|_| row.try_get::<String, _>(i).map(Value::String))
+            .unwrap_or_else(|_| Value::String(format!("<{ty}>"))),
+    }
+}
+
+/// Decode a SQLite cell. SQLite is dynamically typed, so decode by value.
+fn sqlite_cell_to_json(row: &SqliteRow, i: usize) -> serde_json::Value {
+    use serde_json::Value;
+    if row.try_get_raw(i).map(|v| v.is_null()).unwrap_or(true) {
+        return Value::Null;
+    }
+    row.try_get::<i64, _>(i)
+        .map(Value::from)
+        .or_else(|_| row.try_get::<f64, _>(i).map(Value::from))
+        .or_else(|_| row.try_get::<String, _>(i).map(Value::String))
+        .or_else(|_| {
+            row.try_get::<Vec<u8>, _>(i)
+                .map(|b| Value::String(format!("\\x{}", hex_encode(&b))))
+        })
+        .unwrap_or(Value::Null)
+}
+
+// ---- Tauri commands -----------------------------------------------------------
 
 #[tauri::command]
 pub async fn db_connect(
@@ -350,7 +527,6 @@ mod tests {
 
     #[tokio::test]
     async fn sqlite_connect_and_query_round_trip() {
-        install_drivers();
         let state = DbState::default();
         let profile = temp_sqlite_profile("rt");
         let info = connect_impl(&state, profile).await.expect("connect");
@@ -407,5 +583,24 @@ mod tests {
         };
         let err = connect_impl(&state, profile).await.unwrap_err();
         assert!(err.contains("thin"));
+    }
+
+    #[test]
+    fn engine_wire_routing() {
+        for e in [
+            DbEngine::Postgres,
+            DbEngine::CockroachDb,
+            DbEngine::YugabyteDb,
+            DbEngine::Redshift,
+            DbEngine::Timescale,
+        ] {
+            assert_eq!(e.wire(), Wire::Postgres, "{e:?} should use postgres wire");
+        }
+        for e in [DbEngine::Mysql, DbEngine::MariaDb, DbEngine::TiDb] {
+            assert_eq!(e.wire(), Wire::Mysql, "{e:?} should use mysql wire");
+        }
+        assert_eq!(DbEngine::CockroachDb.default_port(), 26257);
+        assert_eq!(DbEngine::YugabyteDb.default_port(), 5433);
+        assert_eq!(DbEngine::TiDb.default_port(), 4000);
     }
 }

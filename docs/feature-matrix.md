@@ -15,6 +15,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Core DBs | Oracle Database | P1 | User requirement, A5:SQL, Beekeeper paid support |
 | Core DBs | YugabyteDB YSQL | P1 | User requirement, PostgreSQL-compatible distributed SQL |
 | Core DBs | CockroachDB, DuckDB, ClickHouse, BigQuery, Redshift, Firebird, Trino/Presto, Snowflake, TiDB, Databricks/Spark SQL | P2 | Current distributed SQL, warehouse, and analytics landscape |
+| Engines (implemented) | PostgreSQL, MySQL, MariaDB, CockroachDB verified against real Docker instances; YugabyteDB/Redshift/TimescaleDB/TiDB routed through the same wire drivers; SQLite | P0 | `apps/desktop/src-tauri/src/db.rs` + `tests/integration_db.rs` |
 | Source Families | InfluxDB and time-series sources | P2 | User requirement, InfluxDB 3 SQL/time-series workflows |
 | Source Families | Neo4j and graph sources | P2 | User requirement, Neo4j Browser graph workflow |
 | Source Families | MongoDB, Redis, Cassandra/ScyllaDB, Couchbase, DynamoDB, Elasticsearch/OpenSearch, ArangoDB, Memgraph | P2 | Modern non-relational client landscape |
@@ -92,6 +93,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 - `ref/duckdb-ui-main/`: MIT-licensed DuckDB UI; reference for local-first analytical exploration and lightweight in-process data browsing. MIT permits code-level adaptation with attribution and license tracking.
 - `ref/kibana-main/`: source-available under Elastic License 2.0 / SSPL / AGPL-3.0; reference Discover and Dev Tools console behavior only — do not adapt code into the permissive core.
 - `zed-industries/zed` (GitHub, not in `ref/`): copyleft (GPL-3.0/AGPL-3.0 with some Apache-2.0 crates); study Rust desktop architecture, GPUI rendering, and input latency — learning only, no copyleft code in the core.
+- `outerbase/studio` (GitHub, AGPL-3.0): lightweight web/Electron DB GUI (SQLite/Turso/D1, beta MySQL/PostgreSQL); reference for a staged-edit data grid, no-SQL schema editor, function-hint completion, and large-table rendering. Copyleft — behavior/architecture only, no code in the core.
 
 Do not copy implementation from these directories into Irodori Table unless license compatibility, attribution, and adaptation scope are explicit.
 

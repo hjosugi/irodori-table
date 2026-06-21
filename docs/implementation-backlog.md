@@ -323,12 +323,18 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-002, IO-001
 - **Size:** M · **Priority:** P1
 
-### EXEC-009 — Native per-engine pools + full type decoding
-- **Goal:** Replace sqlx's `Any` driver (int/bigint/text only) with native `PgPool`/`MySqlPool`/`SqlitePool` and decode every column by type-id/OID — the Beekeeper-informed move. Exact numerics/temporals become strings to avoid precision/timezone loss; binary detected via type flags; json/arrays preserved.
-- **Done when:** the integration tests assert correct values for decimal, timestamp, uuid, json, bytea, and array columns on the `events`/`samples` data; a `DatabaseClient` trait fronts the engines behind a feature-negation registry.
+### EXEC-009 — Native per-engine pools + full type decoding  ✅ core done
+- **Goal:** Replace sqlx's `Any` driver (int/bigint/text only) with native `PgPool`/`MySqlPool`/`SqlitePool` and decode every column by type — the Beekeeper-informed move. Exact numerics/temporals become strings to avoid precision/timezone loss; binary as hex; json preserved.
+- **Done (verified against real PG/MySQL):** `db.rs` now uses native pools with `pg_cell_to_json`/`my_cell_to_json`/`sqlite_cell_to_json`; integration tests confirm decimal→string, timestamp→string/RFC3339, jsonb→object. Streaming with a 10k default cap + `truncated` flag (EXEC-002) retained.
+- **Remaining:** preserve NUMERIC display scale (BigDecimal drops trailing zeros), decode arrays/ranges/enums richly, and front the engines with a `DatabaseClient` trait + feature-negation registry.
 - **Depends on:** SRC-001
 - **Size:** L · **Priority:** P0
-- **Note:** `db::run_query_impl` already streams with a default 10k page cap and a `truncated` flag (partial EXEC-002); this ticket fixes the *type* gap.
+
+### EXEC-009b — SQL Server (tiberius) and DuckDB drivers
+- **Goal:** Add the major engines sqlx does not cover.
+- **Done when:** SQL Server connects via the pure-Rust `tiberius` driver and DuckDB via the `duckdb` crate, each behind the same `EnginePool`/decoder abstraction, with integration tests against real instances (mssql container; embedded DuckDB).
+- **Depends on:** EXEC-009
+- **Size:** L · **Priority:** P1
 
 ### EXEC-010 — Bounded memory with optional disk offload (anti-TablePlus)
 - **Goal:** Browse results far larger than RAM without exhausting memory the way TablePlus does.

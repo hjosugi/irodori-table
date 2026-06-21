@@ -32,10 +32,15 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 # permissive `oracle-rs` crate. See docs/data-source-coverage-strategy.md (SRC-004).
 sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio",
-    "any",
     "postgres",
     "mysql",
     "sqlite",
+    # Type coverage: decode decimals, dates/times, uuids, and json correctly
+    # instead of erroring (the `Any`-driver gap).
+    "chrono",
+    "uuid",
+    "bigdecimal",
+    "json",
 ] }
 # Streaming result rows (bounded memory) instead of buffering everything.
 futures-util = "0.3"

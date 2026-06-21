@@ -16,8 +16,13 @@ scripts/dev-db.sh test
 scripts/dev-db.sh down
 ```
 
-`docker compose -f samples/compose.yaml up -d` works too (add `--profile oracle`
-for the Oracle spike target — heavy, ~2 GB).
+`docker compose -f samples/compose.yaml up -d` works too. Extra wire-compatible
+engines (CockroachDB on 26257, MariaDB on 13306) start with `--profile extra`;
+the Oracle spike target (heavy, ~2 GB) with `--profile oracle`.
+
+Verified: Irodori connects to and queries **PostgreSQL, MySQL, MariaDB, and
+CockroachDB** real instances. YugabyteDB, Redshift, TimescaleDB, and TiDB use the
+same Postgres/MySQL wire drivers (`db::DbEngine`).
 
 ## What you get
 

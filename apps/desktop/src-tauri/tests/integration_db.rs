@@ -60,6 +60,49 @@ async fn exercise(engine: DbEngine, url: String) {
     assert_eq!(join.columns, vec!["name", "orders"]);
     assert!(join.row_count >= 1, "join returns rows");
 
+    // Rich types now decode correctly (the sqlx-`Any` gap is closed): a decimal
+    // column becomes an exact string and a timestamp a string, instead of erroring.
+    let rich = run_query_impl(
+        &state,
+        "it".into(),
+        "select total, created_at from orders order by id limit 1".into(),
+        None,
+    )
+    .await
+    .expect("rich types");
+    assert_eq!(rich.columns, vec!["total", "created_at"]);
+    assert!(
+        rich.rows[0][0].is_string(),
+        "decimal -> string, got {:?}",
+        rich.rows[0][0]
+    );
+    assert!(
+        rich.rows[0][1].is_string(),
+        "timestamp -> string, got {:?}",
+        rich.rows[0][1]
+    );
+    eprintln!(
+        "rich types: total={} created_at={}",
+        rich.rows[0][0], rich.rows[0][1]
+    );
+
+    // Postgres-only: a jsonb column round-trips as a JSON object (skipped on MySQL,
+    // whose sample `events` table has no payload column).
+    if let Ok(j) = run_query_impl(
+        &state,
+        "it".into(),
+        "select payload from events limit 1".into(),
+        None,
+    )
+    .await
+    {
+        assert!(
+            j.rows.is_empty() || j.rows[0][0].is_object(),
+            "jsonb -> object, got {:?}",
+            j.rows.first()
+        );
+    }
+
     // If the bulk `events` table exists (10M rows), a full unbounded scan must
     // stay light: the stream stops at the default page cap instead of buffering
     // every row. This is the anti-"TablePlus eats all memory" guarantee.
@@ -101,4 +144,42 @@ fn mysql_samples() {
     tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(exercise(DbEngine::Mysql, url));
+}
+
+/// Lighter check (connect + `select 1`) for wire-compatible engines we route
+/// through the existing postgres/mysql drivers, no seed required.
+async fn connect_only(engine: DbEngine, url: String) {
+    let state = DbState::default();
+    let info = connect_impl(&state, url_profile("it", engine, url))
+        .await
+        .expect("connect");
+    assert_eq!(info.engine, engine);
+    assert!(!info.server_version.is_empty());
+    eprintln!("connected: {engine:?} {}", info.server_version);
+    let one = run_query_impl(&state, "it".into(), "select 1 as one".into(), None)
+        .await
+        .expect("select 1");
+    assert_eq!(one.columns, vec!["one"]);
+}
+
+#[test]
+fn cockroachdb_connect() {
+    let Ok(url) = std::env::var("IRODORI_CRDB_URL") else {
+        eprintln!("skip: IRODORI_CRDB_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(connect_only(DbEngine::CockroachDb, url));
+}
+
+#[test]
+fn mariadb_connect() {
+    let Ok(url) = std::env::var("IRODORI_MARIADB_URL") else {
+        eprintln!("skip: IRODORI_MARIADB_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(connect_only(DbEngine::MariaDb, url));
 }

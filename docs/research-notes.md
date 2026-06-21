@@ -17,6 +17,7 @@ Last checked: 2026-06-21 JST.
 - Official DB docs and release notes are tracked through `knowledge/sources.json` and can be snapshotted into a local SQLite DB for implementation and bug-fix reference.
 - DuckDB UI (`ref/duckdb-ui-main`, MIT) is a reference for local-first analytical exploration, fast in-process data browsing, and Parquet/Iceberg reads; MIT permits selective code adaptation with attribution: https://github.com/duckdb/duckdb-ui
 - Kibana (`ref/kibana-main`) is a search/observability query-and-browse reference (Discover, Dev Tools console). It is source-available under Elastic License 2.0 / SSPL / AGPL-3.0, so treat it as behavior-only: https://www.elastic.co/kibana
+- Outerbase Studio (`outerbase/studio`, AGPL-3.0) is a lightweight web/Electron DB GUI for SQLite/Turso/LibSQL/Cloudflare D1 plus beta MySQL/PostgreSQL; strong references for a staged-changes data editor (edit then commit), a no-SQL schema editor, function-hint completion, and an optimized data table for thousands of rows/columns. AGPL is copyleft → study UX/architecture only, no code into the permissive core: https://github.com/outerbase/studio
 - Apache Iceberg is the priority lakehouse target; model catalogs (Hive Metastore, AWS Glue, REST, JDBC) and AWS S3 Tables in the adapter, not as ad-hoc forms: https://iceberg.apache.org/spec/
 - Snowflake needs full auth coverage (password, key-pair/JWT, OAuth, external browser/SSO, MFA, programmatic access tokens), modeled in the connection profile: https://docs.snowflake.com/en/user-guide/key-pair-auth
 
