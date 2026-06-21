@@ -24,6 +24,10 @@ pub enum DbEngine {
     #[serde(rename = "duckdb")]
     #[ts(rename = "duckdb")]
     DuckDb,
+    // Document store — not SQL; its own driver and query model.
+    #[serde(rename = "mongodb")]
+    #[ts(rename = "mongodb")]
+    Mongo,
     // Postgres-wire compatible — handled by the same sqlx postgres driver.
     #[serde(rename = "cockroachdb")]
     #[ts(rename = "cockroachdb")]
@@ -52,6 +56,7 @@ pub(crate) enum Wire {
     Sqlite,
     SqlServer,
     DuckDb,
+    Mongo,
     Oracle,
 }
 

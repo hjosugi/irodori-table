@@ -46,6 +46,8 @@ sqlx = { version = "0.8", default-features = false, features = [
 futures-util = "0.3"
 # Object-safe async trait for the per-engine `Connection` abstraction + registry.
 async-trait = "0.1"
+# MongoDB (document store) — proves the Connection trait extends beyond SQL.
+mongodb = "3"
 # SQL Server via the pure-Rust TDS driver (no native client needed).
 tiberius = { version = "0.12", default-features = false, features = [
     "tds73",
