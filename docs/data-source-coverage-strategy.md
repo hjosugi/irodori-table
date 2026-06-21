@@ -44,6 +44,12 @@ These prove connection management, editor execution, object browser, result grid
 
 YugabyteDB should start through its PostgreSQL-compatible YSQL surface, then add distributed-database affordances such as tablets, regions, follower reads, query diagnostics, xCluster, and node/session visibility where public APIs allow it.
 
+Oracle is a roadmap non-negotiable, so its connection story must be as easy as the rest. The target is a **thin driver**: a pure-Rust implementation of the Oracle Net/TNS protocol that needs no Oracle Instant Client — the same approach that makes A5:SQL Mk-2's "direct connection" mode (and the JDBC Thin / python-oracledb thin / node-oracledb thin drivers) client-free. The user supplies a connection descriptor (host/port/service), not a `tnsnames.ora` plus a client install.
+
+- Primary path: inherit and harden the permissively licensed `oracle-rs` crate (MIT/Apache-2.0, pure Rust, Tokio, TLS/Wallet) rather than writing the TNS stack from scratch. It is young (v0.1; many enterprise features still "planned"), so a spike (SRC-004a) must validate it against real Oracle 19c/23ai before Oracle becomes first-class. This may grow into its own crate/sub-project, like the type bridge.
+- Clean-room note: A5:SQL Mk-2 is closed source (the author's GitHub confirms it is not public) and its direct mode uses the commercial UniDAC component, so we study the *approach* (thin TNS), never A5/UniDAC code. `oracle-rs` is permissive and may be adapted with attribution.
+- Optional fallback: thick OCI via the ODPI-C `oracle` crate behind a build feature, for environments that already have the Instant Client and need full OCI features.
+
 ### P2: Broader Modern Workloads
 
 - InfluxDB and other time-series engines
@@ -66,6 +72,14 @@ YugabyteDB should start through its PostgreSQL-compatible YSQL surface, then add
 - TimescaleDB
 - ArangoDB
 - Memgraph
+
+### Priority Within P2: Lakehouse And Cloud Warehouse Auth
+
+- Apache Iceberg is the priority lakehouse target. Reach it through catalogs — Hive Metastore, AWS Glue, REST, and JDBC — and through AWS S3 Tables. Treat object stores (S3, GCS, Azure Blob) as first-class connection backends.
+- Execution options: embeddable engines (DuckDB, Apache DataFusion) for local reads, or Trino/Presto and warehouse-native engines for pushdown. Add Delta Lake and Apache Hudi after Iceberg.
+- Snowflake needs full authentication coverage, not just password: key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens, with warehouse/role/database context switching.
+- Apache Hive stays in scope mainly as a catalog/metastore source for Iceberg and legacy warehouses.
+- Elasticsearch/OpenSearch are the first search sources; study Kibana Discover and Dev Tools console for query-and-browse expectations (behavior only — Kibana is source-available under Elastic License 2.0 / SSPL / AGPL).
 
 ### Later: Specialized/Managed And Visual Heavy Features
 
@@ -133,6 +147,10 @@ Use these products to identify expected behavior, not to copy protected expressi
 - Neo4j Cypher docs: https://neo4j.com/docs/cypher-manual/current/
 - DBeaver supported database list: https://dbeaver.com/databases/
 - DataGrip feature reference: https://www.jetbrains.com/datagrip/features/
+- Apache Iceberg spec and REST catalog: https://iceberg.apache.org/spec/ and https://iceberg.apache.org/concepts/catalog/
+- AWS S3 Tables (managed Iceberg): https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html
+- Snowflake authentication options: https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-overview and https://docs.snowflake.com/en/user-guide/key-pair-auth
+- DuckDB SQL and extensions (incl. Iceberg/Parquet): https://duckdb.org/docs/
 
 Add these to `knowledge/sources.json` so future implementation and bug fixes can query a local snapshot.
 

@@ -8,12 +8,17 @@ Last checked: 2026-06-21 JST.
 - TablePlus docs list editor basics such as opening the query editor, current/all query execution, cancellation, and exporting SQL: https://docs.tableplus.com/query-editor/untitled
 - TablePlus autocomplete suggests databases, tables, keywords, and columns, with settings for tables, keywords, schema prefixing, and keyword casing: https://docs.tableplus.com/query-editor/autocomplete
 - A5:SQL Mk-2 highlights direct Oracle/PostgreSQL/MySQL/SQLite connections, Ctrl+Space SQL completion that parses statements including CTEs/subqueries, explain plans, GUI query design, ER editor, and AI assistant features: https://a5m2.mmatsubara.com/index.en.html
+- A5:SQL Mk-2 reaches Oracle without the Oracle Client through a *direct connection* (thin) mode that speaks Oracle Net/TNS itself (built on the commercial Delphi UniDAC component). A5 is closed source — the author's GitHub states the repo is "not public" — so Irodori studies the thin approach only, never A5/UniDAC code: https://github.com/m-matsubara
 - Beekeeper Studio local docs and code are useful for supported database breadth, editable results, query parameters, history, transaction handling, and Vim-mode expectations. Local `LICENSE.md` says Community Edition is GPLv3-or-later and `src-commercial` is under a separate commercial license, so direct code adaptation needs compatibility review.
 - SQLTools local docs and MIT-licensed code are useful for connection-bound session files, attach/detach connection behavior, command-driven query execution, bookmarks, history, and query parameter handling.
 - Irodori's own code should be `MIT OR 0BSD`: MIT for familiarity, 0BSD for users who want the easiest possible copy/fork path.
 - DataGrip, DBeaver, DbVisualizer, and VS Code MSSQL are now tracked in `docs/db-client-market-scan-2026-06-21.md` as current market inputs.
 - YugabyteDB, InfluxDB, Neo4j, MongoDB Compass, Studio 3T, RedisInsight, DbGate, and other source-specific GUI expectations are tracked through `docs/data-source-coverage-strategy.md` and the market scan.
 - Official DB docs and release notes are tracked through `knowledge/sources.json` and can be snapshotted into a local SQLite DB for implementation and bug-fix reference.
+- DuckDB UI (`ref/duckdb-ui-main`, MIT) is a reference for local-first analytical exploration, fast in-process data browsing, and Parquet/Iceberg reads; MIT permits selective code adaptation with attribution: https://github.com/duckdb/duckdb-ui
+- Kibana (`ref/kibana-main`) is a search/observability query-and-browse reference (Discover, Dev Tools console). It is source-available under Elastic License 2.0 / SSPL / AGPL-3.0, so treat it as behavior-only: https://www.elastic.co/kibana
+- Apache Iceberg is the priority lakehouse target; model catalogs (Hive Metastore, AWS Glue, REST, JDBC) and AWS S3 Tables in the adapter, not as ad-hoc forms: https://iceberg.apache.org/spec/
+- Snowflake needs full auth coverage (password, key-pair/JWT, OAuth, external browser/SSO, MFA, programmatic access tokens), modeled in the connection profile: https://docs.snowflake.com/en/user-guide/key-pair-auth
 
 ## Platform And Editor References
 
@@ -23,6 +28,11 @@ Last checked: 2026-06-21 JST.
 - VS Code themes separate workbench colors, syntax colors, TextMate themes, and semantic token colors. VS Code-compatible import should normalize these into Irodori's own theme model: https://code.visualstudio.com/api/extension-guides/color-theme
 - WezTerm is a useful performance reference because it is a Rust, GPU-accelerated, cross-platform terminal emulator and multiplexer: https://github.com/wezterm/wezterm
 - WezTerm's WebGPU front end documents GPU acceleration across platform backends such as Metal, Vulkan, and DirectX 12; Irodori should study the rendering lesson, not copy implementation: https://wezterm.org/config/lua/config/front_end.html
+- Zed (`zed-industries/zed`) is a fast Rust-native desktop editor and a reference for GPUI rendering, input latency, multibuffer/pane models, and Rust app structure. It is copyleft (GPL-3.0/AGPL-3.0 with some Apache-2.0 crates), so study architecture without copying code into the permissive core: https://github.com/zed-industries/zed
+- Lapce and Helix are additional fast Rust editor references for startup time, modal editing, and large-document handling: https://github.com/lapce/lapce and https://github.com/helix-editor/helix
+- Internationalization should use an ICU MessageFormat / Project Fluent style catalog shared by Rust and the web UI, with ja/en as the first locales: https://projectfluent.org/
+- Local data API patterns to study before building `irodori-server`: PostgREST (declarative REST over Postgres) and DuckDB's httpserver extension: https://postgrest.org/ and https://duckdb.org/community_extensions/extensions/httpserver.html
+- Oracle thin-driver path (no Instant Client), the client-free route A5 uses: `oracle-rs` is a pure-Rust Oracle TNS driver (MIT/Apache-2.0, Tokio, TLS/Wallet) but early-stage (v0.1; many enterprise features still planned). JDBC Thin and python-oracledb/node-oracledb thin modes are the mature precedents. Irodori should inherit/harden `oracle-rs` rather than require the Instant Client: https://github.com/stiang/oracle-rs
 - GitHub Copilot can be extended with MCP in supported environments, so Irodori should expose safe MCP tools before trying any direct Copilot embedding: https://docs.github.com/en/copilot/concepts/context/mcp
 - `ts-rs` generates TypeScript declarations from Rust types and supports Serde compatibility, making it a strong MVP candidate for desktop command payloads: https://github.com/Aleph-Alpha/ts-rs
 - `specta` exports Rust types to other languages and has TypeScript, JSON Schema, Zod, and Tauri-adjacent ecosystem pieces, making it a strong candidate if command metadata and validators become central: https://github.com/specta-rs/specta
@@ -51,3 +61,8 @@ Last checked: 2026-06-21 JST.
 - Data-source adapter APIs should be broader than SQL drivers so time-series, graph, document, KV, search, warehouse, distributed SQL, and local embedded sources can share shell/workspace behavior while keeping native query and result models.
 - Rust/TypeScript command and extension payloads should be generated from Rust/schema sources. Rust can keep `snake_case`, Serde emits `camelCase` JSON, and generated TypeScript prevents drift.
 - Legal safety is a product requirement: proprietary behavior can inform feature goals clean-room style; OSS code can inform implementation only under verified license rules compatible with a permissive `MIT OR 0BSD` core.
+- Export/import should be a shared encoder layer (`irodori-io`), not per-grid code: CSV/TSV with header toggle and delimiter control, SQL INSERT/UPSERT, JSON/NDJSON, Avro, and Parquet, with dialect-aware dump/restore.
+- i18n is a foundational concern, not a late polish step; ja/en catalogs should exist as soon as the shell has user-facing strings.
+- A headless local data API (`irodori-server`) should reuse the adapter, proxy, and security model, default to read-only, and require explicit opt-in plus token scopes for writes.
+- Test automation should be designed in from day one: unit tests, integration against ephemeral databases, golden snapshots for generated bindings, and headless UI smoke tests, all runnable in CI.
+- Hover inspection is metadata-cache-driven: type, nullability, keys, indexes, DDL, comments, row-count estimate, and a quick sample, so it must share the introspection model with completion.

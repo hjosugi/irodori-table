@@ -1,0 +1,56 @@
+# Irodori "samples" databases for real-DB testing.
+#
+#   docker compose -f samples/compose.yaml up -d        # postgres + mysql
+#   docker compose -f samples/compose.yaml --profile oracle up -d   # + oracle
+#
+# Podman users without working compose can use scripts/dev-db.sh instead.
+# Ports are deliberately high to avoid clashing with local servers.
+name: irodori-samples
+
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: irodori
+      POSTGRES_PASSWORD: irodori
+      POSTGRES_DB: samples
+    ports:
+      - "55432:5432"
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U irodori -d samples"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  mysql:
+    image: docker.io/library/mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: irodori
+      MYSQL_PASSWORD: irodori
+      MYSQL_DATABASE: samples
+    command: ["--local-infile=1"]
+    ports:
+      - "55306:3306"
+    volumes:
+      - ./mysql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uirodori", "-pirodori"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  # Heavy (~2GB) and only a connection target for the Oracle thin-driver spike.
+  oracle:
+    image: docker.io/gvenzl/oracle-free:slim
+    profiles: ["oracle"]
+    environment:
+      ORACLE_PASSWORD: irodori
+      APP_USER: irodori
+      APP_USER_PASSWORD: irodori
+    ports:
+      - "55521:1521"
+    volumes:
+      - ./oracle:/container-entrypoint-initdb.d:ro

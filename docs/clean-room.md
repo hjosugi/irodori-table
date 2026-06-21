@@ -29,6 +29,18 @@ Irodori Table's own code is `MIT OR 0BSD`: downstream users should be able to ch
 - Copyleft OSS such as GPL/AGPL: code may be read for learning; do not copy/adapt into the permissive core without an explicit separate license boundary and compatibility review.
 - Commercial/paid edition source: do not use unless we have explicit rights.
 
+## Named Reference Licenses
+
+Verify the local `LICENSE` before any code-level use; this table records the current understanding.
+
+- `ref/beekeeper-studio-master/` — Community Edition GPLv3-or-later (copyleft); `src-commercial` is separately licensed and off-limits. Learning only; no copy into the permissive core.
+- `ref/vscode-sqltools-dev/` — MIT. Code may be read and selectively adapted with attribution and license tracking.
+- `ref/vscode-mssql-main/` — MIT. Same as above.
+- `ref/budibase-master/` — verify before code-level adaptation (GPL/AGPL components exist); treat as behavior reference unless a specific file's license is confirmed compatible.
+- `ref/duckdb-ui-main/` — MIT. Permissive; adaptable with attribution.
+- `ref/kibana-main/` — Elastic License 2.0 / SSPL / AGPL-3.0 (source-available, restrictive/copyleft). Behavior-only; no code adaptation into the core.
+- `zed-industries/zed` (GitHub, not vendored) — GPL-3.0/AGPL-3.0 with some Apache-2.0 crates (copyleft). Study architecture; do not copy copyleft code into the `MIT OR 0BSD` core.
+
 ## Reference Workflow
 
 1. Check the license before opening code for implementation guidance.

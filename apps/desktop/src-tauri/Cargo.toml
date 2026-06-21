@@ -23,4 +23,23 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-ts-rs = "12.0.1"
+ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+# Real connectivity for PostgreSQL, MySQL, and SQLite through one Any-driver path.
+# No TLS feature yet (local-dev first); TLS lands with the network/security work.
+# Oracle is intentionally NOT here: the plan is a pure-Rust thin TNS driver
+# (no Instant Client, like A5:SQL Mk-2's direct mode) built by inheriting the
+# permissive `oracle-rs` crate. See docs/data-source-coverage-strategy.md (SRC-004).
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "any",
+    "postgres",
+    "mysql",
+    "sqlite",
+] }
+# Streaming result rows (bounded memory) instead of buffering everything.
+futures-util = "0.3"
+
+[dev-dependencies]
+# Integration tests (tests/integration_db.rs) drive a real DB through a runtime.
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
