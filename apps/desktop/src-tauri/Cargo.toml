@@ -44,6 +44,8 @@ sqlx = { version = "0.8", default-features = false, features = [
 ] }
 # Streaming result rows (bounded memory) instead of buffering everything.
 futures-util = "0.3"
+# Object-safe async trait for the per-engine `Connection` abstraction + registry.
+async-trait = "0.1"
 # SQL Server via the pure-Rust TDS driver (no native client needed).
 tiberius = { version = "0.12", default-features = false, features = [
     "tds73",
@@ -60,3 +62,8 @@ duckdb = ["dep:duckdb"]
 [dev-dependencies]
 # Integration tests (tests/integration_db.rs) drive a real DB through a runtime.
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+# TypeScript boundary generation. The Rust types stay the single source of truth;
+# ts-rs renders them and typebridge assembles + drift-checks the module. Sibling
+# project at /mnt/data/workspace/typebridge (path dep, dev-only).
+typebridge = { path = "../../../../typebridge/crates/typebridge" }
+typebridge-ts-rs = { path = "../../../../typebridge/crates/typebridge-ts-rs" }

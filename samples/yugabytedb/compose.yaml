@@ -1,0 +1,10 @@
+name: irodori-yugabytedb
+# Irodori URL: postgres://yugabyte@localhost:55434/yugabyte?sslmode=disable  (YSQL = Postgres wire)
+# yugabyted starts a single node; YSQL listens on 5433. First boot is slow (~30-60s).
+services:
+  yugabytedb:
+    image: docker.io/yugabytedb/yugabyte:latest
+    command: ["bin/yugabyted", "start", "--background=false"]
+    ports:
+      - "55434:5433"    # YSQL
+      - "55435:15433"   # UI (optional)

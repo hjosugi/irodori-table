@@ -224,3 +224,87 @@ fn sqlserver_samples() {
         .unwrap()
         .block_on(exercise_mssql(url));
 }
+
+// TimescaleDB is Postgres-wire and seeded with the Postgres sample schema.
+#[test]
+fn timescaledb_samples() {
+    let Ok(url) = std::env::var("IRODORI_TIMESCALE_URL") else {
+        eprintln!("skip: IRODORI_TIMESCALE_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(exercise(DbEngine::Timescale, url));
+}
+
+#[test]
+fn yugabytedb_connect() {
+    let Ok(url) = std::env::var("IRODORI_YUGABYTE_URL") else {
+        eprintln!("skip: IRODORI_YUGABYTE_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(connect_only(DbEngine::YugabyteDb, url));
+}
+
+#[test]
+fn tidb_connect() {
+    let Ok(url) = std::env::var("IRODORI_TIDB_URL") else {
+        eprintln!("skip: IRODORI_TIDB_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(connect_only(DbEngine::TiDb, url));
+}
+
+/// Embedded DuckDB round trip. Only meaningful with `--features duckdb`; without
+/// it, `connect` returns a "not built in" error and the test skips.
+async fn exercise_duckdb() {
+    let state = DbState::default();
+    let profile = url_profile("it", DbEngine::DuckDb, ":memory:".into());
+    let info = match connect_impl(&state, profile).await {
+        Ok(info) => info,
+        Err(e) if e.contains("not built in") => {
+            eprintln!("skip: duckdb feature off");
+            return;
+        }
+        Err(e) => panic!("connect: {e}"),
+    };
+    assert_eq!(info.engine, DbEngine::DuckDb);
+    eprintln!("connected: DuckDb {}", info.server_version);
+
+    run_query_impl(
+        &state,
+        "it".into(),
+        "create table t(a integer, b varchar, c double)".into(),
+        None,
+    )
+    .await
+    .expect("create");
+    run_query_impl(
+        &state,
+        "it".into(),
+        "insert into t values (1,'hi',1.5),(2,null,2.5)".into(),
+        None,
+    )
+    .await
+    .expect("insert");
+    let r = run_query_impl(&state, "it".into(), "select a,b,c from t order by a".into(), None)
+        .await
+        .expect("select");
+    assert_eq!(r.columns, vec!["a", "b", "c"]);
+    assert_eq!(r.row_count, 2);
+    assert_eq!(r.rows[0][0], serde_json::json!(1));
+    assert_eq!(r.rows[0][1], serde_json::json!("hi"));
+    assert_eq!(r.rows[0][2], serde_json::json!(1.5));
+    assert_eq!(r.rows[1][1], serde_json::Value::Null);
+}
+
+#[test]
+fn duckdb_in_memory() {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(exercise_duckdb());
+}

@@ -32,11 +32,30 @@ pub async fn run_query(
     let sql = sql.to_string();
     tokio::task::spawn_blocking(move || -> Result<RowSet, String> {
         let guard = conn.lock().map_err(|_| "duckdb mutex poisoned".to_string())?;
+
+        // Classify the statement (Beekeeper-style): only row-returning statements
+        // go through `query`; DDL/DML go through `execute`, which avoids the duckdb
+        // crate panicking when it inspects columns on a non-result statement.
+        let lead = sql.trim_start().to_ascii_lowercase();
+        let is_query = ["select", "with", "show", "pragma", "explain", "describe", "values", "table", "call"]
+            .iter()
+            .any(|kw| lead.starts_with(kw));
+        if !is_query {
+            guard
+                .execute(&sql, [])
+                .map_err(|e| format!("query failed: {e}"))?;
+            return Ok((Vec::new(), Vec::new(), false));
+        }
+
         let mut stmt = guard.prepare(&sql).map_err(|e| format!("query failed: {e}"))?;
-        // Collect owned column names before borrowing the statement for the query.
-        let columns: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
-        let column_count = stmt.column_count();
         let mut duck_rows = stmt.query([]).map_err(|e| format!("query failed: {e}"))?;
+        // DuckDB only materializes the result schema after execution, so read the
+        // column names from the executed statement (not the prepared one).
+        let columns: Vec<String> = match duck_rows.as_ref() {
+            Some(s) => s.column_names().iter().map(|c| c.to_string()).collect(),
+            None => Vec::new(),
+        };
+        let column_count = columns.len();
 
         let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
         let mut truncated = false;

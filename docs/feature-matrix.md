@@ -94,6 +94,8 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 - `ref/kibana-main/`: source-available under Elastic License 2.0 / SSPL / AGPL-3.0; reference Discover and Dev Tools console behavior only — do not adapt code into the permissive core.
 - `zed-industries/zed` (GitHub, not in `ref/`): copyleft (GPL-3.0/AGPL-3.0 with some Apache-2.0 crates); study Rust desktop architecture, GPUI rendering, and input latency — learning only, no copyleft code in the core.
 - `outerbase/studio` (GitHub, AGPL-3.0): lightweight web/Electron DB GUI (SQLite/Turso/D1, beta MySQL/PostgreSQL); reference for a staged-edit data grid, no-SQL schema editor, function-hint completion, and large-table rendering. Copyleft — behavior/architecture only, no code in the core.
+- `ref/dbeaver-ce` (Apache-2.0): the universal-DB benchmark (200+ engines); reference for a data-driven driver registry, generic+override metamodel, precision-safe value handlers, lazy metadata, and per-engine SQL dialects. Permissive — adaptable with attribution (avoid its 2 EPL files).
+- `zequel-labs/zequel` (Elastic License 2.0): Electron/Vue client; reference for a virtual-scrolled in-cell-edit grid, ER diagrams, and broad engine + import/export coverage. Source-available — behavior only.
 
 Do not copy implementation from these directories into Irodori Table unless license compatibility, attribution, and adaptation scope are explicit.
 

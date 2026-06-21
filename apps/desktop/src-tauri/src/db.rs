@@ -1,24 +1,27 @@
-//! Real database connectivity, split per engine.
+//! Real database connectivity, split per engine behind a `Connection` trait.
 //!
-//! This file owns the shared types and the dispatch layer; each engine lives in
-//! its own submodule with its native pool/driver and per-type decoder:
+//! Each engine lives in its own submodule with its native pool/driver and
+//! per-type decoder:
 //!
 //! - [`postgres`] / [`mysql`] / [`sqlite`] — native sqlx pools
 //! - [`mssql`] — pure-Rust tiberius (TDS), no SQL Server client needed
 //! - `duck` (behind `--features duckdb`) — embedded DuckDB
 //!
-//! Postgres-wire engines (CockroachDB, YugabyteDB, Redshift, TimescaleDB) and
-//! MySQL-wire engines (MariaDB, TiDB) reuse those drivers; routing lives in
-//! [`engine`]. Oracle awaits a pure-Rust thin TNS driver (no Instant Client).
-//!
-//! The Beekeeper-studied lesson drives the shape: keep dispatch/registry engine-
-//! agnostic, but route value decoding through native drivers by column type and
-//! force exact numerics/temporals to strings to avoid precision/timezone loss.
+//! The DBeaver-studied lesson drives the shape (SRC-001a): instead of a closed
+//! `enum` matched at every call site, a live connection is an object behind the
+//! [`Connection`] trait, and [`connect_engine`] is the single connector/registry
+//! that maps an engine's wire protocol to a concrete client. Adding a wire-
+//! compatible engine (CockroachDB, YugabyteDB, Redshift, TimescaleDB on Postgres;
+//! MariaDB, TiDB on MySQL) is just a [`DbEngine`] variant; adding a new wire is a
+//! `Connection` impl plus one connector arm. Value decoding stays native per
+//! engine, with exact numerics/temporals rendered as strings to avoid precision
+//! and timezone loss. Oracle awaits a pure-Rust thin TNS driver.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use ts_rs::TS;
@@ -105,37 +108,97 @@ pub struct QueryResult {
     pub message: Option<String>,
 }
 
-/// A live connection: one native pool/handle, tagged by engine. Cloneable
-/// because every pool is an `Arc` handle.
-#[derive(Clone)]
-enum EnginePool {
-    Postgres(sqlx::PgPool),
-    Mysql(sqlx::MySqlPool),
-    Sqlite(sqlx::SqlitePool),
-    SqlServer(Arc<Mutex<mssql::MssqlClient>>),
-    #[cfg(feature = "duckdb")]
-    DuckDb(Arc<std::sync::Mutex<duckdb::Connection>>),
+// ---- The per-engine connection abstraction ------------------------------------
+
+/// A live connection to one database. Each engine implements this over its native
+/// client; the rest of the app never matches on the engine.
+#[async_trait]
+trait Connection: Send + Sync {
+    async fn version(&self) -> Option<String>;
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String>;
+    async fn close(&self);
 }
 
-/// Open pools keyed by connection id. Lives in Tauri managed state.
-#[derive(Default)]
-pub struct DbState {
-    pools: Mutex<HashMap<String, EnginePool>>,
+struct PgConn(sqlx::PgPool);
+#[async_trait]
+impl Connection for PgConn {
+    async fn version(&self) -> Option<String> {
+        postgres::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        postgres::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {
+        self.0.close().await
+    }
 }
 
-pub async fn connect_impl(
-    state: &DbState,
-    profile: ConnectionProfile,
-) -> Result<ConnectionInfo, String> {
-    let pool = match profile.engine.wire() {
-        Wire::Postgres => EnginePool::Postgres(postgres::connect(&engine::build_url(&profile)?).await?),
-        Wire::Mysql => EnginePool::Mysql(mysql::connect(&engine::build_url(&profile)?).await?),
-        Wire::Sqlite => EnginePool::Sqlite(sqlite::connect(&engine::build_url(&profile)?).await?),
-        Wire::SqlServer => EnginePool::SqlServer(Arc::new(Mutex::new(mssql::connect(&profile).await?))),
+struct MysqlConn(sqlx::MySqlPool);
+#[async_trait]
+impl Connection for MysqlConn {
+    async fn version(&self) -> Option<String> {
+        mysql::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        mysql::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {
+        self.0.close().await
+    }
+}
+
+struct SqliteConn(sqlx::SqlitePool);
+#[async_trait]
+impl Connection for SqliteConn {
+    async fn version(&self) -> Option<String> {
+        sqlite::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        sqlite::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {
+        self.0.close().await
+    }
+}
+
+struct MssqlConn(Arc<Mutex<mssql::MssqlClient>>);
+#[async_trait]
+impl Connection for MssqlConn {
+    async fn version(&self) -> Option<String> {
+        mssql::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        mssql::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {} // tiberius closes when its last handle drops
+}
+
+#[cfg(feature = "duckdb")]
+struct DuckConn(Arc<std::sync::Mutex<duckdb::Connection>>);
+#[cfg(feature = "duckdb")]
+#[async_trait]
+impl Connection for DuckConn {
+    async fn version(&self) -> Option<String> {
+        duck::version(&self.0)
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        duck::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {}
+}
+
+/// The single connector/registry: map an engine's wire protocol to a concrete
+/// [`Connection`]. This is the only place that knows every engine.
+async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connection>, String> {
+    let conn: Arc<dyn Connection> = match profile.engine.wire() {
+        Wire::Postgres => Arc::new(PgConn(postgres::connect(&engine::build_url(profile)?).await?)),
+        Wire::Mysql => Arc::new(MysqlConn(mysql::connect(&engine::build_url(profile)?).await?)),
+        Wire::Sqlite => Arc::new(SqliteConn(sqlite::connect(&engine::build_url(profile)?).await?)),
+        Wire::SqlServer => Arc::new(MssqlConn(Arc::new(Mutex::new(mssql::connect(profile).await?)))),
         Wire::DuckDb => {
             #[cfg(feature = "duckdb")]
             {
-                EnginePool::DuckDb(Arc::new(std::sync::Mutex::new(duck::connect(&profile)?)))
+                Arc::new(DuckConn(Arc::new(std::sync::Mutex::new(duck::connect(profile)?))))
             }
             #[cfg(not(feature = "duckdb"))]
             {
@@ -146,26 +209,27 @@ pub async fn connect_impl(
         }
         Wire::Oracle => return Err(engine::oracle_pending_message()),
     };
+    Ok(conn)
+}
 
-    let server_version = version(&pool).await;
-    state.pools.lock().await.insert(profile.id.clone(), pool);
+/// Open connections keyed by connection id. Lives in Tauri managed state.
+#[derive(Default)]
+pub struct DbState {
+    conns: Mutex<HashMap<String, Arc<dyn Connection>>>,
+}
+
+pub async fn connect_impl(
+    state: &DbState,
+    profile: ConnectionProfile,
+) -> Result<ConnectionInfo, String> {
+    let conn = connect_engine(&profile).await?;
+    let server_version = conn.version().await.unwrap_or_else(|| "unknown".into());
+    state.conns.lock().await.insert(profile.id.clone(), conn);
     Ok(ConnectionInfo {
         id: profile.id,
         engine: profile.engine,
         server_version,
     })
-}
-
-async fn version(pool: &EnginePool) -> String {
-    let v = match pool {
-        EnginePool::Postgres(p) => postgres::version(p).await,
-        EnginePool::Mysql(p) => mysql::version(p).await,
-        EnginePool::Sqlite(p) => sqlite::version(p).await,
-        EnginePool::SqlServer(c) => mssql::version(c).await,
-        #[cfg(feature = "duckdb")]
-        EnginePool::DuckDb(c) => duck::version(c),
-    };
-    v.unwrap_or_else(|| "unknown".into())
 }
 
 pub async fn run_query_impl(
@@ -174,9 +238,9 @@ pub async fn run_query_impl(
     sql: String,
     max_rows: Option<usize>,
 ) -> Result<QueryResult, String> {
-    // Clone the pool handle out of the lock so the query does not hold the mutex.
-    let pool = {
-        let guard = state.pools.lock().await;
+    // Clone the handle out of the lock so the query does not hold the mutex.
+    let conn = {
+        let guard = state.conns.lock().await;
         guard
             .get(&connection_id)
             .cloned()
@@ -185,16 +249,7 @@ pub async fn run_query_impl(
 
     let cap = max_rows.unwrap_or(DEFAULT_MAX_ROWS);
     let start = Instant::now();
-
-    let (columns, rows, truncated) = match &pool {
-        EnginePool::Postgres(p) => postgres::run_query(p, &sql, cap).await?,
-        EnginePool::Mysql(p) => mysql::run_query(p, &sql, cap).await?,
-        EnginePool::Sqlite(p) => sqlite::run_query(p, &sql, cap).await?,
-        EnginePool::SqlServer(c) => mssql::run_query(c, &sql, cap).await?,
-        #[cfg(feature = "duckdb")]
-        EnginePool::DuckDb(c) => duck::run_query(c, &sql, cap).await?,
-    };
-
+    let (columns, rows, truncated) = conn.run_query(&sql, cap).await?;
     let elapsed_ms = start.elapsed().as_millis() as u64;
     let row_count = rows.len() as u64;
     Ok(QueryResult {
@@ -208,16 +263,8 @@ pub async fn run_query_impl(
 }
 
 pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(), String> {
-    if let Some(pool) = state.pools.lock().await.remove(&connection_id) {
-        match pool {
-            EnginePool::Postgres(p) => p.close().await,
-            EnginePool::Mysql(p) => p.close().await,
-            EnginePool::Sqlite(p) => p.close().await,
-            // tiberius/duckdb close when their last handle drops.
-            EnginePool::SqlServer(_) => {}
-            #[cfg(feature = "duckdb")]
-            EnginePool::DuckDb(_) => {}
-        }
+    if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
+        conn.close().await;
     }
     Ok(())
 }

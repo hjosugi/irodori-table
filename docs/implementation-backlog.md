@@ -332,7 +332,8 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### EXEC-009b — SQL Server (tiberius) and DuckDB drivers
 - **Goal:** Add the major engines sqlx does not cover.
-- **Done when:** SQL Server connects via the pure-Rust `tiberius` driver and DuckDB via the `duckdb` crate, each behind the same `EnginePool`/decoder abstraction, with integration tests against real instances (mssql container; embedded DuckDB).
+- **SQL Server: ✅ done (verified).** Connects via the pure-Rust `tiberius` (TDS) driver — no SQL Server client — behind `EnginePool::SqlServer`; an integration test runs against a real SQL Server 2022 container (connect + version + typed `select`). Follow-up: precision-safe decimals and datetime/binary decoding (currently float/null).
+- **DuckDB: ✅ done (verified).** Embedded DuckDB behind `--features duckdb` (off by default) in `db/duck.rs`; an in-memory integration test (create/insert/select on int/varchar/double/null) passes against bundled libduckdb v1.5.4. Statements are classified (DDL/DML → `execute`, queries → `query`), and column metadata is read after execution. Note: the `bundled` libduckdb C++ build is heavy (needs adequate RAM/swap); linking a system/prebuilt libduckdb skips the compile.
 - **Depends on:** EXEC-009
 - **Size:** L · **Priority:** P1
 
@@ -573,6 +574,13 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Done when:** the trait declares connection schema, transport needs, query/parse, introspection, result shapes, editable ops, completion, explain, and import/export hooks; SQLite/PostgreSQL implement it.
 - **Depends on:** CONN-001, EXEC-001
 - **Size:** L · **Priority:** P0
+
+### SRC-001a — DatabaseClient trait + registry; split wire from dialect/metamodel
+- **Goal:** Reach DBeaver-scale extensibility — adding an engine means implementing a trait, not editing a `match` arm. (DBeaver study, Apache-2.0, `ref/dbeaver-ce`.)
+- **✅ Core done (verified):** the `EnginePool` enum is replaced by a `Connection` trait (`version`/`run_query`/`close`) implemented per engine, stored as `Arc<dyn Connection>`; `connect_engine` is the single connector/registry mapping wire → concrete client. `run_query`/`disconnect` no longer match on the engine. Engines are modeled as `wire protocol`, so a wire-compatible engine (Cockroach/Yugabyte/Redshift/Timescale on Postgres; MariaDB/TiDB on MySQL) is just a `DbEngine` variant. Verified: default suite green; SQLite and DuckDB round trips pass through the trait.
+- **Remaining:** a per-engine `SqlDialect` (identifier quoting/keywords); a generic `information_schema` metamodel base that engines override only where they differ; a two-tier lazy metadata cache loaded on navigator expand; a cancellation token threaded into fetch loops; and an extension-provided (Wasm) driver registry.
+- **Depends on:** SRC-001, EXEC-009
+- **Size:** L · **Priority:** P1
 
 ### SRC-002 — MySQL/MariaDB adapter
 - **Done when:** connect, introspect, execute, stream, and export reach parity with the SQLite/PostgreSQL baseline; integration test against an ephemeral MySQL.

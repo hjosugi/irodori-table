@@ -1,0 +1,15 @@
+name: irodori-oracle
+# Connection target for the Oracle thin-driver spike (SRC-004a). Heavy (~2 GB),
+# first boot is slow. Service FREEPDB1, user irodori. The Irodori Oracle adapter
+# is not wired yet (pending the pure-Rust thin TNS driver).
+services:
+  oracle:
+    image: docker.io/gvenzl/oracle-free:slim
+    environment:
+      ORACLE_PASSWORD: irodori
+      APP_USER: irodori
+      APP_USER_PASSWORD: irodori
+    ports:
+      - "55521:1521"
+    volumes:
+      - ./01_samples.sql:/container-entrypoint-initdb.d/01_samples.sql:ro

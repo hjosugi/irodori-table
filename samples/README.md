@@ -1,71 +1,64 @@
 # Irodori sample databases
 
-Real databases in containers so connection, query, and scale behavior can be
-tested against actual engines — not mocks. Verified with podman and Docker.
+Real databases in containers, **one compose file per engine** under
+`samples/<engine>/compose.yaml`, so every supported database can be stood up and
+verified on its own. Verified with podman and Docker.
 
-## Quick start
+## Verify an engine (up → connect/query test → down)
 
 ```bash
-# start postgres (55432) + mysql (55306), wait for ready, print env
-scripts/dev-db.sh up
-
-# run the Rust integration tests against them
-scripts/dev-db.sh test
-
-# stop and remove
-scripts/dev-db.sh down
+scripts/verify-db.sh postgres      # one engine
+scripts/verify-db.sh all           # all bootable engines, in turn
+scripts/verify-db.sh up postgres   # just start it; prints the env line
+scripts/verify-db.sh down postgres # stop + remove
 ```
 
-`docker compose -f samples/compose.yaml up -d` works too. Extra wire-compatible
-engines (CockroachDB on 26257, MariaDB on 13306) start with `--profile extra`;
-the Oracle spike target (heavy, ~2 GB) with `--profile oracle`.
+`verify-db.sh` brings up the engine's compose, runs the Rust integration test
+that connects **through Irodori's own `db::*` code** (`tests/integration_db.rs`),
+then stops the container.
 
-Verified: Irodori connects to and queries **PostgreSQL, MySQL, MariaDB, and
-CockroachDB** real instances. YugabyteDB, Redshift, TimescaleDB, and TiDB use the
-same Postgres/MySQL wire drivers (`db::DbEngine`).
+## Engine matrix
 
-## What you get
+| Engine | Wire / driver | Compose | Host port | Irodori status |
+|---|---|---|---|---|
+| PostgreSQL | postgres (sqlx) | `postgres/` | 55432 | ✅ verified |
+| MySQL | mysql (sqlx) | `mysql/` | 55306 | ✅ verified |
+| MariaDB | mysql wire | `mariadb/` | 55307 | ✅ verified |
+| TimescaleDB | postgres wire | `timescaledb/` | 55433 | ✅ (postgres wire) |
+| CockroachDB | postgres wire | `cockroachdb/` | 55257 | ✅ verified |
+| YugabyteDB | postgres wire (YSQL) | `yugabytedb/` | 55434 | ✅ (postgres wire) |
+| TiDB | mysql wire | `tidb/` | 54000 | ✅ (mysql wire) |
+| SQL Server | TDS (tiberius) | `sqlserver/` | 51433 | ✅ verified |
+| Oracle | thin TNS | `oracle/` | 55521 | ⏳ driver pending — target only |
+| MongoDB | document (`mongodb` crate) | `mongodb/` | 57017 | ⏳ driver pending (SRC-012) |
+| SQLite | file (sqlx) | — | — | ✅ embedded, no container |
+| DuckDB | embedded | — | — | ✅ `--features duckdb`, no container |
+| Redshift | postgres wire | — (AWS-only) | — | ✅ wire-compatible; point at a real cluster |
 
-- **postgres** `localhost:55432` — user/pass/db = `irodori`/`irodori`/`samples`
-- **mysql** `localhost:55306` — user/pass/db = `irodori`/`irodori`/`samples`
-- **oracle** (compose `oracle` profile) `localhost:55521` — service `FREEPDB1`
+## Sample schema
 
-Each starts with the demo schema in `samples/<engine>/01_samples.sql`:
-`customers`, `orders`, `invoice_lines`, and a `recent_revenue` view.
+Auto-seeded engines load `samples/<engine>/01_samples.sql` (MariaDB and
+TimescaleDB reuse the MySQL/Postgres files): `customers`, `orders`,
+`invoice_lines`, and the `recent_revenue` view. CockroachDB, YugabyteDB, TiDB,
+and SQL Server are not auto-seeded; their checks run a self-contained query.
 
 ## Scale / performance seed
 
-`scripts/dev-db.sh seed postgres` (or `mysql`) generates:
-
-- one big `events` table — `ROWS` rows (default **10,000,000**)
-- `TABLES` extra catalog tables (default **100**) to exercise the object browser
+`scripts/dev-db.sh` runs its own pg+mysql for **bulk seeding** (verified at 10M
+rows + 100 tables, with bounded-memory streaming):
 
 ```bash
+scripts/dev-db.sh up
 ROWS=10000000 TABLES=100 scripts/dev-db.sh seed postgres
+scripts/dev-db.sh test
+scripts/dev-db.sh down
 ```
 
-Postgres uses `generate_series` (≈40 s for 10M here); MySQL uses a digit
-cross-join. Both are one-shot; the data lives in the container volume.
+## Notes
 
-## What the tests prove
-
-`apps/desktop/src-tauri/tests/integration_db.rs` (env-gated; skipped unless
-`IRODORI_PG_URL`/`IRODORI_MYSQL_URL` are set) drives the real Tauri command code
-(`db::connect_impl` / `db::run_query_impl`) and asserts:
-
-- connect + server version for PostgreSQL and MySQL
-- seeded demo rows return correctly
-- a full scan of the 10M-row `events` table returns a **bounded 10k page with
-  `truncated=true` in tens of ms** — large retrieval stays light, instead of
-  buffering every row into memory (the TablePlus problem).
-
-## Known limits (tracked in docs/implementation-backlog.md)
-
-- Value decoding currently goes through sqlx's `Any` driver, which only covers
-  int/bigint/text/bool/bytes. Decimals, dates/timestamps, json, and arrays need
-  the per-engine native pools (EXEC-009) — the Beekeeper-informed refactor.
-- Streaming is capped per page (EXEC-002); optional **disk offload** for very
-  large windows (EXEC-010) and **auto-parallel** fetch/introspection/export
-  (EXEC-011) are planned.
-- Oracle connects through a future pure-Rust thin driver (SRC-004a); the compose
-  `oracle` service is only a target for that spike.
+- DuckDB's `bundled` build compiles libduckdb (C++) and is heavy; link a
+  system/prebuilt libduckdb to skip the C++ compile.
+- Oracle uses a future pure-Rust thin TNS driver (no Instant Client), the way
+  A5:SQL Mk-2's direct mode works; the compose service is only a connection target.
+- MongoDB is a document store, so it needs the `mongodb` crate and a
+  document-oriented query/result path — not the SQL `run_query` (SRC-012).
