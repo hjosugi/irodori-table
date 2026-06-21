@@ -13,7 +13,7 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**
@@ -26,8 +26,8 @@ export type ConnectionInfo = { id: string, engine: DbEngine, serverVersion: stri
 export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>>, rowCount: bigint, elapsedMs: bigint, 
 /**
  * True when the result was capped at `max_rows` and more rows remain on the
- * server. The UI uses this to offer "load more" / run-to-file instead of
- * silently hiding data.
+ * server, so the UI can offer "load more" / run-to-file instead of silently
+ * hiding data.
  */
 truncated: boolean, message?: string, };
 

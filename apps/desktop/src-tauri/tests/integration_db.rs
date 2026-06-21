@@ -183,3 +183,44 @@ fn mariadb_connect() {
         .unwrap()
         .block_on(connect_only(DbEngine::MariaDb, url));
 }
+
+/// SQL Server via the pure-Rust tiberius driver. `IRODORI_MSSQL_URL` is an ADO
+/// string, e.g. `server=tcp:localhost,11433;User Id=sa;Password=...;TrustServerCertificate=true`.
+async fn exercise_mssql(url: String) {
+    let state = DbState::default();
+    let info = connect_impl(&state, url_profile("it", DbEngine::SqlServer, url))
+        .await
+        .expect("connect");
+    assert_eq!(info.engine, DbEngine::SqlServer);
+    assert!(!info.server_version.is_empty());
+    eprintln!("connected: SqlServer {}", info.server_version);
+
+    // Self-contained: a VALUES table constructor avoids temp tables (tiberius
+    // sends via sp_executesql, which scopes #temp tables away).
+    let r = run_query_impl(
+        &state,
+        "it".into(),
+        "select a, b from (values (1, cast('hi' as nvarchar(50))), \
+         (2, cast(null as nvarchar(50)))) v(a, b) order by a"
+            .into(),
+        None,
+    )
+    .await
+    .expect("select");
+    assert_eq!(r.columns, vec!["a", "b"]);
+    assert_eq!(r.row_count, 2);
+    assert_eq!(r.rows[0][0], serde_json::json!(1));
+    assert_eq!(r.rows[0][1], serde_json::json!("hi"));
+    assert_eq!(r.rows[1][1], serde_json::Value::Null);
+}
+
+#[test]
+fn sqlserver_samples() {
+    let Ok(url) = std::env::var("IRODORI_MSSQL_URL") else {
+        eprintln!("skip: IRODORI_MSSQL_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(exercise_mssql(url));
+}

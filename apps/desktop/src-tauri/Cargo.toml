@@ -44,6 +44,18 @@ sqlx = { version = "0.8", default-features = false, features = [
 ] }
 # Streaming result rows (bounded memory) instead of buffering everything.
 futures-util = "0.3"
+# SQL Server via the pure-Rust TDS driver (no native client needed).
+tiberius = { version = "0.12", default-features = false, features = [
+    "tds73",
+    "rustls",
+] }
+tokio-util = { version = "0.7", features = ["compat"] }
+# DuckDB is embedded C++ (heavy bundled build) so it is feature-gated and off by
+# default: build with `--features duckdb`.
+duckdb = { version = "1", optional = true, features = ["bundled"] }
+
+[features]
+duckdb = ["dep:duckdb"]
 
 [dev-dependencies]
 # Integration tests (tests/integration_db.rs) drive a real DB through a runtime.
