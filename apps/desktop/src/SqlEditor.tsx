@@ -13,22 +13,10 @@ import { EditorView, keymap } from "@codemirror/view";
 import { Compartment, EditorState } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
-import {
-  MSSQL,
-  MariaSQL,
-  MySQL,
-  PLSQL,
-  PostgreSQL,
-  SQLite,
-  StandardSQL,
-  sql,
-  type SQLConfig,
-  type SQLDialect,
-  type SQLNamespace,
-} from "@codemirror/lang-sql";
-import type { Completion } from "@codemirror/autocomplete";
+import { sql } from "@codemirror/lang-sql";
 import { format as formatSql } from "sql-formatter";
 import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
+import { buildSqlConfig, formatterLanguage } from "./sql/dialect";
 import { editorThemeExtensions, type IrodoriTheme } from "./theme";
 
 export interface SqlEditorHandle {
@@ -49,113 +37,6 @@ interface SqlEditorProps {
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
   theme: IrodoriTheme;
-}
-
-/** Map an Irodori engine onto a CodeMirror SQL dialect (Postgres-wire siblings share one). */
-function cmDialect(engine: DbEngine): SQLDialect {
-  switch (engine) {
-    case "mysql":
-    case "tidb":
-      return MySQL;
-    case "mariadb":
-      return MariaSQL;
-    case "sqlite":
-      return SQLite;
-    case "sqlserver":
-      return MSSQL;
-    case "oracle":
-      return PLSQL;
-    case "postgres":
-    case "cockroachdb":
-    case "yugabytedb":
-    case "redshift":
-    case "timescaledb":
-    case "neon":
-    case "h2":
-    case "duckdb":
-      return PostgreSQL;
-    default:
-      return StandardSQL;
-  }
-}
-
-/** Map an Irodori engine onto a sql-formatter language. */
-function formatterLanguage(engine: DbEngine): string {
-  switch (engine) {
-    case "mysql":
-      return "mysql";
-    case "tidb":
-      return "tidb";
-    case "mariadb":
-      return "mariadb";
-    case "sqlite":
-      return "sqlite";
-    case "sqlserver":
-      return "transactsql";
-    case "oracle":
-      return "plsql";
-    case "redshift":
-      return "redshift";
-    case "duckdb":
-      return "duckdb";
-    case "clickhouse":
-      return "clickhouse";
-    case "postgres":
-    case "cockroachdb":
-    case "yugabytedb":
-    case "timescaledb":
-    case "neon":
-    case "h2":
-      return "postgresql";
-    default:
-      return "sql";
-  }
-}
-
-/**
- * Convert Irodori introspection metadata into a CodeMirror SQL completion schema:
- * `{ schema: { table: { self, children: columns } } }`. Indexes are skipped — only
- * relations (tables/views) and their columns are completable.
- */
-function metadataToNamespace(
-  metadata: DatabaseMetadata | undefined,
-): SQLNamespace | undefined {
-  if (!metadata || metadata.schemas.length === 0) return undefined;
-  const namespace: Record<string, SQLNamespace> = {};
-  for (const schema of metadata.schemas) {
-    const tables: Record<string, SQLNamespace> = {};
-    for (const object of schema.objects) {
-      if (object.kind === "index") continue;
-      const columns: Completion[] = object.columns
-        .slice()
-        .sort((a, b) => a.ordinal - b.ordinal)
-        .map((column) => ({
-          label: column.name,
-          type: "property",
-          detail: column.nullable ? column.dataType : `${column.dataType} not null`,
-        }));
-      tables[object.name] = {
-        self: { label: object.name, type: object.kind === "view" ? "type" : "class" },
-        children: columns,
-      };
-    }
-    namespace[schema.name] = tables;
-  }
-  return namespace;
-}
-
-function buildSqlConfig(
-  engine: DbEngine,
-  metadata: DatabaseMetadata | undefined,
-): SQLConfig {
-  const schema = metadataToNamespace(metadata);
-  return {
-    dialect: cmDialect(engine),
-    upperCaseKeywords: false,
-    ...(schema
-      ? { schema, defaultSchema: metadata?.schemas[0]?.name }
-      : {}),
-  };
 }
 
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
