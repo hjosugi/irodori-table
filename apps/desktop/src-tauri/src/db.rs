@@ -326,6 +326,18 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
             }
         }
         Wire::Oracle => Arc::new(OracleConn(oracle::connect(profile).await?)),
+        Wire::ClickHouse
+        | Wire::Neo4j
+        | Wire::Memgraph
+        | Wire::InfluxDb
+        | Wire::Qdrant
+        | Wire::Milvus
+        | Wire::Pinecone => {
+            return Err(format!(
+                "{:?} driver is not yet fully implemented",
+                profile.engine
+            ));
+        }
     };
     Ok(conn)
 }

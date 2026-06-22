@@ -1,15 +1,12 @@
 //! SQLite via a native sqlx pool. SQLite is dynamically typed, so values are
 //! decoded by trying the storage classes in order.
 
-use std::collections::BTreeMap;
-
-use futures_util::TryStreamExt;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions, SqliteRow};
-use sqlx::{Column, Row, ValueRef};
+use sqlx::{Row, ValueRef};
 
+use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
-    IndexMetadata, RowSet, SchemaMetadata,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<SqlitePool, String> {
@@ -29,29 +26,7 @@ pub async fn version(pool: &SqlitePool) -> Option<String> {
 }
 
 pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> Result<RowSet, String> {
-    let mut stream = sqlx::query(sql).fetch(pool);
-    let mut columns: Vec<String> = Vec::new();
-    let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
-    let mut truncated = false;
-    while let Some(row) = stream
-        .try_next()
-        .await
-        .map_err(|e| format!("query failed: {e}"))?
-    {
-        if columns.is_empty() {
-            columns = row.columns().iter().map(|c| c.name().to_string()).collect();
-        }
-        if rows.len() >= cap {
-            truncated = true;
-            break;
-        }
-        let mut cells = Vec::with_capacity(row.columns().len());
-        for i in 0..row.columns().len() {
-            cells.push(cell_to_json(&row, i));
-        }
-        rows.push(cells);
-    }
-    Ok((columns, rows, truncated))
+    super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
 pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
@@ -68,7 +43,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
     .await
     .map_err(|e| format!("metadata objects failed: {e}"))?;
 
-    let mut schemas: BTreeMap<String, BTreeMap<String, DbObjectMetadata>> = BTreeMap::new();
+    let mut builder = MetaBuilder::default();
     for row in object_rows {
         let schema: String = row.try_get("schema_name").unwrap_or_else(|_| "main".into());
         let name: String = row.try_get("name").unwrap_or_default();
@@ -78,36 +53,17 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
         } else {
             DbObjectMetadataKind::Table
         };
-        schemas.entry(schema.clone()).or_default().insert(
-            name.clone(),
-            DbObjectMetadata {
-                schema,
-                name,
-                kind,
-                columns: Vec::new(),
-                indexes: Vec::new(),
-            },
-        );
+        builder.add_object(schema, name, kind);
     }
 
-    let object_names: Vec<(String, String)> = schemas
-        .iter()
-        .flat_map(|(schema, objects)| {
-            objects
-                .keys()
-                .map(|name| (schema.clone(), name.clone()))
-                .collect::<Vec<_>>()
-        })
-        .collect();
-
-    for (schema, table) in object_names {
+    for (schema, table) in builder.object_keys() {
         let column_sql = format!("pragma table_xinfo({})", quote_string(&table));
         let column_rows = sqlx::query(&column_sql)
             .fetch_all(pool)
             .await
             .map_err(|e| format!("metadata columns failed for {table}: {e}"))?;
 
-        if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+        if let Some(object) = builder.object_mut(&schema, &table) {
             for row in column_rows {
                 let hidden = row.try_get::<i64, _>("hidden").unwrap_or(0);
                 if hidden != 0 {
@@ -160,15 +116,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
         }
     }
 
-    Ok(DatabaseMetadata {
-        schemas: schemas
-            .into_iter()
-            .map(|(name, objects)| SchemaMetadata {
-                name,
-                objects: objects.into_values().collect(),
-            })
-            .collect(),
-    })
+    Ok(builder.finish())
 }
 
 fn quote_string(value: &str) -> String {

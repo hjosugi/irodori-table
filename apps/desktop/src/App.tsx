@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bolt,
@@ -6,6 +6,7 @@ import {
   Clock3,
   Columns3,
   Database,
+  Download,
   KeyRound,
   Folder,
   Keyboard,
@@ -147,6 +148,22 @@ type ConnectionDraft = {
 };
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
+const queryHistoryStorageKey = "irodori.queryHistory.v1";
+const maxQueryHistoryItems = 50;
+
+type QueryHistoryItem = {
+  id: string;
+  connectionId: string;
+  connectionName: string;
+  engine: string;
+  sql: string;
+  status: "ok" | "error";
+  rowCount: number;
+  elapsedMs: number;
+  truncated: boolean;
+  error?: string;
+  ranAt: string;
+};
 
 const starterProfiles: ConnectionDraft[] = [
   {
@@ -343,6 +360,208 @@ function loadProfiles() {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function loadQueryHistory(): QueryHistoryItem[] {
+  try {
+    const raw = window.localStorage.getItem(queryHistoryStorageKey);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .flatMap((item): QueryHistoryItem[] => {
+        if (
+          !isRecord(item) ||
+          typeof item.id !== "string" ||
+          typeof item.connectionId !== "string" ||
+          typeof item.connectionName !== "string" ||
+          typeof item.engine !== "string" ||
+          typeof item.sql !== "string" ||
+          typeof item.ranAt !== "string" ||
+          (item.status !== "ok" && item.status !== "error")
+        ) {
+          return [];
+        }
+        return [
+          {
+            id: item.id,
+            connectionId: item.connectionId,
+            connectionName: item.connectionName,
+            engine: item.engine,
+            sql: item.sql,
+            status: item.status,
+            rowCount: Number(item.rowCount) || 0,
+            elapsedMs: Number(item.elapsedMs) || 0,
+            truncated: Boolean(item.truncated),
+            error: typeof item.error === "string" ? item.error : undefined,
+            ranAt: item.ranAt,
+          },
+        ];
+      })
+      .slice(0, maxQueryHistoryItems);
+  } catch {
+    return [];
+  }
+}
+
+function compactSql(sql: string, maxLength = 92) {
+  const compact = sql.replace(/\s+/g, " ").trim();
+  if (compact.length <= maxLength) {
+    return compact;
+  }
+  return `${compact.slice(0, maxLength - 3)}...`;
+}
+
+function formatHistoryTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--:--";
+  }
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function dollarTagAt(sql: string, index: number) {
+  const match = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
+  return match?.[0];
+}
+
+function statementDelimiters(sql: string) {
+  const delimiters: number[] = [];
+  let quote: "normal" | "single" | "double" | "line" | "block" | "dollar" =
+    "normal";
+  let dollarTag = "";
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const char = sql[index];
+    const next = sql[index + 1];
+
+    if (quote === "single") {
+      if (char === "'" && next === "'") {
+        index += 1;
+      } else if (char === "'") {
+        quote = "normal";
+      }
+      continue;
+    }
+
+    if (quote === "double") {
+      if (char === '"' && next === '"') {
+        index += 1;
+      } else if (char === '"') {
+        quote = "normal";
+      }
+      continue;
+    }
+
+    if (quote === "line") {
+      if (char === "\n") {
+        quote = "normal";
+      }
+      continue;
+    }
+
+    if (quote === "block") {
+      if (char === "*" && next === "/") {
+        quote = "normal";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (quote === "dollar") {
+      if (sql.startsWith(dollarTag, index)) {
+        index += dollarTag.length - 1;
+        quote = "normal";
+      }
+      continue;
+    }
+
+    if (char === "'") {
+      quote = "single";
+    } else if (char === '"') {
+      quote = "double";
+    } else if (char === "-" && next === "-") {
+      quote = "line";
+      index += 1;
+    } else if (char === "/" && next === "*") {
+      quote = "block";
+      index += 1;
+    } else if (char === "$") {
+      const tag = dollarTagAt(sql, index);
+      if (tag) {
+        quote = "dollar";
+        dollarTag = tag;
+        index += tag.length - 1;
+      }
+    } else if (char === ";") {
+      delimiters.push(index);
+    }
+  }
+
+  return delimiters;
+}
+
+function selectedOrCurrentStatement(
+  textarea: HTMLTextAreaElement | null,
+  sql: string,
+) {
+  const selectionStart = textarea?.selectionStart ?? 0;
+  const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+  const selectedSql = sql.slice(selectionStart, selectionEnd).trim();
+
+  if (selectedSql) {
+    return selectedSql;
+  }
+
+  const cursor = Math.min(selectionStart, sql.length);
+  const delimiters = statementDelimiters(sql);
+  let previous: number | undefined;
+  for (const delimiter of delimiters) {
+    if (delimiter >= cursor) {
+      break;
+    }
+    previous = delimiter;
+  }
+  const next = delimiters.find((delimiter) => delimiter >= cursor);
+  const start = previous === undefined ? 0 : previous + 1;
+  const end = next === undefined ? sql.length : next + 1;
+  const statement = sql.slice(start, end).trim();
+
+  return statement || sql.trim();
+}
+
+function csvCell(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function csvFromResult(result: QueryResult) {
+  const rows = result.rows.map((row) =>
+    result.columns.map((_, index) => csvCell(row[index])).join(","),
+  );
+  return [result.columns.map(csvCell).join(","), ...rows].join("\r\n");
+}
+
+function downloadName(connectionId: string) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `irodori-${connectionId}-${timestamp}.csv`;
+}
+
 function validateDraft(draft: ConnectionDraft): string | null {
   if (!draft.id.trim()) {
     return "connection id is required";
@@ -387,6 +606,7 @@ function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
 }
 
 function App() {
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
@@ -410,6 +630,7 @@ function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
+  const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
   >({});
@@ -436,6 +657,10 @@ function App() {
     );
   }, [profiles]);
 
+  useEffect(() => {
+    window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(history));
+  }, [history]);
+
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
     snapshot.connections.forEach((connection) => {
@@ -461,6 +686,13 @@ function App() {
   const activeMetadata = metadataByConnection[activeConnectionId];
   const activeMetadataLoading = metadataLoading.has(activeConnectionId);
   const activeMetadataError = metadataErrors[activeConnectionId];
+  const scopedHistory = useMemo(
+    () =>
+      history
+        .filter((item) => item.connectionId === activeConnectionId)
+        .slice(0, 10),
+    [activeConnectionId, history],
+  );
 
   useEffect(() => {
     if (
@@ -671,18 +903,75 @@ function App() {
     }
   }
 
+  function appendHistory(item: QueryHistoryItem) {
+    setHistory((current) => [item, ...current].slice(0, maxQueryHistoryItems));
+  }
+
+  function exportCsv() {
+    if (!result) {
+      return;
+    }
+    const blob = new Blob(["\uFEFF", csvFromResult(result)], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = downloadName(activeConnectionId);
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
   async function runQuery() {
     if (!activeConnectionOpen) {
       setQueryError(`not connected: ${activeConnectionId}`);
       return;
     }
+    const sqlToRun = selectedOrCurrentStatement(editorRef.current, query);
+    if (!sqlToRun) {
+      setQueryError("query is empty");
+      return;
+    }
     setRunning(true);
     setQueryError(null);
+    const started = performance.now();
+    const ranAt = new Date().toISOString();
     try {
-      const nextResult = await dbRunQuery(activeConnectionId, query, 10_000);
+      const nextResult = await dbRunQuery(activeConnectionId, sqlToRun, 10_000);
       setResult(nextResult);
+      appendHistory({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        connectionId: activeConnectionId,
+        connectionName: activeConnection.name,
+        engine: activeConnection.engine,
+        sql: sqlToRun,
+        status: "ok",
+        rowCount: Number(nextResult.rowCount),
+        elapsedMs: Number(nextResult.elapsedMs),
+        truncated: nextResult.truncated,
+        ranAt,
+      });
+      if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
+        void refreshObjects(activeConnectionId, true);
+      }
     } catch (error) {
-      setQueryError(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      setQueryError(message);
+      appendHistory({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        connectionId: activeConnectionId,
+        connectionName: activeConnection.name,
+        engine: activeConnection.engine,
+        sql: sqlToRun,
+        status: "error",
+        rowCount: 0,
+        elapsedMs: Math.max(1, Math.round(performance.now() - started)),
+        truncated: false,
+        error: message,
+        ranAt,
+      });
     } finally {
       setRunning(false);
     }
@@ -1102,6 +1391,7 @@ function App() {
                   {lineNumbers}
                 </pre>
                 <textarea
+                  ref={editorRef}
                   aria-label="SQL editor"
                   spellCheck={false}
                   value={query}
@@ -1127,12 +1417,52 @@ function App() {
               </section>
               <section>
                 <div className="section-heading">
+                  <span>History</span>
+                  <Clock3 size={14} />
+                </div>
+                <div className="history-list">
+                  {scopedHistory.length > 0 ? (
+                    scopedHistory.map((item) => (
+                      <button
+                        className={`history-item ${item.status}`}
+                        key={item.id}
+                        type="button"
+                        title={item.status === "error" && item.error ? item.error : item.sql}
+                        onClick={() => setQuery(item.sql)}
+                      >
+                        <strong>{compactSql(item.sql)}</strong>
+                        <small>
+                          <span>{formatHistoryTime(item.ranAt)}</span>
+                          <span>
+                            {item.status === "ok"
+                              ? `${toCount(item.rowCount)} rows${
+                                  item.truncated ? " capped" : ""
+                                } · ${toCount(item.elapsedMs)} ms`
+                              : "failed"}
+                          </span>
+                        </small>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="empty-browser">No query history</div>
+                  )}
+                </div>
+              </section>
+              <section>
+                <div className="section-heading">
                   <span>Commands</span>
                   <Layers3 size={14} />
                 </div>
                 <div className="command-list">
                   {commands.map((command) => (
-                    <button className="command-item" key={command}>
+                    <button
+                      className="command-item"
+                      key={command}
+                      type="button"
+                      onClick={
+                        command === "Run current statement" ? runQuery : undefined
+                      }
+                    >
                       {command}
                     </button>
                   ))}
@@ -1148,8 +1478,14 @@ function App() {
                 <span>{queryError ? "failed" : resultSummary}</span>
               </div>
               <div className="results-actions">
-                <button className="text-button" type="button">
-                  Export CSV
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={!result}
+                  onClick={exportCsv}
+                >
+                  <Download size={13} />
+                  <span>CSV</span>
                 </button>
                 <button className="text-button" type="button">
                   Edit Data

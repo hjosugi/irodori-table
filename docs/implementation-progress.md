@@ -60,8 +60,14 @@ Highlights:
   a URL/DSN field. Successful connections become active workspace connections and
   show measured connect latency.
 - **Run Current** executes the editor text against the active open connection and
-  replaces the sample grid with live columns/rows, elapsed time, capped-row status,
-  and errors.
+  now runs the selected SQL or the delimiter-aware statement at the cursor,
+  replacing the sample grid with live columns/rows, elapsed time, capped-row
+  status, and errors.
+- Query history is now persisted locally per connection and records success/error,
+  elapsed time, row counts, truncated status, and the SQL that ran. Clicking an
+  item restores it into the editor.
+- Result grids can be exported to CSV from the desktop UI, with object/JSON values
+  serialized and CSV quoting handled client-side.
 - The browser build still falls back to the mock shell when Tauri APIs are absent;
   real connect/query runs inside the Tauri shell.
 - The object browser now calls generated `dbListObjects` and renders live

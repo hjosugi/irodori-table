@@ -48,10 +48,14 @@ futures-util = "0.3"
 async-trait = "0.1"
 # MongoDB (document store) — proves the Connection trait extends beyond SQL.
 mongodb = "3"
-# SQL Server via the pure-Rust TDS driver (no native client needed).
+# SQL Server via the pure-Rust TDS driver (no native client needed). `chrono`
+# turns on precision-safe temporal decode (datetime/datetime2/date/time/
+# datetimeoffset -> chrono types); exact numerics use tiberius' built-in
+# `Numeric` (no extra feature) so DECIMAL/NUMERIC/MONEY keep full precision.
 tiberius = { version = "0.12", default-features = false, features = [
     "tds73",
     "rustls",
+    "chrono",
 ] }
 tokio-util = { version = "0.7", features = ["compat"] }
 # DuckDB is embedded C++ (heavy bundled build) so it is feature-gated and off by

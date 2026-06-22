@@ -46,6 +46,35 @@ pub enum DbEngine {
     #[serde(rename = "tidb")]
     #[ts(rename = "tidb")]
     TiDb,
+    // Serverless Postgres
+    #[serde(rename = "neon")]
+    #[ts(rename = "neon")]
+    Neon,
+    // Columnar/Analytics
+    #[serde(rename = "clickhouse")]
+    #[ts(rename = "clickhouse")]
+    ClickHouse,
+    // Graph DBs
+    #[serde(rename = "neo4j")]
+    #[ts(rename = "neo4j")]
+    Neo4j,
+    #[serde(rename = "memgraph")]
+    #[ts(rename = "memgraph")]
+    Memgraph,
+    // Time-series / Timeline DBs
+    #[serde(rename = "influxdb")]
+    #[ts(rename = "influxdb")]
+    InfluxDb,
+    // Vector DBs
+    #[serde(rename = "qdrant")]
+    #[ts(rename = "qdrant")]
+    Qdrant,
+    #[serde(rename = "milvus")]
+    #[ts(rename = "milvus")]
+    Milvus,
+    #[serde(rename = "pinecone")]
+    #[ts(rename = "pinecone")]
+    Pinecone,
 }
 
 /// The wire protocol an engine speaks — i.e. which connector handles it.
@@ -58,6 +87,13 @@ pub(crate) enum Wire {
     DuckDb,
     Mongo,
     Oracle,
+    ClickHouse,
+    Neo4j,
+    Memgraph,
+    InfluxDb,
+    Qdrant,
+    Milvus,
+    Pinecone,
 }
 
 impl DbEngine {
@@ -67,19 +103,27 @@ impl DbEngine {
             | DbEngine::CockroachDb
             | DbEngine::YugabyteDb
             | DbEngine::Redshift
-            | DbEngine::Timescale => Wire::Postgres,
+            | DbEngine::Timescale
+            | DbEngine::Neon => Wire::Postgres,
             DbEngine::Mysql | DbEngine::MariaDb | DbEngine::TiDb => Wire::Mysql,
             DbEngine::Sqlite => Wire::Sqlite,
             DbEngine::SqlServer => Wire::SqlServer,
             DbEngine::DuckDb => Wire::DuckDb,
             DbEngine::Mongo => Wire::Mongo,
             DbEngine::Oracle => Wire::Oracle,
+            DbEngine::ClickHouse => Wire::ClickHouse,
+            DbEngine::Neo4j => Wire::Neo4j,
+            DbEngine::Memgraph => Wire::Memgraph,
+            DbEngine::InfluxDb => Wire::InfluxDb,
+            DbEngine::Qdrant => Wire::Qdrant,
+            DbEngine::Milvus => Wire::Milvus,
+            DbEngine::Pinecone => Wire::Pinecone,
         }
     }
 
     pub(crate) fn default_port(self) -> u16 {
         match self {
-            DbEngine::Postgres | DbEngine::Timescale => 5432,
+            DbEngine::Postgres | DbEngine::Timescale | DbEngine::Neon => 5432,
             DbEngine::CockroachDb => 26257,
             DbEngine::YugabyteDb => 5433,
             DbEngine::Redshift => 5439,
@@ -88,7 +132,12 @@ impl DbEngine {
             DbEngine::SqlServer => 1433,
             DbEngine::Oracle => 1521,
             DbEngine::Mongo => 27017,
-            DbEngine::Sqlite | DbEngine::DuckDb => 0,
+            DbEngine::ClickHouse => 9000,
+            DbEngine::Neo4j | DbEngine::Memgraph => 7687,
+            DbEngine::InfluxDb => 8086,
+            DbEngine::Qdrant => 6333,
+            DbEngine::Milvus => 19530,
+            DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
         }
     }
 }
@@ -107,7 +156,7 @@ fn percent_encode(input: &str) -> String {
 }
 
 /// Build a sqlx connection URL for the Postgres/MySQL/SQLite drivers. SQL Server,
-/// DuckDB, and Oracle use dedicated connectors instead.
+/// DuckDB, MongoDB, and Oracle use dedicated connectors instead.
 pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
     if let Some(url) = &p.url {
         return Ok(url.clone());
@@ -127,9 +176,17 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         }
         Wire::Postgres => Ok(build_tcp_url("postgres", p)),
         Wire::Mysql => Ok(build_tcp_url("mysql", p)),
-        Wire::SqlServer | Wire::DuckDb | Wire::Mongo | Wire::Oracle => {
-            Err("this engine uses a dedicated connector, not a sqlx URL".into())
-        }
+        Wire::SqlServer
+        | Wire::DuckDb
+        | Wire::Mongo
+        | Wire::Oracle
+        | Wire::ClickHouse
+        | Wire::Neo4j
+        | Wire::Memgraph
+        | Wire::InfluxDb
+        | Wire::Qdrant
+        | Wire::Milvus
+        | Wire::Pinecone => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
     }
 }
 
@@ -159,6 +216,7 @@ mod tests {
             DbEngine::YugabyteDb,
             DbEngine::Redshift,
             DbEngine::Timescale,
+            DbEngine::Neon,
         ] {
             assert_eq!(e.wire(), Wire::Postgres, "{e:?} should use postgres wire");
         }
@@ -167,9 +225,25 @@ mod tests {
         }
         assert_eq!(DbEngine::SqlServer.wire(), Wire::SqlServer);
         assert_eq!(DbEngine::DuckDb.wire(), Wire::DuckDb);
+        assert_eq!(DbEngine::ClickHouse.wire(), Wire::ClickHouse);
+        assert_eq!(DbEngine::Neo4j.wire(), Wire::Neo4j);
+        assert_eq!(DbEngine::Memgraph.wire(), Wire::Memgraph);
+        assert_eq!(DbEngine::InfluxDb.wire(), Wire::InfluxDb);
+        assert_eq!(DbEngine::Qdrant.wire(), Wire::Qdrant);
+        assert_eq!(DbEngine::Milvus.wire(), Wire::Milvus);
+        assert_eq!(DbEngine::Pinecone.wire(), Wire::Pinecone);
+
         assert_eq!(DbEngine::CockroachDb.default_port(), 26257);
         assert_eq!(DbEngine::SqlServer.default_port(), 1433);
         assert_eq!(DbEngine::TiDb.default_port(), 4000);
+        assert_eq!(DbEngine::Neon.default_port(), 5432);
+        assert_eq!(DbEngine::ClickHouse.default_port(), 9000);
+        assert_eq!(DbEngine::Neo4j.default_port(), 7687);
+        assert_eq!(DbEngine::Memgraph.default_port(), 7687);
+        assert_eq!(DbEngine::InfluxDb.default_port(), 8086);
+        assert_eq!(DbEngine::Qdrant.default_port(), 6333);
+        assert_eq!(DbEngine::Milvus.default_port(), 19530);
+        assert_eq!(DbEngine::Pinecone.default_port(), 0);
     }
 
     #[test]

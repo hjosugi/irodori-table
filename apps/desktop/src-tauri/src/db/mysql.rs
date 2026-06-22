@@ -1,16 +1,13 @@
 //! MySQL / MariaDB / TiDB via a native sqlx pool.
 
-use std::collections::BTreeMap;
-
-use futures_util::TryStreamExt;
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions, MySqlRow};
 use sqlx::types::chrono::{NaiveDate, NaiveDateTime};
 use sqlx::types::BigDecimal;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
+use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
-    IndexMetadata, RowSet, SchemaMetadata,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<MySqlPool, String> {
@@ -29,29 +26,7 @@ pub async fn version(pool: &MySqlPool) -> Option<String> {
 }
 
 pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> Result<RowSet, String> {
-    let mut stream = sqlx::query(sql).fetch(pool);
-    let mut columns: Vec<String> = Vec::new();
-    let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
-    let mut truncated = false;
-    while let Some(row) = stream
-        .try_next()
-        .await
-        .map_err(|e| format!("query failed: {e}"))?
-    {
-        if columns.is_empty() {
-            columns = row.columns().iter().map(|c| c.name().to_string()).collect();
-        }
-        if rows.len() >= cap {
-            truncated = true;
-            break;
-        }
-        let mut cells = Vec::with_capacity(row.columns().len());
-        for i in 0..row.columns().len() {
-            cells.push(cell_to_json(&row, i));
-        }
-        rows.push(cells);
-    }
-    Ok((columns, rows, truncated))
+    super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
 pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
@@ -76,7 +51,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     .await
     .map_err(|e| format!("metadata objects failed: {e}"))?;
 
-    let mut schemas: BTreeMap<String, BTreeMap<String, DbObjectMetadata>> = BTreeMap::new();
+    let mut builder = MetaBuilder::default();
     for row in object_rows {
         let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
         let name: String = row.try_get(1).unwrap_or_default();
@@ -86,16 +61,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         } else {
             DbObjectMetadataKind::Table
         };
-        schemas.entry(schema.clone()).or_default().insert(
-            name.clone(),
-            DbObjectMetadata {
-                schema,
-                name,
-                kind,
-                columns: Vec::new(),
-                indexes: Vec::new(),
-            },
-        );
+        builder.add_object(schema, name, kind);
     }
 
     let column_rows = sqlx::query(
@@ -119,7 +85,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     for row in column_rows {
         let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
         let table: String = row.try_get(1).unwrap_or_default();
-        if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+        if let Some(object) = builder.object_mut(&schema, &table) {
             let nullable: String = row.try_get(4).unwrap_or_default();
             object.columns.push(ColumnMetadata {
                 name: row.try_get(2).unwrap_or_default(),
@@ -152,7 +118,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     for row in index_rows {
         let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
         let table: String = row.try_get(1).unwrap_or_default();
-        if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+        if let Some(object) = builder.object_mut(&schema, &table) {
             let raw_columns: String = row.try_get(4).unwrap_or_default();
             let columns = raw_columns
                 .split(',')
@@ -168,15 +134,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         }
     }
 
-    Ok(DatabaseMetadata {
-        schemas: schemas
-            .into_iter()
-            .map(|(name, objects)| SchemaMetadata {
-                name,
-                objects: objects.into_values().collect(),
-            })
-            .collect(),
-    })
+    Ok(builder.finish())
 }
 
 /// Decode a MySQL/MariaDB cell by column type.

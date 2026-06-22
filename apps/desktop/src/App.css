@@ -288,6 +288,7 @@ button {
 .connection-list,
 .object-browser,
 .completion-list,
+.history-list,
 .command-list {
   display: grid;
   gap: 3px;
@@ -433,6 +434,7 @@ button {
 .connection-item,
 .object-row,
 .completion-item,
+.history-item,
 .command-item {
   display: grid;
   align-items: center;
@@ -451,12 +453,14 @@ button {
 }
 
 .connection-item span,
-.completion-item {
+.completion-item,
+.history-item {
   min-width: 0;
 }
 
 .connection-item strong,
-.completion-item strong {
+.completion-item strong,
+.history-item strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -466,7 +470,8 @@ button {
 
 .connection-item small,
 .object-row small,
-.completion-item small {
+.completion-item small,
+.history-item small {
   display: block;
   overflow: hidden;
   color: var(--muted);
@@ -478,6 +483,7 @@ button {
 .connection-item.active,
 .object-row:hover,
 .completion-item:hover,
+.history-item:hover,
 .command-item:hover,
 .tab.active {
   background: #e4eee7;
@@ -741,6 +747,34 @@ button {
 .completion-item strong {
   color: var(--blue);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.history-item {
+  gap: 3px;
+  min-height: 52px;
+  padding: 8px 9px;
+}
+
+.history-item strong {
+  color: #315f47;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.history-item small {
+  display: flex;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.history-item small span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item.error strong {
+  color: #8c2f2f;
 }
 
 .command-item {
