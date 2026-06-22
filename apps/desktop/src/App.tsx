@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  AlignLeft,
   Bolt,
   ChevronDown,
   Clock3,
@@ -36,6 +37,7 @@ import {
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
+import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
 import "./App.css";
 
 const fallbackSnapshot: WorkspaceSnapshot = {
@@ -534,11 +536,10 @@ function statementDelimiters(sql: string) {
 }
 
 function selectedOrCurrentStatement(
-  textarea: HTMLTextAreaElement | null,
+  selectionStart: number,
+  selectionEnd: number,
   sql: string,
 ) {
-  const selectionStart = textarea?.selectionStart ?? 0;
-  const selectionEnd = textarea?.selectionEnd ?? selectionStart;
   const selectedSql = sql.slice(selectionStart, selectionEnd).trim();
 
   if (selectedSql) {
@@ -632,7 +633,7 @@ function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
 }
 
 function App() {
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const editorApiRef = useRef<SqlEditorHandle>(null);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
@@ -737,14 +738,12 @@ function App() {
     activeMetadataLoading,
   ]);
 
-  const lineNumbers = useMemo(
-    () =>
-      query
-        .split("\n")
-        .map((_, index) => index + 1)
-        .join("\n"),
-    [query],
-  );
+  // Dialect for the editor: prefer the active connection's profile engine,
+  // then the connection-form draft, then Postgres.
+  const editorEngine = useMemo<DbEngine>(() => {
+    const profile = profiles.find((item) => item.id === activeConnectionId);
+    return profile?.engine ?? draft.engine ?? "postgres";
+  }, [profiles, activeConnectionId, draft.engine]);
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
@@ -951,12 +950,18 @@ function App() {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  function formatQuery() {
+    const error = editorApiRef.current?.format();
+    setQueryError(error ?? null);
+  }
+
   async function runQuery() {
     if (!activeConnectionOpen) {
       setQueryError(`not connected: ${activeConnectionId}`);
       return;
     }
-    const sqlToRun = selectedOrCurrentStatement(editorRef.current, query);
+    const selection = editorApiRef.current?.getSelection() ?? { from: 0, to: 0 };
+    const sqlToRun = selectedOrCurrentStatement(selection.from, selection.to, query);
     if (!sqlToRun) {
       setQueryError("query is empty");
       return;
@@ -1051,6 +1056,15 @@ function App() {
           onClick={() => setRunning(false)}
         >
           <Square size={15} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          title="Format SQL (engine dialect)"
+          aria-label="Format SQL"
+          onClick={formatQuery}
+        >
+          <AlignLeft size={15} />
         </button>
         <button
           className="icon-button"
@@ -1414,15 +1428,11 @@ function App() {
                 </span>
               </div>
               <div className="editor-shell">
-                <pre className="line-numbers" aria-hidden="true">
-                  {lineNumbers}
-                </pre>
-                <textarea
-                  ref={editorRef}
-                  aria-label="SQL editor"
-                  spellCheck={false}
+                <SqlEditor
+                  ref={editorApiRef}
                   value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  onChange={setQuery}
+                  engine={editorEngine}
                 />
               </div>
             </section>

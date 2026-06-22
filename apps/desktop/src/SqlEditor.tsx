@@ -1,0 +1,216 @@
+// CodeMirror 6 SQL editor (ADR 0001).
+//
+// The host is CM6: `basicSetup` gives line numbers, history, bracket matching,
+// active-line highlight, and keyword autocompletion; `@codemirror/lang-sql`
+// supplies dialect-aware syntax highlighting bound to the active engine. The
+// formatter is `sql-formatter`, dialect-mapped per engine. Tree-sitter is the
+// planned *semantic* layer (completion scope, outline, selection) and is not
+// wired here yet — see docs/adr/0001-editor-stack.md.
+
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { EditorView, keymap } from "@codemirror/view";
+import { Compartment, EditorState } from "@codemirror/state";
+import { indentWithTab } from "@codemirror/commands";
+import { basicSetup } from "codemirror";
+import {
+  MSSQL,
+  MariaSQL,
+  MySQL,
+  PLSQL,
+  PostgreSQL,
+  SQLite,
+  StandardSQL,
+  sql,
+  type SQLDialect,
+} from "@codemirror/lang-sql";
+import { format as formatSql } from "sql-formatter";
+import type { DbEngine } from "./generated/irodori-api";
+
+export interface SqlEditorHandle {
+  /** Document offsets of the current selection (collapsed range = caret). */
+  getSelection: () => { from: number; to: number };
+  /**
+   * Pretty-print the whole buffer with the engine's dialect, in place.
+   * Returns `null` on success, or an error message when formatting fails.
+   */
+  format: () => string | null;
+  focus: () => void;
+}
+
+interface SqlEditorProps {
+  value: string;
+  onChange: (next: string) => void;
+  engine: DbEngine;
+}
+
+/** Map an Irodori engine onto a CodeMirror SQL dialect (Postgres-wire siblings share one). */
+function cmDialect(engine: DbEngine): SQLDialect {
+  switch (engine) {
+    case "mysql":
+    case "tidb":
+      return MySQL;
+    case "mariadb":
+      return MariaSQL;
+    case "sqlite":
+      return SQLite;
+    case "sqlserver":
+      return MSSQL;
+    case "oracle":
+      return PLSQL;
+    case "postgres":
+    case "cockroachdb":
+    case "yugabytedb":
+    case "redshift":
+    case "timescaledb":
+    case "neon":
+    case "h2":
+    case "duckdb":
+      return PostgreSQL;
+    default:
+      return StandardSQL;
+  }
+}
+
+/** Map an Irodori engine onto a sql-formatter language. */
+function formatterLanguage(engine: DbEngine): string {
+  switch (engine) {
+    case "mysql":
+      return "mysql";
+    case "tidb":
+      return "tidb";
+    case "mariadb":
+      return "mariadb";
+    case "sqlite":
+      return "sqlite";
+    case "sqlserver":
+      return "transactsql";
+    case "oracle":
+      return "plsql";
+    case "redshift":
+      return "redshift";
+    case "duckdb":
+      return "duckdb";
+    case "clickhouse":
+      return "clickhouse";
+    case "postgres":
+    case "cockroachdb":
+    case "yugabytedb":
+    case "timescaledb":
+    case "neon":
+    case "h2":
+      return "postgresql";
+    default:
+      return "sql";
+  }
+}
+
+const editorTheme = EditorView.theme({
+  "&": { height: "100%" },
+  ".cm-scroller": {
+    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+    fontSize: "13px",
+    lineHeight: "21px",
+  },
+  "&.cm-focused": { outline: "none" },
+});
+
+const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
+  { value, onChange, engine },
+  ref,
+) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const dialect = useRef(new Compartment()).current;
+
+  // Create the editor once. `value`/`engine` seed the initial state; later
+  // changes flow through the controlled-sync and reconfigure effects below.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const view = new EditorView({
+      parent: host,
+      state: EditorState.create({
+        doc: value,
+        extensions: [
+          basicSetup,
+          keymap.of([indentWithTab]),
+          dialect.of(sql({ dialect: cmDialect(engine), upperCaseKeywords: false })),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              onChangeRef.current(update.state.doc.toString());
+            }
+          }),
+          editorTheme,
+        ],
+      }),
+    });
+    viewRef.current = view;
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+    // Mount-once: deliberately excludes value/engine (handled by effects below).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Controlled sync: push external value changes (history click, etc.) into the doc.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (value !== current) {
+      view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
+    }
+  }, [value]);
+
+  // Reconfigure the dialect when the active engine changes.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: dialect.reconfigure(
+        sql({ dialect: cmDialect(engine), upperCaseKeywords: false }),
+      ),
+    });
+  }, [engine, dialect]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getSelection() {
+        const main = viewRef.current?.state.selection.main;
+        return { from: main?.from ?? 0, to: main?.to ?? 0 };
+      },
+      format() {
+        const view = viewRef.current;
+        if (!view) return null;
+        const doc = view.state.doc.toString();
+        if (!doc.trim()) return null;
+        try {
+          const formatted = formatSql(doc, {
+            language: formatterLanguage(engine),
+          } as Parameters<typeof formatSql>[1]);
+          if (formatted !== doc) {
+            view.dispatch({
+              changes: { from: 0, to: doc.length, insert: formatted },
+            });
+            onChangeRef.current(formatted);
+          }
+          return null;
+        } catch (error) {
+          return error instanceof Error ? error.message : String(error);
+        }
+      },
+      focus() {
+        viewRef.current?.focus();
+      },
+    }),
+    [engine],
+  );
+
+  return <div className="cm-host" ref={hostRef} />;
+});
+
+export default SqlEditor;
