@@ -129,6 +129,15 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "yugabytedb", label: "YugabyteDB" },
   { value: "tidb", label: "TiDB" },
   { value: "redshift", label: "Redshift" },
+  { value: "neon", label: "Neon" },
+  { value: "h2", label: "H2" },
+  { value: "clickhouse", label: "ClickHouse" },
+  { value: "neo4j", label: "Neo4j" },
+  { value: "memgraph", label: "Memgraph" },
+  { value: "influxdb", label: "InfluxDB" },
+  { value: "qdrant", label: "Qdrant" },
+  { value: "milvus", label: "Milvus" },
+  { value: "pinecone", label: "Pinecone" },
 ];
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
@@ -259,6 +268,7 @@ function defaultPort(engine: DbEngine) {
   switch (engine) {
     case "postgres":
     case "timescaledb":
+    case "neon":
       return "5432";
     case "cockroachdb":
       return "26257";
@@ -266,6 +276,19 @@ function defaultPort(engine: DbEngine) {
       return "5433";
     case "redshift":
       return "5439";
+    case "h2":
+      return "5435";
+    case "clickhouse":
+      return "9000";
+    case "neo4j":
+    case "memgraph":
+      return "7687";
+    case "influxdb":
+      return "8086";
+    case "qdrant":
+      return "6333";
+    case "milvus":
+      return "19530";
     case "mysql":
     case "mariadb":
       return "3306";
@@ -579,6 +602,9 @@ function validateDraft(draft: ConnectionDraft): string | null {
     if (!draft.host.trim()) {
       return "host is required";
     }
+    if (draft.engine === "pinecone") {
+      return "Pinecone is selectable as a placeholder; a driver is not implemented yet";
+    }
   }
   if (draft.port.trim() && !Number.isInteger(Number(draft.port))) {
     return "port must be a number";
@@ -820,6 +846,7 @@ function App() {
         id: testId,
       });
       await dbDisconnect(testId);
+      setConnectionError(`Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`);
     } catch (error) {
       setConnectionError(error instanceof Error ? error.message : String(error));
     } finally {
