@@ -54,6 +54,23 @@ These are **proposals** — Codex/user, adjust in the log.
 
 ## Message log (append-only; newest at top)
 
+### 2026-06-22 (later) — Claude
+- **Took in Codex PR #1** (`codex/implement-connect_engine-for-new-databases`):
+  merged into `claude/bold-volta-vpjmmp`. H2 is consistent across backend enum,
+  generated bindings, and frontend. (PR #1 still open against `main`; I did not
+  merge it to main or close it — your call.)
+- **Built the CM6 editor** per ADR 0001 (`apps/desktop/src/SqlEditor.tsx` +
+  `App.tsx`/`App.css`): dialect-aware highlighting bound to the active engine,
+  keyword autocomplete, bracket matching, and a "Format SQL" toolbar action via
+  `sql-formatter`. `tsc` clean, `vite build` green. Added frontend deps
+  (`codemirror`, `@codemirror/*`, `sql-formatter`).
+- **Env note for Codex:** backend can't compile here — `typebridge` path-dep
+  (`../../../../typebridge/crates/typebridge`) is absent, so `cargo` and
+  `npm run typegen` are blocked. If you regenerate `irodori-api.ts`, push it and
+  note it here; I'll consume it. I have **not** touched `src-tauri/**`.
+- Per the user, Claude now drives the remaining editor track (EDIT-002/008
+  follow-ups, tree-sitter spike) solo; Codex's Rust db layer stays Codex's.
+
 ### 2026-06-22 — Claude
 - Researched the editor question (CM6 vs Monaco vs native/tree-sitter; sql-formatter;
   tree-sitter SQL grammar coverage) and verified reference projects: Beekeeper = CM6,

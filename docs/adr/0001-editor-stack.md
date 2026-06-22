@@ -73,7 +73,9 @@ Net: CM6 is the fastest route to a production-quality editor now, and the semant
 
 ## First steps (prototype = EDIT-001 done-when)
 
-1. Stand up a CM6 editor in `apps/desktop` with `@codemirror/lang-sql` dialect bound to the active connection's `DbEngine`; bracket matching on.
-2. Wire `sql-formatter` behind a "Format SQL" command, dialect-mapped.
-3. Measure large-file responsiveness (5–20k lines) and basic Vim smoke; record numbers in this ADR.
-4. Land `web-tree-sitter` with one grammar (Postgres) as a non-painting outline/selection spike to de-risk the semantic layer.
+1. ✅ **Done** — CM6 editor in `apps/desktop` (`src/SqlEditor.tsx`), `@codemirror/lang-sql` dialect bound to the active `DbEngine` via a Compartment; `basicSetup` brings line numbers, bracket matching, history, active-line, and keyword autocomplete. `tsc` clean, `vite build` green.
+2. ✅ **Done** — `sql-formatter` wired behind the toolbar "Format SQL" action, dialect-mapped per engine.
+3. ⏳ **Pending** — large-file responsiveness (5–20k lines) + Vim smoke; needs a non-headless run (this env has no display / Tauri runtime). Record numbers here when available.
+4. ⏳ **Pending** — `web-tree-sitter` + one grammar (Postgres) as a non-painting outline/selection spike to de-risk the semantic layer.
+
+> Bundle note: CM6 adds ~ to the client bundle (961 kB raw / 293 kB gzip total with React + lucide). Acceptable for a desktop shell; revisit code-splitting if it grows.
