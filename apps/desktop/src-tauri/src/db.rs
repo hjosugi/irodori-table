@@ -49,6 +49,10 @@ pub(crate) type RowSet = (Vec<String>, Vec<Vec<serde_json::Value>>, bool);
 /// TablePlus problem). Full extraction goes through run-to-file (IO-001); a
 /// later ticket adds optional disk offload for very large windows (EXEC-010).
 pub(crate) const DEFAULT_MAX_ROWS: usize = 10_000;
+pub(crate) const MAX_RESULT_ROWS: usize = 100_000;
+
+const MAX_CONNECTION_ID_LEN: usize = 128;
+const MAX_SQL_BYTES: usize = 4 * 1024 * 1024;
 
 pub(crate) fn hex_encode(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
@@ -56,6 +60,158 @@ pub(crate) fn hex_encode(bytes: &[u8]) -> String {
         s.push_str(&format!("{b:02x}"));
     }
     s
+}
+
+fn normalize_optional_text(value: &mut Option<String>) {
+    *value = value
+        .take()
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty());
+}
+
+fn is_unimplemented_wire(wire: Wire) -> bool {
+    matches!(
+        wire,
+        Wire::ClickHouse
+            | Wire::Neo4j
+            | Wire::Memgraph
+            | Wire::InfluxDb
+            | Wire::Qdrant
+            | Wire::Milvus
+            | Wire::Pinecone
+    )
+}
+
+fn normalize_profile(mut profile: ConnectionProfile) -> Result<ConnectionProfile, String> {
+    profile.id = profile.id.trim().to_string();
+    if profile.id.is_empty() {
+        return Err("connection id is required".into());
+    }
+    if profile.id.len() > MAX_CONNECTION_ID_LEN {
+        return Err(format!(
+            "connection id must be at most {MAX_CONNECTION_ID_LEN} bytes"
+        ));
+    }
+    if profile.id.chars().any(char::is_control) {
+        return Err("connection id cannot contain control characters".into());
+    }
+
+    normalize_optional_text(&mut profile.url);
+    normalize_optional_text(&mut profile.host);
+    normalize_optional_text(&mut profile.user);
+    normalize_optional_text(&mut profile.database);
+
+    let wire = profile.engine.wire();
+    if is_unimplemented_wire(wire) {
+        return Err(format!(
+            "{:?} is recognized but does not have a production connector yet",
+            profile.engine
+        ));
+    }
+
+    if profile.url.is_some() {
+        return Ok(profile);
+    }
+
+    match wire {
+        Wire::Sqlite => {
+            if profile.database.is_none() && profile.host.is_none() {
+                return Err("SQLite needs a database file path or :memory:".into());
+            }
+        }
+        Wire::DuckDb => {
+            // Empty DuckDB profiles intentionally open an in-memory database.
+        }
+        Wire::Postgres | Wire::Mysql | Wire::SqlServer | Wire::Mongo | Wire::Oracle => {
+            if profile.host.is_none() {
+                return Err("host is required when URL/DSN is not provided".into());
+            }
+        }
+        Wire::ClickHouse
+        | Wire::Neo4j
+        | Wire::Memgraph
+        | Wire::InfluxDb
+        | Wire::Qdrant
+        | Wire::Milvus
+        | Wire::Pinecone => unreachable!("unimplemented wires are rejected above"),
+    }
+
+    Ok(profile)
+}
+
+fn bounded_query_cap(max_rows: Option<usize>) -> Result<usize, String> {
+    let cap = max_rows.unwrap_or(DEFAULT_MAX_ROWS);
+    if cap == 0 {
+        return Err("maxRows must be at least 1".into());
+    }
+    if cap > MAX_RESULT_ROWS {
+        return Err(format!("maxRows must be at most {MAX_RESULT_ROWS}"));
+    }
+    Ok(cap)
+}
+
+fn redact_url_password(input: &str) -> String {
+    let Some(scheme_at) = input.find("://") else {
+        return input.to_string();
+    };
+    let authority_start = scheme_at + 3;
+    let authority_end = input[authority_start..]
+        .find(['/', '?', '#'])
+        .map(|offset| authority_start + offset)
+        .unwrap_or(input.len());
+    let Some(at_offset) = input[authority_start..authority_end].rfind('@') else {
+        return input.to_string();
+    };
+    let userinfo_end = authority_start + at_offset;
+    let Some(colon_offset) = input[authority_start..userinfo_end].find(':') else {
+        return input.to_string();
+    };
+    let password_start = authority_start + colon_offset + 1;
+    format!("{}****{}", &input[..password_start], &input[userinfo_end..])
+}
+
+fn redact_password_assignments(input: &str) -> String {
+    let lower = input.to_ascii_lowercase();
+    let mut out = String::with_capacity(input.len());
+    let mut cursor = 0;
+
+    while cursor < input.len() {
+        let password_at = lower[cursor..].find("password=");
+        let pwd_at = lower[cursor..].find("pwd=");
+        let Some(relative) = [password_at, pwd_at].into_iter().flatten().min() else {
+            out.push_str(&input[cursor..]);
+            break;
+        };
+        let key_start = cursor + relative;
+        let value_start = input[key_start..]
+            .find('=')
+            .map(|offset| key_start + offset + 1)
+            .unwrap_or(input.len());
+        let value_end = input[value_start..]
+            .find(';')
+            .map(|offset| value_start + offset)
+            .unwrap_or(input.len());
+
+        out.push_str(&input[cursor..value_start]);
+        out.push_str("****");
+        cursor = value_end;
+    }
+
+    out
+}
+
+fn redact_secret_text(text: &str, profile: &ConnectionProfile) -> String {
+    let mut redacted = redact_password_assignments(text);
+    if let Some(url) = &profile.url {
+        let redacted_url = redact_url_password(url);
+        redacted = redacted.replace(url, &redacted_url);
+    }
+    if let Some(password) = &profile.password {
+        if !password.is_empty() {
+            redacted = redacted.replace(password, "****");
+        }
+    }
+    redacted
 }
 
 /// How to reach a database. Either give structured fields or a raw `url`/DSN.
@@ -352,9 +508,15 @@ pub async fn connect_impl(
     state: &DbState,
     profile: ConnectionProfile,
 ) -> Result<ConnectionInfo, String> {
-    let conn = connect_engine(&profile).await?;
+    let profile = normalize_profile(profile)?;
+    let conn = connect_engine(&profile)
+        .await
+        .map_err(|error| redact_secret_text(&error, &profile))?;
     let server_version = conn.version().await.unwrap_or_else(|| "unknown".into());
-    state.conns.lock().await.insert(profile.id.clone(), conn);
+    let old = state.conns.lock().await.insert(profile.id.clone(), conn);
+    if let Some(old) = old {
+        old.close().await;
+    }
     Ok(ConnectionInfo {
         id: profile.id,
         engine: profile.engine,
@@ -368,6 +530,17 @@ pub async fn run_query_impl(
     sql: String,
     max_rows: Option<usize>,
 ) -> Result<QueryResult, String> {
+    let connection_id = connection_id.trim().to_string();
+    if connection_id.is_empty() {
+        return Err("connection id is required".into());
+    }
+    let sql = sql.trim().to_string();
+    if sql.is_empty() {
+        return Err("query is empty".into());
+    }
+    if sql.len() > MAX_SQL_BYTES {
+        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+    }
     // Clone the handle out of the lock so the query does not hold the mutex.
     let conn = {
         let guard = state.conns.lock().await;
@@ -377,7 +550,7 @@ pub async fn run_query_impl(
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
 
-    let cap = max_rows.unwrap_or(DEFAULT_MAX_ROWS);
+    let cap = bounded_query_cap(max_rows)?;
     let start = Instant::now();
     let (columns, rows, truncated) = conn.run_query(&sql, cap).await?;
     let elapsed_ms = start.elapsed().as_millis() as u64;
@@ -388,7 +561,7 @@ pub async fn run_query_impl(
         row_count,
         elapsed_ms,
         truncated,
-        message: None,
+        message: truncated.then(|| format!("result capped at {cap} rows")),
     })
 }
 
@@ -396,6 +569,10 @@ pub async fn list_objects_impl(
     state: &DbState,
     connection_id: String,
 ) -> Result<DatabaseMetadata, String> {
+    let connection_id = connection_id.trim().to_string();
+    if connection_id.is_empty() {
+        return Err("connection id is required".into());
+    }
     let conn = {
         let guard = state.conns.lock().await;
         guard
@@ -407,6 +584,10 @@ pub async fn list_objects_impl(
 }
 
 pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(), String> {
+    let connection_id = connection_id.trim().to_string();
+    if connection_id.is_empty() {
+        return Err("connection id is required".into());
+    }
     if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
         conn.close().await;
     }
@@ -580,5 +761,171 @@ mod tests {
             .await
             .expect("select");
         assert_eq!(result.rows[0][0], serde_json::json!("memory"));
+    }
+
+    #[tokio::test]
+    async fn command_boundary_rejects_invalid_inputs() {
+        let state = DbState::default();
+        let mut invalid = temp_sqlite_profile("invalid");
+        invalid.id = "  ".into();
+        let err = connect_impl(&state, invalid).await.unwrap_err();
+        assert!(err.contains("connection id is required"));
+
+        let missing_host = ConnectionProfile {
+            id: "missing-host".into(),
+            engine: DbEngine::Postgres,
+            host: None,
+            port: None,
+            user: None,
+            password: None,
+            database: Some("samples".into()),
+            url: None,
+        };
+        let err = connect_impl(&state, missing_host).await.unwrap_err();
+        assert!(err.contains("host is required"));
+
+        let unsupported = ConnectionProfile {
+            id: "clickhouse".into(),
+            engine: DbEngine::ClickHouse,
+            host: Some("localhost".into()),
+            port: None,
+            user: None,
+            password: None,
+            database: None,
+            url: None,
+        };
+        let err = connect_impl(&state, unsupported).await.unwrap_err();
+        assert!(err.contains("production connector"));
+
+        let err = run_query_impl(&state, " ".into(), "select 1".into(), None)
+            .await
+            .unwrap_err();
+        assert!(err.contains("connection id is required"));
+    }
+
+    #[tokio::test]
+    async fn query_bounds_are_enforced() {
+        let state = DbState::default();
+        connect_impl(
+            &state,
+            ConnectionProfile {
+                id: "bounds".into(),
+                engine: DbEngine::Sqlite,
+                host: None,
+                port: None,
+                user: None,
+                password: None,
+                database: Some(":memory:".into()),
+                url: None,
+            },
+        )
+        .await
+        .expect("connect memory");
+
+        let err = run_query_impl(&state, "bounds".into(), "   ".into(), None)
+            .await
+            .unwrap_err();
+        assert!(err.contains("query is empty"));
+
+        let err = run_query_impl(&state, "bounds".into(), "select 1".into(), Some(0))
+            .await
+            .unwrap_err();
+        assert!(err.contains("maxRows must be at least 1"));
+
+        let err = run_query_impl(
+            &state,
+            "bounds".into(),
+            "select 1".into(),
+            Some(MAX_RESULT_ROWS + 1),
+        )
+        .await
+        .unwrap_err();
+        assert!(err.contains("maxRows must be at most"));
+
+        run_query_impl(
+            &state,
+            "bounds".into(),
+            "create table t(id integer)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+        run_query_impl(
+            &state,
+            "bounds".into(),
+            "insert into t values (1),(2)".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+        let result = run_query_impl(
+            &state,
+            "bounds".into(),
+            "select id from t order by id".into(),
+            Some(1),
+        )
+        .await
+        .expect("bounded select");
+        assert_eq!(result.row_count, 1);
+        assert!(result.truncated);
+        assert_eq!(result.message.as_deref(), Some("result capped at 1 rows"));
+    }
+
+    #[tokio::test]
+    async fn reconnect_replaces_existing_connection() {
+        let state = DbState::default();
+        let profile = ConnectionProfile {
+            id: "replace".into(),
+            engine: DbEngine::Sqlite,
+            host: None,
+            port: None,
+            user: None,
+            password: None,
+            database: Some(":memory:".into()),
+            url: None,
+        };
+        connect_impl(&state, profile.clone())
+            .await
+            .expect("connect memory");
+        run_query_impl(
+            &state,
+            "replace".into(),
+            "create table t(id integer)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+
+        connect_impl(&state, profile)
+            .await
+            .expect("reconnect memory");
+        let err = run_query_impl(&state, "replace".into(), "select * from t".into(), None)
+            .await
+            .unwrap_err();
+        assert!(
+            err.to_ascii_lowercase().contains("no such table"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn secret_redaction_handles_urls_and_connection_strings() {
+        let profile = ConnectionProfile {
+            id: "redact".into(),
+            engine: DbEngine::Postgres,
+            host: None,
+            port: None,
+            user: Some("user".into()),
+            password: Some("secret".into()),
+            database: None,
+            url: Some("postgres://user:secret@localhost/samples".into()),
+        };
+        let message = "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other;";
+        let redacted = redact_secret_text(message, &profile);
+        assert!(!redacted.contains("secret"), "{redacted}");
+        assert!(!redacted.contains("other"), "{redacted}");
+        assert!(redacted.contains("postgres://user:****@localhost/samples"));
+        assert!(redacted.contains("Password=****;"));
+        assert!(redacted.contains("PWD=****;"));
     }
 }

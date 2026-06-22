@@ -2,7 +2,8 @@
 
 Last updated: 2026-06-22 JST. A status snapshot of what is built and verified —
 focused on the database engine layer. Pairs with `ROADMAP.md` (themes) and
-`docs/implementation-backlog.md` (tickets).
+`docs/implementation-backlog.md` (tickets). Production release gates are tracked
+in `docs/production-readiness.md`.
 
 ## Database engine layer — built & verified
 
@@ -49,6 +50,13 @@ Highlights:
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,
   full scan returns the 10k page in ~77 ms.
+- **Command-boundary hardening**: backend commands now reject empty connection IDs,
+  empty SQL, oversized SQL text, `maxRows=0`, and result windows above the hard
+  safety cap. Reconnecting the same profile ID replaces and closes the previous
+  connection instead of silently leaking it.
+- **Secret hygiene on connect errors**: connection errors are redacted for URL
+  passwords and ADO-style `Password=` / `PWD=` segments before they cross the
+  Tauri command boundary.
 - **Trait + registry**: the closed `EnginePool` enum is gone; connections live behind
   `Arc<dyn Connection>` and dispatch with `conn.run_query()`, not a `match`.
 
