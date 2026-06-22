@@ -812,9 +812,10 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## QA — Test Automation + CI
 
-### QA-001 — Test harness + CI matrix
+### QA-001 — Test harness + CI matrix  🟡 frontend runner landed
 - **Goal:** One command to test; CI across OSes.
 - **Done when:** `cargo test` and the frontend test runner pass locally and in CI on Linux/macOS/Windows; coverage of core crates reported.
+- **Landed:** frontend `vitest` runner (`npm test`, 21 tests over `src/sql/statements.ts`, `src/sql/dialect.ts`, `theme.ts`). `cargo test` already exists backend-side. Remaining: CI matrix wiring (GH Actions) + coverage report.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P0
 
@@ -830,9 +831,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** TB-002
 - **Size:** S · **Priority:** P0
 
-### QA-004 — Headless UI smoke tests
+### QA-004 — Headless UI smoke tests  🟡 browser smoke landed
 - **Goal:** Confidence the app actually runs.
 - **Done when:** a headless driver launches the Tauri shell, connects to SQLite, runs a query, and asserts result rows; runs in CI.
+- **Landed (browser portion):** Playwright smoke (`e2e/smoke.spec.ts`, `npm run test:e2e`) drives the real web frontend headless — shell renders, CodeMirror mounts with highlighting, theme toggles, Format SQL reflows. Tauri `invoke` is absent in a plain browser (app falls back to mock snapshot), so connect/query is **not** covered here. Remaining: full Tauri+SQLite smoke via a Tauri runner (e.g. tauri-driver/WebDriver) for the connect→query→assert-rows path. Note: sandbox uses `PW_CHROME_PATH` to reuse a local Chromium (cdn.playwright.dev is egress-blocked).
 - **Depends on:** SHELL-001, EXEC-001
 - **Size:** L · **Priority:** P1
 

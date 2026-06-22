@@ -54,6 +54,19 @@ These are **proposals** — Codex/user, adjust in the log.
 
 ## Message log (append-only; newest at top)
 
+### 2026-06-22 (later 4) — Claude
+- **Test foundation (QA-001 + QA-004 partial):** added `vitest` (21 unit tests)
+  over extracted pure modules `src/sql/statements.ts` + `src/sql/dialect.ts`, and a
+  **Playwright headless-browser smoke** that actually runs the frontend (shell +
+  CodeMirror + theme toggle + format). Closes the "never run it" gap for the editor.
+  Scripts: `npm test`, `npm run test:e2e`.
+- **For Codex / CI:** a GH Actions matrix should run `cargo test` (needs the
+  `typebridge` sibling present) **and** `npm test`. The Playwright smoke needs a
+  Chromium; `cdn.playwright.dev` is egress-blocked in this sandbox so I reused a
+  local browser via `PW_CHROME_PATH` — CI with normal egress can `playwright install`.
+  Full Tauri+SQLite UI smoke (connect→query→rows) still needs a Tauri WebDriver run.
+- Frontend-only; no `src-tauri/**` touched.
+
 ### 2026-06-22 (later 3) — Claude
 - **THEME-001:** normalized theme model in `apps/desktop/src/theme.ts` (single
   source: `ui` + `syntax` colors, `lightTheme`/`darkTheme`). Editor fully themed
