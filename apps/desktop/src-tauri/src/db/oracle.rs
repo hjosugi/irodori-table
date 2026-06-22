@@ -9,7 +9,10 @@
 use oracle_rs::{Config, Connection as OraConn, Value};
 use tokio::sync::Mutex;
 
-use super::{hex_encode, ConnectionProfile, RowSet};
+use super::{
+    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
+    DbObjectMetadataKind, IndexMetadata, RowSet, SchemaMetadata,
+};
 
 pub struct OracleHandle {
     conn: Mutex<OraConn>,
@@ -71,6 +74,117 @@ pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet
     Ok((columns, rows, truncated))
 }
 
+pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
+    let guard = h.conn.lock().await;
+    let user_res = guard
+        .query("select user from dual", &[])
+        .await
+        .map_err(|e| format!("metadata user failed: {e}"))?;
+    let schema = user_res
+        .rows
+        .first()
+        .and_then(|row| value_string(row.get(0)))
+        .unwrap_or_else(|| "USER".into());
+
+    let objects_res = guard
+        .query(
+            r#"
+            select table_name, 'TABLE' as object_type from user_tables
+            union all
+            select view_name as table_name, 'VIEW' as object_type from user_views
+            order by table_name
+            "#,
+            &[],
+        )
+        .await
+        .map_err(|e| format!("metadata objects failed: {e}"))?;
+
+    let mut objects: Vec<DbObjectMetadata> = objects_res
+        .rows
+        .iter()
+        .filter_map(|row| {
+            let name = value_string(row.get(0))?;
+            let object_type = value_string(row.get(1)).unwrap_or_default();
+            Some(DbObjectMetadata {
+                schema: schema.clone(),
+                name,
+                kind: if object_type == "VIEW" {
+                    DbObjectMetadataKind::View
+                } else {
+                    DbObjectMetadataKind::Table
+                },
+                columns: Vec::new(),
+                indexes: Vec::new(),
+            })
+        })
+        .collect();
+
+    let columns_res = guard
+        .query(
+            r#"
+            select table_name, column_name, data_type, nullable, column_id
+            from user_tab_columns
+            order by table_name, column_id
+            "#,
+            &[],
+        )
+        .await
+        .map_err(|e| format!("metadata columns failed: {e}"))?;
+
+    for row in &columns_res.rows {
+        let table = value_string(row.get(0)).unwrap_or_default();
+        if let Some(object) = objects.iter_mut().find(|object| object.name == table) {
+            object.columns.push(ColumnMetadata {
+                name: value_string(row.get(1)).unwrap_or_default(),
+                data_type: value_string(row.get(2)).unwrap_or_default(),
+                nullable: value_string(row.get(3)).as_deref() == Some("Y"),
+                ordinal: value_i64(row.get(4)).unwrap_or_default() as i32,
+                default_value: None,
+            });
+        }
+    }
+
+    let indexes_res = guard
+        .query(
+            r#"
+            select i.table_name,
+                   i.index_name,
+                   i.uniqueness,
+                   listagg(c.column_name, ',') within group (order by c.column_position) as columns
+            from user_indexes i
+            join user_ind_columns c on c.index_name = i.index_name
+            group by i.table_name, i.index_name, i.uniqueness
+            order by i.table_name, i.index_name
+            "#,
+            &[],
+        )
+        .await
+        .map_err(|e| format!("metadata indexes failed: {e}"))?;
+
+    for row in &indexes_res.rows {
+        let table = value_string(row.get(0)).unwrap_or_default();
+        if let Some(object) = objects.iter_mut().find(|object| object.name == table) {
+            let raw_columns = value_string(row.get(3)).unwrap_or_default();
+            object.indexes.push(IndexMetadata {
+                name: value_string(row.get(1)).unwrap_or_default(),
+                columns: raw_columns
+                    .split(',')
+                    .filter(|part| !part.is_empty())
+                    .map(str::to_string)
+                    .collect(),
+                unique: value_string(row.get(2)).as_deref() == Some("UNIQUE"),
+            });
+        }
+    }
+
+    Ok(DatabaseMetadata {
+        schemas: vec![SchemaMetadata {
+            name: schema,
+            objects,
+        }],
+    })
+}
+
 /// Decode an Oracle [`Value`] to JSON. Scalars and JSON map directly; high-scale
 /// `NUMBER` and dates/timestamps render best-effort for now (precision-safe
 /// decimals + ISO temporals are a refinement).
@@ -92,4 +206,18 @@ fn value_to_json(v: Option<&Value>) -> serde_json::Value {
             .unwrap_or_else(|| J::String(format!("{v:?}"))),
         other => J::String(format!("{other:?}")),
     }
+}
+
+fn value_string(v: Option<&Value>) -> Option<String> {
+    match v? {
+        Value::String(s) => Some(s.clone()),
+        Value::Integer(i) => Some(i.to_string()),
+        Value::Float(f) => Some(f.to_string()),
+        Value::Number(n) => Some(format!("{n:?}")),
+        other => Some(format!("{other:?}")),
+    }
+}
+
+fn value_i64(v: Option<&Value>) -> Option<i64> {
+    v.and_then(Value::as_i64)
 }

@@ -2,9 +2,13 @@
 //! is a heavy build, so this engine is off by default. DuckDB is synchronous, so
 //! queries run on a blocking thread.
 
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use super::{hex_encode, ConnectionProfile, RowSet};
+use super::{
+    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
+    DbObjectMetadataKind, RowSet, SchemaMetadata,
+};
 
 pub fn connect(profile: &ConnectionProfile) -> Result<duckdb::Connection, String> {
     let path = profile.database.clone().or_else(|| profile.url.clone());
@@ -77,6 +81,105 @@ pub async fn run_query(
             rows.push(cells);
         }
         Ok((columns, rows, truncated))
+    })
+    .await
+    .map_err(|e| format!("duckdb task failed: {e}"))?
+}
+
+pub async fn metadata(conn: &Arc<Mutex<duckdb::Connection>>) -> Result<DatabaseMetadata, String> {
+    let conn = conn.clone();
+    tokio::task::spawn_blocking(move || -> Result<DatabaseMetadata, String> {
+        let guard = conn
+            .lock()
+            .map_err(|_| "duckdb mutex poisoned".to_string())?;
+
+        let mut schemas: BTreeMap<String, BTreeMap<String, DbObjectMetadata>> = BTreeMap::new();
+        let mut stmt = guard
+            .prepare(
+                r#"
+                select table_schema, table_name, table_type
+                from information_schema.tables
+                where table_schema not in ('information_schema', 'pg_catalog')
+                order by table_schema, table_name
+                "#,
+            )
+            .map_err(|e| format!("metadata objects failed: {e}"))?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
+            .map_err(|e| format!("metadata objects failed: {e}"))?;
+        for row in rows {
+            let (schema, name, table_type) =
+                row.map_err(|e| format!("metadata objects failed: {e}"))?;
+            let kind = if table_type.eq_ignore_ascii_case("VIEW") {
+                DbObjectMetadataKind::View
+            } else {
+                DbObjectMetadataKind::Table
+            };
+            schemas.entry(schema.clone()).or_default().insert(
+                name.clone(),
+                DbObjectMetadata {
+                    schema,
+                    name,
+                    kind,
+                    columns: Vec::new(),
+                    indexes: Vec::new(),
+                },
+            );
+        }
+
+        let mut stmt = guard
+            .prepare(
+                r#"
+                select table_schema, table_name, column_name, data_type,
+                       is_nullable, ordinal_position, column_default
+                from information_schema.columns
+                where table_schema not in ('information_schema', 'pg_catalog')
+                order by table_schema, table_name, ordinal_position
+                "#,
+            )
+            .map_err(|e| format!("metadata columns failed: {e}"))?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, i32>(5)?,
+                    row.get::<_, Option<String>>(6)?,
+                ))
+            })
+            .map_err(|e| format!("metadata columns failed: {e}"))?;
+        for row in rows {
+            let (schema, table, name, data_type, nullable, ordinal, default_value) =
+                row.map_err(|e| format!("metadata columns failed: {e}"))?;
+            if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                object.columns.push(ColumnMetadata {
+                    name,
+                    data_type,
+                    nullable: nullable.eq_ignore_ascii_case("YES"),
+                    ordinal,
+                    default_value,
+                });
+            }
+        }
+
+        Ok(DatabaseMetadata {
+            schemas: schemas
+                .into_iter()
+                .map(|(name, objects)| SchemaMetadata {
+                    name,
+                    objects: objects.into_values().collect(),
+                })
+                .collect(),
+        })
     })
     .await
     .map_err(|e| format!("duckdb task failed: {e}"))?

@@ -7,10 +7,13 @@
 //! keys (missing keys become null), the way a document grid shows them.
 
 use futures_util::TryStreamExt;
-use mongodb::bson::{doc, to_document, Document};
+use mongodb::bson::{doc, to_document, Bson, Document};
 use mongodb::Client;
 
-use super::{ConnectionProfile, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
+    IndexMetadata, RowSet, SchemaMetadata,
+};
 
 pub struct MongoHandle {
     client: Client,
@@ -100,6 +103,87 @@ pub async fn run_query(h: &MongoHandle, input: &str, cap: usize) -> Result<RowSe
     Ok((columns, rows, truncated))
 }
 
+pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
+    let db = h.client.database(&h.db);
+    let names = db
+        .list_collection_names()
+        .await
+        .map_err(|e| format!("metadata collections failed: {e}"))?;
+
+    let mut objects = Vec::new();
+    for name in names {
+        let coll = db.collection::<Document>(&name);
+        let mut keys: Vec<(String, String)> = Vec::new();
+        let mut cursor = coll
+            .find(Document::new())
+            .limit(20)
+            .await
+            .map_err(|e| format!("metadata sample failed for {name}: {e}"))?;
+        while let Some(doc) = cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata sample failed for {name}: {e}"))?
+        {
+            for (key, value) in doc.iter() {
+                if !keys.iter().any(|(existing, _)| existing == key) {
+                    keys.push((key.clone(), bson_type_name(value).to_string()));
+                }
+            }
+        }
+
+        let mut indexes = Vec::new();
+        let mut index_cursor = coll
+            .list_indexes()
+            .await
+            .map_err(|e| format!("metadata indexes failed for {name}: {e}"))?;
+        while let Some(index) = index_cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata indexes failed for {name}: {e}"))?
+        {
+            let keys_doc = index.keys;
+            indexes.push(IndexMetadata {
+                name: index
+                    .options
+                    .as_ref()
+                    .and_then(|options| options.name.clone())
+                    .unwrap_or_else(|| keys_doc.keys().cloned().collect::<Vec<_>>().join("_")),
+                columns: keys_doc.keys().cloned().collect(),
+                unique: index
+                    .options
+                    .as_ref()
+                    .and_then(|options| options.unique)
+                    .unwrap_or(false),
+            });
+        }
+
+        objects.push(DbObjectMetadata {
+            schema: h.db.clone(),
+            name,
+            kind: DbObjectMetadataKind::Table,
+            columns: keys
+                .into_iter()
+                .enumerate()
+                .map(|(index, (name, data_type))| ColumnMetadata {
+                    name,
+                    data_type,
+                    nullable: true,
+                    ordinal: index as i32 + 1,
+                    default_value: None,
+                })
+                .collect(),
+            indexes,
+        });
+    }
+
+    Ok(DatabaseMetadata {
+        schemas: vec![SchemaMetadata {
+            name: h.db.clone(),
+            objects,
+        }],
+    })
+}
+
 /// A query is either a bare collection name, or a JSON object with a `collection`
 /// and an optional `filter`.
 fn parse_input(input: &str) -> Result<(String, Document), String> {
@@ -119,5 +203,30 @@ fn parse_input(input: &str) -> Result<(String, Document), String> {
         Ok((coll, filter))
     } else {
         Ok((t.to_string(), Document::new()))
+    }
+}
+
+fn bson_type_name(value: &Bson) -> &'static str {
+    match value {
+        Bson::Double(_) => "double",
+        Bson::String(_) => "string",
+        Bson::Array(_) => "array",
+        Bson::Document(_) => "document",
+        Bson::Boolean(_) => "bool",
+        Bson::Null => "null",
+        Bson::RegularExpression(_) => "regex",
+        Bson::JavaScriptCode(_) | Bson::JavaScriptCodeWithScope(_) => "javascript",
+        Bson::Int32(_) => "int32",
+        Bson::Int64(_) => "int64",
+        Bson::Timestamp(_) => "timestamp",
+        Bson::Binary(_) => "binary",
+        Bson::ObjectId(_) => "objectId",
+        Bson::DateTime(_) => "date",
+        Bson::Symbol(_) => "symbol",
+        Bson::Decimal128(_) => "decimal128",
+        Bson::Undefined => "undefined",
+        Bson::MaxKey => "maxKey",
+        Bson::MinKey => "minKey",
+        Bson::DbPointer(_) => "dbPointer",
     }
 }

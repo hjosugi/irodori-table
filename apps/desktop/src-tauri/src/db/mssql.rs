@@ -5,6 +5,7 @@
 //! behind a mutex per connection. Decimals currently decode best-effort; keeping
 //! them precision-safe end-to-end is a follow-up (DBeaver's `setBigDecimal` rule).
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use futures_util::TryStreamExt;
@@ -13,7 +14,10 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
-use super::{ConnectionProfile, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
+    IndexMetadata, RowSet, SchemaMetadata,
+};
 
 pub type MssqlClient = Client<Compat<TcpStream>>;
 
@@ -94,6 +98,137 @@ pub async fn run_query(
     Ok((columns, rows, truncated))
 }
 
+pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetadata, String> {
+    let mut guard = client.lock().await;
+    let mut schemas: BTreeMap<String, BTreeMap<String, DbObjectMetadata>> = BTreeMap::new();
+
+    let objects_sql = r#"
+        select table_schema, table_name, table_type
+        from information_schema.tables
+        where table_type in ('BASE TABLE', 'VIEW')
+          and table_schema not in ('INFORMATION_SCHEMA', 'sys')
+        order by table_schema, table_name
+    "#;
+    let mut stream = guard
+        .query(objects_sql, &[])
+        .await
+        .map_err(|e| format!("metadata objects failed: {e}"))?;
+    while let Some(item) = stream
+        .try_next()
+        .await
+        .map_err(|e| format!("metadata objects failed: {e}"))?
+    {
+        if let QueryItem::Row(row) = item {
+            let schema = get_str(&row, 0);
+            let name = get_str(&row, 1);
+            if name.is_empty() {
+                continue;
+            }
+            let table_type = get_str(&row, 2);
+            let kind = if table_type.eq_ignore_ascii_case("VIEW") {
+                DbObjectMetadataKind::View
+            } else {
+                DbObjectMetadataKind::Table
+            };
+            schemas.entry(schema.clone()).or_default().insert(
+                name.clone(),
+                DbObjectMetadata {
+                    schema,
+                    name,
+                    kind,
+                    columns: Vec::new(),
+                    indexes: Vec::new(),
+                },
+            );
+        }
+    }
+
+    let columns_sql = r#"
+        select table_schema, table_name, column_name, data_type, is_nullable,
+               ordinal_position, column_default
+        from information_schema.columns
+        where table_schema not in ('INFORMATION_SCHEMA', 'sys')
+        order by table_schema, table_name, ordinal_position
+    "#;
+    let mut stream = guard
+        .query(columns_sql, &[])
+        .await
+        .map_err(|e| format!("metadata columns failed: {e}"))?;
+    while let Some(item) = stream
+        .try_next()
+        .await
+        .map_err(|e| format!("metadata columns failed: {e}"))?
+    {
+        if let QueryItem::Row(row) = item {
+            let schema = get_str(&row, 0);
+            let table = get_str(&row, 1);
+            if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                let nullable = get_str(&row, 4);
+                object.columns.push(ColumnMetadata {
+                    name: get_str(&row, 2),
+                    data_type: get_str(&row, 3),
+                    nullable: nullable.eq_ignore_ascii_case("YES"),
+                    ordinal: get_i32(&row, 5),
+                    default_value: get_optional_str(&row, 6),
+                });
+            }
+        }
+    }
+
+    let indexes_sql = r#"
+        select schema_name(t.schema_id) as schema_name,
+               t.name as table_name,
+               i.name as index_name,
+               i.is_unique,
+               string_agg(c.name, ',') within group (order by ic.key_ordinal) as columns
+        from sys.indexes i
+        join sys.tables t on t.object_id = i.object_id
+        join sys.index_columns ic on ic.object_id = i.object_id and ic.index_id = i.index_id
+        join sys.columns c on c.object_id = ic.object_id and c.column_id = ic.column_id
+        where i.name is not null
+          and schema_name(t.schema_id) not in ('sys')
+          and ic.key_ordinal > 0
+        group by schema_name(t.schema_id), t.name, i.name, i.is_unique
+        order by schema_name(t.schema_id), t.name, i.name
+    "#;
+    let mut stream = guard
+        .query(indexes_sql, &[])
+        .await
+        .map_err(|e| format!("metadata indexes failed: {e}"))?;
+    while let Some(item) = stream
+        .try_next()
+        .await
+        .map_err(|e| format!("metadata indexes failed: {e}"))?
+    {
+        if let QueryItem::Row(row) = item {
+            let schema = get_str(&row, 0);
+            let table = get_str(&row, 1);
+            if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                let raw_columns = get_str(&row, 4);
+                object.indexes.push(IndexMetadata {
+                    name: get_str(&row, 2),
+                    columns: raw_columns
+                        .split(',')
+                        .filter(|part| !part.is_empty())
+                        .map(str::to_string)
+                        .collect(),
+                    unique: get_bool(&row, 3),
+                });
+            }
+        }
+    }
+
+    Ok(DatabaseMetadata {
+        schemas: schemas
+            .into_iter()
+            .map(|(name, objects)| SchemaMetadata {
+                name,
+                objects: objects.into_values().collect(),
+            })
+            .collect(),
+    })
+}
+
 fn cell_to_json(row: &tiberius::Row, i: usize) -> serde_json::Value {
     use serde_json::Value;
     // tiberius `try_get` returns Ok(None) for NULL and Err for a type mismatch,
@@ -116,4 +251,24 @@ fn cell_to_json(row: &tiberius::Row, i: usize) -> serde_json::Value {
         return Value::String(v.to_string());
     }
     Value::Null
+}
+
+fn get_str(row: &tiberius::Row, i: usize) -> String {
+    get_optional_str(row, i).unwrap_or_default()
+}
+
+fn get_optional_str(row: &tiberius::Row, i: usize) -> Option<String> {
+    row.try_get::<&str, _>(i).ok().flatten().map(str::to_string)
+}
+
+fn get_i32(row: &tiberius::Row, i: usize) -> i32 {
+    row.try_get::<i32, _>(i)
+        .ok()
+        .flatten()
+        .or_else(|| row.try_get::<i16, _>(i).ok().flatten().map(i32::from))
+        .unwrap_or_default()
+}
+
+fn get_bool(row: &tiberius::Row, i: usize) -> bool {
+    row.try_get::<bool, _>(i).ok().flatten().unwrap_or(false)
 }

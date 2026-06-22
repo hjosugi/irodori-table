@@ -240,7 +240,7 @@ impl Connection for MssqlConn {
         mssql::run_query(&self.0, sql, cap).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        Err("object browser metadata is not implemented for SQL Server yet".into())
+        mssql::metadata(&self.0).await
     }
     async fn close(&self) {} // tiberius closes when its last handle drops
 }
@@ -255,7 +255,7 @@ impl Connection for MongoConn {
         mongo::run_query(&self.0, sql, cap).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        Err("object browser metadata is not implemented for MongoDB yet".into())
+        mongo::metadata(&self.0).await
     }
     async fn close(&self) {} // mongodb client closes when its last handle drops
 }
@@ -270,7 +270,7 @@ impl Connection for OracleConn {
         oracle::run_query(&self.0, sql, cap).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        Err("object browser metadata is not implemented for Oracle yet".into())
+        oracle::metadata(&self.0).await
     }
     async fn close(&self) {} // oracle-rs closes when its last handle drops
 }
@@ -287,7 +287,7 @@ impl Connection for DuckConn {
         duck::run_query(&self.0, sql, cap).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        Err("object browser metadata is not implemented for DuckDB yet".into())
+        duck::metadata(&self.0).await
     }
     async fn close(&self) {}
 }
