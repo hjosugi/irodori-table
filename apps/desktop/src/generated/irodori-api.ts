@@ -32,6 +32,18 @@ export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>
  */
 truncated: boolean, message?: string, };
 
+export type DatabaseMetadata = { schemas: Array<SchemaMetadata>, };
+
+export type SchemaMetadata = { name: string, objects: Array<DbObjectMetadata>, };
+
+export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, };
+
+export type DbObjectMetadataKind = "table" | "view" | "index";
+
+export type ColumnMetadata = { name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue?: string, };
+
+export type IndexMetadata = { name: string, columns: Array<string>, unique: boolean, };
+
 export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
 }
@@ -42,6 +54,10 @@ export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {
 
 export function dbRunQuery(connectionId: string, sql: string, maxRows?: number): Promise<QueryResult> {
   return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows });
+}
+
+export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {
+  return invoke<DatabaseMetadata>("db_list_objects", { connectionId });
 }
 
 export function dbDisconnect(connectionId: string): Promise<void> {

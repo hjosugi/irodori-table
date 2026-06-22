@@ -19,7 +19,10 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<OracleHandle, String
     let host = profile.host.clone().unwrap_or_else(|| "localhost".into());
     let port = profile.port.unwrap_or(1521);
     // Oracle's "database" field is the service name (e.g. FREEPDB1).
-    let service = profile.database.clone().unwrap_or_else(|| "FREEPDB1".into());
+    let service = profile
+        .database
+        .clone()
+        .unwrap_or_else(|| "FREEPDB1".into());
     let user = profile.user.clone().unwrap_or_default();
     let password = profile.password.clone().unwrap_or_default();
 
@@ -60,7 +63,9 @@ pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet
             truncated = true;
             break;
         }
-        let cells = (0..columns.len()).map(|i| value_to_json(row.get(i))).collect();
+        let cells = (0..columns.len())
+            .map(|i| value_to_json(row.get(i)))
+            .collect();
         rows.push(cells);
     }
     Ok((columns, rows, truncated))

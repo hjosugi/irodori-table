@@ -26,6 +26,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use ts_rs::TS;
 
+#[cfg(feature = "duckdb")]
+mod duck;
 mod engine;
 mod mongo;
 mod mssql;
@@ -33,8 +35,6 @@ mod mysql;
 mod oracle;
 mod postgres;
 mod sqlite;
-#[cfg(feature = "duckdb")]
-mod duck;
 
 pub use engine::DbEngine;
 use engine::Wire;
@@ -110,6 +110,63 @@ pub struct QueryResult {
     pub message: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DatabaseMetadata {
+    pub schemas: Vec<SchemaMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct SchemaMetadata {
+    pub name: String,
+    pub objects: Vec<DbObjectMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DbObjectMetadata {
+    pub schema: String,
+    pub name: String,
+    pub kind: DbObjectMetadataKind,
+    pub columns: Vec<ColumnMetadata>,
+    pub indexes: Vec<IndexMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum DbObjectMetadataKind {
+    Table,
+    View,
+    Index,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct ColumnMetadata {
+    pub name: String,
+    pub data_type: String,
+    pub nullable: bool,
+    pub ordinal: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub default_value: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct IndexMetadata {
+    pub name: String,
+    pub columns: Vec<String>,
+    pub unique: bool,
+}
+
 // ---- The per-engine connection abstraction ------------------------------------
 
 /// A live connection to one database. Each engine implements this over its native
@@ -118,6 +175,7 @@ pub struct QueryResult {
 trait Connection: Send + Sync {
     async fn version(&self) -> Option<String>;
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String>;
+    async fn metadata(&self) -> Result<DatabaseMetadata, String>;
     async fn close(&self);
 }
 
@@ -129,6 +187,9 @@ impl Connection for PgConn {
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         postgres::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        postgres::metadata(&self.0).await
     }
     async fn close(&self) {
         self.0.close().await
@@ -144,6 +205,9 @@ impl Connection for MysqlConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mysql::run_query(&self.0, sql, cap).await
     }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        mysql::metadata(&self.0).await
+    }
     async fn close(&self) {
         self.0.close().await
     }
@@ -157,6 +221,9 @@ impl Connection for SqliteConn {
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         sqlite::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        sqlite::metadata(&self.0).await
     }
     async fn close(&self) {
         self.0.close().await
@@ -172,6 +239,9 @@ impl Connection for MssqlConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mssql::run_query(&self.0, sql, cap).await
     }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        Err("object browser metadata is not implemented for SQL Server yet".into())
+    }
     async fn close(&self) {} // tiberius closes when its last handle drops
 }
 
@@ -184,6 +254,9 @@ impl Connection for MongoConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mongo::run_query(&self.0, sql, cap).await
     }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        Err("object browser metadata is not implemented for MongoDB yet".into())
+    }
     async fn close(&self) {} // mongodb client closes when its last handle drops
 }
 
@@ -195,6 +268,9 @@ impl Connection for OracleConn {
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         oracle::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        Err("object browser metadata is not implemented for Oracle yet".into())
     }
     async fn close(&self) {} // oracle-rs closes when its last handle drops
 }
@@ -210,6 +286,9 @@ impl Connection for DuckConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         duck::run_query(&self.0, sql, cap).await
     }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        Err("object browser metadata is not implemented for DuckDB yet".into())
+    }
     async fn close(&self) {}
 }
 
@@ -217,15 +296,25 @@ impl Connection for DuckConn {
 /// [`Connection`]. This is the only place that knows every engine.
 async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connection>, String> {
     let conn: Arc<dyn Connection> = match profile.engine.wire() {
-        Wire::Postgres => Arc::new(PgConn(postgres::connect(&engine::build_url(profile)?).await?)),
-        Wire::Mysql => Arc::new(MysqlConn(mysql::connect(&engine::build_url(profile)?).await?)),
-        Wire::Sqlite => Arc::new(SqliteConn(sqlite::connect(&engine::build_url(profile)?).await?)),
-        Wire::SqlServer => Arc::new(MssqlConn(Arc::new(Mutex::new(mssql::connect(profile).await?)))),
+        Wire::Postgres => Arc::new(PgConn(
+            postgres::connect(&engine::build_url(profile)?).await?,
+        )),
+        Wire::Mysql => Arc::new(MysqlConn(
+            mysql::connect(&engine::build_url(profile)?).await?,
+        )),
+        Wire::Sqlite => Arc::new(SqliteConn(
+            sqlite::connect(&engine::build_url(profile)?).await?,
+        )),
+        Wire::SqlServer => Arc::new(MssqlConn(Arc::new(Mutex::new(
+            mssql::connect(profile).await?,
+        )))),
         Wire::Mongo => Arc::new(MongoConn(mongo::connect(profile).await?)),
         Wire::DuckDb => {
             #[cfg(feature = "duckdb")]
             {
-                Arc::new(DuckConn(Arc::new(std::sync::Mutex::new(duck::connect(profile)?))))
+                Arc::new(DuckConn(Arc::new(std::sync::Mutex::new(duck::connect(
+                    profile,
+                )?))))
             }
             #[cfg(not(feature = "duckdb"))]
             {
@@ -289,6 +378,20 @@ pub async fn run_query_impl(
     })
 }
 
+pub async fn list_objects_impl(
+    state: &DbState,
+    connection_id: String,
+) -> Result<DatabaseMetadata, String> {
+    let conn = {
+        let guard = state.conns.lock().await;
+        guard
+            .get(&connection_id)
+            .cloned()
+            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+    };
+    conn.metadata().await
+}
+
 pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(), String> {
     if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
         conn.close().await;
@@ -314,6 +417,14 @@ pub async fn db_run_query(
     max_rows: Option<usize>,
 ) -> Result<QueryResult, String> {
     run_query_impl(state.inner(), connection_id, sql, max_rows).await
+}
+
+#[tauri::command]
+pub async fn db_list_objects(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+) -> Result<DatabaseMetadata, String> {
+    list_objects_impl(state.inner(), connection_id).await
 }
 
 #[tauri::command]
@@ -363,6 +474,22 @@ mod tests {
         run_query_impl(
             &state,
             "rt".into(),
+            "create index t_b_idx on t(b)".into(),
+            None,
+        )
+        .await
+        .expect("create index");
+        run_query_impl(
+            &state,
+            "rt".into(),
+            "create view t_view as select a,b from t".into(),
+            None,
+        )
+        .await
+        .expect("create view");
+        run_query_impl(
+            &state,
+            "rt".into(),
             "insert into t(a,b,c) values (1,'hi',1.5),(2,null,2.5)".into(),
             None,
         )
@@ -382,6 +509,23 @@ mod tests {
         assert_eq!(result.rows[0][0], serde_json::json!(1));
         assert_eq!(result.rows[0][1], serde_json::json!("hi"));
         assert_eq!(result.rows[1][1], serde_json::Value::Null);
+
+        let metadata = list_objects_impl(&state, "rt".into())
+            .await
+            .expect("metadata");
+        let main = metadata
+            .schemas
+            .iter()
+            .find(|schema| schema.name == "main")
+            .expect("main schema");
+        let table = main
+            .objects
+            .iter()
+            .find(|object| object.name == "t")
+            .expect("table t");
+        assert_eq!(table.columns.len(), 3);
+        assert!(table.indexes.iter().any(|index| index.name == "t_b_idx"));
+        assert!(main.objects.iter().any(|object| object.name == "t_view"));
 
         disconnect_impl(&state, "rt".into())
             .await

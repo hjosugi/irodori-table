@@ -7,7 +7,9 @@
 //! type coverage (decimal, timestamp, json, bytea) needs the per-engine native
 //! pools tracked as EXEC-009/SRC-001 — see docs/implementation-backlog.md.
 
-use desktop_lib::db::{connect_impl, run_query_impl, ConnectionProfile, DbEngine, DbState};
+use desktop_lib::db::{
+    connect_impl, list_objects_impl, run_query_impl, ConnectionProfile, DbEngine, DbState,
+};
 
 fn url_profile(id: &str, engine: DbEngine, url: String) -> ConnectionProfile {
     ConnectionProfile {
@@ -45,6 +47,25 @@ async fn exercise(engine: DbEngine, url: String) {
         .as_i64()
         .or_else(|| count.rows[0][0].as_str().and_then(|s| s.parse().ok()));
     assert_eq!(n, Some(4), "expected 4 seeded customers");
+
+    let metadata = list_objects_impl(&state, "it".into())
+        .await
+        .expect("object metadata");
+    assert!(
+        metadata
+            .schemas
+            .iter()
+            .flat_map(|schema| schema.objects.iter())
+            .any(|object| {
+                object.name == "customers"
+                    && object
+                        .columns
+                        .iter()
+                        .any(|column| column.name.eq_ignore_ascii_case("name"))
+            }),
+        "customers table with name column should be visible in metadata: {:?}",
+        metadata
+    );
 
     // Join that returns only Any-supported types (text + bigint).
     let join = run_query_impl(
@@ -291,9 +312,14 @@ async fn exercise_duckdb() {
     )
     .await
     .expect("insert");
-    let r = run_query_impl(&state, "it".into(), "select a,b,c from t order by a".into(), None)
-        .await
-        .expect("select");
+    let r = run_query_impl(
+        &state,
+        "it".into(),
+        "select a,b,c from t order by a".into(),
+        None,
+    )
+    .await
+    .expect("select");
     assert_eq!(r.columns, vec!["a", "b", "c"]);
     assert_eq!(r.row_count, 2);
     assert_eq!(r.rows[0][0], serde_json::json!(1));
@@ -324,7 +350,11 @@ async fn exercise_mongo(url: String) {
         .await
         .expect("find customers");
     assert_eq!(r.row_count, 4, "4 seeded customers");
-    assert!(r.columns.iter().any(|c| c == "name"), "columns: {:?}", r.columns);
+    assert!(
+        r.columns.iter().any(|c| c == "name"),
+        "columns: {:?}",
+        r.columns
+    );
 }
 
 #[test]
@@ -361,7 +391,12 @@ async fn exercise_oracle(profile: ConnectionProfile) {
         "columns: {:?}",
         r.columns
     );
-    assert_eq!(r.rows[0][0], serde_json::json!(1));
+    // Oracle NUMBER decodes precision-safe (as a string here); accept any
+    // representation of 1.
+    let first = &r.rows[0][0];
+    let is_one =
+        first.as_i64() == Some(1) || first.as_f64() == Some(1.0) || first.as_str() == Some("1");
+    assert!(is_one, "first id should be 1, got {first:?}");
 }
 
 #[test]

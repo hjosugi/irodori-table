@@ -130,6 +130,7 @@ pub fn run() {
             workspace_snapshot,
             db::db_connect,
             db::db_run_query,
+            db::db_list_objects,
             db::db_disconnect
         ])
         .run(tauri::generate_context!())
@@ -165,6 +166,12 @@ mod typegen {
             .decl(&decl::<db::ConnectionProfile>())
             .decl(&decl::<db::ConnectionInfo>())
             .decl(&decl::<db::QueryResult>())
+            .decl(&decl::<db::DatabaseMetadata>())
+            .decl(&decl::<db::SchemaMetadata>())
+            .decl(&decl::<db::DbObjectMetadata>())
+            .decl(&decl::<db::DbObjectMetadataKind>())
+            .decl(&decl::<db::ColumnMetadata>())
+            .decl(&decl::<db::IndexMetadata>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
             .command(
                 Command::new("db_connect", "ConnectionInfo")
@@ -175,6 +182,10 @@ mod typegen {
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("sql", TsType::string()))
                     .arg(Arg::rust("max_rows", TsType::number()).optional()),
+            )
+            .command(
+                Command::new("db_list_objects", "DatabaseMetadata")
+                    .arg(Arg::rust("connection_id", TsType::string())),
             )
             .command(
                 Command::returning("db_disconnect", TsType::void())

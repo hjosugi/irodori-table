@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   Bolt,
   ChevronDown,
   Clock3,
   Columns3,
   Database,
-  FilePlus2,
+  KeyRound,
   Folder,
   Keyboard,
   Layers3,
   Play,
   Plus,
+  RefreshCw,
   Save,
   Search,
   ShieldCheck,
@@ -20,6 +22,15 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import {
+  dbConnect,
+  dbDisconnect,
+  dbListObjects,
+  dbRunQuery,
+  type ConnectionInfo,
+  type DatabaseMetadata,
+  type DbEngine,
+  type DbObjectMetadata,
+  type QueryResult,
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
@@ -102,6 +113,62 @@ const commands = [
   "Show explain plan",
 ];
 
+const engineOptions: Array<{ value: DbEngine; label: string }> = [
+  { value: "postgres", label: "PostgreSQL" },
+  { value: "mysql", label: "MySQL" },
+  { value: "sqlite", label: "SQLite" },
+  { value: "mariadb", label: "MariaDB" },
+  { value: "cockroachdb", label: "CockroachDB" },
+  { value: "timescaledb", label: "TimescaleDB" },
+  { value: "sqlserver", label: "SQL Server" },
+  { value: "duckdb", label: "DuckDB" },
+  { value: "mongodb", label: "MongoDB" },
+  { value: "oracle", label: "Oracle" },
+  { value: "yugabytedb", label: "YugabyteDB" },
+  { value: "tidb", label: "TiDB" },
+  { value: "redshift", label: "Redshift" },
+];
+
+type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
+
+function engineLabel(engine: DbEngine) {
+  return engineOptions.find((item) => item.value === engine)?.label ?? engine;
+}
+
+function describeConnection(
+  info: ConnectionInfo,
+  elapsedMs: number,
+): WorkspaceConnection {
+  const label = engineLabel(info.engine);
+  return {
+    id: info.id,
+    name: info.id,
+    engine: `${label} ${info.serverVersion}`,
+    status: "connected",
+    latencyMs: elapsedMs,
+    proxy: "direct",
+    objects: [],
+  };
+}
+
+function formatCell(value: unknown) {
+  if (value === null) {
+    return "NULL";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function toCount(value: bigint | number) {
+  return Number(value).toLocaleString();
+}
+
+function objectKindLabel(object: DbObjectMetadata) {
+  return object.kind === "view" ? "view" : "table";
+}
+
 function App() {
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
@@ -110,6 +177,26 @@ function App() {
   );
   const [query, setQuery] = useState(initialQuery);
   const [running, setRunning] = useState(false);
+  const [connectionId, setConnectionId] = useState("local-pg");
+  const [connectionEngine, setConnectionEngine] = useState<DbEngine>("postgres");
+  const [connectionUrl, setConnectionUrl] = useState(
+    "postgres://irodori:irodori@localhost:55432/samples",
+  );
+  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+  const [liveConnections, setLiveConnections] = useState<
+    Record<string, WorkspaceConnection>
+  >({});
+  const [connecting, setConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [result, setResult] = useState<QueryResult | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const [metadataByConnection, setMetadataByConnection] = useState<
+    Record<string, DatabaseMetadata>
+  >({});
+  const [metadataLoading, setMetadataLoading] = useState<Set<string>>(new Set());
+  const [metadataErrors, setMetadataErrors] = useState<Record<string, string>>(
+    {},
+  );
 
   useEffect(() => {
     workspaceSnapshot()
@@ -122,12 +209,48 @@ function App() {
       });
   }, []);
 
+  const connections = useMemo(() => {
+    const byId = new Map<string, WorkspaceConnection>();
+    snapshot.connections.forEach((connection) => {
+      byId.set(connection.id, connection);
+    });
+    Object.values(liveConnections).forEach((connection) => {
+      byId.set(connection.id, connection);
+    });
+    return Array.from(byId.values()).map((connection) => ({
+      ...connection,
+      status: connectedIds.has(connection.id) ? "connected" : connection.status,
+    }));
+  }, [connectedIds, liveConnections, snapshot.connections]);
+
   const activeConnection = useMemo(
     () =>
-      snapshot.connections.find((item) => item.id === activeConnectionId) ??
-      snapshot.connections[0],
-    [activeConnectionId, snapshot.connections],
+      connections.find((item) => item.id === activeConnectionId) ??
+      connections[0],
+    [activeConnectionId, connections],
   );
+
+  const activeConnectionOpen = connectedIds.has(activeConnectionId);
+  const activeMetadata = metadataByConnection[activeConnectionId];
+  const activeMetadataLoading = metadataLoading.has(activeConnectionId);
+  const activeMetadataError = metadataErrors[activeConnectionId];
+
+  useEffect(() => {
+    if (
+      activeConnectionOpen &&
+      !activeMetadata &&
+      !activeMetadataLoading &&
+      !activeMetadataError
+    ) {
+      void refreshObjects(activeConnectionId);
+    }
+  }, [
+    activeConnectionId,
+    activeConnectionOpen,
+    activeMetadata,
+    activeMetadataError,
+    activeMetadataLoading,
+  ]);
 
   const lineNumbers = useMemo(
     () =>
@@ -140,9 +263,116 @@ function App() {
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
-  function runQuery() {
+  const resultColumns = result?.columns ?? [
+    "id",
+    "name",
+    "lifetime_value",
+    "last_order_at",
+  ];
+  const resultCells =
+    result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
+  const gridTemplateColumns = resultColumns
+    .map(() => "minmax(140px, 1fr)")
+    .join(" ");
+  const resultSummary = result
+    ? `${toCount(result.rowCount)} rows${result.truncated ? " capped" : ""} in ${toCount(
+        result.elapsedMs,
+      )} ms`
+    : "sample preview";
+
+  async function connectActiveProfile(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    setConnecting(true);
+    setConnectionError(null);
+    try {
+      const id = connectionId.trim() || `${connectionEngine}-connection`;
+      const started = performance.now();
+      const info = await dbConnect({
+        id,
+        engine: connectionEngine,
+        url: connectionUrl.trim() || undefined,
+      });
+      const elapsedMs = Math.max(1, Math.round(performance.now() - started));
+      const nextConnection = describeConnection(info, elapsedMs);
+      setLiveConnections((current) => ({
+        ...current,
+        [nextConnection.id]: nextConnection,
+      }));
+      setConnectedIds((current) => new Set(current).add(nextConnection.id));
+      setActiveConnectionId(nextConnection.id);
+      void refreshObjects(nextConnection.id, true);
+    } catch (error) {
+      setConnectionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function disconnectActiveProfile() {
+    const id = activeConnectionId;
+    if (!connectedIds.has(id)) {
+      return;
+    }
+    await dbDisconnect(id).catch(() => undefined);
+    setConnectedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+    setMetadataByConnection((current) => {
+      const { [id]: _removed, ...next } = current;
+      return next;
+    });
+    setMetadataErrors((current) => {
+      const { [id]: _removed, ...next } = current;
+      return next;
+    });
+  }
+
+  async function refreshObjects(connectionId = activeConnectionId, force = false) {
+    if (!force && !connectedIds.has(connectionId)) {
+      return;
+    }
+    setMetadataLoading((current) => new Set(current).add(connectionId));
+    setMetadataErrors((current) => {
+      const { [connectionId]: _removed, ...next } = current;
+      return next;
+    });
+    try {
+      const metadata = await dbListObjects(connectionId);
+      setMetadataByConnection((current) => ({
+        ...current,
+        [connectionId]: metadata,
+      }));
+    } catch (error) {
+      setMetadataErrors((current) => ({
+        ...current,
+        [connectionId]: error instanceof Error ? error.message : String(error),
+      }));
+    } finally {
+      setMetadataLoading((current) => {
+        const next = new Set(current);
+        next.delete(connectionId);
+        return next;
+      });
+    }
+  }
+
+  async function runQuery() {
+    if (!activeConnectionOpen) {
+      setQueryError(`not connected: ${activeConnectionId}`);
+      return;
+    }
     setRunning(true);
-    window.setTimeout(() => setRunning(false), 700);
+    setQueryError(null);
+    try {
+      const nextResult = await dbRunQuery(activeConnectionId, query, 10_000);
+      setResult(nextResult);
+    } catch (error) {
+      setQueryError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setRunning(false);
+    }
   }
 
   return (
@@ -174,7 +404,12 @@ function App() {
           <small>{activeConnection.engine}</small>
           <ChevronDown size={15} />
         </button>
-        <button className="primary-action" type="button" onClick={runQuery}>
+        <button
+          className="primary-action"
+          type="button"
+          disabled={running}
+          onClick={runQuery}
+        >
           <Play size={15} fill="currentColor" />
           <span>Run Current</span>
         </button>
@@ -207,7 +442,9 @@ function App() {
         <div className="toolbar-spacer" />
         <div className="latency">
           <Bolt size={14} />
-          <span>{activeConnection.latencyMs} ms</span>
+          <span>
+            {activeConnectionOpen ? `${activeConnection.latencyMs} ms` : "closed"}
+          </span>
         </div>
         <div className="latency proxy">
           <ShieldCheck size={14} />
@@ -217,7 +454,7 @@ function App() {
 
       <div className="workspace">
         <aside className="sidebar">
-          <section className="sidebar-section">
+          <section className="sidebar-section connection-section">
             <div className="section-heading">
               <span>Connections</span>
               <button
@@ -229,8 +466,59 @@ function App() {
                 <Plus size={14} />
               </button>
             </div>
+            <form className="quick-connect" onSubmit={connectActiveProfile}>
+              <div className="quick-connect-row">
+                <select
+                  aria-label="Engine"
+                  value={connectionEngine}
+                  onChange={(event) =>
+                    setConnectionEngine(event.currentTarget.value as DbEngine)
+                  }
+                >
+                  {engineOptions.map((engine) => (
+                    <option key={engine.value} value={engine.value}>
+                      {engine.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Connection id"
+                  value={connectionId}
+                  onChange={(event) => setConnectionId(event.currentTarget.value)}
+                />
+              </div>
+              <input
+                aria-label="Connection URL"
+                value={connectionUrl}
+                onChange={(event) => setConnectionUrl(event.currentTarget.value)}
+              />
+              <div className="quick-connect-actions">
+                <button
+                  className="primary-action compact"
+                  type="submit"
+                  disabled={connecting}
+                >
+                  <Database size={14} />
+                  <span>{connecting ? "Connecting" : "Connect"}</span>
+                </button>
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={!activeConnectionOpen}
+                  onClick={disconnectActiveProfile}
+                >
+                  Disconnect
+                </button>
+              </div>
+              {connectionError ? (
+                <p className="inline-error">
+                  <AlertTriangle size={13} />
+                  <span>{connectionError}</span>
+                </p>
+              ) : null}
+            </form>
             <div className="connection-list">
-              {snapshot.connections.map((connection) => (
+              {connections.map((connection) => (
                 <button
                   className={
                     connection.id === activeConnectionId
@@ -254,28 +542,107 @@ function App() {
 
           <section className="sidebar-section browser-section">
             <div className="section-heading">
-              <span>public</span>
+              <span>
+                {activeMetadata
+                  ? `${activeMetadata.schemas.length} schemas`
+                  : "public"}
+              </span>
               <button
                 className="mini-button"
                 type="button"
-                title="New SQL tab"
-                aria-label="New SQL tab"
+                title="Refresh objects"
+                aria-label="Refresh objects"
+                disabled={!activeConnectionOpen || activeMetadataLoading}
+                onClick={() => refreshObjects()}
               >
-                <FilePlus2 size={14} />
+                <RefreshCw size={14} />
               </button>
             </div>
             <div className="object-browser">
-              {activeConnection.objects.map((object) => (
-                <button className="object-row" key={object.name} type="button">
-                  {object.kind === "procedure" ? (
-                    <TerminalSquare size={15} />
-                  ) : (
-                    <Table2 size={15} />
-                  )}
-                  <span>{object.name}</span>
-                  <small>{object.rows ?? object.kind}</small>
-                </button>
-              ))}
+              {activeMetadataLoading ? (
+                <div className="empty-browser">Loading objects...</div>
+              ) : activeMetadataError ? (
+                <div className="inline-error browser-error">
+                  <AlertTriangle size={13} />
+                  <span>{activeMetadataError}</span>
+                </div>
+              ) : activeMetadata ? (
+                activeMetadata.schemas.length > 0 ? (
+                  activeMetadata.schemas.map((schema) => (
+                    <details className="schema-tree" key={schema.name} open>
+                      <summary>
+                        <Folder size={14} />
+                        <span>{schema.name}</span>
+                        <small>{schema.objects.length}</small>
+                      </summary>
+                      {schema.objects.map((object) => (
+                        <details
+                          className="object-tree"
+                          key={`${object.schema}.${object.name}`}
+                        >
+                          <summary>
+                            <Table2 size={15} />
+                            <span>{object.name}</span>
+                            <small>
+                              {objectKindLabel(object)} · {object.columns.length}
+                            </small>
+                          </summary>
+                          <div className="metadata-children">
+                            {object.columns.map((column) => (
+                              <button
+                                className="metadata-row"
+                                key={`${object.schema}.${object.name}.${column.name}`}
+                                type="button"
+                                title={`${column.name}: ${column.dataType}`}
+                              >
+                                <Columns3 size={14} />
+                                <span>{column.name}</span>
+                                <small>
+                                  {column.dataType}
+                                  {column.nullable ? "" : " not null"}
+                                </small>
+                              </button>
+                            ))}
+                            {object.indexes.map((index) => (
+                              <button
+                                className="metadata-row"
+                                key={`${object.schema}.${object.name}.${index.name}`}
+                                type="button"
+                                title={`${index.name}: ${index.columns.join(", ")}`}
+                              >
+                                <KeyRound size={14} />
+                                <span>{index.name}</span>
+                                <small>
+                                  {index.unique ? "unique" : "index"}
+                                  {index.columns.length > 0
+                                    ? ` · ${index.columns.join(", ")}`
+                                    : ""}
+                                </small>
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      ))}
+                    </details>
+                  ))
+                ) : (
+                  <div className="empty-browser">No objects found</div>
+                )
+              ) : activeConnection.objects.length > 0 ? (
+                activeConnection.objects.map((object) => (
+                  <button className="object-row" key={object.name} type="button">
+                    {object.kind === "procedure" ? (
+                      <TerminalSquare size={15} />
+                    ) : (
+                      <Table2 size={15} />
+                    )}
+                    <span>{object.name}</span>
+                    <small>{object.rows ?? object.kind}</small>
+                  </button>
+                ))
+              ) : (
+                <div className="empty-browser">No objects loaded</div>
+              )}
             </div>
           </section>
         </aside>
@@ -310,7 +677,9 @@ function App() {
             <section className="editor-pane" aria-label={activeTabLabel}>
               <div className="editor-meta">
                 <span>{activeTabLabel}</span>
-                <span>{running ? "running..." : "ready"}</span>
+                <span>
+                  {running ? "running..." : activeConnectionOpen ? "ready" : "closed"}
+                </span>
               </div>
               <div className="editor-shell">
                 <pre className="line-numbers" aria-hidden="true">
@@ -360,7 +729,7 @@ function App() {
             <div className="results-header">
               <div>
                 <strong>Result 1</strong>
-                <span>200 rows in 42 ms</span>
+                <span>{queryError ? "failed" : resultSummary}</span>
               </div>
               <div className="results-actions">
                 <button className="text-button" type="button">
@@ -371,17 +740,33 @@ function App() {
                 </button>
               </div>
             </div>
-            <div className="result-grid" role="table" aria-label="Query result">
-              <div className="grid-row header" role="row">
-                <span role="columnheader">id</span>
-                <span role="columnheader">name</span>
-                <span role="columnheader">lifetime_value</span>
-                <span role="columnheader">last_order_at</span>
+            {queryError ? (
+              <div className="result-error" role="alert">
+                <AlertTriangle size={16} />
+                <span>{queryError}</span>
               </div>
-              {resultRows.map((row) => (
-                <div className="grid-row" role="row" key={row.join("-")}>
-                  {row.map((cell) => (
-                    <span role="cell" key={cell}>
+            ) : null}
+            <div className="result-grid" role="table" aria-label="Query result">
+              <div
+                className="grid-row header"
+                role="row"
+                style={{ gridTemplateColumns }}
+              >
+                {resultColumns.map((column) => (
+                  <span role="columnheader" key={column}>
+                    {column}
+                  </span>
+                ))}
+              </div>
+              {resultCells.map((row, rowIndex) => (
+                <div
+                  className="grid-row"
+                  role="row"
+                  key={`${rowIndex}-${row.join("-")}`}
+                  style={{ gridTemplateColumns }}
+                >
+                  {row.map((cell, cellIndex) => (
+                    <span role="cell" key={`${cellIndex}-${cell}`}>
                       {cell}
                     </span>
                   ))}
