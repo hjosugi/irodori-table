@@ -46,10 +46,13 @@ pub enum DbEngine {
     #[serde(rename = "tidb")]
     #[ts(rename = "tidb")]
     TiDb,
-    // Serverless Postgres
+    // Serverless Postgres / Postgres-wire compatible engines.
     #[serde(rename = "neon")]
     #[ts(rename = "neon")]
     Neon,
+    #[serde(rename = "h2")]
+    #[ts(rename = "h2")]
+    H2,
     // Columnar/Analytics
     #[serde(rename = "clickhouse")]
     #[ts(rename = "clickhouse")]
@@ -104,7 +107,8 @@ impl DbEngine {
             | DbEngine::YugabyteDb
             | DbEngine::Redshift
             | DbEngine::Timescale
-            | DbEngine::Neon => Wire::Postgres,
+            | DbEngine::Neon
+            | DbEngine::H2 => Wire::Postgres,
             DbEngine::Mysql | DbEngine::MariaDb | DbEngine::TiDb => Wire::Mysql,
             DbEngine::Sqlite => Wire::Sqlite,
             DbEngine::SqlServer => Wire::SqlServer,
@@ -124,6 +128,7 @@ impl DbEngine {
     pub(crate) fn default_port(self) -> u16 {
         match self {
             DbEngine::Postgres | DbEngine::Timescale | DbEngine::Neon => 5432,
+            DbEngine::H2 => 5435,
             DbEngine::CockroachDb => 26257,
             DbEngine::YugabyteDb => 5433,
             DbEngine::Redshift => 5439,
@@ -217,6 +222,7 @@ mod tests {
             DbEngine::Redshift,
             DbEngine::Timescale,
             DbEngine::Neon,
+            DbEngine::H2,
         ] {
             assert_eq!(e.wire(), Wire::Postgres, "{e:?} should use postgres wire");
         }
@@ -237,6 +243,7 @@ mod tests {
         assert_eq!(DbEngine::SqlServer.default_port(), 1433);
         assert_eq!(DbEngine::TiDb.default_port(), 4000);
         assert_eq!(DbEngine::Neon.default_port(), 5432);
+        assert_eq!(DbEngine::H2.default_port(), 5435);
         assert_eq!(DbEngine::ClickHouse.default_port(), 9000);
         assert_eq!(DbEngine::Neo4j.default_port(), 7687);
         assert_eq!(DbEngine::Memgraph.default_port(), 7687);
