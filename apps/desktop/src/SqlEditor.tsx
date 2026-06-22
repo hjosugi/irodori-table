@@ -2,7 +2,8 @@
 //
 // The host is CM6: `basicSetup` gives line numbers, history, bracket matching,
 // active-line highlight, and keyword autocompletion; `@codemirror/lang-sql`
-// supplies dialect-aware syntax highlighting bound to the active engine. The
+// supplies dialect-aware syntax highlighting bound to the active engine, plus
+// schema-aware completion fed from Irodori's introspection metadata. The
 // formatter is `sql-formatter`, dialect-mapped per engine. Tree-sitter is the
 // planned *semantic* layer (completion scope, outline, selection) and is not
 // wired here yet — see docs/adr/0001-editor-stack.md.
@@ -21,10 +22,13 @@ import {
   SQLite,
   StandardSQL,
   sql,
+  type SQLConfig,
   type SQLDialect,
+  type SQLNamespace,
 } from "@codemirror/lang-sql";
+import type { Completion } from "@codemirror/autocomplete";
 import { format as formatSql } from "sql-formatter";
-import type { DbEngine } from "./generated/irodori-api";
+import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
 
 export interface SqlEditorHandle {
   /** Document offsets of the current selection (collapsed range = caret). */
@@ -41,6 +45,8 @@ interface SqlEditorProps {
   value: string;
   onChange: (next: string) => void;
   engine: DbEngine;
+  /** Introspection metadata for the active connection (drives table/column completion). */
+  metadata?: DatabaseMetadata;
 }
 
 /** Map an Irodori engine onto a CodeMirror SQL dialect (Postgres-wire siblings share one). */
@@ -104,6 +110,52 @@ function formatterLanguage(engine: DbEngine): string {
   }
 }
 
+/**
+ * Convert Irodori introspection metadata into a CodeMirror SQL completion schema:
+ * `{ schema: { table: { self, children: columns } } }`. Indexes are skipped — only
+ * relations (tables/views) and their columns are completable.
+ */
+function metadataToNamespace(
+  metadata: DatabaseMetadata | undefined,
+): SQLNamespace | undefined {
+  if (!metadata || metadata.schemas.length === 0) return undefined;
+  const namespace: Record<string, SQLNamespace> = {};
+  for (const schema of metadata.schemas) {
+    const tables: Record<string, SQLNamespace> = {};
+    for (const object of schema.objects) {
+      if (object.kind === "index") continue;
+      const columns: Completion[] = object.columns
+        .slice()
+        .sort((a, b) => a.ordinal - b.ordinal)
+        .map((column) => ({
+          label: column.name,
+          type: "property",
+          detail: column.nullable ? column.dataType : `${column.dataType} not null`,
+        }));
+      tables[object.name] = {
+        self: { label: object.name, type: object.kind === "view" ? "type" : "class" },
+        children: columns,
+      };
+    }
+    namespace[schema.name] = tables;
+  }
+  return namespace;
+}
+
+function buildSqlConfig(
+  engine: DbEngine,
+  metadata: DatabaseMetadata | undefined,
+): SQLConfig {
+  const schema = metadataToNamespace(metadata);
+  return {
+    dialect: cmDialect(engine),
+    upperCaseKeywords: false,
+    ...(schema
+      ? { schema, defaultSchema: metadata?.schemas[0]?.name }
+      : {}),
+  };
+}
+
 const editorTheme = EditorView.theme({
   "&": { height: "100%" },
   ".cm-scroller": {
@@ -115,17 +167,17 @@ const editorTheme = EditorView.theme({
 });
 
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
-  { value, onChange, engine },
+  { value, onChange, engine, metadata },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  const dialect = useRef(new Compartment()).current;
+  const sqlConf = useRef(new Compartment()).current;
 
-  // Create the editor once. `value`/`engine` seed the initial state; later
-  // changes flow through the controlled-sync and reconfigure effects below.
+  // Create the editor once. `value`/`engine`/`metadata` seed the initial state;
+  // later changes flow through the controlled-sync and reconfigure effects below.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -136,7 +188,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         extensions: [
           basicSetup,
           keymap.of([indentWithTab]),
-          dialect.of(sql({ dialect: cmDialect(engine), upperCaseKeywords: false })),
+          sqlConf.of(sql(buildSqlConfig(engine, metadata))),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current(update.state.doc.toString());
@@ -151,7 +203,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       view.destroy();
       viewRef.current = null;
     };
-    // Mount-once: deliberately excludes value/engine (handled by effects below).
+    // Mount-once: deliberately excludes value/engine/metadata (handled by effects below).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,16 +217,14 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     }
   }, [value]);
 
-  // Reconfigure the dialect when the active engine changes.
+  // Reconfigure dialect + completion schema when the engine or metadata changes.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
-      effects: dialect.reconfigure(
-        sql({ dialect: cmDialect(engine), upperCaseKeywords: false }),
-      ),
+      effects: sqlConf.reconfigure(sql(buildSqlConfig(engine, metadata))),
     });
-  }, [engine, dialect]);
+  }, [engine, metadata, sqlConf]);
 
   useImperativeHandle(
     ref,

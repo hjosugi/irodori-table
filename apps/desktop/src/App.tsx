@@ -1433,6 +1433,7 @@ function App() {
                   value={query}
                   onChange={setQuery}
                   engine={editorEngine}
+                  metadata={activeMetadata}
                 />
               </div>
             </section>
