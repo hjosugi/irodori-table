@@ -29,6 +29,7 @@ import {
 import type { Completion } from "@codemirror/autocomplete";
 import { format as formatSql } from "sql-formatter";
 import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
+import { editorThemeExtensions, type IrodoriTheme } from "./theme";
 
 export interface SqlEditorHandle {
   /** Document offsets of the current selection (collapsed range = caret). */
@@ -47,6 +48,7 @@ interface SqlEditorProps {
   engine: DbEngine;
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
+  theme: IrodoriTheme;
 }
 
 /** Map an Irodori engine onto a CodeMirror SQL dialect (Postgres-wire siblings share one). */
@@ -156,18 +158,8 @@ function buildSqlConfig(
   };
 }
 
-const editorTheme = EditorView.theme({
-  "&": { height: "100%" },
-  ".cm-scroller": {
-    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-    fontSize: "13px",
-    lineHeight: "21px",
-  },
-  "&.cm-focused": { outline: "none" },
-});
-
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
-  { value, onChange, engine, metadata },
+  { value, onChange, engine, metadata, theme },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -175,6 +167,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const sqlConf = useRef(new Compartment()).current;
+  const themeConf = useRef(new Compartment()).current;
 
   // Create the editor once. `value`/`engine`/`metadata` seed the initial state;
   // later changes flow through the controlled-sync and reconfigure effects below.
@@ -189,12 +182,12 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
           basicSetup,
           keymap.of([indentWithTab]),
           sqlConf.of(sql(buildSqlConfig(engine, metadata))),
+          themeConf.of(editorThemeExtensions(theme)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current(update.state.doc.toString());
             }
           }),
-          editorTheme,
         ],
       }),
     });
@@ -225,6 +218,15 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       effects: sqlConf.reconfigure(sql(buildSqlConfig(engine, metadata))),
     });
   }, [engine, metadata, sqlConf]);
+
+  // Reconfigure editor chrome + syntax highlight when the theme changes.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: themeConf.reconfigure(editorThemeExtensions(theme)),
+    });
+  }, [theme, themeConf]);
 
   useImperativeHandle(
     ref,

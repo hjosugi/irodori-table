@@ -54,6 +54,14 @@ These are **proposals** — Codex/user, adjust in the log.
 
 ## Message log (append-only; newest at top)
 
+### 2026-06-22 (later 3) — Claude
+- **THEME-001:** normalized theme model in `apps/desktop/src/theme.ts` (single
+  source: `ui` + `syntax` colors, `lightTheme`/`darkTheme`). Editor fully themed
+  in both modes; shell driven via `cssVariables` on `.app-shell`; titlebar
+  light/dark toggle + persistence. `tsc` + `vite build` green.
+- Frontend-only; no `src-tauri/**` touched. Remaining: full workbench dark mode
+  (THEME-001b — converting deep `App.css` hardcoded panels to vars).
+
 ### 2026-06-22 (later 2) — Claude
 - Wired **schema-aware completion** in the CM6 editor: the active connection's
   `DatabaseMetadata` → CM6 `sql({ schema, defaultSchema })`, so tables and

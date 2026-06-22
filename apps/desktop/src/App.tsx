@@ -1,4 +1,11 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertTriangle,
   AlignLeft,
@@ -12,6 +19,7 @@ import {
   Folder,
   Keyboard,
   Layers3,
+  Moon,
   Play,
   Plus,
   RefreshCw,
@@ -20,6 +28,7 @@ import {
   ShieldCheck,
   SplitSquareHorizontal,
   Square,
+  Sun,
   Table2,
   TerminalSquare,
 } from "lucide-react";
@@ -38,6 +47,7 @@ import {
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
 import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
+import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
 import "./App.css";
 
 const fallbackSnapshot: WorkspaceSnapshot = {
@@ -160,6 +170,13 @@ type ConnectionDraft = {
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
+const themeStorageKey = "irodori.theme.v1";
+
+function loadThemeKind(): ThemeKind {
+  return window.localStorage.getItem(themeStorageKey) === "dark"
+    ? "dark"
+    : "light";
+}
 const maxQueryHistoryItems = 50;
 
 type QueryHistoryItem = {
@@ -640,6 +657,8 @@ function App() {
     fallbackSnapshot.activeConnectionId,
   );
   const [query, setQuery] = useState(initialQuery);
+  const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
+  const theme = themeKind === "dark" ? darkTheme : lightTheme;
   const [running, setRunning] = useState(false);
   const [profiles, setProfiles] = useState<ConnectionDraft[]>(loadProfiles);
   const [selectedProfileId, setSelectedProfileId] = useState(
@@ -687,6 +706,10 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(history));
   }, [history]);
+
+  useEffect(() => {
+    window.localStorage.setItem(themeStorageKey, themeKind);
+  }, [themeKind]);
 
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
@@ -1010,7 +1033,11 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      style={cssVariables(theme) as CSSProperties}
+      data-theme={theme.kind}
+    >
       <header className="titlebar">
         <div className="window-controls" aria-hidden="true">
           <span className="dot red" />
@@ -1029,6 +1056,21 @@ function App() {
           <Keyboard size={14} />
           <span>Vim</span>
         </div>
+        <button
+          className="theme-toggle"
+          type="button"
+          title={
+            themeKind === "dark"
+              ? "Switch to light theme"
+              : "Switch to dark theme"
+          }
+          aria-label="Toggle color theme"
+          onClick={() =>
+            setThemeKind((kind) => (kind === "dark" ? "light" : "dark"))
+          }
+        >
+          {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
@@ -1434,6 +1476,7 @@ function App() {
                   onChange={setQuery}
                   engine={editorEngine}
                   metadata={activeMetadata}
+                  theme={theme}
                 />
               </div>
             </section>

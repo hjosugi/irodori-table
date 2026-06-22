@@ -438,9 +438,11 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## THEME — Theming + VS Code Import
 
-### THEME-001 — Internal normalized theme model
+### THEME-001 — Internal normalized theme model  🟡 model + editor light/dark done
 - **Goal:** One theme model for workbench + syntax + semantic tokens.
 - **Done when:** the model covers UI colors and token colors; a default light/dark theme renders; documented.
+- **Landed:** `src/theme.ts` is the single source — `IrodoriTheme { ui, syntax }` with `lightTheme`/`darkTheme`. The editor is fully themed in both modes via `editorThemeExtensions` (CM chrome + Lezer-tag `HighlightStyle`); shell colors are driven by `cssVariables(theme)` on `.app-shell`; titlebar toggle + persistence. `tsc` + `vite build` green.
+- **Follow-up (THEME-001b):** full workbench dark-mode — ~30 hardcoded panel colors in `App.css` (inspector, result grid, connection forms, chips) still need converting to vars so deep panels flip too. Editor + top chrome already theme.
 - **Depends on:** SHELL-001
 - **Size:** M · **Priority:** P0
 
