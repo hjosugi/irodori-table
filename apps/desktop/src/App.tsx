@@ -173,6 +173,30 @@ const starterProfiles: ConnectionDraft[] = [
     password: "",
     database: "samples",
   },
+  {
+    id: "sqlite-memory",
+    name: "SQLite Memory",
+    engine: "sqlite",
+    mode: "fields",
+    url: "",
+    host: "",
+    port: "",
+    user: "",
+    password: "",
+    database: ":memory:",
+  },
+  {
+    id: "duckdb-memory",
+    name: "DuckDB Memory",
+    engine: "duckdb",
+    mode: "url",
+    url: ":memory:",
+    host: "",
+    port: "",
+    user: "",
+    password: "",
+    database: ":memory:",
+  },
 ];
 
 function engineLabel(engine: DbEngine) {
@@ -241,6 +265,34 @@ function defaultPort(engine: DbEngine) {
   }
 }
 
+function memoryDefaults(engine: DbEngine): Partial<ConnectionDraft> {
+  if (engine === "sqlite") {
+    return {
+      mode: "fields",
+      url: "",
+      host: "",
+      port: "",
+      user: "",
+      password: "",
+      database: ":memory:",
+    };
+  }
+  if (engine === "duckdb") {
+    return {
+      mode: "url",
+      url: ":memory:",
+      host: "",
+      port: "",
+      user: "",
+      password: "",
+      database: ":memory:",
+    };
+  }
+  return {
+    port: defaultPort(engine),
+  };
+}
+
 function newDraft(seed: number): ConnectionDraft {
   return {
     id: `connection-${seed}`,
@@ -260,6 +312,14 @@ function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
   return { ...profile, password: "" };
 }
 
+function withStarterProfiles(profiles: ConnectionDraft[]) {
+  const existing = new Set(profiles.map((profile) => profile.id));
+  return [
+    ...profiles,
+    ...starterProfiles.filter((profile) => !existing.has(profile.id)),
+  ];
+}
+
 function loadProfiles() {
   try {
     const raw = window.localStorage.getItem(profilesStorageKey);
@@ -270,12 +330,14 @@ function loadProfiles() {
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return starterProfiles;
     }
-    return parsed.map((profile) => ({
-      ...newDraft(1),
-      ...profile,
-      password: "",
-      port: profile.port ?? defaultPort(profile.engine),
-    }));
+    return withStarterProfiles(
+      parsed.map((profile) => ({
+        ...newDraft(1),
+        ...profile,
+        password: "",
+        port: profile.port ?? defaultPort(profile.engine),
+      })),
+    );
   } catch {
     return starterProfiles;
   }
@@ -290,6 +352,14 @@ function validateDraft(draft: ConnectionDraft): string | null {
   }
   if (draft.mode === "url" && !draft.url.trim()) {
     return "URL/DSN is required";
+  }
+  if (draft.mode === "fields" && draft.engine === "sqlite" && !draft.database.trim()) {
+    return "SQLite needs a file path or :memory:";
+  }
+  if (draft.mode === "fields" && draft.engine !== "sqlite" && draft.engine !== "duckdb") {
+    if (!draft.host.trim()) {
+      return "host is required";
+    }
   }
   if (draft.port.trim() && !Number.isInteger(Number(draft.port))) {
     return "port must be a number";
@@ -439,10 +509,9 @@ function App() {
 
   function updateDraft(patch: Partial<ConnectionDraft>) {
     setDraft((current) => {
-      const next = { ...current, ...patch };
-      if (patch.engine && !patch.port) {
-        next.port = defaultPort(patch.engine);
-      }
+      const next = patch.engine
+        ? { ...current, ...memoryDefaults(patch.engine), ...patch }
+        : { ...current, ...patch };
       return next;
     });
     setConnectionError(null);

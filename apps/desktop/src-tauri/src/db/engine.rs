@@ -119,7 +119,11 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
                 .clone()
                 .or_else(|| p.host.clone())
                 .ok_or("SQLite needs a database file path (set `database`)")?;
-            Ok(format!("sqlite://{path}?mode=rwc"))
+            if path == ":memory:" {
+                Ok("sqlite::memory:".into())
+            } else {
+                Ok(format!("sqlite://{path}?mode=rwc"))
+            }
         }
         Wire::Postgres => Ok(build_tcp_url("postgres", p)),
         Wire::Mysql => Ok(build_tcp_url("mysql", p)),
@@ -166,5 +170,20 @@ mod tests {
         assert_eq!(DbEngine::CockroachDb.default_port(), 26257);
         assert_eq!(DbEngine::SqlServer.default_port(), 1433);
         assert_eq!(DbEngine::TiDb.default_port(), 4000);
+    }
+
+    #[test]
+    fn sqlite_memory_url_is_not_treated_as_a_file_path() {
+        let profile = ConnectionProfile {
+            id: "mem".into(),
+            engine: DbEngine::Sqlite,
+            host: None,
+            port: None,
+            user: None,
+            password: None,
+            database: Some(":memory:".into()),
+            url: None,
+        };
+        assert_eq!(build_url(&profile).unwrap(), "sqlite::memory:");
     }
 }

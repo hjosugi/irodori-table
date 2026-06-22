@@ -233,6 +233,64 @@ async fn exercise_mssql(url: String) {
     assert_eq!(r.rows[0][0], serde_json::json!(1));
     assert_eq!(r.rows[0][1], serde_json::json!("hi"));
     assert_eq!(r.rows[1][1], serde_json::Value::Null);
+
+    run_query_impl(
+        &state,
+        "it".into(),
+        "if object_id('dbo.irodori_meta_customers', 'U') is not null \
+         drop table dbo.irodori_meta_customers"
+            .into(),
+        None,
+    )
+    .await
+    .expect("drop old metadata fixture");
+    run_query_impl(
+        &state,
+        "it".into(),
+        "create table dbo.irodori_meta_customers \
+         (id int not null primary key, name nvarchar(100) not null)"
+            .into(),
+        None,
+    )
+    .await
+    .expect("create metadata fixture");
+    run_query_impl(
+        &state,
+        "it".into(),
+        "create index irodori_meta_customers_name_idx \
+         on dbo.irodori_meta_customers(name)"
+            .into(),
+        None,
+    )
+    .await
+    .expect("create metadata fixture index");
+    let metadata = list_objects_impl(&state, "it".into())
+        .await
+        .expect("metadata");
+    assert!(
+        metadata
+            .schemas
+            .iter()
+            .flat_map(|schema| schema.objects.iter())
+            .any(|object| {
+                object.name == "irodori_meta_customers"
+                    && object.columns.iter().any(|column| column.name == "name")
+                    && object
+                        .indexes
+                        .iter()
+                        .any(|index| index.name == "irodori_meta_customers_name_idx")
+            }),
+        "SQL Server metadata should include fixture table: {:?}",
+        metadata
+    );
+    run_query_impl(
+        &state,
+        "it".into(),
+        "drop table dbo.irodori_meta_customers".into(),
+        None,
+    )
+    .await
+    .expect("drop metadata fixture");
 }
 
 #[test]
@@ -326,6 +384,19 @@ async fn exercise_duckdb() {
     assert_eq!(r.rows[0][1], serde_json::json!("hi"));
     assert_eq!(r.rows[0][2], serde_json::json!(1.5));
     assert_eq!(r.rows[1][1], serde_json::Value::Null);
+
+    let metadata = list_objects_impl(&state, "it".into())
+        .await
+        .expect("metadata");
+    assert!(
+        metadata
+            .schemas
+            .iter()
+            .flat_map(|schema| schema.objects.iter())
+            .any(|object| object.name == "t" && object.columns.iter().any(|c| c.name == "b")),
+        "DuckDB metadata should include t.b: {:?}",
+        metadata
+    );
 }
 
 #[test]
@@ -354,6 +425,22 @@ async fn exercise_mongo(url: String) {
         r.columns.iter().any(|c| c == "name"),
         "columns: {:?}",
         r.columns
+    );
+
+    let metadata = list_objects_impl(&state, "it".into())
+        .await
+        .expect("metadata");
+    assert!(
+        metadata
+            .schemas
+            .iter()
+            .flat_map(|schema| schema.objects.iter())
+            .any(|object| {
+                object.name == "customers"
+                    && object.columns.iter().any(|column| column.name == "name")
+            }),
+        "MongoDB metadata should include customers.name: {:?}",
+        metadata
     );
 }
 
@@ -397,6 +484,25 @@ async fn exercise_oracle(profile: ConnectionProfile) {
     let is_one =
         first.as_i64() == Some(1) || first.as_f64() == Some(1.0) || first.as_str() == Some("1");
     assert!(is_one, "first id should be 1, got {first:?}");
+
+    let metadata = list_objects_impl(&state, "it".into())
+        .await
+        .expect("metadata");
+    assert!(
+        metadata
+            .schemas
+            .iter()
+            .flat_map(|schema| schema.objects.iter())
+            .any(|object| {
+                object.name.eq_ignore_ascii_case("CUSTOMERS")
+                    && object
+                        .columns
+                        .iter()
+                        .any(|column| column.name.eq_ignore_ascii_case("NAME"))
+            }),
+        "Oracle metadata should include CUSTOMERS.NAME: {:?}",
+        metadata
+    );
 }
 
 #[test]

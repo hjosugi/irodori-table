@@ -65,10 +65,15 @@ Highlights:
 - The browser build still falls back to the mock shell when Tauri APIs are absent;
   real connect/query runs inside the Tauri shell.
 - The object browser now calls generated `dbListObjects` and renders live
-  schema → table/view → columns/indexes metadata for PostgreSQL-wire,
-  MySQL-wire, and SQLite connections. SQL Server, Oracle, DuckDB, and MongoDB
-  return explicit "not implemented yet" metadata errors in the browser instead of
-  silently showing stale mock objects.
+  schema → table/view/collection → columns/indexes metadata for PostgreSQL-wire,
+  MySQL-wire, SQLite, SQL Server, Oracle, DuckDB, and MongoDB connections.
+- The sidebar connection UI is now a real profile editor: saved profiles live in
+  localStorage, password fields are session-only and are not persisted, profiles
+  can be created/selected/saved/deleted, URL/DSN and structured host/port/user
+  modes are both available, and Test/Connect/Disconnect are wired to the backend.
+- In-memory databases are first-class for local work: SQLite `:memory:` is wired
+  through structured profiles and verified by a unit test; DuckDB `:memory:` is
+  available when the `duckdb` feature is built.
 
 ## Test & sample infrastructure
 
@@ -96,11 +101,15 @@ Highlights:
 
 ## Not done yet (next)
 
-- **Connection manager polish**: persisted profiles, structured field editing,
-  validation, secret/keychain storage, and test-connection diagnostics.
-- **Object browser expansion**: SQL Server, Oracle, DuckDB, and MongoDB metadata
-  adapters still need native object/catalog queries; Postgres/MySQL/SQLite are
-  wired.
+- **Connection manager polish**: OS keychain-backed secrets and richer diagnostics
+  still need Rust-side storage/transport work; UI currently persists non-secret
+  profile fields locally.
+- **Object browser expansion**: richer per-engine metadata remains (routines,
+  triggers/packages, comments, row estimates, Mongo nested fields, DuckDB indexes),
+  but the first schema/table/column/index pass is wired.
+- **H2**: deferred for now. The production path is likely H2's PostgreSQL-wire
+  server mode first, with native/JDBC-style H2 access considered later only if a
+  suitable Rust bridge is chosen.
 - **SRC-001a remaining**: per-engine `SqlDialect` (identifier quoting / keywords /
   paging), a generic `information_schema` metamodel, a two-tier lazy metadata cache,
   and a cancellation token.

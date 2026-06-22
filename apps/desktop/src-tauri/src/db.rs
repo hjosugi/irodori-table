@@ -29,12 +29,14 @@ use ts_rs::TS;
 #[cfg(feature = "duckdb")]
 mod duck;
 mod engine;
+mod meta;
 mod mongo;
 mod mssql;
 mod mysql;
 mod oracle;
 mod postgres;
 mod sqlite;
+mod stream;
 
 pub use engine::DbEngine;
 use engine::Wire;
@@ -530,5 +532,41 @@ mod tests {
         disconnect_impl(&state, "rt".into())
             .await
             .expect("disconnect");
+    }
+
+    #[tokio::test]
+    async fn sqlite_memory_profile_uses_in_memory_database() {
+        let state = DbState::default();
+        let profile = ConnectionProfile {
+            id: "mem".into(),
+            engine: DbEngine::Sqlite,
+            host: None,
+            port: None,
+            user: None,
+            password: None,
+            database: Some(":memory:".into()),
+            url: None,
+        };
+        connect_impl(&state, profile).await.expect("connect memory");
+        run_query_impl(
+            &state,
+            "mem".into(),
+            "create table t(id integer primary key, name text not null)".into(),
+            None,
+        )
+        .await
+        .expect("create table");
+        run_query_impl(
+            &state,
+            "mem".into(),
+            "insert into t(name) values ('memory')".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+        let result = run_query_impl(&state, "mem".into(), "select name from t".into(), None)
+            .await
+            .expect("select");
+        assert_eq!(result.rows[0][0], serde_json::json!("memory"));
     }
 }
