@@ -220,6 +220,11 @@ button {
   background: #edf8f7;
 }
 
+.text-button.danger {
+  color: #8c2f2f;
+  background: #fff0ec;
+}
+
 .toolbar-spacer {
   flex: 1;
 }
@@ -248,7 +253,7 @@ button {
 
 .sidebar {
   display: grid;
-  grid-template-rows: 318px minmax(0, 1fr);
+  grid-template-rows: 448px minmax(0, 1fr);
   min-width: 0;
   border-right: 1px solid var(--border);
   background: #f2f4ef;
@@ -293,10 +298,47 @@ button {
   overflow: auto;
 }
 
-.quick-connect {
+.connection-editor {
   display: grid;
   gap: 7px;
   padding: 0 8px 9px;
+}
+
+.profile-strip {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.profile-pill {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 5px;
+  max-width: 150px;
+  height: 27px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 8px;
+  color: #334036;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.profile-pill.active {
+  border-color: #8fb8a1;
+  background: #e4eee7;
+}
+
+.profile-pill span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quick-connect-row {
@@ -305,8 +347,12 @@ button {
   gap: 6px;
 }
 
-.quick-connect input,
-.quick-connect select {
+.host-row {
+  grid-template-columns: minmax(0, 1fr) 74px;
+}
+
+.connection-editor input,
+.connection-editor select {
   width: 100%;
   min-width: 0;
   height: 29px;
@@ -319,14 +365,38 @@ button {
   font-size: 12px;
 }
 
-.quick-connect input:focus,
-.quick-connect select:focus {
+.connection-editor input:focus,
+.connection-editor select:focus {
   border-color: #83aaa4;
   box-shadow: 0 0 0 2px #dcefed;
 }
 
+.mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 29px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.mode-toggle button {
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mode-toggle button.active {
+  color: #1c5f63;
+  background: #edf8f7;
+}
+
 .quick-connect-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -357,7 +427,7 @@ button {
 
 .object-browser {
   overflow: auto;
-  max-height: calc(100vh - 466px);
+  max-height: calc(100vh - 596px);
 }
 
 .connection-item,

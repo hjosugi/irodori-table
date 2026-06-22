@@ -109,37 +109,39 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
           and table_schema not in ('INFORMATION_SCHEMA', 'sys')
         order by table_schema, table_name
     "#;
-    let mut stream = guard
-        .query(objects_sql, &[])
-        .await
-        .map_err(|e| format!("metadata objects failed: {e}"))?;
-    while let Some(item) = stream
-        .try_next()
-        .await
-        .map_err(|e| format!("metadata objects failed: {e}"))?
     {
-        if let QueryItem::Row(row) = item {
-            let schema = get_str(&row, 0);
-            let name = get_str(&row, 1);
-            if name.is_empty() {
-                continue;
+        let mut stream = guard
+            .query(objects_sql, &[])
+            .await
+            .map_err(|e| format!("metadata objects failed: {e}"))?;
+        while let Some(item) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata objects failed: {e}"))?
+        {
+            if let QueryItem::Row(row) = item {
+                let schema = get_str(&row, 0);
+                let name = get_str(&row, 1);
+                if name.is_empty() {
+                    continue;
+                }
+                let table_type = get_str(&row, 2);
+                let kind = if table_type.eq_ignore_ascii_case("VIEW") {
+                    DbObjectMetadataKind::View
+                } else {
+                    DbObjectMetadataKind::Table
+                };
+                schemas.entry(schema.clone()).or_default().insert(
+                    name.clone(),
+                    DbObjectMetadata {
+                        schema,
+                        name,
+                        kind,
+                        columns: Vec::new(),
+                        indexes: Vec::new(),
+                    },
+                );
             }
-            let table_type = get_str(&row, 2);
-            let kind = if table_type.eq_ignore_ascii_case("VIEW") {
-                DbObjectMetadataKind::View
-            } else {
-                DbObjectMetadataKind::Table
-            };
-            schemas.entry(schema.clone()).or_default().insert(
-                name.clone(),
-                DbObjectMetadata {
-                    schema,
-                    name,
-                    kind,
-                    columns: Vec::new(),
-                    indexes: Vec::new(),
-                },
-            );
         }
     }
 
@@ -150,27 +152,29 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         where table_schema not in ('INFORMATION_SCHEMA', 'sys')
         order by table_schema, table_name, ordinal_position
     "#;
-    let mut stream = guard
-        .query(columns_sql, &[])
-        .await
-        .map_err(|e| format!("metadata columns failed: {e}"))?;
-    while let Some(item) = stream
-        .try_next()
-        .await
-        .map_err(|e| format!("metadata columns failed: {e}"))?
     {
-        if let QueryItem::Row(row) = item {
-            let schema = get_str(&row, 0);
-            let table = get_str(&row, 1);
-            if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
-                let nullable = get_str(&row, 4);
-                object.columns.push(ColumnMetadata {
-                    name: get_str(&row, 2),
-                    data_type: get_str(&row, 3),
-                    nullable: nullable.eq_ignore_ascii_case("YES"),
-                    ordinal: get_i32(&row, 5),
-                    default_value: get_optional_str(&row, 6),
-                });
+        let mut stream = guard
+            .query(columns_sql, &[])
+            .await
+            .map_err(|e| format!("metadata columns failed: {e}"))?;
+        while let Some(item) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata columns failed: {e}"))?
+        {
+            if let QueryItem::Row(row) = item {
+                let schema = get_str(&row, 0);
+                let table = get_str(&row, 1);
+                if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                    let nullable = get_str(&row, 4);
+                    object.columns.push(ColumnMetadata {
+                        name: get_str(&row, 2),
+                        data_type: get_str(&row, 3),
+                        nullable: nullable.eq_ignore_ascii_case("YES"),
+                        ordinal: get_i32(&row, 5),
+                        default_value: get_optional_str(&row, 6),
+                    });
+                }
             }
         }
     }
@@ -191,29 +195,31 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         group by schema_name(t.schema_id), t.name, i.name, i.is_unique
         order by schema_name(t.schema_id), t.name, i.name
     "#;
-    let mut stream = guard
-        .query(indexes_sql, &[])
-        .await
-        .map_err(|e| format!("metadata indexes failed: {e}"))?;
-    while let Some(item) = stream
-        .try_next()
-        .await
-        .map_err(|e| format!("metadata indexes failed: {e}"))?
     {
-        if let QueryItem::Row(row) = item {
-            let schema = get_str(&row, 0);
-            let table = get_str(&row, 1);
-            if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
-                let raw_columns = get_str(&row, 4);
-                object.indexes.push(IndexMetadata {
-                    name: get_str(&row, 2),
-                    columns: raw_columns
-                        .split(',')
-                        .filter(|part| !part.is_empty())
-                        .map(str::to_string)
-                        .collect(),
-                    unique: get_bool(&row, 3),
-                });
+        let mut stream = guard
+            .query(indexes_sql, &[])
+            .await
+            .map_err(|e| format!("metadata indexes failed: {e}"))?;
+        while let Some(item) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata indexes failed: {e}"))?
+        {
+            if let QueryItem::Row(row) = item {
+                let schema = get_str(&row, 0);
+                let table = get_str(&row, 1);
+                if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                    let raw_columns = get_str(&row, 4);
+                    object.indexes.push(IndexMetadata {
+                        name: get_str(&row, 2),
+                        columns: raw_columns
+                            .split(',')
+                            .filter(|part| !part.is_empty())
+                            .map(str::to_string)
+                            .collect(),
+                        unique: get_bool(&row, 3),
+                    });
+                }
             }
         }
     }

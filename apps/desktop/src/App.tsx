@@ -27,6 +27,7 @@ import {
   dbListObjects,
   dbRunQuery,
   type ConnectionInfo,
+  type ConnectionProfile,
   type DatabaseMetadata,
   type DbEngine,
   type DbObjectMetadata,
@@ -130,6 +131,49 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
 ];
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
+type ConnectionInputMode = "url" | "fields";
+
+type ConnectionDraft = {
+  id: string;
+  name: string;
+  engine: DbEngine;
+  mode: ConnectionInputMode;
+  url: string;
+  host: string;
+  port: string;
+  user: string;
+  password: string;
+  database: string;
+};
+
+const profilesStorageKey = "irodori.connectionProfiles.v1";
+
+const starterProfiles: ConnectionDraft[] = [
+  {
+    id: "local-pg",
+    name: "Local Postgres",
+    engine: "postgres",
+    mode: "url",
+    url: "postgres://irodori:irodori@localhost:55432/samples",
+    host: "localhost",
+    port: "55432",
+    user: "irodori",
+    password: "",
+    database: "samples",
+  },
+  {
+    id: "local-mysql",
+    name: "Local MySQL",
+    engine: "mysql",
+    mode: "url",
+    url: "mysql://irodori:irodori@localhost:55306/samples",
+    host: "localhost",
+    port: "55306",
+    user: "irodori",
+    password: "",
+    database: "samples",
+  },
+];
 
 function engineLabel(engine: DbEngine) {
   return engineOptions.find((item) => item.value === engine)?.label ?? engine;
@@ -138,11 +182,12 @@ function engineLabel(engine: DbEngine) {
 function describeConnection(
   info: ConnectionInfo,
   elapsedMs: number,
+  displayName = info.id,
 ): WorkspaceConnection {
   const label = engineLabel(info.engine);
   return {
     id: info.id,
-    name: info.id,
+    name: displayName,
     engine: `${label} ${info.serverVersion}`,
     status: "connected",
     latencyMs: elapsedMs,
@@ -169,6 +214,108 @@ function objectKindLabel(object: DbObjectMetadata) {
   return object.kind === "view" ? "view" : "table";
 }
 
+function defaultPort(engine: DbEngine) {
+  switch (engine) {
+    case "postgres":
+    case "timescaledb":
+      return "5432";
+    case "cockroachdb":
+      return "26257";
+    case "yugabytedb":
+      return "5433";
+    case "redshift":
+      return "5439";
+    case "mysql":
+    case "mariadb":
+      return "3306";
+    case "tidb":
+      return "4000";
+    case "sqlserver":
+      return "1433";
+    case "mongodb":
+      return "27017";
+    case "oracle":
+      return "1521";
+    default:
+      return "";
+  }
+}
+
+function newDraft(seed: number): ConnectionDraft {
+  return {
+    id: `connection-${seed}`,
+    name: `Connection ${seed}`,
+    engine: "postgres",
+    mode: "url",
+    url: "",
+    host: "localhost",
+    port: "5432",
+    user: "",
+    password: "",
+    database: "",
+  };
+}
+
+function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
+  return { ...profile, password: "" };
+}
+
+function loadProfiles() {
+  try {
+    const raw = window.localStorage.getItem(profilesStorageKey);
+    if (!raw) {
+      return starterProfiles;
+    }
+    const parsed = JSON.parse(raw) as ConnectionDraft[];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return starterProfiles;
+    }
+    return parsed.map((profile) => ({
+      ...newDraft(1),
+      ...profile,
+      password: "",
+      port: profile.port ?? defaultPort(profile.engine),
+    }));
+  } catch {
+    return starterProfiles;
+  }
+}
+
+function validateDraft(draft: ConnectionDraft): string | null {
+  if (!draft.id.trim()) {
+    return "connection id is required";
+  }
+  if (!draft.name.trim()) {
+    return "name is required";
+  }
+  if (draft.mode === "url" && !draft.url.trim()) {
+    return "URL/DSN is required";
+  }
+  if (draft.port.trim() && !Number.isInteger(Number(draft.port))) {
+    return "port must be a number";
+  }
+  return null;
+}
+
+function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
+  if (draft.mode === "url") {
+    return {
+      id: draft.id.trim(),
+      engine: draft.engine,
+      url: draft.url.trim(),
+    };
+  }
+  return {
+    id: draft.id.trim(),
+    engine: draft.engine,
+    host: draft.host.trim() || undefined,
+    port: draft.port.trim() ? Number(draft.port) : undefined,
+    user: draft.user.trim() || undefined,
+    password: draft.password || undefined,
+    database: draft.database.trim() || undefined,
+  };
+}
+
 function App() {
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
@@ -177,16 +324,19 @@ function App() {
   );
   const [query, setQuery] = useState(initialQuery);
   const [running, setRunning] = useState(false);
-  const [connectionId, setConnectionId] = useState("local-pg");
-  const [connectionEngine, setConnectionEngine] = useState<DbEngine>("postgres");
-  const [connectionUrl, setConnectionUrl] = useState(
-    "postgres://irodori:irodori@localhost:55432/samples",
+  const [profiles, setProfiles] = useState<ConnectionDraft[]>(loadProfiles);
+  const [selectedProfileId, setSelectedProfileId] = useState(
+    () => profiles[0]?.id ?? "local-pg",
+  );
+  const [draft, setDraft] = useState<ConnectionDraft>(
+    () => profiles[0] ?? starterProfiles[0],
   );
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
   const [liveConnections, setLiveConnections] = useState<
     Record<string, WorkspaceConnection>
   >({});
   const [connecting, setConnecting] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
@@ -208,6 +358,13 @@ function App() {
         setSnapshot(fallbackSnapshot);
       });
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      profilesStorageKey,
+      JSON.stringify(profiles.map(sanitizedProfile)),
+    );
+  }, [profiles]);
 
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
@@ -280,20 +437,107 @@ function App() {
       )} ms`
     : "sample preview";
 
+  function updateDraft(patch: Partial<ConnectionDraft>) {
+    setDraft((current) => {
+      const next = { ...current, ...patch };
+      if (patch.engine && !patch.port) {
+        next.port = defaultPort(patch.engine);
+      }
+      return next;
+    });
+    setConnectionError(null);
+  }
+
+  function selectProfile(profile: ConnectionDraft) {
+    setSelectedProfileId(profile.id);
+    setDraft(profile);
+    setConnectionError(null);
+  }
+
+  function saveDraft(showSaved = true) {
+    const validationError = validateDraft(draft);
+    if (validationError) {
+      setConnectionError(validationError);
+      return false;
+    }
+    const cleanDraft = sanitizedProfile(draft);
+    setProfiles((current) => {
+      const existing = current.findIndex((profile) => profile.id === cleanDraft.id);
+      if (existing === -1) {
+        return [...current, cleanDraft];
+      }
+      return current.map((profile, index) =>
+        index === existing ? cleanDraft : profile,
+      );
+    });
+    setSelectedProfileId(cleanDraft.id);
+    if (showSaved) {
+      setConnectionError(null);
+    }
+    return true;
+  }
+
+  function addProfile() {
+    const next = newDraft(profiles.length + 1);
+    setProfiles((current) => [...current, sanitizedProfile(next)]);
+    setSelectedProfileId(next.id);
+    setDraft(next);
+    setConnectionError(null);
+  }
+
+  async function deleteProfile() {
+    const id = draft.id;
+    if (connectedIds.has(id)) {
+      await dbDisconnect(id).catch(() => undefined);
+    }
+    setConnectedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+    setProfiles((current) => {
+      const next = current.filter((profile) => profile.id !== id);
+      const fallback = next[0] ?? newDraft(1);
+      setSelectedProfileId(fallback.id);
+      setDraft(fallback);
+      return next.length > 0 ? next : [sanitizedProfile(fallback)];
+    });
+  }
+
+  async function testActiveProfile() {
+    const validationError = validateDraft(draft);
+    if (validationError) {
+      setConnectionError(validationError);
+      return;
+    }
+    setTestingConnection(true);
+    setConnectionError(null);
+    const testId = `__test_${draft.id}_${Date.now()}`;
+    try {
+      await dbConnect({
+        ...profileFromDraft(draft),
+        id: testId,
+      });
+      await dbDisconnect(testId);
+    } catch (error) {
+      setConnectionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTestingConnection(false);
+    }
+  }
+
   async function connectActiveProfile(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
+    if (!saveDraft(false)) {
+      return;
+    }
     setConnecting(true);
     setConnectionError(null);
     try {
-      const id = connectionId.trim() || `${connectionEngine}-connection`;
       const started = performance.now();
-      const info = await dbConnect({
-        id,
-        engine: connectionEngine,
-        url: connectionUrl.trim() || undefined,
-      });
+      const info = await dbConnect(profileFromDraft(draft));
       const elapsedMs = Math.max(1, Math.round(performance.now() - started));
-      const nextConnection = describeConnection(info, elapsedMs);
+      const nextConnection = describeConnection(info, elapsedMs, draft.name.trim());
       setLiveConnections((current) => ({
         ...current,
         [nextConnection.id]: nextConnection,
@@ -462,17 +706,49 @@ function App() {
                 type="button"
                 title="New connection"
                 aria-label="New connection"
+                onClick={addProfile}
               >
                 <Plus size={14} />
               </button>
             </div>
-            <form className="quick-connect" onSubmit={connectActiveProfile}>
+            <form className="connection-editor" onSubmit={connectActiveProfile}>
+              <div className="profile-strip" aria-label="Connection profiles">
+                {profiles.map((profile) => (
+                  <button
+                    className={
+                      profile.id === selectedProfileId
+                        ? "profile-pill active"
+                        : "profile-pill"
+                    }
+                    key={profile.id}
+                    type="button"
+                    onClick={() => selectProfile(profile)}
+                  >
+                    <Database size={13} />
+                    <span>{profile.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="quick-connect-row">
+                <input
+                  aria-label="Connection name"
+                  placeholder="Name"
+                  value={draft.name}
+                  onChange={(event) => updateDraft({ name: event.currentTarget.value })}
+                />
+                <input
+                  aria-label="Connection id"
+                  placeholder="ID"
+                  value={draft.id}
+                  onChange={(event) => updateDraft({ id: event.currentTarget.value })}
+                />
+              </div>
               <div className="quick-connect-row">
                 <select
                   aria-label="Engine"
-                  value={connectionEngine}
+                  value={draft.engine}
                   onChange={(event) =>
-                    setConnectionEngine(event.currentTarget.value as DbEngine)
+                    updateDraft({ engine: event.currentTarget.value as DbEngine })
                   }
                 >
                   {engineOptions.map((engine) => (
@@ -481,18 +757,86 @@ function App() {
                     </option>
                   ))}
                 </select>
-                <input
-                  aria-label="Connection id"
-                  value={connectionId}
-                  onChange={(event) => setConnectionId(event.currentTarget.value)}
-                />
+                <div className="mode-toggle" aria-label="Connection input mode">
+                  <button
+                    className={draft.mode === "url" ? "active" : ""}
+                    type="button"
+                    onClick={() => updateDraft({ mode: "url" })}
+                  >
+                    URL
+                  </button>
+                  <button
+                    className={draft.mode === "fields" ? "active" : ""}
+                    type="button"
+                    onClick={() => updateDraft({ mode: "fields" })}
+                  >
+                    Fields
+                  </button>
+                </div>
               </div>
-              <input
-                aria-label="Connection URL"
-                value={connectionUrl}
-                onChange={(event) => setConnectionUrl(event.currentTarget.value)}
-              />
+              {draft.mode === "url" ? (
+                <input
+                  aria-label="Connection URL"
+                  placeholder="URL / DSN"
+                  value={draft.url}
+                  onChange={(event) => updateDraft({ url: event.currentTarget.value })}
+                />
+              ) : (
+                <>
+                  <div className="quick-connect-row host-row">
+                    <input
+                      aria-label="Host"
+                      placeholder="Host"
+                      value={draft.host}
+                      onChange={(event) => updateDraft({ host: event.currentTarget.value })}
+                    />
+                    <input
+                      aria-label="Port"
+                      placeholder="Port"
+                      inputMode="numeric"
+                      value={draft.port}
+                      onChange={(event) => updateDraft({ port: event.currentTarget.value })}
+                    />
+                  </div>
+                  <div className="quick-connect-row">
+                    <input
+                      aria-label="User"
+                      placeholder="User"
+                      value={draft.user}
+                      onChange={(event) => updateDraft({ user: event.currentTarget.value })}
+                    />
+                    <input
+                      aria-label="Password"
+                      placeholder="Password"
+                      type="password"
+                      value={draft.password}
+                      onChange={(event) =>
+                        updateDraft({ password: event.currentTarget.value })
+                      }
+                    />
+                  </div>
+                  <input
+                    aria-label="Database"
+                    placeholder="Database / service / path"
+                    value={draft.database}
+                    onChange={(event) =>
+                      updateDraft({ database: event.currentTarget.value })
+                    }
+                  />
+                </>
+              )}
               <div className="quick-connect-actions">
+                <button className="text-button" type="button" onClick={() => saveDraft()}>
+                  Save
+                </button>
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={testingConnection}
+                  onClick={testActiveProfile}
+                >
+                  {testingConnection ? "Testing" : "Test"}
+                </button>
                 <button
                   className="primary-action compact"
                   type="submit"
@@ -508,6 +852,9 @@ function App() {
                   onClick={disconnectActiveProfile}
                 >
                   Disconnect
+                </button>
+                <button className="text-button danger" type="button" onClick={deleteProfile}>
+                  Delete
                 </button>
               </div>
               {connectionError ? (
