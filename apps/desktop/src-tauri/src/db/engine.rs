@@ -72,6 +72,7 @@ impl DbEngine {
             DbEngine::Sqlite => Wire::Sqlite,
             DbEngine::SqlServer => Wire::SqlServer,
             DbEngine::DuckDb => Wire::DuckDb,
+            DbEngine::Mongo => Wire::Mongo,
             DbEngine::Oracle => Wire::Oracle,
         }
     }
@@ -86,16 +87,10 @@ impl DbEngine {
             DbEngine::TiDb => 4000,
             DbEngine::SqlServer => 1433,
             DbEngine::Oracle => 1521,
+            DbEngine::Mongo => 27017,
             DbEngine::Sqlite | DbEngine::DuckDb => 0,
         }
     }
-}
-
-pub(crate) fn oracle_pending_message() -> String {
-    "Oracle will connect through a pure-Rust thin TNS driver (no Instant Client, \
-     like A5:SQL Mk-2's direct mode), built by inheriting the permissive `oracle-rs` \
-     crate. Integration is pending the SRC-004 spike."
-        .to_string()
 }
 
 fn percent_encode(input: &str) -> String {
@@ -128,7 +123,7 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         }
         Wire::Postgres => Ok(build_tcp_url("postgres", p)),
         Wire::Mysql => Ok(build_tcp_url("mysql", p)),
-        Wire::SqlServer | Wire::DuckDb | Wire::Oracle => {
+        Wire::SqlServer | Wire::DuckDb | Wire::Mongo | Wire::Oracle => {
             Err("this engine uses a dedicated connector, not a sqlx URL".into())
         }
     }

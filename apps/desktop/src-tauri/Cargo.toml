@@ -57,6 +57,7 @@ tokio-util = { version = "0.7", features = ["compat"] }
 # DuckDB is embedded C++ (heavy bundled build) so it is feature-gated and off by
 # default: build with `--features duckdb`.
 duckdb = { version = "1", optional = true, features = ["bundled"] }
+oracle-rs = "0.1.7"
 
 [features]
 duckdb = ["dep:duckdb"]

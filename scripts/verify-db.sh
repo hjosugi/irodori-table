@@ -27,7 +27,8 @@ meta() {
     yugabytedb)  EVAR=IRODORI_YUGABYTE_URL;  URL="postgres://yugabyte@localhost:55434/yugabyte?sslmode=disable"; T=yugabytedb_connect;;
     tidb)        EVAR=IRODORI_TIDB_URL;      URL="mysql://root@localhost:54000/test";                   T=tidb_connect;;
     sqlserver)   EVAR=IRODORI_MSSQL_URL;     URL="server=tcp:localhost,51433;User Id=sa;Password=Irodori_Strong!23;TrustServerCertificate=true"; T=sqlserver_samples;;
-    *) echo "no Irodori connector for '$1' (oracle=thin pending, mongodb=driver pending, sqlite/duckdb=embedded)"; return 1;;
+    mongodb)     EVAR=IRODORI_MONGO_URL;     URL="mongodb://irodori:irodori@localhost:57017/samples?authSource=admin"; T=mongo_samples;;
+    *) echo "no Irodori connector for '$1' (oracle=thin pending, sqlite/duckdb=embedded)"; return 1;;
   esac
 }
 
@@ -52,7 +53,7 @@ verify() {
 case "${1:-}" in
   all)
     rc=0
-    for e in postgres mysql mariadb timescaledb cockroachdb tidb sqlserver; do verify "$e" || rc=1; done
+    for e in postgres mysql mariadb timescaledb cockroachdb tidb sqlserver mongodb; do verify "$e" || rc=1; done
     echo "=== done (heavy/slow engines yugabytedb, oracle: run individually) ==="
     exit $rc ;;
   up)   meta "$2" && compose "$2" up -d && echo "export $EVAR=\"$URL\"" ;;

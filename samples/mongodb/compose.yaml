@@ -1,8 +1,8 @@
 name: irodori-mongodb
-# MongoDB is a DOCUMENT store, not SQL. Irodori support is planned (SRC-012) via
-# the `mongodb` crate and a document-oriented query/result path — it is NOT yet
-# wired into the SQL `run_query`, so this is a future verification target.
-# Connection (once supported): mongodb://irodori:irodori@localhost:57017/samples
+# MongoDB is a DOCUMENT store, not SQL. Irodori connects through the `mongodb`
+# crate behind the same `Connection` trait; a "query" is a collection name (or a
+# JSON {collection, filter}) and documents project to a table.
+# Irodori URL: mongodb://irodori:irodori@localhost:57017/samples?authSource=admin
 services:
   mongodb:
     image: docker.io/library/mongo:7
@@ -11,3 +11,5 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: irodori
     ports:
       - "57017:27017"
+    volumes:
+      - ./01_samples.js:/docker-entrypoint-initdb.d/01_samples.js:ro

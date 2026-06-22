@@ -308,3 +308,80 @@ fn duckdb_in_memory() {
         .unwrap()
         .block_on(exercise_duckdb());
 }
+
+/// MongoDB through the same `Connection` trait: connect, version, and a
+/// collection "query" projected to a table.
+async fn exercise_mongo(url: String) {
+    let state = DbState::default();
+    let info = connect_impl(&state, url_profile("it", DbEngine::Mongo, url))
+        .await
+        .expect("connect");
+    assert_eq!(info.engine, DbEngine::Mongo);
+    assert!(!info.server_version.is_empty());
+    eprintln!("connected: {}", info.server_version);
+
+    let r = run_query_impl(&state, "it".into(), "customers".into(), None)
+        .await
+        .expect("find customers");
+    assert_eq!(r.row_count, 4, "4 seeded customers");
+    assert!(r.columns.iter().any(|c| c == "name"), "columns: {:?}", r.columns);
+}
+
+#[test]
+fn mongo_samples() {
+    let Ok(url) = std::env::var("IRODORI_MONGO_URL") else {
+        eprintln!("skip: IRODORI_MONGO_URL not set");
+        return;
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(exercise_mongo(url));
+}
+
+/// Oracle via the pure-Rust thin driver (no Instant Client). Structured profile
+/// — Oracle's `database` field is the service name.
+async fn exercise_oracle(profile: ConnectionProfile) {
+    let state = DbState::default();
+    let info = connect_impl(&state, profile).await.expect("connect");
+    assert_eq!(info.engine, DbEngine::Oracle);
+    assert!(!info.server_version.is_empty());
+    eprintln!("connected: Oracle {}", info.server_version);
+
+    let r = run_query_impl(
+        &state,
+        "it".into(),
+        "select id, name from customers order by id".into(),
+        None,
+    )
+    .await
+    .expect("query customers");
+    assert_eq!(r.row_count, 4, "4 seeded customers");
+    assert!(
+        r.columns.iter().any(|c| c.eq_ignore_ascii_case("name")),
+        "columns: {:?}",
+        r.columns
+    );
+    assert_eq!(r.rows[0][0], serde_json::json!(1));
+}
+
+#[test]
+fn oracle_samples() {
+    if std::env::var("IRODORI_ORACLE").is_err() {
+        eprintln!("skip: IRODORI_ORACLE not set");
+        return;
+    }
+    let env = |k: &str, d: &str| std::env::var(k).unwrap_or_else(|_| d.to_string());
+    let profile = ConnectionProfile {
+        id: "it".into(),
+        engine: DbEngine::Oracle,
+        host: Some(env("IRODORI_ORACLE_HOST", "localhost")),
+        port: Some(env("IRODORI_ORACLE_PORT", "55521").parse().unwrap_or(55521)),
+        user: Some(env("IRODORI_ORACLE_USER", "irodori")),
+        password: Some(env("IRODORI_ORACLE_PASSWORD", "irodori")),
+        database: Some(env("IRODORI_ORACLE_SERVICE", "FREEPDB1")),
+        url: None,
+    };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(exercise_oracle(profile));
+}

@@ -27,8 +27,10 @@ use tokio::sync::Mutex;
 use ts_rs::TS;
 
 mod engine;
+mod mongo;
 mod mssql;
 mod mysql;
+mod oracle;
 mod postgres;
 mod sqlite;
 #[cfg(feature = "duckdb")]
@@ -173,6 +175,30 @@ impl Connection for MssqlConn {
     async fn close(&self) {} // tiberius closes when its last handle drops
 }
 
+struct MongoConn(mongo::MongoHandle);
+#[async_trait]
+impl Connection for MongoConn {
+    async fn version(&self) -> Option<String> {
+        mongo::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        mongo::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {} // mongodb client closes when its last handle drops
+}
+
+struct OracleConn(oracle::OracleHandle);
+#[async_trait]
+impl Connection for OracleConn {
+    async fn version(&self) -> Option<String> {
+        oracle::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        oracle::run_query(&self.0, sql, cap).await
+    }
+    async fn close(&self) {} // oracle-rs closes when its last handle drops
+}
+
 #[cfg(feature = "duckdb")]
 struct DuckConn(Arc<std::sync::Mutex<duckdb::Connection>>);
 #[cfg(feature = "duckdb")]
@@ -195,6 +221,7 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
         Wire::Mysql => Arc::new(MysqlConn(mysql::connect(&engine::build_url(profile)?).await?)),
         Wire::Sqlite => Arc::new(SqliteConn(sqlite::connect(&engine::build_url(profile)?).await?)),
         Wire::SqlServer => Arc::new(MssqlConn(Arc::new(Mutex::new(mssql::connect(profile).await?)))),
+        Wire::Mongo => Arc::new(MongoConn(mongo::connect(profile).await?)),
         Wire::DuckDb => {
             #[cfg(feature = "duckdb")]
             {
@@ -207,7 +234,7 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
                 );
             }
         }
-        Wire::Oracle => return Err(engine::oracle_pending_message()),
+        Wire::Oracle => Arc::new(OracleConn(oracle::connect(profile).await?)),
     };
     Ok(conn)
 }
@@ -359,22 +386,5 @@ mod tests {
         disconnect_impl(&state, "rt".into())
             .await
             .expect("disconnect");
-    }
-
-    #[tokio::test]
-    async fn oracle_reports_thin_driver_plan() {
-        let state = DbState::default();
-        let profile = ConnectionProfile {
-            id: "ora".into(),
-            engine: DbEngine::Oracle,
-            host: Some("localhost".into()),
-            port: Some(1521),
-            user: Some("system".into()),
-            password: Some("secret".into()),
-            database: Some("FREEPDB1".into()),
-            url: None,
-        };
-        let err = connect_impl(&state, profile).await.unwrap_err();
-        assert!(err.contains("thin"));
     }
 }
