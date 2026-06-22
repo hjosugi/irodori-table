@@ -381,14 +381,16 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## EDIT — Editor Engine, Vim, Keybindings
 
-### EDIT-001 — Editor engine spike + decision
+### EDIT-001 — Editor engine spike + decision  ⏳ decided, prototype pending
 - **Goal:** Choose Monaco vs CodeMirror 6 vs native/Tree-sitter.
-- **Done when:** a spike compares Vim quality, completion architecture, and large-file performance; an ADR records the choice.
+- **Decision (ADR 0001):** CodeMirror 6 host; CM6 Lezer paint + `web-tree-sitter` semantic layer; `sql-formatter` v15. Rationale + reference-project evidence (Beekeeper/Outerbase = CM6) in `docs/adr/0001-editor-stack.md`.
+- **Done when:** ~~a spike compares Vim quality, completion architecture, and large-file performance;~~ ✅ an ADR records the choice. Remaining: CM6 prototype with large-file perf numbers recorded in the ADR.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P0
 
 ### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)
 - **Goal:** Editor-grade SQL structure.
+- **Approach (ADR 0001):** paint via CM6 Lezer `@codemirror/lang-sql` (dialect bound to `DbEngine`) now; add `web-tree-sitter` captures as a fallback/upgrade only where a dialect grammar is solid. Map highlight tags into the THEME-001 model (not TextMate-only scopes).
 - **Done when:** highlighting uses Tree-sitter queries where the grammar is solid, with a dialect fallback; tokens map to the internal theme model.
 - **Depends on:** EDIT-001, THEME-001
 - **Size:** M · **Priority:** P0
@@ -425,6 +427,7 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### EDIT-008 — Format + comment toggles + bracket matching
 - **Goal:** Editor ergonomics.
+- **Approach (ADR 0001):** default formatter = `sql-formatter` v15 (MIT), `DbEngine`→language mapped, behind a pluggable format hook; comment-toggle + bracket-matching via CM6 built-ins. v2: CST/tree-sitter formatter for dialect-perfect output.
 - **Done when:** a format hook (pluggable formatter), comment toggle, and bracket matching work; formatter choice is configurable.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1
