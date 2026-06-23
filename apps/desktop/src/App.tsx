@@ -695,6 +695,7 @@ function App() {
   const [editMode, setEditMode] = useState(false);
   const [cellEdits, setCellEdits] = useState<Map<string, string>>(new Map());
   const [newRows, setNewRows] = useState<string[][]>([]);
+  const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
   const [editingCell, setEditingCell] = useState<{
     key: string;
     col: number;
@@ -826,13 +827,14 @@ function App() {
     "lifetime_value",
     "last_order_at",
   ];
-  const gridTemplateColumns = resultColumns
+  // In Edit Data mode a leading gutter column holds the per-row delete control.
+  const gridTemplateColumns = `${editMode ? "30px " : ""}${resultColumns
     .map(() => "minmax(140px, 1fr)")
-    .join(" ");
+    .join(" ")}`;
 
-  // Build the display rows: original rows (with any staged cell edits overlaid)
-  // followed by staged new rows. `key` ties a display row back to its origin so an
-  // edit maps to the right original row / new-row index regardless of sorting.
+  // Build the display rows: original rows (with any staged cell edits overlaid,
+  // staged-deleted rows skipped) followed by staged new rows. `key` ties a display
+  // row back to its origin so an edit maps to the right row regardless of sorting.
   const baseCells = result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
   const displayRows: {
     key: string;
@@ -841,6 +843,9 @@ function App() {
     state: "clean" | "edited" | "new";
   }[] = [];
   baseCells.forEach((cells, index) => {
+    if (deletedRows.has(index)) {
+      return;
+    }
     let state: "clean" | "edited" = "clean";
     const overlaid = cells.map((cell, col) => {
       const edit = cellEdits.get(`o${index}:${col}`);
@@ -885,7 +890,7 @@ function App() {
   const topPad = firstVisible * GRID_ROW_HEIGHT;
   const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
   const visibleRows = displayRows.slice(firstVisible, lastVisible);
-  const pendingCount = cellEdits.size + newRows.length;
+  const pendingCount = cellEdits.size + newRows.length + deletedRows.size;
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
     const top = event.currentTarget.scrollTop;
@@ -902,6 +907,7 @@ function App() {
   function resetEdits() {
     setCellEdits(new Map());
     setNewRows([]);
+    setDeletedRows(new Set());
     setEditingCell(null);
     setCommitError(null);
   }
@@ -951,6 +957,27 @@ function App() {
   function addNewRow() {
     setNewRows((current) => [...current, resultColumns.map(() => "")]);
     setEditMode(true);
+  }
+
+  // Stage a row delete (original rows) or drop a staged new row.
+  function deleteRow(
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+  ) {
+    if (origin.kind === "orig") {
+      setDeletedRows((current) => new Set(current).add(origin.index));
+      setCellEdits((current) => {
+        const next = new Map(current);
+        for (const key of [...next.keys()]) {
+          if (key.startsWith(`o${origin.index}:`)) {
+            next.delete(key);
+          }
+        }
+        return next;
+      });
+    } else {
+      setNewRows((current) => current.filter((_, index) => index !== origin.index));
+    }
+    setEditingCell(null);
   }
 
   // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
@@ -1063,7 +1090,9 @@ function App() {
           .map((column, col) => ({ column, value: row[col] }))
           .filter((cell) => cell.value !== ""),
       }));
-    const deletes: RowDelete[] = [];
+    const deletes: RowDelete[] = [...deletedRows].map((rowIndex) => ({
+      keys: target.keyColumns.map((column) => originalCell(rowIndex, column)),
+    }));
     const edits: TableEdits = {
       schema: target.schema,
       table: target.table,
@@ -2182,6 +2211,7 @@ function App() {
                 role="row"
                 style={{ gridTemplateColumns }}
               >
+                {editMode ? <span className="grid-gutter" /> : null}
                 {resultColumns.map((column, colIndex) => (
                   <span
                     role="columnheader"
@@ -2208,6 +2238,17 @@ function App() {
                   key={row.key}
                   style={{ gridTemplateColumns }}
                 >
+                  {editMode ? (
+                    <button
+                      className="grid-gutter delete-row"
+                      type="button"
+                      title="Delete row"
+                      aria-label="Delete row"
+                      onClick={() => deleteRow(row.origin)}
+                    >
+                      ×
+                    </button>
+                  ) : null}
                   {row.cells.map((cell, cellIndex) => {
                     const isEditing =
                       editingCell?.key === row.key && editingCell.col === cellIndex;

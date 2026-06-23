@@ -1168,3 +1168,25 @@ button {
   max-width: none;
   height: auto;
 }
+
+/* Edit-mode per-row delete gutter. */
+.grid-gutter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-right: 1px solid #edf0ea;
+}
+
+.delete-row {
+  border: none;
+  background: transparent;
+  color: #b07a72;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.delete-row:hover {
+  color: #a23b22;
+}
