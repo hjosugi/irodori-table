@@ -320,9 +320,11 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P1
 
-### EXEC-007 — Editable result rows with safe transaction flow
+### EXEC-007 — Editable result rows with safe transaction flow 🚧 (backend done)
 - **Goal:** Edit data with an explicit commit path.
 - **Done when:** edits stage as a reviewable change set, generate parameterized DML, and commit/rollback in a transaction; primary-key-less tables are handled safely.
+- **Done (backend, staged/non-immediate model):** `db/edit.rs` turns a `TableEdits` batch (updates/inserts/deletes, each a `CellValue` set keyed by the row's key columns) into parameterized statements with **per-dialect identifier quoting** (`"x"` / `` `x` `` / `[x]`) and placeholder style (`$n` for pg, `?` otherwise); a `NULL` key becomes `IS NULL`; empty-table / keyless-update / keyless-delete are rejected (no accidental full-table writes). `db_apply_edits` commits the batch in one transaction per the `Connection::apply_edits` trait method (sqlx engines override; others refuse). Verified by `edit.rs` generation unit tests **and an end-to-end in-memory SQLite test** (`apply_edits_commits_update_insert_delete`). Types + command flow through typebridge (`TableEdits`/`AppliedEdits`/`dbApplyEdits`, drift-check green).
+- **Remaining:** the desktop editable-grid UI (staged edits + sort + new row + paste + commit/discard); primary-key detection wired from metadata; and precise value binding for pg/mysql precision-typed columns / typed `NULL` (needs column-type metadata threaded through).
 - **Depends on:** EXEC-005
 - **Size:** L · **Priority:** P1
 

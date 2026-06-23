@@ -44,6 +44,18 @@ export type ColumnMetadata = { name: string, dataType: string, nullable: boolean
 
 export type IndexMetadata = { name: string, columns: Array<string>, unique: boolean, };
 
+export type CellValue = { column: string, value: JsonValue, };
+
+export type RowUpdate = { keys: Array<CellValue>, set: Array<CellValue>, };
+
+export type RowInsert = { values: Array<CellValue>, };
+
+export type RowDelete = { keys: Array<CellValue>, };
+
+export type TableEdits = { schema?: string, table: string, updates: Array<RowUpdate>, inserts: Array<RowInsert>, deletes: Array<RowDelete>, };
+
+export type AppliedEdits = { updated: bigint, inserted: bigint, deleted: bigint, };
+
 export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
 }
@@ -58,6 +70,10 @@ export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, 
 
 export function dbCancel(queryId: string): Promise<boolean> {
   return invoke<boolean>("db_cancel", { queryId });
+}
+
+export function dbApplyEdits(connectionId: string, edits: TableEdits): Promise<AppliedEdits> {
+  return invoke<AppliedEdits>("db_apply_edits", { connectionId, edits });
 }
 
 export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {

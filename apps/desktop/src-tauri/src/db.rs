@@ -30,6 +30,7 @@ use ts_rs::TS;
 
 #[cfg(feature = "duckdb")]
 mod duck;
+mod edit;
 mod engine;
 mod meta;
 mod mongo;
@@ -40,6 +41,7 @@ mod postgres;
 mod sqlite;
 mod stream;
 
+pub use edit::{AppliedEdits, CellValue, RowDelete, RowInsert, RowUpdate, TableEdits};
 pub use engine::DbEngine;
 use engine::Wire;
 
@@ -211,6 +213,12 @@ trait Connection: Send + Sync {
     async fn metadata(&self) -> Result<DatabaseMetadata, String>;
     async fn close(&self);
 
+    /// Commit a batch of result-grid edits in one transaction. The default refuses;
+    /// the sqlx engines (Postgres-wire, MySQL-wire, SQLite) override it.
+    async fn apply_edits(&self, _edits: &TableEdits) -> Result<AppliedEdits, String> {
+        Err("editing is not supported for this engine yet".to_string())
+    }
+
     /// Stream a query's rows to `ctx.sink` in batches, checking `ctx.token` so a
     /// cancel stops the fetch promptly. The default buffers via [`run_query`] and
     /// emits the header plus a single batch — correct for engines whose driver
@@ -250,6 +258,9 @@ impl Connection for PgConn {
     ) -> Result<stream::StreamSummary, String> {
         postgres::stream_query(&self.0, sql, ctx).await
     }
+    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+        postgres::apply_edits(&self.0, edits).await
+    }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         postgres::metadata(&self.0).await
     }
@@ -274,6 +285,9 @@ impl Connection for MysqlConn {
     ) -> Result<stream::StreamSummary, String> {
         mysql::stream_query(&self.0, sql, ctx).await
     }
+    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+        mysql::apply_edits(&self.0, edits).await
+    }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         mysql::metadata(&self.0).await
     }
@@ -297,6 +311,9 @@ impl Connection for SqliteConn {
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         sqlite::stream_query(&self.0, sql, ctx).await
+    }
+    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+        sqlite::apply_edits(&self.0, edits).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         sqlite::metadata(&self.0).await
@@ -608,6 +625,21 @@ pub async fn list_objects_impl(
     conn.metadata().await
 }
 
+pub async fn apply_edits_impl(
+    state: &DbState,
+    connection_id: String,
+    edits: TableEdits,
+) -> Result<AppliedEdits, String> {
+    let conn = {
+        let guard = state.conns.lock().await;
+        guard
+            .get(&connection_id)
+            .cloned()
+            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+    };
+    conn.apply_edits(&edits).await
+}
+
 pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(), String> {
     if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
         conn.close().await;
@@ -704,6 +736,17 @@ pub async fn db_run_query_stream(
     };
     on_event.send(final_event).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// Commit staged result-grid edits (updates/inserts/deletes) for one table in a
+/// single transaction; returns how many rows each kind affected.
+#[tauri::command]
+pub async fn db_apply_edits(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+    edits: TableEdits,
+) -> Result<AppliedEdits, String> {
+    apply_edits_impl(state.inner(), connection_id, edits).await
 }
 
 #[tauri::command]
@@ -912,6 +955,82 @@ mod tests {
         assert!(
             matches!(&res, Err(m) if m.as_str() == "query cancelled"),
             "got {res:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn apply_edits_commits_update_insert_delete() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("edit"))
+            .await
+            .expect("connect");
+        run_query_impl(
+            &state,
+            "edit".into(),
+            "create table t(id integer primary key, name text)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+        run_query_impl(
+            &state,
+            "edit".into(),
+            "insert into t(id,name) values (1,'a'),(2,'b'),(3,'c')".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+
+        fn cell(column: &str, value: serde_json::Value) -> CellValue {
+            CellValue {
+                column: column.to_string(),
+                value,
+            }
+        }
+        let edits = TableEdits {
+            schema: None,
+            table: "t".into(),
+            updates: vec![RowUpdate {
+                keys: vec![cell("id", serde_json::json!(1))],
+                set: vec![cell("name", serde_json::json!("A"))],
+            }],
+            inserts: vec![RowInsert {
+                values: vec![
+                    cell("id", serde_json::json!(4)),
+                    cell("name", serde_json::json!("d")),
+                ],
+            }],
+            deletes: vec![RowDelete {
+                keys: vec![cell("id", serde_json::json!(2))],
+            }],
+        };
+        let applied = apply_edits_impl(&state, "edit".into(), edits)
+            .await
+            .expect("apply");
+        assert_eq!(applied.updated, 1);
+        assert_eq!(applied.inserted, 1);
+        assert_eq!(applied.deleted, 1);
+
+        let result = run_query_impl(
+            &state,
+            "edit".into(),
+            "select id,name from t order by id".into(),
+            None,
+        )
+        .await
+        .expect("select");
+        assert_eq!(result.row_count, 3);
+        assert_eq!(
+            result.rows[0],
+            vec![serde_json::json!(1), serde_json::json!("A")]
+        );
+        assert_eq!(
+            result.rows[1],
+            vec![serde_json::json!(3), serde_json::json!("c")]
+        );
+        assert_eq!(
+            result.rows[2],
+            vec![serde_json::json!(4), serde_json::json!("d")]
         );
     }
 

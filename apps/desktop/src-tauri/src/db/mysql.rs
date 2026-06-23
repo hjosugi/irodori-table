@@ -37,6 +37,69 @@ pub async fn stream_query(
     super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
 }
 
+/// Apply result-grid edits in one transaction (rolls back on the first failure).
+pub async fn apply_edits(
+    pool: &MySqlPool,
+    edits: &super::edit::TableEdits,
+) -> Result<super::edit::AppliedEdits, String> {
+    let plan = super::edit::plan(super::engine::Wire::Mysql, edits)?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("begin failed: {e}"))?;
+    let mut applied = super::edit::AppliedEdits::default();
+    for stmt in &plan.deletes {
+        applied.deleted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("delete failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.updates {
+        applied.updated += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("update failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.inserts {
+        applied.inserted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("insert failed: {e}"))?
+            .rows_affected();
+    }
+    tx.commit()
+        .await
+        .map_err(|e| format!("commit failed: {e}"))?;
+    Ok(applied)
+}
+
+fn bind(
+    stmt: &super::edit::Statement,
+) -> sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments> {
+    use serde_json::Value;
+    let mut q = sqlx::query(&stmt.sql);
+    for value in &stmt.params {
+        q = match value {
+            Value::Null => q.bind(Option::<String>::None),
+            Value::Bool(b) => q.bind(*b),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    q.bind(i)
+                } else if let Some(f) = n.as_f64() {
+                    q.bind(f)
+                } else {
+                    q.bind(n.to_string())
+                }
+            }
+            Value::String(s) => q.bind(s.clone()),
+            other => q.bind(other.to_string()),
+        };
+    }
+    q
+}
+
 pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     let schema_name = sqlx::query_scalar::<_, Option<String>>("select database()")
         .fetch_one(pool)

@@ -131,6 +131,71 @@ fn quote_string(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
 }
 
+/// Apply result-grid edits in one transaction (rolls back on the first failure).
+pub async fn apply_edits(
+    pool: &SqlitePool,
+    edits: &super::edit::TableEdits,
+) -> Result<super::edit::AppliedEdits, String> {
+    let plan = super::edit::plan(super::engine::Wire::Sqlite, edits)?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("begin failed: {e}"))?;
+    let mut applied = super::edit::AppliedEdits::default();
+    for stmt in &plan.deletes {
+        applied.deleted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("delete failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.updates {
+        applied.updated += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("update failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.inserts {
+        applied.inserted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("insert failed: {e}"))?
+            .rows_affected();
+    }
+    tx.commit()
+        .await
+        .map_err(|e| format!("commit failed: {e}"))?;
+    Ok(applied)
+}
+
+/// Bind a statement's JSON params by inferred storage class (SQLite is dynamically
+/// typed, so text/int/real/null all bind cleanly).
+fn bind(
+    stmt: &super::edit::Statement,
+) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>> {
+    use serde_json::Value;
+    let mut q = sqlx::query(&stmt.sql);
+    for value in &stmt.params {
+        q = match value {
+            Value::Null => q.bind(Option::<String>::None),
+            Value::Bool(b) => q.bind(*b),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    q.bind(i)
+                } else if let Some(f) = n.as_f64() {
+                    q.bind(f)
+                } else {
+                    q.bind(n.to_string())
+                }
+            }
+            Value::String(s) => q.bind(s.clone()),
+            other => q.bind(other.to_string()),
+        };
+    }
+    q
+}
+
 fn cell_to_json(row: &SqliteRow, i: usize) -> serde_json::Value {
     use serde_json::Value;
     if row.try_get_raw(i).map(|v| v.is_null()).unwrap_or(true) {
