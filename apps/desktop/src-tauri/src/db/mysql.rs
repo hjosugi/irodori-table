@@ -29,6 +29,77 @@ pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> Result<RowSet
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn stream_query(
+    pool: &MySqlPool,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
+/// Apply result-grid edits in one transaction (rolls back on the first failure).
+pub async fn apply_edits(
+    pool: &MySqlPool,
+    edits: &super::edit::TableEdits,
+) -> Result<super::edit::AppliedEdits, String> {
+    let plan = super::edit::plan(super::engine::Wire::Mysql, edits)?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("begin failed: {e}"))?;
+    let mut applied = super::edit::AppliedEdits::default();
+    for stmt in &plan.deletes {
+        applied.deleted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("delete failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.updates {
+        applied.updated += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("update failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.inserts {
+        applied.inserted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("insert failed: {e}"))?
+            .rows_affected();
+    }
+    tx.commit()
+        .await
+        .map_err(|e| format!("commit failed: {e}"))?;
+    Ok(applied)
+}
+
+fn bind(
+    stmt: &super::edit::Statement,
+) -> sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments> {
+    use serde_json::Value;
+    let mut q = sqlx::query(&stmt.sql);
+    for value in &stmt.params {
+        q = match value {
+            Value::Null => q.bind(Option::<String>::None),
+            Value::Bool(b) => q.bind(*b),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    q.bind(i)
+                } else if let Some(f) = n.as_f64() {
+                    q.bind(f)
+                } else {
+                    q.bind(n.to_string())
+                }
+            }
+            Value::String(s) => q.bind(s.clone()),
+            other => q.bind(other.to_string()),
+        };
+    }
+    q
+}
+
 pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     let schema_name = sqlx::query_scalar::<_, Option<String>>("select database()")
         .fetch_one(pool)
@@ -131,6 +202,70 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
                 columns,
                 unique: non_unique == 0,
             });
+        }
+    }
+
+    let pk_rows = sqlx::query(
+        r#"
+        select cast(table_schema as char), cast(table_name as char),
+               cast(column_name as char)
+        from information_schema.key_column_usage
+        where table_schema = database() and constraint_name = 'PRIMARY'
+        order by table_schema, table_name, ordinal_position
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+    for row in pk_rows {
+        let schema: String = row.try_get(0).unwrap_or_default();
+        let table: String = row.try_get(1).unwrap_or_default();
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            if let Ok(column) = row.try_get::<String, _>(2) {
+                object.primary_key.push(column);
+            }
+        }
+    }
+
+    let fk_rows = sqlx::query(
+        r#"
+        select cast(table_schema as char), cast(table_name as char),
+               cast(constraint_name as char), cast(column_name as char),
+               cast(referenced_table_schema as char), cast(referenced_table_name as char),
+               cast(referenced_column_name as char)
+        from information_schema.key_column_usage
+        where table_schema = database() and referenced_table_name is not null
+        order by table_schema, table_name, constraint_name, ordinal_position
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+    // Rows for one FK share (table, constraint_name); accumulate in order.
+    let mut current: Option<(String, String, String)> = None;
+    for row in fk_rows {
+        let schema: String = row.try_get(0).unwrap_or_default();
+        let table: String = row.try_get(1).unwrap_or_default();
+        let constraint: String = row.try_get(2).unwrap_or_default();
+        let column: String = row.try_get(3).unwrap_or_default();
+        let ref_schema: String = row.try_get(4).unwrap_or_default();
+        let ref_table: String = row.try_get(5).unwrap_or_default();
+        let ref_column: String = row.try_get(6).unwrap_or_default();
+        let key = (schema.clone(), table.clone(), constraint.clone());
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            if current.as_ref() != Some(&key) {
+                object.foreign_keys.push(super::ForeignKey {
+                    columns: Vec::new(),
+                    references_schema: Some(ref_schema),
+                    references_table: ref_table,
+                    references_columns: Vec::new(),
+                });
+                current = Some(key);
+            }
+            if let Some(fk) = object.foreign_keys.last_mut() {
+                fk.columns.push(column);
+                fk.references_columns.push(ref_column);
+            }
         }
     }
 

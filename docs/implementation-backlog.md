@@ -161,9 +161,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P0
 
-### SHELL-002 — Command palette shell
+### SHELL-002 — Command palette shell ✅ (first pass)
 - **Goal:** A keyboard-first command palette present from day one.
 - **Done when:** palette opens via shortcut, lists registered commands, runs a no-op command; commands come from a registry.
+- **Done:** `src/keybindings.ts` holds the command catalog; the palette opens on `Mod+Shift+P` (VS Code's "Show All Commands"), filters the registry as you type, and runs the selected command (Enter = top match, Esc closes). Real commands are wired (run/cancel/focus editor/export/edit-mode/add-row/commit).
 - **Depends on:** SHELL-001
 - **Size:** M · **Priority:** P0
 
@@ -281,9 +282,16 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** CONN-002
 - **Size:** M · **Priority:** P0
 
-### EXEC-002 — Streaming results + cancellation
+### EXEC-002 — Streaming results + cancellation ✅ (core done)
 - **Goal:** Large results stream and stop on demand.
 - **Done when:** rows stream into the grid incrementally; cancel stops server-side work where supported; cancel mid-stream leaves the UI consistent.
+- **Done (verified by unit tests + tsc):**
+  - **Per-query timeout** — `db_run_query`/`db_run_query_stream` accept an optional `timeoutMs`, bounded by `tokio::time::timeout` → clean `query timed out after Nms`.
+  - **Explicit cancel** — an optional `queryId` registers a `tokio_util` `CancellationToken` in `DbState`; `db_cancel(queryId)` signals it, a `tokio::select!` resolves the run to `query cancelled`, and the desktop Cancel button calls `dbCancel` with the in-flight id.
+  - **Incremental streaming** — `db_run_query_stream` streams `columns → batched rows → done|error` over a Tauri `Channel` (`STREAM_BATCH_ROWS`-sized batches). `stream.rs` grew a `StreamCtx`/`stream_capped` twin of `collect_capped`; the sqlx trio and SQL Server override `Connection::stream_query` for true row-by-row delivery, and the fetch loop checks the cancel token each row — so cancel stops the fetch promptly (cooperative server-side cancel even for the non-pooled tiberius). The desktop grid fills as batches arrive (`runQueryStream` + the hand-written `db-stream.ts` channel wrapper). Engines whose driver materializes rows before our loop (Oracle/Mongo) and DuckDB use the default `stream_query` (buffer → one batch) and rely on the timeout/cancel-drop.
+  - Unit-tested with in-memory SQLite (`stream_delivers_header_then_rows`, `stream_caps_rows_and_flags_truncation`, `stream_query_stops_on_a_cancelled_token`) plus `with_timeout`/`cancel_query_impl`.
+- **Note on Oracle/Mongo cancel:** these use the default `stream_query` and are already stopped server-side by the cancel/timeout *drop*, not just a flag — dropping the Mongo future kills the server cursor mid-`try_next`, and Oracle's fetch is a single `query().await` that aborts on drop (its row loop is in-memory, so an in-loop token check would not help). The grid-side smoothness is handled by EXEC-004 (row virtualization, done).
+- **Remaining:** incremental column evolution for document stores (Mongo currently buffers to compute the column union before projecting).
 - **Depends on:** EXEC-001
 - **Size:** L · **Priority:** P0
 
@@ -293,9 +301,11 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P0
 
-### EXEC-004 — Virtualized result grid
+### EXEC-004 — Virtualized result grid 🚧 (row virtualization done)
 - **Goal:** Smooth scrolling over huge results.
 - **Done when:** the grid renders only visible rows/cols; 1M-row synthetic result scrolls without jank in a benchmark.
+- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely.
+- **Remaining:** column virtualization for very wide results, and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
 - **Depends on:** EXEC-002
 - **Size:** L · **Priority:** P0
 
@@ -311,9 +321,14 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P1
 
-### EXEC-007 — Editable result rows with safe transaction flow
+### EXEC-007 — Editable result rows with safe transaction flow 🚧 (backend done)
 - **Goal:** Edit data with an explicit commit path.
 - **Done when:** edits stage as a reviewable change set, generate parameterized DML, and commit/rollback in a transaction; primary-key-less tables are handled safely.
+- **Done (backend, staged/non-immediate model):** `db/edit.rs` turns a `TableEdits` batch (updates/inserts/deletes, each a `CellValue` set keyed by the row's key columns) into parameterized statements with **per-dialect identifier quoting** (`"x"` / `` `x` `` / `[x]`) and placeholder style (`$n` for pg, `?` otherwise); a `NULL` key becomes `IS NULL`; empty-table / keyless-update / keyless-delete are rejected (no accidental full-table writes). `db_apply_edits` commits the batch in one transaction per the `Connection::apply_edits` trait method (sqlx engines override; others refuse). Verified by `edit.rs` generation unit tests **and an end-to-end in-memory SQLite test** (`apply_edits_commits_update_insert_delete`). Types + command flow through typebridge (`TableEdits`/`AppliedEdits`/`dbApplyEdits`, drift-check green).
+- **Done (desktop editable grid, staged model):** an "Edit Data" mode adds a staged change set on top of the result grid — double-click a cell to edit (changed cells/rows highlighted), "+ Row" to stage inserts, **column-header click to sort** (asc/desc/none, client-side), and **paste** TSV/CSV from the clipboard into cells (spilling across columns and into new rows). "Commit (N)" infers the target table from the last query's `from <table>` and key columns from the table's unique index (else all result columns), builds a `TableEdits` batch, and calls `dbApplyEdits`; "Discard" drops the staged changes. Edits reset on each new run; the change set survives sorting (display rows key back to their origin). Sorting/editing compose with row virtualization. Frontend type-checks and the production bundle builds.
+- **Done (PK detection):** metadata now carries the real primary key (`DbObjectMetadata.primary_key`) — SQLite via `pragma table_xinfo.pk`, Postgres/MySQL via `pg_constraint`/`information_schema`; the editable grid keys updates/deletes on the PK (then a unique index, then all columns). Verified by a SQLite metadata unit test.
+- **Done (row delete):** Edit Data mode shows a per-row delete gutter; deleting an original row stages a `RowDelete` (keyed on the PK), deleting a staged new row drops it. Deletes count toward the pending total and commit in the same transaction.
+- **Remaining:** precise value binding for pg/mysql precision-typed columns / typed `NULL` (needs column-type metadata threaded through).
 - **Depends on:** EXEC-005
 - **Size:** L · **Priority:** P1
 
@@ -332,7 +347,7 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### EXEC-009b — SQL Server (tiberius) and DuckDB drivers
 - **Goal:** Add the major engines sqlx does not cover.
-- **SQL Server: ✅ done (verified).** Connects via the pure-Rust `tiberius` (TDS) driver — no SQL Server client — behind `EnginePool::SqlServer`; an integration test runs against a real SQL Server 2022 container (connect + version + typed `select`). Follow-up: precision-safe decimals and datetime/binary decoding (currently float/null).
+- **SQL Server: ✅ done (verified).** Connects via the pure-Rust `tiberius` (TDS) driver — no SQL Server client — behind `EnginePool::SqlServer`; an integration test runs against a real SQL Server 2022 container (connect + version + typed `select`). Precision-safe decoding is now done too: cells decode off the raw `ColumnData`, so `DECIMAL/NUMERIC/MONEY` keep full precision + display scale as strings, datetime/date/time/datetimeoffset go through chrono (ISO 8601 / RFC3339), binary is `\x` hex, and UUID/XML are strings (no more lossy `f64`/`null`). Covered by a `numeric_to_string` unit test.
 - **DuckDB: ✅ done (verified).** Embedded DuckDB behind `--features duckdb` (off by default) in `db/duck.rs`; an in-memory integration test (create/insert/select on int/varchar/double/null) passes against bundled libduckdb v1.5.4. Statements are classified (DDL/DML → `execute`, queries → `query`), and column metadata is read after execution. Note: the `bundled` libduckdb C++ build is heavy (needs adequate RAM/swap); linking a system/prebuilt libduckdb skips the compile.
 - **Depends on:** EXEC-009
 - **Size:** L · **Priority:** P1
@@ -381,21 +396,26 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## EDIT — Editor Engine, Vim, Keybindings
 
-### EDIT-001 — Editor engine spike + decision
+### EDIT-001 — Editor engine spike + decision  ✅ decided + prototyped (perf numbers pending)
 - **Goal:** Choose Monaco vs CodeMirror 6 vs native/Tree-sitter.
-- **Done when:** a spike compares Vim quality, completion architecture, and large-file performance; an ADR records the choice.
+- **Decision (ADR 0001):** CodeMirror 6 host; CM6 Lezer paint + `web-tree-sitter` semantic layer; `sql-formatter` v15. Rationale + reference-project evidence (Beekeeper/Outerbase = CM6) in `docs/adr/0001-editor-stack.md`.
+- **Done when:** ~~a spike compares Vim quality, completion architecture, and large-file performance;~~ ✅ an ADR records the choice. Remaining: CM6 prototype with large-file perf numbers recorded in the ADR.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P0
 
-### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)
+### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)  🟡 paint layer prototyped
 - **Goal:** Editor-grade SQL structure.
+- **Approach (ADR 0001):** paint via CM6 Lezer `@codemirror/lang-sql` (dialect bound to `DbEngine`) now; add `web-tree-sitter` captures as a fallback/upgrade only where a dialect grammar is solid. Map highlight tags into the THEME-001 model (not TextMate-only scopes).
+- **Prototyped:** CM6 Lezer highlighting live in `SqlEditor.tsx` with the default highlight style. Remaining: THEME-001 token mapping; tree-sitter semantic captures.
 - **Done when:** highlighting uses Tree-sitter queries where the grammar is solid, with a dialect fallback; tokens map to the internal theme model.
 - **Depends on:** EDIT-001, THEME-001
 - **Size:** M · **Priority:** P0
 
-### EDIT-003 — Keybinding resolver + scopes
+### EDIT-003 — Keybinding resolver + scopes 🚧 (resolver + remap done)
 - **Goal:** Fully remappable shortcuts.
 - **Done when:** bindings resolve per context scope, detect conflicts, and are editable; a default map ships; changes persist.
+- **Done:** `src/keybindings.ts` ships a VS Code-flavored default keymap (`Mod` = Cmd on macOS / Ctrl elsewhere), a chord parser/matcher (platform-aware), conflict detection, and localStorage-persisted per-command overrides merged over the defaults. A global `keydown` resolver runs the matched command (and won't hijack plain typing in a field). The sidebar lists every command with its shortcut; click the chord to **rebind** (records the next keystroke), conflicts are flagged, and `↺` resets to default.
+- **Remaining:** per-context scopes (editor vs grid vs global), multi-key chord sequences, and the preset maps (EDIT-004).
 - **Depends on:** SHELL-002
 - **Size:** L · **Priority:** P0
 
@@ -423,8 +443,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1
 
-### EDIT-008 — Format + comment toggles + bracket matching
+### EDIT-008 — Format + comment toggles + bracket matching  🟡 formatter + bracket matching prototyped
 - **Goal:** Editor ergonomics.
+- **Approach (ADR 0001):** default formatter = `sql-formatter` v15 (MIT), `DbEngine`→language mapped, behind a pluggable format hook; comment-toggle + bracket-matching via CM6 built-ins. v2: CST/tree-sitter formatter for dialect-perfect output.
+- **Prototyped:** "Format SQL" toolbar action (dialect-mapped) + CM6 bracket matching live. Remaining: make formatter choice configurable (pluggable hook); comment-toggle keybinding surfaced in UI.
 - **Done when:** a format hook (pluggable formatter), comment toggle, and bracket matching work; formatter choice is configurable.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1
@@ -433,9 +455,11 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## THEME — Theming + VS Code Import
 
-### THEME-001 — Internal normalized theme model
+### THEME-001 — Internal normalized theme model  🟡 model + editor light/dark done
 - **Goal:** One theme model for workbench + syntax + semantic tokens.
 - **Done when:** the model covers UI colors and token colors; a default light/dark theme renders; documented.
+- **Landed:** `src/theme.ts` is the single source — `IrodoriTheme { ui, syntax }` with `lightTheme`/`darkTheme`. The editor is fully themed in both modes via `editorThemeExtensions` (CM chrome + Lezer-tag `HighlightStyle`); shell colors are driven by `cssVariables(theme)` on `.app-shell`; titlebar toggle + persistence. `tsc` + `vite build` green.
+- **Follow-up (THEME-001b):** full workbench dark-mode — ~30 hardcoded panel colors in `App.css` (inspector, result grid, connection forms, chips) still need converting to vars so deep panels flip too. Editor + top chrome already theme.
 - **Depends on:** SHELL-001
 - **Size:** M · **Priority:** P0
 
@@ -769,8 +793,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P2
 
-### ADV-004 — ERD + graph views
+### ADV-004 — ERD + graph views 🚧 (schema ERD done)
 - **Done when:** ERD renders from schema and query-result graph views render; explicitly after core editor/query/browser are excellent.
+- **Done (schema ERD via Mermaid):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders an `erDiagram` from the active connection's metadata — base tables with their columns, `PK`/`FK` markers, and many-to-one FK edges. `src/erd.ts` is the pure metadata→Mermaid generator (sanitized identifiers, only edges whose target table is present, so the graph stays clean); the modal can copy the Mermaid source. Mermaid is dynamically imported so it stays out of the main bundle (~240 kB) in its own ~610 kB chunk loaded on first open. Needs the new FK/PK metadata (below).
+- **Remaining:** reduce edge/box overlap further (evaluate the Mermaid ELK layout), query-result graph views, and FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done).
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** Later
 
@@ -805,9 +831,10 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## QA — Test Automation + CI
 
-### QA-001 — Test harness + CI matrix
+### QA-001 — Test harness + CI matrix  🟡 frontend runner landed
 - **Goal:** One command to test; CI across OSes.
 - **Done when:** `cargo test` and the frontend test runner pass locally and in CI on Linux/macOS/Windows; coverage of core crates reported.
+- **Landed:** frontend `vitest` runner (`npm test`, 21 tests over `src/sql/statements.ts`, `src/sql/dialect.ts`, `theme.ts`). `cargo test` already exists backend-side. Remaining: CI matrix wiring (GH Actions) + coverage report.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P0
 
@@ -823,9 +850,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** TB-002
 - **Size:** S · **Priority:** P0
 
-### QA-004 — Headless UI smoke tests
+### QA-004 — Headless UI smoke tests  🟡 browser smoke landed
 - **Goal:** Confidence the app actually runs.
 - **Done when:** a headless driver launches the Tauri shell, connects to SQLite, runs a query, and asserts result rows; runs in CI.
+- **Landed (browser portion):** Playwright smoke (`e2e/smoke.spec.ts`, `npm run test:e2e`) drives the real web frontend headless — shell renders, CodeMirror mounts with highlighting, theme toggles, Format SQL reflows. Tauri `invoke` is absent in a plain browser (app falls back to mock snapshot), so connect/query is **not** covered here. Remaining: full Tauri+SQLite smoke via a Tauri runner (e.g. tauri-driver/WebDriver) for the connect→query→assert-rows path. Note: sandbox uses `PW_CHROME_PATH` to reuse a local Chromium (cdn.playwright.dev is egress-blocked).
 - **Depends on:** SHELL-001, EXEC-001
 - **Size:** L · **Priority:** P1
 

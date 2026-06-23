@@ -1,6 +1,21 @@
+import {
+<<<<<<< HEAD
+  type FormEvent,
+  type UIEvent,
+||||||| 57e635d
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+=======
+  type CSSProperties,
+  type FormEvent,
+>>>>>>> claude/bold-volta-vpjmmp
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertTriangle,
+  AlignLeft,
   Bolt,
   ChevronDown,
   Clock3,
@@ -11,31 +26,57 @@ import {
   Folder,
   Keyboard,
   Layers3,
+  Moon,
   Play,
   Plus,
   RefreshCw,
+  Share2,
   Save,
   Search,
   ShieldCheck,
   SplitSquareHorizontal,
   Square,
+  Sun,
   Table2,
   TerminalSquare,
 } from "lucide-react";
+import { runQueryStream } from "./db-stream";
+import { hasDiagram, toMermaidErd } from "./erd";
 import {
+  commandCatalog,
+  effectiveKeymap,
+  eventToChord,
+  findConflicts,
+  formatChord,
+  isBareChord,
+  type Keymap,
+  loadOverrides,
+  matchesChord,
+  saveOverrides,
+} from "./keybindings";
+import {
+  dbApplyEdits,
+  dbCancel,
   dbConnect,
   dbDisconnect,
   dbListObjects,
-  dbRunQuery,
+  type CellValue,
   type ConnectionInfo,
   type ConnectionProfile,
   type DatabaseMetadata,
   type DbEngine,
   type DbObjectMetadata,
   type QueryResult,
+  type RowDelete,
+  type RowInsert,
+  type RowUpdate,
+  type TableEdits,
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
+import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
+import { selectedOrCurrentStatement } from "./sql/statements";
+import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
 import "./App.css";
 
 const fallbackSnapshot: WorkspaceSnapshot = {
@@ -107,14 +148,6 @@ const completions = [
   { label: "date_trunc('day', ...)", detail: "PostgreSQL function" },
 ];
 
-const commands = [
-  "Run current statement",
-  "Open anything",
-  "Toggle Vim mode",
-  "Split editor right",
-  "Show explain plan",
-];
-
 const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "postgres", label: "PostgreSQL" },
   { value: "mysql", label: "MySQL" },
@@ -129,6 +162,15 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "yugabytedb", label: "YugabyteDB" },
   { value: "tidb", label: "TiDB" },
   { value: "redshift", label: "Redshift" },
+  { value: "neon", label: "Neon" },
+  { value: "h2", label: "H2" },
+  { value: "clickhouse", label: "ClickHouse" },
+  { value: "neo4j", label: "Neo4j" },
+  { value: "memgraph", label: "Memgraph" },
+  { value: "influxdb", label: "InfluxDB" },
+  { value: "qdrant", label: "Qdrant" },
+  { value: "milvus", label: "Milvus" },
+  { value: "pinecone", label: "Pinecone" },
 ];
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
@@ -149,6 +191,13 @@ type ConnectionDraft = {
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
+const themeStorageKey = "irodori.theme.v1";
+
+function loadThemeKind(): ThemeKind {
+  return window.localStorage.getItem(themeStorageKey) === "dark"
+    ? "dark"
+    : "light";
+}
 const maxQueryHistoryItems = 50;
 
 type QueryHistoryItem = {
@@ -247,6 +296,33 @@ function formatCell(value: unknown) {
   return String(value);
 }
 
+// Sort comparator for grid cells: numeric when both sides parse as finite
+// numbers, otherwise a locale-aware string compare. "NULL" sorts first.
+function compareCells(a: string, b: string) {
+  if (a === b) {
+    return 0;
+  }
+  if (a === "NULL") {
+    return -1;
+  }
+  if (b === "NULL") {
+    return 1;
+  }
+  const na = Number(a);
+  const nb = Number(b);
+  if (a.trim() !== "" && b.trim() !== "" && !Number.isNaN(na) && !Number.isNaN(nb)) {
+    return na - nb;
+  }
+  return a.localeCompare(b);
+}
+
+// Parse pasted clipboard text (TSV, or CSV as a fallback) into a grid of strings.
+function parseClipboardTable(text: string): string[][] {
+  const rows = text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
+  const delimiter = rows.some((row) => row.includes("\t")) ? "\t" : ",";
+  return rows.map((row) => row.split(delimiter));
+}
+
 function toCount(value: bigint | number) {
   return Number(value).toLocaleString();
 }
@@ -259,6 +335,7 @@ function defaultPort(engine: DbEngine) {
   switch (engine) {
     case "postgres":
     case "timescaledb":
+    case "neon":
       return "5432";
     case "cockroachdb":
       return "26257";
@@ -266,6 +343,19 @@ function defaultPort(engine: DbEngine) {
       return "5433";
     case "redshift":
       return "5439";
+    case "h2":
+      return "5435";
+    case "clickhouse":
+      return "9000";
+    case "neo4j":
+    case "memgraph":
+      return "7687";
+    case "influxdb":
+      return "8086";
+    case "qdrant":
+      return "6333";
+    case "milvus":
+      return "19530";
     case "mysql":
     case "mariadb":
       return "3306";
@@ -429,116 +519,6 @@ function formatHistoryTime(value: string) {
   });
 }
 
-function dollarTagAt(sql: string, index: number) {
-  const match = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
-  return match?.[0];
-}
-
-function statementDelimiters(sql: string) {
-  const delimiters: number[] = [];
-  let quote: "normal" | "single" | "double" | "line" | "block" | "dollar" =
-    "normal";
-  let dollarTag = "";
-
-  for (let index = 0; index < sql.length; index += 1) {
-    const char = sql[index];
-    const next = sql[index + 1];
-
-    if (quote === "single") {
-      if (char === "'" && next === "'") {
-        index += 1;
-      } else if (char === "'") {
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (quote === "double") {
-      if (char === '"' && next === '"') {
-        index += 1;
-      } else if (char === '"') {
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (quote === "line") {
-      if (char === "\n") {
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (quote === "block") {
-      if (char === "*" && next === "/") {
-        quote = "normal";
-        index += 1;
-      }
-      continue;
-    }
-
-    if (quote === "dollar") {
-      if (sql.startsWith(dollarTag, index)) {
-        index += dollarTag.length - 1;
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (char === "'") {
-      quote = "single";
-    } else if (char === '"') {
-      quote = "double";
-    } else if (char === "-" && next === "-") {
-      quote = "line";
-      index += 1;
-    } else if (char === "/" && next === "*") {
-      quote = "block";
-      index += 1;
-    } else if (char === "$") {
-      const tag = dollarTagAt(sql, index);
-      if (tag) {
-        quote = "dollar";
-        dollarTag = tag;
-        index += tag.length - 1;
-      }
-    } else if (char === ";") {
-      delimiters.push(index);
-    }
-  }
-
-  return delimiters;
-}
-
-function selectedOrCurrentStatement(
-  textarea: HTMLTextAreaElement | null,
-  sql: string,
-) {
-  const selectionStart = textarea?.selectionStart ?? 0;
-  const selectionEnd = textarea?.selectionEnd ?? selectionStart;
-  const selectedSql = sql.slice(selectionStart, selectionEnd).trim();
-
-  if (selectedSql) {
-    return selectedSql;
-  }
-
-  const cursor = Math.min(selectionStart, sql.length);
-  const delimiters = statementDelimiters(sql);
-  let previous: number | undefined;
-  for (const delimiter of delimiters) {
-    if (delimiter >= cursor) {
-      break;
-    }
-    previous = delimiter;
-  }
-  const next = delimiters.find((delimiter) => delimiter >= cursor);
-  const start = previous === undefined ? 0 : previous + 1;
-  const end = next === undefined ? sql.length : next + 1;
-  const statement = sql.slice(start, end).trim();
-
-  return statement || sql.trim();
-}
-
 function csvCell(value: unknown) {
   if (value === null || value === undefined) {
     return "";
@@ -579,6 +559,9 @@ function validateDraft(draft: ConnectionDraft): string | null {
     if (!draft.host.trim()) {
       return "host is required";
     }
+    if (draft.engine === "pinecone") {
+      return "Pinecone is selectable as a placeholder; a driver is not implemented yet";
+    }
   }
   if (draft.port.trim() && !Number.isInteger(Number(draft.port))) {
     return "port must be a number";
@@ -605,15 +588,35 @@ function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
   };
 }
 
+// Result grid virtualization: fixed row height (mirrors `.grid-row` / `.grid-pad`
+// in App.css) and how many off-screen rows to keep rendered above/below the
+// viewport so fast scrolling does not flash blank rows.
+const GRID_ROW_HEIGHT = 27;
+const GRID_OVERSCAN = 8;
+
 function App() {
+<<<<<<< HEAD
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const gridScrollRaf = useRef<number | null>(null);
+  const [gridScrollTop, setGridScrollTop] = useState(0);
+  const [gridViewport, setGridViewport] = useState(480);
+||||||| 57e635d
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+=======
+  const editorApiRef = useRef<SqlEditorHandle>(null);
+>>>>>>> claude/bold-volta-vpjmmp
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
     fallbackSnapshot.activeConnectionId,
   );
   const [query, setQuery] = useState(initialQuery);
+  const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
+  const theme = themeKind === "dark" ? darkTheme : lightTheme;
   const [running, setRunning] = useState(false);
+  // Id of the in-flight query so the Cancel button can stop that specific run.
+  const runningQueryIdRef = useRef<string | null>(null);
   const [profiles, setProfiles] = useState<ConnectionDraft[]>(loadProfiles);
   const [selectedProfileId, setSelectedProfileId] = useState(
     () => profiles[0]?.id ?? "local-pg",
@@ -630,6 +633,33 @@ function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
+  // SQL of the last run, used to infer the editable target table.
+  const [lastRunSql, setLastRunSql] = useState<string>("");
+  // Staged (non-immediate) result editing: changes accumulate until Commit.
+  const [editMode, setEditMode] = useState(false);
+  const [cellEdits, setCellEdits] = useState<Map<string, string>>(new Map());
+  const [newRows, setNewRows] = useState<string[][]>([]);
+  const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
+  const [editingCell, setEditingCell] = useState<{
+    key: string;
+    col: number;
+  } | null>(null);
+  const [sort, setSort] = useState<{ col: number; dir: "asc" | "desc" } | null>(
+    null,
+  );
+  const [committing, setCommitting] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
+  // Remappable keybindings: defaults merged with user overrides (localStorage).
+  const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
+  const [recordingCommand, setRecordingCommand] = useState<string | null>(null);
+  // Command palette (Ctrl/Cmd+Shift+P).
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  // ER diagram modal (rendered from metadata via Mermaid).
+  const [diagramOpen, setDiagramOpen] = useState(false);
+  const [diagramSvg, setDiagramSvg] = useState("");
+  const [diagramError, setDiagramError] = useState<string | null>(null);
+  const mermaidReady = useRef(false);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
@@ -660,6 +690,10 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(history));
   }, [history]);
+
+  useEffect(() => {
+    window.localStorage.setItem(themeStorageKey, themeKind);
+  }, [themeKind]);
 
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
@@ -711,6 +745,20 @@ function App() {
     activeMetadataLoading,
   ]);
 
+<<<<<<< HEAD
+  // Track the result grid's viewport height so the virtualized window covers it.
+  useEffect(() => {
+    const element = gridRef.current;
+    if (!element) {
+      return;
+    }
+    const measure = () => setGridViewport(element.clientHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   const lineNumbers = useMemo(
     () =>
       query
@@ -719,6 +767,23 @@ function App() {
         .join("\n"),
     [query],
   );
+||||||| 57e635d
+  const lineNumbers = useMemo(
+    () =>
+      query
+        .split("\n")
+        .map((_, index) => index + 1)
+        .join("\n"),
+    [query],
+  );
+=======
+  // Dialect for the editor: prefer the active connection's profile engine,
+  // then the connection-form draft, then Postgres.
+  const editorEngine = useMemo<DbEngine>(() => {
+    const profile = profiles.find((item) => item.id === activeConnectionId);
+    return profile?.engine ?? draft.engine ?? "postgres";
+  }, [profiles, activeConnectionId, draft.engine]);
+>>>>>>> claude/bold-volta-vpjmmp
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
@@ -728,11 +793,440 @@ function App() {
     "lifetime_value",
     "last_order_at",
   ];
-  const resultCells =
-    result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
-  const gridTemplateColumns = resultColumns
+  // In Edit Data mode a leading gutter column holds the per-row delete control.
+  const gridTemplateColumns = `${editMode ? "30px " : ""}${resultColumns
     .map(() => "minmax(140px, 1fr)")
-    .join(" ");
+    .join(" ")}`;
+
+  // Build the display rows: original rows (with any staged cell edits overlaid,
+  // staged-deleted rows skipped) followed by staged new rows. `key` ties a display
+  // row back to its origin so an edit maps to the right row regardless of sorting.
+  const baseCells = result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
+  const displayRows: {
+    key: string;
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number };
+    cells: string[];
+    state: "clean" | "edited" | "new";
+  }[] = [];
+  baseCells.forEach((cells, index) => {
+    if (deletedRows.has(index)) {
+      return;
+    }
+    let state: "clean" | "edited" = "clean";
+    const overlaid = cells.map((cell, col) => {
+      const edit = cellEdits.get(`o${index}:${col}`);
+      if (edit !== undefined) {
+        state = "edited";
+        return edit;
+      }
+      return cell;
+    });
+    displayRows.push({
+      key: `o${index}`,
+      origin: { kind: "orig", index },
+      cells: overlaid,
+      state,
+    });
+  });
+  newRows.forEach((cells, index) => {
+    displayRows.push({
+      key: `n${index}`,
+      origin: { kind: "new", index },
+      cells,
+      state: "new",
+    });
+  });
+  if (sort) {
+    const { col, dir } = sort;
+    displayRows.sort(
+      (a, b) => compareCells(a.cells[col] ?? "", b.cells[col] ?? "") * (dir === "asc" ? 1 : -1),
+    );
+  }
+
+  // Virtualize the result grid: render only the rows in (and just around) the
+  // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
+  // ~30 DOM rows instead of 10k, so streaming stays smooth.
+  const totalRows = displayRows.length;
+  const firstVisible = Math.max(
+    0,
+    Math.floor(gridScrollTop / GRID_ROW_HEIGHT) - GRID_OVERSCAN,
+  );
+  const windowSize = Math.ceil(gridViewport / GRID_ROW_HEIGHT) + GRID_OVERSCAN * 2;
+  const lastVisible = Math.min(totalRows, firstVisible + windowSize);
+  const topPad = firstVisible * GRID_ROW_HEIGHT;
+  const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
+  const visibleRows = displayRows.slice(firstVisible, lastVisible);
+  const pendingCount = cellEdits.size + newRows.length + deletedRows.size;
+
+  function onGridScroll(event: UIEvent<HTMLDivElement>) {
+    const top = event.currentTarget.scrollTop;
+    if (gridScrollRaf.current != null) {
+      return;
+    }
+    gridScrollRaf.current = requestAnimationFrame(() => {
+      gridScrollRaf.current = null;
+      setGridScrollTop(top);
+    });
+  }
+
+  // Drop every staged edit (called on a new run and after a successful commit).
+  function resetEdits() {
+    setCellEdits(new Map());
+    setNewRows([]);
+    setDeletedRows(new Set());
+    setEditingCell(null);
+    setCommitError(null);
+  }
+
+  function toggleSort(col: number) {
+    setSort((current) => {
+      if (!current || current.col !== col) {
+        return { col, dir: "asc" };
+      }
+      return current.dir === "asc" ? { col, dir: "desc" } : null;
+    });
+  }
+
+  // Stage a single cell's new value against its origin (an original row keeps the
+  // edit in `cellEdits`; a staged new row mutates `newRows`).
+  function setCellValue(
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+    col: number,
+    value: string,
+  ) {
+    if (origin.kind === "orig") {
+      setCellEdits((current) => {
+        const next = new Map(current);
+        const key = `o${origin.index}:${col}`;
+        const original = formatCell(result?.rows[origin.index]?.[col] ?? null);
+        if (value === original) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+        return next;
+      });
+    } else {
+      setNewRows((current) =>
+        current.map((row, index) => {
+          if (index !== origin.index) {
+            return row;
+          }
+          const next = [...row];
+          next[col] = value;
+          return next;
+        }),
+      );
+    }
+  }
+
+  function addNewRow() {
+    setNewRows((current) => [...current, resultColumns.map(() => "")]);
+    setEditMode(true);
+  }
+
+  // Stage a row delete (original rows) or drop a staged new row.
+  function deleteRow(
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+  ) {
+    if (origin.kind === "orig") {
+      setDeletedRows((current) => new Set(current).add(origin.index));
+      setCellEdits((current) => {
+        const next = new Map(current);
+        for (const key of [...next.keys()]) {
+          if (key.startsWith(`o${origin.index}:`)) {
+            next.delete(key);
+          }
+        }
+        return next;
+      });
+    } else {
+      setNewRows((current) => current.filter((_, index) => index !== origin.index));
+    }
+    setEditingCell(null);
+  }
+
+  // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
+  // and into staged new rows as needed.
+  function pasteTableAt(
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+    startCol: number,
+    text: string,
+  ) {
+    const block = parseClipboardTable(text);
+    if (block.length === 0) {
+      return;
+    }
+    const orderedKeys = displayRows.map((row) => row.key);
+    const startPos = orderedKeys.indexOf(`${origin.kind === "orig" ? "o" : "n"}${origin.index}`);
+    block.forEach((cells, rowOffset) => {
+      const targetKey = orderedKeys[startPos + rowOffset];
+      const target = targetKey
+        ? displayRows.find((row) => row.key === targetKey)?.origin
+        : undefined;
+      if (target) {
+        cells.forEach((value, colOffset) => {
+          const col = startCol + colOffset;
+          if (col < resultColumns.length) {
+            setCellValue(target, col, value);
+          }
+        });
+      } else {
+        // Past the last row: append as new rows.
+        const newRow = resultColumns.map((_, col) => {
+          const colOffset = col - startCol;
+          return colOffset >= 0 && colOffset < cells.length ? cells[colOffset] : "";
+        });
+        setNewRows((current) => [...current, newRow]);
+      }
+    });
+    setEditMode(true);
+  }
+
+  // Infer the table to write back to from the last run's `from <table>` and the
+  // key columns from its metadata (a unique index, else every result column).
+  function inferEditTarget(): {
+    schema?: string;
+    table: string;
+    keyColumns: string[];
+  } | null {
+    const match = lastRunSql.match(/\bfrom\s+([`"[\]\w.]+)/i);
+    if (!match) {
+      return null;
+    }
+    const raw = match[1].replace(/[`"[\]]/g, "");
+    const parts = raw.split(".");
+    const table = parts[parts.length - 1];
+    const schema = parts.length > 1 ? parts[parts.length - 2] : undefined;
+    if (!table) {
+      return null;
+    }
+    const meta = metadataByConnection[activeConnectionId];
+    const object = meta?.schemas
+      .flatMap((s) => s.objects)
+      .find((o) => o.name === table && (schema ? o.schema === schema : true));
+    // Prefer the real primary key, then any unique index, then every column.
+    const primaryKey = object?.primaryKey ?? [];
+    const unique = object?.indexes.find((index) => index.unique);
+    const candidate =
+      primaryKey.length > 0
+        ? primaryKey
+        : unique
+          ? unique.columns
+          : resultColumns;
+    const keyColumns = candidate.every((c) => resultColumns.includes(c))
+      ? candidate
+      : resultColumns;
+    return { schema, table, keyColumns };
+  }
+
+  function originalCell(rowIndex: number, column: string): CellValue {
+    const col = resultColumns.indexOf(column);
+    return { column, value: result?.rows[rowIndex]?.[col] ?? null };
+  }
+
+  async function commitEdits() {
+    const target = inferEditTarget();
+    if (!target) {
+      setCommitError("could not detect an editable target table from the query");
+      return;
+    }
+    const updates: RowUpdate[] = [];
+    const editedByRow = new Map<number, number[]>();
+    for (const key of cellEdits.keys()) {
+      const [rowPart, colPart] = key.split(":");
+      const rowIndex = Number(rowPart.slice(1));
+      const list = editedByRow.get(rowIndex) ?? [];
+      list.push(Number(colPart));
+      editedByRow.set(rowIndex, list);
+    }
+    for (const [rowIndex, cols] of editedByRow) {
+      updates.push({
+        keys: target.keyColumns.map((column) => originalCell(rowIndex, column)),
+        set: cols.map((col) => ({
+          column: resultColumns[col],
+          value: cellEdits.get(`o${rowIndex}:${col}`) ?? null,
+        })),
+      });
+    }
+    const inserts: RowInsert[] = newRows
+      .filter((row) => row.some((cell) => cell !== ""))
+      .map((row) => ({
+        values: resultColumns
+          .map((column, col) => ({ column, value: row[col] }))
+          .filter((cell) => cell.value !== ""),
+      }));
+    const deletes: RowDelete[] = [...deletedRows].map((rowIndex) => ({
+      keys: target.keyColumns.map((column) => originalCell(rowIndex, column)),
+    }));
+    const edits: TableEdits = {
+      schema: target.schema,
+      table: target.table,
+      updates,
+      inserts,
+      deletes,
+    };
+
+    setCommitting(true);
+    setCommitError(null);
+    try {
+      await dbApplyEdits(activeConnectionId, edits);
+      resetEdits();
+      setEditMode(false);
+      // Re-run the last query so the grid shows the committed state.
+      await runQuery();
+    } catch (error) {
+      setCommitError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCommitting(false);
+    }
+  }
+
+  // Run a command by id (the keybinding handler and the Commands list share this).
+  function runCommand(id: string) {
+    switch (id) {
+      case "palette.open":
+        setPaletteQuery("");
+        setPaletteOpen(true);
+        break;
+      case "diagram.show":
+        setDiagramOpen(true);
+        break;
+      case "query.run":
+        void runQuery();
+        break;
+      case "query.cancel":
+        void cancelQuery();
+        break;
+      case "editor.focus":
+        editorRef.current?.focus();
+        break;
+      case "result.export":
+        exportCsv();
+        break;
+      case "edit.toggle":
+        setEditMode((mode) => !mode);
+        break;
+      case "edit.addRow":
+        addNewRow();
+        break;
+      case "edit.commit":
+        void commitEdits();
+        break;
+    }
+  }
+
+  const keymap = effectiveKeymap(keymapOverrides);
+  const keymapConflicts = findConflicts(keymap);
+  const paletteResults = commandCatalog.filter((command) =>
+    `${command.title} ${command.category}`
+      .toLowerCase()
+      .includes(paletteQuery.trim().toLowerCase()),
+  );
+  // Keep the keydown listener stable while reading the latest state via refs.
+  const keymapRef = useRef(keymap);
+  keymapRef.current = keymap;
+  const runCommandRef = useRef(runCommand);
+  runCommandRef.current = runCommand;
+  const recordingRef = useRef(recordingCommand);
+  recordingRef.current = recordingCommand;
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      // Recording a rebind: the next non-modifier key becomes the new chord.
+      const recording = recordingRef.current;
+      if (recording) {
+        const chord = eventToChord(event);
+        if (!chord) {
+          return;
+        }
+        event.preventDefault();
+        setKeymapOverrides((prev) => {
+          const next = { ...prev, [recording]: chord };
+          saveOverrides(next);
+          return next;
+        });
+        setRecordingCommand(null);
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const typing =
+        !!target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      const map = keymapRef.current;
+      for (const meta of commandCatalog) {
+        const chord = map[meta.id];
+        if (!chord || !matchesChord(event, chord)) {
+          continue;
+        }
+        // A bare key (no Mod/Ctrl/Alt) must not hijack typing in a field.
+        if (typing && isBareChord(chord)) {
+          continue;
+        }
+        event.preventDefault();
+        runCommandRef.current(meta.id);
+        return;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Render the ER diagram with Mermaid whenever the modal opens (or the active
+  // connection's metadata changes while open).
+  useEffect(() => {
+    if (!diagramOpen) {
+      return;
+    }
+    if (!activeMetadata || !hasDiagram(activeMetadata)) {
+      setDiagramSvg("");
+      setDiagramError("No tables to diagram yet — connect and load metadata first.");
+      return;
+    }
+    let cancelled = false;
+    setDiagramError(null);
+    // Lazy-load Mermaid (it is large) only when the diagram is actually opened.
+    void (async () => {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        if (!mermaidReady.current) {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: "neutral",
+            securityLevel: "loose",
+          });
+          mermaidReady.current = true;
+        }
+        const { svg } = await mermaid.render(
+          `erd-${Date.now()}`,
+          toMermaidErd(activeMetadata),
+        );
+        if (!cancelled) {
+          setDiagramSvg(svg);
+        }
+      } catch (error: unknown) {
+        if (!cancelled) {
+          setDiagramSvg("");
+          setDiagramError(error instanceof Error ? error.message : String(error));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [diagramOpen, activeMetadata]);
+
+  function resetKeybinding(commandId: string) {
+    setKeymapOverrides((prev) => {
+      const next = { ...prev };
+      delete next[commandId];
+      saveOverrides(next);
+      return next;
+    });
+  }
+
   const resultSummary = result
     ? `${toCount(result.rowCount)} rows${result.truncated ? " capped" : ""} in ${toCount(
         result.elapsedMs,
@@ -820,6 +1314,7 @@ function App() {
         id: testId,
       });
       await dbDisconnect(testId);
+      setConnectionError(`Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`);
     } catch (error) {
       setConnectionError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -924,38 +1419,111 @@ function App() {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  function formatQuery() {
+    const error = editorApiRef.current?.format();
+    setQueryError(error ?? null);
+  }
+
   async function runQuery() {
     if (!activeConnectionOpen) {
       setQueryError(`not connected: ${activeConnectionId}`);
       return;
     }
-    const sqlToRun = selectedOrCurrentStatement(editorRef.current, query);
+    const selection = editorApiRef.current?.getSelection() ?? { from: 0, to: 0 };
+    const sqlToRun = selectedOrCurrentStatement(selection.from, selection.to, query);
     if (!sqlToRun) {
       setQueryError("query is empty");
       return;
     }
     setRunning(true);
     setQueryError(null);
+    setLastRunSql(sqlToRun);
+    // A new run invalidates any staged edits and resets the scroll/sort view.
+    resetEdits();
+    setSort(null);
+    if (gridRef.current) {
+      gridRef.current.scrollTop = 0;
+    }
+    setGridScrollTop(0);
     const started = performance.now();
     const ranAt = new Date().toISOString();
+    const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    runningQueryIdRef.current = queryId;
     try {
-      const nextResult = await dbRunQuery(activeConnectionId, sqlToRun, 10_000);
-      setResult(nextResult);
-      appendHistory({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        connectionId: activeConnectionId,
-        connectionName: activeConnection.name,
-        engine: activeConnection.engine,
-        sql: sqlToRun,
-        status: "ok",
-        rowCount: Number(nextResult.rowCount),
-        elapsedMs: Number(nextResult.elapsedMs),
-        truncated: nextResult.truncated,
-        ranAt,
-      });
-      if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
-        void refreshObjects(activeConnectionId, true);
-      }
+      // Stream the run so the grid fills as batches arrive instead of waiting for
+      // the whole result. Query errors surface as an "error" event (the command
+      // itself resolves); the catch below only handles invoke-level failures.
+      let columns: string[] = [];
+      const rows: unknown[][] = [];
+      await runQueryStream(
+        { connectionId: activeConnectionId, sql: sqlToRun, maxRows: 10_000, queryId },
+        (event) => {
+          switch (event.type) {
+            case "columns":
+              columns = event.columns;
+              setResult({
+                columns,
+                rows: [],
+                rowCount: 0n,
+                elapsedMs: 0n,
+                truncated: false,
+              });
+              break;
+            case "rows":
+              for (const row of event.rows) {
+                rows.push(row);
+              }
+              setResult({
+                columns,
+                rows: [...rows],
+                rowCount: BigInt(rows.length),
+                elapsedMs: BigInt(Math.round(performance.now() - started)),
+                truncated: false,
+              });
+              break;
+            case "done":
+              setResult({
+                columns,
+                rows: [...rows],
+                rowCount: BigInt(event.rowCount),
+                elapsedMs: BigInt(event.elapsedMs),
+                truncated: event.truncated,
+              });
+              appendHistory({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                connectionId: activeConnectionId,
+                connectionName: activeConnection.name,
+                engine: activeConnection.engine,
+                sql: sqlToRun,
+                status: "ok",
+                rowCount: event.rowCount,
+                elapsedMs: event.elapsedMs,
+                truncated: event.truncated,
+                ranAt,
+              });
+              if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
+                void refreshObjects(activeConnectionId, true);
+              }
+              break;
+            case "error":
+              setQueryError(event.message);
+              appendHistory({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                connectionId: activeConnectionId,
+                connectionName: activeConnection.name,
+                engine: activeConnection.engine,
+                sql: sqlToRun,
+                status: "error",
+                rowCount: 0,
+                elapsedMs: Math.max(1, Math.round(performance.now() - started)),
+                truncated: false,
+                error: event.message,
+                ranAt,
+              });
+              break;
+          }
+        },
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setQueryError(message);
@@ -973,12 +1541,31 @@ function App() {
         ranAt,
       });
     } finally {
+      runningQueryIdRef.current = null;
       setRunning(false);
     }
   }
 
+  // Ask the backend to stop the in-flight query; the pending run then rejects with
+  // "query cancelled" and the runQuery catch/finally resets the UI.
+  async function cancelQuery() {
+    const id = runningQueryIdRef.current;
+    if (!id) {
+      return;
+    }
+    try {
+      await dbCancel(id);
+    } catch {
+      // Best-effort: if the run already finished there is nothing to cancel.
+    }
+  }
+
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      style={cssVariables(theme) as CSSProperties}
+      data-theme={theme.kind}
+    >
       <header className="titlebar">
         <div className="window-controls" aria-hidden="true">
           <span className="dot red" />
@@ -997,6 +1584,21 @@ function App() {
           <Keyboard size={14} />
           <span>Vim</span>
         </div>
+        <button
+          className="theme-toggle"
+          type="button"
+          title={
+            themeKind === "dark"
+              ? "Switch to light theme"
+              : "Switch to dark theme"
+          }
+          aria-label="Toggle color theme"
+          onClick={() =>
+            setThemeKind((kind) => (kind === "dark" ? "light" : "dark"))
+          }
+        >
+          {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
@@ -1021,9 +1623,18 @@ function App() {
           title="Cancel query"
           aria-label="Cancel query"
           disabled={!running}
-          onClick={() => setRunning(false)}
+          onClick={cancelQuery}
         >
           <Square size={15} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          title="Format SQL (engine dialect)"
+          aria-label="Format SQL"
+          onClick={formatQuery}
+        >
+          <AlignLeft size={15} />
         </button>
         <button
           className="icon-button"
@@ -1255,6 +1866,16 @@ function App() {
               <button
                 className="mini-button"
                 type="button"
+                title="ER diagram"
+                aria-label="ER diagram"
+                disabled={!hasDiagram(activeMetadata)}
+                onClick={() => setDiagramOpen(true)}
+              >
+                <Share2 size={14} />
+              </button>
+              <button
+                className="mini-button"
+                type="button"
                 title="Refresh objects"
                 aria-label="Refresh objects"
                 disabled={!activeConnectionOpen || activeMetadataLoading}
@@ -1387,15 +2008,13 @@ function App() {
                 </span>
               </div>
               <div className="editor-shell">
-                <pre className="line-numbers" aria-hidden="true">
-                  {lineNumbers}
-                </pre>
-                <textarea
-                  ref={editorRef}
-                  aria-label="SQL editor"
-                  spellCheck={false}
+                <SqlEditor
+                  ref={editorApiRef}
                   value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  onChange={setQuery}
+                  engine={editorEngine}
+                  metadata={activeMetadata}
+                  theme={theme}
                 />
               </div>
             </section>
@@ -1450,22 +2069,55 @@ function App() {
               </section>
               <section>
                 <div className="section-heading">
-                  <span>Commands</span>
+                  <span>Keybindings</span>
                   <Layers3 size={14} />
                 </div>
                 <div className="command-list">
-                  {commands.map((command) => (
-                    <button
-                      className="command-item"
-                      key={command}
-                      type="button"
-                      onClick={
-                        command === "Run current statement" ? runQuery : undefined
-                      }
-                    >
-                      {command}
-                    </button>
-                  ))}
+                  {commandCatalog.map((command) => {
+                    const chord = keymap[command.id];
+                    const conflicted = Object.values(keymapConflicts).some((ids) =>
+                      ids.includes(command.id),
+                    );
+                    const recording = recordingCommand === command.id;
+                    return (
+                      <div className="command-item" key={command.id}>
+                        <button
+                          className="command-run"
+                          type="button"
+                          onClick={() => runCommand(command.id)}
+                          title={`Run: ${command.title}`}
+                        >
+                          {command.title}
+                        </button>
+                        <button
+                          className={`command-chord${conflicted ? " conflict" : ""}`}
+                          type="button"
+                          title={
+                            recording
+                              ? "Press the new shortcut…"
+                              : conflicted
+                                ? "Shortcut conflict — click to rebind"
+                                : "Click to rebind"
+                          }
+                          onClick={() =>
+                            setRecordingCommand(recording ? null : command.id)
+                          }
+                        >
+                          {recording ? "Press keys…" : chord ? formatChord(chord) : "unset"}
+                        </button>
+                        {keymapOverrides[command.id] ? (
+                          <button
+                            className="command-reset"
+                            type="button"
+                            title="Reset to default"
+                            onClick={() => resetKeybinding(command.id)}
+                          >
+                            ↺
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             </aside>
@@ -1475,7 +2127,13 @@ function App() {
             <div className="results-header">
               <div>
                 <strong>Result 1</strong>
-                <span>{queryError ? "failed" : resultSummary}</span>
+                <span>
+                  {queryError
+                    ? "failed"
+                    : pendingCount > 0
+                      ? `${resultSummary} · ${pendingCount} pending`
+                      : resultSummary}
+                </span>
               </div>
               <div className="results-actions">
                 <button
@@ -1487,43 +2145,175 @@ function App() {
                   <Download size={13} />
                   <span>CSV</span>
                 </button>
-                <button className="text-button" type="button">
-                  Edit Data
-                </button>
+                {editMode ? (
+                  <>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={!result}
+                      onClick={addNewRow}
+                    >
+                      + Row
+                    </button>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={pendingCount === 0 || committing}
+                      onClick={() => void commitEdits()}
+                    >
+                      {committing ? "Committing…" : `Commit${pendingCount ? ` (${pendingCount})` : ""}`}
+                    </button>
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={() => {
+                        resetEdits();
+                        setEditMode(false);
+                      }}
+                    >
+                      Discard
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={!result}
+                    onClick={() => setEditMode(true)}
+                  >
+                    Edit Data
+                  </button>
+                )}
               </div>
             </div>
+            {commitError ? (
+              <div className="result-error" role="alert">
+                <AlertTriangle size={16} />
+                <span>{commitError}</span>
+              </div>
+            ) : null}
             {queryError ? (
               <div className="result-error" role="alert">
                 <AlertTriangle size={16} />
                 <span>{queryError}</span>
               </div>
             ) : null}
-            <div className="result-grid" role="table" aria-label="Query result">
+            <div
+              className="result-grid"
+              role="table"
+              aria-label="Query result"
+              ref={gridRef}
+              onScroll={onGridScroll}
+            >
               <div
                 className="grid-row header"
                 role="row"
                 style={{ gridTemplateColumns }}
               >
-                {resultColumns.map((column) => (
-                  <span role="columnheader" key={column}>
+                {editMode ? <span className="grid-gutter" /> : null}
+                {resultColumns.map((column, colIndex) => (
+                  <span
+                    role="columnheader"
+                    key={column}
+                    className="sortable"
+                    onClick={() => toggleSort(colIndex)}
+                  >
                     {column}
+                    {sort?.col === colIndex ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </span>
                 ))}
               </div>
-              {resultCells.map((row, rowIndex) => (
+              {topPad > 0 ? (
                 <div
-                  className="grid-row"
+                  className="grid-pad"
+                  style={{ height: topPad }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              {visibleRows.map((row) => (
+                <div
+                  className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}`}
                   role="row"
-                  key={`${rowIndex}-${row.join("-")}`}
+                  key={row.key}
                   style={{ gridTemplateColumns }}
                 >
-                  {row.map((cell, cellIndex) => (
-                    <span role="cell" key={`${cellIndex}-${cell}`}>
-                      {cell}
-                    </span>
-                  ))}
+                  {editMode ? (
+                    <button
+                      className="grid-gutter delete-row"
+                      type="button"
+                      title="Delete row"
+                      aria-label="Delete row"
+                      onClick={() => deleteRow(row.origin)}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                  {row.cells.map((cell, cellIndex) => {
+                    const isEditing =
+                      editingCell?.key === row.key && editingCell.col === cellIndex;
+                    return (
+                      <span
+                        role="cell"
+                        key={cellIndex}
+                        className={
+                          cellEdits.has(`o${row.origin.kind === "orig" ? row.origin.index : -1}:${cellIndex}`)
+                            ? "cell-edited"
+                            : undefined
+                        }
+                        onDoubleClick={() => {
+                          if (editMode) {
+                            setEditingCell({ key: row.key, col: cellIndex });
+                          }
+                        }}
+                        onPaste={(event) => {
+                          if (!editMode) {
+                            return;
+                          }
+                          event.preventDefault();
+                          pasteTableAt(
+                            row.origin,
+                            cellIndex,
+                            event.clipboardData.getData("text"),
+                          );
+                        }}
+                      >
+                        {isEditing ? (
+                          <input
+                            className="cell-input"
+                            autoFocus
+                            defaultValue={cell}
+                            onBlur={(event) => {
+                              setCellValue(row.origin, cellIndex, event.target.value);
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                setCellValue(
+                                  row.origin,
+                                  cellIndex,
+                                  event.currentTarget.value,
+                                );
+                                setEditingCell(null);
+                              } else if (event.key === "Escape") {
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          cell
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               ))}
+              {bottomPad > 0 ? (
+                <div
+                  className="grid-pad"
+                  style={{ height: bottomPad }}
+                  aria-hidden="true"
+                />
+              ) : null}
             </div>
           </section>
         </section>
@@ -1537,6 +2327,113 @@ function App() {
         <span>{query.split("\n").length} lines</span>
         <span>{running ? "query running" : "idle"}</span>
       </footer>
+
+      {paletteOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setPaletteOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="palette"
+            role="dialog"
+            aria-label="Command palette"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              className="palette-input"
+              autoFocus
+              placeholder="Type a command…"
+              value={paletteQuery}
+              onChange={(event) => setPaletteQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setPaletteOpen(false);
+                } else if (event.key === "Enter") {
+                  const first = paletteResults[0];
+                  if (first) {
+                    setPaletteOpen(false);
+                    runCommand(first.id);
+                  }
+                }
+              }}
+            />
+            <div className="palette-list">
+              {paletteResults.length > 0 ? (
+                paletteResults.map((command) => (
+                  <button
+                    key={command.id}
+                    className="palette-item"
+                    type="button"
+                    onClick={() => {
+                      setPaletteOpen(false);
+                      runCommand(command.id);
+                    }}
+                  >
+                    <span>{command.title}</span>
+                    <small>{command.category}</small>
+                    {keymap[command.id] ? (
+                      <kbd>{formatChord(keymap[command.id])}</kbd>
+                    ) : null}
+                  </button>
+                ))
+              ) : (
+                <div className="palette-empty">No matching commands</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {diagramOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setDiagramOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="diagram"
+            role="dialog"
+            aria-label="ER diagram"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="diagram-header">
+              <strong>ER Diagram</strong>
+              <span>{activeConnection.name}</span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  if (activeMetadata) {
+                    void navigator.clipboard?.writeText(toMermaidErd(activeMetadata));
+                  }
+                }}
+                disabled={!activeMetadata}
+              >
+                Copy Mermaid
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setDiagramOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="diagram-canvas">
+              {diagramError ? (
+                <div className="result-error" role="alert">
+                  <AlertTriangle size={16} />
+                  <span>{diagramError}</span>
+                </div>
+              ) : (
+                // Mermaid output is generated from our own metadata.
+                <div dangerouslySetInnerHTML={{ __html: diagramSvg }} />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

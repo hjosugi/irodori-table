@@ -38,6 +38,8 @@ button {
   --surface: #f7f8f4;
   --surface-raised: #ffffff;
   --surface-muted: #edf0ea;
+  --chrome: #fbfcf7;
+  --editor-bg: #fffef9;
   --text: #20242a;
   --muted: #687064;
   --green: #2e7a56;
@@ -60,7 +62,7 @@ button {
   align-items: center;
   min-width: 0;
   border-bottom: 1px solid var(--border);
-  background: #fbfcf7;
+  background: var(--chrome);
 }
 
 .titlebar {
@@ -139,6 +141,24 @@ button {
   background: #e8f3f2;
   font-size: 12px;
   font-weight: 700;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  color: var(--muted);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--muted);
 }
 
 .toolbar {
@@ -676,7 +696,7 @@ button {
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
-  background: #fffef9;
+  background: var(--editor-bg);
 }
 
 .editor-meta {
@@ -685,16 +705,27 @@ button {
   justify-content: space-between;
   min-width: 0;
   padding: 0 10px;
-  border-bottom: 1px solid #ece6d8;
+  border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
 }
 
 .editor-shell {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  display: block;
   min-height: 0;
   overflow: hidden;
+}
+
+.cm-host {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The CM editor's surface, gutters, caret, selection and syntax colors are owned
+   by the theme model (src/theme.ts → editorThemeExtensions), not by CSS. */
+.cm-host .cm-editor {
+  height: 100%;
 }
 
 .line-numbers,
@@ -826,8 +857,8 @@ button {
 }
 
 .result-grid {
-  display: grid;
-  grid-auto-rows: 27px;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -837,8 +868,45 @@ button {
 
 .grid-row {
   display: grid;
+  height: 27px;
+  box-sizing: border-box;
   min-width: 670px;
   border-bottom: 1px solid #edf0ea;
+}
+
+/* Spacer standing in for rows the virtualized grid is not rendering, so the
+   scrollbar keeps its full height. */
+.grid-pad {
+  flex: 0 0 auto;
+  min-width: 670px;
+}
+
+.grid-row.header .sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Staged-edit highlighting. */
+.grid-row.row-new {
+  background: #eaf6ec;
+}
+
+.grid-row.row-edited {
+  background: #fcf6e3;
+}
+
+.grid-row span.cell-edited {
+  font-weight: 700;
+  color: #8a6d00;
+}
+
+.cell-input {
+  width: 100%;
+  margin: -5px -9px;
+  padding: 5px 9px;
+  border: 1px solid #6f8f6f;
+  font: inherit;
+  background: #fff;
 }
 
 .grid-row.header {
@@ -957,4 +1025,199 @@ button {
   .statusbar span:first-child {
     display: none;
   }
+}
+
+/* Keybinding rows in the sidebar: command title + its (rebindable) shortcut. */
+.command-list .command-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+}
+
+.command-run {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.command-chord {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid #cdd6cd;
+  border-radius: 5px;
+  background: #f4f7f1;
+  color: #4f604f;
+  font-size: 11px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  cursor: pointer;
+}
+
+.command-chord.conflict {
+  border-color: #d98b7a;
+  background: #fbe9e4;
+  color: #a23b22;
+}
+
+.command-reset {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: #7a8b7a;
+  cursor: pointer;
+}
+
+/* Command palette (Ctrl/Cmd+Shift+P). */
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(20, 28, 22, 0.32);
+}
+
+.palette {
+  width: min(560px, 92vw);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #c5cfc5;
+  border-radius: 10px;
+  background: #fbfdf9;
+  box-shadow: 0 18px 50px rgba(20, 28, 22, 0.28);
+}
+
+.palette-input {
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid #e4eae2;
+  font-size: 14px;
+  outline: none;
+  background: transparent;
+}
+
+.palette-list {
+  overflow: auto;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-item:hover {
+  background: #e9f1ea;
+}
+
+.palette-item span {
+  flex: 1;
+  color: #2b352c;
+  font-size: 13px;
+}
+
+.palette-item small {
+  color: #88978a;
+  font-size: 11px;
+}
+
+.palette-item kbd {
+  padding: 1px 6px;
+  border: 1px solid #cdd6cd;
+  border-radius: 4px;
+  background: #f4f7f1;
+  color: #4f604f;
+  font-size: 11px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.palette-empty {
+  padding: 14px;
+  color: #88978a;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ER diagram modal. */
+.diagram {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 94vw);
+  height: min(80vh, 820px);
+  overflow: hidden;
+  border: 1px solid #c5cfc5;
+  border-radius: 10px;
+  background: #fbfdf9;
+  box-shadow: 0 18px 50px rgba(20, 28, 22, 0.28);
+}
+
+.diagram-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e4eae2;
+}
+
+.diagram-header strong {
+  font-size: 14px;
+}
+
+.diagram-header span {
+  flex: 1;
+  color: #88978a;
+  font-size: 12px;
+}
+
+.diagram-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background:
+    radial-gradient(circle, #e6ece4 1px, transparent 1px) 0 0 / 18px 18px;
+}
+
+.diagram-canvas svg {
+  max-width: none;
+  height: auto;
+}
+
+/* Edit-mode per-row delete gutter. */
+.grid-gutter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-right: 1px solid #edf0ea;
+}
+
+.delete-row {
+  border: none;
+  background: transparent;
+  color: #b07a72;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.delete-row:hover {
+  color: #a23b22;
 }

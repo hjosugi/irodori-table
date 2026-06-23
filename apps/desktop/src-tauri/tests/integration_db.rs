@@ -234,6 +234,25 @@ async fn exercise_mssql(url: String) {
     assert_eq!(r.rows[0][1], serde_json::json!("hi"));
     assert_eq!(r.rows[1][1], serde_json::Value::Null);
 
+    // Precision-safe decoding off the raw ColumnData: exact numerics keep their
+    // display scale as strings, temporals render via chrono, binary is `\x` hex.
+    let typed = run_query_impl(
+        &state,
+        "it".into(),
+        "select cast(1234.50 as decimal(10,2)) as dec, \
+         cast('2024-01-02T03:04:05' as datetime2) as ts, \
+         cast('2024-01-02' as date) as d, \
+         cast(0x0102 as varbinary(8)) as bin"
+            .into(),
+        None,
+    )
+    .await
+    .expect("typed select");
+    assert_eq!(typed.rows[0][0], serde_json::json!("1234.50"));
+    assert_eq!(typed.rows[0][1], serde_json::json!("2024-01-02 03:04:05"));
+    assert_eq!(typed.rows[0][2], serde_json::json!("2024-01-02"));
+    assert_eq!(typed.rows[0][3], serde_json::json!("\\x0102"));
+
     run_query_impl(
         &state,
         "it".into(),

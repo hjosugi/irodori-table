@@ -29,6 +29,80 @@ pub async fn run_query(pool: &PgPool, sql: &str, cap: usize) -> Result<RowSet, S
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn stream_query(
+    pool: &PgPool,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
+/// Apply result-grid edits in one transaction (rolls back on the first failure).
+/// Note: JSON params bind by inferred type; a precision-typed column (decimal/
+/// timestamp decoded to a string) or a typed `NULL` may need explicit casts —
+/// tracked as a follow-up once column-type metadata is threaded through.
+pub async fn apply_edits(
+    pool: &PgPool,
+    edits: &super::edit::TableEdits,
+) -> Result<super::edit::AppliedEdits, String> {
+    let plan = super::edit::plan(super::engine::Wire::Postgres, edits)?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("begin failed: {e}"))?;
+    let mut applied = super::edit::AppliedEdits::default();
+    for stmt in &plan.deletes {
+        applied.deleted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("delete failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.updates {
+        applied.updated += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("update failed: {e}"))?
+            .rows_affected();
+    }
+    for stmt in &plan.inserts {
+        applied.inserted += bind(stmt)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("insert failed: {e}"))?
+            .rows_affected();
+    }
+    tx.commit()
+        .await
+        .map_err(|e| format!("commit failed: {e}"))?;
+    Ok(applied)
+}
+
+fn bind(
+    stmt: &super::edit::Statement,
+) -> sqlx::query::Query<'_, sqlx::Postgres, sqlx::postgres::PgArguments> {
+    use serde_json::Value;
+    let mut q = sqlx::query(&stmt.sql);
+    for value in &stmt.params {
+        q = match value {
+            Value::Null => q.bind(Option::<String>::None),
+            Value::Bool(b) => q.bind(*b),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    q.bind(i)
+                } else if let Some(f) = n.as_f64() {
+                    q.bind(f)
+                } else {
+                    q.bind(n.to_string())
+                }
+            }
+            Value::String(s) => q.bind(s.clone()),
+            other => q.bind(other.to_string()),
+        };
+    }
+    q
+}
+
 pub async fn metadata(pool: &PgPool) -> Result<DatabaseMetadata, String> {
     let object_rows = sqlx::query(
         r#"
@@ -120,6 +194,66 @@ pub async fn metadata(pool: &PgPool) -> Result<DatabaseMetadata, String> {
                 name: row.try_get("index_name").unwrap_or_default(),
                 columns: row.try_get("columns").unwrap_or_default(),
                 unique: row.try_get("is_unique").unwrap_or(false),
+            });
+        }
+    }
+
+    let pk_rows = sqlx::query(
+        r#"
+        select ns.nspname as schema_name, tbl.relname as table_name,
+               array_agg(att.attname order by key_ord.ordinality) as columns
+        from pg_constraint con
+        join pg_class tbl on tbl.oid = con.conrelid
+        join pg_namespace ns on ns.oid = tbl.relnamespace
+        left join lateral unnest(con.conkey) with ordinality as key_ord(attnum, ordinality) on true
+        left join pg_attribute att on att.attrelid = con.conrelid and att.attnum = key_ord.attnum
+        where con.contype = 'p' and ns.nspname not in ('pg_catalog', 'information_schema')
+        group by ns.nspname, tbl.relname
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+    for row in pk_rows {
+        let schema: String = row.try_get("schema_name").unwrap_or_default();
+        let table: String = row.try_get("table_name").unwrap_or_default();
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            object.primary_key = row.try_get("columns").unwrap_or_default();
+        }
+    }
+
+    let fk_rows = sqlx::query(
+        r#"
+        select ns.nspname as schema_name, tbl.relname as table_name,
+               fns.nspname as ref_schema, ftbl.relname as ref_table,
+               array_agg(att.attname order by key_ord.ordinality) as columns,
+               array_agg(fatt.attname order by key_ord.ordinality) as ref_columns
+        from pg_constraint con
+        join pg_class tbl on tbl.oid = con.conrelid
+        join pg_namespace ns on ns.oid = tbl.relnamespace
+        join pg_class ftbl on ftbl.oid = con.confrelid
+        join pg_namespace fns on fns.oid = ftbl.relnamespace
+        left join lateral unnest(con.conkey, con.confkey)
+          with ordinality as key_ord(attnum, fattnum, ordinality) on true
+        left join pg_attribute att on att.attrelid = con.conrelid and att.attnum = key_ord.attnum
+        left join pg_attribute fatt on fatt.attrelid = con.confrelid and fatt.attnum = key_ord.fattnum
+        where con.contype = 'f' and ns.nspname not in ('pg_catalog', 'information_schema')
+        group by ns.nspname, tbl.relname, fns.nspname, ftbl.relname, con.conname
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+    for row in fk_rows {
+        let schema: String = row.try_get("schema_name").unwrap_or_default();
+        let table: String = row.try_get("table_name").unwrap_or_default();
+        let ref_schema: String = row.try_get("ref_schema").unwrap_or_default();
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            object.foreign_keys.push(super::ForeignKey {
+                columns: row.try_get("columns").unwrap_or_default(),
+                references_schema: Some(ref_schema),
+                references_table: row.try_get("ref_table").unwrap_or_default(),
+                references_columns: row.try_get("ref_columns").unwrap_or_default(),
             });
         }
     }

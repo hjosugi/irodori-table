@@ -130,6 +130,9 @@ pub fn run() {
             workspace_snapshot,
             db::db_connect,
             db::db_run_query,
+            db::db_run_query_stream,
+            db::db_cancel,
+            db::db_apply_edits,
             db::db_list_objects,
             db::db_disconnect
         ])
@@ -168,10 +171,17 @@ mod typegen {
             .decl(&decl::<db::QueryResult>())
             .decl(&decl::<db::DatabaseMetadata>())
             .decl(&decl::<db::SchemaMetadata>())
+            .decl(&decl::<db::ForeignKey>())
             .decl(&decl::<db::DbObjectMetadata>())
             .decl(&decl::<db::DbObjectMetadataKind>())
             .decl(&decl::<db::ColumnMetadata>())
             .decl(&decl::<db::IndexMetadata>())
+            .decl(&decl::<db::CellValue>())
+            .decl(&decl::<db::RowUpdate>())
+            .decl(&decl::<db::RowInsert>())
+            .decl(&decl::<db::RowDelete>())
+            .decl(&decl::<db::TableEdits>())
+            .decl(&decl::<db::AppliedEdits>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
             .command(
                 Command::new("db_connect", "ConnectionInfo")
@@ -181,7 +191,18 @@ mod typegen {
                 Command::new("db_run_query", "QueryResult")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("sql", TsType::string()))
-                    .arg(Arg::rust("max_rows", TsType::number()).optional()),
+                    .arg(Arg::rust("max_rows", TsType::number()).optional())
+                    .arg(Arg::rust("timeout_ms", TsType::number()).optional())
+                    .arg(Arg::rust("query_id", TsType::string()).optional()),
+            )
+            .command(
+                Command::returning("db_cancel", TsType::boolean())
+                    .arg(Arg::rust("query_id", TsType::string())),
+            )
+            .command(
+                Command::new("db_apply_edits", "AppliedEdits")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("edits", TsType::named("TableEdits"))),
             )
             .command(
                 Command::new("db_list_objects", "DatabaseMetadata")

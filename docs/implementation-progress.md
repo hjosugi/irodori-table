@@ -46,6 +46,34 @@ Highlights:
   → string (precision-safe), timestamps → RFC3339/string, `JSON/JSONB` → object,
   `UUID` → string, binary → hex, null preserved. This follows the Beekeeper/DBeaver
   value-handler lesson (bind decimals exactly; never round-trip through `double`).
+  **SQL Server (tiberius)** now decodes off the raw `ColumnData` to match: exact
+  numerics render scale-preserving (`100, scale 2 → "1.00"`), datetime/date/time/
+  datetimeoffset via chrono (ISO 8601 / RFC3339), binary as `\x` hex, UUID/XML as
+  string — no more lossy `f64`/`null` fallbacks.
+- **Per-query timeout + explicit cancel**: `db_run_query` takes an optional
+  `timeoutMs` (bounded by `tokio::time::timeout` → clean `query timed out after Nms`)
+  and an optional `queryId`. The `queryId` registers a `tokio_util`
+  `CancellationToken` in `DbState`, so the new `db_cancel(queryId)` command — wired
+  to the desktop Cancel button — stops a specific in-flight run (`query cancelled`).
+  A timeout or a cancel both drop the query future, which cancels the in-flight
+  request on the pooled (sqlx) engines. `None`/`0` timeout keeps the
+  run-to-completion default. Covered by `with_timeout` and `cancel_query_impl`
+  unit tests.
+- **Incremental result streaming**: `db_run_query_stream` streams a query as
+  `columns → batched rows → done|error` over a Tauri `Channel`, so the grid fills
+  as rows arrive instead of after the whole (capped) page. `stream.rs` gained a
+  `StreamCtx`/`stream_capped` twin of `collect_capped`; the sqlx trio + SQL Server
+  override `Connection::stream_query` for true row-by-row delivery and check the
+  cancel token each row (cooperative server-side cancel even for non-pooled
+  tiberius). Oracle/Mongo/DuckDB fall back to the default `stream_query`
+  (buffer → one batch). Verified with in-memory SQLite unit tests; the desktop UI
+  consumes it via `runQueryStream` (`src/db-stream.ts`).
+- **Virtualized result grid (rows)**: the grid renders only the rows in (and
+  `GRID_OVERSCAN` around) the viewport with top/bottom spacer pads, so a capped
+  10k-row page is ~30 DOM rows instead of 10k and streamed results stay smooth
+  (fixed 27px row height, viewport via `ResizeObserver`, scroll coalesced with
+  `requestAnimationFrame`, scroll resets to top per run). EXEC-004; column
+  virtualization is the remaining piece.
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,
@@ -108,6 +136,9 @@ Highlights:
 
 ## Coordination
 
+- **Claude ⇄ Codex split** is tracked in `docs/agent-coordination.md` (file ownership +
+  message log). Editor-stack decision is `docs/adr/0001-editor-stack.md` (CodeMirror 6 +
+  tree-sitter semantic layer + `sql-formatter`).
 - **typebridge** (Rust→TypeScript type bridge) is a sibling project at
   `/mnt/data/workspace/typebridge`, wired as a dev-dependency; the
   `export_typescript_bindings` test renders the desktop TS boundary through it. See
@@ -128,8 +159,8 @@ Highlights:
   paging), a generic `information_schema` metamodel, a two-tier lazy metadata cache,
   and a cancellation token.
 - **Refinements**: Oracle NUMBER → integer representation, date/timestamp formatting,
-  and `fetch_more` pagination; SQL Server precision-safe decimals/temporals; rich
-  array decoding.
+  and `fetch_more` pagination; rich array decoding. (SQL Server precision-safe
+  decimals/temporals/binary is now done — see below.)
 - **Beyond the engine layer** (per ROADMAP): export/import (CSV/TSV/INSERT/JSON/Avro/
   Parquet), proxy/SSH transports, schema-aware completion, optional AI/MCP, the
   extension SDK, and the editor.

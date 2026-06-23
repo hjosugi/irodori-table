@@ -173,6 +173,8 @@ pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
                 })
                 .collect(),
             indexes,
+            primary_key: Vec::new(),
+            foreign_keys: Vec::new(),
         });
     }
 

@@ -14,7 +14,7 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**
@@ -36,13 +36,36 @@ export type DatabaseMetadata = { schemas: Array<SchemaMetadata>, };
 
 export type SchemaMetadata = { name: string, objects: Array<DbObjectMetadata>, };
 
-export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, };
+export type ForeignKey = { columns: Array<string>, referencesSchema?: string, referencesTable: string, referencesColumns: Array<string>, };
+
+export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, 
+/**
+ * Primary-key column names in key order (empty when there is no PK). Used for
+ * safe edit keys and the ER diagram's key markers.
+ */
+primaryKey: Array<string>, 
+/**
+ * Outgoing foreign keys — the edges of the ER diagram.
+ */
+foreignKeys: Array<ForeignKey>, };
 
 export type DbObjectMetadataKind = "table" | "view" | "index";
 
 export type ColumnMetadata = { name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue?: string, };
 
 export type IndexMetadata = { name: string, columns: Array<string>, unique: boolean, };
+
+export type CellValue = { column: string, value: JsonValue, };
+
+export type RowUpdate = { keys: Array<CellValue>, set: Array<CellValue>, };
+
+export type RowInsert = { values: Array<CellValue>, };
+
+export type RowDelete = { keys: Array<CellValue>, };
+
+export type TableEdits = { schema?: string, table: string, updates: Array<RowUpdate>, inserts: Array<RowInsert>, deletes: Array<RowDelete>, };
+
+export type AppliedEdits = { updated: bigint, inserted: bigint, deleted: bigint, };
 
 export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
@@ -52,8 +75,16 @@ export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {
   return invoke<ConnectionInfo>("db_connect", { profile });
 }
 
-export function dbRunQuery(connectionId: string, sql: string, maxRows?: number): Promise<QueryResult> {
-  return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows });
+export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, timeoutMs?: number, queryId?: string): Promise<QueryResult> {
+  return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows, timeoutMs, queryId });
+}
+
+export function dbCancel(queryId: string): Promise<boolean> {
+  return invoke<boolean>("db_cancel", { queryId });
+}
+
+export function dbApplyEdits(connectionId: string, edits: TableEdits): Promise<AppliedEdits> {
+  return invoke<AppliedEdits>("db_apply_edits", { connectionId, edits });
 }
 
 export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {
