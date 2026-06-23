@@ -489,7 +489,6 @@ pub struct QueryResult {
     #[ts(optional)]
     pub message: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    #[ts(optional)]
     pub result_sets: Vec<QueryResultSet>,
 }
 
@@ -901,12 +900,184 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
 }
 
 /// Open connections keyed by connection id. Lives in Tauri managed state.
-#[derive(Default)]
+#[derive(Clone)]
 pub struct DbState {
-    conns: Mutex<HashMap<String, Arc<dyn Connection>>>,
+    conns: Arc<Mutex<HashMap<String, Arc<dyn Connection>>>>,
     /// In-flight cancellable queries keyed by a caller-supplied `query_id`, so
     /// `db_cancel` can stop a specific run. Entries are removed when the run ends.
-    cancels: Mutex<HashMap<String, CancellationToken>>,
+    cancels: Arc<Mutex<HashMap<String, CancellationToken>>>,
+    pub metadata_cache: Arc<Mutex<MetadataCache>>,
+}
+
+impl Default for DbState {
+    fn default() -> Self {
+        Self {
+            conns: Arc::new(Mutex::new(HashMap::new())),
+            cancels: Arc::new(Mutex::new(HashMap::new())),
+            metadata_cache: Arc::new(Mutex::new(MetadataCache::new())),
+        }
+    }
+}
+
+// Helpers to map DatabaseMetadata <-> MetadataSnapshot
+fn convert_metadata_to_snapshot(
+    connection_id: &str,
+    db_meta: &DatabaseMetadata,
+) -> MetadataSnapshot {
+    let mut snapshot = MetadataSnapshot::new(
+        connection_id,
+        1,
+        std::time::SystemTime::now(),
+    );
+    for s in &db_meta.schemas {
+        let mut schema = CmpSchemaMetadata::new(&s.name);
+        for obj in &s.objects {
+            match obj.kind {
+                DbObjectMetadataKind::Table | DbObjectMetadataKind::View => {
+                    let mut cmp_obj = if obj.kind == DbObjectMetadataKind::View {
+                        CmpObjectMetadata::view(&obj.name)
+                    } else {
+                        CmpObjectMetadata::table(&obj.name)
+                    };
+                    for col in &obj.columns {
+                        let mut cmp_col = CmpColumnMetadata::new(
+                            &col.name,
+                            &col.data_type,
+                            col.nullable,
+                            col.ordinal as u32,
+                        );
+                        cmp_col.default_value = col.default_value.clone();
+                        cmp_obj.columns.push(cmp_col);
+                    }
+                    for idx in &obj.indexes {
+                        let mut cmp_idx = CmpIndexMetadata::new(&idx.name, idx.columns.clone());
+                        cmp_idx.unique = idx.unique;
+                        cmp_idx.primary = obj.primary_key.contains(&idx.name)
+                            || idx.columns.iter().all(|c| obj.primary_key.contains(c));
+                        cmp_obj.indexes.push(cmp_idx);
+                    }
+                    for fk in &obj.foreign_keys {
+                        let cmp_fk = CmpForeignKeyMetadata::new(
+                            fk.columns.clone(),
+                            fk.references_schema.clone().unwrap_or_default(),
+                            &fk.references_table,
+                            fk.references_columns.clone(),
+                        );
+                        cmp_obj.foreign_keys.push(cmp_fk);
+                    }
+                    schema.objects.push(cmp_obj);
+                }
+                DbObjectMetadataKind::Procedure | DbObjectMetadataKind::Function => {
+                    let routine = if obj.kind == DbObjectMetadataKind::Function {
+                        CmpRoutineMetadata::new(&obj.name, "()")
+                    } else {
+                        CmpRoutineMetadata::procedure(&obj.name, "()")
+                    };
+                    schema.routines.push(routine);
+                }
+                _ => {}
+            }
+        }
+        snapshot.schemas.push(schema);
+    }
+    snapshot
+}
+
+fn convert_snapshot_to_metadata(snapshot: &MetadataSnapshot) -> DatabaseMetadata {
+    let mut schemas = Vec::new();
+    for s in &snapshot.schemas {
+        let mut objects = Vec::new();
+        // tables/views
+        for obj in &s.objects {
+            let kind = match obj.kind {
+                CmpMetadataObjectKind::View => DbObjectMetadataKind::View,
+                _ => DbObjectMetadataKind::Table,
+            };
+            let mut primary_key = Vec::new();
+            let mut indexes = Vec::new();
+            for idx in &obj.indexes {
+                indexes.push(IndexMetadata {
+                    name: idx.name.clone(),
+                    columns: idx.columns.clone(),
+                    unique: idx.unique,
+                });
+                if idx.primary {
+                    primary_key = idx.columns.clone();
+                }
+            }
+            let mut foreign_keys = Vec::new();
+            for fk in &obj.foreign_keys {
+                foreign_keys.push(ForeignKey {
+                    columns: fk.columns.clone(),
+                    references_schema: Some(fk.references_schema.clone()),
+                    references_table: fk.references_object.clone(),
+                    references_columns: fk.references_columns.clone(),
+                });
+            }
+            let mut columns = Vec::new();
+            for col in &obj.columns {
+                columns.push(ColumnMetadata {
+                    name: col.name.clone(),
+                    data_type: col.data_type.clone(),
+                    nullable: col.nullable,
+                    ordinal: col.ordinal as i32,
+                    default_value: col.default_value.clone(),
+                });
+            }
+            objects.push(DbObjectMetadata {
+                schema: s.name.clone(),
+                name: obj.name.clone(),
+                kind,
+                columns,
+                indexes,
+                primary_key,
+                foreign_keys,
+            });
+        }
+        // routines
+        for routine in &s.routines {
+            let kind = match routine.kind {
+                CmpRoutineKind::Function => DbObjectMetadataKind::Function,
+                CmpRoutineKind::Procedure => DbObjectMetadataKind::Procedure,
+            };
+            objects.push(DbObjectMetadata {
+                schema: s.name.clone(),
+                name: routine.name.clone(),
+                kind,
+                columns: Vec::new(),
+                indexes: Vec::new(),
+                primary_key: Vec::new(),
+                foreign_keys: Vec::new(),
+            });
+        }
+        schemas.push(SchemaMetadata {
+            name: s.name.clone(),
+            objects,
+        });
+    }
+    DatabaseMetadata { schemas }
+}
+
+fn trigger_background_refresh(state: DbState, connection_id: String) {
+    tokio::spawn(async move {
+        let conn = {
+            let guard = state.conns.lock().await;
+            guard.get(&connection_id).cloned()
+        };
+        if let Some(conn) = conn {
+            match conn.metadata().await {
+                Ok(db_meta) => {
+                    let mut cache = state.metadata_cache.lock().await;
+                    let snapshot = convert_metadata_to_snapshot(&connection_id, &db_meta);
+                    cache.upsert_snapshot(snapshot);
+                    let _ = cache.drain_refresh_requests();
+                }
+                Err(e) => {
+                    eprintln!("background metadata refresh failed for connection {connection_id}: {e}");
+                }
+            }
+        }
+    });
 }
 
 pub async fn connect_impl(
@@ -922,6 +1093,10 @@ pub async fn connect_impl(
     if let Some(old) = old {
         old.close().await;
     }
+    
+    // Trigger background refresh immediately to warm up the cache!
+    trigger_background_refresh(state.clone(), profile.id.clone());
+    
     Ok(ConnectionInfo {
         id: profile.id,
         engine: profile.engine,
@@ -1105,6 +1280,26 @@ pub async fn list_objects_impl(
     if connection_id.is_empty() {
         return Err("connection id is required".into());
     }
+
+    let now = std::time::SystemTime::now();
+    let (has_snapshot, is_stale) = {
+        let mut cache = state.metadata_cache.lock().await;
+        let has = cache.snapshot(&connection_id).is_some();
+        let stale = has && cache.snapshot(&connection_id).unwrap().is_stale(now);
+        cache.ensure_fresh(&connection_id, now);
+        (has, stale)
+    };
+
+    if has_snapshot {
+        if is_stale {
+            trigger_background_refresh(state.clone(), connection_id.clone());
+        }
+        let cache = state.metadata_cache.lock().await;
+        if let Some(snapshot) = cache.snapshot(&connection_id) {
+            return Ok(convert_snapshot_to_metadata(snapshot));
+        }
+    }
+
     let conn = {
         let guard = state.conns.lock().await;
         guard
@@ -1112,7 +1307,14 @@ pub async fn list_objects_impl(
             .cloned()
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
-    conn.metadata().await
+    let db_meta = conn.metadata().await?;
+    {
+        let mut cache = state.metadata_cache.lock().await;
+        let snapshot = convert_metadata_to_snapshot(&connection_id, &db_meta);
+        cache.upsert_snapshot(snapshot);
+        let _ = cache.drain_refresh_requests();
+    }
+    Ok(db_meta)
 }
 
 pub async fn apply_edits_impl(
@@ -1138,7 +1340,259 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
     if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
         conn.close().await;
     }
+    let mut cache = state.metadata_cache.lock().await;
+    cache.invalidate_connection(&connection_id);
     Ok(())
+}
+
+// Serializable/TS autocompletion/hover structs
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DbCompletionItem {
+    pub label: String,
+    pub insert_text: String,
+    pub kind: DbCompletionItemKind,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum DbCompletionItemKind {
+    Schema,
+    Table,
+    View,
+    Column,
+    Function,
+    Procedure,
+    Keyword,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "camelCase")]
+#[ts(tag = "type", rename_all = "camelCase")]
+pub enum DbInspectionCard {
+    Object(DbObjectInspection),
+    Column(DbColumnInspection),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DbObjectInspection {
+    pub schema: String,
+    pub name: String,
+    pub kind: DbObjectMetadataKind,
+    pub comment: Option<String>,
+    pub ddl: Option<String>,
+    pub row_estimate: Option<u64>,
+    pub columns: Vec<DbColumnInspection>,
+    pub indexes: Vec<IndexMetadata>,
+    pub foreign_keys: Vec<ForeignKey>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DbColumnInspection {
+    pub schema: String,
+    pub object: String,
+    pub name: String,
+    pub data_type: String,
+    pub nullable: bool,
+    pub ordinal: u32,
+    pub default_value: Option<String>,
+    pub comment: Option<String>,
+    pub primary_key: bool,
+    pub indexes: Vec<String>,
+    pub references: Vec<DbColumnReference>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DbColumnReference {
+    pub schema: String,
+    pub object: String,
+    pub column: String,
+}
+
+fn convert_inspection_card(card: irodori_completion::inspection::InspectionCard) -> DbInspectionCard {
+    match card {
+        irodori_completion::inspection::InspectionCard::Object(obj) => DbInspectionCard::Object(DbObjectInspection {
+            schema: obj.schema,
+            name: obj.name,
+            kind: match obj.kind {
+                CmpMetadataObjectKind::View => DbObjectMetadataKind::View,
+                _ => DbObjectMetadataKind::Table,
+            },
+            comment: obj.comment,
+            ddl: obj.ddl,
+            row_estimate: obj.row_estimate,
+            columns: obj.columns.into_iter().map(convert_column_inspection).collect(),
+            indexes: obj.indexes.into_iter().map(|idx| IndexMetadata {
+                name: idx.name,
+                columns: idx.columns,
+                unique: idx.unique,
+            }).collect(),
+            foreign_keys: obj.foreign_keys.into_iter().map(|fk| ForeignKey {
+                columns: fk.columns,
+                references_schema: Some(fk.references_schema),
+                references_table: fk.references_object,
+                references_columns: fk.references_columns,
+            }).collect(),
+        }),
+        irodori_completion::inspection::InspectionCard::Column(col) => DbInspectionCard::Column(convert_column_inspection(col)),
+    }
+}
+
+fn convert_column_inspection(col: irodori_completion::inspection::ColumnInspection) -> DbColumnInspection {
+    DbColumnInspection {
+        schema: col.schema,
+        object: col.object,
+        name: col.name,
+        data_type: col.data_type,
+        nullable: col.nullable,
+        ordinal: col.ordinal,
+        default_value: col.default_value,
+        comment: col.comment,
+        primary_key: col.primary_key,
+        indexes: col.indexes,
+        references: col.references.into_iter().map(|r| DbColumnReference {
+            schema: r.schema,
+            object: r.object,
+            column: r.column,
+        }).collect(),
+    }
+}
+
+#[tauri::command]
+pub async fn db_autocomplete(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+    prefix: String,
+    schema: Option<String>,
+    object: Option<String>,
+    limit: Option<usize>,
+) -> IrodoriResult<Vec<DbCompletionItem>> {
+    let state_inner = state.inner();
+    let now = std::time::SystemTime::now();
+
+    let needs_immediate_fetch = {
+        let mut cache = state_inner.metadata_cache.lock().await;
+        !cache.ensure_fresh(&connection_id, now)
+    };
+
+    if needs_immediate_fetch {
+        let conn = {
+            let guard = state_inner.conns.lock().await;
+            guard.get(&connection_id).cloned()
+        };
+        if let Some(conn) = conn {
+            if let Ok(db_meta) = conn.metadata().await {
+                let mut cache = state_inner.metadata_cache.lock().await;
+                let snapshot = convert_metadata_to_snapshot(&connection_id, &db_meta);
+                cache.upsert_snapshot(snapshot);
+                let _ = cache.drain_refresh_requests();
+            }
+        }
+    } else {
+        let is_stale = {
+            let cache = state_inner.metadata_cache.lock().await;
+            cache.snapshot(&connection_id).map(|s| s.is_stale(now)).unwrap_or(false)
+        };
+        if is_stale {
+            trigger_background_refresh(state_inner.clone(), connection_id.clone());
+        }
+    }
+
+    let cache = state_inner.metadata_cache.lock().await;
+    let engine = irodori_completion::CompletionEngine::new();
+    let mut req = irodori_completion::CompletionRequest::new(&connection_id)
+        .with_prefix(prefix);
+    if let Some(s) = schema {
+        req = req.in_schema(s);
+    }
+    if let Some(o) = object {
+        req = req.for_object(o);
+    }
+    if let Some(l) = limit {
+        req.limit = l;
+    }
+
+    let items = engine.complete(&cache, &req);
+    let mapped = items.into_iter().map(|item| DbCompletionItem {
+        label: item.label,
+        insert_text: item.insert_text,
+        kind: match item.kind {
+            irodori_completion::CompletionItemKind::Schema => DbCompletionItemKind::Schema,
+            irodori_completion::CompletionItemKind::Table => DbCompletionItemKind::Table,
+            irodori_completion::CompletionItemKind::View => DbCompletionItemKind::View,
+            irodori_completion::CompletionItemKind::Column => DbCompletionItemKind::Column,
+            irodori_completion::CompletionItemKind::Function => DbCompletionItemKind::Function,
+            irodori_completion::CompletionItemKind::Procedure => DbCompletionItemKind::Procedure,
+            irodori_completion::CompletionItemKind::Keyword => DbCompletionItemKind::Keyword,
+        },
+        detail: item.detail,
+    }).collect();
+
+    Ok(mapped)
+}
+
+#[tauri::command]
+pub async fn db_inspect_object(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+    schema: String,
+    object: String,
+) -> IrodoriResult<Option<DbInspectionCard>> {
+    let state_inner = state.inner();
+    let cache = state_inner.metadata_cache.lock().await;
+    let card = irodori_completion::inspection::inspect_object(&cache, &connection_id, &schema, &object);
+    Ok(card.map(convert_inspection_card))
+}
+
+#[tauri::command]
+pub async fn db_inspect_column(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+    schema: String,
+    object: String,
+    column: String,
+) -> IrodoriResult<Option<DbInspectionCard>> {
+    let state_inner = state.inner();
+    let cache = state_inner.metadata_cache.lock().await;
+    let card = irodori_completion::inspection::inspect_column(&cache, &connection_id, &schema, &object, &column);
+    Ok(card.map(convert_inspection_card))
+}
+
+#[tauri::command]
+pub async fn db_invalidate_cache(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+    schema: Option<String>,
+    object: Option<String>,
+) -> IrodoriResult<bool> {
+    let state_inner = state.inner();
+    let mut cache = state_inner.metadata_cache.lock().await;
+    let invalidated = if let Some(obj) = object {
+        if let Some(sch) = schema {
+            cache.invalidate_object(&connection_id, &sch, &obj)
+        } else {
+            false
+        }
+    } else if let Some(sch) = schema {
+        cache.invalidate_schema(&connection_id, &sch)
+    } else {
+        cache.invalidate_connection(&connection_id)
+    };
+
+    if invalidated {
+        trigger_background_refresh(state_inner.clone(), connection_id);
+    }
+
+    Ok(invalidated)
 }
 
 // ---- Tauri commands -----------------------------------------------------------
@@ -1499,8 +1953,20 @@ mod tests {
         let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
         while let Some(event) = rx.recv().await {
             match event {
-                stream::FetchEvent::Columns(c) => columns = c,
-                stream::FetchEvent::Rows(mut r) => rows.append(&mut r),
+                stream::FetchEvent::Columns {
+                    result_set_index,
+                    columns: c,
+                } => {
+                    assert_eq!(result_set_index, 0);
+                    columns = c;
+                }
+                stream::FetchEvent::Rows {
+                    result_set_index,
+                    rows: mut r,
+                } => {
+                    assert_eq!(result_set_index, 0);
+                    rows.append(&mut r);
+                }
             }
         }
         assert_eq!(columns, vec!["a", "b"]);
@@ -1549,7 +2015,7 @@ mod tests {
 
         let mut delivered = 0;
         while let Some(event) = rx.recv().await {
-            if let stream::FetchEvent::Rows(r) = event {
+            if let stream::FetchEvent::Rows { rows: r, .. } = event {
                 delivered += r.len();
             }
         }
@@ -1592,6 +2058,7 @@ mod tests {
         let ctx = stream::StreamCtx {
             cap: 10,
             batch_rows: STREAM_BATCH_ROWS,
+            result_set_index: 0,
             token,
             sink: tx,
         };

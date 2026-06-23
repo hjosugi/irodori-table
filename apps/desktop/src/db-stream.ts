@@ -8,9 +8,20 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
 export type QueryStreamEvent =
-  | { type: "columns"; columns: string[] }
-  | { type: "rows"; rows: unknown[][] }
-  | { type: "done"; rowCount: number; truncated: boolean; elapsedMs: number }
+  | { type: "columns"; resultSetIndex: number; columns: string[] }
+  | { type: "rows"; resultSetIndex: number; rows: unknown[][] }
+  | {
+      type: "done";
+      rowCount: number;
+      truncated: boolean;
+      elapsedMs: number;
+      resultSets: Array<{
+        resultSetIndex: number;
+        rowCount: number;
+        elapsedMs: number;
+        truncated: boolean;
+      }>;
+    }
   | { type: "error"; message: string };
 
 export interface RunQueryStreamArgs {

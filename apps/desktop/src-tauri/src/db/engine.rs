@@ -2,9 +2,18 @@
 //!
 //! `wire()` separates the *protocol* an engine speaks (which driver handles it)
 //! from the engine identity — so CockroachDB/Yugabyte/Redshift/Timescale ride the
-//! Postgres driver and MariaDB/TiDB ride MySQL. A future `SqlDialect`/metamodel
-//! layer (DBeaver-style) will sit on top for per-engine quoting and introspection.
+//! Postgres driver and MariaDB/TiDB ride MySQL. `dialect()` and `metamodel()`
+//! hang per-engine quoting/paging and generic information-schema query builders
+//! off the same registry.
 
+use irodori_sql::dialect::{
+    MySqlDialect, OracleDialect, PostgresDialect, SnowflakeDialect, SqlDialect, SqlServerDialect,
+    SqliteDialect,
+};
+use irodori_sql::metamodel::{
+    InformationSchemaMetamodel, MySqlInformationSchema, PostgresInformationSchema,
+    SqliteCatalogMetamodel, StandardInformationSchema,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -143,6 +152,42 @@ impl DbEngine {
             DbEngine::Qdrant => 6333,
             DbEngine::Milvus => 19530,
             DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
+        }
+    }
+
+    pub(crate) fn dialect(self) -> Box<dyn SqlDialect> {
+        match self.wire() {
+            Wire::Mysql => Box::new(MySqlDialect),
+            Wire::Sqlite | Wire::DuckDb => Box::new(SqliteDialect),
+            Wire::SqlServer => Box::new(SqlServerDialect),
+            Wire::Oracle => Box::new(OracleDialect),
+            Wire::Pinecone => Box::new(SnowflakeDialect),
+            Wire::Postgres
+            | Wire::Mongo
+            | Wire::ClickHouse
+            | Wire::Neo4j
+            | Wire::Memgraph
+            | Wire::InfluxDb
+            | Wire::Qdrant
+            | Wire::Milvus => Box::new(PostgresDialect),
+        }
+    }
+
+    pub(crate) fn metamodel(self) -> Box<dyn InformationSchemaMetamodel> {
+        match self.wire() {
+            Wire::Postgres => Box::new(PostgresInformationSchema),
+            Wire::Mysql => Box::new(MySqlInformationSchema),
+            Wire::Sqlite | Wire::DuckDb => Box::new(SqliteCatalogMetamodel),
+            Wire::SqlServer
+            | Wire::Oracle
+            | Wire::Mongo
+            | Wire::ClickHouse
+            | Wire::Neo4j
+            | Wire::Memgraph
+            | Wire::InfluxDb
+            | Wire::Qdrant
+            | Wire::Milvus
+            | Wire::Pinecone => Box::new(StandardInformationSchema),
         }
     }
 }

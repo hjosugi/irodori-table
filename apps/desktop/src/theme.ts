@@ -29,6 +29,16 @@ export interface IrodoriUiColors {
   amber: string;
   red: string;
   purple: string;
+  hover: string;
+  selected: string;
+  selectedStrong: string;
+  focus: string;
+  inputBg: string;
+  gridHeader: string;
+  gridRowAlt: string;
+  cellBorder: string;
+  dangerBg: string;
+  warningBg: string;
   // Editor-only chrome (not exported as shell vars):
   selection: string;
   activeLine: string;
@@ -64,40 +74,50 @@ export const lightTheme: IrodoriTheme = {
   name: "Irodori Light",
   kind: "light",
   ui: {
-    border: "#d3d8d2",
-    borderStrong: "#b8c1b5",
-    surface: "#f7f8f4",
+    border: "#d0d7de",
+    borderStrong: "#afb8c1",
+    surface: "#f3f3f3",
     surfaceRaised: "#ffffff",
-    surfaceMuted: "#edf0ea",
-    chrome: "#fbfcf7",
-    editorBg: "#fffef9",
-    text: "#20242a",
-    muted: "#687064",
-    green: "#2e7a56",
-    teal: "#157f85",
-    blue: "#3367a5",
-    amber: "#b56b1d",
-    red: "#bd4b4b",
-    purple: "#6c5cae",
-    selection: "#d7e3f4",
-    activeLine: "#f4efe2",
-    caret: "#3367a5",
-    gutterBg: "#faf5ea",
-    gutterText: "#a58f72",
+    surfaceMuted: "#ededed",
+    chrome: "#f8f8f8",
+    editorBg: "#ffffff",
+    text: "#1f2328",
+    muted: "#6e7781",
+    green: "#238636",
+    teal: "#0e7490",
+    blue: "#0969da",
+    amber: "#9a6700",
+    red: "#cf222e",
+    purple: "#8250df",
+    hover: "#eaeef2",
+    selected: "#dbeafe",
+    selectedStrong: "#c8e1ff",
+    focus: "#0969da",
+    inputBg: "#ffffff",
+    gridHeader: "#f6f8fa",
+    gridRowAlt: "#fafbfc",
+    cellBorder: "#d8dee4",
+    dangerBg: "#fff1f1",
+    warningBg: "#fff8c5",
+    selection: "#add6ff",
+    activeLine: "#f6f8fa",
+    caret: "#0969da",
+    gutterBg: "#f6f8fa",
+    gutterText: "#6e7781",
   },
   syntax: {
-    keyword: "#2563a8",
-    string: "#2e7a56",
-    number: "#b56b1d",
+    keyword: "#0969da",
+    string: "#116329",
+    number: "#953800",
     comment: "#8c9488",
-    type: "#157f85",
-    property: "#6c5cae",
-    name: "#20242a",
-    operator: "#687064",
-    function: "#b5571d",
-    bracket: "#687064",
-    punctuation: "#687064",
-    bool: "#b56b1d",
+    type: "#0e7490",
+    property: "#8250df",
+    name: "#1f2328",
+    operator: "#6e7781",
+    function: "#953800",
+    bracket: "#6e7781",
+    punctuation: "#6e7781",
+    bool: "#953800",
   },
 };
 
@@ -120,6 +140,16 @@ export const darkTheme: IrodoriTheme = {
     amber: "#d7ba7d",
     red: "#f48771",
     purple: "#c586c0",
+    hover: "#2a2d2e",
+    selected: "#37373d",
+    selectedStrong: "#094771",
+    focus: "#007fd4",
+    inputBg: "#1f1f1f",
+    gridHeader: "#252526",
+    gridRowAlt: "#1b1b1b",
+    cellBorder: "#303030",
+    dangerBg: "#3b1d1d",
+    warningBg: "#3a3219",
     selection: "#264f78",
     activeLine: "#262626",
     caret: "#aeafad",
@@ -166,6 +196,16 @@ export function cssVariables(theme: IrodoriTheme): Record<string, string> {
     "--amber": ui.amber,
     "--red": ui.red,
     "--purple": ui.purple,
+    "--hover": ui.hover,
+    "--selected": ui.selected,
+    "--selected-strong": ui.selectedStrong,
+    "--focus": ui.focus,
+    "--input-bg": ui.inputBg,
+    "--grid-header": ui.gridHeader,
+    "--grid-row-alt": ui.gridRowAlt,
+    "--cell-border": ui.cellBorder,
+    "--danger-bg": ui.dangerBg,
+    "--warning-bg": ui.warningBg,
   };
 }
 

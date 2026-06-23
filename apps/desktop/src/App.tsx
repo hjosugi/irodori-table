@@ -1,6 +1,8 @@
 import {
   type CSSProperties,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type UIEvent,
   useEffect,
   useMemo,
@@ -66,6 +68,7 @@ import {
   type DbEngine,
   type DbObjectMetadata,
   type QueryResult,
+  type QueryResultSet,
   type RowDelete,
   type RowInsert,
   type RowUpdate,
@@ -199,6 +202,9 @@ const themeStorageKey = "irodori.theme.v1";
 const vimModeStorageKey = "irodori.editor.vimMode.v1";
 const formatterStorageKey = "irodori.editor.formatter.v1";
 const sidebarStorageKey = "irodori.sidebar.open.v1";
+const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
+const inspectorWidthStorageKey = "irodori.inspector.width.v1";
+const resultsHeightStorageKey = "irodori.results.height.v1";
 
 function loadThemeKind(): ThemeKind {
   return window.localStorage.getItem(themeStorageKey) === "light"
@@ -217,6 +223,20 @@ function loadFormatter(): SqlFormatterId {
 
 function loadSidebarOpen() {
   return window.localStorage.getItem(sidebarStorageKey) !== "false";
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function loadStoredNumber(
+  key: string,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  const stored = Number(window.localStorage.getItem(key));
+  return Number.isFinite(stored) ? clampNumber(stored, min, max) : fallback;
 }
 
 function keyScopeFromTarget(
@@ -630,12 +650,24 @@ function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
 // viewport so fast scrolling does not flash blank rows.
 const GRID_ROW_HEIGHT = 27;
 const GRID_OVERSCAN = 8;
+const GRID_COLUMN_WIDTH = 148;
+const GRID_COLUMN_OVERSCAN = 2;
+const GRID_GUTTER_WIDTH = 34;
+const SIDEBAR_WIDTH_MIN = 220;
+const SIDEBAR_WIDTH_MAX = 420;
+const INSPECTOR_WIDTH_MIN = 220;
+const INSPECTOR_WIDTH_MAX = 420;
+const RESULTS_HEIGHT_MIN = 150;
+const RESULTS_HEIGHT_MAX = 520;
 
 function App() {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
+  const pendingGridScroll = useRef({ top: 0, left: 0 });
   const [gridScrollTop, setGridScrollTop] = useState(0);
-  const [gridViewport, setGridViewport] = useState(480);
+  const [gridScrollLeft, setGridScrollLeft] = useState(0);
+  const [gridViewportHeight, setGridViewportHeight] = useState(480);
+  const [gridViewportWidth, setGridViewportWidth] = useState(900);
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
@@ -666,6 +698,7 @@ function App() {
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
+  const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [queryError, setQueryError] = useState<string | null>(null);
   // SQL of the last run, used to infer the editable target table.
   const [lastRunSql, setLastRunSql] = useState<string>("");
@@ -816,7 +849,25 @@ function App() {
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
-  const resultColumns = result?.columns ?? [
+  const resultSets = useMemo(() => {
+    if (!result) {
+      return [];
+    }
+    return result.resultSets && result.resultSets.length > 0
+      ? result.resultSets
+      : [result];
+  }, [result]);
+  const activeResult =
+    resultSets[Math.min(activeResultIndex, Math.max(0, resultSets.length - 1))] ??
+    null;
+
+  useEffect(() => {
+    if (activeResultIndex >= resultSets.length) {
+      setActiveResultIndex(0);
+    }
+  }, [activeResultIndex, resultSets.length]);
+
+  const resultColumns = activeResult?.columns ?? [
     "id",
     "name",
     "lifetime_value",
@@ -830,7 +881,7 @@ function App() {
   // Build the display rows: original rows (with any staged cell edits overlaid,
   // staged-deleted rows skipped) followed by staged new rows. `key` ties a display
   // row back to its origin so an edit maps to the right row regardless of sorting.
-  const baseCells = result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
+  const baseCells = activeResult?.rows.map((row) => row.map(formatCell)) ?? resultRows;
   const displayRows: {
     key: string;
     origin: { kind: "orig"; index: number } | { kind: "new"; index: number };
@@ -1163,25 +1214,94 @@ function App() {
   keymapRef.current = keymap;
   const runCommandRef = useRef(runCommand);
   runCommandRef.current = runCommand;
+  const activeKeyScopeRef = useRef(activeKeyScope);
+  activeKeyScopeRef.current = activeKeyScope;
   const recordingRef = useRef(recordingCommand);
   recordingRef.current = recordingCommand;
+  const pendingKeySequenceRef = useRef<string[]>([]);
+  const pendingKeyTimerRef = useRef<number | null>(null);
+  const recordingSequenceRef = useRef<string[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
+
+  function clearPendingKeySequence() {
+    pendingKeySequenceRef.current = [];
+    if (pendingKeyTimerRef.current !== null) {
+      window.clearTimeout(pendingKeyTimerRef.current);
+      pendingKeyTimerRef.current = null;
+    }
+  }
+
+  function clearRecordingTimer() {
+    if (recordingTimerRef.current !== null) {
+      window.clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }
+
+  function cancelRecording() {
+    clearRecordingTimer();
+    recordingRef.current = null;
+    recordingSequenceRef.current = [];
+    setRecordingCommand(null);
+    setRecordingSequence([]);
+  }
+
+  function commitRecordedKeybinding(commandId: string, sequence: readonly string[]) {
+    const chord = sequence.join(" ");
+    if (!chord) {
+      cancelRecording();
+      return;
+    }
+    clearRecordingTimer();
+    setKeymapOverrides((prev) => {
+      const next = { ...prev, [commandId]: chord };
+      saveOverrides(next);
+      return next;
+    });
+    recordingRef.current = null;
+    recordingSequenceRef.current = [];
+    setRecordingCommand(null);
+    setRecordingSequence([]);
+  }
+
+  function beginRecording(commandId: string) {
+    if (recordingRef.current === commandId) {
+      cancelRecording();
+      return;
+    }
+    clearRecordingTimer();
+    recordingRef.current = commandId;
+    recordingSequenceRef.current = [];
+    setRecordingCommand(commandId);
+    setRecordingSequence([]);
+  }
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      // Recording a rebind: the next non-modifier key becomes the new chord.
+      // Recording a rebind: one or two non-modifier chords become the new sequence.
       const recording = recordingRef.current;
       if (recording) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancelRecording();
+          return;
+        }
         const chord = eventToChord(event);
         if (!chord) {
           return;
         }
         event.preventDefault();
-        setKeymapOverrides((prev) => {
-          const next = { ...prev, [recording]: chord };
-          saveOverrides(next);
-          return next;
-        });
-        setRecordingCommand(null);
+        clearRecordingTimer();
+        const next = [...recordingSequenceRef.current, chord];
+        recordingSequenceRef.current = next;
+        setRecordingSequence(next);
+        if (next.length >= 2) {
+          commitRecordedKeybinding(recording, next);
+        } else {
+          recordingTimerRef.current = window.setTimeout(() => {
+            commitRecordedKeybinding(recording, recordingSequenceRef.current);
+          }, KEY_SEQUENCE_TIMEOUT_MS);
+        }
         return;
       }
       const target = event.target as HTMLElement | null;
@@ -1190,23 +1310,52 @@ function App() {
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
-      const map = keymapRef.current;
-      for (const meta of commandCatalog) {
-        const chord = map[meta.id];
-        if (!chord || !matchesChord(event, chord)) {
-          continue;
-        }
-        // A bare key (no Mod/Ctrl/Alt) must not hijack typing in a field.
-        if (typing && isBareChord(chord)) {
-          continue;
-        }
-        event.preventDefault();
-        runCommandRef.current(meta.id);
+      const scope = keyScopeFromTarget(target, activeKeyScopeRef.current);
+      if (scope !== activeKeyScopeRef.current) {
+        activeKeyScopeRef.current = scope;
+        setActiveKeyScope(scope);
+      }
+      const chord = eventToChord(event);
+      if (!chord) {
         return;
+      }
+      const map = keymapRef.current;
+      const hadPending = pendingKeySequenceRef.current.length > 0;
+      const resolution = resolveKeybinding({
+        keymap: map,
+        scope,
+        chord,
+        pending: pendingKeySequenceRef.current,
+        allowBare: !typing,
+      });
+      if (resolution.kind === "pending") {
+        event.preventDefault();
+        pendingKeySequenceRef.current = resolution.pending;
+        if (pendingKeyTimerRef.current !== null) {
+          window.clearTimeout(pendingKeyTimerRef.current);
+        }
+        pendingKeyTimerRef.current = window.setTimeout(
+          clearPendingKeySequence,
+          KEY_SEQUENCE_TIMEOUT_MS,
+        );
+        return;
+      }
+      clearPendingKeySequence();
+      if (resolution.kind === "command") {
+        event.preventDefault();
+        runCommandRef.current(resolution.commandId);
+        return;
+      }
+      if (hadPending) {
+        event.preventDefault();
       }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      clearPendingKeySequence();
+      clearRecordingTimer();
+    };
   }, []);
 
   // Render the ER diagram with Mermaid whenever the modal opens (or the active
@@ -1254,6 +1403,9 @@ function App() {
   }, [diagramOpen, activeMetadata]);
 
   function resetKeybinding(commandId: string) {
+    if (recordingCommand === commandId) {
+      cancelRecording();
+    }
     setKeymapOverrides((prev) => {
       const next = { ...prev };
       delete next[commandId];
@@ -1600,6 +1752,17 @@ function App() {
       className="app-shell"
       style={cssVariables(theme) as CSSProperties}
       data-theme={theme.kind}
+      data-key-scope={activeKeyScope}
+      onFocusCapture={(event) => {
+        const scope = keyScopeFromTarget(event.target, "global");
+        activeKeyScopeRef.current = scope;
+        setActiveKeyScope(scope);
+      }}
+      onMouseDownCapture={(event) => {
+        const scope = keyScopeFromTarget(event.target, activeKeyScope);
+        activeKeyScopeRef.current = scope;
+        setActiveKeyScope(scope);
+      }}
     >
       <header className="titlebar">
         <div className="window-controls" aria-hidden="true">
@@ -2156,10 +2319,15 @@ function App() {
                 <div className="command-list">
                   {commandCatalog.map((command) => {
                     const chord = keymap[command.id];
-                    const conflicted = Object.values(keymapConflicts).some((ids) =>
-                      ids.includes(command.id),
+                    const conflicted = commandHasConflict(
+                      keymapConflicts,
+                      command.id,
                     );
                     const recording = recordingCommand === command.id;
+                    const recordingLabel =
+                      recordingSequence.length > 0
+                        ? `${formatKeySequence(recordingSequence.join(" "))} ...`
+                        : "Press keys...";
                     return (
                       <div className="command-item" key={command.id}>
                         <button
@@ -2170,21 +2338,26 @@ function App() {
                         >
                           {command.title}
                         </button>
+                        <small className={`command-scope ${command.scope}`}>
+                          {command.scope}
+                        </small>
                         <button
                           className={`command-chord${conflicted ? " conflict" : ""}`}
                           type="button"
                           title={
                             recording
-                              ? "Press the new shortcut…"
+                              ? "Press one or two chords for the new shortcut"
                               : conflicted
                                 ? "Shortcut conflict — click to rebind"
                                 : "Click to rebind"
                           }
-                          onClick={() =>
-                            setRecordingCommand(recording ? null : command.id)
-                          }
+                          onClick={() => beginRecording(command.id)}
                         >
-                          {recording ? "Press keys…" : chord ? formatChord(chord) : "unset"}
+                          {recording
+                            ? recordingLabel
+                            : chord
+                              ? formatKeySequence(chord)
+                              : "unset"}
                         </button>
                         {keymapOverrides[command.id] ? (
                           <button
@@ -2284,6 +2457,7 @@ function App() {
               role="table"
               aria-label="Query result"
               ref={gridRef}
+              tabIndex={0}
               onScroll={onGridScroll}
             >
               <div
@@ -2454,7 +2628,7 @@ function App() {
                     <span>{command.title}</span>
                     <small>{command.category}</small>
                     {keymap[command.id] ? (
-                      <kbd>{formatChord(keymap[command.id])}</kbd>
+                      <kbd>{formatKeySequence(keymap[command.id])}</kbd>
                     ) : null}
                   </button>
                 ))

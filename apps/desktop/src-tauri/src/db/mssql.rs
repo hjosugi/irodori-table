@@ -154,6 +154,12 @@ pub async fn stream_query(
         ctx.columns(Vec::new()).await?;
     }
     Ok(super::stream::StreamSummary {
+        result_sets: vec![super::stream::StreamResultSetSummary {
+            result_set_index: ctx.result_set_index,
+            row_count,
+            truncated,
+            elapsed_ms: 0,
+        }],
         truncated,
         row_count,
     })

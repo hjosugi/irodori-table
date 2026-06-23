@@ -6,7 +6,8 @@ use sqlx::{Row, ValueRef};
 
 use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata, RowSet,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata,
+    RawResultSet, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<SqlitePool, String> {
@@ -29,12 +30,75 @@ pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> Result<RowSe
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn run_query_sets(
+    pool: &SqlitePool,
+    sql: &str,
+    cap: usize,
+) -> Result<Vec<RawResultSet>, String> {
+    let statements = super::split_sql_statements(sql);
+    let statements = if statements.is_empty() {
+        vec![sql.trim().to_string()]
+    } else {
+        statements
+    };
+    let mut sets = Vec::with_capacity(statements.len());
+    for (statement_index, statement) in statements.into_iter().enumerate() {
+        let start = std::time::Instant::now();
+        let (columns, rows, truncated) = run_query(pool, &statement, cap).await?;
+        sets.push(RawResultSet {
+            statement_index,
+            statement,
+            columns,
+            rows,
+            elapsed_ms: start.elapsed().as_millis() as u64,
+            truncated,
+        });
+    }
+    Ok(sets)
+}
+
 pub async fn stream_query(
     pool: &SqlitePool,
     sql: &str,
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
     super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
+pub async fn stream_query_sets(
+    pool: &SqlitePool,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    let statements = super::split_sql_statements(sql);
+    let statements = if statements.is_empty() {
+        vec![sql.trim().to_string()]
+    } else {
+        statements
+    };
+    let mut result_sets = Vec::with_capacity(statements.len());
+    let mut row_count = 0;
+    let mut truncated = false;
+    for (statement_index, statement) in statements.into_iter().enumerate() {
+        if ctx.cancelled() {
+            return Err("query cancelled".to_string());
+        }
+        let set_ctx = ctx.for_result_set(statement_index);
+        let start = std::time::Instant::now();
+        let mut summary = stream_query(pool, &statement, &set_ctx).await?;
+        let elapsed_ms = start.elapsed().as_millis() as u64;
+        row_count += summary.row_count;
+        truncated |= summary.truncated;
+        for set in &mut summary.result_sets {
+            set.elapsed_ms = elapsed_ms;
+        }
+        result_sets.extend(summary.result_sets);
+    }
+    Ok(super::stream::StreamSummary {
+        result_sets,
+        truncated,
+        row_count,
+    })
 }
 
 pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {

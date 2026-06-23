@@ -138,6 +138,10 @@ pub fn run() {
             db::db_apply_edits,
             db::db_list_objects,
             db::db_disconnect,
+            db::db_autocomplete,
+            db::db_inspect_object,
+            db::db_inspect_column,
+            db::db_invalidate_cache,
             security::security_get_privacy_mode,
             security::security_set_privacy_mode,
             security::security_redact_text,
@@ -206,6 +210,7 @@ mod typegen {
             .decl(&decl::<db::DbEngine>())
             .decl(&decl::<db::ConnectionProfile>())
             .decl(&decl::<db::ConnectionInfo>())
+            .decl(&decl::<db::QueryResultSet>())
             .decl(&decl::<db::QueryResult>())
             .decl(&decl::<db::DatabaseMetadata>())
             .decl(&decl::<db::SchemaMetadata>())
@@ -220,6 +225,12 @@ mod typegen {
             .decl(&decl::<db::RowDelete>())
             .decl(&decl::<db::TableEdits>())
             .decl(&decl::<db::AppliedEdits>())
+            .decl(&decl::<db::DbCompletionItem>())
+            .decl(&decl::<db::DbCompletionItemKind>())
+            .decl(&decl::<db::DbInspectionCard>())
+            .decl(&decl::<db::DbObjectInspection>())
+            .decl(&decl::<db::DbColumnInspection>())
+            .decl(&decl::<db::DbColumnReference>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
             .command(
                 Command::new("db_connect", "ConnectionInfo")
@@ -249,6 +260,33 @@ mod typegen {
             .command(
                 Command::returning("db_disconnect", TsType::void())
                     .arg(Arg::rust("connection_id", TsType::string())),
+            )
+            .command(
+                Command::new("db_autocomplete", "Vec<DbCompletionItem>")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("prefix", TsType::string()))
+                    .arg(Arg::rust("schema", TsType::string()).optional())
+                    .arg(Arg::rust("object", TsType::string()).optional())
+                    .arg(Arg::rust("limit", TsType::number()).optional()),
+            )
+            .command(
+                Command::new("db_inspect_object", "Option<DbInspectionCard>")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("schema", TsType::string()))
+                    .arg(Arg::new("object", TsType::string())),
+            )
+            .command(
+                Command::new("db_inspect_column", "Option<DbInspectionCard>")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("schema", TsType::string()))
+                    .arg(Arg::new("object", TsType::string()))
+                    .arg(Arg::new("column", TsType::string())),
+            )
+            .command(
+                Command::returning("db_invalidate_cache", TsType::boolean())
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::rust("schema", TsType::string()).optional())
+                    .arg(Arg::rust("object", TsType::string()).optional()),
             )
             .command(Command::new("security_get_privacy_mode", "PrivacyMode"))
             .command(
