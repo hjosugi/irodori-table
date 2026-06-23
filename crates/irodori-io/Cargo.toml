@@ -11,7 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 irodori-sql = { path = "../irodori-sql" }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 serde = { version = "1", features = ["derive"] }
 csv = "1"
 arrow = { version = "58.3.0", optional = true }
