@@ -74,6 +74,11 @@ import {
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
 import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
+import {
+  formatterOptions,
+  isSqlFormatterId,
+  type SqlFormatterId,
+} from "./sql/formatter";
 import { selectedOrCurrentStatement } from "./sql/statements";
 import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
 import "./App.css";
@@ -192,6 +197,7 @@ const profilesStorageKey = "irodori.connectionProfiles.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
 const themeStorageKey = "irodori.theme.v1";
 const vimModeStorageKey = "irodori.editor.vimMode.v1";
+const formatterStorageKey = "irodori.editor.formatter.v1";
 const sidebarStorageKey = "irodori.sidebar.open.v1";
 
 function loadThemeKind(): ThemeKind {
@@ -202,6 +208,11 @@ function loadThemeKind(): ThemeKind {
 
 function loadVimMode() {
   return window.localStorage.getItem(vimModeStorageKey) === "true";
+}
+
+function loadFormatter(): SqlFormatterId {
+  const stored = window.localStorage.getItem(formatterStorageKey);
+  return isSqlFormatterId(stored) ? stored : "sql-formatter";
 }
 
 function loadSidebarOpen() {
@@ -635,6 +646,7 @@ function App() {
   const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
   const theme = themeKind === "dark" ? darkTheme : lightTheme;
   const [vimMode, setVimMode] = useState(loadVimMode);
+  const [formatter, setFormatter] = useState<SqlFormatterId>(loadFormatter);
   const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
@@ -723,6 +735,10 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(vimModeStorageKey, String(vimMode));
   }, [vimMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(formatterStorageKey, formatter);
+  }, [formatter]);
 
   useEffect(() => {
     window.localStorage.setItem(sidebarStorageKey, String(sidebarOpen));
@@ -1665,12 +1681,29 @@ function App() {
         <button
           className="icon-button"
           type="button"
-          title="Format SQL (engine dialect)"
+          title={`Format SQL (${formatter})`}
           aria-label="Format SQL"
           onClick={() => runCommand("editor.format")}
         >
           <AlignLeft size={15} />
         </button>
+        <select
+          className="formatter-select"
+          aria-label="SQL formatter"
+          value={formatter}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (isSqlFormatterId(next)) {
+              setFormatter(next);
+            }
+          }}
+        >
+          {formatterOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
         <button
           className="icon-button"
           type="button"
@@ -2062,6 +2095,7 @@ function App() {
                   metadata={activeMetadata}
                   theme={theme}
                   vimMode={vimMode}
+                  formatter={formatter}
                 />
               </div>
             </section>

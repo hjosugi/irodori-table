@@ -221,6 +221,157 @@ fn bounded_query_cap(max_rows: Option<usize>) -> Result<usize, String> {
     Ok(cap)
 }
 
+fn query_result_set(raw: RawResultSet, cap: usize) -> QueryResultSet {
+    let row_count = raw.rows.len() as u64;
+    QueryResultSet {
+        statement_index: raw.statement_index,
+        statement: raw.statement,
+        columns: raw.columns,
+        rows: raw.rows,
+        row_count,
+        elapsed_ms: raw.elapsed_ms,
+        truncated: raw.truncated,
+        message: raw.truncated.then(|| format!("result capped at {cap} rows")),
+    }
+}
+
+fn query_result_from_sets(mut result_sets: Vec<QueryResultSet>, elapsed_ms: u64) -> QueryResult {
+    let first = result_sets.first().cloned().unwrap_or_else(|| QueryResultSet {
+        statement_index: 0,
+        statement: String::new(),
+        columns: Vec::new(),
+        rows: Vec::new(),
+        row_count: 0,
+        elapsed_ms,
+        truncated: false,
+        message: None,
+    });
+    let nested = (result_sets.len() > 1)
+        .then(|| std::mem::take(&mut result_sets))
+        .unwrap_or_default();
+    QueryResult {
+        columns: first.columns,
+        rows: first.rows,
+        row_count: first.row_count,
+        elapsed_ms,
+        truncated: first.truncated,
+        message: first.message,
+        result_sets: nested,
+    }
+}
+
+pub(crate) fn split_sql_statements(sql: &str) -> Vec<String> {
+    let mut statements = Vec::new();
+    let mut start = 0;
+    let bytes = sql.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\'' => skip_single_quoted(bytes, &mut index),
+            b'"' => skip_double_quoted(bytes, &mut index),
+            b'-' if bytes.get(index + 1) == Some(&b'-') => skip_line_comment(bytes, &mut index),
+            b'/' if bytes.get(index + 1) == Some(&b'*') => skip_block_comment(bytes, &mut index),
+            b'$' => {
+                if let Some(tag) = dollar_tag_at(sql, index) {
+                    skip_dollar_quoted(sql, &tag, &mut index);
+                }
+            }
+            b';' => {
+                let statement = sql[start..index].trim();
+                if !statement.is_empty() {
+                    statements.push(statement.to_string());
+                }
+                start = index + 1;
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+
+    let tail = sql[start..].trim();
+    if !tail.is_empty() {
+        statements.push(tail.to_string());
+    }
+    statements
+}
+
+fn skip_single_quoted(bytes: &[u8], index: &mut usize) {
+    *index += 1;
+    while *index < bytes.len() {
+        if bytes[*index] == b'\'' {
+            if bytes.get(*index + 1) == Some(&b'\'') {
+                *index += 2;
+                continue;
+            }
+            break;
+        }
+        *index += 1;
+    }
+}
+
+fn skip_double_quoted(bytes: &[u8], index: &mut usize) {
+    *index += 1;
+    while *index < bytes.len() {
+        if bytes[*index] == b'"' {
+            if bytes.get(*index + 1) == Some(&b'"') {
+                *index += 2;
+                continue;
+            }
+            break;
+        }
+        *index += 1;
+    }
+}
+
+fn skip_line_comment(bytes: &[u8], index: &mut usize) {
+    *index += 2;
+    while *index < bytes.len() && bytes[*index] != b'\n' {
+        *index += 1;
+    }
+}
+
+fn skip_block_comment(bytes: &[u8], index: &mut usize) {
+    *index += 2;
+    while *index + 1 < bytes.len() {
+        if bytes[*index] == b'*' && bytes[*index + 1] == b'/' {
+            *index += 1;
+            break;
+        }
+        *index += 1;
+    }
+}
+
+fn dollar_tag_at(sql: &str, index: usize) -> Option<String> {
+    let rest = sql.get(index..)?;
+    if rest.starts_with("$$") {
+        return Some("$$".to_string());
+    }
+    let bytes = rest.as_bytes();
+    if bytes.first() != Some(&b'$') {
+        return None;
+    }
+    let mut end = 1;
+    while end < bytes.len() {
+        let byte = bytes[end];
+        if byte == b'$' {
+            return (end > 1).then(|| rest[..=end].to_string());
+        }
+        if !(byte == b'_' || byte.is_ascii_alphanumeric()) {
+            return None;
+        }
+        end += 1;
+    }
+    None
+}
+
+fn skip_dollar_quoted(sql: &str, tag: &str, index: &mut usize) {
+    let body_start = *index + tag.len();
+    if let Some(offset) = sql[body_start..].find(tag) {
+        *index = body_start + offset + tag.len() - 1;
+    }
+}
+
 fn redact_url_password(input: &str) -> String {
     let Some(scheme_at) = input.find("://") else {
         return input.to_string();
@@ -822,17 +973,13 @@ pub async fn run_query_impl(
 
     let cap = bounded_query_cap(max_rows)?;
     let start = Instant::now();
-    let (columns, rows, truncated) = conn.run_query(&sql, cap).await?;
+    let sets = conn.run_query_sets(&sql, cap).await?;
     let elapsed_ms = start.elapsed().as_millis() as u64;
-    let row_count = rows.len() as u64;
-    Ok(QueryResult {
-        columns,
-        rows,
-        row_count,
-        elapsed_ms,
-        truncated,
-        message: truncated.then(|| format!("result capped at {cap} rows")),
-    })
+    let result_sets = sets
+        .into_iter()
+        .map(|set| query_result_set(set, cap))
+        .collect();
+    Ok(query_result_from_sets(result_sets, elapsed_ms))
 }
 
 /// Run a query under the lifecycle controls the UI needs: an optional `timeout_ms`
@@ -899,6 +1046,18 @@ pub(crate) async fn run_query_stream_impl(
     query_id: Option<String>,
     sink: mpsc::Sender<stream::FetchEvent>,
 ) -> Result<stream::StreamSummary, String> {
+    let connection_id = connection_id.trim().to_string();
+    if connection_id.is_empty() {
+        return Err("connection id is required".into());
+    }
+    let sql = sql.trim().to_string();
+    if sql.is_empty() {
+        return Err("query is empty".into());
+    }
+    if sql.len() > MAX_SQL_BYTES {
+        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+    }
+    let cap = bounded_query_cap(max_rows)?;
     let conn = {
         let guard = state.conns.lock().await;
         guard
@@ -916,8 +1075,9 @@ pub(crate) async fn run_query_stream_impl(
             .insert(qid.clone(), token.clone());
     }
     let ctx = stream::StreamCtx {
-        cap: max_rows.unwrap_or(DEFAULT_MAX_ROWS),
+        cap,
         batch_rows: STREAM_BATCH_ROWS,
+        result_set_index: 0,
         token: token.clone(),
         sink,
     };
@@ -926,7 +1086,7 @@ pub(crate) async fn run_query_stream_impl(
         tokio::select! {
             biased;
             _ = token.cancelled() => Err("query cancelled".to_string()),
-            result = conn.stream_query(&sql, &ctx) => result,
+            result = conn.stream_query_sets(&sql, &ctx) => result,
         }
     };
     let result = with_timeout(timeout_ms, run).await;
@@ -1132,8 +1292,20 @@ pub async fn db_run_query_stream(
     let forward = async {
         while let Some(event) = rx.recv().await {
             let out = match event {
-                stream::FetchEvent::Columns(columns) => QueryStreamEvent::Columns { columns },
-                stream::FetchEvent::Rows(rows) => QueryStreamEvent::Rows { rows },
+                stream::FetchEvent::Columns {
+                    result_set_index,
+                    columns,
+                } => QueryStreamEvent::Columns {
+                    result_set_index,
+                    columns,
+                },
+                stream::FetchEvent::Rows {
+                    result_set_index,
+                    rows,
+                } => QueryStreamEvent::Rows {
+                    result_set_index,
+                    rows,
+                },
             };
             on_event
                 .send(out)
@@ -1163,6 +1335,16 @@ pub async fn db_run_query_stream(
                 row_count: s.row_count,
                 truncated: s.truncated,
                 elapsed_ms,
+                result_sets: s
+                    .result_sets
+                    .into_iter()
+                    .map(|set| QueryStreamResultSetSummary {
+                        result_set_index: set.result_set_index,
+                        row_count: set.row_count,
+                        elapsed_ms: set.elapsed_ms,
+                        truncated: set.truncated,
+                    })
+                    .collect(),
             }
         }
         Err(message) => {

@@ -179,6 +179,7 @@ button {
 }
 
 .connection-select,
+.formatter-select,
 .primary-action,
 .icon-button,
 .mini-button,
@@ -204,6 +205,14 @@ button {
 .connection-select small {
   margin-left: auto;
   color: var(--muted);
+}
+
+.formatter-select {
+  width: 124px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .primary-action {
