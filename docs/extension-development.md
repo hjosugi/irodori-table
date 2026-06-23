@@ -1,40 +1,59 @@
 # Extension Development
 
-Irodori Table should be easy to extend without learning the internals of the desktop app. The extension system is a first-class product surface, not an afterthought.
+Irodori Table treats extensions as a product surface. The extension system starts
+with TypeScript because that is the fastest path for commands, UI integrations,
+themes, result-grid tools, and SQL dialect metadata. Rust/Wasm remains available
+for high-performance drivers, parsers, renderers, and formatters.
 
-## Goals
+## Current Implementation
 
-- Let users add drivers, commands, themes, formatters, result renderers, AI providers, proxy transports, and panels.
-- Make TypeScript extensions the easiest path, with Rust/Wasm available for high-performance pieces.
-- Keep APIs small, documented, versioned, and stable.
-- Generate extension-facing TypeScript types from Rust/schema sources so SDK docs, runtime permissions, and desktop command payloads stay aligned.
-- Support local development with fast reload and useful logs.
-- Use capability-scoped permissions so extensions can ask for only what they need.
-- Let extension authors choose their own license.
+- Manifest schema: [`extension.schema.json`](../extension.schema.json), for files
+  named `irodori.extension.json`.
+- Rust source of truth: [`crates/irodori-extension`](../crates/irodori-extension).
+- Generated SDK contracts:
+  [`packages/extension-sdk/src/generated/irodori-extension-api.ts`](../packages/extension-sdk/src/generated/irodori-extension-api.ts).
+- TypeScript SDK:
+  [`packages/extension-sdk/src/index.ts`](../packages/extension-sdk/src/index.ts).
+- Local dev CLI:
+  [`packages/extension-sdk/bin/irodori-extension-dev.mjs`](../packages/extension-sdk/bin/irodori-extension-dev.mjs).
+- Templates:
+  [`templates/extensions/typescript-basic`](../templates/extensions/typescript-basic)
+  and [`templates/extensions/wasm-sql-dialect`](../templates/extensions/wasm-sql-dialect).
+- Example:
+  [`examples/extensions/markdown-result-export`](../examples/extensions/markdown-result-export).
 
-## Extension Manifest Draft
+## Manifest
 
-The initial schema lives at [`extension.schema.json`](../extension.schema.json).
+Extensions declare a strict `irodori.extension.json` manifest. The schema rejects
+unknown top-level and contribution fields so the host can safely validate packages
+before loading them.
 
 ```json
 {
+  "$schema": "../../extension.schema.json",
+  "manifestVersion": 1,
   "id": "example.quick-export",
   "name": "Quick Export",
   "version": "0.1.0",
   "license": "MIT OR 0BSD",
+  "apiVersion": "0.1",
+  "runtime": "typescript",
   "entry": "dist/main.js",
-  "permissions": ["commands", "queryResults:read", "files:write"],
+  "permissions": ["commands", "queryResults:read", "resultRenderers"],
   "contributes": {
     "commands": [
       {
         "id": "quickExport.copyAsMarkdown",
-        "title": "Copy Result as Markdown Table"
+        "title": "Copy Result as Markdown Table",
+        "category": "Result Grid",
+        "enablement": "resultGridFocus"
       }
     ],
-    "keybindings": [
+    "resultGridActions": [
       {
+        "id": "quickExport.copyMarkdownAction",
+        "title": "Copy as Markdown",
         "command": "quickExport.copyAsMarkdown",
-        "key": "cmd+shift+m",
         "when": "resultGridFocus"
       }
     ]
@@ -42,42 +61,97 @@ The initial schema lives at [`extension.schema.json`](../extension.schema.json).
 }
 ```
 
-## API Surfaces
+Core manifest fields:
 
-- Commands: register command IDs, keybindings, command palette entries, and context menu actions.
-- Database drivers: add engines behind the same connection/query/introspection traits as built-in drivers.
-- Data-source adapters: add SQL, distributed SQL, time-series, graph, document, key-value, search, warehouse, and local embedded sources without waiting for core releases.
-- SQL dialects: provide keywords, parser metadata, formatter hooks, snippets, completion enrichers, and explain-plan adapters.
-- Graph dialects: provide Cypher-like syntax metadata, label/relationship/property completion, procedure metadata, and query-result graph renderers.
-- Time-series dialects: provide time range helpers, bucket/measurement metadata, downsampling hints, aggregate/window snippets, and frame renderers.
-- Result renderers: add grid actions, custom cell renderers, export formats, and side-by-side diff views.
-- Themes: import or provide workbench colors, editor token colors, semantic colors, and icon mappings.
-- Proxy transports: add connection hops such as SSH variants, cloud tunnels, or custom enterprise proxies.
-- Panels: add side panels, bottom panels, inspectors, and object-browser actions.
-- AI providers: add opt-in local or remote assistance with explicit privacy disclosure.
-- MCP providers: expose selected Irodori capabilities to Copilot-compatible and MCP-compatible tools with explicit permission boundaries.
-
-## Developer Experience
-
-- `irodori extension init` scaffolds a `MIT OR 0BSD` TypeScript extension.
-- `irodori extension dev` runs an extension in a watched local workspace.
-- Extensions get generated typed APIs, example tests, and fake source harnesses for SQL, time-series, graph, document, and KV adapters.
-- Logs and permission prompts are visible from a developer panel.
-- Extension packages should be simple zip/tar archives with manifest, code, assets, and license.
+- `manifestVersion`: currently `1`.
+- `apiVersion`: currently `0.1`.
+- `runtime`: `typescript`, `javascript`, `wasm`, or `native`.
+- `permissions`: explicit capability scopes such as `commands`,
+  `queryResults:read`, `themes`, `sqlDialects`, `native`, and `wasm`.
+- `contributes`: declarative commands, keybindings, result-grid actions/renderers,
+  themes, and SQL dialects.
+- `capabilities`: Wasm and native module declarations.
+- `dev`: watch paths, fake database fixtures, and log file configuration for local
+  development.
 
 ## Type Generation
 
-The extension SDK should use the same Rust/TypeScript bridge described in [`type-bridge-handoff.md`](type-bridge-handoff.md).
+The extension SDK uses the same `typebridge` pattern as the desktop app.
 
-- Rust and schema definitions are the source of truth.
-- JSON payloads use frontend-friendly `camelCase`.
-- Generated SDK files are deterministic and checked in CI.
-- Permission scopes, command payloads, result-grid models, data-source adapter contracts, and theme contracts should be generated or schema-backed.
-- Runtime validation should be available for extension boundaries because extension payloads are less trusted than internal desktop calls.
+```sh
+cargo test -p irodori-extension export_typescript_bindings
+```
 
-## Safety Rules
+The Rust crate owns the serde/TS contracts for:
 
-- Extensions must declare permissions before calling privileged APIs.
-- Secrets are never exposed directly; extensions receive handles or scoped operations.
-- Query text, result data, and schema metadata are considered sensitive and require explicit permission.
-- Native binaries and Wasm modules need clear platform and license metadata.
+- manifest and contribution data;
+- permission scopes and permission inspection;
+- result-grid columns, rows, selections, and snapshots;
+- theme definitions and token color rules;
+- SQL dialect definitions, keywords, snippets, and formatter config;
+- Wasm/native module capability metadata;
+- local development fixtures and logs.
+
+The generated file is committed. In CI, the same test runs in check mode and
+fails if the generated SDK types drift from Rust.
+
+## TypeScript SDK
+
+The SDK exposes generated contracts plus host-facing interfaces:
+
+- `commands.registerCommand` and `commands.executeCommand`;
+- `keybindings.registerKeybinding`;
+- `resultGrid.getActiveSnapshot`, `resultGrid.getSelection`,
+  `resultGrid.registerAction`, and `resultGrid.copyText`;
+- `themes.registerTheme`;
+- `sqlDialects.registerDialect`;
+- `permissions.has`, `permissions.require`, and `permissions.inspect`;
+- structured extension logging.
+
+Extensions implement:
+
+```ts
+import type { ExtensionContext } from "@irodori-table/extension-sdk";
+
+export async function activate(context: ExtensionContext): Promise<void> {
+  context.subscriptions.push(
+    context.commands.registerCommand("example.hello", async () => {
+      context.log.info("hello from an extension");
+    }),
+  );
+}
+```
+
+## Local Development
+
+The local dev CLI reads a manifest, inspects declared permissions, loads fake
+database fixtures, writes JSON-line logs, and watches declared files for reload
+requests.
+
+```sh
+node packages/extension-sdk/bin/irodori-extension-dev.mjs templates/extensions/typescript-basic --once
+node packages/extension-sdk/bin/irodori-extension-dev.mjs examples/extensions/markdown-result-export
+```
+
+The `--once` mode is useful for CI and smoke checks. Without it, the command stays
+running and reports reload requests when watched paths change.
+
+## Runtime Safety Rules
+
+- Extensions must declare permissions before using privileged APIs.
+- Query text, query results, schema metadata, file access, native code, and Wasm
+  modules are sensitive.
+- Secrets are never exposed directly; extension APIs should receive handles or
+  scoped operations.
+- Native modules require platform metadata and should include `sha256` before
+  marketplace distribution.
+- Wasm modules must declare an ABI string. Current templates use
+  `irodori-sql-dialect-v0` while the host ABI is still stabilizing.
+
+## Next Host Work
+
+- Wire manifest validation into the desktop extension loader.
+- Implement the real desktop extension host behind the SDK interfaces.
+- Add package archive verification and install/uninstall flows.
+- Surface logs, reload state, and permission inspection in a developer panel.
+- Add runtime validation for extension-provided theme, dialect, and renderer data.

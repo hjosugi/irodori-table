@@ -1,0 +1,34 @@
+{
+  "id": "markdown-export-demo",
+  "engine": "postgres",
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "revenue",
+          "columns": [
+            {
+              "name": "customer",
+              "dataType": "text"
+            },
+            {
+              "name": "total",
+              "dataType": "decimal"
+            }
+          ],
+          "rows": [
+            {
+              "customer": "Kawase Foods",
+              "total": "9841200"
+            },
+            {
+              "customer": "Northwind Retail",
+              "total": "7720100"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

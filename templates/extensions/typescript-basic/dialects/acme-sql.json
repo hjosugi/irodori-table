@@ -1,0 +1,26 @@
+{
+  "id": "typescriptBasic.acmeSql",
+  "name": "Acme SQL",
+  "aliases": ["acme"],
+  "keywords": [
+    {
+      "word": "select",
+      "category": "keyword"
+    },
+    {
+      "word": "customer_score",
+      "category": "function"
+    }
+  ],
+  "snippets": [
+    {
+      "label": "select customers",
+      "insertText": "select id, name from customers limit 100;",
+      "detail": "Read sample customers"
+    }
+  ],
+  "formatter": {
+    "keywordCase": "lower",
+    "identifierQuote": "\""
+  }
+}

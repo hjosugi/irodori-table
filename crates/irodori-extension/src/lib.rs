@@ -388,7 +388,7 @@ pub struct ResultGridCell {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[ts(rename_all = "camelCase")]
 pub struct ResultGridRow {
-    pub row_index: u64,
+    pub row_index: u32,
     pub cells: Vec<ResultGridCell>,
 }
 
@@ -399,7 +399,7 @@ pub struct ResultGridSelection {
     #[serde(default)]
     pub columns: Vec<String>,
     #[serde(default)]
-    pub rows: Vec<u64>,
+    pub rows: Vec<u32>,
     #[serde(default)]
     pub cells: Vec<ResultGridCell>,
 }

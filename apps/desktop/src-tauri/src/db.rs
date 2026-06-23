@@ -33,10 +33,12 @@ use ts_rs::TS;
 mod duck;
 mod edit;
 mod engine;
+mod influx;
 mod meta;
 mod mongo;
 mod mssql;
 mod mysql;
+mod neo4j;
 mod oracle;
 mod postgres;
 mod sqlite;
@@ -420,31 +422,64 @@ trait Connection: Send + Sync {
     }
 }
 
-struct PgConn(sqlx::PgPool);
+struct PgConn {
+    pool: sqlx::PgPool,
+    engine: DbEngine,
+}
 #[async_trait]
 impl Connection for PgConn {
     async fn version(&self) -> Option<String> {
-        postgres::version(&self.0).await
+        postgres::version(&self.pool).await
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
-        postgres::run_query(&self.0, sql, cap).await
+        postgres::run_query(&self.pool, sql, cap).await
     }
     async fn stream_query(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
-        postgres::stream_query(&self.0, sql, ctx).await
+        postgres::stream_query(&self.pool, sql, ctx).await
     }
     async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
-        postgres::apply_edits(&self.0, edits).await
+        postgres::apply_edits(&self.pool, edits).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        postgres::metadata(&self.0).await
+        postgres::metadata(&self.pool, self.engine).await
     }
     async fn close(&self) {
-        self.0.close().await
+        self.pool.close().await
     }
+}
+
+struct Neo4jConnection(neo4j::Neo4jConn);
+#[async_trait]
+impl Connection for Neo4jConnection {
+    async fn version(&self) -> Option<String> {
+        neo4j::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        neo4j::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        neo4j::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
+struct InfluxConnection(influx::InfluxConn);
+#[async_trait]
+impl Connection for InfluxConnection {
+    async fn version(&self) -> Option<String> {
+        influx::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        influx::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        influx::metadata(&self.0).await
+    }
+    async fn close(&self) {}
 }
 
 struct MysqlConn(sqlx::MySqlPool);
@@ -577,9 +612,10 @@ impl Connection for DuckConn {
 /// [`Connection`]. This is the only place that knows every engine.
 async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connection>, String> {
     let conn: Arc<dyn Connection> = match profile.engine.wire() {
-        Wire::Postgres => Arc::new(PgConn(
-            postgres::connect(&engine::build_url(profile)?).await?,
-        )),
+        Wire::Postgres => Arc::new(PgConn {
+            pool: postgres::connect(&engine::build_url(profile)?).await?,
+            engine: profile.engine,
+        }),
         Wire::Mysql => Arc::new(MysqlConn(
             mysql::connect(&engine::build_url(profile)?).await?,
         )),
@@ -605,10 +641,10 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
             }
         }
         Wire::Oracle => Arc::new(OracleConn(oracle::connect(profile).await?)),
+        Wire::Neo4j => Arc::new(Neo4jConnection(neo4j::connect(profile).await?)),
+        Wire::InfluxDb => Arc::new(InfluxConnection(influx::connect(profile).await?)),
         Wire::ClickHouse
-        | Wire::Neo4j
         | Wire::Memgraph
-        | Wire::InfluxDb
         | Wire::Qdrant
         | Wire::Milvus
         | Wire::Pinecone => {

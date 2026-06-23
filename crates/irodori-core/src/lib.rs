@@ -7,9 +7,14 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub use connection::{
-    AuthConfig, ConnectionProfile, DirectTransport, LocalFileTransport, ProxyAuthConfig,
-    ProxyChainHop, ProxyChainTransport, ProxyHopConfig, ProxyTransport, SecretRef, SourceFamily,
-    SourceKind, SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
+    AuthConfig, ConnectionProfile, ConnectionProfileExport, DirectTransport, LocalFileTransport,
+    PortableAuthConfig, PortableConnectionProfile, PortableProxyAuthConfig, PortableProxyChainHop,
+    PortableProxyChainTransport, PortableProxyHopConfig, PortableProxyTransport,
+    PortableSshAuthConfig, PortableSshProxyHop, PortableSshTunnelTransport,
+    PortableTransportConfig, ProxyAuthConfig, ProxyChainHop, ProxyChainTransport, ProxyHopConfig,
+    ProxyTransport, SecretRef, SecretSlot, SecretSlotPurpose, SourceFamily, SourceKind,
+    SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
+    CONNECTION_PROFILE_SCHEMA_VERSION,
 };
 pub use security::{
     AuditEvent, AuditEventKind, AuditLog, PrivacyMode, RedactedExport, RedactionReport, Redactor,
