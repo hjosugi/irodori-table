@@ -40,15 +40,17 @@ import { runQueryStream } from "./db-stream";
 import { hasDiagram, toMermaidErd } from "./erd";
 import { errorMessage } from "./errors";
 import {
+  KEY_SEQUENCE_TIMEOUT_MS,
+  commandHasConflict,
   commandCatalog,
   effectiveKeymap,
   eventToChord,
   findConflicts,
-  formatChord,
-  isBareChord,
+  formatKeySequence,
+  type KeybindingScope,
   type Keymap,
   loadOverrides,
-  matchesChord,
+  resolveKeybinding,
   saveOverrides,
 } from "./keybindings";
 import {

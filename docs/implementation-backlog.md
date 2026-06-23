@@ -451,10 +451,11 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1
 
-### EDIT-008 — Format + comment toggles + bracket matching  🟡 formatter + bracket matching prototyped
+### EDIT-008 — Format + comment toggles + bracket matching  🚧 formatter + comment toggle wired
 - **Goal:** Editor ergonomics.
 - **Approach (ADR 0001):** default formatter = `sql-formatter` v15 (MIT), `DbEngine`→language mapped, behind a pluggable format hook; comment-toggle + bracket-matching via CM6 built-ins. v2: CST/tree-sitter formatter for dialect-perfect output.
-- **Prototyped:** "Format SQL" toolbar action (dialect-mapped) + CM6 bracket matching live. Remaining: make formatter choice configurable (pluggable hook); comment-toggle keybinding surfaced in UI.
+- **Landed:** "Format SQL" toolbar/command-palette action (dialect-mapped), CM6 bracket matching through `basicSetup`, and SQL comment toggle through CM6's `toggleComment` (`Mod+/`) with toolbar + command palette exposure. Default editor keybindings are covered by unit tests.
+- **Remaining:** make formatter choice configurable through a pluggable formatter hook.
 - **Done when:** a format hook (pluggable formatter), comment toggle, and bracket matching work; formatter choice is configurable.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1

@@ -2973,6 +2973,7 @@ dependencies = [
  "async-trait",
  "duckdb",
  "futures-util",
+ "irodori-completion",
  "irodori-core",
  "irodori-proxy",
  "irodori-secure-store",

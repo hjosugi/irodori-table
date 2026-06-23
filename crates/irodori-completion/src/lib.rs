@@ -9,8 +9,7 @@ pub use completion::{
     GeneratedColumnList, JoinSuggestion, KeywordCase,
 };
 pub use inspection::{
-    ColumnInspection, InspectionCard, InspectionSample, ObjectInspection, inspect_column,
-    inspect_object,
+    inspect_column, inspect_object, ColumnInspection, InspectionCard, ObjectInspection,
 };
 pub use metadata::{
     ColumnMetadata, ForeignKeyMetadata, IndexMetadata, MetadataCache, MetadataObjectKind,

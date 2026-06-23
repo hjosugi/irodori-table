@@ -30,6 +30,14 @@ use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
 use crate::security::SecurityState;
+use irodori_completion::metadata::{
+    ColumnMetadata as CmpColumnMetadata, ForeignKeyMetadata as CmpForeignKeyMetadata,
+    IndexMetadata as CmpIndexMetadata, MetadataCache, MetadataObjectKind as CmpMetadataObjectKind,
+    MetadataPermissions as CmpMetadataPermissions, MetadataSnapshot,
+    ObjectMetadata as CmpObjectMetadata, QuickSample as CmpQuickSample,
+    RoutineKind as CmpRoutineKind, RoutineMetadata as CmpRoutineMetadata,
+    SchemaMetadata as CmpSchemaMetadata,
+};
 
 #[cfg(feature = "duckdb")]
 mod duck;
@@ -67,6 +75,16 @@ const MAX_SQL_BYTES: usize = 4 * 1024 * 1024;
 /// almost immediately, large enough to keep the channel/event overhead low.
 pub(crate) const STREAM_BATCH_ROWS: usize = 500;
 
+#[derive(Debug, Clone)]
+pub(crate) struct RawResultSet {
+    pub statement_index: usize,
+    pub statement: String,
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<serde_json::Value>>,
+    pub elapsed_ms: u64,
+    pub truncated: bool,
+}
+
 /// One streamed-query event forwarded to the frontend over a Tauri channel. The
 /// wire shape is a `type`-tagged union (`columns` | `rows` | `done` | `error`);
 /// the matching TypeScript type is hand-written in `src/db-stream.ts` because a
@@ -75,9 +93,13 @@ pub(crate) const STREAM_BATCH_ROWS: usize = 500;
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum QueryStreamEvent {
     Columns {
+        #[serde(rename = "resultSetIndex")]
+        result_set_index: usize,
         columns: Vec<String>,
     },
     Rows {
+        #[serde(rename = "resultSetIndex")]
+        result_set_index: usize,
         rows: Vec<Vec<serde_json::Value>>,
     },
     Done {
@@ -86,10 +108,21 @@ pub enum QueryStreamEvent {
         truncated: bool,
         #[serde(rename = "elapsedMs")]
         elapsed_ms: u64,
+        #[serde(rename = "resultSets")]
+        result_sets: Vec<QueryStreamResultSetSummary>,
     },
     Error {
         message: String,
     },
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryStreamResultSetSummary {
+    pub result_set_index: usize,
+    pub row_count: u64,
+    pub elapsed_ms: u64,
+    pub truncated: bool,
 }
 
 pub(crate) fn hex_encode(bytes: &[u8]) -> String {
@@ -304,6 +337,25 @@ pub struct QueryResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[ts(optional)]
+    pub result_sets: Vec<QueryResultSet>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct QueryResultSet {
+    pub statement_index: usize,
+    pub statement: String,
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<serde_json::Value>>,
+    pub row_count: u64,
+    pub elapsed_ms: u64,
+    pub truncated: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -392,6 +444,18 @@ pub struct IndexMetadata {
 trait Connection: Send + Sync {
     async fn version(&self) -> Option<String>;
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String>;
+    async fn run_query_sets(&self, sql: &str, cap: usize) -> Result<Vec<RawResultSet>, String> {
+        let start = Instant::now();
+        let (columns, rows, truncated) = self.run_query(sql, cap).await?;
+        Ok(vec![RawResultSet {
+            statement_index: 0,
+            statement: sql.to_string(),
+            columns,
+            rows,
+            elapsed_ms: start.elapsed().as_millis() as u64,
+            truncated,
+        }])
+    }
     async fn metadata(&self) -> Result<DatabaseMetadata, String>;
     async fn close(&self);
 
@@ -421,6 +485,20 @@ trait Connection: Send + Sync {
             truncated,
             row_count,
         })
+    }
+
+    async fn stream_query_sets(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        let start = Instant::now();
+        let mut summary = self.stream_query(sql, ctx).await?;
+        let elapsed_ms = start.elapsed().as_millis() as u64;
+        for result_set in &mut summary.result_sets {
+            result_set.elapsed_ms = elapsed_ms;
+        }
+        Ok(summary)
     }
 }
 

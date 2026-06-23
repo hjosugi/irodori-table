@@ -21,8 +21,14 @@ pub(crate) type Cells = Vec<serde_json::Value>;
 /// A unit of streamed output. Column names arrive once (just before the first
 /// rows); rows then arrive in capped batches.
 pub(crate) enum FetchEvent {
-    Columns(Vec<String>),
-    Rows(Vec<Cells>),
+    Columns {
+        result_set_index: usize,
+        columns: Vec<String>,
+    },
+    Rows {
+        result_set_index: usize,
+        rows: Vec<Cells>,
+    },
 }
 
 /// Per-run streaming controls threaded into an engine's fetch loop: the row cap,
@@ -31,24 +37,49 @@ pub(crate) enum FetchEvent {
 pub(crate) struct StreamCtx {
     pub cap: usize,
     pub batch_rows: usize,
+    pub result_set_index: usize,
     pub token: CancellationToken,
     pub sink: mpsc::Sender<FetchEvent>,
 }
 
 /// Outcome of a streamed run — the rows themselves were delivered via the sink.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StreamResultSetSummary {
+    pub result_set_index: usize,
+    pub row_count: u64,
+    pub truncated: bool,
+    pub elapsed_ms: u64,
+}
+
+/// Outcome of a streamed run — the rows themselves were delivered via the sink.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StreamSummary {
+    pub result_sets: Vec<StreamResultSetSummary>,
     pub truncated: bool,
     pub row_count: u64,
 }
 
 impl StreamCtx {
+    pub(crate) fn for_result_set(&self, result_set_index: usize) -> Self {
+        Self {
+            cap: self.cap,
+            batch_rows: self.batch_rows,
+            result_set_index,
+            token: self.token.clone(),
+            sink: self.sink.clone(),
+        }
+    }
+
     pub(crate) fn cancelled(&self) -> bool {
         self.token.is_cancelled()
     }
 
     pub(crate) async fn columns(&self, columns: Vec<String>) -> Result<(), String> {
-        self.send(FetchEvent::Columns(columns)).await
+        self.send(FetchEvent::Columns {
+            result_set_index: self.result_set_index,
+            columns,
+        })
+        .await
     }
 
     /// Emit a batch of rows; an empty batch is a no-op so callers can flush freely.
@@ -56,7 +87,11 @@ impl StreamCtx {
         if rows.is_empty() {
             return Ok(());
         }
-        self.send(FetchEvent::Rows(rows)).await
+        self.send(FetchEvent::Rows {
+            result_set_index: self.result_set_index,
+            rows,
+        })
+        .await
     }
 
     async fn send(&self, event: FetchEvent) -> Result<(), String> {
@@ -122,6 +157,12 @@ where
         ctx.columns(Vec::new()).await?;
     }
     Ok(StreamSummary {
+        result_sets: vec![StreamResultSetSummary {
+            result_set_index: ctx.result_set_index,
+            row_count,
+            truncated,
+            elapsed_ms: 0,
+        }],
         truncated,
         row_count,
     })
