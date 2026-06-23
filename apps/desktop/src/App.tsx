@@ -1,4 +1,11 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type UIEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertTriangle,
   Bolt,
@@ -606,8 +613,18 @@ function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
   };
 }
 
+// Result grid virtualization: fixed row height (mirrors `.grid-row` / `.grid-pad`
+// in App.css) and how many off-screen rows to keep rendered above/below the
+// viewport so fast scrolling does not flash blank rows.
+const GRID_ROW_HEIGHT = 27;
+const GRID_OVERSCAN = 8;
+
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const gridScrollRaf = useRef<number | null>(null);
+  const [gridScrollTop, setGridScrollTop] = useState(0);
+  const [gridViewport, setGridViewport] = useState(480);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
@@ -714,6 +731,19 @@ function App() {
     activeMetadataLoading,
   ]);
 
+  // Track the result grid's viewport height so the virtualized window covers it.
+  useEffect(() => {
+    const element = gridRef.current;
+    if (!element) {
+      return;
+    }
+    const measure = () => setGridViewport(element.clientHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   const lineNumbers = useMemo(
     () =>
       query
@@ -736,6 +766,32 @@ function App() {
   const gridTemplateColumns = resultColumns
     .map(() => "minmax(140px, 1fr)")
     .join(" ");
+
+  // Virtualize the result grid: render only the rows in (and just around) the
+  // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
+  // ~30 DOM rows instead of 10k, so streaming stays smooth.
+  const totalRows = resultCells.length;
+  const firstVisible = Math.max(
+    0,
+    Math.floor(gridScrollTop / GRID_ROW_HEIGHT) - GRID_OVERSCAN,
+  );
+  const windowSize = Math.ceil(gridViewport / GRID_ROW_HEIGHT) + GRID_OVERSCAN * 2;
+  const lastVisible = Math.min(totalRows, firstVisible + windowSize);
+  const topPad = firstVisible * GRID_ROW_HEIGHT;
+  const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
+  const visibleCells = resultCells.slice(firstVisible, lastVisible);
+
+  function onGridScroll(event: UIEvent<HTMLDivElement>) {
+    const top = event.currentTarget.scrollTop;
+    if (gridScrollRaf.current != null) {
+      return;
+    }
+    gridScrollRaf.current = requestAnimationFrame(() => {
+      gridScrollRaf.current = null;
+      setGridScrollTop(top);
+    });
+  }
+
   const resultSummary = result
     ? `${toCount(result.rowCount)} rows${result.truncated ? " capped" : ""} in ${toCount(
         result.elapsedMs,
@@ -939,6 +995,11 @@ function App() {
     }
     setRunning(true);
     setQueryError(null);
+    // Start a fresh result at the top of the grid.
+    if (gridRef.current) {
+      gridRef.current.scrollTop = 0;
+    }
+    setGridScrollTop(0);
     const started = performance.now();
     const ranAt = new Date().toISOString();
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1575,7 +1636,13 @@ function App() {
                 <span>{queryError}</span>
               </div>
             ) : null}
-            <div className="result-grid" role="table" aria-label="Query result">
+            <div
+              className="result-grid"
+              role="table"
+              aria-label="Query result"
+              ref={gridRef}
+              onScroll={onGridScroll}
+            >
               <div
                 className="grid-row header"
                 role="row"
@@ -1587,20 +1654,37 @@ function App() {
                   </span>
                 ))}
               </div>
-              {resultCells.map((row, rowIndex) => (
+              {topPad > 0 ? (
                 <div
-                  className="grid-row"
-                  role="row"
-                  key={`${rowIndex}-${row.join("-")}`}
-                  style={{ gridTemplateColumns }}
-                >
-                  {row.map((cell, cellIndex) => (
-                    <span role="cell" key={`${cellIndex}-${cell}`}>
-                      {cell}
-                    </span>
-                  ))}
-                </div>
-              ))}
+                  className="grid-pad"
+                  style={{ height: topPad }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              {visibleCells.map((row, index) => {
+                const rowIndex = firstVisible + index;
+                return (
+                  <div
+                    className="grid-row"
+                    role="row"
+                    key={rowIndex}
+                    style={{ gridTemplateColumns }}
+                  >
+                    {row.map((cell, cellIndex) => (
+                      <span role="cell" key={`${cellIndex}-${cell}`}>
+                        {cell}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+              {bottomPad > 0 ? (
+                <div
+                  className="grid-pad"
+                  style={{ height: bottomPad }}
+                  aria-hidden="true"
+                />
+              ) : null}
             </div>
           </section>
         </section>

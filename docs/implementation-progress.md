@@ -67,6 +67,12 @@ Highlights:
   tiberius). Oracle/Mongo/DuckDB fall back to the default `stream_query`
   (buffer → one batch). Verified with in-memory SQLite unit tests; the desktop UI
   consumes it via `runQueryStream` (`src/db-stream.ts`).
+- **Virtualized result grid (rows)**: the grid renders only the rows in (and
+  `GRID_OVERSCAN` around) the viewport with top/bottom spacer pads, so a capped
+  10k-row page is ~30 DOM rows instead of 10k and streamed results stay smooth
+  (fixed 27px row height, viewport via `ResizeObserver`, scroll coalesced with
+  `requestAnimationFrame`, scroll resets to top per run). EXEC-004; column
+  virtualization is the remaining piece.
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,

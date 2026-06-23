@@ -289,7 +289,8 @@ top to bottom within an epic unless a dependency says otherwise.
   - **Explicit cancel** — an optional `queryId` registers a `tokio_util` `CancellationToken` in `DbState`; `db_cancel(queryId)` signals it, a `tokio::select!` resolves the run to `query cancelled`, and the desktop Cancel button calls `dbCancel` with the in-flight id.
   - **Incremental streaming** — `db_run_query_stream` streams `columns → batched rows → done|error` over a Tauri `Channel` (`STREAM_BATCH_ROWS`-sized batches). `stream.rs` grew a `StreamCtx`/`stream_capped` twin of `collect_capped`; the sqlx trio and SQL Server override `Connection::stream_query` for true row-by-row delivery, and the fetch loop checks the cancel token each row — so cancel stops the fetch promptly (cooperative server-side cancel even for the non-pooled tiberius). The desktop grid fills as batches arrive (`runQueryStream` + the hand-written `db-stream.ts` channel wrapper). Engines whose driver materializes rows before our loop (Oracle/Mongo) and DuckDB use the default `stream_query` (buffer → one batch) and rely on the timeout/cancel-drop.
   - Unit-tested with in-memory SQLite (`stream_delivers_header_then_rows`, `stream_caps_rows_and_flags_truncation`, `stream_query_stops_on_a_cancelled_token`) plus `with_timeout`/`cancel_query_impl`.
-- **Remaining:** true server-side cancel for Oracle/Mongo (driver-dependent), and grid virtualization tuning for very large incremental streams.
+- **Note on Oracle/Mongo cancel:** these use the default `stream_query` and are already stopped server-side by the cancel/timeout *drop*, not just a flag — dropping the Mongo future kills the server cursor mid-`try_next`, and Oracle's fetch is a single `query().await` that aborts on drop (its row loop is in-memory, so an in-loop token check would not help). The grid-side smoothness is handled by EXEC-004 (row virtualization, done).
+- **Remaining:** incremental column evolution for document stores (Mongo currently buffers to compute the column union before projecting).
 - **Depends on:** EXEC-001
 - **Size:** L · **Priority:** P0
 
@@ -299,9 +300,11 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P0
 
-### EXEC-004 — Virtualized result grid
+### EXEC-004 — Virtualized result grid 🚧 (row virtualization done)
 - **Goal:** Smooth scrolling over huge results.
 - **Done when:** the grid renders only visible rows/cols; 1M-row synthetic result scrolls without jank in a benchmark.
+- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely.
+- **Remaining:** column virtualization for very wide results, and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
 - **Depends on:** EXEC-002
 - **Size:** L · **Priority:** P0
 

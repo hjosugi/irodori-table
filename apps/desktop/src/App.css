@@ -826,8 +826,8 @@ button {
 }
 
 .result-grid {
-  display: grid;
-  grid-auto-rows: 27px;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -837,8 +837,17 @@ button {
 
 .grid-row {
   display: grid;
+  height: 27px;
+  box-sizing: border-box;
   min-width: 670px;
   border-bottom: 1px solid #edf0ea;
+}
+
+/* Spacer standing in for rows the virtualized grid is not rendering, so the
+   scrollbar keeps its full height. */
+.grid-pad {
+  flex: 0 0 auto;
+  min-width: 670px;
 }
 
 .grid-row.header {
