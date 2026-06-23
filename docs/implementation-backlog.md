@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-Last updated: 2026-06-23 JST.
+Last updated: 2026-06-24 JST.
 
 This is the ticket-level breakdown of `ROADMAP.md`. Each item is sized to be picked
 up and finished on its own, one at a time, with a testable "Done when" line. Work
@@ -95,9 +95,10 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## KNOW — Knowledge Base + Source Automation
 
-### KNOW-001 — Seed `knowledge/sources.json`
+### KNOW-001 — Seed `knowledge/sources.json` ✅
 - **Goal:** Track official DB/client/AI sources.
 - **Done when:** sources.json holds DB docs, release notes, client docs, and AI/MCP references with stable IDs; schema documented in `docs/knowledge-base.md`.
+- **Done:** `knowledge/sources.json` registers official database specs, release notes, DB-client docs, type/tooling references, and AI/MCP references with stable IDs; `docs/knowledge-base.md` documents the registry schema, allowed values, defaults, and source-operation rules. Verified with JSON validation and `node tools/knowledge/refresh.mjs --no-fetch`.
 - **Depends on:** —
 - **Size:** S · **Priority:** P0
 
@@ -434,6 +435,7 @@ top to bottom within an epic unless a dependency says otherwise.
 ### EDIT-005 — Vim mode: core
 - **Goal:** Daily-driver modal editing.
 - **Done when:** normal/insert/visual modes, counts, operators, motions, and basic registers work; covered by a behavior test suite.
+- **Landed:** `@replit/codemirror-vim` is wired into the CM6 editor behind a persisted header toggle; Playwright smoke confirms the mode can be enabled/disabled and CM renders the Vim mode panel. Remaining: focused behavior tests for motions/operators/registers and any app-specific keybinding conflicts.
 - **Depends on:** EDIT-001, EDIT-003
 - **Size:** L · **Priority:** P1
 

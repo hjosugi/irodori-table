@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Irodori Table | 公式ドキュメント</title>
+    <meta
+      name="description"
+      content="Irodori Table は、毎日データベースに向き合う人のための軽量なオープンソース SQL GUI です。Rust と Tauri を軸に、広いデータソース対応、キーボード操作、拡張性を重視しています。"
+    />
+    <meta property="og:title" content="Irodori Table | 公式ドキュメント" />
+    <meta
+      property="og:description"
+      content="軽量、キーボード中心、広いデータソース対応を目指すオープンソース SQL GUI。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hjosugi.github.io/irodori-table/" />
+    <link rel="icon" href="assets/irodori-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へ移動</a>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand-link" href="#top" aria-label="Irodori Table ホーム">
+          <img src="assets/irodori-icon.svg" alt="" width="32" height="32" />
+          <span>Irodori Table</span>
+        </a>
+        <nav class="site-nav" aria-label="主要ナビゲーション">
+          <a href="#features">特長</a>
+          <a href="#sources">対応予定</a>
+          <a href="#docs">ドキュメント</a>
+          <a href="#roadmap">ロードマップ</a>
+          <a href="https://github.com/hjosugi/irodori-table">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section id="top" class="hero-section">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Open-source database workbench</p>
+            <h1>Irodori Table</h1>
+            <p class="lead">
+              毎日データベースに向き合う人のための、軽量で拡張しやすい SQL GUI。
+              Rust-first のコア、Tauri デスクトップ、キーボード中心の操作で、日々の
+              接続、実行、調査を速くします。
+            </p>
+            <div class="hero-actions" aria-label="主要アクション">
+              <a class="button primary" href="#docs">ドキュメントを見る</a>
+              <a class="button secondary" href="https://github.com/hjosugi/irodori-table">
+                GitHub で見る
+              </a>
+            </div>
+            <dl class="hero-facts" aria-label="プロジェクト概要">
+              <div>
+                <dt>License</dt>
+                <dd>MIT OR 0BSD</dd>
+              </div>
+              <div>
+                <dt>Stack</dt>
+                <dd>Rust / Tauri / React</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>Development preview</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="product-visual" aria-label="Irodori Table の作業画面イメージ">
+            <div class="workbench">
+              <div class="workbench-titlebar">
+                <div class="window-dots" aria-hidden="true">
+                  <span class="dot red"></span>
+                  <span class="dot amber"></span>
+                  <span class="dot green"></span>
+                </div>
+                <strong>Irodori Table</strong>
+                <span class="command-chip">Run Current</span>
+              </div>
+              <div class="workbench-body">
+                <aside class="mock-sidebar">
+                  <span class="sidebar-label">Connections</span>
+                  <div class="connection active">
+                    <span>Local Warehouse</span>
+                    <small>PostgreSQL 16</small>
+                  </div>
+                  <div class="connection">
+                    <span>Oracle Dev</span>
+                    <small>Oracle 23ai</small>
+                  </div>
+                  <div class="object-list">
+                    <b>public</b>
+                    <span>orders</span>
+                    <span>customers</span>
+                    <span>recent_revenue</span>
+                  </div>
+                </aside>
+                <section class="mock-main" aria-label="SQL エディタと結果グリッド">
+                  <div class="editor-tabs">
+                    <span class="tab active">scratch.sql</span>
+                    <span class="tab">audit-window.sql</span>
+                  </div>
+                  <pre class="sql-preview"><code>select c.id, c.name, sum(o.total) as value
+from customers c
+join orders o on o.customer_id = c.id
+where o.created_at &gt;= now() - interval '90 days'
+group by c.id, c.name
+order by value desc;</code></pre>
+                  <div class="result-grid" role="table" aria-label="クエリ結果">
+                    <div class="result-row result-head" role="row">
+                      <span role="columnheader">id</span>
+                      <span role="columnheader">name</span>
+                      <span role="columnheader">value</span>
+                    </div>
+                    <div class="result-row" role="row">
+                      <span>1029</span>
+                      <span>Kawase Foods</span>
+                      <span>9,841,200</span>
+                    </div>
+                    <div class="result-row" role="row">
+                      <span>917</span>
+                      <span>Northwind Retail</span>
+                      <span>7,720,100</span>
+                    </div>
+                    <div class="result-row" role="row">
+                      <span>1441</span>
+                      <span>Aster Works</span>
+                      <span>6,533,000</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="status-band" aria-label="現在の開発状況">
+        <div class="container status-grid">
+          <div>
+            <strong>現在地</strong>
+            <span>データベースエンジン層とデスクトップ UI の縦切りを実装中</span>
+          </div>
+          <div>
+            <strong>Verified</strong>
+            <span>PostgreSQL / MySQL / MariaDB / SQL Server / Oracle / DuckDB / MongoDB / SQLite</span>
+          </div>
+          <div>
+            <strong>Goal</strong>
+            <span>軽さ、広い接続範囲、深い補完、完全なキーバインド制御</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="section">
+        <div class="container section-heading">
+          <p class="eyebrow">Why Irodori Table</p>
+          <h2>日常の DB 作業を速く、長く使える形で。</h2>
+          <p>
+            TablePlus の軽さ、DataGrip 級の編集力、DBeaver 級の接続範囲を、オープンな
+            Rust/Tauri アプリとして積み上げるプロジェクトです。
+          </p>
+        </div>
+        <div class="container feature-grid">
+          <article class="feature-card accent-teal">
+            <h3>軽量なデスクトップ</h3>
+            <p>Rust コアと Tauri シェルで、起動、接続、結果表示の待ち時間を抑えます。</p>
+          </article>
+          <article class="feature-card accent-coral">
+            <h3>広いデータソース</h3>
+            <p>SQL だけでなく、document、graph、time-series、lakehouse まで拡張できる設計です。</p>
+          </article>
+          <article class="feature-card accent-blue">
+            <h3>キーボード中心</h3>
+            <p>リマップ可能なショートカット、Vim モード、コマンドパレットを初期から重視します。</p>
+          </article>
+          <article class="feature-card accent-gold">
+            <h3>大きな結果に強い</h3>
+            <p>ストリーミング、上限付き取得、仮想化グリッドで巨大テーブルでも軽く扱います。</p>
+          </article>
+          <article class="feature-card accent-violet">
+            <h3>接続と安全性</h3>
+            <p>直接接続、SSH、SOCKS/HTTP、複数段プロキシ、OS キーチェーンを見据えます。</p>
+          </article>
+          <article class="feature-card accent-green">
+            <h3>拡張できる基盤</h3>
+            <p>拡張 manifest、typed API、ドライバ、テーマ、結果ビューを段階的に公開します。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="sources" class="section muted-section">
+        <div class="container split-section">
+          <div class="section-heading compact">
+            <p class="eyebrow">Data sources</p>
+            <h2>まず主要 DB、次にすべてのデータ作業へ。</h2>
+            <p>
+              最初の製品価値は SQL GUI としての速さです。内部の adapter contract は、
+              ドキュメントストアやグラフ DB も同じ作業台に載せられるように設計します。
+            </p>
+          </div>
+          <div class="source-columns">
+            <div class="source-panel">
+              <h3>実装・検証中</h3>
+              <ul class="tag-list">
+                <li>PostgreSQL</li>
+                <li>MySQL</li>
+                <li>MariaDB</li>
+                <li>SQL Server</li>
+                <li>Oracle</li>
+                <li>SQLite</li>
+                <li>DuckDB</li>
+                <li>MongoDB</li>
+              </ul>
+            </div>
+            <div class="source-panel">
+              <h3>拡張対象</h3>
+              <ul class="tag-list">
+                <li>YugabyteDB</li>
+                <li>CockroachDB</li>
+                <li>TiDB</li>
+                <li>Redshift</li>
+                <li>ClickHouse</li>
+                <li>InfluxDB</li>
+                <li>Neo4j</li>
+                <li>Iceberg</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="docs" class="section">
+        <div class="container section-heading">
+          <p class="eyebrow">Documentation</p>
+          <h2>実装方針と開発状況を公開しています。</h2>
+          <p>
+            公式サイトは概要を短くまとめ、詳細はリポジトリ内ドキュメントを正とします。
+            現時点では開発者向けの情報が中心です。
+          </p>
+        </div>
+        <div class="container docs-grid">
+          <a class="doc-card" href="https://github.com/hjosugi/irodori-table/blob/main/ROADMAP.md">
+            <span>01</span>
+            <h3>Roadmap</h3>
+            <p>プロダクトの非交渉条件、参照面、フェーズ、研究 watchlist。</p>
+          </a>
+          <a
+            class="doc-card"
+            href="https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-progress.md"
+          >
+            <span>02</span>
+            <h3>Implementation Progress</h3>
+            <p>現在できていること、エンジン別の検証状況、残タスク。</p>
+          </a>
+          <a
+            class="doc-card"
+            href="https://github.com/hjosugi/irodori-table/blob/main/docs/feature-matrix.md"
+          >
+            <span>03</span>
+            <h3>Feature Matrix</h3>
+            <p>機能領域、優先度、対応予定データソースを一覧化。</p>
+          </a>
+          <a
+            class="doc-card"
+            href="https://github.com/hjosugi/irodori-table/blob/main/docs/extension-development.md"
+          >
+            <span>04</span>
+            <h3>Extension Development</h3>
+            <p>拡張 manifest、typed API、ローカル開発モードの設計メモ。</p>
+          </a>
+        </div>
+      </section>
+
+      <section id="roadmap" class="section muted-section">
+        <div class="container section-heading">
+          <p class="eyebrow">Roadmap</p>
+          <h2>縦切りから daily-driver へ。</h2>
+        </div>
+        <div class="container roadmap-list">
+          <article>
+            <span>Phase 1</span>
+            <h3>Thin vertical slice</h3>
+            <p>SQLite / PostgreSQL 接続、SQL 実行、ストリーミング結果、オブジェクトブラウザ。</p>
+          </article>
+          <article>
+            <span>Phase 2</span>
+            <h3>Power-user editor</h3>
+            <p>Vim、キーバインド、複数ペイン、保存セッション、クエリ履歴、i18n。</p>
+          </article>
+          <article>
+            <span>Phase 3</span>
+            <h3>Completion and intelligence</h3>
+            <p>スキーマ認識補完、hover inspection、dialect-aware ranking、任意の AI provider。</p>
+          </article>
+          <article>
+            <span>Phase 4+</span>
+            <h3>Coverage, network, extensions</h3>
+            <p>Oracle、warehouse、graph、time-series、SSH/proxy、拡張 SDK、ローカル data API。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section cta-section">
+        <div class="container cta-inner">
+          <div>
+            <p class="eyebrow">Get involved</p>
+            <h2>開発中の今から、設計と実装を追えます。</h2>
+            <p>
+              まだ安定リリース前です。Issue、設計レビュー、接続エンジン検証、ドキュメント整備を歓迎します。
+            </p>
+          </div>
+          <a class="button primary" href="https://github.com/hjosugi/irodori-table">Repository</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand-link" href="#top">
+          <img src="assets/irodori-icon.svg" alt="" width="28" height="28" />
+          <span>Irodori Table</span>
+        </a>
+        <p>MIT OR 0BSD. Built as an open-source database workbench.</p>
+      </div>
+    </footer>
+  </body>
+</html>

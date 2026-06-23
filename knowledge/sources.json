@@ -390,6 +390,26 @@
     "notes": "Track SQL editor, AI, data management, workflow, and security features."
   },
   {
+    "id": "modelcontextprotocol-spec-2025-06-18",
+    "name": "Model Context Protocol specification 2025-06-18",
+    "product": "Model Context Protocol",
+    "category": "ai",
+    "sourceType": "spec",
+    "url": "https://modelcontextprotocol.io/specification/2025-06-18",
+    "cadence": "monthly",
+    "notes": "Track protocol requirements, capabilities, transports, security expectations, and compatibility points for MCP hosts/clients/servers."
+  },
+  {
+    "id": "openai-mcp-connectors",
+    "name": "OpenAI MCP and connectors guide",
+    "product": "OpenAI API",
+    "category": "ai",
+    "sourceType": "product_docs",
+    "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp",
+    "cadence": "monthly",
+    "notes": "Track OpenAI tool and MCP connector behavior for optional AI provider and MCP bridge work."
+  },
+  {
     "id": "github-copilot-mcp",
     "name": "GitHub Copilot MCP docs",
     "product": "GitHub Copilot",

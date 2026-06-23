@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Irodori Table icon</title>
+  <desc id="desc">A simple colorful four-petal flower mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="78" x2="430" y1="48" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf5"/>
+      <stop offset=".68" stop-color="#fbfbf1"/>
+      <stop offset="1" stop-color="#edf8f4"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="203" x2="315" y1="72" y2="251" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff7d76"/>
+      <stop offset="1" stop-color="#e24668"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="262" x2="436" y1="191" y2="305" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd96c"/>
+      <stop offset="1" stop-color="#f0a14d"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="204" x2="314" y1="265" y2="436" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#51d4aa"/>
+      <stop offset="1" stop-color="#209aa7"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="78" x2="251" y1="202" y2="312" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7e89fb"/>
+      <stop offset="1" stop-color="#584ac1"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#182033" flood-opacity=".19"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#182033" flood-opacity=".13"/>
+    </filter>
+    <path id="petal" d="M256 73c43 0 72 38 58 79l-31 91c-8 24-17 33-27 33s-19-9-27-33l-31-91c-14-41 15-79 58-79Z"/>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#bg)"/>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="none" stroke="#d6e4df" stroke-width="8"/>
+  <g filter="url(#soft-shadow)">
+    <use href="#petal" fill="url(#coral)"/>
+    <use href="#petal" fill="url(#gold)" transform="rotate(90 256 256)"/>
+    <use href="#petal" fill="url(#teal)" transform="rotate(180 256 256)"/>
+    <use href="#petal" fill="url(#violet)" transform="rotate(270 256 256)"/>
+  </g>
+</svg>

@@ -9,3 +9,7 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+[dependencies]
+irodori-core = { path = "../irodori-core" }
+serde = { version = "1", features = ["derive"] }
+ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }

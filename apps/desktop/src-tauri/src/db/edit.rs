@@ -92,32 +92,52 @@ pub(crate) struct Plan {
     pub inserts: Vec<Statement>,
 }
 
+use irodori_sql::dialect::{
+    MySqlDialect, OracleDialect, PostgresDialect, SqlDialect, SqlServerDialect, SqliteDialect,
+};
+
+fn get_dialect(wire: Wire) -> Box<dyn SqlDialect> {
+    match wire {
+        Wire::Postgres => Box::new(PostgresDialect),
+        Wire::Mysql => Box::new(MySqlDialect),
+        Wire::Sqlite => Box::new(SqliteDialect),
+        Wire::SqlServer => Box::new(SqlServerDialect),
+        Wire::Oracle => Box::new(OracleDialect),
+        _ => Box::new(PostgresDialect),
+    }
+}
+
 /// Build the parameterized statements for a batch of edits.
 pub(crate) fn plan(wire: Wire, edits: &TableEdits) -> Result<Plan, String> {
     if edits.table.trim().is_empty() {
         return Err("no target table for edits".to_string());
     }
-    let target = qualified(wire, edits.schema.as_deref(), &edits.table);
+    let dialect = get_dialect(wire);
+    let target = qualified(&*dialect, edits.schema.as_deref(), &edits.table);
     Ok(Plan {
         deletes: edits
             .deletes
             .iter()
-            .map(|d| build_delete(wire, &target, d))
+            .map(|d| build_delete(&*dialect, &target, d))
             .collect::<Result<_, _>>()?,
         updates: edits
             .updates
             .iter()
-            .map(|u| build_update(wire, &target, u))
+            .map(|u| build_update(&*dialect, &target, u))
             .collect::<Result<_, _>>()?,
         inserts: edits
             .inserts
             .iter()
-            .map(|i| build_insert(wire, &target, i))
+            .map(|i| build_insert(&*dialect, &target, i))
             .collect::<Result<_, _>>()?,
     })
 }
 
-fn build_update(wire: Wire, target: &str, update: &RowUpdate) -> Result<Statement, String> {
+fn build_update(
+    dialect: &dyn SqlDialect,
+    target: &str,
+    update: &RowUpdate,
+) -> Result<Statement, String> {
     if update.set.is_empty() {
         return Err("update has no columns to set".to_string());
     }
@@ -131,33 +151,41 @@ fn build_update(wire: Wire, target: &str, update: &RowUpdate) -> Result<Statemen
         .iter()
         .map(|cell| {
             params.push(cell.value.clone());
-            let ph = placeholder(wire, next);
+            let ph = dialect.placeholder(next);
             next += 1;
-            format!("{} = {ph}", quote_ident(wire, &cell.column))
+            format!("{} = {ph}", dialect.quote_identifier(&cell.column))
         })
         .collect::<Vec<_>>()
         .join(", ");
-    let where_clause = build_where(wire, &update.keys, &mut params, &mut next);
+    let where_clause = build_where(dialect, &update.keys, &mut params, &mut next);
     Ok(Statement {
         sql: format!("UPDATE {target} SET {set} WHERE {where_clause}"),
         params,
     })
 }
 
-fn build_delete(wire: Wire, target: &str, delete: &RowDelete) -> Result<Statement, String> {
+fn build_delete(
+    dialect: &dyn SqlDialect,
+    target: &str,
+    delete: &RowDelete,
+) -> Result<Statement, String> {
     if delete.keys.is_empty() {
         return Err("delete has no key columns (would touch every row)".to_string());
     }
     let mut params = Vec::new();
     let mut next = 1;
-    let where_clause = build_where(wire, &delete.keys, &mut params, &mut next);
+    let where_clause = build_where(dialect, &delete.keys, &mut params, &mut next);
     Ok(Statement {
         sql: format!("DELETE FROM {target} WHERE {where_clause}"),
         params,
     })
 }
 
-fn build_insert(wire: Wire, target: &str, insert: &RowInsert) -> Result<Statement, String> {
+fn build_insert(
+    dialect: &dyn SqlDialect,
+    target: &str,
+    insert: &RowInsert,
+) -> Result<Statement, String> {
     if insert.values.is_empty() {
         return Err("insert has no values".to_string());
     }
@@ -166,7 +194,7 @@ fn build_insert(wire: Wire, target: &str, insert: &RowInsert) -> Result<Statemen
     let columns = insert
         .values
         .iter()
-        .map(|cell| quote_ident(wire, &cell.column))
+        .map(|cell| dialect.quote_identifier(&cell.column))
         .collect::<Vec<_>>()
         .join(", ");
     let placeholders = insert
@@ -174,7 +202,7 @@ fn build_insert(wire: Wire, target: &str, insert: &RowInsert) -> Result<Statemen
         .iter()
         .map(|cell| {
             params.push(cell.value.clone());
-            let ph = placeholder(wire, next);
+            let ph = dialect.placeholder(next);
             next += 1;
             ph
         })
@@ -189,19 +217,19 @@ fn build_insert(wire: Wire, target: &str, insert: &RowInsert) -> Result<Statemen
 /// Build a `key = ? AND ...` clause; a JSON `null` key becomes `key IS NULL` so it
 /// still matches and does not consume a placeholder.
 fn build_where(
-    wire: Wire,
+    dialect: &dyn SqlDialect,
     keys: &[CellValue],
     params: &mut Vec<serde_json::Value>,
     next: &mut usize,
 ) -> String {
     keys.iter()
         .map(|cell| {
-            let ident = quote_ident(wire, &cell.column);
+            let ident = dialect.quote_identifier(&cell.column);
             if cell.value.is_null() {
                 format!("{ident} IS NULL")
             } else {
                 params.push(cell.value.clone());
-                let ph = placeholder(wire, *next);
+                let ph = dialect.placeholder(*next);
                 *next += 1;
                 format!("{ident} = {ph}")
             }
@@ -210,28 +238,14 @@ fn build_where(
         .join(" AND ")
 }
 
-fn qualified(wire: Wire, schema: Option<&str>, table: &str) -> String {
+fn qualified(dialect: &dyn SqlDialect, schema: Option<&str>, table: &str) -> String {
     match schema.filter(|s| !s.is_empty()) {
-        Some(schema) => format!("{}.{}", quote_ident(wire, schema), quote_ident(wire, table)),
-        None => quote_ident(wire, table),
-    }
-}
-
-/// Quote an identifier for the wire's dialect, doubling the close-quote to escape.
-fn quote_ident(wire: Wire, ident: &str) -> String {
-    match wire {
-        Wire::Mysql => format!("`{}`", ident.replace('`', "``")),
-        Wire::SqlServer => format!("[{}]", ident.replace(']', "]]")),
-        // ANSI double-quote for Postgres-wire, SQLite, and the rest.
-        _ => format!("\"{}\"", ident.replace('"', "\"\"")),
-    }
-}
-
-/// Positional placeholder: Postgres uses `$1`, the others `?`.
-fn placeholder(wire: Wire, n: usize) -> String {
-    match wire {
-        Wire::Postgres => format!("${n}"),
-        _ => "?".to_string(),
+        Some(schema) => format!(
+            "{}.{}",
+            dialect.quote_identifier(schema),
+            dialect.quote_identifier(table)
+        ),
+        None => dialect.quote_identifier(table),
     }
 }
 

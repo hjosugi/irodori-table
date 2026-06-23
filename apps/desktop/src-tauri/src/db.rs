@@ -347,13 +347,15 @@ pub struct ForeignKey {
     pub references_columns: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub enum DbObjectMetadataKind {
     Table,
     View,
     Index,
+    Procedure,
+    Function,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -514,6 +516,9 @@ impl Connection for MssqlConn {
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         mssql::stream_query(&self.0, sql, ctx).await
+    }
+    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+        mssql::apply_edits(&self.0, edits).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         mssql::metadata(&self.0).await

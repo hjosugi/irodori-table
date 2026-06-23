@@ -287,6 +287,137 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         }
     }
 
+    let pk_sql = r#"
+        select schema_name(t.schema_id) as schema_name,
+               t.name as table_name,
+               c.name as column_name
+        from sys.index_columns ic
+        join sys.columns c on c.object_id = ic.object_id and c.column_id = ic.column_id
+        join sys.indexes i on i.object_id = ic.object_id and i.index_id = ic.index_id
+        join sys.tables t on t.object_id = i.object_id
+        where i.is_primary_key = 1
+        order by schema_name(t.schema_id), t.name, ic.key_ordinal
+    "#;
+    {
+        let mut stream = guard
+            .query(pk_sql, &[])
+            .await
+            .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+        while let Some(item) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata primary keys failed: {e}"))?
+        {
+            if let QueryItem::Row(row) = item {
+                let schema = get_str(&row, 0);
+                let table = get_str(&row, 1);
+                let column = get_str(&row, 2);
+                if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                    object.primary_key.push(column);
+                }
+            }
+        }
+    }
+
+    let fk_sql = r#"
+        select schema_name(t.schema_id) as schema_name,
+               t.name as table_name,
+               fk.name as constraint_name,
+               c.name as column_name,
+               schema_name(rt.schema_id) as ref_schema,
+               rt.name as ref_table,
+               rc.name as ref_column
+        from sys.foreign_keys fk
+        join sys.tables t on t.object_id = fk.parent_object_id
+        join sys.foreign_key_columns fkc on fkc.constraint_object_id = fk.object_id
+        join sys.columns c on c.object_id = fkc.parent_object_id and c.column_id = fkc.parent_column_id
+        join sys.tables rt on rt.object_id = fk.referenced_object_id
+        join sys.columns rc on rc.object_id = fkc.referenced_object_id and rc.column_id = fkc.referenced_column_id
+        order by schema_name(t.schema_id), t.name, fk.name, fkc.constraint_column_id
+    "#;
+    {
+        let mut stream = guard
+            .query(fk_sql, &[])
+            .await
+            .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+        let mut current: Option<(String, String, String)> = None;
+        while let Some(item) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata foreign keys failed: {e}"))?
+        {
+            if let QueryItem::Row(row) = item {
+                let schema = get_str(&row, 0);
+                let table = get_str(&row, 1);
+                let constraint = get_str(&row, 2);
+                let column = get_str(&row, 3);
+                let ref_schema = get_str(&row, 4);
+                let ref_table = get_str(&row, 5);
+                let ref_column = get_str(&row, 6);
+                let key = (schema.clone(), table.clone(), constraint.clone());
+                if let Some(object) = schemas.get_mut(&schema).and_then(|s| s.get_mut(&table)) {
+                    if current.as_ref() != Some(&key) {
+                        object.foreign_keys.push(super::ForeignKey {
+                            columns: Vec::new(),
+                            references_schema: Some(ref_schema),
+                            references_table: ref_table,
+                            references_columns: Vec::new(),
+                        });
+                        current = Some(key);
+                    }
+                    if let Some(fk) = object.foreign_keys.last_mut() {
+                        fk.columns.push(column);
+                        fk.references_columns.push(ref_column);
+                    }
+                }
+            }
+        }
+    }
+
+    let routines_sql = r#"
+        select schema_name(schema_id) as schema_name,
+               name,
+               type
+        from sys.objects
+        where type in ('P', 'FN', 'TF')
+          and schema_name(schema_id) not in ('sys', 'INFORMATION_SCHEMA')
+        order by schema_name(schema_id), name
+    "#;
+    {
+        let mut stream = guard
+            .query(routines_sql, &[])
+            .await
+            .map_err(|e| format!("metadata routines failed: {e}"))?;
+        while let Some(item) = stream
+            .try_next()
+            .await
+            .map_err(|e| format!("metadata routines failed: {e}"))?
+        {
+            if let QueryItem::Row(row) = item {
+                let schema = get_str(&row, 0);
+                let name = get_str(&row, 1);
+                let rtype = get_str(&row, 2);
+                let kind = if rtype.trim().eq_ignore_ascii_case("P") {
+                    DbObjectMetadataKind::Procedure
+                } else {
+                    DbObjectMetadataKind::Function
+                };
+                schemas.entry(schema.clone()).or_default().insert(
+                    name.clone(),
+                    DbObjectMetadata {
+                        schema,
+                        name,
+                        kind,
+                        columns: Vec::new(),
+                        indexes: Vec::new(),
+                        primary_key: Vec::new(),
+                        foreign_keys: Vec::new(),
+                    },
+                );
+            }
+        }
+    }
+
     Ok(DatabaseMetadata {
         schemas: schemas
             .into_iter()
@@ -400,6 +531,145 @@ fn get_i32(row: &tiberius::Row, i: usize) -> i32 {
 
 fn get_bool(row: &tiberius::Row, i: usize) -> bool {
     row.try_get::<bool, _>(i).ok().flatten().unwrap_or(false)
+}
+
+enum MssqlParam {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
+impl tiberius::ToSql for MssqlParam {
+    fn to_sql(&self) -> tiberius::ColumnData<'_> {
+        match self {
+            MssqlParam::Null => tiberius::ColumnData::I32(None),
+            MssqlParam::Bool(b) => tiberius::ColumnData::Bit(Some(*b)),
+            MssqlParam::Int(i) => tiberius::ColumnData::I64(Some(*i)),
+            MssqlParam::Float(f) => tiberius::ColumnData::F64(Some(*f)),
+            MssqlParam::String(s) => {
+                tiberius::ColumnData::String(Some(std::borrow::Cow::Borrowed(s)))
+            }
+        }
+    }
+}
+
+pub async fn apply_edits(
+    client: &Arc<Mutex<MssqlClient>>,
+    edits: &super::edit::TableEdits,
+) -> Result<super::edit::AppliedEdits, String> {
+    let plan = super::edit::plan(super::engine::Wire::SqlServer, edits)?;
+    let mut guard = client.lock().await;
+
+    guard
+        .execute("BEGIN TRANSACTION", &[])
+        .await
+        .map_err(|e| format!("begin transaction failed: {e}"))?;
+
+    let mut applied = super::edit::AppliedEdits::default();
+
+    let run_plan = async {
+        for stmt in &plan.deletes {
+            let params: Vec<MssqlParam> = stmt
+                .params
+                .iter()
+                .map(|val| match val {
+                    serde_json::Value::Null => MssqlParam::Null,
+                    serde_json::Value::Bool(b) => MssqlParam::Bool(*b),
+                    serde_json::Value::Number(n) => {
+                        if let Some(i) = n.as_i64() {
+                            MssqlParam::Int(i)
+                        } else if let Some(f) = n.as_f64() {
+                            MssqlParam::Float(f)
+                        } else {
+                            MssqlParam::String(n.to_string())
+                        }
+                    }
+                    serde_json::Value::String(s) => MssqlParam::String(s.clone()),
+                    other => MssqlParam::String(other.to_string()),
+                })
+                .collect();
+            let refs: Vec<&dyn tiberius::ToSql> =
+                params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
+            let rows = guard
+                .execute(&stmt.sql, &refs)
+                .await
+                .map_err(|e| format!("delete failed: {e}"))?;
+            applied.deleted += rows.rows_affected().iter().sum::<u64>();
+        }
+        for stmt in &plan.updates {
+            let params: Vec<MssqlParam> = stmt
+                .params
+                .iter()
+                .map(|val| match val {
+                    serde_json::Value::Null => MssqlParam::Null,
+                    serde_json::Value::Bool(b) => MssqlParam::Bool(*b),
+                    serde_json::Value::Number(n) => {
+                        if let Some(i) = n.as_i64() {
+                            MssqlParam::Int(i)
+                        } else if let Some(f) = n.as_f64() {
+                            MssqlParam::Float(f)
+                        } else {
+                            MssqlParam::String(n.to_string())
+                        }
+                    }
+                    serde_json::Value::String(s) => MssqlParam::String(s.clone()),
+                    other => MssqlParam::String(other.to_string()),
+                })
+                .collect();
+            let refs: Vec<&dyn tiberius::ToSql> =
+                params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
+            let rows = guard
+                .execute(&stmt.sql, &refs)
+                .await
+                .map_err(|e| format!("update failed: {e}"))?;
+            applied.updated += rows.rows_affected().iter().sum::<u64>();
+        }
+        for stmt in &plan.inserts {
+            let params: Vec<MssqlParam> = stmt
+                .params
+                .iter()
+                .map(|val| match val {
+                    serde_json::Value::Null => MssqlParam::Null,
+                    serde_json::Value::Bool(b) => MssqlParam::Bool(*b),
+                    serde_json::Value::Number(n) => {
+                        if let Some(i) = n.as_i64() {
+                            MssqlParam::Int(i)
+                        } else if let Some(f) = n.as_f64() {
+                            MssqlParam::Float(f)
+                        } else {
+                            MssqlParam::String(n.to_string())
+                        }
+                    }
+                    serde_json::Value::String(s) => MssqlParam::String(s.clone()),
+                    other => MssqlParam::String(other.to_string()),
+                })
+                .collect();
+            let refs: Vec<&dyn tiberius::ToSql> =
+                params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
+            let rows = guard
+                .execute(&stmt.sql, &refs)
+                .await
+                .map_err(|e| format!("insert failed: {e}"))?;
+            applied.inserted += rows.rows_affected().iter().sum::<u64>();
+        }
+        Ok::<_, String>(())
+    };
+
+    match run_plan.await {
+        Ok(_) => {
+            guard
+                .execute("COMMIT TRANSACTION", &[])
+                .await
+                .map_err(|e| format!("commit transaction failed: {e}"))?;
+            Ok(applied)
+        }
+        Err(e) => {
+            let _ = guard.execute("ROLLBACK TRANSACTION", &[]).await;
+            Err(e)
+        }
+    }
 }
 
 #[cfg(test)]

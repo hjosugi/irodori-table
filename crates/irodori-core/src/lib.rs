@@ -1,7 +1,19 @@
 //! Core workspace, command, error, and shared domain types for Irodori Table.
 
+pub mod connection;
+pub mod security;
+
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+
+pub use connection::{
+    AuthConfig, ConnectionProfile, DirectTransport, LocalFileTransport, ProxyAuthConfig,
+    ProxyChainHop, ProxyChainTransport, ProxyHopConfig, ProxyTransport, SecretRef, SourceFamily,
+    SourceKind, SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
+};
+pub use security::{
+    AuditEvent, AuditEventKind, AuditLog, PrivacyMode, RedactedExport, RedactionReport, Redactor,
+};
 
 pub const CRATE_NAME: &str = "irodori-core";
 

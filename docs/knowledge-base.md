@@ -14,6 +14,36 @@ The goal is to make future implementation and bug fixing less dependent on memor
 
 The SQLite DB is intentionally ignored by Git. The schema and source registry are tracked.
 
+## Source Registry Schema
+
+`knowledge/sources.json` is a JSON array. Each entry is one stable source that can
+be registered into the `sources` table from `knowledge/schema.sql`.
+
+Required fields:
+
+- `id`: stable lowercase kebab-case identifier. Do not rename it after snapshots or
+  facts may reference it; add a replacement source instead.
+- `name`: human-readable source name.
+- `product`: product, project, or service this source documents.
+- `category`: source family. Current values are `database`, `db_client`, `ai`, and
+  `tooling`.
+- `sourceType`: document kind. Current values are `spec`, `release_notes`,
+  `driver_docs`, `product_docs`, and `oss_project`.
+- `url`: canonical upstream URL. It must be unique across the registry.
+
+Optional fields:
+
+- `official`: defaults to `true`; set to `false` only for clearly labeled
+  non-official references.
+- `cadence`: refresh expectation such as `weekly` or `monthly`; defaults to
+  `weekly`.
+- `enabled`: defaults to `true`; set to `false` to keep a source registered but
+  skip network refresh.
+- `notes`: short reason this source matters to Irodori implementation work.
+
+The refresh script maps `sourceType` to the SQLite `source_type` column and keeps
+`official`, `cadence`, `enabled`, and `notes` synchronized on every run.
+
 ## Usage
 
 Initialize the DB and register sources without network access:
@@ -62,6 +92,14 @@ node tools/knowledge/query.mjs "ALTER TABLE"
 ## Source Policy
 
 - Prefer official docs and release notes.
+- Keep coverage across database specs, database release notes, DB-client product
+  docs, AI/MCP references, and type/tooling references.
+- Use versioned URLs where the upstream publishes stable versioned specs.
+- Keep IDs stable even if a URL redirects or an upstream page is renamed.
+- Add new `category` or `sourceType` values only with a matching documentation
+  update here and downstream handling in the refresh/query code when needed.
+- Run JSON validation and `node tools/knowledge/refresh.mjs --no-fetch` before
+  marking registry changes done.
 - Store URL, source product, fetch time, and hash for every snapshot.
 - Summarize implementation facts in our own words.
 - Do not store proprietary docs that we do not have rights to retain.

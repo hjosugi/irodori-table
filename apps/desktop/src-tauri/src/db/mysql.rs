@@ -135,6 +135,32 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         builder.add_object(schema, name, kind);
     }
 
+    let routine_rows = sqlx::query(
+        r#"
+        select cast(routine_schema as char),
+               cast(routine_name as char),
+               cast(routine_type as char)
+        from information_schema.routines
+        where routine_schema = database()
+        order by routine_schema, routine_name
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata routines failed: {e}"))?;
+
+    for row in routine_rows {
+        let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
+        let name: String = row.try_get(1).unwrap_or_default();
+        let routine_type: String = row.try_get(2).unwrap_or_default();
+        let kind = if routine_type == "FUNCTION" {
+            DbObjectMetadataKind::Function
+        } else {
+            DbObjectMetadataKind::Procedure
+        };
+        builder.add_object(schema, name, kind);
+    }
+
     let column_rows = sqlx::query(
         r#"
         select cast(table_schema as char),

@@ -19,11 +19,31 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(content).toContainText("select");
   await expect(content.locator("span").first()).toBeVisible();
 
+  // The object/connection sidebar is collapsible, like a workbench side bar.
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await page.getByRole("button", { name: "Hide sidebar" }).click();
+  await expect(page.locator(".sidebar")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show sidebar" }).click();
+  await expect(page.locator(".sidebar")).toBeVisible();
+
+  // Vim mode can be toggled on/off without remounting the editor.
+  const keymapToggle = page.getByRole("button", { name: "Keymap" });
+  await expect(keymapToggle).toHaveAttribute("aria-pressed", "false");
+  await keymapToggle.click();
+  const vimToggle = page.getByRole("button", { name: "Vim" });
+  await expect(vimToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".cm-vimMode")).toBeVisible();
+  await vimToggle.click();
+  await expect(page.getByRole("button", { name: "Keymap" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+
   // Theme toggle flips the shell's data-theme.
   const shell = page.locator(".app-shell");
-  await expect(shell).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: "Toggle color theme" }).click();
   await expect(shell).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Toggle color theme" }).click();
+  await expect(shell).toHaveAttribute("data-theme", "light");
 
   // Format SQL reflows a one-line statement across multiple lines.
   await content.click();

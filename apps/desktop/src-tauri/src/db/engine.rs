@@ -291,9 +291,11 @@ mod tests {
 
     #[test]
     fn dedicated_connector_engines_do_not_build_sqlx_urls() {
-        for (engine, wire, _) in ENGINE_CASES.iter().copied().filter(|(_, wire, _)| {
-            !matches!(wire, Wire::Postgres | Wire::Mysql | Wire::Sqlite)
-        }) {
+        for (engine, wire, _) in ENGINE_CASES
+            .iter()
+            .copied()
+            .filter(|(_, wire, _)| !matches!(wire, Wire::Postgres | Wire::Mysql | Wire::Sqlite))
+        {
             assert_eq!(
                 build_url(&profile(engine)).unwrap_err(),
                 "this engine uses a dedicated connector, not a sqlx URL",
@@ -307,7 +309,10 @@ mod tests {
         for (engine, _, _) in ENGINE_CASES {
             let mut profile = profile(*engine);
             profile.url = Some(format!("custom://{}", profile.id));
-            assert_eq!(build_url(&profile).unwrap(), format!("custom://{}", profile.id));
+            assert_eq!(
+                build_url(&profile).unwrap(),
+                format!("custom://{}", profile.id)
+            );
         }
     }
 

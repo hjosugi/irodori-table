@@ -55,7 +55,7 @@ primaryKey: Array<string>,
  */
 foreignKeys: Array<ForeignKey>, };
 
-export type DbObjectMetadataKind = "table" | "view" | "index";
+export type DbObjectMetadataKind = "table" | "view" | "index" | "procedure" | "function";
 
 export type ColumnMetadata = { name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue?: string, };
 

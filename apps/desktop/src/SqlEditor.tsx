@@ -12,6 +12,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
 import { Compartment, EditorState } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
+import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
 import { sql } from "@codemirror/lang-sql";
 import { format as formatSql } from "sql-formatter";
@@ -37,16 +38,18 @@ interface SqlEditorProps {
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
   theme: IrodoriTheme;
+  vimMode: boolean;
 }
 
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
-  { value, onChange, engine, metadata, theme },
+  { value, onChange, engine, metadata, theme, vimMode },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const vimConf = useRef(new Compartment()).current;
   const sqlConf = useRef(new Compartment()).current;
   const themeConf = useRef(new Compartment()).current;
 
@@ -60,6 +63,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       state: EditorState.create({
         doc: value,
         extensions: [
+          vimConf.of(vimMode ? vim() : []),
           basicSetup,
           keymap.of([indentWithTab]),
           sqlConf.of(sql(buildSqlConfig(engine, metadata))),
@@ -80,6 +84,15 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     // Mount-once: deliberately excludes value/engine/metadata (handled by effects below).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Toggle Vim emulation without recreating the editor or losing undo history.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: vimConf.reconfigure(vimMode ? vim() : []),
+    });
+  }, [vimMode, vimConf]);
 
   // Controlled sync: push external value changes (history click, etc.) into the doc.
   useEffect(() => {

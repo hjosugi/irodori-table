@@ -49,7 +49,7 @@ button {
   --red: #bd4b4b;
   --purple: #6c5cae;
   display: grid;
-  grid-template-rows: 38px 42px minmax(0, 1fr) 26px;
+  grid-template-rows: 34px 36px minmax(0, 1fr) 24px;
   height: 100vh;
   color: var(--text);
   background: var(--surface);
@@ -66,8 +66,8 @@ button {
 }
 
 .titlebar {
-  gap: 14px;
-  padding: 0 12px;
+  gap: 10px;
+  padding: 0 10px;
 }
 
 .window-controls {
@@ -105,7 +105,7 @@ button {
 
 .brand {
   min-width: 148px;
-  color: #18201d;
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -114,11 +114,11 @@ button {
   align-items: center;
   gap: 7px;
   width: min(460px, 42vw);
-  height: 28px;
+  height: 26px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: #f1f4ed;
+  border-radius: 5px;
+  background: var(--surface-muted);
   color: var(--muted);
 }
 
@@ -133,24 +133,36 @@ button {
 
 .keymap-chip {
   margin-left: auto;
-  height: 26px;
+  height: 24px;
   padding: 0 10px;
-  border: 1px solid #b7c9c7;
-  border-radius: 7px;
-  color: #0f5f64;
-  background: #e8f3f2;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  background: var(--surface-raised);
+  cursor: pointer;
+  font: inherit;
   font-size: 12px;
   font-weight: 700;
+}
+
+.keymap-chip:hover {
+  border-color: var(--muted);
+}
+
+.keymap-chip.active {
+  border-color: color-mix(in srgb, var(--green) 65%, var(--border));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, var(--surface-raised));
 }
 
 .theme-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 26px;
-  width: 30px;
+  height: 24px;
+  width: 28px;
   border: 1px solid var(--border-strong);
-  border-radius: 7px;
+  border-radius: 5px;
   color: var(--muted);
   background: var(--surface-raised);
   cursor: pointer;
@@ -163,7 +175,7 @@ button {
 
 .toolbar {
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 
 .connection-select,
@@ -175,16 +187,16 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 30px;
+  height: 28px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 5px;
   color: var(--text);
   background: var(--surface-raised);
   cursor: pointer;
 }
 
 .connection-select {
-  min-width: 280px;
+  min-width: 264px;
   justify-content: flex-start;
   padding: 0 10px;
 }
@@ -228,13 +240,13 @@ button {
 
 .mini-button {
   width: 26px;
-  height: 24px;
-  border-radius: 6px;
-  background: #f8faf5;
+  height: 23px;
+  border-radius: 5px;
+  background: var(--surface-raised);
 }
 
 .text-button {
-  height: 27px;
+  height: 26px;
   padding: 0 10px;
   color: #1c5f63;
   background: #edf8f7;
@@ -250,10 +262,10 @@ button {
 }
 
 .latency {
-  height: 28px;
+  height: 26px;
   padding: 0 9px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 5px;
   color: #356042;
   background: #eef6ed;
   font-size: 12px;
@@ -271,12 +283,16 @@ button {
   min-height: 0;
 }
 
+.workspace.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .sidebar {
   display: grid;
   grid-template-rows: 448px minmax(0, 1fr);
   min-width: 0;
   border-right: 1px solid var(--border);
-  background: #f2f4ef;
+  background: var(--surface-muted);
 }
 
 .sidebar-section {
@@ -1220,4 +1236,149 @@ button {
 
 .delete-row:hover {
   color: #a23b22;
+}
+
+.app-shell[data-theme="dark"] {
+  color-scheme: dark;
+  background: #1e1e1e;
+}
+
+.app-shell[data-theme="dark"] .titlebar,
+.app-shell[data-theme="dark"] .toolbar,
+.app-shell[data-theme="dark"] .statusbar {
+  background: #2d2d30;
+  border-color: #3c3c3c;
+}
+
+.app-shell[data-theme="dark"] .titlebar {
+  box-shadow: inset 0 -1px 0 #1b1b1b;
+}
+
+.app-shell[data-theme="dark"] .global-search,
+.app-shell[data-theme="dark"] .connection-select,
+.app-shell[data-theme="dark"] .icon-button,
+.app-shell[data-theme="dark"] .mini-button,
+.app-shell[data-theme="dark"] .text-button,
+.app-shell[data-theme="dark"] .theme-toggle,
+.app-shell[data-theme="dark"] .keymap-chip,
+.app-shell[data-theme="dark"] .latency,
+.app-shell[data-theme="dark"] .profile-pill,
+.app-shell[data-theme="dark"] .connection-editor input,
+.app-shell[data-theme="dark"] .connection-editor select,
+.app-shell[data-theme="dark"] .mode-toggle {
+  border-color: #3c3c3c;
+  color: #cccccc;
+  background: #252526;
+}
+
+.app-shell[data-theme="dark"] .global-search input,
+.app-shell[data-theme="dark"] .connection-editor input,
+.app-shell[data-theme="dark"] .connection-editor select {
+  color: #d4d4d4;
+}
+
+.app-shell[data-theme="dark"] .primary-action {
+  border-color: #0e639c;
+  background: #0e639c;
+}
+
+.app-shell[data-theme="dark"] .text-button,
+.app-shell[data-theme="dark"] .mode-toggle button.active {
+  color: #9cdcfe;
+  background: #1f3138;
+}
+
+.app-shell[data-theme="dark"] .sidebar {
+  border-color: #303030;
+  background: #181818;
+}
+
+.app-shell[data-theme="dark"] .sidebar-section,
+.app-shell[data-theme="dark"] .section-heading {
+  border-color: #303030;
+}
+
+.app-shell[data-theme="dark"] .section-heading {
+  color: #bbbbbb;
+  background: #181818;
+}
+
+.app-shell[data-theme="dark"] .connection-item.active,
+.app-shell[data-theme="dark"] .profile-pill.active,
+.app-shell[data-theme="dark"] .object-row:hover,
+.app-shell[data-theme="dark"] .schema-tree summary:hover,
+.app-shell[data-theme="dark"] .object-tree summary:hover,
+.app-shell[data-theme="dark"] .metadata-row:hover,
+.app-shell[data-theme="dark"] .completion-item:hover,
+.app-shell[data-theme="dark"] .history-item:hover,
+.app-shell[data-theme="dark"] .command-item:hover,
+.app-shell[data-theme="dark"] .tab.active {
+  background: #37373d;
+}
+
+.app-shell[data-theme="dark"] .main-pane,
+.app-shell[data-theme="dark"] .tab-strip,
+.app-shell[data-theme="dark"] .editor-pane,
+.app-shell[data-theme="dark"] .editor-meta,
+.app-shell[data-theme="dark"] .results-pane,
+.app-shell[data-theme="dark"] .results-header {
+  border-color: #303030;
+  background: #1e1e1e;
+}
+
+.app-shell[data-theme="dark"] .tab-folder {
+  color: #cccccc;
+  background: #252526;
+}
+
+.app-shell[data-theme="dark"] .tab {
+  color: #bbbbbb;
+}
+
+.app-shell[data-theme="dark"] .tab.active {
+  color: #ffffff;
+  border-color: #303030;
+  box-shadow: inset 0 2px 0 #0e639c;
+}
+
+.app-shell[data-theme="dark"] .inspector {
+  border-left: 1px solid #303030;
+  background: #181818;
+}
+
+.app-shell[data-theme="dark"] .result-grid {
+  background: #1e1e1e;
+}
+
+.app-shell[data-theme="dark"] .grid-row {
+  border-color: #303030;
+}
+
+.app-shell[data-theme="dark"] .grid-row.header {
+  color: #cccccc;
+  background: #252526;
+}
+
+.app-shell[data-theme="dark"] .grid-row span,
+.app-shell[data-theme="dark"] .grid-gutter {
+  border-color: #303030;
+}
+
+.app-shell[data-theme="dark"] .grid-row:not(.header):nth-child(odd) {
+  background: #1b1b1b;
+}
+
+.app-shell[data-theme="dark"] .grid-row.row-new {
+  background: #193321;
+}
+
+.app-shell[data-theme="dark"] .grid-row.row-edited {
+  background: #3a3219;
+}
+
+.app-shell[data-theme="dark"] .command-chord,
+.app-shell[data-theme="dark"] .palette-item kbd {
+  border-color: #3c3c3c;
+  color: #cccccc;
+  background: #252526;
 }

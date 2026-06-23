@@ -162,9 +162,7 @@ mod typegen {
             .decl(&Decl::alias("JsonValue", TsType::unknown()))
             .decl(&decl::<irodori_core::IrodoriErrorKind>())
             .decl(&decl::<irodori_core::IrodoriError>())
-            .decl(&decl::<
-                irodori_core::CommandResult<serde_json::Value>,
-            >())
+            .decl(&decl::<irodori_core::CommandResult<serde_json::Value>>())
             .decl(&decl::<DbObjectKind>())
             .decl(&decl::<ConnectionStatus>())
             .decl(&decl::<DbObject>())

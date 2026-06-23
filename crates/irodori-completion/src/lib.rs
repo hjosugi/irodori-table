@@ -1,4 +1,11 @@
 //! Deterministic completion, ranking, snippets, and signature-help primitives.
 
-pub const CRATE_NAME: &str = "irodori-completion";
+pub mod metadata;
 
+pub use metadata::{
+    ColumnMetadata, IndexMetadata, MetadataCache, MetadataObjectKind, MetadataPermissions,
+    MetadataSnapshot, ObjectMetadata, RefreshReason, RefreshRequest, RefreshScope, RoutineMetadata,
+    SchemaMetadata,
+};
+
+pub const CRATE_NAME: &str = "irodori-completion";

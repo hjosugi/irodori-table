@@ -21,6 +21,8 @@ import {
   Keyboard,
   Layers3,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   Plus,
   RefreshCw,
@@ -187,11 +189,21 @@ type ConnectionDraft = {
 const profilesStorageKey = "irodori.connectionProfiles.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
 const themeStorageKey = "irodori.theme.v1";
+const vimModeStorageKey = "irodori.editor.vimMode.v1";
+const sidebarStorageKey = "irodori.sidebar.open.v1";
 
 function loadThemeKind(): ThemeKind {
-  return window.localStorage.getItem(themeStorageKey) === "dark"
-    ? "dark"
-    : "light";
+  return window.localStorage.getItem(themeStorageKey) === "light"
+    ? "light"
+    : "dark";
+}
+
+function loadVimMode() {
+  return window.localStorage.getItem(vimModeStorageKey) === "true";
+}
+
+function loadSidebarOpen() {
+  return window.localStorage.getItem(sidebarStorageKey) !== "false";
 }
 const maxQueryHistoryItems = 50;
 
@@ -603,6 +615,8 @@ function App() {
   const [query, setQuery] = useState(initialQuery);
   const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
   const theme = themeKind === "dark" ? darkTheme : lightTheme;
+  const [vimMode, setVimMode] = useState(loadVimMode);
+  const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -683,6 +697,14 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(themeStorageKey, themeKind);
   }, [themeKind]);
+
+  useEffect(() => {
+    window.localStorage.setItem(vimModeStorageKey, String(vimMode));
+  }, [vimMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(sidebarStorageKey, String(sidebarOpen));
+  }, [sidebarOpen]);
 
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
@@ -1549,10 +1571,16 @@ function App() {
           <Search size={15} />
           <input aria-label="Search" placeholder="Open anything" />
         </div>
-        <div className="keymap-chip">
+        <button
+          className={vimMode ? "keymap-chip active" : "keymap-chip"}
+          type="button"
+          title={vimMode ? "Disable Vim mode" : "Enable Vim mode"}
+          aria-pressed={vimMode}
+          onClick={() => setVimMode((enabled) => !enabled)}
+        >
           <Keyboard size={14} />
-          <span>Vim</span>
-        </div>
+          <span>{vimMode ? "Vim" : "Keymap"}</span>
+        </button>
         <button
           className="theme-toggle"
           type="button"
@@ -1571,6 +1599,16 @@ function App() {
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
+        <button
+          className="icon-button sidebar-toggle"
+          type="button"
+          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-pressed={!sidebarOpen}
+          onClick={() => setSidebarOpen((open) => !open)}
+        >
+          {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
+        </button>
         <button className="connection-select" type="button">
           <Database size={16} />
           <span>{activeConnection.name}</span>
@@ -1634,7 +1672,8 @@ function App() {
         </div>
       </section>
 
-      <div className="workspace">
+      <div className={sidebarOpen ? "workspace" : "workspace sidebar-collapsed"}>
+        {sidebarOpen ? (
         <aside className="sidebar">
           <section className="sidebar-section connection-section">
             <div className="section-heading">
@@ -1941,6 +1980,7 @@ function App() {
             </div>
           </section>
         </aside>
+        ) : null}
 
         <section className="main-pane">
           <div className="tab-strip">
@@ -1984,6 +2024,7 @@ function App() {
                   engine={editorEngine}
                   metadata={activeMetadata}
                   theme={theme}
+                  vimMode={vimMode}
                 />
               </div>
             </section>

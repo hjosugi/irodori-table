@@ -2647,24 +2647,53 @@ name = "irodori-data-sources"
 version = "0.1.0"
 
 [[package]]
+name = "irodori-extension"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ts-rs",
+ "typebridge",
+ "typebridge-ts-rs",
+]
+
+[[package]]
 name = "irodori-i18n"
 version = "0.1.0"
 
 [[package]]
 name = "irodori-io"
 version = "0.1.0"
+dependencies = [
+ "irodori-sql",
+ "serde_json",
+]
 
 [[package]]
 name = "irodori-knowledge"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "sha2",
+ "sqlx",
+ "tokio",
+]
 
 [[package]]
 name = "irodori-proxy"
 version = "0.1.0"
+dependencies = [
+ "irodori-core",
+ "serde",
+ "ts-rs",
+]
 
 [[package]]
 name = "irodori-secure-store"
 version = "0.1.0"
+dependencies = [
+ "irodori-core",
+]
 
 [[package]]
 name = "irodori-server"
@@ -2682,6 +2711,7 @@ dependencies = [
  "duckdb",
  "futures-util",
  "irodori-core",
+ "irodori-sql",
  "mongodb",
  "oracle-rs",
  "serde",

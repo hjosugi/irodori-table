@@ -7,6 +7,7 @@ members = [
     "crates/irodori-secure-store",
     "crates/irodori-sql",
     "crates/irodori-completion",
+    "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
     "crates/irodori-i18n",
@@ -19,6 +20,7 @@ default-members = [
     "crates/irodori-secure-store",
     "crates/irodori-sql",
     "crates/irodori-completion",
+    "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
     "crates/irodori-i18n",
@@ -31,4 +33,3 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR 0BSD"
 authors = ["Irodori Table contributors"]
-

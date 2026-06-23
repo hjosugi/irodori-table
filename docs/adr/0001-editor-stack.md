@@ -75,7 +75,7 @@ Net: CM6 is the fastest route to a production-quality editor now, and the semant
 
 1. ✅ **Done** — CM6 editor in `apps/desktop` (`src/SqlEditor.tsx`), `@codemirror/lang-sql` dialect bound to the active `DbEngine` via a Compartment; `basicSetup` brings line numbers, bracket matching, history, active-line, and keyword autocomplete. `tsc` clean, `vite build` green.
 2. ✅ **Done** — `sql-formatter` wired behind the toolbar "Format SQL" action, dialect-mapped per engine.
-3. ⏳ **Pending** — large-file responsiveness (5–20k lines) + Vim smoke; needs a non-headless run (this env has no display / Tauri runtime). Record numbers here when available.
+3. ⏳ **Partial** — Vim mode smoke is covered in browser Playwright (`@replit/codemirror-vim` toggle + CM Vim panel). Remaining: large-file responsiveness (5–20k lines) and a focused Vim behavior suite for motions/operators/registers; full Tauri runtime smoke still needs a Tauri runner.
 4. ⏳ **Pending** — `web-tree-sitter` + one grammar (Postgres) as a non-painting outline/selection spike to de-risk the semantic layer.
 
 5. ✅ **Done (bonus)** — schema-aware completion: the active connection's introspection `DatabaseMetadata` is converted to a CM6 `SQLNamespace` and fed to `sql({ schema, defaultSchema })`, so tables and `table.`→columns complete (qualified and, for the default schema, unqualified). Improves automatically as Codex enriches per-engine metadata. This is the deterministic-first completion baseline (completion-and-ai-strategy.md); tree-sitter scope resolution layers on later.
