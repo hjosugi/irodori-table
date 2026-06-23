@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { runQueryStream } from "./db-stream";
 import { hasDiagram, toMermaidErd } from "./erd";
+import { errorMessage } from "./errors";
 import {
   commandCatalog,
   effectiveKeymap,
@@ -1044,7 +1045,7 @@ function App() {
       // Re-run the last query so the grid shows the committed state.
       await runQuery();
     } catch (error) {
-      setCommitError(error instanceof Error ? error.message : String(error));
+      setCommitError(errorMessage(error));
     } finally {
       setCommitting(false);
     }
@@ -1177,7 +1178,7 @@ function App() {
       } catch (error: unknown) {
         if (!cancelled) {
           setDiagramSvg("");
-          setDiagramError(error instanceof Error ? error.message : String(error));
+          setDiagramError(errorMessage(error));
         }
       }
     })();
@@ -1284,7 +1285,7 @@ function App() {
       await dbDisconnect(testId);
       setConnectionError(`Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`);
     } catch (error) {
-      setConnectionError(error instanceof Error ? error.message : String(error));
+      setConnectionError(errorMessage(error));
     } finally {
       setTestingConnection(false);
     }
@@ -1310,7 +1311,7 @@ function App() {
       setActiveConnectionId(nextConnection.id);
       void refreshObjects(nextConnection.id, true);
     } catch (error) {
-      setConnectionError(error instanceof Error ? error.message : String(error));
+      setConnectionError(errorMessage(error));
     } finally {
       setConnecting(false);
     }
@@ -1355,7 +1356,7 @@ function App() {
     } catch (error) {
       setMetadataErrors((current) => ({
         ...current,
-        [connectionId]: error instanceof Error ? error.message : String(error),
+        [connectionId]: errorMessage(error),
       }));
     } finally {
       setMetadataLoading((current) => {
@@ -1493,7 +1494,7 @@ function App() {
         },
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       setQueryError(message);
       appendHistory({
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,

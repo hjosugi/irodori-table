@@ -7,6 +7,7 @@ import {
   PostgreSQL,
   SQLite,
   StandardSQL,
+  type SQLDialect,
 } from "@codemirror/lang-sql";
 import {
   buildSqlConfig,
@@ -14,48 +15,51 @@ import {
   formatterLanguage,
   metadataToNamespace,
 } from "./dialect";
-import type { DatabaseMetadata } from "../generated/irodori-api";
+import type { DatabaseMetadata, DbEngine } from "../generated/irodori-api";
 
 describe("cmDialect", () => {
-  it("routes all Postgres-wire engines to PostgreSQL", () => {
-    for (const engine of [
-      "postgres",
-      "cockroachdb",
-      "yugabytedb",
-      "redshift",
-      "timescaledb",
-      "neon",
-      "h2",
-      "duckdb",
-    ] as const) {
-      expect(cmDialect(engine)).toBe(PostgreSQL);
+  const engineExpectations: Record<
+    DbEngine,
+    { dialect: SQLDialect; formatter: string }
+  > = {
+    postgres: { dialect: PostgreSQL, formatter: "postgresql" },
+    mysql: { dialect: MySQL, formatter: "mysql" },
+    sqlite: { dialect: SQLite, formatter: "sqlite" },
+    oracle: { dialect: PLSQL, formatter: "plsql" },
+    sqlserver: { dialect: MSSQL, formatter: "transactsql" },
+    duckdb: { dialect: PostgreSQL, formatter: "duckdb" },
+    mongodb: { dialect: StandardSQL, formatter: "sql" },
+    cockroachdb: { dialect: PostgreSQL, formatter: "postgresql" },
+    yugabytedb: { dialect: PostgreSQL, formatter: "postgresql" },
+    redshift: { dialect: PostgreSQL, formatter: "redshift" },
+    timescaledb: { dialect: PostgreSQL, formatter: "postgresql" },
+    mariadb: { dialect: MariaSQL, formatter: "mariadb" },
+    tidb: { dialect: MySQL, formatter: "tidb" },
+    neon: { dialect: PostgreSQL, formatter: "postgresql" },
+    h2: { dialect: PostgreSQL, formatter: "postgresql" },
+    clickhouse: { dialect: StandardSQL, formatter: "clickhouse" },
+    neo4j: { dialect: StandardSQL, formatter: "sql" },
+    memgraph: { dialect: StandardSQL, formatter: "sql" },
+    influxdb: { dialect: StandardSQL, formatter: "sql" },
+    qdrant: { dialect: StandardSQL, formatter: "sql" },
+    milvus: { dialect: StandardSQL, formatter: "sql" },
+    pinecone: { dialect: StandardSQL, formatter: "sql" },
+  };
+
+  it("maps every engine to the expected CodeMirror SQL dialect", () => {
+    for (const [engine, expected] of Object.entries(engineExpectations) as Array<
+      [DbEngine, (typeof engineExpectations)[DbEngine]]
+    >) {
+      expect(cmDialect(engine), engine).toBe(expected.dialect);
     }
   });
-  it("routes MySQL-wire engines, with MariaDB on its own dialect", () => {
-    expect(cmDialect("mysql")).toBe(MySQL);
-    expect(cmDialect("tidb")).toBe(MySQL);
-    expect(cmDialect("mariadb")).toBe(MariaSQL);
-  });
-  it("maps sqlite / sqlserver / oracle", () => {
-    expect(cmDialect("sqlite")).toBe(SQLite);
-    expect(cmDialect("sqlserver")).toBe(MSSQL);
-    expect(cmDialect("oracle")).toBe(PLSQL);
-  });
-  it("falls back to StandardSQL for non-SQL engines", () => {
-    expect(cmDialect("mongodb")).toBe(StandardSQL);
-    expect(cmDialect("neo4j")).toBe(StandardSQL);
-  });
-});
 
-describe("formatterLanguage", () => {
-  it("maps engines onto sql-formatter languages", () => {
-    expect(formatterLanguage("postgres")).toBe("postgresql");
-    expect(formatterLanguage("sqlserver")).toBe("transactsql");
-    expect(formatterLanguage("oracle")).toBe("plsql");
-    expect(formatterLanguage("mariadb")).toBe("mariadb");
-    expect(formatterLanguage("redshift")).toBe("redshift");
-    expect(formatterLanguage("duckdb")).toBe("duckdb");
-    expect(formatterLanguage("mongodb")).toBe("sql");
+  it("maps every engine to the expected sql-formatter language", () => {
+    for (const [engine, expected] of Object.entries(engineExpectations) as Array<
+      [DbEngine, (typeof engineExpectations)[DbEngine]]
+    >) {
+      expect(formatterLanguage(engine), engine).toBe(expected.formatter);
+    }
   });
 });
 

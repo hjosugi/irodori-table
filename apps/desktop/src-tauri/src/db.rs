@@ -23,6 +23,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
+use irodori_core::{IrodoriError, Result as IrodoriResult};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
 use tokio_util::sync::CancellationToken;
@@ -853,8 +854,10 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
 pub async fn db_connect(
     state: tauri::State<'_, DbState>,
     profile: ConnectionProfile,
-) -> Result<ConnectionInfo, String> {
-    connect_impl(state.inner(), profile).await
+) -> IrodoriResult<ConnectionInfo> {
+    connect_impl(state.inner(), profile)
+        .await
+        .map_err(IrodoriError::from)
 }
 
 #[tauri::command]
@@ -865,7 +868,7 @@ pub async fn db_run_query(
     max_rows: Option<usize>,
     timeout_ms: Option<u64>,
     query_id: Option<String>,
-) -> Result<QueryResult, String> {
+) -> IrodoriResult<QueryResult> {
     // The managed run applies the optional timeout deadline and registers the
     // optional `query_id` so `db_cancel` can stop this specific statement.
     run_query_managed_impl(
@@ -877,12 +880,13 @@ pub async fn db_run_query(
         query_id,
     )
     .await
+    .map_err(IrodoriError::from)
 }
 
 /// Cancel the in-flight query the UI started under `query_id`. Returns `true` when
 /// a matching run was found and signalled, `false` if it already finished.
 #[tauri::command]
-pub async fn db_cancel(state: tauri::State<'_, DbState>, query_id: String) -> Result<bool, String> {
+pub async fn db_cancel(state: tauri::State<'_, DbState>, query_id: String) -> IrodoriResult<bool> {
     Ok(cancel_query_impl(state.inner(), query_id).await)
 }
 
@@ -900,7 +904,7 @@ pub async fn db_run_query_stream(
     timeout_ms: Option<u64>,
     query_id: Option<String>,
     on_event: tauri::ipc::Channel<QueryStreamEvent>,
-) -> Result<(), String> {
+) -> IrodoriResult<()> {
     let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
     let started = Instant::now();
 
@@ -919,9 +923,11 @@ pub async fn db_run_query_stream(
                 stream::FetchEvent::Columns(columns) => QueryStreamEvent::Columns { columns },
                 stream::FetchEvent::Rows(rows) => QueryStreamEvent::Rows { rows },
             };
-            on_event.send(out).map_err(|e| e.to_string())?;
+            on_event
+                .send(out)
+                .map_err(|e| IrodoriError::transport(e.to_string()))?;
         }
-        Ok::<(), String>(())
+        Ok::<(), IrodoriError>(())
     };
 
     let (summary, forwarded) = tokio::join!(fetch, forward);
@@ -934,7 +940,9 @@ pub async fn db_run_query_stream(
         },
         Err(message) => QueryStreamEvent::Error { message },
     };
-    on_event.send(final_event).map_err(|e| e.to_string())?;
+    on_event
+        .send(final_event)
+        .map_err(|e| IrodoriError::transport(e.to_string()))?;
     Ok(())
 }
 
@@ -945,24 +953,30 @@ pub async fn db_apply_edits(
     state: tauri::State<'_, DbState>,
     connection_id: String,
     edits: TableEdits,
-) -> Result<AppliedEdits, String> {
-    apply_edits_impl(state.inner(), connection_id, edits).await
+) -> IrodoriResult<AppliedEdits> {
+    apply_edits_impl(state.inner(), connection_id, edits)
+        .await
+        .map_err(IrodoriError::from)
 }
 
 #[tauri::command]
 pub async fn db_list_objects(
     state: tauri::State<'_, DbState>,
     connection_id: String,
-) -> Result<DatabaseMetadata, String> {
-    list_objects_impl(state.inner(), connection_id).await
+) -> IrodoriResult<DatabaseMetadata> {
+    list_objects_impl(state.inner(), connection_id)
+        .await
+        .map_err(IrodoriError::from)
 }
 
 #[tauri::command]
 pub async fn db_disconnect(
     state: tauri::State<'_, DbState>,
     connection_id: String,
-) -> Result<(), String> {
-    disconnect_impl(state.inner(), connection_id).await
+) -> IrodoriResult<()> {
+    disconnect_impl(state.inner(), connection_id)
+        .await
+        .map_err(IrodoriError::from)
 }
 
 #[cfg(test)]

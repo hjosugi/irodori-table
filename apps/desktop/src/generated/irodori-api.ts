@@ -4,6 +4,12 @@ import { invoke } from "@tauri-apps/api/core";
 
 export type JsonValue = unknown;
 
+export type IrodoriErrorKind = "validation" | "unsupported" | "notFound" | "connection" | "query" | "metadata" | "edit" | "timeout" | "cancelled" | "transport" | "internal";
+
+export type IrodoriError = { kind: IrodoriErrorKind, message: string, code?: string, retryable: boolean, };
+
+export type CommandResult<T> = { ok: boolean, data?: T, error?: IrodoriError, };
+
 export type DbObjectKind = "table" | "view" | "procedure";
 
 export type ConnectionStatus = "connected" | "idle";

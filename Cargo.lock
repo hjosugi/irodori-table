@@ -2636,6 +2636,11 @@ version = "0.1.0"
 [[package]]
 name = "irodori-core"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ts-rs",
+]
 
 [[package]]
 name = "irodori-data-sources"
@@ -2676,6 +2681,7 @@ dependencies = [
  "async-trait",
  "duckdb",
  "futures-util",
+ "irodori-core",
  "mongodb",
  "oracle-rs",
  "serde",
