@@ -7,8 +7,8 @@ use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbEngine, DbObjectMetadataKind, IndexMetadata,
-    RowSet,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbEngine, DbObjectMetadata, DbObjectMetadataKind,
+    DbQuickSample, IndexMetadata, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<PgPool, String> {
@@ -131,6 +131,44 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
         builder.add_object(schema, name, kind);
     }
 
+    if let Ok(detail_rows) = sqlx::query(
+        r#"
+        select ns.nspname as schema_name,
+               cls.relname as object_name,
+               obj_description(cls.oid, 'pg_class') as object_comment,
+               cls.reltuples::bigint as row_estimate,
+               case when cls.relkind = 'v' then pg_get_viewdef(cls.oid, true) else null end as view_definition
+        from pg_class cls
+        join pg_namespace ns on ns.oid = cls.relnamespace
+        where ns.nspname not in ('pg_catalog', 'information_schema')
+          and cls.relkind in ('r', 'p', 'v')
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for row in detail_rows {
+            let schema: String = row.try_get("schema_name").unwrap_or_default();
+            let name: String = row.try_get("object_name").unwrap_or_default();
+            if let Some(object) = builder.object_mut(&schema, &name) {
+                object.comment = row.try_get::<Option<String>, _>("object_comment").unwrap_or(None);
+                let estimate = row.try_get::<i64, _>("row_estimate").unwrap_or(-1);
+                if estimate >= 0 {
+                    object.row_estimate = Some(estimate as u64);
+                }
+                if let Some(view_definition) =
+                    row.try_get::<Option<String>, _>("view_definition").unwrap_or(None)
+                {
+                    object.ddl = Some(format!(
+                        "create view {} as\n{}",
+                        qualified_ident(&schema, &name),
+                        view_definition
+                    ));
+                }
+            }
+        }
+    }
+
     let column_rows = sqlx::query(
         r#"
         select table_schema, table_name, column_name, data_type, is_nullable,
@@ -159,6 +197,42 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                 default_value: row.try_get("column_default").ok(),
                 comment: None,
             });
+        }
+    }
+
+    if let Ok(comment_rows) = sqlx::query(
+        r#"
+        select ns.nspname as schema_name,
+               cls.relname as table_name,
+               att.attname as column_name,
+               col_description(cls.oid, att.attnum) as column_comment
+        from pg_attribute att
+        join pg_class cls on cls.oid = att.attrelid
+        join pg_namespace ns on ns.oid = cls.relnamespace
+        where att.attnum > 0
+          and not att.attisdropped
+          and ns.nspname not in ('pg_catalog', 'information_schema')
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for row in comment_rows {
+            let schema: String = row.try_get("schema_name").unwrap_or_default();
+            let table: String = row.try_get("table_name").unwrap_or_default();
+            let column_name: String = row.try_get("column_name").unwrap_or_default();
+            let comment = row
+                .try_get::<Option<String>, _>("column_comment")
+                .unwrap_or(None);
+            if let (Some(comment), Some(object)) = (comment, builder.object_mut(&schema, &table)) {
+                if let Some(column) = object
+                    .columns
+                    .iter_mut()
+                    .find(|column| column.name == column_name)
+                {
+                    column.comment = Some(comment);
+                }
+            }
         }
     }
 
@@ -389,7 +463,90 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
         }
     }
 
+    for (schema, table) in builder.object_keys() {
+        let (kind, columns) = match builder.object_mut(&schema, &table) {
+            Some(object) => (object.kind, object.columns.clone()),
+            None => continue,
+        };
+        if let Some(sample) = quick_sample(pool, &schema, &table, &columns).await {
+            if let Some(object) = builder.object_mut(&schema, &table) {
+                object.sample = Some(sample);
+            }
+        }
+        if kind == DbObjectMetadataKind::Table {
+            if let Some(object) = builder.object_mut(&schema, &table) {
+                if object.ddl.is_none() {
+                    object.ddl = Some(render_create_table(&schema, object));
+                }
+            }
+        }
+    }
+
     Ok(builder.finish())
+}
+
+async fn quick_sample(
+    pool: &PgPool,
+    schema: &str,
+    table: &str,
+    columns: &[ColumnMetadata],
+) -> Option<DbQuickSample> {
+    let sample_sql = format!("select * from {} limit 6", qualified_ident(schema, table));
+    let mut rows = sqlx::query(&sample_sql).fetch_all(pool).await.ok()?;
+    let truncated = rows.len() > 5;
+    rows.truncate(5);
+    Some(DbQuickSample {
+        columns: columns.iter().map(|column| column.name.clone()).collect(),
+        rows: rows
+            .iter()
+            .map(|row| {
+                (0..columns.len())
+                    .map(|index| sample_cell(cell_to_json(row, index)))
+                    .collect()
+            })
+            .collect(),
+        truncated,
+    })
+}
+
+fn render_create_table(schema: &str, object: &DbObjectMetadata) -> String {
+    let columns = object
+        .columns
+        .iter()
+        .map(|column| {
+            let mut line = format!("  {} {}", quote_ident(&column.name), column.data_type);
+            if !column.nullable {
+                line.push_str(" not null");
+            }
+            if let Some(default_value) = &column.default_value {
+                line.push_str(" default ");
+                line.push_str(default_value);
+            }
+            line
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!(
+        "create table {} (\n{}\n)",
+        qualified_ident(schema, &object.name),
+        columns
+    )
+}
+
+fn qualified_ident(schema: &str, name: &str) -> String {
+    format!("{}.{}", quote_ident(schema), quote_ident(name))
+}
+
+fn quote_ident(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+fn sample_cell(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "NULL".to_string(),
+        serde_json::Value::String(value) => value,
+        other => other.to_string(),
+    }
 }
 
 /// Decode a PostgreSQL cell by column type. Exact numerics/temporals become

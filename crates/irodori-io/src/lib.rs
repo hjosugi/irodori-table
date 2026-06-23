@@ -1744,13 +1744,13 @@ INSERT INTO \"users\" (\"id\", \"name\") VALUES (3, NULL);\n"
                 .map(|column| (&column.source_name, column.inferred_type))
                 .collect::<Vec<_>>(),
             vec![
-                (&"active".to_string(), InferredType::Bool),
                 (&"id".to_string(), InferredType::Integer),
                 (&"name".to_string(), InferredType::Text),
+                (&"active".to_string(), InferredType::Bool),
                 (&"meta".to_string(), InferredType::Text)
             ]
         );
-        assert_eq!(preview.columns[1].target_name, "id");
+        assert_eq!(preview.columns[0].target_name, "id");
     }
 
     #[test]

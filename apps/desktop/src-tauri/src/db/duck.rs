@@ -127,6 +127,10 @@ pub async fn metadata(conn: &Arc<Mutex<duckdb::Connection>>) -> Result<DatabaseM
                     schema,
                     name,
                     kind,
+                    comment: None,
+                    ddl: None,
+                    row_estimate: None,
+                    sample: None,
                     columns: Vec::new(),
                     indexes: Vec::new(),
                     primary_key: Vec::new(),
@@ -169,6 +173,7 @@ pub async fn metadata(conn: &Arc<Mutex<duckdb::Connection>>) -> Result<DatabaseM
                     nullable: nullable.eq_ignore_ascii_case("YES"),
                     ordinal,
                     default_value,
+                    comment: None,
                 });
             }
         }

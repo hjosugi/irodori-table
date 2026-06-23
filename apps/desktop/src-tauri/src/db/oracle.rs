@@ -208,6 +208,10 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
                 } else {
                     DbObjectMetadataKind::Table
                 },
+                comment: None,
+                ddl: None,
+                row_estimate: None,
+                sample: None,
                 columns: Vec::new(),
                 indexes: Vec::new(),
                 primary_key: Vec::new(),
@@ -237,6 +241,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
                 nullable: value_string(row.get(3)).as_deref() == Some("Y"),
                 ordinal: value_i64(row.get(4)).unwrap_or_default() as i32,
                 default_value: None,
+                comment: None,
             });
         }
     }
@@ -311,6 +316,10 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             schema: schema.clone(),
             name,
             kind,
+            comment: None,
+            ddl: None,
+            row_estimate: None,
+            sample: None,
             columns: Vec::new(),
             indexes: Vec::new(),
             primary_key: Vec::new(),

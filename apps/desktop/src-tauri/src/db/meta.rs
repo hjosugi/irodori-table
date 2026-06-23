@@ -15,6 +15,10 @@ pub(crate) struct MetaBuilder {
 }
 
 impl MetaBuilder {
+    pub(crate) fn ensure_schema(&mut self, schema: String) {
+        self.schemas.entry(schema).or_default();
+    }
+
     /// Register a table or view. Empty names are skipped so a malformed catalog
     /// row cannot create a phantom object.
     pub(crate) fn add_object(&mut self, schema: String, name: String, kind: DbObjectMetadataKind) {

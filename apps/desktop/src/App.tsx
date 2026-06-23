@@ -1,6 +1,8 @@
 import {
   type CSSProperties,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type UIEvent,
   useEffect,
   useMemo,
@@ -1117,6 +1119,7 @@ function App() {
     const onEnd = () => {
       document.body.classList.remove("panel-resizing");
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
       window.removeEventListener("pointercancel", onEnd);
     };
 
@@ -2749,6 +2752,8 @@ function App() {
               className="result-grid"
               role="table"
               aria-label="Query result"
+              aria-rowcount={totalRows + 1}
+              aria-colcount={resultColumns.length + (editMode ? 1 : 0)}
               ref={gridRef}
               tabIndex={0}
               onScroll={onGridScroll}
@@ -2810,12 +2815,12 @@ function App() {
                   No rows returned
                 </div>
               ) : null}
-              {visibleRows.map((row) => (
+              {visibleRows.map((row, visibleRowIndex) => (
                 <div
                   className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}${selectedRowKey === row.key ? " row-selected" : ""}`}
                   role="row"
                   aria-selected={selectedRowKey === row.key}
-                  aria-rowindex={firstVisible + visibleRows.indexOf(row) + 2}
+                  aria-rowindex={firstVisible + visibleRowIndex + 2}
                   key={row.key}
                   tabIndex={0}
                   style={gridRowStyle}

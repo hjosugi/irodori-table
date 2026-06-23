@@ -263,7 +263,7 @@ mod typegen {
                     .arg(Arg::rust("connection_id", TsType::string())),
             )
             .command(
-                Command::new("db_autocomplete", "Vec<DbCompletionItem>")
+                Command::new("db_autocomplete", "Array<DbCompletionItem>")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("prefix", TsType::string()))
                     .arg(Arg::rust("schema", TsType::string()).optional())
@@ -271,13 +271,13 @@ mod typegen {
                     .arg(Arg::rust("limit", TsType::number()).optional()),
             )
             .command(
-                Command::new("db_inspect_object", "Option<DbInspectionCard>")
+                Command::new("db_inspect_object", "DbInspectionCard | null")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("schema", TsType::string()))
                     .arg(Arg::new("object", TsType::string())),
             )
             .command(
-                Command::new("db_inspect_column", "Option<DbInspectionCard>")
+                Command::new("db_inspect_column", "DbInspectionCard | null")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("schema", TsType::string()))
                     .arg(Arg::new("object", TsType::string()))

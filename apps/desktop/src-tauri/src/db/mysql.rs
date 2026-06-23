@@ -7,7 +7,8 @@ use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata, RowSet,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, DbQuickSample,
+    IndexMetadata, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<MySqlPool, String> {
@@ -111,7 +112,9 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         r#"
         select cast(table_schema as char),
                cast(table_name as char),
-               cast(table_type as char)
+               cast(table_type as char),
+               cast(table_comment as char),
+               cast(table_rows as signed)
         from information_schema.tables
         where table_schema = database()
           and table_type in ('BASE TABLE', 'VIEW')
@@ -132,7 +135,13 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         } else {
             DbObjectMetadataKind::Table
         };
-        builder.add_object(schema, name, kind);
+        builder.add_object(schema.clone(), name.clone(), kind);
+        if let Some(object) = builder.object_mut(&schema, &name) {
+            let comment = row.try_get::<Option<String>, _>(3).unwrap_or(None);
+            object.comment = comment.filter(|comment| !comment.is_empty());
+            let estimate = row.try_get::<Option<i64>, _>(4).unwrap_or(None);
+            object.row_estimate = estimate.and_then(|value| (value >= 0).then_some(value as u64));
+        }
     }
 
     let routine_rows = sqlx::query(
@@ -169,7 +178,8 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
                cast(column_type as char),
                cast(is_nullable as char),
                cast(ordinal_position as signed),
-               cast(column_default as char)
+               cast(column_default as char),
+               cast(column_comment as char)
         from information_schema.columns
         where table_schema = database()
         order by table_schema, table_name, ordinal_position
@@ -190,7 +200,10 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
                 nullable: nullable == "YES",
                 ordinal: row.try_get::<i32, _>(5).unwrap_or_default(),
                 default_value: row.try_get::<Option<String>, _>(6).unwrap_or(None),
-                comment: None,
+                comment: row
+                    .try_get::<Option<String>, _>(7)
+                    .unwrap_or(None)
+                    .filter(|comment| !comment.is_empty()),
             });
         }
     }
@@ -296,7 +309,70 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         }
     }
 
+    for (schema, table) in builder.object_keys() {
+        if let Some(ddl) = show_create_table(pool, &schema, &table).await {
+            if let Some(object) = builder.object_mut(&schema, &table) {
+                object.ddl = Some(ddl);
+            }
+        }
+        let columns = match builder.object_mut(&schema, &table) {
+            Some(object) => object.columns.clone(),
+            None => continue,
+        };
+        if let Some(sample) = quick_sample(pool, &schema, &table, &columns).await {
+            if let Some(object) = builder.object_mut(&schema, &table) {
+                object.sample = Some(sample);
+            }
+        }
+    }
+
     Ok(builder.finish())
+}
+
+async fn show_create_table(pool: &MySqlPool, schema: &str, table: &str) -> Option<String> {
+    let sql = format!("show create table {}", qualified_ident(schema, table));
+    let row = sqlx::query(&sql).fetch_one(pool).await.ok()?;
+    row.try_get::<String, _>(1).ok()
+}
+
+async fn quick_sample(
+    pool: &MySqlPool,
+    schema: &str,
+    table: &str,
+    columns: &[ColumnMetadata],
+) -> Option<DbQuickSample> {
+    let sample_sql = format!("select * from {} limit 6", qualified_ident(schema, table));
+    let mut rows = sqlx::query(&sample_sql).fetch_all(pool).await.ok()?;
+    let truncated = rows.len() > 5;
+    rows.truncate(5);
+    Some(DbQuickSample {
+        columns: columns.iter().map(|column| column.name.clone()).collect(),
+        rows: rows
+            .iter()
+            .map(|row| {
+                (0..columns.len())
+                    .map(|index| sample_cell(cell_to_json(row, index)))
+                    .collect()
+            })
+            .collect(),
+        truncated,
+    })
+}
+
+fn qualified_ident(schema: &str, name: &str) -> String {
+    format!("{}.{}", quote_ident(schema), quote_ident(name))
+}
+
+fn quote_ident(value: &str) -> String {
+    format!("`{}`", value.replace('`', "``"))
+}
+
+fn sample_cell(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "NULL".to_string(),
+        serde_json::Value::String(value) => value,
+        other => other.to_string(),
+    }
 }
 
 /// Decode a MySQL/MariaDB cell by column type.

@@ -199,6 +199,7 @@ pub async fn metadata(conn: &InfluxConn) -> Result<DatabaseMetadata, String> {
                     nullable: true,
                     ordinal,
                     default_value: None,
+                    comment: None,
                 });
             }
         }

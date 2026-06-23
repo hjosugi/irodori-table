@@ -204,6 +204,10 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
                         schema,
                         name,
                         kind,
+                        comment: None,
+                        ddl: None,
+                        row_estimate: None,
+                        sample: None,
                         columns: Vec::new(),
                         indexes: Vec::new(),
                         primary_key: Vec::new(),
@@ -242,6 +246,7 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
                         nullable: nullable.eq_ignore_ascii_case("YES"),
                         ordinal: get_i32(&row, 5),
                         default_value: get_optional_str(&row, 6),
+                        comment: None,
                     });
                 }
             }
@@ -414,6 +419,10 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
                         schema,
                         name,
                         kind,
+                        comment: None,
+                        ddl: None,
+                        row_estimate: None,
+                        sample: None,
                         columns: Vec::new(),
                         indexes: Vec::new(),
                         primary_key: Vec::new(),

@@ -6,8 +6,8 @@ use sqlx::{Row, ValueRef};
 
 use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata,
-    RawResultSet, RowSet,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, DbQuickSample,
+    IndexMetadata, RawResultSet, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<SqlitePool, String> {
@@ -104,7 +104,7 @@ pub async fn stream_query_sets(
 pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
     let object_rows = sqlx::query(
         r#"
-        select 'main' as schema_name, name, type
+        select 'main' as schema_name, name, type, sql
         from sqlite_master
         where type in ('table', 'view')
           and name not like 'sqlite_%'
@@ -116,6 +116,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
     .map_err(|e| format!("metadata objects failed: {e}"))?;
 
     let mut builder = MetaBuilder::default();
+    builder.ensure_schema("main".to_string());
     for row in object_rows {
         let schema: String = row.try_get("schema_name").unwrap_or_else(|_| "main".into());
         let name: String = row.try_get("name").unwrap_or_default();
@@ -125,7 +126,10 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
         } else {
             DbObjectMetadataKind::Table
         };
-        builder.add_object(schema, name, kind);
+        builder.add_object(schema.clone(), name.clone(), kind);
+        if let Some(object) = builder.object_mut(&schema, &name) {
+            object.ddl = row.try_get::<Option<String>, _>("sql").unwrap_or(None);
+        }
     }
 
     for (schema, table) in builder.object_keys() {
@@ -224,7 +228,69 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
         }
     }
 
+    for (schema, table) in builder.object_keys() {
+        let columns = match builder.object_mut(&schema, &table) {
+            Some(object) => object.columns.clone(),
+            None => continue,
+        };
+        let row_estimate = row_count(pool, &schema, &table).await;
+        let sample = quick_sample(pool, &schema, &table, &columns).await;
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            object.row_estimate = row_estimate;
+            object.sample = sample;
+        }
+    }
+
     Ok(builder.finish())
+}
+
+async fn row_count(pool: &SqlitePool, schema: &str, table: &str) -> Option<u64> {
+    let sql = format!("select count(*) from {}", qualified_ident(schema, table));
+    let count = sqlx::query_scalar::<_, i64>(&sql)
+        .fetch_one(pool)
+        .await
+        .ok()?;
+    (count >= 0).then_some(count as u64)
+}
+
+async fn quick_sample(
+    pool: &SqlitePool,
+    schema: &str,
+    table: &str,
+    columns: &[ColumnMetadata],
+) -> Option<DbQuickSample> {
+    let sample_sql = format!("select * from {} limit 6", qualified_ident(schema, table));
+    let mut rows = sqlx::query(&sample_sql).fetch_all(pool).await.ok()?;
+    let truncated = rows.len() > 5;
+    rows.truncate(5);
+    Some(DbQuickSample {
+        columns: columns.iter().map(|column| column.name.clone()).collect(),
+        rows: rows
+            .iter()
+            .map(|row| {
+                (0..columns.len())
+                    .map(|index| sample_cell(cell_to_json(row, index)))
+                    .collect()
+            })
+            .collect(),
+        truncated,
+    })
+}
+
+fn qualified_ident(schema: &str, table: &str) -> String {
+    format!("{}.{}", quote_ident(schema), quote_ident(table))
+}
+
+fn quote_ident(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+fn sample_cell(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "NULL".to_string(),
+        serde_json::Value::String(value) => value,
+        other => other.to_string(),
+    }
 }
 
 fn quote_string(value: &str) -> String {

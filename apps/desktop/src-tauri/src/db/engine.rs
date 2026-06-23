@@ -154,6 +154,7 @@ impl DbEngine {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn dialect(self) -> Box<dyn SqlDialect> {
         match self.wire() {
             Wire::Mysql => Box::new(MySqlDialect),
@@ -172,6 +173,7 @@ impl DbEngine {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn metamodel(self) -> Box<dyn InformationSchemaMetamodel> {
         match self.wire() {
             Wire::Postgres => Box::new(PostgresInformationSchema),
@@ -305,7 +307,10 @@ mod tests {
 
     #[test]
     fn engine_registry_exposes_dialect_and_metamodel() {
-        assert_eq!(DbEngine::Mysql.dialect().quote_identifier("order"), "`order`");
+        assert_eq!(
+            DbEngine::Mysql.dialect().quote_identifier("order"),
+            "`order`"
+        );
         assert_eq!(
             DbEngine::SqlServer
                 .dialect()

@@ -94,7 +94,9 @@ export type SchemaMetadata = { name: string, objects: Array<DbObjectMetadata>, }
 
 export type ForeignKey = { columns: Array<string>, referencesSchema?: string, referencesTable: string, referencesColumns: Array<string>, };
 
-export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, 
+export type DbQuickSample = { columns: Array<string>, rows: Array<Array<string>>, truncated: boolean, };
+
+export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, comment?: string, ddl?: string, rowEstimate?: bigint, sample?: DbQuickSample, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, 
 /**
  * Primary-key column names in key order (empty when there is no PK). Used for
  * safe edit keys and the ER diagram's key markers.
@@ -107,7 +109,7 @@ foreignKeys: Array<ForeignKey>, };
 
 export type DbObjectMetadataKind = "table" | "view" | "index" | "procedure" | "function";
 
-export type ColumnMetadata = { name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue?: string, };
+export type ColumnMetadata = { name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue?: string, comment?: string, };
 
 export type IndexMetadata = { name: string, columns: Array<string>, unique: boolean, };
 
@@ -129,7 +131,7 @@ export type DbCompletionItemKind = "schema" | "table" | "view" | "column" | "fun
 
 export type DbInspectionCard = { "type": "object" } & DbObjectInspection | { "type": "column" } & DbColumnInspection;
 
-export type DbObjectInspection = { schema: string, name: string, kind: DbObjectMetadataKind, comment: string | null, ddl: string | null, rowEstimate: bigint | null, columns: Array<DbColumnInspection>, indexes: Array<IndexMetadata>, foreignKeys: Array<ForeignKey>, };
+export type DbObjectInspection = { schema: string, name: string, kind: DbObjectMetadataKind, comment: string | null, ddl: string | null, rowEstimate: bigint | null, sample: DbQuickSample | null, columns: Array<DbColumnInspection>, indexes: Array<IndexMetadata>, foreignKeys: Array<ForeignKey>, };
 
 export type DbColumnInspection = { schema: string, object: string, name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue: string | null, comment: string | null, primaryKey: boolean, indexes: Array<string>, references: Array<DbColumnReference>, };
 
@@ -163,16 +165,16 @@ export function dbDisconnect(connectionId: string): Promise<void> {
   return invoke<void>("db_disconnect", { connectionId });
 }
 
-export function dbAutocomplete(connectionId: string, prefix: string, schema?: string, object?: string, limit?: number): Promise<Vec<DbCompletionItem>> {
-  return invoke<Vec<DbCompletionItem>>("db_autocomplete", { connectionId, prefix, schema, object, limit });
+export function dbAutocomplete(connectionId: string, prefix: string, schema?: string, object?: string, limit?: number): Promise<Array<DbCompletionItem>> {
+  return invoke<Array<DbCompletionItem>>("db_autocomplete", { connectionId, prefix, schema, object, limit });
 }
 
-export function dbInspectObject(connectionId: string, schema: string, object: string): Promise<Option<DbInspectionCard>> {
-  return invoke<Option<DbInspectionCard>>("db_inspect_object", { connectionId, schema, object });
+export function dbInspectObject(connectionId: string, schema: string, object: string): Promise<DbInspectionCard | null> {
+  return invoke<DbInspectionCard | null>("db_inspect_object", { connectionId, schema, object });
 }
 
-export function dbInspectColumn(connectionId: string, schema: string, object: string, column: string): Promise<Option<DbInspectionCard>> {
-  return invoke<Option<DbInspectionCard>>("db_inspect_column", { connectionId, schema, object, column });
+export function dbInspectColumn(connectionId: string, schema: string, object: string, column: string): Promise<DbInspectionCard | null> {
+  return invoke<DbInspectionCard | null>("db_inspect_column", { connectionId, schema, object, column });
 }
 
 export function dbInvalidateCache(connectionId: string, schema?: string, object?: string): Promise<boolean> {

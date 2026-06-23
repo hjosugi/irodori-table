@@ -136,6 +136,7 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
                     nullable: true,
                     ordinal: idx,
                     default_value: None,
+                    comment: None,
                 });
                 idx += 1;
             }
@@ -145,6 +146,10 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
             schema: conn.db_name.clone(),
             name: label,
             kind: DbObjectMetadataKind::Table,
+            comment: None,
+            ddl: None,
+            row_estimate: None,
+            sample: None,
             columns,
             indexes: Vec::new(),
             primary_key: Vec::new(),
@@ -186,6 +191,7 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
                     nullable: true,
                     ordinal: idx,
                     default_value: None,
+                    comment: None,
                 });
                 idx += 1;
             }
@@ -195,6 +201,10 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
             schema: conn.db_name.clone(),
             name: rel_type,
             kind: DbObjectMetadataKind::View,
+            comment: None,
+            ddl: None,
+            row_estimate: None,
+            sample: None,
             columns,
             indexes: Vec::new(),
             primary_key: Vec::new(),

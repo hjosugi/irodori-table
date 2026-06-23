@@ -161,6 +161,10 @@ pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
             schema: h.db.clone(),
             name,
             kind: DbObjectMetadataKind::Table,
+            comment: None,
+            ddl: None,
+            row_estimate: None,
+            sample: None,
             columns: keys
                 .into_iter()
                 .enumerate()
@@ -170,6 +174,7 @@ pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
                     nullable: true,
                     ordinal: index as i32 + 1,
                     default_value: None,
+                    comment: None,
                 })
                 .collect(),
             indexes,

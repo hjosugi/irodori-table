@@ -410,19 +410,20 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P0
 
-### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)  🟡 paint layer prototyped
+### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)  🟡 theme mapping + backend selector wired
 - **Goal:** Editor-grade SQL structure.
 - **Approach (ADR 0001):** paint via CM6 Lezer `@codemirror/lang-sql` (dialect bound to `DbEngine`) now; add `web-tree-sitter` captures as a fallback/upgrade only where a dialect grammar is solid. Map highlight tags into the THEME-001 model (not TextMate-only scopes).
-- **Prototyped:** CM6 Lezer highlighting live in `SqlEditor.tsx` with the default highlight style. Remaining: THEME-001 token mapping; tree-sitter semantic captures.
+- **Done:** CM6 Lezer highlighting is bound to `DbEngine` and maps through the internal THEME-001 syntax roles. Tree-sitter capture names map into the same role model, and the backend selector falls back to Lezer unless a bundled dialect grammar is explicitly marked solid.
+- **Remaining:** bundle and license-vet a browser-ready Tree-sitter SQL grammar WASM + highlight query for the first solid dialect, then activate that backend for the matching engine.
 - **Done when:** highlighting uses Tree-sitter queries where the grammar is solid, with a dialect fallback; tokens map to the internal theme model.
 - **Depends on:** EDIT-001, THEME-001
 - **Size:** M · **Priority:** P0
 
-### EDIT-003 — Keybinding resolver + scopes 🚧 (resolver + remap done)
+### EDIT-003 — Keybinding resolver + scopes ✅ scoped resolver + remap done
 - **Goal:** Fully remappable shortcuts.
 - **Done when:** bindings resolve per context scope, detect conflicts, and are editable; a default map ships; changes persist.
-- **Done:** `src/keybindings.ts` ships a VS Code-flavored default keymap (`Mod` = Cmd on macOS / Ctrl elsewhere), a chord parser/matcher (platform-aware), conflict detection, and localStorage-persisted per-command overrides merged over the defaults. A global `keydown` resolver runs the matched command (and won't hijack plain typing in a field). The sidebar lists every command with its shortcut; click the chord to **rebind** (records the next keystroke), conflicts are flagged, and `↺` resets to default.
-- **Remaining:** per-context scopes (editor vs grid vs global), multi-key chord sequences, and the preset maps (EDIT-004).
+- **Done:** `src/keybindings.ts` ships a VS Code-flavored default keymap (`Mod` = Cmd on macOS / Ctrl elsewhere), platform-aware key sequence parsing, per-scope resolution (`global`, `editor`, `grid`), scoped conflict detection, and localStorage-persisted per-command overrides merged over the defaults. The global `keydown` resolver uses the active context scope, supports two-chord recording, and still avoids hijacking plain typing in fields. The sidebar lists every command with its scope and shortcut; click the chord to **rebind**, conflicts are flagged, and `↺` resets to default.
+- **Remaining:** preset maps (EDIT-004).
 - **Depends on:** SHELL-002
 - **Size:** L · **Priority:** P0
 

@@ -230,21 +230,26 @@ fn query_result_set(raw: RawResultSet, cap: usize) -> QueryResultSet {
         row_count,
         elapsed_ms: raw.elapsed_ms,
         truncated: raw.truncated,
-        message: raw.truncated.then(|| format!("result capped at {cap} rows")),
+        message: raw
+            .truncated
+            .then(|| format!("result capped at {cap} rows")),
     }
 }
 
 fn query_result_from_sets(mut result_sets: Vec<QueryResultSet>, elapsed_ms: u64) -> QueryResult {
-    let first = result_sets.first().cloned().unwrap_or_else(|| QueryResultSet {
-        statement_index: 0,
-        statement: String::new(),
-        columns: Vec::new(),
-        rows: Vec::new(),
-        row_count: 0,
-        elapsed_ms,
-        truncated: false,
-        message: None,
-    });
+    let first = result_sets
+        .first()
+        .cloned()
+        .unwrap_or_else(|| QueryResultSet {
+            statement_index: 0,
+            statement: String::new(),
+            columns: Vec::new(),
+            rows: Vec::new(),
+            row_count: 0,
+            elapsed_ms,
+            truncated: false,
+            message: None,
+        });
     let nested = (result_sets.len() > 1)
         .then(|| std::mem::take(&mut result_sets))
         .unwrap_or_default();
@@ -947,11 +952,7 @@ fn convert_metadata_to_snapshot(
     connection_id: &str,
     db_meta: &DatabaseMetadata,
 ) -> MetadataSnapshot {
-    let mut snapshot = MetadataSnapshot::new(
-        connection_id,
-        1,
-        std::time::SystemTime::now(),
-    );
+    let mut snapshot = MetadataSnapshot::new(connection_id, 1, std::time::SystemTime::now());
     for s in &db_meta.schemas {
         let mut schema = CmpSchemaMetadata::new(&s.name);
         for obj in &s.objects {
@@ -1118,7 +1119,9 @@ fn trigger_background_refresh(state: DbState, connection_id: String) {
                     let _ = cache.drain_refresh_requests();
                 }
                 Err(e) => {
-                    eprintln!("background metadata refresh failed for connection {connection_id}: {e}");
+                    eprintln!(
+                        "background metadata refresh failed for connection {connection_id}: {e}"
+                    );
                 }
             }
         }
@@ -1138,10 +1141,10 @@ pub async fn connect_impl(
     if let Some(old) = old {
         old.close().await;
     }
-    
+
     // Trigger background refresh immediately to warm up the cache!
     trigger_background_refresh(state.clone(), profile.id.clone());
-    
+
     Ok(ConnectionInfo {
         id: profile.id,
         engine: profile.engine,
@@ -1464,41 +1467,61 @@ pub struct DbColumnReference {
     pub column: String,
 }
 
-fn convert_inspection_card(card: irodori_completion::inspection::InspectionCard) -> DbInspectionCard {
+fn convert_inspection_card(
+    card: irodori_completion::inspection::InspectionCard,
+) -> DbInspectionCard {
     match card {
-        irodori_completion::inspection::InspectionCard::Object(obj) => DbInspectionCard::Object(DbObjectInspection {
-            schema: obj.schema,
-            name: obj.name,
-            kind: match obj.kind {
-                CmpMetadataObjectKind::View => DbObjectMetadataKind::View,
-                _ => DbObjectMetadataKind::Table,
-            },
-            comment: obj.comment,
-            ddl: obj.ddl,
-            row_estimate: obj.row_estimate,
-            sample: obj.sample.map(|sample| DbQuickSample {
-                columns: sample.columns,
-                rows: sample.rows,
-                truncated: sample.truncated,
-            }),
-            columns: obj.columns.into_iter().map(convert_column_inspection).collect(),
-            indexes: obj.indexes.into_iter().map(|idx| IndexMetadata {
-                name: idx.name,
-                columns: idx.columns,
-                unique: idx.unique,
-            }).collect(),
-            foreign_keys: obj.foreign_keys.into_iter().map(|fk| ForeignKey {
-                columns: fk.columns,
-                references_schema: Some(fk.references_schema),
-                references_table: fk.references_object,
-                references_columns: fk.references_columns,
-            }).collect(),
-        }),
-        irodori_completion::inspection::InspectionCard::Column(col) => DbInspectionCard::Column(convert_column_inspection(col)),
+        irodori_completion::inspection::InspectionCard::Object(obj) => {
+            DbInspectionCard::Object(DbObjectInspection {
+                schema: obj.schema,
+                name: obj.name,
+                kind: match obj.kind {
+                    CmpMetadataObjectKind::View => DbObjectMetadataKind::View,
+                    _ => DbObjectMetadataKind::Table,
+                },
+                comment: obj.comment,
+                ddl: obj.ddl,
+                row_estimate: obj.row_estimate,
+                sample: obj.sample.map(|sample| DbQuickSample {
+                    columns: sample.columns,
+                    rows: sample.rows,
+                    truncated: sample.truncated,
+                }),
+                columns: obj
+                    .columns
+                    .into_iter()
+                    .map(convert_column_inspection)
+                    .collect(),
+                indexes: obj
+                    .indexes
+                    .into_iter()
+                    .map(|idx| IndexMetadata {
+                        name: idx.name,
+                        columns: idx.columns,
+                        unique: idx.unique,
+                    })
+                    .collect(),
+                foreign_keys: obj
+                    .foreign_keys
+                    .into_iter()
+                    .map(|fk| ForeignKey {
+                        columns: fk.columns,
+                        references_schema: Some(fk.references_schema),
+                        references_table: fk.references_object,
+                        references_columns: fk.references_columns,
+                    })
+                    .collect(),
+            })
+        }
+        irodori_completion::inspection::InspectionCard::Column(col) => {
+            DbInspectionCard::Column(convert_column_inspection(col))
+        }
     }
 }
 
-fn convert_column_inspection(col: irodori_completion::inspection::ColumnInspection) -> DbColumnInspection {
+fn convert_column_inspection(
+    col: irodori_completion::inspection::ColumnInspection,
+) -> DbColumnInspection {
     DbColumnInspection {
         schema: col.schema,
         object: col.object,
@@ -1510,11 +1533,15 @@ fn convert_column_inspection(col: irodori_completion::inspection::ColumnInspecti
         comment: col.comment,
         primary_key: col.primary_key,
         indexes: col.indexes,
-        references: col.references.into_iter().map(|r| DbColumnReference {
-            schema: r.schema,
-            object: r.object,
-            column: r.column,
-        }).collect(),
+        references: col
+            .references
+            .into_iter()
+            .map(|r| DbColumnReference {
+                schema: r.schema,
+                object: r.object,
+                column: r.column,
+            })
+            .collect(),
     }
 }
 
@@ -1551,7 +1578,10 @@ pub async fn db_autocomplete(
     } else {
         let is_stale = {
             let cache = state_inner.metadata_cache.lock().await;
-            cache.snapshot(&connection_id).map(|s| s.is_stale(now)).unwrap_or(false)
+            cache
+                .snapshot(&connection_id)
+                .map(|s| s.is_stale(now))
+                .unwrap_or(false)
         };
         if is_stale {
             trigger_background_refresh(state_inner.clone(), connection_id.clone());
@@ -1560,8 +1590,7 @@ pub async fn db_autocomplete(
 
     let cache = state_inner.metadata_cache.lock().await;
     let engine = irodori_completion::CompletionEngine::new();
-    let mut req = irodori_completion::CompletionRequest::new(&connection_id)
-        .with_prefix(prefix);
+    let mut req = irodori_completion::CompletionRequest::new(&connection_id).with_prefix(prefix);
     if let Some(s) = schema {
         req = req.in_schema(s);
     }
@@ -1573,20 +1602,25 @@ pub async fn db_autocomplete(
     }
 
     let items = engine.complete(&cache, &req);
-    let mapped = items.into_iter().map(|item| DbCompletionItem {
-        label: item.label,
-        insert_text: item.insert_text,
-        kind: match item.kind {
-            irodori_completion::CompletionItemKind::Schema => DbCompletionItemKind::Schema,
-            irodori_completion::CompletionItemKind::Table => DbCompletionItemKind::Table,
-            irodori_completion::CompletionItemKind::View => DbCompletionItemKind::View,
-            irodori_completion::CompletionItemKind::Column => DbCompletionItemKind::Column,
-            irodori_completion::CompletionItemKind::Function => DbCompletionItemKind::Function,
-            irodori_completion::CompletionItemKind::Procedure => DbCompletionItemKind::Procedure,
-            irodori_completion::CompletionItemKind::Keyword => DbCompletionItemKind::Keyword,
-        },
-        detail: item.detail,
-    }).collect();
+    let mapped = items
+        .into_iter()
+        .map(|item| DbCompletionItem {
+            label: item.label,
+            insert_text: item.insert_text,
+            kind: match item.kind {
+                irodori_completion::CompletionItemKind::Schema => DbCompletionItemKind::Schema,
+                irodori_completion::CompletionItemKind::Table => DbCompletionItemKind::Table,
+                irodori_completion::CompletionItemKind::View => DbCompletionItemKind::View,
+                irodori_completion::CompletionItemKind::Column => DbCompletionItemKind::Column,
+                irodori_completion::CompletionItemKind::Function => DbCompletionItemKind::Function,
+                irodori_completion::CompletionItemKind::Procedure => {
+                    DbCompletionItemKind::Procedure
+                }
+                irodori_completion::CompletionItemKind::Keyword => DbCompletionItemKind::Keyword,
+            },
+            detail: item.detail,
+        })
+        .collect();
 
     Ok(mapped)
 }
@@ -1600,7 +1634,8 @@ pub async fn db_inspect_object(
 ) -> IrodoriResult<Option<DbInspectionCard>> {
     let state_inner = state.inner();
     let cache = state_inner.metadata_cache.lock().await;
-    let card = irodori_completion::inspection::inspect_object(&cache, &connection_id, &schema, &object);
+    let card =
+        irodori_completion::inspection::inspect_object(&cache, &connection_id, &schema, &object);
     Ok(card.map(convert_inspection_card))
 }
 
@@ -1614,7 +1649,13 @@ pub async fn db_inspect_column(
 ) -> IrodoriResult<Option<DbInspectionCard>> {
     let state_inner = state.inner();
     let cache = state_inner.metadata_cache.lock().await;
-    let card = irodori_completion::inspection::inspect_column(&cache, &connection_id, &schema, &object, &column);
+    let card = irodori_completion::inspection::inspect_column(
+        &cache,
+        &connection_id,
+        &schema,
+        &object,
+        &column,
+    );
     Ok(card.map(convert_inspection_card))
 }
 
@@ -1939,7 +1980,7 @@ mod tests {
     async fn metadata_cache_integration_test() {
         let state = DbState::default();
         let conn_id = "cache_test".to_string();
-        
+
         // 1. Establish connection to temporary sqlite db
         connect_impl(&state, temp_sqlite_profile(&conn_id))
             .await
@@ -1992,7 +2033,9 @@ mod tests {
         }
 
         // Fetch objects blockingly to warm cache with new table
-        list_objects_impl(&state, conn_id.clone()).await.expect("list objects");
+        list_objects_impl(&state, conn_id.clone())
+            .await
+            .expect("list objects");
 
         // Query autocomplete directly on cache
         let cache = state.metadata_cache.lock().await;
@@ -2003,8 +2046,9 @@ mod tests {
         assert!(items.iter().any(|item| item.label == "test_table"));
 
         // 4. Test hover inspection card directly on cache
-        let card = irodori_completion::inspection::inspect_object(&cache, &conn_id, "main", "test_table")
-            .expect("card present");
+        let card =
+            irodori_completion::inspection::inspect_object(&cache, &conn_id, "main", "test_table")
+                .expect("card present");
         match card {
             irodori_completion::inspection::InspectionCard::Object(obj) => {
                 assert_eq!(obj.name, "test_table");
