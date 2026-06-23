@@ -396,14 +396,17 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## EDIT — Editor Engine, Vim, Keybindings
 
-### EDIT-001 — Editor engine spike + decision
+### EDIT-001 — Editor engine spike + decision  ✅ decided + prototyped (perf numbers pending)
 - **Goal:** Choose Monaco vs CodeMirror 6 vs native/Tree-sitter.
-- **Done when:** a spike compares Vim quality, completion architecture, and large-file performance; an ADR records the choice.
+- **Decision (ADR 0001):** CodeMirror 6 host; CM6 Lezer paint + `web-tree-sitter` semantic layer; `sql-formatter` v15. Rationale + reference-project evidence (Beekeeper/Outerbase = CM6) in `docs/adr/0001-editor-stack.md`.
+- **Done when:** ~~a spike compares Vim quality, completion architecture, and large-file performance;~~ ✅ an ADR records the choice. Remaining: CM6 prototype with large-file perf numbers recorded in the ADR.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P0
 
-### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)
+### EDIT-002 — SQL syntax highlighting (Tree-sitter where strong)  🟡 paint layer prototyped
 - **Goal:** Editor-grade SQL structure.
+- **Approach (ADR 0001):** paint via CM6 Lezer `@codemirror/lang-sql` (dialect bound to `DbEngine`) now; add `web-tree-sitter` captures as a fallback/upgrade only where a dialect grammar is solid. Map highlight tags into the THEME-001 model (not TextMate-only scopes).
+- **Prototyped:** CM6 Lezer highlighting live in `SqlEditor.tsx` with the default highlight style. Remaining: THEME-001 token mapping; tree-sitter semantic captures.
 - **Done when:** highlighting uses Tree-sitter queries where the grammar is solid, with a dialect fallback; tokens map to the internal theme model.
 - **Depends on:** EDIT-001, THEME-001
 - **Size:** M · **Priority:** P0
@@ -440,8 +443,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1
 
-### EDIT-008 — Format + comment toggles + bracket matching
+### EDIT-008 — Format + comment toggles + bracket matching  🟡 formatter + bracket matching prototyped
 - **Goal:** Editor ergonomics.
+- **Approach (ADR 0001):** default formatter = `sql-formatter` v15 (MIT), `DbEngine`→language mapped, behind a pluggable format hook; comment-toggle + bracket-matching via CM6 built-ins. v2: CST/tree-sitter formatter for dialect-perfect output.
+- **Prototyped:** "Format SQL" toolbar action (dialect-mapped) + CM6 bracket matching live. Remaining: make formatter choice configurable (pluggable hook); comment-toggle keybinding surfaced in UI.
 - **Done when:** a format hook (pluggable formatter), comment toggle, and bracket matching work; formatter choice is configurable.
 - **Depends on:** EDIT-002
 - **Size:** M · **Priority:** P1
@@ -450,9 +455,11 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## THEME — Theming + VS Code Import
 
-### THEME-001 — Internal normalized theme model
+### THEME-001 — Internal normalized theme model  🟡 model + editor light/dark done
 - **Goal:** One theme model for workbench + syntax + semantic tokens.
 - **Done when:** the model covers UI colors and token colors; a default light/dark theme renders; documented.
+- **Landed:** `src/theme.ts` is the single source — `IrodoriTheme { ui, syntax }` with `lightTheme`/`darkTheme`. The editor is fully themed in both modes via `editorThemeExtensions` (CM chrome + Lezer-tag `HighlightStyle`); shell colors are driven by `cssVariables(theme)` on `.app-shell`; titlebar toggle + persistence. `tsc` + `vite build` green.
+- **Follow-up (THEME-001b):** full workbench dark-mode — ~30 hardcoded panel colors in `App.css` (inspector, result grid, connection forms, chips) still need converting to vars so deep panels flip too. Editor + top chrome already theme.
 - **Depends on:** SHELL-001
 - **Size:** M · **Priority:** P0
 
@@ -824,9 +831,10 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## QA — Test Automation + CI
 
-### QA-001 — Test harness + CI matrix
+### QA-001 — Test harness + CI matrix  🟡 frontend runner landed
 - **Goal:** One command to test; CI across OSes.
 - **Done when:** `cargo test` and the frontend test runner pass locally and in CI on Linux/macOS/Windows; coverage of core crates reported.
+- **Landed:** frontend `vitest` runner (`npm test`, 21 tests over `src/sql/statements.ts`, `src/sql/dialect.ts`, `theme.ts`). `cargo test` already exists backend-side. Remaining: CI matrix wiring (GH Actions) + coverage report.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P0
 
@@ -842,9 +850,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** TB-002
 - **Size:** S · **Priority:** P0
 
-### QA-004 — Headless UI smoke tests
+### QA-004 — Headless UI smoke tests  🟡 browser smoke landed
 - **Goal:** Confidence the app actually runs.
 - **Done when:** a headless driver launches the Tauri shell, connects to SQLite, runs a query, and asserts result rows; runs in CI.
+- **Landed (browser portion):** Playwright smoke (`e2e/smoke.spec.ts`, `npm run test:e2e`) drives the real web frontend headless — shell renders, CodeMirror mounts with highlighting, theme toggles, Format SQL reflows. Tauri `invoke` is absent in a plain browser (app falls back to mock snapshot), so connect/query is **not** covered here. Remaining: full Tauri+SQLite smoke via a Tauri runner (e.g. tauri-driver/WebDriver) for the connect→query→assert-rows path. Note: sandbox uses `PW_CHROME_PATH` to reuse a local Chromium (cdn.playwright.dev is egress-blocked).
 - **Depends on:** SHELL-001, EXEC-001
 - **Size:** L · **Priority:** P1
 

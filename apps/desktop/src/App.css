@@ -38,6 +38,8 @@ button {
   --surface: #f7f8f4;
   --surface-raised: #ffffff;
   --surface-muted: #edf0ea;
+  --chrome: #fbfcf7;
+  --editor-bg: #fffef9;
   --text: #20242a;
   --muted: #687064;
   --green: #2e7a56;
@@ -60,7 +62,7 @@ button {
   align-items: center;
   min-width: 0;
   border-bottom: 1px solid var(--border);
-  background: #fbfcf7;
+  background: var(--chrome);
 }
 
 .titlebar {
@@ -139,6 +141,24 @@ button {
   background: #e8f3f2;
   font-size: 12px;
   font-weight: 700;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  color: var(--muted);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--muted);
 }
 
 .toolbar {
@@ -676,7 +696,7 @@ button {
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
-  background: #fffef9;
+  background: var(--editor-bg);
 }
 
 .editor-meta {
@@ -685,16 +705,27 @@ button {
   justify-content: space-between;
   min-width: 0;
   padding: 0 10px;
-  border-bottom: 1px solid #ece6d8;
+  border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
 }
 
 .editor-shell {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  display: block;
   min-height: 0;
   overflow: hidden;
+}
+
+.cm-host {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The CM editor's surface, gutters, caret, selection and syntax colors are owned
+   by the theme model (src/theme.ts → editorThemeExtensions), not by CSS. */
+.cm-host .cm-editor {
+  height: 100%;
 }
 
 .line-numbers,

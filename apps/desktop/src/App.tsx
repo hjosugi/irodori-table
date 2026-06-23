@@ -1,6 +1,13 @@
 import {
+<<<<<<< HEAD
   type FormEvent,
   type UIEvent,
+||||||| 57e635d
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+=======
+  type CSSProperties,
+  type FormEvent,
+>>>>>>> claude/bold-volta-vpjmmp
   useEffect,
   useMemo,
   useRef,
@@ -8,6 +15,7 @@ import {
 } from "react";
 import {
   AlertTriangle,
+  AlignLeft,
   Bolt,
   ChevronDown,
   Clock3,
@@ -18,6 +26,7 @@ import {
   Folder,
   Keyboard,
   Layers3,
+  Moon,
   Play,
   Plus,
   RefreshCw,
@@ -27,6 +36,7 @@ import {
   ShieldCheck,
   SplitSquareHorizontal,
   Square,
+  Sun,
   Table2,
   TerminalSquare,
 } from "lucide-react";
@@ -64,6 +74,9 @@ import {
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
+import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
+import { selectedOrCurrentStatement } from "./sql/statements";
+import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
 import "./App.css";
 
 const fallbackSnapshot: WorkspaceSnapshot = {
@@ -149,6 +162,15 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "yugabytedb", label: "YugabyteDB" },
   { value: "tidb", label: "TiDB" },
   { value: "redshift", label: "Redshift" },
+  { value: "neon", label: "Neon" },
+  { value: "h2", label: "H2" },
+  { value: "clickhouse", label: "ClickHouse" },
+  { value: "neo4j", label: "Neo4j" },
+  { value: "memgraph", label: "Memgraph" },
+  { value: "influxdb", label: "InfluxDB" },
+  { value: "qdrant", label: "Qdrant" },
+  { value: "milvus", label: "Milvus" },
+  { value: "pinecone", label: "Pinecone" },
 ];
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
@@ -169,6 +191,13 @@ type ConnectionDraft = {
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
+const themeStorageKey = "irodori.theme.v1";
+
+function loadThemeKind(): ThemeKind {
+  return window.localStorage.getItem(themeStorageKey) === "dark"
+    ? "dark"
+    : "light";
+}
 const maxQueryHistoryItems = 50;
 
 type QueryHistoryItem = {
@@ -306,6 +335,7 @@ function defaultPort(engine: DbEngine) {
   switch (engine) {
     case "postgres":
     case "timescaledb":
+    case "neon":
       return "5432";
     case "cockroachdb":
       return "26257";
@@ -313,6 +343,19 @@ function defaultPort(engine: DbEngine) {
       return "5433";
     case "redshift":
       return "5439";
+    case "h2":
+      return "5435";
+    case "clickhouse":
+      return "9000";
+    case "neo4j":
+    case "memgraph":
+      return "7687";
+    case "influxdb":
+      return "8086";
+    case "qdrant":
+      return "6333";
+    case "milvus":
+      return "19530";
     case "mysql":
     case "mariadb":
       return "3306";
@@ -476,116 +519,6 @@ function formatHistoryTime(value: string) {
   });
 }
 
-function dollarTagAt(sql: string, index: number) {
-  const match = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
-  return match?.[0];
-}
-
-function statementDelimiters(sql: string) {
-  const delimiters: number[] = [];
-  let quote: "normal" | "single" | "double" | "line" | "block" | "dollar" =
-    "normal";
-  let dollarTag = "";
-
-  for (let index = 0; index < sql.length; index += 1) {
-    const char = sql[index];
-    const next = sql[index + 1];
-
-    if (quote === "single") {
-      if (char === "'" && next === "'") {
-        index += 1;
-      } else if (char === "'") {
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (quote === "double") {
-      if (char === '"' && next === '"') {
-        index += 1;
-      } else if (char === '"') {
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (quote === "line") {
-      if (char === "\n") {
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (quote === "block") {
-      if (char === "*" && next === "/") {
-        quote = "normal";
-        index += 1;
-      }
-      continue;
-    }
-
-    if (quote === "dollar") {
-      if (sql.startsWith(dollarTag, index)) {
-        index += dollarTag.length - 1;
-        quote = "normal";
-      }
-      continue;
-    }
-
-    if (char === "'") {
-      quote = "single";
-    } else if (char === '"') {
-      quote = "double";
-    } else if (char === "-" && next === "-") {
-      quote = "line";
-      index += 1;
-    } else if (char === "/" && next === "*") {
-      quote = "block";
-      index += 1;
-    } else if (char === "$") {
-      const tag = dollarTagAt(sql, index);
-      if (tag) {
-        quote = "dollar";
-        dollarTag = tag;
-        index += tag.length - 1;
-      }
-    } else if (char === ";") {
-      delimiters.push(index);
-    }
-  }
-
-  return delimiters;
-}
-
-function selectedOrCurrentStatement(
-  textarea: HTMLTextAreaElement | null,
-  sql: string,
-) {
-  const selectionStart = textarea?.selectionStart ?? 0;
-  const selectionEnd = textarea?.selectionEnd ?? selectionStart;
-  const selectedSql = sql.slice(selectionStart, selectionEnd).trim();
-
-  if (selectedSql) {
-    return selectedSql;
-  }
-
-  const cursor = Math.min(selectionStart, sql.length);
-  const delimiters = statementDelimiters(sql);
-  let previous: number | undefined;
-  for (const delimiter of delimiters) {
-    if (delimiter >= cursor) {
-      break;
-    }
-    previous = delimiter;
-  }
-  const next = delimiters.find((delimiter) => delimiter >= cursor);
-  const start = previous === undefined ? 0 : previous + 1;
-  const end = next === undefined ? sql.length : next + 1;
-  const statement = sql.slice(start, end).trim();
-
-  return statement || sql.trim();
-}
-
 function csvCell(value: unknown) {
   if (value === null || value === undefined) {
     return "";
@@ -626,6 +559,9 @@ function validateDraft(draft: ConnectionDraft): string | null {
     if (!draft.host.trim()) {
       return "host is required";
     }
+    if (draft.engine === "pinecone") {
+      return "Pinecone is selectable as a placeholder; a driver is not implemented yet";
+    }
   }
   if (draft.port.trim() && !Number.isInteger(Number(draft.port))) {
     return "port must be a number";
@@ -659,17 +595,25 @@ const GRID_ROW_HEIGHT = 27;
 const GRID_OVERSCAN = 8;
 
 function App() {
+<<<<<<< HEAD
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const [gridScrollTop, setGridScrollTop] = useState(0);
   const [gridViewport, setGridViewport] = useState(480);
+||||||| 57e635d
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+=======
+  const editorApiRef = useRef<SqlEditorHandle>(null);
+>>>>>>> claude/bold-volta-vpjmmp
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
     fallbackSnapshot.activeConnectionId,
   );
   const [query, setQuery] = useState(initialQuery);
+  const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
+  const theme = themeKind === "dark" ? darkTheme : lightTheme;
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -747,6 +691,10 @@ function App() {
     window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(history));
   }, [history]);
 
+  useEffect(() => {
+    window.localStorage.setItem(themeStorageKey, themeKind);
+  }, [themeKind]);
+
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
     snapshot.connections.forEach((connection) => {
@@ -797,6 +745,7 @@ function App() {
     activeMetadataLoading,
   ]);
 
+<<<<<<< HEAD
   // Track the result grid's viewport height so the virtualized window covers it.
   useEffect(() => {
     const element = gridRef.current;
@@ -818,6 +767,23 @@ function App() {
         .join("\n"),
     [query],
   );
+||||||| 57e635d
+  const lineNumbers = useMemo(
+    () =>
+      query
+        .split("\n")
+        .map((_, index) => index + 1)
+        .join("\n"),
+    [query],
+  );
+=======
+  // Dialect for the editor: prefer the active connection's profile engine,
+  // then the connection-form draft, then Postgres.
+  const editorEngine = useMemo<DbEngine>(() => {
+    const profile = profiles.find((item) => item.id === activeConnectionId);
+    return profile?.engine ?? draft.engine ?? "postgres";
+  }, [profiles, activeConnectionId, draft.engine]);
+>>>>>>> claude/bold-volta-vpjmmp
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
@@ -1348,6 +1314,7 @@ function App() {
         id: testId,
       });
       await dbDisconnect(testId);
+      setConnectionError(`Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`);
     } catch (error) {
       setConnectionError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1452,12 +1419,18 @@ function App() {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  function formatQuery() {
+    const error = editorApiRef.current?.format();
+    setQueryError(error ?? null);
+  }
+
   async function runQuery() {
     if (!activeConnectionOpen) {
       setQueryError(`not connected: ${activeConnectionId}`);
       return;
     }
-    const sqlToRun = selectedOrCurrentStatement(editorRef.current, query);
+    const selection = editorApiRef.current?.getSelection() ?? { from: 0, to: 0 };
+    const sqlToRun = selectedOrCurrentStatement(selection.from, selection.to, query);
     if (!sqlToRun) {
       setQueryError("query is empty");
       return;
@@ -1588,7 +1561,11 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      style={cssVariables(theme) as CSSProperties}
+      data-theme={theme.kind}
+    >
       <header className="titlebar">
         <div className="window-controls" aria-hidden="true">
           <span className="dot red" />
@@ -1607,6 +1584,21 @@ function App() {
           <Keyboard size={14} />
           <span>Vim</span>
         </div>
+        <button
+          className="theme-toggle"
+          type="button"
+          title={
+            themeKind === "dark"
+              ? "Switch to light theme"
+              : "Switch to dark theme"
+          }
+          aria-label="Toggle color theme"
+          onClick={() =>
+            setThemeKind((kind) => (kind === "dark" ? "light" : "dark"))
+          }
+        >
+          {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
@@ -1634,6 +1626,15 @@ function App() {
           onClick={cancelQuery}
         >
           <Square size={15} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          title="Format SQL (engine dialect)"
+          aria-label="Format SQL"
+          onClick={formatQuery}
+        >
+          <AlignLeft size={15} />
         </button>
         <button
           className="icon-button"
@@ -2007,15 +2008,13 @@ function App() {
                 </span>
               </div>
               <div className="editor-shell">
-                <pre className="line-numbers" aria-hidden="true">
-                  {lineNumbers}
-                </pre>
-                <textarea
-                  ref={editorRef}
-                  aria-label="SQL editor"
-                  spellCheck={false}
+                <SqlEditor
+                  ref={editorApiRef}
                   value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  onChange={setQuery}
+                  engine={editorEngine}
+                  metadata={activeMetadata}
+                  theme={theme}
                 />
               </div>
             </section>

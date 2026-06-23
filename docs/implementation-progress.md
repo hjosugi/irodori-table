@@ -128,6 +128,9 @@ Highlights:
 
 ## Coordination
 
+- **Claude ⇄ Codex split** is tracked in `docs/agent-coordination.md` (file ownership +
+  message log). Editor-stack decision is `docs/adr/0001-editor-stack.md` (CodeMirror 6 +
+  tree-sitter semantic layer + `sql-formatter`).
 - **typebridge** (Rust→TypeScript type bridge) is a sibling project at
   `/mnt/data/workspace/typebridge`, wired as a dev-dependency; the
   `export_typescript_bindings` test renders the desktop TS boundary through it. See
