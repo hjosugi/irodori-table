@@ -31,6 +31,18 @@ import {
 } from "lucide-react";
 import { runQueryStream } from "./db-stream";
 import {
+  commandCatalog,
+  effectiveKeymap,
+  eventToChord,
+  findConflicts,
+  formatChord,
+  isBareChord,
+  type Keymap,
+  loadOverrides,
+  matchesChord,
+  saveOverrides,
+} from "./keybindings";
+import {
   dbApplyEdits,
   dbCancel,
   dbConnect,
@@ -119,14 +131,6 @@ const completions = [
   { label: "customers.name", detail: "text, indexed" },
   { label: "recent_revenue", detail: "view, refreshed 2m ago" },
   { label: "date_trunc('day', ...)", detail: "PostgreSQL function" },
-];
-
-const commands = [
-  "Run current statement",
-  "Open anything",
-  "Toggle Vim mode",
-  "Split editor right",
-  "Show explain plan",
 ];
 
 const engineOptions: Array<{ value: DbEngine; label: string }> = [
@@ -698,6 +702,12 @@ function App() {
   );
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
+  // Remappable keybindings: defaults merged with user overrides (localStorage).
+  const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
+  const [recordingCommand, setRecordingCommand] = useState<string | null>(null);
+  // Command palette (Ctrl/Cmd+Shift+P).
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
@@ -1061,6 +1071,104 @@ function App() {
     } finally {
       setCommitting(false);
     }
+  }
+
+  // Run a command by id (the keybinding handler and the Commands list share this).
+  function runCommand(id: string) {
+    switch (id) {
+      case "palette.open":
+        setPaletteQuery("");
+        setPaletteOpen(true);
+        break;
+      case "query.run":
+        void runQuery();
+        break;
+      case "query.cancel":
+        void cancelQuery();
+        break;
+      case "editor.focus":
+        editorRef.current?.focus();
+        break;
+      case "result.export":
+        exportCsv();
+        break;
+      case "edit.toggle":
+        setEditMode((mode) => !mode);
+        break;
+      case "edit.addRow":
+        addNewRow();
+        break;
+      case "edit.commit":
+        void commitEdits();
+        break;
+    }
+  }
+
+  const keymap = effectiveKeymap(keymapOverrides);
+  const keymapConflicts = findConflicts(keymap);
+  const paletteResults = commandCatalog.filter((command) =>
+    `${command.title} ${command.category}`
+      .toLowerCase()
+      .includes(paletteQuery.trim().toLowerCase()),
+  );
+  // Keep the keydown listener stable while reading the latest state via refs.
+  const keymapRef = useRef(keymap);
+  keymapRef.current = keymap;
+  const runCommandRef = useRef(runCommand);
+  runCommandRef.current = runCommand;
+  const recordingRef = useRef(recordingCommand);
+  recordingRef.current = recordingCommand;
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      // Recording a rebind: the next non-modifier key becomes the new chord.
+      const recording = recordingRef.current;
+      if (recording) {
+        const chord = eventToChord(event);
+        if (!chord) {
+          return;
+        }
+        event.preventDefault();
+        setKeymapOverrides((prev) => {
+          const next = { ...prev, [recording]: chord };
+          saveOverrides(next);
+          return next;
+        });
+        setRecordingCommand(null);
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const typing =
+        !!target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      const map = keymapRef.current;
+      for (const meta of commandCatalog) {
+        const chord = map[meta.id];
+        if (!chord || !matchesChord(event, chord)) {
+          continue;
+        }
+        // A bare key (no Mod/Ctrl/Alt) must not hijack typing in a field.
+        if (typing && isBareChord(chord)) {
+          continue;
+        }
+        event.preventDefault();
+        runCommandRef.current(meta.id);
+        return;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  function resetKeybinding(commandId: string) {
+    setKeymapOverrides((prev) => {
+      const next = { ...prev };
+      delete next[commandId];
+      saveOverrides(next);
+      return next;
+    });
   }
 
   const resultSummary = result
@@ -1862,22 +1970,55 @@ function App() {
               </section>
               <section>
                 <div className="section-heading">
-                  <span>Commands</span>
+                  <span>Keybindings</span>
                   <Layers3 size={14} />
                 </div>
                 <div className="command-list">
-                  {commands.map((command) => (
-                    <button
-                      className="command-item"
-                      key={command}
-                      type="button"
-                      onClick={
-                        command === "Run current statement" ? runQuery : undefined
-                      }
-                    >
-                      {command}
-                    </button>
-                  ))}
+                  {commandCatalog.map((command) => {
+                    const chord = keymap[command.id];
+                    const conflicted = Object.values(keymapConflicts).some((ids) =>
+                      ids.includes(command.id),
+                    );
+                    const recording = recordingCommand === command.id;
+                    return (
+                      <div className="command-item" key={command.id}>
+                        <button
+                          className="command-run"
+                          type="button"
+                          onClick={() => runCommand(command.id)}
+                          title={`Run: ${command.title}`}
+                        >
+                          {command.title}
+                        </button>
+                        <button
+                          className={`command-chord${conflicted ? " conflict" : ""}`}
+                          type="button"
+                          title={
+                            recording
+                              ? "Press the new shortcut…"
+                              : conflicted
+                                ? "Shortcut conflict — click to rebind"
+                                : "Click to rebind"
+                          }
+                          onClick={() =>
+                            setRecordingCommand(recording ? null : command.id)
+                          }
+                        >
+                          {recording ? "Press keys…" : chord ? formatChord(chord) : "unset"}
+                        </button>
+                        {keymapOverrides[command.id] ? (
+                          <button
+                            className="command-reset"
+                            type="button"
+                            title="Reset to default"
+                            onClick={() => resetKeybinding(command.id)}
+                          >
+                            ↺
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             </aside>
@@ -2075,6 +2216,63 @@ function App() {
         <span>{query.split("\n").length} lines</span>
         <span>{running ? "query running" : "idle"}</span>
       </footer>
+
+      {paletteOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setPaletteOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="palette"
+            role="dialog"
+            aria-label="Command palette"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              className="palette-input"
+              autoFocus
+              placeholder="Type a command…"
+              value={paletteQuery}
+              onChange={(event) => setPaletteQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setPaletteOpen(false);
+                } else if (event.key === "Enter") {
+                  const first = paletteResults[0];
+                  if (first) {
+                    setPaletteOpen(false);
+                    runCommand(first.id);
+                  }
+                }
+              }}
+            />
+            <div className="palette-list">
+              {paletteResults.length > 0 ? (
+                paletteResults.map((command) => (
+                  <button
+                    key={command.id}
+                    className="palette-item"
+                    type="button"
+                    onClick={() => {
+                      setPaletteOpen(false);
+                      runCommand(command.id);
+                    }}
+                  >
+                    <span>{command.title}</span>
+                    <small>{command.category}</small>
+                    {keymap[command.id] ? (
+                      <kbd>{formatChord(keymap[command.id])}</kbd>
+                    ) : null}
+                  </button>
+                ))
+              ) : (
+                <div className="palette-empty">No matching commands</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

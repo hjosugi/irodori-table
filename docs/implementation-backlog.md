@@ -161,9 +161,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P0
 
-### SHELL-002 — Command palette shell
+### SHELL-002 — Command palette shell ✅ (first pass)
 - **Goal:** A keyboard-first command palette present from day one.
 - **Done when:** palette opens via shortcut, lists registered commands, runs a no-op command; commands come from a registry.
+- **Done:** `src/keybindings.ts` holds the command catalog; the palette opens on `Mod+Shift+P` (VS Code's "Show All Commands"), filters the registry as you type, and runs the selected command (Enter = top match, Esc closes). Real commands are wired (run/cancel/focus editor/export/edit-mode/add-row/commit).
 - **Depends on:** SHELL-001
 - **Size:** M · **Priority:** P0
 
@@ -405,9 +406,11 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EDIT-001, THEME-001
 - **Size:** M · **Priority:** P0
 
-### EDIT-003 — Keybinding resolver + scopes
+### EDIT-003 — Keybinding resolver + scopes 🚧 (resolver + remap done)
 - **Goal:** Fully remappable shortcuts.
 - **Done when:** bindings resolve per context scope, detect conflicts, and are editable; a default map ships; changes persist.
+- **Done:** `src/keybindings.ts` ships a VS Code-flavored default keymap (`Mod` = Cmd on macOS / Ctrl elsewhere), a chord parser/matcher (platform-aware), conflict detection, and localStorage-persisted per-command overrides merged over the defaults. A global `keydown` resolver runs the matched command (and won't hijack plain typing in a field). The sidebar lists every command with its shortcut; click the chord to **rebind** (records the next keystroke), conflicts are flagged, and `↺` resets to default.
+- **Remaining:** per-context scopes (editor vs grid vs global), multi-key chord sequences, and the preset maps (EDIT-004).
 - **Depends on:** SHELL-002
 - **Size:** L · **Priority:** P0
 
