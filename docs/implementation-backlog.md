@@ -518,12 +518,14 @@ top to bottom within an epic unless a dependency says otherwise.
 ### CMPL-001 — Metadata cache with invalidation
 - **Goal:** Fast, permissions-aware introspection.
 - **Done when:** schema/object metadata caches with background refresh and invalidation; respects permissions; shared by completion and hover.
+- **Landed:** `irodori-completion::MetadataCache` stores per-connection snapshots, schema/object/column/routine metadata, permission flags, foreign keys, stale TTLs, invalidation, and deduplicated refresh requests. `ensure_fresh` lets completion/hover keep using stale metadata while queuing background refresh.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P0
 
 ### CMPL-002 — Baseline completion (tables, columns, schemas, keywords)
 - **Goal:** Deterministic offline completion.
 - **Done when:** completion suggests tables, columns, schemas, and keywords with no AI; ranking is sensible; works offline.
+- **Landed:** `CompletionEngine` produces permission-aware schema/table/view/column/keyword items from `MetadataCache`, with deterministic ranking, prefix filtering, limits, and keyword casing. Dialect keyword seeding can use `irodori-sql` dialect metadata.
 - **Depends on:** CMPL-001, EDIT-002
 - **Size:** L · **Priority:** P0
 
@@ -536,18 +538,21 @@ top to bottom within an epic unless a dependency says otherwise.
 ### CMPL-004 — Functions, procedures, signatures, overloads
 - **Goal:** Routine-aware help.
 - **Done when:** function/procedure completion includes signatures, overload selection, and parameter hints per dialect.
+- **Landed:** routine metadata carries function/procedure kind, signature, return type, and permissions; completion emits function/procedure items with signature detail and keeps overload rows distinct by detail.
 - **Depends on:** CMPL-003, KNOW-004
 - **Size:** M · **Priority:** P1
 
 ### CMPL-005 — Join suggestions + generated column lists
 - **Goal:** High-leverage SQL authoring help.
 - **Done when:** completion proposes join conditions from keys and expands `*` to a generated column list.
+- **Landed:** `ForeignKeyMetadata`, `CompletionEngine::suggest_joins`, and `CompletionEngine::expand_star` provide the core deterministic FK join-condition and visible-column-list helpers.
 - **Depends on:** CMPL-003
 - **Size:** M · **Priority:** P1
 
 ### CMPL-006 — Dialect-aware ranking, insert behavior, keyword casing
 - **Goal:** Daily-driver polish.
 - **Done when:** ranking and insert text adapt per dialect; optional keyword casing applies; settings control behavior.
+- **Landed:** dialect keyword lists can seed completion (`CompletionEngine::for_dialect`), and keyword insert text supports preserve/upper/lower casing. Full per-dialect ranking and setting plumbing remain.
 - **Depends on:** CMPL-002, KNOW-004
 - **Size:** M · **Priority:** P1
 

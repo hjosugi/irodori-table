@@ -1092,6 +1092,12 @@ function App() {
       case "editor.focus":
         editorApiRef.current?.focus();
         break;
+      case "editor.format":
+        formatQuery();
+        break;
+      case "editor.comment.toggle":
+        editorApiRef.current?.toggleComment();
+        break;
       case "result.export":
         exportCsv();
         break;
@@ -1639,9 +1645,18 @@ function App() {
           type="button"
           title="Format SQL (engine dialect)"
           aria-label="Format SQL"
-          onClick={formatQuery}
+          onClick={() => runCommand("editor.format")}
         >
           <AlignLeft size={15} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          title="Toggle SQL comment"
+          aria-label="Toggle SQL comment"
+          onClick={() => runCommand("editor.comment.toggle")}
+        >
+          <TerminalSquare size={15} />
         </button>
         <button
           className="icon-button"

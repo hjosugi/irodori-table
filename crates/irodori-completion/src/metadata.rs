@@ -285,6 +285,10 @@ pub struct ObjectMetadata {
     pub columns: Vec<ColumnMetadata>,
     pub indexes: Vec<IndexMetadata>,
     pub foreign_keys: Vec<ForeignKeyMetadata>,
+    pub comment: Option<String>,
+    pub ddl: Option<String>,
+    pub row_estimate: Option<u64>,
+    pub sample: Option<QuickSample>,
 }
 
 impl ObjectMetadata {
@@ -296,6 +300,10 @@ impl ObjectMetadata {
             columns: Vec::new(),
             indexes: Vec::new(),
             foreign_keys: Vec::new(),
+            comment: None,
+            ddl: None,
+            row_estimate: None,
+            sample: None,
         }
     }
 
@@ -307,6 +315,10 @@ impl ObjectMetadata {
             columns: Vec::new(),
             indexes: Vec::new(),
             foreign_keys: Vec::new(),
+            comment: None,
+            ddl: None,
+            row_estimate: None,
+            sample: None,
         }
     }
 
@@ -331,6 +343,8 @@ pub struct ColumnMetadata {
     pub nullable: bool,
     pub ordinal: u32,
     pub permissions: MetadataPermissions,
+    pub default_value: Option<String>,
+    pub comment: Option<String>,
 }
 
 impl ColumnMetadata {
@@ -346,6 +360,25 @@ impl ColumnMetadata {
             nullable,
             ordinal,
             permissions: MetadataPermissions::readable(),
+            default_value: None,
+            comment: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuickSample {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+    pub truncated: bool,
+}
+
+impl QuickSample {
+    pub fn new(columns: Vec<String>, rows: Vec<Vec<String>>) -> Self {
+        Self {
+            columns,
+            rows,
+            truncated: false,
         }
     }
 }

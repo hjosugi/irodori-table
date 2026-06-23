@@ -11,7 +11,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
 import { Compartment, EditorState } from "@codemirror/state";
-import { indentWithTab } from "@codemirror/commands";
+import { indentWithTab, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
 import { sql } from "@codemirror/lang-sql";
@@ -28,6 +28,8 @@ export interface SqlEditorHandle {
    * Returns `null` on success, or an error message when formatting fails.
    */
   format: () => string | null;
+  /** Toggle SQL line/block comments around the current selection. */
+  toggleComment: () => boolean;
   focus: () => void;
 }
 
@@ -148,6 +150,11 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         } catch (error) {
           return error instanceof Error ? error.message : String(error);
         }
+      },
+      toggleComment() {
+        const view = viewRef.current;
+        if (!view) return false;
+        return toggleComment(view);
       },
       focus() {
         viewRef.current?.focus();
