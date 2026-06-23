@@ -31,16 +31,22 @@ import {
 } from "lucide-react";
 import { runQueryStream } from "./db-stream";
 import {
+  dbApplyEdits,
   dbCancel,
   dbConnect,
   dbDisconnect,
   dbListObjects,
+  type CellValue,
   type ConnectionInfo,
   type ConnectionProfile,
   type DatabaseMetadata,
   type DbEngine,
   type DbObjectMetadata,
   type QueryResult,
+  type RowDelete,
+  type RowInsert,
+  type RowUpdate,
+  type TableEdits,
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
@@ -253,6 +259,33 @@ function formatCell(value: unknown) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+// Sort comparator for grid cells: numeric when both sides parse as finite
+// numbers, otherwise a locale-aware string compare. "NULL" sorts first.
+function compareCells(a: string, b: string) {
+  if (a === b) {
+    return 0;
+  }
+  if (a === "NULL") {
+    return -1;
+  }
+  if (b === "NULL") {
+    return 1;
+  }
+  const na = Number(a);
+  const nb = Number(b);
+  if (a.trim() !== "" && b.trim() !== "" && !Number.isNaN(na) && !Number.isNaN(nb)) {
+    return na - nb;
+  }
+  return a.localeCompare(b);
+}
+
+// Parse pasted clipboard text (TSV, or CSV as a fallback) into a grid of strings.
+function parseClipboardTable(text: string): string[][] {
+  const rows = text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
+  const delimiter = rows.some((row) => row.includes("\t")) ? "\t" : ",";
+  return rows.map((row) => row.split(delimiter));
 }
 
 function toCount(value: bigint | number) {
@@ -650,6 +683,21 @@ function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
+  // SQL of the last run, used to infer the editable target table.
+  const [lastRunSql, setLastRunSql] = useState<string>("");
+  // Staged (non-immediate) result editing: changes accumulate until Commit.
+  const [editMode, setEditMode] = useState(false);
+  const [cellEdits, setCellEdits] = useState<Map<string, string>>(new Map());
+  const [newRows, setNewRows] = useState<string[][]>([]);
+  const [editingCell, setEditingCell] = useState<{
+    key: string;
+    col: number;
+  } | null>(null);
+  const [sort, setSort] = useState<{ col: number; dir: "asc" | "desc" } | null>(
+    null,
+  );
+  const [committing, setCommitting] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
@@ -761,16 +809,56 @@ function App() {
     "lifetime_value",
     "last_order_at",
   ];
-  const resultCells =
-    result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
   const gridTemplateColumns = resultColumns
     .map(() => "minmax(140px, 1fr)")
     .join(" ");
 
+  // Build the display rows: original rows (with any staged cell edits overlaid)
+  // followed by staged new rows. `key` ties a display row back to its origin so an
+  // edit maps to the right original row / new-row index regardless of sorting.
+  const baseCells = result?.rows.map((row) => row.map(formatCell)) ?? resultRows;
+  const displayRows: {
+    key: string;
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number };
+    cells: string[];
+    state: "clean" | "edited" | "new";
+  }[] = [];
+  baseCells.forEach((cells, index) => {
+    let state: "clean" | "edited" = "clean";
+    const overlaid = cells.map((cell, col) => {
+      const edit = cellEdits.get(`o${index}:${col}`);
+      if (edit !== undefined) {
+        state = "edited";
+        return edit;
+      }
+      return cell;
+    });
+    displayRows.push({
+      key: `o${index}`,
+      origin: { kind: "orig", index },
+      cells: overlaid,
+      state,
+    });
+  });
+  newRows.forEach((cells, index) => {
+    displayRows.push({
+      key: `n${index}`,
+      origin: { kind: "new", index },
+      cells,
+      state: "new",
+    });
+  });
+  if (sort) {
+    const { col, dir } = sort;
+    displayRows.sort(
+      (a, b) => compareCells(a.cells[col] ?? "", b.cells[col] ?? "") * (dir === "asc" ? 1 : -1),
+    );
+  }
+
   // Virtualize the result grid: render only the rows in (and just around) the
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
   // ~30 DOM rows instead of 10k, so streaming stays smooth.
-  const totalRows = resultCells.length;
+  const totalRows = displayRows.length;
   const firstVisible = Math.max(
     0,
     Math.floor(gridScrollTop / GRID_ROW_HEIGHT) - GRID_OVERSCAN,
@@ -779,7 +867,8 @@ function App() {
   const lastVisible = Math.min(totalRows, firstVisible + windowSize);
   const topPad = firstVisible * GRID_ROW_HEIGHT;
   const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
-  const visibleCells = resultCells.slice(firstVisible, lastVisible);
+  const visibleRows = displayRows.slice(firstVisible, lastVisible);
+  const pendingCount = cellEdits.size + newRows.length;
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
     const top = event.currentTarget.scrollTop;
@@ -790,6 +879,188 @@ function App() {
       gridScrollRaf.current = null;
       setGridScrollTop(top);
     });
+  }
+
+  // Drop every staged edit (called on a new run and after a successful commit).
+  function resetEdits() {
+    setCellEdits(new Map());
+    setNewRows([]);
+    setEditingCell(null);
+    setCommitError(null);
+  }
+
+  function toggleSort(col: number) {
+    setSort((current) => {
+      if (!current || current.col !== col) {
+        return { col, dir: "asc" };
+      }
+      return current.dir === "asc" ? { col, dir: "desc" } : null;
+    });
+  }
+
+  // Stage a single cell's new value against its origin (an original row keeps the
+  // edit in `cellEdits`; a staged new row mutates `newRows`).
+  function setCellValue(
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+    col: number,
+    value: string,
+  ) {
+    if (origin.kind === "orig") {
+      setCellEdits((current) => {
+        const next = new Map(current);
+        const key = `o${origin.index}:${col}`;
+        const original = formatCell(result?.rows[origin.index]?.[col] ?? null);
+        if (value === original) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+        return next;
+      });
+    } else {
+      setNewRows((current) =>
+        current.map((row, index) => {
+          if (index !== origin.index) {
+            return row;
+          }
+          const next = [...row];
+          next[col] = value;
+          return next;
+        }),
+      );
+    }
+  }
+
+  function addNewRow() {
+    setNewRows((current) => [...current, resultColumns.map(() => "")]);
+    setEditMode(true);
+  }
+
+  // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
+  // and into staged new rows as needed.
+  function pasteTableAt(
+    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+    startCol: number,
+    text: string,
+  ) {
+    const block = parseClipboardTable(text);
+    if (block.length === 0) {
+      return;
+    }
+    const orderedKeys = displayRows.map((row) => row.key);
+    const startPos = orderedKeys.indexOf(`${origin.kind === "orig" ? "o" : "n"}${origin.index}`);
+    block.forEach((cells, rowOffset) => {
+      const targetKey = orderedKeys[startPos + rowOffset];
+      const target = targetKey
+        ? displayRows.find((row) => row.key === targetKey)?.origin
+        : undefined;
+      if (target) {
+        cells.forEach((value, colOffset) => {
+          const col = startCol + colOffset;
+          if (col < resultColumns.length) {
+            setCellValue(target, col, value);
+          }
+        });
+      } else {
+        // Past the last row: append as new rows.
+        const newRow = resultColumns.map((_, col) => {
+          const colOffset = col - startCol;
+          return colOffset >= 0 && colOffset < cells.length ? cells[colOffset] : "";
+        });
+        setNewRows((current) => [...current, newRow]);
+      }
+    });
+    setEditMode(true);
+  }
+
+  // Infer the table to write back to from the last run's `from <table>` and the
+  // key columns from its metadata (a unique index, else every result column).
+  function inferEditTarget(): {
+    schema?: string;
+    table: string;
+    keyColumns: string[];
+  } | null {
+    const match = lastRunSql.match(/\bfrom\s+([`"[\]\w.]+)/i);
+    if (!match) {
+      return null;
+    }
+    const raw = match[1].replace(/[`"[\]]/g, "");
+    const parts = raw.split(".");
+    const table = parts[parts.length - 1];
+    const schema = parts.length > 1 ? parts[parts.length - 2] : undefined;
+    if (!table) {
+      return null;
+    }
+    const meta = metadataByConnection[activeConnectionId];
+    const object = meta?.schemas
+      .flatMap((s) => s.objects)
+      .find((o) => o.name === table && (schema ? o.schema === schema : true));
+    const unique = object?.indexes.find((index) => index.unique);
+    const keyColumns =
+      unique && unique.columns.every((c) => resultColumns.includes(c))
+        ? unique.columns
+        : resultColumns;
+    return { schema, table, keyColumns };
+  }
+
+  function originalCell(rowIndex: number, column: string): CellValue {
+    const col = resultColumns.indexOf(column);
+    return { column, value: result?.rows[rowIndex]?.[col] ?? null };
+  }
+
+  async function commitEdits() {
+    const target = inferEditTarget();
+    if (!target) {
+      setCommitError("could not detect an editable target table from the query");
+      return;
+    }
+    const updates: RowUpdate[] = [];
+    const editedByRow = new Map<number, number[]>();
+    for (const key of cellEdits.keys()) {
+      const [rowPart, colPart] = key.split(":");
+      const rowIndex = Number(rowPart.slice(1));
+      const list = editedByRow.get(rowIndex) ?? [];
+      list.push(Number(colPart));
+      editedByRow.set(rowIndex, list);
+    }
+    for (const [rowIndex, cols] of editedByRow) {
+      updates.push({
+        keys: target.keyColumns.map((column) => originalCell(rowIndex, column)),
+        set: cols.map((col) => ({
+          column: resultColumns[col],
+          value: cellEdits.get(`o${rowIndex}:${col}`) ?? null,
+        })),
+      });
+    }
+    const inserts: RowInsert[] = newRows
+      .filter((row) => row.some((cell) => cell !== ""))
+      .map((row) => ({
+        values: resultColumns
+          .map((column, col) => ({ column, value: row[col] }))
+          .filter((cell) => cell.value !== ""),
+      }));
+    const deletes: RowDelete[] = [];
+    const edits: TableEdits = {
+      schema: target.schema,
+      table: target.table,
+      updates,
+      inserts,
+      deletes,
+    };
+
+    setCommitting(true);
+    setCommitError(null);
+    try {
+      await dbApplyEdits(activeConnectionId, edits);
+      resetEdits();
+      setEditMode(false);
+      // Re-run the last query so the grid shows the committed state.
+      await runQuery();
+    } catch (error) {
+      setCommitError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCommitting(false);
+    }
   }
 
   const resultSummary = result
@@ -995,7 +1266,10 @@ function App() {
     }
     setRunning(true);
     setQueryError(null);
-    // Start a fresh result at the top of the grid.
+    setLastRunSql(sqlToRun);
+    // A new run invalidates any staged edits and resets the scroll/sort view.
+    resetEdits();
+    setSort(null);
     if (gridRef.current) {
       gridRef.current.scrollTop = 0;
     }
@@ -1613,7 +1887,13 @@ function App() {
             <div className="results-header">
               <div>
                 <strong>Result 1</strong>
-                <span>{queryError ? "failed" : resultSummary}</span>
+                <span>
+                  {queryError
+                    ? "failed"
+                    : pendingCount > 0
+                      ? `${resultSummary} · ${pendingCount} pending`
+                      : resultSummary}
+                </span>
               </div>
               <div className="results-actions">
                 <button
@@ -1625,11 +1905,53 @@ function App() {
                   <Download size={13} />
                   <span>CSV</span>
                 </button>
-                <button className="text-button" type="button">
-                  Edit Data
-                </button>
+                {editMode ? (
+                  <>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={!result}
+                      onClick={addNewRow}
+                    >
+                      + Row
+                    </button>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={pendingCount === 0 || committing}
+                      onClick={() => void commitEdits()}
+                    >
+                      {committing ? "Committing…" : `Commit${pendingCount ? ` (${pendingCount})` : ""}`}
+                    </button>
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={() => {
+                        resetEdits();
+                        setEditMode(false);
+                      }}
+                    >
+                      Discard
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={!result}
+                    onClick={() => setEditMode(true)}
+                  >
+                    Edit Data
+                  </button>
+                )}
               </div>
             </div>
+            {commitError ? (
+              <div className="result-error" role="alert">
+                <AlertTriangle size={16} />
+                <span>{commitError}</span>
+              </div>
+            ) : null}
             {queryError ? (
               <div className="result-error" role="alert">
                 <AlertTriangle size={16} />
@@ -1648,9 +1970,15 @@ function App() {
                 role="row"
                 style={{ gridTemplateColumns }}
               >
-                {resultColumns.map((column) => (
-                  <span role="columnheader" key={column}>
+                {resultColumns.map((column, colIndex) => (
+                  <span
+                    role="columnheader"
+                    key={column}
+                    className="sortable"
+                    onClick={() => toggleSort(colIndex)}
+                  >
                     {column}
+                    {sort?.col === colIndex ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </span>
                 ))}
               </div>
@@ -1661,23 +1989,72 @@ function App() {
                   aria-hidden="true"
                 />
               ) : null}
-              {visibleCells.map((row, index) => {
-                const rowIndex = firstVisible + index;
-                return (
-                  <div
-                    className="grid-row"
-                    role="row"
-                    key={rowIndex}
-                    style={{ gridTemplateColumns }}
-                  >
-                    {row.map((cell, cellIndex) => (
-                      <span role="cell" key={`${cellIndex}-${cell}`}>
-                        {cell}
+              {visibleRows.map((row) => (
+                <div
+                  className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}`}
+                  role="row"
+                  key={row.key}
+                  style={{ gridTemplateColumns }}
+                >
+                  {row.cells.map((cell, cellIndex) => {
+                    const isEditing =
+                      editingCell?.key === row.key && editingCell.col === cellIndex;
+                    return (
+                      <span
+                        role="cell"
+                        key={cellIndex}
+                        className={
+                          cellEdits.has(`o${row.origin.kind === "orig" ? row.origin.index : -1}:${cellIndex}`)
+                            ? "cell-edited"
+                            : undefined
+                        }
+                        onDoubleClick={() => {
+                          if (editMode) {
+                            setEditingCell({ key: row.key, col: cellIndex });
+                          }
+                        }}
+                        onPaste={(event) => {
+                          if (!editMode) {
+                            return;
+                          }
+                          event.preventDefault();
+                          pasteTableAt(
+                            row.origin,
+                            cellIndex,
+                            event.clipboardData.getData("text"),
+                          );
+                        }}
+                      >
+                        {isEditing ? (
+                          <input
+                            className="cell-input"
+                            autoFocus
+                            defaultValue={cell}
+                            onBlur={(event) => {
+                              setCellValue(row.origin, cellIndex, event.target.value);
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                setCellValue(
+                                  row.origin,
+                                  cellIndex,
+                                  event.currentTarget.value,
+                                );
+                                setEditingCell(null);
+                              } else if (event.key === "Escape") {
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          cell
+                        )}
                       </span>
-                    ))}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              ))}
               {bottomPad > 0 ? (
                 <div
                   className="grid-pad"

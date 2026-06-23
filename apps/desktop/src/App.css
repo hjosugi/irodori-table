@@ -850,6 +850,34 @@ button {
   min-width: 670px;
 }
 
+.grid-row.header .sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Staged-edit highlighting. */
+.grid-row.row-new {
+  background: #eaf6ec;
+}
+
+.grid-row.row-edited {
+  background: #fcf6e3;
+}
+
+.grid-row span.cell-edited {
+  font-weight: 700;
+  color: #8a6d00;
+}
+
+.cell-input {
+  width: 100%;
+  margin: -5px -9px;
+  padding: 5px 9px;
+  border: 1px solid #6f8f6f;
+  font: inherit;
+  background: #fff;
+}
+
 .grid-row.header {
   position: sticky;
   top: 0;
