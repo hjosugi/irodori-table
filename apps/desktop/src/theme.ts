@@ -6,8 +6,6 @@
 // rather than the app consuming TextMate scopes directly.
 
 import { EditorView } from "@codemirror/view";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
 import type { Extension } from "@codemirror/state";
 
 export type ThemeKind = "light" | "dark";
@@ -62,6 +60,8 @@ export interface IrodoriSyntaxColors {
   punctuation: string;
   bool: string;
 }
+
+export type SyntaxTokenRole = keyof IrodoriSyntaxColors;
 
 export interface IrodoriTheme {
   name: string;
@@ -209,9 +209,9 @@ export function cssVariables(theme: IrodoriTheme): Record<string, string> {
   };
 }
 
-/** CodeMirror extensions (chrome + syntax highlight) for the editor, from the model. */
+/** CodeMirror chrome extension for the editor, from the theme model. */
 export function editorThemeExtensions(theme: IrodoriTheme): Extension {
-  const { ui, syntax } = theme;
+  const { ui } = theme;
   const chrome = EditorView.theme(
     {
       "&": { color: ui.text, backgroundColor: ui.editorBg, height: "100%" },
@@ -250,33 +250,5 @@ export function editorThemeExtensions(theme: IrodoriTheme): Extension {
     { dark: theme.kind === "dark" },
   );
 
-  const highlight = syntaxHighlighting(
-    HighlightStyle.define([
-      { tag: t.keyword, color: syntax.keyword },
-      { tag: t.operatorKeyword, color: syntax.keyword },
-      { tag: [t.string, t.special(t.string)], color: syntax.string },
-      { tag: t.number, color: syntax.number },
-      { tag: [t.bool, t.null, t.atom], color: syntax.bool },
-      {
-        tag: [t.comment, t.lineComment, t.blockComment],
-        color: syntax.comment,
-        fontStyle: "italic",
-      },
-      { tag: [t.typeName, t.className], color: syntax.type },
-      { tag: t.propertyName, color: syntax.property },
-      { tag: [t.name, t.variableName], color: syntax.name },
-      {
-        tag: [t.function(t.variableName), t.function(t.propertyName)],
-        color: syntax.function,
-      },
-      { tag: t.operator, color: syntax.operator },
-      {
-        tag: [t.bracket, t.paren, t.brace, t.squareBracket],
-        color: syntax.bracket,
-      },
-      { tag: [t.punctuation, t.separator], color: syntax.punctuation },
-    ]),
-  );
-
-  return [chrome, highlight];
+  return [chrome];
 }

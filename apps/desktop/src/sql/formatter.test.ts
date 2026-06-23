@@ -5,7 +5,7 @@ describe("SQL formatter hook", () => {
   it("formats through the configured sql-formatter hook", () => {
     expect(
       formatSqlDocument("select * from customers", "postgres", "sql-formatter"),
-    ).toBe("SELECT\n  *\nFROM\n  customers");
+    ).toBe("select\n  *\nfrom\n  customers");
   });
 
   it("can disable formatting through configuration", () => {

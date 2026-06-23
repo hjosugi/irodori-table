@@ -215,6 +215,7 @@ mod typegen {
             .decl(&decl::<db::DatabaseMetadata>())
             .decl(&decl::<db::SchemaMetadata>())
             .decl(&decl::<db::ForeignKey>())
+            .decl(&decl::<db::DbQuickSample>())
             .decl(&decl::<db::DbObjectMetadata>())
             .decl(&decl::<db::DbObjectMetadataKind>())
             .decl(&decl::<db::ColumnMetadata>())

@@ -867,6 +867,33 @@ button {
   min-width: 0;
 }
 
+.results-title {
+  min-width: 0;
+}
+
+.result-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.result-tabs button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.result-tabs button.active {
+  border-color: var(--border);
+  background: #ffffff;
+  color: var(--text);
+}
+
 .results-header strong {
   font-size: 13px;
 }
@@ -1308,7 +1335,8 @@ button {
 }
 
 .app-shell[data-theme="dark"] .text-button,
-.app-shell[data-theme="dark"] .mode-toggle button.active {
+.app-shell[data-theme="dark"] .mode-toggle button.active,
+.app-shell[data-theme="dark"] .result-tabs button.active {
   color: #9cdcfe;
   background: #1f3138;
 }

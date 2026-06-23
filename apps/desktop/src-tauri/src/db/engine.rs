@@ -7,8 +7,7 @@
 //! off the same registry.
 
 use irodori_sql::dialect::{
-    MySqlDialect, OracleDialect, PostgresDialect, SnowflakeDialect, SqlDialect, SqlServerDialect,
-    SqliteDialect,
+    MySqlDialect, OracleDialect, PostgresDialect, SqlDialect, SqlServerDialect, SqliteDialect,
 };
 use irodori_sql::metamodel::{
     InformationSchemaMetamodel, MySqlInformationSchema, PostgresInformationSchema,
@@ -161,7 +160,6 @@ impl DbEngine {
             Wire::Sqlite | Wire::DuckDb => Box::new(SqliteDialect),
             Wire::SqlServer => Box::new(SqlServerDialect),
             Wire::Oracle => Box::new(OracleDialect),
-            Wire::Pinecone => Box::new(SnowflakeDialect),
             Wire::Postgres
             | Wire::Mongo
             | Wire::ClickHouse
@@ -169,7 +167,8 @@ impl DbEngine {
             | Wire::Memgraph
             | Wire::InfluxDb
             | Wire::Qdrant
-            | Wire::Milvus => Box::new(PostgresDialect),
+            | Wire::Milvus
+            | Wire::Pinecone => Box::new(PostgresDialect),
         }
     }
 
@@ -302,6 +301,28 @@ mod tests {
             assert_eq!(engine.wire(), *wire, "{engine:?} wire");
             assert_eq!(engine.default_port(), *port, "{engine:?} default port");
         }
+    }
+
+    #[test]
+    fn engine_registry_exposes_dialect_and_metamodel() {
+        assert_eq!(DbEngine::Mysql.dialect().quote_identifier("order"), "`order`");
+        assert_eq!(
+            DbEngine::SqlServer
+                .dialect()
+                .page_query("select * from users", irodori_sql::dialect::Page::first(10)),
+            "select * from users ORDER BY (SELECT 0) OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY"
+        );
+
+        assert!(DbEngine::Postgres
+            .metamodel()
+            .list_objects(None)
+            .sql
+            .contains("pg_catalog"));
+        assert!(DbEngine::Sqlite
+            .metamodel()
+            .list_objects(None)
+            .sql
+            .contains("sqlite_schema"));
     }
 
     #[test]

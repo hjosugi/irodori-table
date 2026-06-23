@@ -161,6 +161,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
                     default_value: row
                         .try_get::<Option<String>, _>("dflt_value")
                         .unwrap_or(None),
+                    comment: None,
                 });
             }
             primary_key.sort_by_key(|(position, _)| *position);

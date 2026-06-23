@@ -157,6 +157,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                     .try_get::<i32, _>("ordinal_position")
                     .unwrap_or_default(),
                 default_value: row.try_get("column_default").ok(),
+                comment: None,
             });
         }
     }
@@ -278,6 +279,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: false,
                         ordinal: 1,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "port".into(),
@@ -285,6 +287,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: false,
                         ordinal: 2,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "num_connections".into(),
@@ -292,6 +295,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 3,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "node_type".into(),
@@ -299,6 +303,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 4,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "cloud".into(),
@@ -306,6 +311,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 5,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "region".into(),
@@ -313,6 +319,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 6,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "zone".into(),
@@ -320,6 +327,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 7,
                         default_value: None,
+                        comment: None,
                     },
                 ];
             }
@@ -342,6 +350,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: false,
                         ordinal: 1,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "address".into(),
@@ -349,6 +358,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: false,
                         ordinal: 2,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "sql_address".into(),
@@ -356,6 +366,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 3,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "is_live".into(),
@@ -363,6 +374,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: false,
                         ordinal: 4,
                         default_value: None,
+                        comment: None,
                     },
                     ColumnMetadata {
                         name: "locality".into(),
@@ -370,6 +382,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                         nullable: true,
                         ordinal: 5,
                         default_value: None,
+                        comment: None,
                     },
                 ];
             }

@@ -33,8 +33,7 @@ use crate::security::SecurityState;
 use irodori_completion::metadata::{
     ColumnMetadata as CmpColumnMetadata, ForeignKeyMetadata as CmpForeignKeyMetadata,
     IndexMetadata as CmpIndexMetadata, MetadataCache, MetadataObjectKind as CmpMetadataObjectKind,
-    MetadataPermissions as CmpMetadataPermissions, MetadataSnapshot,
-    ObjectMetadata as CmpObjectMetadata, QuickSample as CmpQuickSample,
+    MetadataSnapshot, ObjectMetadata as CmpObjectMetadata, QuickSample as CmpQuickSample,
     RoutineKind as CmpRoutineKind, RoutineMetadata as CmpRoutineMetadata,
     SchemaMetadata as CmpSchemaMetadata,
 };
@@ -530,6 +529,18 @@ pub struct DbObjectMetadata {
     pub schema: String,
     pub name: String,
     pub kind: DbObjectMetadataKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub comment: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub ddl: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub row_estimate: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub sample: Option<DbQuickSample>,
     pub columns: Vec<ColumnMetadata>,
     pub indexes: Vec<IndexMetadata>,
     /// Primary-key column names in key order (empty when there is no PK). Used for
@@ -551,6 +562,15 @@ pub struct ForeignKey {
     pub references_schema: Option<String>,
     pub references_table: String,
     pub references_columns: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DbQuickSample {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+    pub truncated: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -575,6 +595,9 @@ pub struct ColumnMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub default_value: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -939,6 +962,14 @@ fn convert_metadata_to_snapshot(
                     } else {
                         CmpObjectMetadata::table(&obj.name)
                     };
+                    cmp_obj.comment = obj.comment.clone();
+                    cmp_obj.ddl = obj.ddl.clone();
+                    cmp_obj.row_estimate = obj.row_estimate;
+                    cmp_obj.sample = obj.sample.as_ref().map(|sample| CmpQuickSample {
+                        columns: sample.columns.clone(),
+                        rows: sample.rows.clone(),
+                        truncated: sample.truncated,
+                    });
                     for col in &obj.columns {
                         let mut cmp_col = CmpColumnMetadata::new(
                             &col.name,
@@ -947,6 +978,7 @@ fn convert_metadata_to_snapshot(
                             col.ordinal as u32,
                         );
                         cmp_col.default_value = col.default_value.clone();
+                        cmp_col.comment = col.comment.clone();
                         cmp_obj.columns.push(cmp_col);
                     }
                     for idx in &obj.indexes {
@@ -1022,12 +1054,21 @@ fn convert_snapshot_to_metadata(snapshot: &MetadataSnapshot) -> DatabaseMetadata
                     nullable: col.nullable,
                     ordinal: col.ordinal as i32,
                     default_value: col.default_value.clone(),
+                    comment: col.comment.clone(),
                 });
             }
             objects.push(DbObjectMetadata {
                 schema: s.name.clone(),
                 name: obj.name.clone(),
                 kind,
+                comment: obj.comment.clone(),
+                ddl: obj.ddl.clone(),
+                row_estimate: obj.row_estimate,
+                sample: obj.sample.as_ref().map(|sample| DbQuickSample {
+                    columns: sample.columns.clone(),
+                    rows: sample.rows.clone(),
+                    truncated: sample.truncated,
+                }),
                 columns,
                 indexes,
                 primary_key,
@@ -1044,6 +1085,10 @@ fn convert_snapshot_to_metadata(snapshot: &MetadataSnapshot) -> DatabaseMetadata
                 schema: s.name.clone(),
                 name: routine.name.clone(),
                 kind,
+                comment: None,
+                ddl: None,
+                row_estimate: None,
+                sample: None,
                 columns: Vec::new(),
                 indexes: Vec::new(),
                 primary_key: Vec::new(),
@@ -1387,6 +1432,7 @@ pub struct DbObjectInspection {
     pub comment: Option<String>,
     pub ddl: Option<String>,
     pub row_estimate: Option<u64>,
+    pub sample: Option<DbQuickSample>,
     pub columns: Vec<DbColumnInspection>,
     pub indexes: Vec<IndexMetadata>,
     pub foreign_keys: Vec<ForeignKey>,
@@ -1430,6 +1476,11 @@ fn convert_inspection_card(card: irodori_completion::inspection::InspectionCard)
             comment: obj.comment,
             ddl: obj.ddl,
             row_estimate: obj.row_estimate,
+            sample: obj.sample.map(|sample| DbQuickSample {
+                columns: sample.columns,
+                rows: sample.rows,
+                truncated: sample.truncated,
+            }),
             columns: obj.columns.into_iter().map(convert_column_inspection).collect(),
             indexes: obj.indexes.into_iter().map(|idx| IndexMetadata {
                 name: idx.name,
@@ -1885,6 +1936,86 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn metadata_cache_integration_test() {
+        let state = DbState::default();
+        let conn_id = "cache_test".to_string();
+        
+        // 1. Establish connection to temporary sqlite db
+        connect_impl(&state, temp_sqlite_profile(&conn_id))
+            .await
+            .expect("connect");
+
+        // Give a tiny yield to let the background refresh finish populating the cache
+        tokio::time::sleep(Duration::from_millis(150)).await;
+
+        // Verify snapshot is present in the cache
+        {
+            let cache = state.metadata_cache.lock().await;
+            assert!(cache.snapshot(&conn_id).is_some());
+            assert_eq!(cache.list_schemas(&conn_id)[0].name, "main");
+        }
+
+        // 2. Clear cache manually and test list_objects_impl fetches blockingly and populates cache
+        {
+            let mut cache = state.metadata_cache.lock().await;
+            cache.invalidate_connection(&conn_id);
+            assert!(cache.snapshot(&conn_id).is_none());
+        }
+
+        // Call list_objects_impl (which will fetch blockingly and populate)
+        let db_meta = list_objects_impl(&state, conn_id.clone())
+            .await
+            .expect("list objects");
+        assert!(!db_meta.schemas.is_empty());
+
+        // Verify cache is populated again
+        {
+            let cache = state.metadata_cache.lock().await;
+            assert!(cache.snapshot(&conn_id).is_some());
+        }
+
+        // 3. Test autocomplete on the cached metadata directly via irodori_completion
+        {
+            // First create a table
+            run_query_impl(
+                &state,
+                conn_id.clone(),
+                "create table test_table (id integer primary key, name text)".into(),
+                None,
+            )
+            .await
+            .expect("create table");
+
+            // Invalidate to trigger a fresh metadata fetch in background / next load
+            let mut cache = state.metadata_cache.lock().await;
+            cache.invalidate_connection(&conn_id);
+        }
+
+        // Fetch objects blockingly to warm cache with new table
+        list_objects_impl(&state, conn_id.clone()).await.expect("list objects");
+
+        // Query autocomplete directly on cache
+        let cache = state.metadata_cache.lock().await;
+        let engine = irodori_completion::CompletionEngine::new();
+        let req = irodori_completion::CompletionRequest::new(&conn_id).with_prefix("test");
+        let items = engine.complete(&cache, &req);
+        assert!(!items.is_empty());
+        assert!(items.iter().any(|item| item.label == "test_table"));
+
+        // 4. Test hover inspection card directly on cache
+        let card = irodori_completion::inspection::inspect_object(&cache, &conn_id, "main", "test_table")
+            .expect("card present");
+        match card {
+            irodori_completion::inspection::InspectionCard::Object(obj) => {
+                assert_eq!(obj.name, "test_table");
+                assert_eq!(obj.schema, "main");
+                assert_eq!(obj.columns.len(), 2);
+            }
+            _ => panic!("expected object card"),
+        }
+    }
+
+    #[tokio::test]
     async fn cancel_signals_a_registered_query_then_is_a_noop() {
         let state = DbState::default();
         let token = CancellationToken::new();
@@ -2020,6 +2151,89 @@ mod tests {
             }
         }
         assert_eq!(delivered, 2);
+    }
+
+    #[test]
+    fn splits_sql_statements_without_cutting_literals_or_comments() {
+        assert_eq!(
+            split_sql_statements("select 1; select 2;"),
+            vec!["select 1", "select 2"]
+        );
+        assert_eq!(
+            split_sql_statements("select ';'; -- ignored ;\n select 2"),
+            vec!["select ';'", "-- ignored ;\n select 2"]
+        );
+        assert_eq!(
+            split_sql_statements("select /* ; */ 1; select $$;$$"),
+            vec!["select /* ; */ 1", "select $$;$$"]
+        );
+    }
+
+    #[tokio::test]
+    async fn sqlite_multi_statement_run_returns_result_sets() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("multi"))
+            .await
+            .expect("connect");
+
+        let result = run_query_impl(
+            &state,
+            "multi".into(),
+            "select 1 as one; select 'two' as two".into(),
+            None,
+        )
+        .await
+        .expect("multi run");
+
+        assert_eq!(result.columns, vec!["one"]);
+        assert_eq!(result.rows[0][0], serde_json::json!(1));
+        assert_eq!(result.result_sets.len(), 2);
+        assert_eq!(result.result_sets[0].statement_index, 0);
+        assert_eq!(result.result_sets[0].columns, vec!["one"]);
+        assert_eq!(result.result_sets[1].statement_index, 1);
+        assert_eq!(result.result_sets[1].columns, vec!["two"]);
+        assert_eq!(result.result_sets[1].rows[0][0], serde_json::json!("two"));
+    }
+
+    #[tokio::test]
+    async fn sqlite_multi_statement_stream_tags_result_set_events() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("multistream"))
+            .await
+            .expect("connect");
+
+        let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let summary = run_query_stream_impl(
+            &state,
+            "multistream".into(),
+            "select 1 as one; select 2 as two".into(),
+            None,
+            None,
+            None,
+            tx,
+        )
+        .await
+        .expect("stream");
+
+        assert_eq!(summary.result_sets.len(), 2);
+        assert_eq!(summary.row_count, 2);
+        let mut seen = Vec::new();
+        while let Some(event) = rx.recv().await {
+            match event {
+                stream::FetchEvent::Columns {
+                    result_set_index,
+                    columns,
+                } => seen.push((result_set_index, columns.join(","))),
+                stream::FetchEvent::Rows {
+                    result_set_index,
+                    rows,
+                } => seen.push((result_set_index, rows.len().to_string())),
+            }
+        }
+        assert!(seen.contains(&(0, "one".to_string())));
+        assert!(seen.contains(&(0, "1".to_string())));
+        assert!(seen.contains(&(1, "two".to_string())));
+        assert!(seen.contains(&(1, "1".to_string())));
     }
 
     #[tokio::test]

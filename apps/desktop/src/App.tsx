@@ -1,8 +1,6 @@
 import {
   type CSSProperties,
   type FormEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type UIEvent,
   useEffect,
   useMemo,
@@ -587,7 +585,7 @@ function csvCell(value: unknown) {
   return text;
 }
 
-function csvFromResult(result: QueryResult) {
+function csvFromResult(result: Pick<QueryResult, "columns" | "rows">) {
   const rows = result.rows.map((row) =>
     result.columns.map((_, index) => csvCell(row[index])).join(","),
   );
@@ -680,6 +678,30 @@ function App() {
   const [vimMode, setVimMode] = useState(loadVimMode);
   const [formatter, setFormatter] = useState<SqlFormatterId>(loadFormatter);
   const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    loadStoredNumber(
+      sidebarWidthStorageKey,
+      272,
+      SIDEBAR_WIDTH_MIN,
+      SIDEBAR_WIDTH_MAX,
+    ),
+  );
+  const [inspectorWidth, setInspectorWidth] = useState(() =>
+    loadStoredNumber(
+      inspectorWidthStorageKey,
+      285,
+      INSPECTOR_WIDTH_MIN,
+      INSPECTOR_WIDTH_MAX,
+    ),
+  );
+  const [resultsHeight, setResultsHeight] = useState(() =>
+    loadStoredNumber(
+      resultsHeightStorageKey,
+      228,
+      RESULTS_HEIGHT_MIN,
+      RESULTS_HEIGHT_MAX,
+    ),
+  );
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -714,6 +736,7 @@ function App() {
   const [sort, setSort] = useState<{ col: number; dir: "asc" | "desc" } | null>(
     null,
   );
+  const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
   // Remappable keybindings: defaults merged with user overrides (localStorage).
@@ -777,6 +800,18 @@ function App() {
     window.localStorage.setItem(sidebarStorageKey, String(sidebarOpen));
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    window.localStorage.setItem(sidebarWidthStorageKey, String(sidebarWidth));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(inspectorWidthStorageKey, String(inspectorWidth));
+  }, [inspectorWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(resultsHeightStorageKey, String(resultsHeight));
+  }, [resultsHeight]);
+
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
     snapshot.connections.forEach((connection) => {
@@ -827,13 +862,16 @@ function App() {
     activeMetadataLoading,
   ]);
 
-  // Track the result grid's viewport height so the virtualized window covers it.
+  // Track the result grid viewport so both row and column windows cover it.
   useEffect(() => {
     const element = gridRef.current;
     if (!element) {
       return;
     }
-    const measure = () => setGridViewport(element.clientHeight);
+    const measure = () => {
+      setGridViewportHeight(element.clientHeight);
+      setGridViewportWidth(element.clientWidth);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -849,13 +887,25 @@ function App() {
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
-  const resultSets = useMemo(() => {
+  const resultSets = useMemo<QueryResultSet[]>(() => {
     if (!result) {
       return [];
     }
-    return result.resultSets && result.resultSets.length > 0
-      ? result.resultSets
-      : [result];
+    if (result.resultSets && result.resultSets.length > 0) {
+      return result.resultSets;
+    }
+    return [
+      {
+        statementIndex: 0,
+        statement: "statement 1",
+        columns: result.columns,
+        rows: result.rows,
+        rowCount: result.rowCount,
+        elapsedMs: result.elapsedMs,
+        truncated: result.truncated,
+        message: result.message,
+      },
+    ];
   }, [result]);
   const activeResult =
     resultSets[Math.min(activeResultIndex, Math.max(0, resultSets.length - 1))] ??
@@ -867,16 +917,62 @@ function App() {
     }
   }, [activeResultIndex, resultSets.length]);
 
+  useEffect(() => {
+    if (gridRef.current) {
+      gridRef.current.scrollTop = 0;
+      gridRef.current.scrollLeft = 0;
+    }
+    setGridScrollTop(0);
+    setGridScrollLeft(0);
+    setSelectedRowKey(null);
+  }, [activeResultIndex]);
+
   const resultColumns = activeResult?.columns ?? [
     "id",
     "name",
     "lifetime_value",
     "last_order_at",
   ];
+  const gridGutterWidth = editMode ? GRID_GUTTER_WIDTH : 0;
+  const gridTotalWidth = Math.max(
+    1,
+    gridGutterWidth + resultColumns.length * GRID_COLUMN_WIDTH,
+  );
+  const firstVisibleColumn = Math.max(
+    0,
+    Math.floor(Math.max(0, gridScrollLeft - gridGutterWidth) / GRID_COLUMN_WIDTH) -
+      GRID_COLUMN_OVERSCAN,
+  );
+  const columnWindowSize =
+    Math.ceil(Math.max(0, gridViewportWidth - gridGutterWidth) / GRID_COLUMN_WIDTH) +
+    GRID_COLUMN_OVERSCAN * 2;
+  const lastVisibleColumn = Math.min(
+    resultColumns.length,
+    firstVisibleColumn + columnWindowSize,
+  );
+  const visibleColumnIndexes = Array.from(
+    { length: Math.max(0, lastVisibleColumn - firstVisibleColumn) },
+    (_, index) => firstVisibleColumn + index,
+  );
+  const leftColumnPad = firstVisibleColumn * GRID_COLUMN_WIDTH;
+  const rightColumnPad = Math.max(
+    0,
+    (resultColumns.length - lastVisibleColumn) * GRID_COLUMN_WIDTH,
+  );
   // In Edit Data mode a leading gutter column holds the per-row delete control.
-  const gridTemplateColumns = `${editMode ? "30px " : ""}${resultColumns
-    .map(() => "minmax(140px, 1fr)")
-    .join(" ")}`;
+  const gridTemplateColumns = [
+    editMode ? `${GRID_GUTTER_WIDTH}px` : null,
+    leftColumnPad > 0 ? `${leftColumnPad}px` : null,
+    ...visibleColumnIndexes.map(() => `${GRID_COLUMN_WIDTH}px`),
+    rightColumnPad > 0 ? `${rightColumnPad}px` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const gridRowStyle: CSSProperties = {
+    gridTemplateColumns,
+    minWidth: gridTotalWidth,
+    width: gridTotalWidth,
+  };
 
   // Build the display rows: original rows (with any staged cell edits overlaid,
   // staged-deleted rows skipped) followed by staged new rows. `key` ties a display
@@ -931,7 +1027,8 @@ function App() {
     0,
     Math.floor(gridScrollTop / GRID_ROW_HEIGHT) - GRID_OVERSCAN,
   );
-  const windowSize = Math.ceil(gridViewport / GRID_ROW_HEIGHT) + GRID_OVERSCAN * 2;
+  const windowSize =
+    Math.ceil(gridViewportHeight / GRID_ROW_HEIGHT) + GRID_OVERSCAN * 2;
   const lastVisible = Math.min(totalRows, firstVisible + windowSize);
   const topPad = firstVisible * GRID_ROW_HEIGHT;
   const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
@@ -939,14 +1036,115 @@ function App() {
   const pendingCount = cellEdits.size + newRows.length + deletedRows.size;
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
-    const top = event.currentTarget.scrollTop;
+    pendingGridScroll.current = {
+      top: event.currentTarget.scrollTop,
+      left: event.currentTarget.scrollLeft,
+    };
     if (gridScrollRaf.current != null) {
       return;
     }
     gridScrollRaf.current = requestAnimationFrame(() => {
       gridScrollRaf.current = null;
-      setGridScrollTop(top);
+      setGridScrollTop(pendingGridScroll.current.top);
+      setGridScrollLeft(pendingGridScroll.current.left);
     });
+  }
+
+  type PanelResizeKind = "sidebar" | "inspector" | "results";
+
+  function resizePanel(kind: PanelResizeKind, delta: number) {
+    switch (kind) {
+      case "sidebar":
+        setSidebarWidth((current) =>
+          clampNumber(current + delta, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX),
+        );
+        break;
+      case "inspector":
+        setInspectorWidth((current) =>
+          clampNumber(current + delta, INSPECTOR_WIDTH_MIN, INSPECTOR_WIDTH_MAX),
+        );
+        break;
+      case "results":
+        setResultsHeight((current) =>
+          clampNumber(current + delta, RESULTS_HEIGHT_MIN, RESULTS_HEIGHT_MAX),
+        );
+        break;
+    }
+  }
+
+  function beginPanelResize(
+    kind: PanelResizeKind,
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startSidebarWidth = sidebarWidth;
+    const startInspectorWidth = inspectorWidth;
+    const startResultsHeight = resultsHeight;
+    document.body.classList.add("panel-resizing");
+
+    const onMove = (moveEvent: PointerEvent) => {
+      if (kind === "sidebar") {
+        setSidebarWidth(
+          clampNumber(
+            startSidebarWidth + moveEvent.clientX - startX,
+            SIDEBAR_WIDTH_MIN,
+            SIDEBAR_WIDTH_MAX,
+          ),
+        );
+        return;
+      }
+      if (kind === "inspector") {
+        setInspectorWidth(
+          clampNumber(
+            startInspectorWidth - (moveEvent.clientX - startX),
+            INSPECTOR_WIDTH_MIN,
+            INSPECTOR_WIDTH_MAX,
+          ),
+        );
+        return;
+      }
+      setResultsHeight(
+        clampNumber(
+          startResultsHeight - (moveEvent.clientY - startY),
+          RESULTS_HEIGHT_MIN,
+          RESULTS_HEIGHT_MAX,
+        ),
+      );
+    };
+
+    const onEnd = () => {
+      document.body.classList.remove("panel-resizing");
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointercancel", onEnd);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd, { once: true });
+    window.addEventListener("pointercancel", onEnd, { once: true });
+  }
+
+  function onPanelResizeKey(
+    kind: PanelResizeKind,
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ) {
+    if (
+      event.key !== "ArrowLeft" &&
+      event.key !== "ArrowRight" &&
+      event.key !== "ArrowUp" &&
+      event.key !== "ArrowDown"
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const step = event.shiftKey ? 32 : 16;
+    if (kind === "results") {
+      resizePanel(kind, event.key === "ArrowUp" ? step : -step);
+      return;
+    }
+    const direction = kind === "sidebar" ? 1 : -1;
+    resizePanel(kind, (event.key === "ArrowRight" ? step : -step) * direction);
   }
 
   // Drop every staged edit (called on a new run and after a successful commit).
@@ -978,7 +1176,7 @@ function App() {
       setCellEdits((current) => {
         const next = new Map(current);
         const key = `o${origin.index}:${col}`;
-        const original = formatCell(result?.rows[origin.index]?.[col] ?? null);
+        const original = formatCell(activeResult?.rows[origin.index]?.[col] ?? null);
         if (value === original) {
           next.delete(key);
         } else {
@@ -1009,6 +1207,7 @@ function App() {
   function deleteRow(
     origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
   ) {
+    const rowKey = `${origin.kind === "orig" ? "o" : "n"}${origin.index}`;
     if (origin.kind === "orig") {
       setDeletedRows((current) => new Set(current).add(origin.index));
       setCellEdits((current) => {
@@ -1024,6 +1223,7 @@ function App() {
       setNewRows((current) => current.filter((_, index) => index !== origin.index));
     }
     setEditingCell(null);
+    setSelectedRowKey((current) => (current === rowKey ? null : current));
   }
 
   // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
@@ -1102,7 +1302,7 @@ function App() {
 
   function originalCell(rowIndex: number, column: string): CellValue {
     const col = resultColumns.indexOf(column);
-    return { column, value: result?.rows[rowIndex]?.[col] ?? null };
+    return { column, value: activeResult?.rows[rowIndex]?.[col] ?? null };
   }
 
   async function commitEdits() {
@@ -1414,9 +1614,9 @@ function App() {
     });
   }
 
-  const resultSummary = result
-    ? `${toCount(result.rowCount)} rows${result.truncated ? " capped" : ""} in ${toCount(
-        result.elapsedMs,
+  const resultSummary = activeResult
+    ? `${toCount(activeResult.rowCount)} rows${activeResult.truncated ? " capped" : ""} in ${toCount(
+        activeResult.elapsedMs,
       )} ms`
     : "sample preview";
 
@@ -1590,10 +1790,10 @@ function App() {
   }
 
   function exportCsv() {
-    if (!result) {
+    if (!activeResult) {
       return;
     }
-    const blob = new Blob(["\uFEFF", csvFromResult(result)], {
+    const blob = new Blob(["\uFEFF", csvFromResult(activeResult)], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -1625,13 +1825,17 @@ function App() {
     setRunning(true);
     setQueryError(null);
     setLastRunSql(sqlToRun);
+    setActiveResultIndex(0);
     // A new run invalidates any staged edits and resets the scroll/sort view.
     resetEdits();
     setSort(null);
     if (gridRef.current) {
       gridRef.current.scrollTop = 0;
+      gridRef.current.scrollLeft = 0;
     }
     setGridScrollTop(0);
+    setGridScrollLeft(0);
+    setSelectedRowKey(null);
     const started = performance.now();
     const ranAt = new Date().toISOString();
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1640,42 +1844,66 @@ function App() {
       // Stream the run so the grid fills as batches arrive instead of waiting for
       // the whole result. Query errors surface as an "error" event (the command
       // itself resolves); the catch below only handles invoke-level failures.
-      let columns: string[] = [];
-      const rows: unknown[][] = [];
+      const streamResultSets: QueryResultSet[] = [];
+      const ensureResultSet = (index: number) => {
+        while (streamResultSets.length <= index) {
+          const statementIndex = streamResultSets.length;
+          streamResultSets.push({
+            statementIndex,
+            statement: `statement ${statementIndex + 1}`,
+            columns: [],
+            rows: [],
+            rowCount: 0n,
+            elapsedMs: 0n,
+            truncated: false,
+          });
+        }
+        return streamResultSets[index];
+      };
+      const publishStreamResult = () => {
+        const first = ensureResultSet(0);
+        setResult({
+          columns: first.columns,
+          rows: [...first.rows],
+          rowCount: first.rowCount,
+          elapsedMs: first.elapsedMs,
+          truncated: first.truncated,
+          message: first.message,
+          resultSets:
+            streamResultSets.length > 1
+              ? streamResultSets.map((set) => ({
+                  ...set,
+                  rows: [...set.rows],
+                }))
+              : undefined,
+        });
+      };
       await runQueryStream(
         { connectionId: activeConnectionId, sql: sqlToRun, maxRows: 10_000, queryId },
         (event) => {
           switch (event.type) {
             case "columns":
-              columns = event.columns;
-              setResult({
-                columns,
-                rows: [],
-                rowCount: 0n,
-                elapsedMs: 0n,
-                truncated: false,
-              });
+              ensureResultSet(event.resultSetIndex).columns = event.columns;
+              publishStreamResult();
               break;
             case "rows":
-              for (const row of event.rows) {
-                rows.push(row);
+              {
+                const set = ensureResultSet(event.resultSetIndex);
+                set.rows.push(...event.rows);
+                set.rowCount = BigInt(set.rows.length);
+                set.elapsedMs = BigInt(Math.round(performance.now() - started));
               }
-              setResult({
-                columns,
-                rows: [...rows],
-                rowCount: BigInt(rows.length),
-                elapsedMs: BigInt(Math.round(performance.now() - started)),
-                truncated: false,
-              });
+              publishStreamResult();
               break;
             case "done":
-              setResult({
-                columns,
-                rows: [...rows],
-                rowCount: BigInt(event.rowCount),
-                elapsedMs: BigInt(event.elapsedMs),
-                truncated: event.truncated,
-              });
+              for (const summary of event.resultSets) {
+                const set = ensureResultSet(summary.resultSetIndex);
+                set.rowCount = BigInt(summary.rowCount);
+                set.elapsedMs = BigInt(summary.elapsedMs || event.elapsedMs);
+                set.truncated = summary.truncated;
+                set.message = summary.truncated ? "result capped at 10000 rows" : undefined;
+              }
+              publishStreamResult();
               appendHistory({
                 id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 connectionId: activeConnectionId,
@@ -1750,7 +1978,14 @@ function App() {
   return (
     <main
       className="app-shell"
-      style={cssVariables(theme) as CSSProperties}
+      style={
+        {
+          ...cssVariables(theme),
+          "--sidebar-width": `${sidebarWidth}px`,
+          "--inspector-width": `${inspectorWidth}px`,
+          "--results-height": `${resultsHeight}px`,
+        } as CSSProperties
+      }
       data-theme={theme.kind}
       data-key-scope={activeKeyScope}
       onFocusCapture={(event) => {
@@ -2127,7 +2362,9 @@ function App() {
             </div>
             <div className="object-browser">
               {activeMetadataLoading ? (
-                <div className="empty-browser">Loading objects...</div>
+                <div className="empty-browser loading" role="status">
+                  Loading objects...
+                </div>
               ) : activeMetadataError ? (
                 <div className="inline-error browser-error">
                   <AlertTriangle size={13} />
@@ -2212,6 +2449,15 @@ function App() {
               )}
             </div>
           </section>
+          <div
+            className="panel-resizer sidebar-resizer"
+            role="separator"
+            aria-label="Resize sidebar"
+            aria-orientation="vertical"
+            tabIndex={0}
+            onPointerDown={(event) => beginPanelResize("sidebar", event)}
+            onKeyDown={(event) => onPanelResizeKey("sidebar", event)}
+          />
         </aside>
         ) : null}
 
@@ -2263,6 +2509,15 @@ function App() {
               </div>
             </section>
 
+            <div
+              className="panel-resizer inspector-resizer"
+              role="separator"
+              aria-label="Resize inspector"
+              aria-orientation="vertical"
+              tabIndex={0}
+              onPointerDown={(event) => beginPanelResize("inspector", event)}
+              onKeyDown={(event) => onPanelResizeKey("inspector", event)}
+            />
             <aside className="inspector">
               <section>
                 <div className="section-heading">
@@ -2377,10 +2632,48 @@ function App() {
             </aside>
           </div>
 
-          <section className="results-pane">
+          <section className={running ? "results-pane is-running" : "results-pane"}>
+            <div
+              className="panel-resizer results-resizer"
+              role="separator"
+              aria-label="Resize results"
+              aria-orientation="horizontal"
+              tabIndex={0}
+              onPointerDown={(event) => beginPanelResize("results", event)}
+              onKeyDown={(event) => onPanelResizeKey("results", event)}
+            />
             <div className="results-header">
-              <div>
-                <strong>Result 1</strong>
+              <div className="results-title">
+                {resultSets.length > 1 ? (
+                  <div className="result-tabs" role="tablist" aria-label="Result sets">
+                    {resultSets.map((set, index) => (
+                      <button
+                        key={set.statementIndex}
+                        type="button"
+                        role="tab"
+                        aria-selected={index === activeResultIndex}
+                        className={index === activeResultIndex ? "active" : undefined}
+                        title={set.statement}
+                        onClick={() => {
+                          setActiveResultIndex(index);
+                          resetEdits();
+                          setSort(null);
+                          if (gridRef.current) {
+                            gridRef.current.scrollTop = 0;
+                            gridRef.current.scrollLeft = 0;
+                          }
+                          setGridScrollTop(0);
+                          setGridScrollLeft(0);
+                          setSelectedRowKey(null);
+                        }}
+                      >
+                        Result {index + 1}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <strong>Result 1</strong>
+                )}
                 <span>
                   {queryError
                     ? "failed"
@@ -2463,34 +2756,71 @@ function App() {
               <div
                 className="grid-row header"
                 role="row"
-                style={{ gridTemplateColumns }}
+                style={gridRowStyle}
               >
-                {editMode ? <span className="grid-gutter" /> : null}
-                {resultColumns.map((column, colIndex) => (
-                  <span
-                    role="columnheader"
-                    key={column}
-                    className="sortable"
-                    onClick={() => toggleSort(colIndex)}
-                  >
-                    {column}
-                    {sort?.col === colIndex ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
-                  </span>
-                ))}
+                {editMode ? <span className="grid-gutter" aria-hidden="true" /> : null}
+                {leftColumnPad > 0 ? (
+                  <span className="grid-col-pad" aria-hidden="true" />
+                ) : null}
+                {visibleColumnIndexes.map((colIndex) => {
+                  const column = resultColumns[colIndex];
+                  return (
+                    <span
+                      role="columnheader"
+                      aria-colindex={editMode ? colIndex + 2 : colIndex + 1}
+                      key={`${column}-${colIndex}`}
+                      className="sortable"
+                      onClick={() => toggleSort(colIndex)}
+                    >
+                      {column}
+                      {sort?.col === colIndex
+                        ? sort.dir === "asc"
+                          ? " ▲"
+                          : " ▼"
+                        : ""}
+                    </span>
+                  );
+                })}
+                {rightColumnPad > 0 ? (
+                  <span className="grid-col-pad" aria-hidden="true" />
+                ) : null}
               </div>
               {topPad > 0 ? (
                 <div
                   className="grid-pad"
-                  style={{ height: topPad }}
+                  style={{ height: topPad, minWidth: gridTotalWidth, width: gridTotalWidth }}
                   aria-hidden="true"
                 />
               ) : null}
+              {running && totalRows === 0 ? (
+                <div
+                  className="grid-state loading"
+                  role="status"
+                  style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
+                >
+                  Running query...
+                </div>
+              ) : null}
+              {!running && totalRows === 0 ? (
+                <div
+                  className="grid-state"
+                  role="row"
+                  style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
+                >
+                  No rows returned
+                </div>
+              ) : null}
               {visibleRows.map((row) => (
                 <div
-                  className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}`}
+                  className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}${selectedRowKey === row.key ? " row-selected" : ""}`}
                   role="row"
+                  aria-selected={selectedRowKey === row.key}
+                  aria-rowindex={firstVisible + visibleRows.indexOf(row) + 2}
                   key={row.key}
-                  style={{ gridTemplateColumns }}
+                  tabIndex={0}
+                  style={gridRowStyle}
+                  onClick={() => setSelectedRowKey(row.key)}
+                  onFocus={() => setSelectedRowKey(row.key)}
                 >
                   {editMode ? (
                     <button
@@ -2503,15 +2833,21 @@ function App() {
                       ×
                     </button>
                   ) : null}
-                  {row.cells.map((cell, cellIndex) => {
+                  {leftColumnPad > 0 ? (
+                    <span className="grid-col-pad" aria-hidden="true" />
+                  ) : null}
+                  {visibleColumnIndexes.map((cellIndex) => {
+                    const cell = row.cells[cellIndex] ?? "";
                     const isEditing =
                       editingCell?.key === row.key && editingCell.col === cellIndex;
                     return (
                       <span
                         role="cell"
                         key={cellIndex}
+                        aria-colindex={editMode ? cellIndex + 2 : cellIndex + 1}
                         className={
-                          cellEdits.has(`o${row.origin.kind === "orig" ? row.origin.index : -1}:${cellIndex}`)
+                          row.origin.kind === "orig" &&
+                          cellEdits.has(`o${row.origin.index}:${cellIndex}`)
                             ? "cell-edited"
                             : undefined
                         }
@@ -2560,12 +2896,19 @@ function App() {
                       </span>
                     );
                   })}
+                  {rightColumnPad > 0 ? (
+                    <span className="grid-col-pad" aria-hidden="true" />
+                  ) : null}
                 </div>
               ))}
               {bottomPad > 0 ? (
                 <div
                   className="grid-pad"
-                  style={{ height: bottomPad }}
+                  style={{
+                    height: bottomPad,
+                    minWidth: gridTotalWidth,
+                    width: gridTotalWidth,
+                  }}
                   aria-hidden="true"
                 />
               ) : null}

@@ -78,13 +78,15 @@ url?: string, };
 
 export type ConnectionInfo = { id: string, engine: DbEngine, serverVersion: string, };
 
+export type QueryResultSet = { statementIndex: number, statement: string, columns: Array<string>, rows: Array<Array<JsonValue>>, rowCount: bigint, elapsedMs: bigint, truncated: boolean, message?: string, };
+
 export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>>, rowCount: bigint, elapsedMs: bigint, 
 /**
  * True when the result was capped at `max_rows` and more rows remain on the
  * server, so the UI can offer "load more" / run-to-file instead of silently
  * hiding data.
  */
-truncated: boolean, message?: string, };
+truncated: boolean, message?: string, resultSets?: Array<QueryResultSet>, };
 
 export type DatabaseMetadata = { schemas: Array<SchemaMetadata>, };
 
@@ -121,6 +123,18 @@ export type TableEdits = { schema?: string, table: string, updates: Array<RowUpd
 
 export type AppliedEdits = { updated: bigint, inserted: bigint, deleted: bigint, };
 
+export type DbCompletionItem = { label: string, insertText: string, kind: DbCompletionItemKind, detail: string, };
+
+export type DbCompletionItemKind = "schema" | "table" | "view" | "column" | "function" | "procedure" | "keyword";
+
+export type DbInspectionCard = { "type": "object" } & DbObjectInspection | { "type": "column" } & DbColumnInspection;
+
+export type DbObjectInspection = { schema: string, name: string, kind: DbObjectMetadataKind, comment: string | null, ddl: string | null, rowEstimate: bigint | null, columns: Array<DbColumnInspection>, indexes: Array<IndexMetadata>, foreignKeys: Array<ForeignKey>, };
+
+export type DbColumnInspection = { schema: string, object: string, name: string, dataType: string, nullable: boolean, ordinal: number, defaultValue: string | null, comment: string | null, primaryKey: boolean, indexes: Array<string>, references: Array<DbColumnReference>, };
+
+export type DbColumnReference = { schema: string, object: string, column: string, };
+
 export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
 }
@@ -147,6 +161,22 @@ export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {
 
 export function dbDisconnect(connectionId: string): Promise<void> {
   return invoke<void>("db_disconnect", { connectionId });
+}
+
+export function dbAutocomplete(connectionId: string, prefix: string, schema?: string, object?: string, limit?: number): Promise<Vec<DbCompletionItem>> {
+  return invoke<Vec<DbCompletionItem>>("db_autocomplete", { connectionId, prefix, schema, object, limit });
+}
+
+export function dbInspectObject(connectionId: string, schema: string, object: string): Promise<Option<DbInspectionCard>> {
+  return invoke<Option<DbInspectionCard>>("db_inspect_object", { connectionId, schema, object });
+}
+
+export function dbInspectColumn(connectionId: string, schema: string, object: string, column: string): Promise<Option<DbInspectionCard>> {
+  return invoke<Option<DbInspectionCard>>("db_inspect_column", { connectionId, schema, object, column });
+}
+
+export function dbInvalidateCache(connectionId: string, schema?: string, object?: string): Promise<boolean> {
+  return invoke<boolean>("db_invalidate_cache", { connectionId, schema, object });
 }
 
 export function securityGetPrivacyMode(): Promise<PrivacyMode> {

@@ -2,12 +2,11 @@
 //
 // The host is CM6: `basicSetup` gives line numbers, history, bracket matching,
 // active-line highlight, and keyword autocompletion; `@codemirror/lang-sql`
-// supplies dialect-aware syntax highlighting bound to the active engine, plus
-// schema-aware completion fed from Irodori's introspection metadata. The
-// formatter defaults to `sql-formatter`, dialect-mapped per engine, behind a
-// configurable formatter hook. Tree-sitter is the planned *semantic* layer
-// (completion scope, outline, selection) and is not wired here yet — see
-// docs/adr/0001-editor-stack.md.
+// supplies dialect-aware parsing bound to the active engine. Irodori's SQL
+// highlighting helper maps parser tokens into the normalized theme model, with
+// Tree-sitter activation gated on bundled solid grammars. Schema-aware
+// completion is fed from introspection metadata. The formatter defaults to
+// `sql-formatter`, dialect-mapped per engine, behind a configurable hook.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
@@ -19,6 +18,7 @@ import { sql } from "@codemirror/lang-sql";
 import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
 import { buildSqlConfig } from "./sql/dialect";
 import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
+import { sqlHighlightingExtensions } from "./sql/highlighting";
 import { editorThemeExtensions, type IrodoriTheme } from "./theme";
 
 export interface SqlEditorHandle {
@@ -56,6 +56,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
   const vimConf = useRef(new Compartment()).current;
   const sqlConf = useRef(new Compartment()).current;
   const themeConf = useRef(new Compartment()).current;
+  const highlightConf = useRef(new Compartment()).current;
 
   // Create the editor once. `value`/`engine`/`metadata` seed the initial state;
   // later changes flow through the controlled-sync and reconfigure effects below.
@@ -72,6 +73,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
           keymap.of([indentWithTab]),
           sqlConf.of(sql(buildSqlConfig(engine, metadata))),
           themeConf.of(editorThemeExtensions(theme)),
+          highlightConf.of(sqlHighlightingExtensions(engine, theme.syntax)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current(update.state.doc.toString());
@@ -117,14 +119,17 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     });
   }, [engine, metadata, sqlConf]);
 
-  // Reconfigure editor chrome + syntax highlight when the theme changes.
+  // Reconfigure editor chrome + syntax highlight when the theme or engine changes.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
-      effects: themeConf.reconfigure(editorThemeExtensions(theme)),
+      effects: [
+        themeConf.reconfigure(editorThemeExtensions(theme)),
+        highlightConf.reconfigure(sqlHighlightingExtensions(engine, theme.syntax)),
+      ],
     });
-  }, [theme, themeConf]);
+  }, [engine, highlightConf, theme, themeConf]);
 
   useImperativeHandle(
     ref,

@@ -190,6 +190,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
                 nullable: nullable == "YES",
                 ordinal: row.try_get::<i32, _>(5).unwrap_or_default(),
                 default_value: row.try_get::<Option<String>, _>(6).unwrap_or(None),
+                comment: None,
             });
         }
     }
