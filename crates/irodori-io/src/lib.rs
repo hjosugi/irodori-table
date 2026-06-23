@@ -533,4 +533,59 @@ mod tests {
         let err = encoder.write_row(&[Cell::Text("needs,quote")]).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     }
+
+    #[test]
+    fn sql_insert_writes_statements() {
+        let mut out = Vec::new();
+        let dialect = irodori_sql::dialect::PostgresDialect;
+        let mut encoder = SqlInsertEncoder::new(&mut out, "users", &["id", "name"], &dialect);
+
+        encoder
+            .write_row(&[Cell::Integer(42), Cell::Text("Ann's Studio")])
+            .expect("row");
+        encoder.finish().expect("finish");
+
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "INSERT INTO \"users\" (\"id\", \"name\") VALUES (42, 'Ann''s Studio');\n"
+        );
+    }
+
+    #[test]
+    fn json_writes_array() {
+        let mut out = Vec::new();
+        let mut encoder = JsonEncoder::new(&mut out, &["id", "name"]).expect("encoder");
+
+        encoder
+            .write_row(&[Cell::Integer(1), Cell::Text("Bob")])
+            .expect("row");
+        encoder
+            .write_row(&[Cell::Integer(2), Cell::Text("Cat")])
+            .expect("row");
+        encoder.finish().expect("finish");
+
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "[\n{\"id\":1,\"name\":\"Bob\"},\n{\"id\":2,\"name\":\"Cat\"}\n]\n"
+        );
+    }
+
+    #[test]
+    fn ndjson_writes_lines() {
+        let mut out = Vec::new();
+        let mut encoder = NdjsonEncoder::new(&mut out, &["id", "name"]);
+
+        encoder
+            .write_row(&[Cell::Integer(1), Cell::Text("Bob")])
+            .expect("row");
+        encoder
+            .write_row(&[Cell::Integer(2), Cell::Text("Cat")])
+            .expect("row");
+        encoder.finish().expect("finish");
+
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "{\"id\":1,\"name\":\"Bob\"}\n{\"id\":2,\"name\":\"Cat\"}\n"
+        );
+    }
 }
