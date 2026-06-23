@@ -25,6 +25,7 @@ use std::time::{Duration, Instant};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
 #[cfg(feature = "duckdb")]
@@ -347,6 +348,9 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
 #[derive(Default)]
 pub struct DbState {
     conns: Mutex<HashMap<String, Arc<dyn Connection>>>,
+    /// In-flight cancellable queries keyed by a caller-supplied `query_id`, so
+    /// `db_cancel` can stop a specific run. Entries are removed when the run ends.
+    cancels: Mutex<HashMap<String, CancellationToken>>,
 }
 
 pub async fn connect_impl(
@@ -409,6 +413,56 @@ pub async fn run_query_impl(
     })
 }
 
+/// Run a query under the lifecycle controls the UI needs: an optional `timeout_ms`
+/// deadline and an optional `query_id` that registers a [`CancellationToken`] so a
+/// concurrent [`cancel_query_impl`] (the `db_cancel` command) can stop it. A
+/// timeout or a cancel both drop the query future, which cancels the in-flight
+/// request on the pooled engines. The token is always deregistered when the run
+/// ends, including on the error/timeout paths.
+pub async fn run_query_managed_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    max_rows: Option<usize>,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+) -> Result<QueryResult, String> {
+    let token = CancellationToken::new();
+    if let Some(qid) = &query_id {
+        state
+            .cancels
+            .lock()
+            .await
+            .insert(qid.clone(), token.clone());
+    }
+
+    let run = async {
+        tokio::select! {
+            biased;
+            _ = token.cancelled() => Err("query cancelled".to_string()),
+            result = run_query_impl(state, connection_id, sql, max_rows) => result,
+        }
+    };
+    let result = with_timeout(timeout_ms, run).await;
+
+    if let Some(qid) = &query_id {
+        state.cancels.lock().await.remove(qid);
+    }
+    result
+}
+
+/// Signal a running query (registered under `query_id` by
+/// [`run_query_managed_impl`]) to stop. Returns whether a matching in-flight query
+/// was found; a no-op `false` when the id is unknown or the run already finished.
+pub async fn cancel_query_impl(state: &DbState, query_id: String) -> bool {
+    if let Some(token) = state.cancels.lock().await.remove(&query_id) {
+        token.cancel();
+        true
+    } else {
+        false
+    }
+}
+
 pub async fn list_objects_impl(
     state: &DbState,
     connection_id: String,
@@ -447,15 +501,26 @@ pub async fn db_run_query(
     sql: String,
     max_rows: Option<usize>,
     timeout_ms: Option<u64>,
+    query_id: Option<String>,
 ) -> Result<QueryResult, String> {
-    // Wrap the whole run (connection lookup + query) so a slow statement returns a
-    // clean timeout instead of hanging the UI; dropping the future cancels the
-    // in-flight request on the pooled engines.
-    with_timeout(
+    // The managed run applies the optional timeout deadline and registers the
+    // optional `query_id` so `db_cancel` can stop this specific statement.
+    run_query_managed_impl(
+        state.inner(),
+        connection_id,
+        sql,
+        max_rows,
         timeout_ms,
-        run_query_impl(state.inner(), connection_id, sql, max_rows),
+        query_id,
     )
     .await
+}
+
+/// Cancel the in-flight query the UI started under `query_id`. Returns `true` when
+/// a matching run was found and signalled, `false` if it already finished.
+#[tauri::command]
+pub async fn db_cancel(state: tauri::State<'_, DbState>, query_id: String) -> Result<bool, String> {
+    Ok(cancel_query_impl(state.inner(), query_id).await)
 }
 
 #[tauri::command]
@@ -493,6 +558,33 @@ mod tests {
         })
         .await;
         assert_eq!(slow, Err("query timed out after 5ms".to_string()));
+    }
+
+    #[tokio::test]
+    async fn cancel_signals_a_registered_query_then_is_a_noop() {
+        let state = DbState::default();
+        let token = CancellationToken::new();
+        state
+            .cancels
+            .lock()
+            .await
+            .insert("q1".to_string(), token.clone());
+
+        // A run that resolves to the cancel arm once the token fires (mirrors the
+        // `select!` in run_query_managed_impl, without needing a live database).
+        let run = tokio::spawn(async move {
+            tokio::select! {
+                biased;
+                _ = token.cancelled() => Err::<(), String>("query cancelled".to_string()),
+                _ = tokio::time::sleep(Duration::from_secs(30)) => Ok(()),
+            }
+        });
+
+        assert!(cancel_query_impl(&state, "q1".to_string()).await);
+        assert_eq!(run.await.unwrap(), Err("query cancelled".to_string()));
+        // The entry is gone, so a second cancel (or an unknown id) is a no-op.
+        assert!(!cancel_query_impl(&state, "q1".to_string()).await);
+        assert!(!cancel_query_impl(&state, "missing".to_string()).await);
     }
 
     fn temp_sqlite_profile(id: &str) -> ConnectionProfile {

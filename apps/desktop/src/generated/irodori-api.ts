@@ -52,8 +52,12 @@ export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {
   return invoke<ConnectionInfo>("db_connect", { profile });
 }
 
-export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, timeoutMs?: number): Promise<QueryResult> {
-  return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows, timeoutMs });
+export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, timeoutMs?: number, queryId?: string): Promise<QueryResult> {
+  return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows, timeoutMs, queryId });
+}
+
+export function dbCancel(queryId: string): Promise<boolean> {
+  return invoke<boolean>("db_cancel", { queryId });
 }
 
 export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {

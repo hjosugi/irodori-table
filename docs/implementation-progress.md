@@ -49,12 +49,16 @@ Highlights:
   numerics render scale-preserving (`100, scale 2 → "1.00"`), datetime/date/time/
   datetimeoffset via chrono (ISO 8601 / RFC3339), binary as `\x` hex, UUID/XML as
   string — no more lossy `f64`/`null` fallbacks.
-- **Per-query timeout**: `db_run_query` takes an optional `timeoutMs`; the run is
-  bounded by `tokio::time::timeout`, so a slow statement returns a clean
-  `query timed out after Nms` instead of hanging the UI, and dropping the future
-  cancels the in-flight request on the pooled (sqlx) engines. `None`/`0` keeps the
-  run-to-completion default. (Explicit user-initiated cancel — EXEC-002's
-  cancellation token + a `db_cancel` command — is the next step.)
+- **Per-query timeout + explicit cancel**: `db_run_query` takes an optional
+  `timeoutMs` (bounded by `tokio::time::timeout` → clean `query timed out after Nms`)
+  and an optional `queryId`. The `queryId` registers a `tokio_util`
+  `CancellationToken` in `DbState`, so the new `db_cancel(queryId)` command — wired
+  to the desktop Cancel button — stops a specific in-flight run (`query cancelled`).
+  A timeout or a cancel both drop the query future, which cancels the in-flight
+  request on the pooled (sqlx) engines. `None`/`0` timeout keeps the
+  run-to-completion default. Covered by `with_timeout` and `cancel_query_impl`
+  unit tests. (Incremental row streaming into the grid is the remaining EXEC-002
+  piece.)
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,

@@ -23,6 +23,7 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import {
+  dbCancel,
   dbConnect,
   dbDisconnect,
   dbListObjects,
@@ -614,6 +615,8 @@ function App() {
   );
   const [query, setQuery] = useState(initialQuery);
   const [running, setRunning] = useState(false);
+  // Id of the in-flight query so the Cancel button can stop that specific run.
+  const runningQueryIdRef = useRef<string | null>(null);
   const [profiles, setProfiles] = useState<ConnectionDraft[]>(loadProfiles);
   const [selectedProfileId, setSelectedProfileId] = useState(
     () => profiles[0]?.id ?? "local-pg",
@@ -938,8 +941,16 @@ function App() {
     setQueryError(null);
     const started = performance.now();
     const ranAt = new Date().toISOString();
+    const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    runningQueryIdRef.current = queryId;
     try {
-      const nextResult = await dbRunQuery(activeConnectionId, sqlToRun, 10_000);
+      const nextResult = await dbRunQuery(
+        activeConnectionId,
+        sqlToRun,
+        10_000,
+        undefined,
+        queryId,
+      );
       setResult(nextResult);
       appendHistory({
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -973,7 +984,22 @@ function App() {
         ranAt,
       });
     } finally {
+      runningQueryIdRef.current = null;
       setRunning(false);
+    }
+  }
+
+  // Ask the backend to stop the in-flight query; the pending run then rejects with
+  // "query cancelled" and the runQuery catch/finally resets the UI.
+  async function cancelQuery() {
+    const id = runningQueryIdRef.current;
+    if (!id) {
+      return;
+    }
+    try {
+      await dbCancel(id);
+    } catch {
+      // Best-effort: if the run already finished there is nothing to cancel.
     }
   }
 
@@ -1021,7 +1047,7 @@ function App() {
           title="Cancel query"
           aria-label="Cancel query"
           disabled={!running}
-          onClick={() => setRunning(false)}
+          onClick={cancelQuery}
         >
           <Square size={15} />
         </button>

@@ -130,6 +130,7 @@ pub fn run() {
             workspace_snapshot,
             db::db_connect,
             db::db_run_query,
+            db::db_cancel,
             db::db_list_objects,
             db::db_disconnect
         ])
@@ -182,7 +183,12 @@ mod typegen {
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("sql", TsType::string()))
                     .arg(Arg::rust("max_rows", TsType::number()).optional())
-                    .arg(Arg::rust("timeout_ms", TsType::number()).optional()),
+                    .arg(Arg::rust("timeout_ms", TsType::number()).optional())
+                    .arg(Arg::rust("query_id", TsType::string()).optional()),
+            )
+            .command(
+                Command::returning("db_cancel", TsType::boolean())
+                    .arg(Arg::rust("query_id", TsType::string())),
             )
             .command(
                 Command::new("db_list_objects", "DatabaseMetadata")
