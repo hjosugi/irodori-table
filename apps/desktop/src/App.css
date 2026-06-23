@@ -1123,3 +1123,48 @@ button {
   font-size: 13px;
   text-align: center;
 }
+
+/* ER diagram modal. */
+.diagram {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 94vw);
+  height: min(80vh, 820px);
+  overflow: hidden;
+  border: 1px solid #c5cfc5;
+  border-radius: 10px;
+  background: #fbfdf9;
+  box-shadow: 0 18px 50px rgba(20, 28, 22, 0.28);
+}
+
+.diagram-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e4eae2;
+}
+
+.diagram-header strong {
+  font-size: 14px;
+}
+
+.diagram-header span {
+  flex: 1;
+  color: #88978a;
+  font-size: 12px;
+}
+
+.diagram-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background:
+    radial-gradient(circle, #e6ece4 1px, transparent 1px) 0 0 / 18px 18px;
+}
+
+.diagram-canvas svg {
+  max-width: none;
+  height: auto;
+}

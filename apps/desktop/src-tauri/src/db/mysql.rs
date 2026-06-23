@@ -205,6 +205,70 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
         }
     }
 
+    let pk_rows = sqlx::query(
+        r#"
+        select cast(table_schema as char), cast(table_name as char),
+               cast(column_name as char)
+        from information_schema.key_column_usage
+        where table_schema = database() and constraint_name = 'PRIMARY'
+        order by table_schema, table_name, ordinal_position
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+    for row in pk_rows {
+        let schema: String = row.try_get(0).unwrap_or_default();
+        let table: String = row.try_get(1).unwrap_or_default();
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            if let Ok(column) = row.try_get::<String, _>(2) {
+                object.primary_key.push(column);
+            }
+        }
+    }
+
+    let fk_rows = sqlx::query(
+        r#"
+        select cast(table_schema as char), cast(table_name as char),
+               cast(constraint_name as char), cast(column_name as char),
+               cast(referenced_table_schema as char), cast(referenced_table_name as char),
+               cast(referenced_column_name as char)
+        from information_schema.key_column_usage
+        where table_schema = database() and referenced_table_name is not null
+        order by table_schema, table_name, constraint_name, ordinal_position
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+    // Rows for one FK share (table, constraint_name); accumulate in order.
+    let mut current: Option<(String, String, String)> = None;
+    for row in fk_rows {
+        let schema: String = row.try_get(0).unwrap_or_default();
+        let table: String = row.try_get(1).unwrap_or_default();
+        let constraint: String = row.try_get(2).unwrap_or_default();
+        let column: String = row.try_get(3).unwrap_or_default();
+        let ref_schema: String = row.try_get(4).unwrap_or_default();
+        let ref_table: String = row.try_get(5).unwrap_or_default();
+        let ref_column: String = row.try_get(6).unwrap_or_default();
+        let key = (schema.clone(), table.clone(), constraint.clone());
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            if current.as_ref() != Some(&key) {
+                object.foreign_keys.push(super::ForeignKey {
+                    columns: Vec::new(),
+                    references_schema: Some(ref_schema),
+                    references_table: ref_table,
+                    references_columns: Vec::new(),
+                });
+                current = Some(key);
+            }
+            if let Some(fk) = object.foreign_keys.last_mut() {
+                fk.columns.push(column);
+                fk.references_columns.push(ref_column);
+            }
+        }
+    }
+
     Ok(builder.finish())
 }
 

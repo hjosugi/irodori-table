@@ -72,6 +72,9 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
             .map_err(|e| format!("metadata columns failed for {table}: {e}"))?;
 
         if let Some(object) = builder.object_mut(&schema, &table) {
+            // `pk` in table_xinfo is the 1-based position in the primary key (0 = not
+            // a key column); collect and order them.
+            let mut primary_key: Vec<(i64, String)> = Vec::new();
             for row in column_rows {
                 let hidden = row.try_get::<i64, _>("hidden").unwrap_or(0);
                 if hidden != 0 {
@@ -79,8 +82,13 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
                 }
                 let not_null = row.try_get::<i64, _>("notnull").unwrap_or(0);
                 let ordinal = row.try_get::<i64, _>("cid").unwrap_or(0) as i32 + 1;
+                let name: String = row.try_get("name").unwrap_or_default();
+                let pk = row.try_get::<i64, _>("pk").unwrap_or(0);
+                if pk > 0 {
+                    primary_key.push((pk, name.clone()));
+                }
                 object.columns.push(ColumnMetadata {
-                    name: row.try_get("name").unwrap_or_default(),
+                    name,
                     data_type: row
                         .try_get::<String, _>("type")
                         .unwrap_or_else(|_| "ANY".into()),
@@ -91,6 +99,33 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
                         .unwrap_or(None),
                 });
             }
+            primary_key.sort_by_key(|(position, _)| *position);
+            object.primary_key = primary_key.into_iter().map(|(_, name)| name).collect();
+
+            let fk_sql = format!("pragma foreign_key_list({})", quote_string(&table));
+            let fk_rows = sqlx::query(&fk_sql)
+                .fetch_all(pool)
+                .await
+                .map_err(|e| format!("metadata foreign keys failed for {table}: {e}"))?;
+            // Rows for one FK share an `id`, ordered by `seq`.
+            let mut by_id: std::collections::BTreeMap<i64, super::ForeignKey> =
+                std::collections::BTreeMap::new();
+            for row in fk_rows {
+                let id = row.try_get::<i64, _>("id").unwrap_or(0);
+                let entry = by_id.entry(id).or_insert_with(|| super::ForeignKey {
+                    columns: Vec::new(),
+                    references_schema: None,
+                    references_table: row.try_get::<String, _>("table").unwrap_or_default(),
+                    references_columns: Vec::new(),
+                });
+                if let Ok(from) = row.try_get::<String, _>("from") {
+                    entry.columns.push(from);
+                }
+                if let Ok(to) = row.try_get::<String, _>("to") {
+                    entry.references_columns.push(to);
+                }
+            }
+            object.foreign_keys = by_id.into_values().collect();
 
             let index_sql = format!("pragma index_list({})", quote_string(&table));
             let index_rows = sqlx::query(&index_sql)

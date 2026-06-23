@@ -169,6 +169,25 @@ pub struct DbObjectMetadata {
     pub kind: DbObjectMetadataKind,
     pub columns: Vec<ColumnMetadata>,
     pub indexes: Vec<IndexMetadata>,
+    /// Primary-key column names in key order (empty when there is no PK). Used for
+    /// safe edit keys and the ER diagram's key markers.
+    #[serde(default)]
+    pub primary_key: Vec<String>,
+    /// Outgoing foreign keys — the edges of the ER diagram.
+    #[serde(default)]
+    pub foreign_keys: Vec<ForeignKey>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct ForeignKey {
+    pub columns: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub references_schema: Option<String>,
+    pub references_table: String,
+    pub references_columns: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -1032,6 +1051,47 @@ mod tests {
             result.rows[2],
             vec![serde_json::json!(4), serde_json::json!("d")]
         );
+    }
+
+    #[tokio::test]
+    async fn metadata_reports_primary_and_foreign_keys() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("keys"))
+            .await
+            .expect("connect");
+        run_query_impl(
+            &state,
+            "keys".into(),
+            "create table author(id integer primary key, name text)".into(),
+            None,
+        )
+        .await
+        .expect("author");
+        run_query_impl(
+            &state,
+            "keys".into(),
+            "create table book(id integer primary key, \
+             author_id integer references author(id), title text)"
+                .into(),
+            None,
+        )
+        .await
+        .expect("book");
+
+        let meta = list_objects_impl(&state, "keys".into())
+            .await
+            .expect("metadata");
+        let book = meta
+            .schemas
+            .iter()
+            .flat_map(|schema| &schema.objects)
+            .find(|object| object.name == "book")
+            .expect("book object");
+        assert_eq!(book.primary_key, vec!["id"]);
+        assert_eq!(book.foreign_keys.len(), 1);
+        assert_eq!(book.foreign_keys[0].columns, vec!["author_id"]);
+        assert_eq!(book.foreign_keys[0].references_table, "author");
+        assert_eq!(book.foreign_keys[0].references_columns, vec!["id"]);
     }
 
     fn temp_sqlite_profile(id: &str) -> ConnectionProfile {

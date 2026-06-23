@@ -21,6 +21,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  Share2,
   Save,
   Search,
   ShieldCheck,
@@ -30,6 +31,7 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import { runQueryStream } from "./db-stream";
+import { hasDiagram, toMermaidErd } from "./erd";
 import {
   commandCatalog,
   effectiveKeymap,
@@ -708,6 +710,11 @@ function App() {
   // Command palette (Ctrl/Cmd+Shift+P).
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
+  // ER diagram modal (rendered from metadata via Mermaid).
+  const [diagramOpen, setDiagramOpen] = useState(false);
+  const [diagramSvg, setDiagramSvg] = useState("");
+  const [diagramError, setDiagramError] = useState<string | null>(null);
+  const mermaidReady = useRef(false);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
@@ -1005,11 +1012,18 @@ function App() {
     const object = meta?.schemas
       .flatMap((s) => s.objects)
       .find((o) => o.name === table && (schema ? o.schema === schema : true));
+    // Prefer the real primary key, then any unique index, then every column.
+    const primaryKey = object?.primaryKey ?? [];
     const unique = object?.indexes.find((index) => index.unique);
-    const keyColumns =
-      unique && unique.columns.every((c) => resultColumns.includes(c))
-        ? unique.columns
-        : resultColumns;
+    const candidate =
+      primaryKey.length > 0
+        ? primaryKey
+        : unique
+          ? unique.columns
+          : resultColumns;
+    const keyColumns = candidate.every((c) => resultColumns.includes(c))
+      ? candidate
+      : resultColumns;
     return { schema, table, keyColumns };
   }
 
@@ -1079,6 +1093,9 @@ function App() {
       case "palette.open":
         setPaletteQuery("");
         setPaletteOpen(true);
+        break;
+      case "diagram.show":
+        setDiagramOpen(true);
         break;
       case "query.run":
         void runQuery();
@@ -1161,6 +1178,50 @@ function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Render the ER diagram with Mermaid whenever the modal opens (or the active
+  // connection's metadata changes while open).
+  useEffect(() => {
+    if (!diagramOpen) {
+      return;
+    }
+    if (!activeMetadata || !hasDiagram(activeMetadata)) {
+      setDiagramSvg("");
+      setDiagramError("No tables to diagram yet — connect and load metadata first.");
+      return;
+    }
+    let cancelled = false;
+    setDiagramError(null);
+    // Lazy-load Mermaid (it is large) only when the diagram is actually opened.
+    void (async () => {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        if (!mermaidReady.current) {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: "neutral",
+            securityLevel: "loose",
+          });
+          mermaidReady.current = true;
+        }
+        const { svg } = await mermaid.render(
+          `erd-${Date.now()}`,
+          toMermaidErd(activeMetadata),
+        );
+        if (!cancelled) {
+          setDiagramSvg(svg);
+        }
+      } catch (error: unknown) {
+        if (!cancelled) {
+          setDiagramSvg("");
+          setDiagramError(error instanceof Error ? error.message : String(error));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [diagramOpen, activeMetadata]);
 
   function resetKeybinding(commandId: string) {
     setKeymapOverrides((prev) => {
@@ -1775,6 +1836,16 @@ function App() {
               <button
                 className="mini-button"
                 type="button"
+                title="ER diagram"
+                aria-label="ER diagram"
+                disabled={!hasDiagram(activeMetadata)}
+                onClick={() => setDiagramOpen(true)}
+              >
+                <Share2 size={14} />
+              </button>
+              <button
+                className="mini-button"
+                type="button"
                 title="Refresh objects"
                 aria-label="Refresh objects"
                 disabled={!activeConnectionOpen || activeMetadataLoading}
@@ -2268,6 +2339,56 @@ function App() {
                 ))
               ) : (
                 <div className="palette-empty">No matching commands</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {diagramOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setDiagramOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="diagram"
+            role="dialog"
+            aria-label="ER diagram"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="diagram-header">
+              <strong>ER Diagram</strong>
+              <span>{activeConnection.name}</span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  if (activeMetadata) {
+                    void navigator.clipboard?.writeText(toMermaidErd(activeMetadata));
+                  }
+                }}
+                disabled={!activeMetadata}
+              >
+                Copy Mermaid
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setDiagramOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="diagram-canvas">
+              {diagramError ? (
+                <div className="result-error" role="alert">
+                  <AlertTriangle size={16} />
+                  <span>{diagramError}</span>
+                </div>
+              ) : (
+                // Mermaid output is generated from our own metadata.
+                <div dangerouslySetInnerHTML={{ __html: diagramSvg }} />
               )}
             </div>
           </div>

@@ -22,6 +22,7 @@ export interface CommandMeta {
 
 export const commandCatalog: CommandMeta[] = [
   { id: "palette.open", title: "Show All Commands", category: "General" },
+  { id: "diagram.show", title: "Show ER diagram", category: "General" },
   { id: "query.run", title: "Run current statement", category: "Query" },
   { id: "query.cancel", title: "Cancel running query", category: "Query" },
   { id: "editor.focus", title: "Focus SQL editor", category: "Editor" },
@@ -34,6 +35,7 @@ export const commandCatalog: CommandMeta[] = [
 /** VS Code-flavored default keymap. */
 export const defaultKeymap: Keymap = {
   "palette.open": "Mod+Shift+P",
+  "diagram.show": "Mod+Shift+D",
   "query.run": "Mod+Enter",
   "query.cancel": "Mod+Shift+Backspace",
   "editor.focus": "Mod+1",

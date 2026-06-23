@@ -200,6 +200,8 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
                         kind,
                         columns: Vec::new(),
                         indexes: Vec::new(),
+                        primary_key: Vec::new(),
+                        foreign_keys: Vec::new(),
                     },
                 );
             }

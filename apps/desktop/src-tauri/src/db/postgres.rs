@@ -198,6 +198,66 @@ pub async fn metadata(pool: &PgPool) -> Result<DatabaseMetadata, String> {
         }
     }
 
+    let pk_rows = sqlx::query(
+        r#"
+        select ns.nspname as schema_name, tbl.relname as table_name,
+               array_agg(att.attname order by key_ord.ordinality) as columns
+        from pg_constraint con
+        join pg_class tbl on tbl.oid = con.conrelid
+        join pg_namespace ns on ns.oid = tbl.relnamespace
+        left join lateral unnest(con.conkey) with ordinality as key_ord(attnum, ordinality) on true
+        left join pg_attribute att on att.attrelid = con.conrelid and att.attnum = key_ord.attnum
+        where con.contype = 'p' and ns.nspname not in ('pg_catalog', 'information_schema')
+        group by ns.nspname, tbl.relname
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+    for row in pk_rows {
+        let schema: String = row.try_get("schema_name").unwrap_or_default();
+        let table: String = row.try_get("table_name").unwrap_or_default();
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            object.primary_key = row.try_get("columns").unwrap_or_default();
+        }
+    }
+
+    let fk_rows = sqlx::query(
+        r#"
+        select ns.nspname as schema_name, tbl.relname as table_name,
+               fns.nspname as ref_schema, ftbl.relname as ref_table,
+               array_agg(att.attname order by key_ord.ordinality) as columns,
+               array_agg(fatt.attname order by key_ord.ordinality) as ref_columns
+        from pg_constraint con
+        join pg_class tbl on tbl.oid = con.conrelid
+        join pg_namespace ns on ns.oid = tbl.relnamespace
+        join pg_class ftbl on ftbl.oid = con.confrelid
+        join pg_namespace fns on fns.oid = ftbl.relnamespace
+        left join lateral unnest(con.conkey, con.confkey)
+          with ordinality as key_ord(attnum, fattnum, ordinality) on true
+        left join pg_attribute att on att.attrelid = con.conrelid and att.attnum = key_ord.attnum
+        left join pg_attribute fatt on fatt.attrelid = con.confrelid and fatt.attnum = key_ord.fattnum
+        where con.contype = 'f' and ns.nspname not in ('pg_catalog', 'information_schema')
+        group by ns.nspname, tbl.relname, fns.nspname, ftbl.relname, con.conname
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+    for row in fk_rows {
+        let schema: String = row.try_get("schema_name").unwrap_or_default();
+        let table: String = row.try_get("table_name").unwrap_or_default();
+        let ref_schema: String = row.try_get("ref_schema").unwrap_or_default();
+        if let Some(object) = builder.object_mut(&schema, &table) {
+            object.foreign_keys.push(super::ForeignKey {
+                columns: row.try_get("columns").unwrap_or_default(),
+                references_schema: Some(ref_schema),
+                references_table: row.try_get("ref_table").unwrap_or_default(),
+                references_columns: row.try_get("ref_columns").unwrap_or_default(),
+            });
+        }
+    }
+
     Ok(builder.finish())
 }
 

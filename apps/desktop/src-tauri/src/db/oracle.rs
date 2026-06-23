@@ -115,6 +115,8 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
                 },
                 columns: Vec::new(),
                 indexes: Vec::new(),
+                primary_key: Vec::new(),
+                foreign_keys: Vec::new(),
             })
         })
         .collect();

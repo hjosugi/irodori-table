@@ -36,7 +36,18 @@ export type DatabaseMetadata = { schemas: Array<SchemaMetadata>, };
 
 export type SchemaMetadata = { name: string, objects: Array<DbObjectMetadata>, };
 
-export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, };
+export type ForeignKey = { columns: Array<string>, referencesSchema?: string, referencesTable: string, referencesColumns: Array<string>, };
+
+export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, 
+/**
+ * Primary-key column names in key order (empty when there is no PK). Used for
+ * safe edit keys and the ER diagram's key markers.
+ */
+primaryKey: Array<string>, 
+/**
+ * Outgoing foreign keys — the edges of the ER diagram.
+ */
+foreignKeys: Array<ForeignKey>, };
 
 export type DbObjectMetadataKind = "table" | "view" | "index";
 

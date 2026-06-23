@@ -326,7 +326,8 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Done when:** edits stage as a reviewable change set, generate parameterized DML, and commit/rollback in a transaction; primary-key-less tables are handled safely.
 - **Done (backend, staged/non-immediate model):** `db/edit.rs` turns a `TableEdits` batch (updates/inserts/deletes, each a `CellValue` set keyed by the row's key columns) into parameterized statements with **per-dialect identifier quoting** (`"x"` / `` `x` `` / `[x]`) and placeholder style (`$n` for pg, `?` otherwise); a `NULL` key becomes `IS NULL`; empty-table / keyless-update / keyless-delete are rejected (no accidental full-table writes). `db_apply_edits` commits the batch in one transaction per the `Connection::apply_edits` trait method (sqlx engines override; others refuse). Verified by `edit.rs` generation unit tests **and an end-to-end in-memory SQLite test** (`apply_edits_commits_update_insert_delete`). Types + command flow through typebridge (`TableEdits`/`AppliedEdits`/`dbApplyEdits`, drift-check green).
 - **Done (desktop editable grid, staged model):** an "Edit Data" mode adds a staged change set on top of the result grid — double-click a cell to edit (changed cells/rows highlighted), "+ Row" to stage inserts, **column-header click to sort** (asc/desc/none, client-side), and **paste** TSV/CSV from the clipboard into cells (spilling across columns and into new rows). "Commit (N)" infers the target table from the last query's `from <table>` and key columns from the table's unique index (else all result columns), builds a `TableEdits` batch, and calls `dbApplyEdits`; "Discard" drops the staged changes. Edits reset on each new run; the change set survives sorting (display rows key back to their origin). Sorting/editing compose with row virtualization. Frontend type-checks and the production bundle builds.
-- **Remaining:** primary-key detection beyond "unique index / all columns" (true PK flag from metadata), row delete in the UI (the backend already supports `deletes`), and precise value binding for pg/mysql precision-typed columns / typed `NULL` (needs column-type metadata threaded through).
+- **Done (PK detection):** metadata now carries the real primary key (`DbObjectMetadata.primary_key`) — SQLite via `pragma table_xinfo.pk`, Postgres/MySQL via `pg_constraint`/`information_schema`; the editable grid keys updates/deletes on the PK (then a unique index, then all columns). Verified by a SQLite metadata unit test.
+- **Remaining:** row delete in the UI (the backend already supports `deletes`), and precise value binding for pg/mysql precision-typed columns / typed `NULL` (needs column-type metadata threaded through).
 - **Depends on:** EXEC-005
 - **Size:** L · **Priority:** P1
 
@@ -784,8 +785,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P2
 
-### ADV-004 — ERD + graph views
+### ADV-004 — ERD + graph views 🚧 (schema ERD done)
 - **Done when:** ERD renders from schema and query-result graph views render; explicitly after core editor/query/browser are excellent.
+- **Done (schema ERD via Mermaid):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders an `erDiagram` from the active connection's metadata — base tables with their columns, `PK`/`FK` markers, and many-to-one FK edges. `src/erd.ts` is the pure metadata→Mermaid generator (sanitized identifiers, only edges whose target table is present, so the graph stays clean); the modal can copy the Mermaid source. Mermaid is dynamically imported so it stays out of the main bundle (~240 kB) in its own ~610 kB chunk loaded on first open. Needs the new FK/PK metadata (below).
+- **Remaining:** reduce edge/box overlap further (evaluate the Mermaid ELK layout), query-result graph views, and FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done).
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** Later
 
