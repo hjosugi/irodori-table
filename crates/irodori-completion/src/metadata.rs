@@ -31,7 +31,10 @@ impl MetadataCache {
     }
 
     pub fn request_refresh(&mut self, scope: RefreshScope, reason: RefreshReason) {
-        self.refresh_requests.push(RefreshRequest { scope, reason });
+        let request = RefreshRequest { scope, reason };
+        if !self.refresh_requests.contains(&request) {
+            self.refresh_requests.push(request);
+        }
     }
 
     pub fn refresh_requests(&self) -> &[RefreshRequest] {
@@ -53,6 +56,36 @@ impl MetadataCache {
                 reason: RefreshReason::Stale,
             })
             .collect()
+    }
+
+    /// Ensure the caller has a usable snapshot and enqueue background refresh
+    /// work when the cache is missing or stale.
+    ///
+    /// Returns `true` when a snapshot exists and can still be used immediately.
+    /// Stale snapshots return `true` because completion/hover can continue from
+    /// cached metadata while the host refreshes in the background.
+    pub fn ensure_fresh(&mut self, connection_id: &str, now: SystemTime) -> bool {
+        match self.snapshot(connection_id) {
+            None => {
+                self.request_refresh(
+                    RefreshScope::Connection {
+                        connection_id: connection_id.to_string(),
+                    },
+                    RefreshReason::Missing,
+                );
+                false
+            }
+            Some(snapshot) if snapshot.is_stale(now) => {
+                self.request_refresh(
+                    RefreshScope::Connection {
+                        connection_id: connection_id.to_string(),
+                    },
+                    RefreshReason::Stale,
+                );
+                true
+            }
+            Some(_) => true,
+        }
     }
 
     pub fn invalidate_connection(&mut self, connection_id: &str) -> bool {
@@ -228,6 +261,13 @@ impl SchemaMetadata {
         self.objects.iter().find(|object| object.name == name)
     }
 
+    pub fn routines_named(&self, name: &str) -> Vec<&RoutineMetadata> {
+        self.routines
+            .iter()
+            .filter(|routine| routine.name == name)
+            .collect()
+    }
+
     fn remove_object(&mut self, name: &str) -> bool {
         let object_count = self.objects.len();
         let routine_count = self.routines.len();
@@ -244,6 +284,7 @@ pub struct ObjectMetadata {
     pub permissions: MetadataPermissions,
     pub columns: Vec<ColumnMetadata>,
     pub indexes: Vec<IndexMetadata>,
+    pub foreign_keys: Vec<ForeignKeyMetadata>,
 }
 
 impl ObjectMetadata {
@@ -254,6 +295,7 @@ impl ObjectMetadata {
             permissions: MetadataPermissions::readable(),
             columns: Vec::new(),
             indexes: Vec::new(),
+            foreign_keys: Vec::new(),
         }
     }
 
@@ -264,6 +306,7 @@ impl ObjectMetadata {
             permissions: MetadataPermissions::readable(),
             columns: Vec::new(),
             indexes: Vec::new(),
+            foreign_keys: Vec::new(),
         }
     }
 
@@ -315,6 +358,36 @@ pub struct IndexMetadata {
     pub primary: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ForeignKeyMetadata {
+    pub columns: Vec<String>,
+    pub references_schema: String,
+    pub references_object: String,
+    pub references_columns: Vec<String>,
+}
+
+impl ForeignKeyMetadata {
+    pub fn new(
+        columns: Vec<String>,
+        references_schema: impl Into<String>,
+        references_object: impl Into<String>,
+        references_columns: Vec<String>,
+    ) -> Self {
+        Self {
+            columns,
+            references_schema: references_schema.into(),
+            references_object: references_object.into(),
+            references_columns,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoutineKind {
+    Function,
+    Procedure,
+}
+
 impl IndexMetadata {
     pub fn new(name: impl Into<String>, columns: Vec<String>) -> Self {
         Self {
@@ -329,6 +402,7 @@ impl IndexMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutineMetadata {
     pub name: String,
+    pub kind: RoutineKind,
     pub signature: String,
     pub return_type: Option<String>,
     pub permissions: MetadataPermissions,
@@ -338,6 +412,17 @@ impl RoutineMetadata {
     pub fn new(name: impl Into<String>, signature: impl Into<String>) -> Self {
         Self {
             name: name.into(),
+            kind: RoutineKind::Function,
+            signature: signature.into(),
+            return_type: None,
+            permissions: MetadataPermissions::readable(),
+        }
+    }
+
+    pub fn procedure(name: impl Into<String>, signature: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            kind: RoutineKind::Procedure,
             signature: signature.into(),
             return_type: None,
             permissions: MetadataPermissions::readable(),
@@ -530,5 +615,31 @@ mod tests {
                 reason: RefreshReason::Stale,
             }]
         );
+    }
+
+    #[test]
+    fn ensure_fresh_queues_missing_and_stale_refresh_once() {
+        let mut cache = MetadataCache::new();
+
+        assert!(!cache.ensure_fresh(CONN, SystemTime::UNIX_EPOCH));
+        assert!(!cache.ensure_fresh(CONN, SystemTime::UNIX_EPOCH));
+        assert_eq!(
+            cache.refresh_requests(),
+            &[RefreshRequest {
+                scope: RefreshScope::Connection {
+                    connection_id: CONN.to_string(),
+                },
+                reason: RefreshReason::Missing,
+            }]
+        );
+
+        cache.upsert_snapshot(sample_snapshot());
+        assert!(cache.ensure_fresh(CONN, SystemTime::UNIX_EPOCH + Duration::from_secs(30)));
+        assert!(cache.refresh_requests().contains(&RefreshRequest {
+            scope: RefreshScope::Connection {
+                connection_id: CONN.to_string(),
+            },
+            reason: RefreshReason::Stale,
+        }));
     }
 }

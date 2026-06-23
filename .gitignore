@@ -1,5 +1,7 @@
 .local/
 .irodori-dev/
+.cache/
+.config/
 ref/
 knowledge/*.sqlite
 knowledge/*.sqlite-*

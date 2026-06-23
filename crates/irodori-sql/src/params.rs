@@ -4,6 +4,8 @@
 //! outside string literals, quoted identifiers, and comments so UI/runtime layers
 //! can prompt, bind, and remember values without guessing from raw text.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParameterStyle {
     Question,
@@ -20,6 +22,148 @@ pub struct QueryParameter {
     pub position: Option<u32>,
     pub start: usize,
     pub end: usize,
+}
+
+impl QueryParameter {
+    pub fn key(&self) -> ParameterKey {
+        if let Some(name) = &self.name {
+            ParameterKey::Name(name.clone())
+        } else {
+            ParameterKey::Position(self.position.unwrap_or(0))
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ParameterKey {
+    Name(String),
+    Position(u32),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParameterValue {
+    Null,
+    Bool(bool),
+    Integer(i64),
+    Number(String),
+    Text(String),
+    Json(String),
+}
+
+impl ParameterValue {
+    pub fn number(value: impl Into<String>) -> Self {
+        Self::Number(value.into())
+    }
+
+    pub fn text(value: impl Into<String>) -> Self {
+        Self::Text(value.into())
+    }
+
+    pub fn json(value: impl Into<String>) -> Self {
+        Self::Json(value.into())
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ParameterValues {
+    named: BTreeMap<String, ParameterValue>,
+    positional: BTreeMap<u32, ParameterValue>,
+}
+
+impl ParameterValues {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_named(mut self, name: impl Into<String>, value: ParameterValue) -> Self {
+        self.named.insert(name.into(), value);
+        self
+    }
+
+    pub fn with_position(mut self, position: u32, value: ParameterValue) -> Self {
+        self.positional.insert(position, value);
+        self
+    }
+
+    pub fn get(&self, key: &ParameterKey) -> Option<&ParameterValue> {
+        match key {
+            ParameterKey::Name(name) => self.named.get(name),
+            ParameterKey::Position(position) => self.positional.get(position),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.named.is_empty() && self.positional.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoundParameter {
+    pub parameter: QueryParameter,
+    pub value: ParameterValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoundQuery {
+    pub sql: String,
+    pub params: Vec<BoundParameter>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParameterBindingError {
+    MissingValue {
+        key: ParameterKey,
+        placeholder: String,
+    },
+}
+
+impl std::fmt::Display for ParameterBindingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MissingValue { key, placeholder } => {
+                write!(f, "missing value for parameter {placeholder} ({key:?})")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ParameterBindingError {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParameterPrompt {
+    pub key: ParameterKey,
+    pub placeholder: String,
+    pub remembered_value: Option<ParameterValue>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct QueryParameterMemory {
+    values_by_signature: BTreeMap<String, ParameterValues>,
+}
+
+impl QueryParameterMemory {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn remember(&mut self, sql: &str, values: ParameterValues) {
+        self.values_by_signature
+            .insert(query_signature(sql), values);
+    }
+
+    pub fn recall(&self, sql: &str) -> Option<&ParameterValues> {
+        self.values_by_signature.get(&query_signature(sql))
+    }
+
+    pub fn prompts(&self, sql: &str) -> Vec<ParameterPrompt> {
+        parameter_prompts(sql, self.recall(sql))
+    }
+
+    pub fn clear(&mut self, sql: &str) -> bool {
+        self.values_by_signature
+            .remove(&query_signature(sql))
+            .is_some()
+    }
 }
 
 pub fn detect_parameters(sql: &str) -> Vec<QueryParameter> {
@@ -96,6 +240,61 @@ pub fn detect_parameters(sql: &str) -> Vec<QueryParameter> {
     }
 
     params
+}
+
+pub fn bind_parameters(
+    sql: &str,
+    values: &ParameterValues,
+) -> Result<BoundQuery, ParameterBindingError> {
+    let parameters = detect_parameters(sql);
+    let mut params = Vec::with_capacity(parameters.len());
+
+    for parameter in parameters {
+        let key = parameter.key();
+        let value =
+            values
+                .get(&key)
+                .cloned()
+                .ok_or_else(|| ParameterBindingError::MissingValue {
+                    key,
+                    placeholder: parameter.placeholder.clone(),
+                })?;
+        params.push(BoundParameter { parameter, value });
+    }
+
+    Ok(BoundQuery {
+        sql: sql.to_string(),
+        params,
+    })
+}
+
+pub fn parameter_prompts(
+    sql: &str,
+    remembered_values: Option<&ParameterValues>,
+) -> Vec<ParameterPrompt> {
+    let mut seen = BTreeSet::new();
+    let mut prompts = Vec::new();
+
+    for parameter in detect_parameters(sql) {
+        let key = parameter.key();
+        if !seen.insert(key.clone()) {
+            continue;
+        }
+        let remembered_value = remembered_values
+            .and_then(|values| values.get(&key))
+            .cloned();
+        prompts.push(ParameterPrompt {
+            key,
+            placeholder: parameter.placeholder,
+            remembered_value,
+        });
+    }
+
+    prompts
+}
+
+pub fn query_signature(sql: &str) -> String {
+    sql.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn question_index(params: &[QueryParameter]) -> u32 {
@@ -274,5 +473,88 @@ mod tests {
 
         assert_eq!(&sql[params[0].start..params[0].end], ":a");
         assert_eq!(&sql[params[1].start..params[1].end], "?");
+    }
+
+    #[test]
+    fn binds_values_without_interpolating_sql_text() {
+        let sql = "select * from users where email = :email and id = $1 and active = ?";
+        let values = ParameterValues::new()
+            .with_named(
+                "email",
+                ParameterValue::text("person@example.com' or 1=1 --"),
+            )
+            .with_position(1, ParameterValue::Integer(42));
+
+        let bound = bind_parameters(sql, &values).expect("bound query");
+
+        assert_eq!(bound.sql, sql);
+        assert_eq!(
+            bound
+                .params
+                .iter()
+                .map(|param| param.parameter.placeholder.as_str())
+                .collect::<Vec<_>>(),
+            vec![":email", "$1", "?"]
+        );
+        assert_eq!(
+            bound.params[0].value,
+            ParameterValue::text("person@example.com' or 1=1 --")
+        );
+        assert_eq!(bound.params[1].value, ParameterValue::Integer(42));
+        assert_eq!(bound.params[2].value, ParameterValue::Integer(42));
+    }
+
+    #[test]
+    fn reports_missing_values_before_execution() {
+        let error =
+            bind_parameters("select * from t where id = :id", &ParameterValues::new()).unwrap_err();
+
+        assert_eq!(
+            error,
+            ParameterBindingError::MissingValue {
+                key: ParameterKey::Name("id".to_string()),
+                placeholder: ":id".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn prompts_are_deduplicated_and_include_remembered_values() {
+        let sql = "select * from t where id = :id or parent_id = :id and flag = ?";
+        let remembered = ParameterValues::new()
+            .with_named("id", ParameterValue::Integer(7))
+            .with_position(1, ParameterValue::Bool(true));
+
+        let prompts = parameter_prompts(sql, Some(&remembered));
+
+        assert_eq!(prompts.len(), 2);
+        assert_eq!(prompts[0].key, ParameterKey::Name("id".to_string()));
+        assert_eq!(
+            prompts[0].remembered_value,
+            Some(ParameterValue::Integer(7))
+        );
+        assert_eq!(prompts[1].key, ParameterKey::Position(1));
+        assert_eq!(
+            prompts[1].remembered_value,
+            Some(ParameterValue::Bool(true))
+        );
+    }
+
+    #[test]
+    fn remembers_values_by_normalized_query_signature() {
+        let mut memory = QueryParameterMemory::new();
+        let sql = "select *\nfrom t where id = :id";
+        let same_sql = "select   * from t where id = :id";
+        let values = ParameterValues::new().with_named("id", ParameterValue::Integer(9));
+
+        memory.remember(sql, values.clone());
+
+        assert_eq!(memory.recall(same_sql), Some(&values));
+        assert_eq!(
+            memory.prompts(same_sql)[0].remembered_value,
+            Some(ParameterValue::Integer(9))
+        );
+        assert!(memory.clear(same_sql));
+        assert!(memory.recall(sql).is_none());
     }
 }
