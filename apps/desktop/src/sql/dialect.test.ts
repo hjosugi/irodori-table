@@ -73,6 +73,8 @@ const meta: DatabaseMetadata = {
             { name: "email", dataType: "text", nullable: true, ordinal: 2 },
           ],
           indexes: [],
+          primaryKey: ["id"],
+          foreignKeys: [],
         },
         {
           schema: "public",
@@ -80,6 +82,8 @@ const meta: DatabaseMetadata = {
           kind: "view",
           columns: [{ name: "id", dataType: "int4", nullable: false, ordinal: 1 }],
           indexes: [],
+          primaryKey: [],
+          foreignKeys: [],
         },
         {
           schema: "public",
@@ -87,6 +91,8 @@ const meta: DatabaseMetadata = {
           kind: "index",
           columns: [],
           indexes: [],
+          primaryKey: [],
+          foreignKeys: [],
         },
       ],
     },

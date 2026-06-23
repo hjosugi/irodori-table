@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-Last updated: 2026-06-21 JST.
+Last updated: 2026-06-23 JST.
 
 This is the ticket-level breakdown of `ROADMAP.md`. Each item is sized to be picked
 up and finished on its own, one at a time, with a testable "Done when" line. Work
@@ -50,27 +50,31 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## FND — Foundation, Legal, Scaffolding
 
-### FND-001 — Clean-room contribution rules enforced in PR template
+### FND-001 — Clean-room contribution rules enforced in PR template ✅
 - **Goal:** Make `docs/clean-room.md` actionable at review time.
 - **Done when:** a PR template includes the contribution checklist; CONTRIBUTING links the policy; a sample PR shows the checklist rendered.
+- **Done:** `.github/pull_request_template.md` embeds the clean-room/licensing checklist, `CONTRIBUTING.md` links `docs/clean-room.md` and `docs/licensing.md`, and `docs/sample-pr.md` shows the checklist rendered in a filled sample.
 - **Depends on:** —
 - **Size:** S · **Priority:** P0
 
-### FND-002 — Cargo/Tauri workspace scaffold
+### FND-002 — Cargo/Tauri workspace scaffold ✅
 - **Goal:** A buildable Rust workspace with the crate skeletons from the architecture section.
 - **Done when:** `cargo build` succeeds with empty `irodori-core`, `irodori-data-sources`, `irodori-proxy`, `irodori-secure-store`, `irodori-sql`, `irodori-completion`, `irodori-io`, `irodori-server`, `irodori-i18n`, `irodori-knowledge` crates; CI builds on Linux/macOS/Windows.
+- **Done:** root `Cargo.toml` defines the workspace, includes the existing Tauri crate plus the ten roadmap crates, and sets the empty crates as default members so root `cargo build` verifies the scaffold. `.github/workflows/ci.yml` runs the root scaffold build on Linux, macOS, and Windows.
 - **Depends on:** —
 - **Size:** M · **Priority:** P0
 
-### FND-003 — License + SPDX headers wired
+### FND-003 — License + SPDX headers wired ✅
 - **Goal:** Lock `MIT OR 0BSD` across crates and templates.
 - **Done when:** every crate `Cargo.toml` declares `license = "MIT OR 0BSD"`; `LICENSE` present; a CI check fails on a missing license field.
+- **Done:** root workspace package metadata uses `MIT OR 0BSD`, each new crate inherits it through `license.workspace = true`, the existing desktop crate already declares the same license, and `scripts/check-licenses.sh` is run in CI.
 - **Depends on:** FND-002
 - **Size:** S · **Priority:** P0
 
-### FND-004 — Supported-license policy for assets
+### FND-004 — Supported-license policy for assets ✅
 - **Goal:** Decide allowed licenses for themes, snippets, icons, grammars, drivers.
 - **Done when:** `docs/licensing.md` lists allowed/blocked license classes per asset type; referenced from the PR checklist.
+- **Done:** `docs/licensing.md` now lists compatibility classes and per-asset rules for dependencies, templates, themes, snippets, icons/images, fonts, grammars, drivers, and fixtures; the PR checklist references it.
 - **Depends on:** FND-001
 - **Size:** S · **Priority:** P0
 

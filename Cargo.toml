@@ -1,0 +1,34 @@
+[workspace]
+members = [
+    "apps/desktop/src-tauri",
+    "crates/irodori-core",
+    "crates/irodori-data-sources",
+    "crates/irodori-proxy",
+    "crates/irodori-secure-store",
+    "crates/irodori-sql",
+    "crates/irodori-completion",
+    "crates/irodori-io",
+    "crates/irodori-server",
+    "crates/irodori-i18n",
+    "crates/irodori-knowledge",
+]
+default-members = [
+    "crates/irodori-core",
+    "crates/irodori-data-sources",
+    "crates/irodori-proxy",
+    "crates/irodori-secure-store",
+    "crates/irodori-sql",
+    "crates/irodori-completion",
+    "crates/irodori-io",
+    "crates/irodori-server",
+    "crates/irodori-i18n",
+    "crates/irodori-knowledge",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR 0BSD"
+authors = ["Irodori Table contributors"]
+

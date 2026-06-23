@@ -1,0 +1,11 @@
+[package]
+name = "irodori-sql"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+

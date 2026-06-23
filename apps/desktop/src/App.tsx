@@ -1,13 +1,7 @@
 import {
-<<<<<<< HEAD
-  type FormEvent,
-  type UIEvent,
-||||||| 57e635d
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-=======
   type CSSProperties,
   type FormEvent,
->>>>>>> claude/bold-volta-vpjmmp
+  type UIEvent,
   useEffect,
   useMemo,
   useRef,
@@ -595,17 +589,11 @@ const GRID_ROW_HEIGHT = 27;
 const GRID_OVERSCAN = 8;
 
 function App() {
-<<<<<<< HEAD
-  const editorRef = useRef<HTMLTextAreaElement>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const [gridScrollTop, setGridScrollTop] = useState(0);
   const [gridViewport, setGridViewport] = useState(480);
-||||||| 57e635d
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-=======
   const editorApiRef = useRef<SqlEditorHandle>(null);
->>>>>>> claude/bold-volta-vpjmmp
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
@@ -745,7 +733,6 @@ function App() {
     activeMetadataLoading,
   ]);
 
-<<<<<<< HEAD
   // Track the result grid's viewport height so the virtualized window covers it.
   useEffect(() => {
     const element = gridRef.current;
@@ -759,31 +746,12 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
-  const lineNumbers = useMemo(
-    () =>
-      query
-        .split("\n")
-        .map((_, index) => index + 1)
-        .join("\n"),
-    [query],
-  );
-||||||| 57e635d
-  const lineNumbers = useMemo(
-    () =>
-      query
-        .split("\n")
-        .map((_, index) => index + 1)
-        .join("\n"),
-    [query],
-  );
-=======
   // Dialect for the editor: prefer the active connection's profile engine,
   // then the connection-form draft, then Postgres.
   const editorEngine = useMemo<DbEngine>(() => {
     const profile = profiles.find((item) => item.id === activeConnectionId);
     return profile?.engine ?? draft.engine ?? "postgres";
   }, [profiles, activeConnectionId, draft.engine]);
->>>>>>> claude/bold-volta-vpjmmp
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
 
@@ -1099,7 +1067,7 @@ function App() {
         void cancelQuery();
         break;
       case "editor.focus":
-        editorRef.current?.focus();
+        editorApiRef.current?.focus();
         break;
       case "result.export":
         exportCsv();

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+missing=0
+
+while IFS= read -r manifest; do
+  if grep -Eq '^[[:space:]]*license[[:space:]]*=[[:space:]]*"MIT OR 0BSD"' "$manifest"; then
+    continue
+  fi
+
+  if grep -Eq '^[[:space:]]*license\.workspace[[:space:]]*=[[:space:]]*true' "$manifest"; then
+    continue
+  fi
+
+  echo "missing MIT OR 0BSD license field: ${manifest#$root/}" >&2
+  missing=1
+done < <(
+  find "$root" \
+    -path "$root/.git" -prune -o \
+    -path "$root/ref" -prune -o \
+    -path "$root/target" -prune -o \
+    -path "$root/apps/desktop/src-tauri/target" -prune -o \
+    -name Cargo.toml -print
+)
+
+if [[ -f "$root/apps/desktop/package.json" ]]; then
+  if ! grep -Eq '"license"[[:space:]]*:[[:space:]]*"MIT OR 0BSD"' "$root/apps/desktop/package.json"; then
+    echo "missing MIT OR 0BSD license field: apps/desktop/package.json" >&2
+    missing=1
+  fi
+fi
+
+exit "$missing"
+
