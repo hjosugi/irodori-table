@@ -1,7 +1,7 @@
 {
   "name": "irodori-table-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT OR 0BSD",
   "type": "module",
   "scripts": {
@@ -11,6 +11,9 @@
     "build": "npm run typegen && tsc && vite build",
     "release:appimage": "node tools/build-linux-release.mjs appimage",
     "release:linux": "node tools/build-linux-release.mjs linux",
+    "release:patch": "node tools/release.mjs patch",
+    "release:minor": "node tools/release.mjs minor",
+    "release:major": "node tools/release.mjs major",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
