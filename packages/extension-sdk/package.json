@@ -1,0 +1,43 @@
+{
+  "name": "@irodori-table/extension-sdk",
+  "version": "0.1.0",
+  "license": "MIT OR 0BSD",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./dev": {
+      "types": "./dist/dev.d.ts",
+      "default": "./dist/dev.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "default": "./dist/manifest.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    }
+  },
+  "bin": {
+    "irodori-extension-dev": "./bin/irodori-extension-dev.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "src/generated"
+  ],
+  "scripts": {
+    "typegen": "cargo test -p irodori-extension export_typescript_bindings",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3"
+  }
+}

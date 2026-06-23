@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-06-22 JST. A status snapshot of what is built and verified —
+Last updated: 2026-06-24 JST. A status snapshot of what is built and verified —
 focused on the database engine layer. Pairs with `ROADMAP.md` (themes) and
 `docs/implementation-backlog.md` (tickets). Production release gates are tracked
 in `docs/production-readiness.md`.
@@ -88,6 +88,31 @@ Highlights:
 - **Trait + registry**: the closed `EnginePool` enum is gone; connections live behind
   `Arc<dyn Connection>` and dispatch with `conn.run_query()`, not a `match`.
 
+## Network and security foundation — built
+
+- **Transport schema**: `irodori-core::connection` now models direct/local-file
+  transports plus SSH tunnels (agent, password secret, or private-key secret),
+  SOCKS5 proxy routes, HTTP CONNECT proxy routes, and ordered multi-hop chains.
+  Chain hops are named, validated for uniqueness, and keep credentials as
+  `SecretRef` handles instead of inline material.
+- **Proxy planning + diagnostics**: `irodori-proxy` builds typed `TransportPlan`
+  stages for direct TCP, SSH, SOCKS5, HTTP CONNECT, TLS, auth, and local-file
+  paths. `HopRegistry` resolves reusable named hops into concrete chains, and
+  `ConnectionDiagnostics` records per-stage status, timing, messages, and the
+  first failing stage. A direct TCP probe is implemented and unit-tested against a
+  local listener; TLS handshakes and non-direct proxy/SSH handshakes remain driver
+  integration work.
+- **Per-connection secret handles**: `irodori-secure-store` now defines the
+  `SecureStore` trait, stable per-connection secret handles (`password`, `token`,
+  private key/passphrase, SSH password, proxy password), an in-memory test store,
+  and an OS-keychain adapter using macOS `security` or Linux `secret-tool` when
+  available. Unsupported platforms fail closed instead of writing plaintext.
+- **Audit + privacy/redaction**: `irodori-core::security` now provides
+  `AuditLog`, `AuditEvent`, privacy mode, redacted log export, and a shared
+  redactor for URL credentials, password/token-style assignments, known secret
+  material, and private-mode SQL string literals. Redaction-safe export behavior
+  is covered by unit tests.
+
 ## Desktop UI wiring — built
 
 - The workbench UI now uses the generated `dbConnect`, `dbRunQuery`, and
@@ -146,9 +171,10 @@ Highlights:
 
 ## Not done yet (next)
 
-- **Connection manager polish**: OS keychain-backed secrets and richer diagnostics
-  still need Rust-side storage/transport work; UI currently persists non-secret
-  profile fields locally.
+- **Connection manager polish**: the UI still needs to write passwords/keys through
+  `irodori-secure-store`, expose proxy-chain editing, and surface
+  `irodori-proxy` diagnostics; it currently persists non-secret profile fields
+  locally.
 - **Object browser expansion**: richer per-engine metadata remains (routines,
   triggers/packages, comments, row estimates, Mongo nested fields, DuckDB indexes),
   but the first schema/table/column/index pass is wired.
@@ -162,5 +188,5 @@ Highlights:
   and `fetch_more` pagination; rich array decoding. (SQL Server precision-safe
   decimals/temporals/binary is now done — see below.)
 - **Beyond the engine layer** (per ROADMAP): export/import (CSV/TSV/INSERT/JSON/Avro/
-  Parquet), proxy/SSH transports, schema-aware completion, optional AI/MCP, the
-  extension SDK, and the editor.
+  Parquet), driver-level SSH/proxy dialer integration, schema-aware completion,
+  optional AI/MCP, the extension SDK, and the editor.
