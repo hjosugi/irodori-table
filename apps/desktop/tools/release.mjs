@@ -88,11 +88,12 @@ try {
 
   const tagName = `v${newVersion}`;
   console.log(`Creating tag: ${tagName}`);
-  execSync(`git tag "${tagName}"`, { stdio: "inherit" });
+  execSync(`git tag -a "${tagName}" -m "Release ${tagName}"`, { stdio: "inherit" });
 
-  console.log(`\nVersion bumped and tagged successfully!`);
-  console.log(`Run the following command to push and trigger the release build:`);
-  console.log(`  git push origin main --follow-tags`);
+  console.log("Pushing commits and tags to GitHub...");
+  execSync(`git push origin main --follow-tags`, { stdio: "inherit" });
+
+  console.log(`\nVersion bumped, tagged, and pushed successfully!`);
 } catch (error) {
   console.error("Git operation failed:", error.message);
   process.exit(1);
