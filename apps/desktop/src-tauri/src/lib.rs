@@ -181,7 +181,8 @@ mod typegen {
                 Command::new("db_run_query", "QueryResult")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("sql", TsType::string()))
-                    .arg(Arg::rust("max_rows", TsType::number()).optional()),
+                    .arg(Arg::rust("max_rows", TsType::number()).optional())
+                    .arg(Arg::rust("timeout_ms", TsType::number()).optional()),
             )
             .command(
                 Command::new("db_list_objects", "DatabaseMetadata")

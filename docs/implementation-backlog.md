@@ -284,6 +284,7 @@ top to bottom within an epic unless a dependency says otherwise.
 ### EXEC-002 — Streaming results + cancellation
 - **Goal:** Large results stream and stop on demand.
 - **Done when:** rows stream into the grid incrementally; cancel stops server-side work where supported; cancel mid-stream leaves the UI consistent.
+- **In progress:** a per-query **timeout** is wired — `db_run_query` accepts an optional `timeoutMs` and bounds the run with `tokio::time::timeout`, returning a clean `query timed out after Nms` and (for the pooled sqlx engines) cancelling the in-flight request when the future drops. `with_timeout` has a unit test. **Remaining:** explicit user-initiated cancel (a cancellation token threaded into the fetch loop + a `db_cancel` command + UI affordance) and incremental row streaming into the grid.
 - **Depends on:** EXEC-001
 - **Size:** L · **Priority:** P0
 
@@ -332,7 +333,7 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### EXEC-009b — SQL Server (tiberius) and DuckDB drivers
 - **Goal:** Add the major engines sqlx does not cover.
-- **SQL Server: ✅ done (verified).** Connects via the pure-Rust `tiberius` (TDS) driver — no SQL Server client — behind `EnginePool::SqlServer`; an integration test runs against a real SQL Server 2022 container (connect + version + typed `select`). Follow-up: precision-safe decimals and datetime/binary decoding (currently float/null).
+- **SQL Server: ✅ done (verified).** Connects via the pure-Rust `tiberius` (TDS) driver — no SQL Server client — behind `EnginePool::SqlServer`; an integration test runs against a real SQL Server 2022 container (connect + version + typed `select`). Precision-safe decoding is now done too: cells decode off the raw `ColumnData`, so `DECIMAL/NUMERIC/MONEY` keep full precision + display scale as strings, datetime/date/time/datetimeoffset go through chrono (ISO 8601 / RFC3339), binary is `\x` hex, and UUID/XML are strings (no more lossy `f64`/`null`). Covered by a `numeric_to_string` unit test.
 - **DuckDB: ✅ done (verified).** Embedded DuckDB behind `--features duckdb` (off by default) in `db/duck.rs`; an in-memory integration test (create/insert/select on int/varchar/double/null) passes against bundled libduckdb v1.5.4. Statements are classified (DDL/DML → `execute`, queries → `query`), and column metadata is read after execution. Note: the `bundled` libduckdb C++ build is heavy (needs adequate RAM/swap); linking a system/prebuilt libduckdb skips the compile.
 - **Depends on:** EXEC-009
 - **Size:** L · **Priority:** P1

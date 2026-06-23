@@ -18,8 +18,9 @@
 //! and timezone loss. Oracle awaits a pure-Rust thin TNS driver.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -362,6 +363,22 @@ pub async fn connect_impl(
     })
 }
 
+/// Bound a query future by an optional wall-clock deadline. `None` preserves the
+/// run-to-completion behavior; `Some(ms)` returns a clean timeout error if the
+/// query has not finished, and dropping the future cancels the in-flight request
+/// for the pooled (sqlx) engines. A non-positive value means "no limit".
+async fn with_timeout<T>(
+    timeout_ms: Option<u64>,
+    fut: impl Future<Output = Result<T, String>>,
+) -> Result<T, String> {
+    match timeout_ms.filter(|ms| *ms > 0) {
+        Some(ms) => tokio::time::timeout(Duration::from_millis(ms), fut)
+            .await
+            .map_err(|_| format!("query timed out after {ms}ms"))?,
+        None => fut.await,
+    }
+}
+
 pub async fn run_query_impl(
     state: &DbState,
     connection_id: String,
@@ -429,8 +446,16 @@ pub async fn db_run_query(
     connection_id: String,
     sql: String,
     max_rows: Option<usize>,
+    timeout_ms: Option<u64>,
 ) -> Result<QueryResult, String> {
-    run_query_impl(state.inner(), connection_id, sql, max_rows).await
+    // Wrap the whole run (connection lookup + query) so a slow statement returns a
+    // clean timeout instead of hanging the UI; dropping the future cancels the
+    // in-flight request on the pooled engines.
+    with_timeout(
+        timeout_ms,
+        run_query_impl(state.inner(), connection_id, sql, max_rows),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -452,6 +477,23 @@ pub async fn db_disconnect(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn with_timeout_passes_through_and_trips() {
+        // No limit (None / 0) runs to completion.
+        let ok = with_timeout(None, async { Ok::<_, String>(42) }).await;
+        assert_eq!(ok, Ok(42));
+        let zero = with_timeout(Some(0), async { Ok::<_, String>(7) }).await;
+        assert_eq!(zero, Ok(7));
+
+        // A slow future past the deadline returns a clean timeout error.
+        let slow = with_timeout(Some(5), async {
+            tokio::time::sleep(Duration::from_secs(30)).await;
+            Ok::<_, String>(())
+        })
+        .await;
+        assert_eq!(slow, Err("query timed out after 5ms".to_string()));
+    }
 
     fn temp_sqlite_profile(id: &str) -> ConnectionProfile {
         let mut path = std::env::temp_dir();

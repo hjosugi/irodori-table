@@ -2,21 +2,24 @@
 //! client library required.
 //!
 //! tiberius is single-connection (not a sqlx pool), so we hold one `Client`
-//! behind a mutex per connection. Decimals currently decode best-effort; keeping
-//! them precision-safe end-to-end is a follow-up (DBeaver's `setBigDecimal` rule).
+//! behind a mutex per connection. Cells decode off the raw `ColumnData` so exact
+//! numerics and temporals stay precision-safe end-to-end (DBeaver's
+//! `setBigDecimal`/timezone rule): `DECIMAL/NUMERIC/MONEY` render to a
+//! scale-preserving string, temporals to ISO 8601 / RFC3339, binary to hex.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use futures_util::TryStreamExt;
-use tiberius::{AuthMethod, Client, Config, QueryItem};
+use tiberius::time::chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
+use tiberius::{AuthMethod, Client, ColumnData, Config, FromSql, QueryItem};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
-    IndexMetadata, RowSet, SchemaMetadata,
+    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
+    DbObjectMetadataKind, IndexMetadata, RowSet, SchemaMetadata,
 };
 
 pub type MssqlClient = Client<Compat<TcpStream>>;
@@ -85,10 +88,10 @@ pub async fn run_query(
                 columns = row.columns().iter().map(|c| c.name().to_string()).collect();
             }
             if rows.len() < cap {
-                let mut cells = Vec::with_capacity(row.columns().len());
-                for i in 0..row.columns().len() {
-                    cells.push(cell_to_json(&row, i));
-                }
+                let cells: Vec<serde_json::Value> = row
+                    .cells()
+                    .map(|(_, data)| column_data_to_json(data))
+                    .collect();
                 rows.push(cells);
             } else {
                 truncated = true;
@@ -235,28 +238,88 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
     })
 }
 
-fn cell_to_json(row: &tiberius::Row, i: usize) -> serde_json::Value {
+/// Decode one cell off the raw `ColumnData` (not lossy `try_get::<f64>`), so each
+/// TDS type maps to a precision-safe JSON value the way the sqlx engines do:
+/// exact numerics → scale-preserving string, temporals → ISO 8601 / RFC3339,
+/// binary → `\x`-prefixed hex, UUID → string. Integers/float/bool/string/xml pass
+/// through; NULL (the `None` payload) becomes JSON null.
+fn column_data_to_json(data: &ColumnData<'static>) -> serde_json::Value {
     use serde_json::Value;
-    // tiberius `try_get` returns Ok(None) for NULL and Err for a type mismatch,
-    // so try the supported types in order. MVP coverage: bool/ints/float/string.
-    // Decimals come through as float (lossy) and datetimes/binary as null for now
-    // — precision-safe decimals + temporals are a follow-up (EXEC-009b).
-    if let Ok(Some(v)) = row.try_get::<bool, _>(i) {
-        return Value::Bool(v);
+    match data {
+        ColumnData::U8(v) => v.map_or(Value::Null, |x| Value::from(x as i64)),
+        ColumnData::I16(v) => v.map_or(Value::Null, |x| Value::from(x as i64)),
+        ColumnData::I32(v) => v.map_or(Value::Null, |x| Value::from(x as i64)),
+        ColumnData::I64(v) => v.map_or(Value::Null, Value::from),
+        ColumnData::F32(v) => v.map_or(Value::Null, |x| Value::from(x as f64)),
+        ColumnData::F64(v) => v.map_or(Value::Null, Value::from),
+        ColumnData::Bit(v) => v.map_or(Value::Null, Value::Bool),
+        ColumnData::String(v) => v
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.to_string())),
+        ColumnData::Guid(v) => v.map_or(Value::Null, |u| Value::String(u.to_string())),
+        ColumnData::Binary(v) => v.as_ref().map_or(Value::Null, |b| {
+            Value::String(format!("\\x{}", hex_encode(b)))
+        }),
+        // Exact numerics: keep full precision and display scale as a string instead
+        // of round-tripping through f64 (BigDecimal/`setBigDecimal` lesson).
+        ColumnData::Numeric(v) => v.map_or(Value::Null, |n| {
+            Value::String(numeric_to_string(n.value(), n.scale()))
+        }),
+        ColumnData::Xml(v) => v
+            .as_ref()
+            .map_or(Value::Null, |x| Value::String(x.to_string())),
+        // Temporals: decode via chrono so the formatting matches the other engines.
+        ColumnData::DateTime(_) | ColumnData::SmallDateTime(_) | ColumnData::DateTime2(_) => {
+            temporal(data, |d| {
+                NaiveDateTime::from_sql(d)
+                    .ok()
+                    .flatten()
+                    .map(|t| t.to_string())
+            })
+        }
+        ColumnData::Date(_) => temporal(data, |d| {
+            NaiveDate::from_sql(d).ok().flatten().map(|t| t.to_string())
+        }),
+        ColumnData::Time(_) => temporal(data, |d| {
+            NaiveTime::from_sql(d).ok().flatten().map(|t| t.to_string())
+        }),
+        ColumnData::DateTimeOffset(_) => temporal(data, |d| {
+            DateTime::<FixedOffset>::from_sql(d)
+                .ok()
+                .flatten()
+                .map(|t| t.to_rfc3339())
+        }),
     }
-    if let Ok(Some(v)) = row.try_get::<i32, _>(i) {
-        return Value::from(v as i64);
+}
+
+/// Run a chrono `FromSql` decode and wrap the result as a JSON string (NULL or a
+/// decode miss → JSON null), keeping the temporal arms above terse.
+fn temporal(
+    data: &ColumnData<'static>,
+    decode: impl Fn(&ColumnData<'static>) -> Option<String>,
+) -> serde_json::Value {
+    decode(data).map_or(serde_json::Value::Null, serde_json::Value::String)
+}
+
+/// Render a TDS `Numeric` (an `i128` mantissa with a base-10 `scale`) as an exact
+/// decimal string, preserving sign and trailing zeros so display scale survives
+/// (e.g. `value = 100, scale = 2` → `"1.00"`).
+fn numeric_to_string(value: i128, scale: u8) -> String {
+    let scale = scale as usize;
+    if scale == 0 {
+        return value.to_string();
     }
-    if let Ok(Some(v)) = row.try_get::<i64, _>(i) {
-        return Value::from(v);
-    }
-    if let Ok(Some(v)) = row.try_get::<f64, _>(i) {
-        return Value::from(v);
-    }
-    if let Ok(Some(v)) = row.try_get::<&str, _>(i) {
-        return Value::String(v.to_string());
-    }
-    Value::Null
+    let digits = value.unsigned_abs().to_string();
+    // Left-pad so there is at least one integer digit before the point.
+    let padded = if digits.len() <= scale {
+        format!("{}{digits}", "0".repeat(scale + 1 - digits.len()))
+    } else {
+        digits
+    };
+    let point = padded.len() - scale;
+    let (int_part, frac_part) = padded.split_at(point);
+    let sign = if value < 0 { "-" } else { "" };
+    format!("{sign}{int_part}.{frac_part}")
 }
 
 fn get_str(row: &tiberius::Row, i: usize) -> String {
@@ -277,4 +340,18 @@ fn get_i32(row: &tiberius::Row, i: usize) -> i32 {
 
 fn get_bool(row: &tiberius::Row, i: usize) -> bool {
     row.try_get::<bool, _>(i).ok().flatten().unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::numeric_to_string;
+
+    #[test]
+    fn numeric_preserves_scale_sign_and_trailing_zeros() {
+        assert_eq!(numeric_to_string(123_456, 2), "1234.56");
+        assert_eq!(numeric_to_string(100, 2), "1.00"); // trailing zeros kept
+        assert_eq!(numeric_to_string(5, 3), "0.005"); // left-padded fraction
+        assert_eq!(numeric_to_string(-50, 2), "-0.50"); // sign + sub-one magnitude
+        assert_eq!(numeric_to_string(7, 0), "7"); // scale 0 is the raw integer
+    }
 }

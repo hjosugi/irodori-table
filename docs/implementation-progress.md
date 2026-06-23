@@ -45,6 +45,16 @@ Highlights:
   → string (precision-safe), timestamps → RFC3339/string, `JSON/JSONB` → object,
   `UUID` → string, binary → hex, null preserved. This follows the Beekeeper/DBeaver
   value-handler lesson (bind decimals exactly; never round-trip through `double`).
+  **SQL Server (tiberius)** now decodes off the raw `ColumnData` to match: exact
+  numerics render scale-preserving (`100, scale 2 → "1.00"`), datetime/date/time/
+  datetimeoffset via chrono (ISO 8601 / RFC3339), binary as `\x` hex, UUID/XML as
+  string — no more lossy `f64`/`null` fallbacks.
+- **Per-query timeout**: `db_run_query` takes an optional `timeoutMs`; the run is
+  bounded by `tokio::time::timeout`, so a slow statement returns a clean
+  `query timed out after Nms` instead of hanging the UI, and dropping the future
+  cancels the in-flight request on the pooled (sqlx) engines. `None`/`0` keeps the
+  run-to-completion default. (Explicit user-initiated cancel — EXEC-002's
+  cancellation token + a `db_cancel` command — is the next step.)
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,
@@ -120,8 +130,8 @@ Highlights:
   paging), a generic `information_schema` metamodel, a two-tier lazy metadata cache,
   and a cancellation token.
 - **Refinements**: Oracle NUMBER → integer representation, date/timestamp formatting,
-  and `fetch_more` pagination; SQL Server precision-safe decimals/temporals; rich
-  array decoding.
+  and `fetch_more` pagination; rich array decoding. (SQL Server precision-safe
+  decimals/temporals/binary is now done — see below.)
 - **Beyond the engine layer** (per ROADMAP): export/import (CSV/TSV/INSERT/JSON/Avro/
   Parquet), proxy/SSH transports, schema-aware completion, optional AI/MCP, the
   extension SDK, and the editor.
