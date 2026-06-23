@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout typebridge
+        uses: actions/checkout@v4
+        with:
+          repository: hjosugi/typebridge
+          path: ../typebridge
+
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Check Rust crate licenses
