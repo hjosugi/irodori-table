@@ -29,6 +29,14 @@ pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> Result<RowSe
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn stream_query(
+    pool: &SqlitePool,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
 pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
     let object_rows = sqlx::query(
         r#"

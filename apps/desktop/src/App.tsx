@@ -22,12 +22,12 @@ import {
   Table2,
   TerminalSquare,
 } from "lucide-react";
+import { runQueryStream } from "./db-stream";
 import {
   dbCancel,
   dbConnect,
   dbDisconnect,
   dbListObjects,
-  dbRunQuery,
   type ConnectionInfo,
   type ConnectionProfile,
   type DatabaseMetadata,
@@ -944,29 +944,80 @@ function App() {
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     runningQueryIdRef.current = queryId;
     try {
-      const nextResult = await dbRunQuery(
-        activeConnectionId,
-        sqlToRun,
-        10_000,
-        undefined,
-        queryId,
+      // Stream the run so the grid fills as batches arrive instead of waiting for
+      // the whole result. Query errors surface as an "error" event (the command
+      // itself resolves); the catch below only handles invoke-level failures.
+      let columns: string[] = [];
+      const rows: unknown[][] = [];
+      await runQueryStream(
+        { connectionId: activeConnectionId, sql: sqlToRun, maxRows: 10_000, queryId },
+        (event) => {
+          switch (event.type) {
+            case "columns":
+              columns = event.columns;
+              setResult({
+                columns,
+                rows: [],
+                rowCount: 0n,
+                elapsedMs: 0n,
+                truncated: false,
+              });
+              break;
+            case "rows":
+              for (const row of event.rows) {
+                rows.push(row);
+              }
+              setResult({
+                columns,
+                rows: [...rows],
+                rowCount: BigInt(rows.length),
+                elapsedMs: BigInt(Math.round(performance.now() - started)),
+                truncated: false,
+              });
+              break;
+            case "done":
+              setResult({
+                columns,
+                rows: [...rows],
+                rowCount: BigInt(event.rowCount),
+                elapsedMs: BigInt(event.elapsedMs),
+                truncated: event.truncated,
+              });
+              appendHistory({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                connectionId: activeConnectionId,
+                connectionName: activeConnection.name,
+                engine: activeConnection.engine,
+                sql: sqlToRun,
+                status: "ok",
+                rowCount: event.rowCount,
+                elapsedMs: event.elapsedMs,
+                truncated: event.truncated,
+                ranAt,
+              });
+              if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
+                void refreshObjects(activeConnectionId, true);
+              }
+              break;
+            case "error":
+              setQueryError(event.message);
+              appendHistory({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                connectionId: activeConnectionId,
+                connectionName: activeConnection.name,
+                engine: activeConnection.engine,
+                sql: sqlToRun,
+                status: "error",
+                rowCount: 0,
+                elapsedMs: Math.max(1, Math.round(performance.now() - started)),
+                truncated: false,
+                error: event.message,
+                ranAt,
+              });
+              break;
+          }
+        },
       );
-      setResult(nextResult);
-      appendHistory({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        connectionId: activeConnectionId,
-        connectionName: activeConnection.name,
-        engine: activeConnection.engine,
-        sql: sqlToRun,
-        status: "ok",
-        rowCount: Number(nextResult.rowCount),
-        elapsedMs: Number(nextResult.elapsedMs),
-        truncated: nextResult.truncated,
-        ranAt,
-      });
-      if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
-        void refreshObjects(activeConnectionId, true);
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setQueryError(message);

@@ -57,8 +57,16 @@ Highlights:
   A timeout or a cancel both drop the query future, which cancels the in-flight
   request on the pooled (sqlx) engines. `None`/`0` timeout keeps the
   run-to-completion default. Covered by `with_timeout` and `cancel_query_impl`
-  unit tests. (Incremental row streaming into the grid is the remaining EXEC-002
-  piece.)
+  unit tests.
+- **Incremental result streaming**: `db_run_query_stream` streams a query as
+  `columns → batched rows → done|error` over a Tauri `Channel`, so the grid fills
+  as rows arrive instead of after the whole (capped) page. `stream.rs` gained a
+  `StreamCtx`/`stream_capped` twin of `collect_capped`; the sqlx trio + SQL Server
+  override `Connection::stream_query` for true row-by-row delivery and check the
+  cancel token each row (cooperative server-side cancel even for non-pooled
+  tiberius). Oracle/Mongo/DuckDB fall back to the default `stream_query`
+  (buffer → one batch). Verified with in-memory SQLite unit tests; the desktop UI
+  consumes it via `runQueryStream` (`src/db-stream.ts`).
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,

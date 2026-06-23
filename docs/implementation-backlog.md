@@ -281,10 +281,15 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** CONN-002
 - **Size:** M · **Priority:** P0
 
-### EXEC-002 — Streaming results + cancellation
+### EXEC-002 — Streaming results + cancellation ✅ (core done)
 - **Goal:** Large results stream and stop on demand.
 - **Done when:** rows stream into the grid incrementally; cancel stops server-side work where supported; cancel mid-stream leaves the UI consistent.
-- **In progress:** timeout + explicit cancel are wired. (1) A per-query **timeout** — `db_run_query` accepts an optional `timeoutMs` and bounds the run with `tokio::time::timeout`, returning a clean `query timed out after Nms`. (2) **Explicit user-initiated cancel** — `db_run_query` takes an optional `queryId` that registers a `tokio_util` `CancellationToken` in `DbState`; a new `db_cancel(queryId)` command signals it, a `tokio::select!` resolves the run to `query cancelled`, and the desktop Cancel button calls `dbCancel` with the in-flight id. Both a timeout and a cancel drop the query future, which cancels the in-flight request on the pooled sqlx engines. `with_timeout` and `cancel_query_impl` have unit tests. **Remaining:** incremental row streaming into the grid (rows currently arrive as one capped page), and server-side cancel/streaming for the non-pooled engines (tiberius/oracle/mongo) as their drivers allow.
+- **Done (verified by unit tests + tsc):**
+  - **Per-query timeout** — `db_run_query`/`db_run_query_stream` accept an optional `timeoutMs`, bounded by `tokio::time::timeout` → clean `query timed out after Nms`.
+  - **Explicit cancel** — an optional `queryId` registers a `tokio_util` `CancellationToken` in `DbState`; `db_cancel(queryId)` signals it, a `tokio::select!` resolves the run to `query cancelled`, and the desktop Cancel button calls `dbCancel` with the in-flight id.
+  - **Incremental streaming** — `db_run_query_stream` streams `columns → batched rows → done|error` over a Tauri `Channel` (`STREAM_BATCH_ROWS`-sized batches). `stream.rs` grew a `StreamCtx`/`stream_capped` twin of `collect_capped`; the sqlx trio and SQL Server override `Connection::stream_query` for true row-by-row delivery, and the fetch loop checks the cancel token each row — so cancel stops the fetch promptly (cooperative server-side cancel even for the non-pooled tiberius). The desktop grid fills as batches arrive (`runQueryStream` + the hand-written `db-stream.ts` channel wrapper). Engines whose driver materializes rows before our loop (Oracle/Mongo) and DuckDB use the default `stream_query` (buffer → one batch) and rely on the timeout/cancel-drop.
+  - Unit-tested with in-memory SQLite (`stream_delivers_header_then_rows`, `stream_caps_rows_and_flags_truncation`, `stream_query_stops_on_a_cancelled_token`) plus `with_timeout`/`cancel_query_impl`.
+- **Remaining:** true server-side cancel for Oracle/Mongo (driver-dependent), and grid virtualization tuning for very large incremental streams.
 - **Depends on:** EXEC-001
 - **Size:** L · **Priority:** P0
 

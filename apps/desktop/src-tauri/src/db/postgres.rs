@@ -29,6 +29,14 @@ pub async fn run_query(pool: &PgPool, sql: &str, cap: usize) -> Result<RowSet, S
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn stream_query(
+    pool: &PgPool,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
 pub async fn metadata(pool: &PgPool) -> Result<DatabaseMetadata, String> {
     let object_rows = sqlx::query(
         r#"

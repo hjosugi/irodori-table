@@ -29,6 +29,14 @@ pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> Result<RowSet
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn stream_query(
+    pool: &MySqlPool,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
 pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     let schema_name = sqlx::query_scalar::<_, Option<String>>("select database()")
         .fetch_one(pool)

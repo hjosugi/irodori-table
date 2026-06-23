@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
@@ -51,6 +51,35 @@ pub(crate) type RowSet = (Vec<String>, Vec<Vec<serde_json::Value>>, bool);
 /// TablePlus problem). Full extraction goes through run-to-file (IO-001); a
 /// later ticket adds optional disk offload for very large windows (EXEC-010).
 pub(crate) const DEFAULT_MAX_ROWS: usize = 10_000;
+
+/// Rows per streamed batch. Small enough that the grid paints the first rows
+/// almost immediately, large enough to keep the channel/event overhead low.
+pub(crate) const STREAM_BATCH_ROWS: usize = 500;
+
+/// One streamed-query event forwarded to the frontend over a Tauri channel. The
+/// wire shape is a `type`-tagged union (`columns` | `rows` | `done` | `error`);
+/// the matching TypeScript type is hand-written in `src/db-stream.ts` because a
+/// Tauri `Channel` argument is outside the generated command surface.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum QueryStreamEvent {
+    Columns {
+        columns: Vec<String>,
+    },
+    Rows {
+        rows: Vec<Vec<serde_json::Value>>,
+    },
+    Done {
+        #[serde(rename = "rowCount")]
+        row_count: u64,
+        truncated: bool,
+        #[serde(rename = "elapsedMs")]
+        elapsed_ms: u64,
+    },
+    Error {
+        message: String,
+    },
+}
 
 pub(crate) fn hex_encode(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
@@ -181,6 +210,28 @@ trait Connection: Send + Sync {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String>;
     async fn metadata(&self) -> Result<DatabaseMetadata, String>;
     async fn close(&self);
+
+    /// Stream a query's rows to `ctx.sink` in batches, checking `ctx.token` so a
+    /// cancel stops the fetch promptly. The default buffers via [`run_query`] and
+    /// emits the header plus a single batch — correct for engines whose driver
+    /// materializes rows before our loop (Oracle/Mongo) or keeps its own loop
+    /// (DuckDB); those rely on the managed run's timeout/cancel-drop rather than a
+    /// cooperative mid-fetch stop. Engines with a real row-by-row loop (the sqlx
+    /// trio, SQL Server) override this for incremental delivery and in-loop cancel.
+    async fn stream_query(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        let (columns, rows, truncated) = self.run_query(sql, ctx.cap).await?;
+        let row_count = rows.len() as u64;
+        ctx.columns(columns).await?;
+        ctx.rows(rows).await?;
+        Ok(stream::StreamSummary {
+            truncated,
+            row_count,
+        })
+    }
 }
 
 struct PgConn(sqlx::PgPool);
@@ -191,6 +242,13 @@ impl Connection for PgConn {
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         postgres::run_query(&self.0, sql, cap).await
+    }
+    async fn stream_query(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        postgres::stream_query(&self.0, sql, ctx).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         postgres::metadata(&self.0).await
@@ -209,6 +267,13 @@ impl Connection for MysqlConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mysql::run_query(&self.0, sql, cap).await
     }
+    async fn stream_query(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        mysql::stream_query(&self.0, sql, ctx).await
+    }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         mysql::metadata(&self.0).await
     }
@@ -226,6 +291,13 @@ impl Connection for SqliteConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         sqlite::run_query(&self.0, sql, cap).await
     }
+    async fn stream_query(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        sqlite::stream_query(&self.0, sql, ctx).await
+    }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         sqlite::metadata(&self.0).await
     }
@@ -242,6 +314,13 @@ impl Connection for MssqlConn {
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mssql::run_query(&self.0, sql, cap).await
+    }
+    async fn stream_query(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        mssql::stream_query(&self.0, sql, ctx).await
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         mssql::metadata(&self.0).await
@@ -463,6 +542,58 @@ pub async fn cancel_query_impl(state: &DbState, query_id: String) -> bool {
     }
 }
 
+/// Streaming twin of [`run_query_managed_impl`]: rows flow out incrementally
+/// through `sink` (the `db_run_query_stream` command forwards them to a Tauri
+/// channel) instead of being buffered into a `QueryResult`. Applies the same
+/// optional timeout + `query_id` cancellation, and always deregisters the token.
+/// Tauri-free so it can be unit-tested with an `mpsc` receiver.
+pub(crate) async fn run_query_stream_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    max_rows: Option<usize>,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    sink: mpsc::Sender<stream::FetchEvent>,
+) -> Result<stream::StreamSummary, String> {
+    let conn = {
+        let guard = state.conns.lock().await;
+        guard
+            .get(&connection_id)
+            .cloned()
+            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+    };
+
+    let token = CancellationToken::new();
+    if let Some(qid) = &query_id {
+        state
+            .cancels
+            .lock()
+            .await
+            .insert(qid.clone(), token.clone());
+    }
+    let ctx = stream::StreamCtx {
+        cap: max_rows.unwrap_or(DEFAULT_MAX_ROWS),
+        batch_rows: STREAM_BATCH_ROWS,
+        token: token.clone(),
+        sink,
+    };
+
+    let run = async {
+        tokio::select! {
+            biased;
+            _ = token.cancelled() => Err("query cancelled".to_string()),
+            result = conn.stream_query(&sql, &ctx) => result,
+        }
+    };
+    let result = with_timeout(timeout_ms, run).await;
+
+    if let Some(qid) = &query_id {
+        state.cancels.lock().await.remove(qid);
+    }
+    result
+}
+
 pub async fn list_objects_impl(
     state: &DbState,
     connection_id: String,
@@ -521,6 +652,58 @@ pub async fn db_run_query(
 #[tauri::command]
 pub async fn db_cancel(state: tauri::State<'_, DbState>, query_id: String) -> Result<bool, String> {
     Ok(cancel_query_impl(state.inner(), query_id).await)
+}
+
+/// Run a query and stream its rows to the frontend over `on_event` (columns →
+/// batched rows → done/error) so the grid fills incrementally. Honors the same
+/// optional `timeout_ms`/`query_id` as `db_run_query`; `db_cancel(query_id)` stops
+/// it mid-stream. The fetch and the channel-forwarding run concurrently so batches
+/// reach the UI as they are produced.
+#[tauri::command]
+pub async fn db_run_query_stream(
+    state: tauri::State<'_, DbState>,
+    connection_id: String,
+    sql: String,
+    max_rows: Option<usize>,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    on_event: tauri::ipc::Channel<QueryStreamEvent>,
+) -> Result<(), String> {
+    let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
+    let started = Instant::now();
+
+    let fetch = run_query_stream_impl(
+        state.inner(),
+        connection_id,
+        sql,
+        max_rows,
+        timeout_ms,
+        query_id,
+        tx,
+    );
+    let forward = async {
+        while let Some(event) = rx.recv().await {
+            let out = match event {
+                stream::FetchEvent::Columns(columns) => QueryStreamEvent::Columns { columns },
+                stream::FetchEvent::Rows(rows) => QueryStreamEvent::Rows { rows },
+            };
+            on_event.send(out).map_err(|e| e.to_string())?;
+        }
+        Ok::<(), String>(())
+    };
+
+    let (summary, forwarded) = tokio::join!(fetch, forward);
+    forwarded?;
+    let final_event = match summary {
+        Ok(s) => QueryStreamEvent::Done {
+            row_count: s.row_count,
+            truncated: s.truncated,
+            elapsed_ms: started.elapsed().as_millis() as u64,
+        },
+        Err(message) => QueryStreamEvent::Error { message },
+    };
+    on_event.send(final_event).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -585,6 +768,151 @@ mod tests {
         // The entry is gone, so a second cancel (or an unknown id) is a no-op.
         assert!(!cancel_query_impl(&state, "q1".to_string()).await);
         assert!(!cancel_query_impl(&state, "missing".to_string()).await);
+    }
+
+    #[tokio::test]
+    async fn stream_delivers_header_then_rows() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("st"))
+            .await
+            .expect("connect");
+        run_query_impl(
+            &state,
+            "st".into(),
+            "create table t(a integer, b text)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+        run_query_impl(
+            &state,
+            "st".into(),
+            "insert into t(a,b) values (1,'x'),(2,'y'),(3,'z')".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+
+        let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let summary = run_query_stream_impl(
+            &state,
+            "st".into(),
+            "select a,b from t order by a".into(),
+            None,
+            None,
+            None,
+            tx,
+        )
+        .await
+        .expect("stream");
+        assert_eq!(summary.row_count, 3);
+        assert!(!summary.truncated);
+
+        let mut columns: Vec<String> = Vec::new();
+        let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
+        while let Some(event) = rx.recv().await {
+            match event {
+                stream::FetchEvent::Columns(c) => columns = c,
+                stream::FetchEvent::Rows(mut r) => rows.append(&mut r),
+            }
+        }
+        assert_eq!(columns, vec!["a", "b"]);
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0][0], serde_json::json!(1));
+        assert_eq!(rows[2][1], serde_json::json!("z"));
+    }
+
+    #[tokio::test]
+    async fn stream_caps_rows_and_flags_truncation() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("stcap"))
+            .await
+            .expect("connect");
+        run_query_impl(
+            &state,
+            "stcap".into(),
+            "create table t(a integer)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+        run_query_impl(
+            &state,
+            "stcap".into(),
+            "insert into t(a) values (1),(2),(3),(4)".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+
+        let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let summary = run_query_stream_impl(
+            &state,
+            "stcap".into(),
+            "select a from t order by a".into(),
+            Some(2),
+            None,
+            None,
+            tx,
+        )
+        .await
+        .expect("stream");
+        assert_eq!(summary.row_count, 2);
+        assert!(summary.truncated);
+
+        let mut delivered = 0;
+        while let Some(event) = rx.recv().await {
+            if let stream::FetchEvent::Rows(r) = event {
+                delivered += r.len();
+            }
+        }
+        assert_eq!(delivered, 2);
+    }
+
+    #[tokio::test]
+    async fn stream_query_stops_on_a_cancelled_token() {
+        let state = DbState::default();
+        connect_impl(&state, temp_sqlite_profile("stcancel"))
+            .await
+            .expect("connect");
+        run_query_impl(
+            &state,
+            "stcancel".into(),
+            "create table t(a integer)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+        run_query_impl(
+            &state,
+            "stcancel".into(),
+            "insert into t(a) values (1),(2),(3)".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+
+        let conn = state
+            .conns
+            .lock()
+            .await
+            .get("stcancel")
+            .cloned()
+            .expect("conn");
+        let (tx, _rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let token = CancellationToken::new();
+        token.cancel();
+        let ctx = stream::StreamCtx {
+            cap: 10,
+            batch_rows: STREAM_BATCH_ROWS,
+            token,
+            sink: tx,
+        };
+        let res = conn.stream_query("select a from t", &ctx).await;
+        assert!(
+            matches!(&res, Err(m) if m.as_str() == "query cancelled"),
+            "got {res:?}"
+        );
     }
 
     fn temp_sqlite_profile(id: &str) -> ConnectionProfile {

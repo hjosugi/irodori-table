@@ -130,6 +130,7 @@ pub fn run() {
             workspace_snapshot,
             db::db_connect,
             db::db_run_query,
+            db::db_run_query_stream,
             db::db_cancel,
             db::db_list_objects,
             db::db_disconnect

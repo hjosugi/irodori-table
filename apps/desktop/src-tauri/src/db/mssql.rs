@@ -101,6 +101,64 @@ pub async fn run_query(
     Ok((columns, rows, truncated))
 }
 
+/// Incremental twin of [`run_query`]: stream rows to `ctx.sink` in batches and
+/// check `ctx.token` each row, so a cancel stops draining the TDS result promptly
+/// (cooperative server-side cancel for this non-pooled driver) instead of relying
+/// on a dropped future.
+pub async fn stream_query(
+    client: &Arc<Mutex<MssqlClient>>,
+    sql: &str,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    let mut guard = client.lock().await;
+    let mut stream = guard
+        .query(sql, &[])
+        .await
+        .map_err(|e| format!("query failed: {e}"))?;
+
+    let mut columns_sent = false;
+    let mut batch: Vec<super::stream::Cells> = Vec::new();
+    let mut row_count: u64 = 0;
+    let mut truncated = false;
+    while let Some(item) = stream
+        .try_next()
+        .await
+        .map_err(|e| format!("query failed: {e}"))?
+    {
+        if let QueryItem::Row(row) = item {
+            if ctx.cancelled() {
+                return Err("query cancelled".to_string());
+            }
+            if !columns_sent {
+                ctx.columns(row.columns().iter().map(|c| c.name().to_string()).collect())
+                    .await?;
+                columns_sent = true;
+            }
+            if row_count as usize >= ctx.cap {
+                truncated = true;
+                break;
+            }
+            let cells: super::stream::Cells = row
+                .cells()
+                .map(|(_, data)| column_data_to_json(data))
+                .collect();
+            batch.push(cells);
+            row_count += 1;
+            if batch.len() >= ctx.batch_rows {
+                ctx.rows(std::mem::take(&mut batch)).await?;
+            }
+        }
+    }
+    ctx.rows(batch).await?;
+    if !columns_sent {
+        ctx.columns(Vec::new()).await?;
+    }
+    Ok(super::stream::StreamSummary {
+        truncated,
+        row_count,
+    })
+}
+
 pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetadata, String> {
     let mut guard = client.lock().await;
     let mut schemas: BTreeMap<String, BTreeMap<String, DbObjectMetadata>> = BTreeMap::new();
