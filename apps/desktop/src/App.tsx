@@ -207,6 +207,23 @@ function loadVimMode() {
 function loadSidebarOpen() {
   return window.localStorage.getItem(sidebarStorageKey) !== "false";
 }
+
+function keyScopeFromTarget(
+  target: EventTarget | null,
+  fallback: KeybindingScope,
+): KeybindingScope {
+  if (!(target instanceof HTMLElement)) {
+    return fallback;
+  }
+  if (target.closest(".cm-host")) {
+    return "editor";
+  }
+  if (target.closest(".result-grid")) {
+    return "grid";
+  }
+  return "global";
+}
+
 const maxQueryHistoryItems = 50;
 
 type QueryHistoryItem = {
@@ -656,7 +673,10 @@ function App() {
   const [commitError, setCommitError] = useState<string | null>(null);
   // Remappable keybindings: defaults merged with user overrides (localStorage).
   const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
+  const [activeKeyScope, setActiveKeyScope] =
+    useState<KeybindingScope>("global");
   const [recordingCommand, setRecordingCommand] = useState<string | null>(null);
+  const [recordingSequence, setRecordingSequence] = useState<string[]>([]);
   // Command palette (Ctrl/Cmd+Shift+P).
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");

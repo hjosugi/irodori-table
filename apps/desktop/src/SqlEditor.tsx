@@ -4,9 +4,10 @@
 // active-line highlight, and keyword autocompletion; `@codemirror/lang-sql`
 // supplies dialect-aware syntax highlighting bound to the active engine, plus
 // schema-aware completion fed from Irodori's introspection metadata. The
-// formatter is `sql-formatter`, dialect-mapped per engine. Tree-sitter is the
-// planned *semantic* layer (completion scope, outline, selection) and is not
-// wired here yet — see docs/adr/0001-editor-stack.md.
+// formatter defaults to `sql-formatter`, dialect-mapped per engine, behind a
+// configurable formatter hook. Tree-sitter is the planned *semantic* layer
+// (completion scope, outline, selection) and is not wired here yet — see
+// docs/adr/0001-editor-stack.md.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
@@ -15,9 +16,9 @@ import { indentWithTab, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
 import { sql } from "@codemirror/lang-sql";
-import { format as formatSql } from "sql-formatter";
 import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
-import { buildSqlConfig, formatterLanguage } from "./sql/dialect";
+import { buildSqlConfig } from "./sql/dialect";
+import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
 import { editorThemeExtensions, type IrodoriTheme } from "./theme";
 
 export interface SqlEditorHandle {
@@ -41,10 +42,11 @@ interface SqlEditorProps {
   metadata?: DatabaseMetadata;
   theme: IrodoriTheme;
   vimMode: boolean;
+  formatter: SqlFormatterId;
 }
 
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
-  { value, onChange, engine, metadata, theme, vimMode },
+  { value, onChange, engine, metadata, theme, vimMode, formatter },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -137,9 +139,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         const doc = view.state.doc.toString();
         if (!doc.trim()) return null;
         try {
-          const formatted = formatSql(doc, {
-            language: formatterLanguage(engine),
-          } as Parameters<typeof formatSql>[1]);
+          const formatted = formatSqlDocument(doc, engine, formatter);
           if (formatted !== doc) {
             view.dispatch({
               changes: { from: 0, to: doc.length, insert: formatted },
@@ -160,7 +160,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         viewRef.current?.focus();
       },
     }),
-    [engine],
+    [engine, formatter],
   );
 
   return <div className="cm-host" ref={hostRef} />;

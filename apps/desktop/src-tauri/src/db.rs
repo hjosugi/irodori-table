@@ -482,6 +482,12 @@ trait Connection: Send + Sync {
         ctx.columns(columns).await?;
         ctx.rows(rows).await?;
         Ok(stream::StreamSummary {
+            result_sets: vec![stream::StreamResultSetSummary {
+                result_set_index: ctx.result_set_index,
+                row_count,
+                truncated,
+                elapsed_ms: 0,
+            }],
             truncated,
             row_count,
         })
@@ -598,12 +604,22 @@ impl Connection for SqliteConn {
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         sqlite::run_query(&self.0, sql, cap).await
     }
+    async fn run_query_sets(&self, sql: &str, cap: usize) -> Result<Vec<RawResultSet>, String> {
+        sqlite::run_query_sets(&self.0, sql, cap).await
+    }
     async fn stream_query(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         sqlite::stream_query(&self.0, sql, ctx).await
+    }
+    async fn stream_query_sets(
+        &self,
+        sql: &str,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        sqlite::stream_query_sets(&self.0, sql, ctx).await
     }
     async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
         sqlite::apply_edits(&self.0, edits).await
