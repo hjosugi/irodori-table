@@ -347,7 +347,6 @@ pub struct WasmModuleContribution {
 pub struct NativeModuleContribution {
     pub id: String,
     pub path: String,
-    #[serde(default)]
     pub platforms: Vec<NativePlatform>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]

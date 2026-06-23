@@ -30,10 +30,11 @@ export function createResultGridSnapshot(
 }
 
 export function formatResultGridAsMarkdown(snapshot: ResultGridSnapshot): string {
-  const headers = snapshot.columns.map((column) => column.name);
+  const columnNames = snapshot.columns.map((column) => column.name);
+  const headers = columnNames.map(escapeMarkdownCell);
   const divider = headers.map(() => "---");
   const rows = snapshot.rows.map((row) =>
-    headers.map((column) => escapeMarkdownCell(cellValue(row, column))),
+    columnNames.map((column) => escapeMarkdownCell(cellValue(row, column))),
   );
 
   return [headers, divider, ...rows]

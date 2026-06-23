@@ -2,11 +2,10 @@
 
 use reqwest::Client;
 use serde_json::{json, Value};
-use async_trait::async_trait;
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
-    DbObjectMetadataKind, RowSet, SchemaMetadata,
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet,
+    SchemaMetadata,
 };
 
 pub struct InfluxConn {
@@ -41,13 +40,16 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<InfluxConn, String> 
 
 pub async fn version(conn: &InfluxConn) -> Option<String> {
     // InfluxDB /ping endpoint returns 204 or header info
-    let res = conn.client.get(format!("{}/ping", conn.url))
+    let res = conn
+        .client
+        .get(format!("{}/ping", conn.url))
         .header("Authorization", format!("Token {}", conn.token))
         .send()
         .await
         .ok()?;
-    
-    let version_header = res.headers()
+
+    let version_header = res
+        .headers()
         .get("X-Influxdb-Version")
         .and_then(|h| h.to_str().ok())
         .map(|s| s.to_string())
@@ -63,7 +65,9 @@ pub async fn run_query(conn: &InfluxConn, sql: &str, cap: usize) -> Result<RowSe
         "type": "sql"
     });
 
-    let res = conn.client.post(&query_url)
+    let res = conn
+        .client
+        .post(&query_url)
         .header("Authorization", format!("Token {}", conn.token))
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
@@ -77,8 +81,11 @@ pub async fn run_query(conn: &InfluxConn, sql: &str, cap: usize) -> Result<RowSe
         return Err(format!("InfluxDB query failed: {err_text}"));
     }
 
-    let text = res.text().await.map_err(|e| format!("failed to read response: {e}"))?;
-    
+    let text = res
+        .text()
+        .await
+        .map_err(|e| format!("failed to read response: {e}"))?;
+
     let mut rows_json: Vec<Value> = Vec::new();
     if let Ok(v) = serde_json::from_str::<Value>(&text) {
         if let Value::Array(arr) = v {
@@ -155,17 +162,35 @@ pub async fn metadata(conn: &InfluxConn) -> Result<DatabaseMetadata, String> {
 
     let mut builder = super::meta::MetaBuilder::default();
 
-    if let (Some(t_idx), Some(c_idx), Some(d_idx)) = (table_name_idx, column_name_idx, data_type_idx) {
+    if let (Some(t_idx), Some(c_idx), Some(d_idx)) =
+        (table_name_idx, column_name_idx, data_type_idx)
+    {
         for row in rows {
-            let table_name = row.get(t_idx).and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let column_name = row.get(c_idx).and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let data_type = row.get(d_idx).and_then(|v| v.as_str()).unwrap_or_default().to_string();
+            let table_name = row
+                .get(t_idx)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let column_name = row
+                .get(c_idx)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let data_type = row
+                .get(d_idx)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
 
             if table_name.is_empty() || column_name.is_empty() {
                 continue;
             }
 
-            builder.add_object(conn.database.clone(), table_name.clone(), DbObjectMetadataKind::Table);
+            builder.add_object(
+                conn.database.clone(),
+                table_name.clone(),
+                DbObjectMetadataKind::Table,
+            );
             if let Some(obj) = builder.object_mut(&conn.database, &table_name) {
                 let ordinal = obj.columns.len() as i32 + 1;
                 obj.columns.push(ColumnMetadata {

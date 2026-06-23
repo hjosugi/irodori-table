@@ -7,7 +7,8 @@ use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use super::meta::MetaBuilder;
 use super::{
-    hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, IndexMetadata, RowSet, DbEngine,
+    hex_encode, ColumnMetadata, DatabaseMetadata, DbEngine, DbObjectMetadataKind, IndexMetadata,
+    RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<PgPool, String> {
@@ -255,34 +256,121 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
                 references_table: row.try_get("ref_table").unwrap_or_default(),
                 references_columns: row.try_get("ref_columns").unwrap_or_default(),
             });
+        }
     }
 
     // YugabyteDB and CockroachDB distributed topology queries
     if engine == DbEngine::YugabyteDb {
-        if let Ok(_) = sqlx::query("SELECT 1 FROM yb_servers() LIMIT 1").fetch_one(pool).await {
-            builder.add_object("yb_topology".to_string(), "yb_servers".to_string(), DbObjectMetadataKind::Table);
+        if let Ok(_) = sqlx::query("SELECT 1 FROM yb_servers() LIMIT 1")
+            .fetch_one(pool)
+            .await
+        {
+            builder.add_object(
+                "yb_topology".to_string(),
+                "yb_servers".to_string(),
+                DbObjectMetadataKind::Table,
+            );
             if let Some(obj) = builder.object_mut("yb_topology", "yb_servers") {
                 obj.columns = vec![
-                    ColumnMetadata { name: "host".into(), data_type: "text".into(), nullable: false, ordinal: 1, default_value: None },
-                    ColumnMetadata { name: "port".into(), data_type: "integer".into(), nullable: false, ordinal: 2, default_value: None },
-                    ColumnMetadata { name: "num_connections".into(), data_type: "integer".into(), nullable: true, ordinal: 3, default_value: None },
-                    ColumnMetadata { name: "node_type".into(), data_type: "text".into(), nullable: true, ordinal: 4, default_value: None },
-                    ColumnMetadata { name: "cloud".into(), data_type: "text".into(), nullable: true, ordinal: 5, default_value: None },
-                    ColumnMetadata { name: "region".into(), data_type: "text".into(), nullable: true, ordinal: 6, default_value: None },
-                    ColumnMetadata { name: "zone".into(), data_type: "text".into(), nullable: true, ordinal: 7, default_value: None },
+                    ColumnMetadata {
+                        name: "host".into(),
+                        data_type: "text".into(),
+                        nullable: false,
+                        ordinal: 1,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "port".into(),
+                        data_type: "integer".into(),
+                        nullable: false,
+                        ordinal: 2,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "num_connections".into(),
+                        data_type: "integer".into(),
+                        nullable: true,
+                        ordinal: 3,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "node_type".into(),
+                        data_type: "text".into(),
+                        nullable: true,
+                        ordinal: 4,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "cloud".into(),
+                        data_type: "text".into(),
+                        nullable: true,
+                        ordinal: 5,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "region".into(),
+                        data_type: "text".into(),
+                        nullable: true,
+                        ordinal: 6,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "zone".into(),
+                        data_type: "text".into(),
+                        nullable: true,
+                        ordinal: 7,
+                        default_value: None,
+                    },
                 ];
             }
         }
     } else if engine == DbEngine::CockroachDb {
-        if let Ok(_) = sqlx::query("SELECT 1 FROM crdb_internal.cluster_nodes LIMIT 1").fetch_one(pool).await {
-            builder.add_object("crdb_topology".to_string(), "cluster_nodes".to_string(), DbObjectMetadataKind::Table);
+        if let Ok(_) = sqlx::query("SELECT 1 FROM crdb_internal.cluster_nodes LIMIT 1")
+            .fetch_one(pool)
+            .await
+        {
+            builder.add_object(
+                "crdb_topology".to_string(),
+                "cluster_nodes".to_string(),
+                DbObjectMetadataKind::Table,
+            );
             if let Some(obj) = builder.object_mut("crdb_topology", "cluster_nodes") {
                 obj.columns = vec![
-                    ColumnMetadata { name: "node_id".into(), data_type: "integer".into(), nullable: false, ordinal: 1, default_value: None },
-                    ColumnMetadata { name: "address".into(), data_type: "text".into(), nullable: false, ordinal: 2, default_value: None },
-                    ColumnMetadata { name: "sql_address".into(), data_type: "text".into(), nullable: true, ordinal: 3, default_value: None },
-                    ColumnMetadata { name: "is_live".into(), data_type: "boolean".into(), nullable: false, ordinal: 4, default_value: None },
-                    ColumnMetadata { name: "locality".into(), data_type: "text".into(), nullable: true, ordinal: 5, default_value: None },
+                    ColumnMetadata {
+                        name: "node_id".into(),
+                        data_type: "integer".into(),
+                        nullable: false,
+                        ordinal: 1,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "address".into(),
+                        data_type: "text".into(),
+                        nullable: false,
+                        ordinal: 2,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "sql_address".into(),
+                        data_type: "text".into(),
+                        nullable: true,
+                        ordinal: 3,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "is_live".into(),
+                        data_type: "boolean".into(),
+                        nullable: false,
+                        ordinal: 4,
+                        default_value: None,
+                    },
+                    ColumnMetadata {
+                        name: "locality".into(),
+                        data_type: "text".into(),
+                        nullable: true,
+                        ordinal: 5,
+                        default_value: None,
+                    },
                 ];
             }
         }

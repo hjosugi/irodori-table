@@ -1,5 +1,6 @@
 //! Export, import, dump, and restore encoders for tabular data.
 
+use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 
 pub const CRATE_NAME: &str = "irodori-io";
@@ -122,6 +123,27 @@ impl From<i32> for Cell<'_> {
 impl From<f64> for Cell<'_> {
     fn from(value: f64) -> Self {
         Self::Float(value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum OwnedCell {
+    Null,
+    Bool(bool),
+    Integer(i64),
+    Float(f64),
+    Text(String),
+}
+
+impl<'a> Cell<'a> {
+    pub fn to_owned(&self) -> OwnedCell {
+        match self {
+            Cell::Null => OwnedCell::Null,
+            Cell::Bool(b) => OwnedCell::Bool(*b),
+            Cell::Integer(i) => OwnedCell::Integer(*i),
+            Cell::Float(f) => OwnedCell::Float(*f),
+            Cell::Text(s) | Cell::Object(s) => OwnedCell::Text(s.to_string()),
+        }
     }
 }
 
@@ -423,6 +445,419 @@ impl<W: Write> TabularEncoder for NdjsonEncoder<W> {
     }
 }
 
+#[cfg(feature = "avro")]
+pub struct AvroEncoder<W: Write> {
+    writer: apache_avro::Writer<'static, W>,
+    columns: Vec<String>,
+}
+
+#[cfg(feature = "avro")]
+impl<W: Write> AvroEncoder<W> {
+    pub fn new(writer: W, columns: &[impl AsRef<str>]) -> io::Result<Self> {
+        let cols: Vec<String> = columns.iter().map(|c| c.as_ref().to_string()).collect();
+        let fields: Vec<String> = cols
+            .iter()
+            .map(|col| {
+                format!(
+                    r#"{{"name": "{}", "type": ["null", "boolean", "long", "double", "string"]}}"#,
+                    col
+                )
+            })
+            .collect();
+        let schema_json = format!(
+            r#"{{"type": "record", "name": "row", "fields": [{}]}}"#,
+            fields.join(", ")
+        );
+        let schema = apache_avro::Schema::parse_str(&schema_json)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let avro_writer = apache_avro::Writer::new(&schema, writer);
+        Ok(Self {
+            writer: avro_writer,
+            columns: cols,
+        })
+    }
+
+    pub fn write_row(&mut self, row: &[Cell<'_>]) -> io::Result<()> {
+        let mut record = apache_avro::types::Record::new(self.writer.schema()).unwrap();
+        for (idx, cell) in row.iter().enumerate() {
+            if let Some(col_name) = self.columns.get(idx) {
+                let val = match cell {
+                    Cell::Null => apache_avro::types::Value::Union(
+                        0,
+                        Box::new(apache_avro::types::Value::Null),
+                    ),
+                    Cell::Bool(b) => apache_avro::types::Value::Union(
+                        1,
+                        Box::new(apache_avro::types::Value::Boolean(*b)),
+                    ),
+                    Cell::Integer(i) => apache_avro::types::Value::Union(
+                        2,
+                        Box::new(apache_avro::types::Value::Long(*i)),
+                    ),
+                    Cell::Float(f) => apache_avro::types::Value::Union(
+                        3,
+                        Box::new(apache_avro::types::Value::Double(*f)),
+                    ),
+                    Cell::Text(s) | Cell::Object(s) => apache_avro::types::Value::Union(
+                        4,
+                        Box::new(apache_avro::types::Value::String(s.to_string())),
+                    ),
+                };
+                record.put(col_name, val);
+            }
+        }
+        self.writer
+            .append(record)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn finish(&mut self) -> io::Result<()> {
+        self.writer
+            .flush()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "avro")]
+impl<W: Write> TabularEncoder for AvroEncoder<W> {
+    fn write_row(&mut self, row: &[Cell<'_>]) -> io::Result<()> {
+        AvroEncoder::write_row(self, row)
+    }
+    fn finish(&mut self) -> io::Result<()> {
+        AvroEncoder::finish(self)
+    }
+}
+
+#[cfg(feature = "parquet")]
+pub struct ParquetEncoder<W: Write> {
+    writer: Option<W>,
+    columns: Vec<String>,
+    buffered_rows: Vec<Vec<OwnedCell>>,
+}
+
+#[cfg(feature = "parquet")]
+impl<W: Write> ParquetEncoder<W> {
+    pub fn new(writer: W, columns: &[impl AsRef<str>]) -> Self {
+        Self {
+            writer: Some(writer),
+            columns: columns.iter().map(|c| c.as_ref().to_string()).collect(),
+            buffered_rows: Vec::new(),
+        }
+    }
+
+    pub fn write_row(&mut self, row: &[Cell<'_>]) -> io::Result<()> {
+        self.buffered_rows
+            .push(row.iter().map(|c| c.to_owned()).collect());
+        Ok(())
+    }
+
+    pub fn finish(&mut self) -> io::Result<()> {
+        use arrow::array::{ArrayRef, BooleanBuilder, Float64Builder, Int64Builder, StringBuilder};
+        use arrow::record_batch::RecordBatch;
+        use arrow::schema::{DataType, Field, Schema as ArrowSchema};
+        use parquet::arrow::ArrowWriter;
+        use std::sync::Arc;
+
+        let writer = match self.writer.take() {
+            Some(w) => w,
+            None => return Ok(()),
+        };
+
+        let num_rows = self.buffered_rows.len();
+        let mut fields = Vec::new();
+        let mut arrays: Vec<ArrayRef> = Vec::new();
+
+        for (col_idx, col_name) in self.columns.iter().enumerate() {
+            let mut has_int = false;
+            let mut has_float = false;
+            let mut has_bool = false;
+            let mut has_text = false;
+
+            for row in &self.buffered_rows {
+                if let Some(cell) = row.get(col_idx) {
+                    match cell {
+                        OwnedCell::Integer(_) => has_int = true,
+                        OwnedCell::Float(_) => has_float = true,
+                        OwnedCell::Bool(_) => has_bool = true,
+                        OwnedCell::Text(_) => has_text = true,
+                        OwnedCell::Null => {}
+                    }
+                }
+            }
+
+            if has_text
+                || (has_bool && (has_int || has_float))
+                || (has_int && has_float && has_bool)
+            {
+                let mut builder = StringBuilder::with_capacity(num_rows, num_rows * 16);
+                for row in &self.buffered_rows {
+                    if let Some(cell) = row.get(col_idx) {
+                        match cell {
+                            OwnedCell::Null => builder.append_null(),
+                            OwnedCell::Bool(b) => {
+                                builder.append_value(if *b { "true" } else { "false" })
+                            }
+                            OwnedCell::Integer(i) => builder.append_value(i.to_string()),
+                            OwnedCell::Float(f) => builder.append_value(f.to_string()),
+                            OwnedCell::Text(s) => builder.append_value(s),
+                        }
+                    } else {
+                        builder.append_null();
+                    }
+                }
+                fields.push(Field::new(col_name, DataType::Utf8, true));
+                arrays.push(Arc::new(builder.finish()));
+            } else if has_float {
+                let mut builder = Float64Builder::with_capacity(num_rows);
+                for row in &self.buffered_rows {
+                    if let Some(cell) = row.get(col_idx) {
+                        match cell {
+                            OwnedCell::Null => builder.append_null(),
+                            OwnedCell::Integer(i) => builder.append_value(*i as f64),
+                            OwnedCell::Float(f) => builder.append_value(*f),
+                            _ => builder.append_null(),
+                        }
+                    } else {
+                        builder.append_null();
+                    }
+                }
+                fields.push(Field::new(col_name, DataType::Float64, true));
+                arrays.push(Arc::new(builder.finish()));
+            } else if has_int {
+                let mut builder = Int64Builder::with_capacity(num_rows);
+                for row in &self.buffered_rows {
+                    if let Some(cell) = row.get(col_idx) {
+                        match cell {
+                            OwnedCell::Null => builder.append_null(),
+                            OwnedCell::Integer(i) => builder.append_value(*i),
+                            _ => builder.append_null(),
+                        }
+                    } else {
+                        builder.append_null();
+                    }
+                }
+                fields.push(Field::new(col_name, DataType::Int64, true));
+                arrays.push(Arc::new(builder.finish()));
+            } else if has_bool {
+                let mut builder = BooleanBuilder::with_capacity(num_rows);
+                for row in &self.buffered_rows {
+                    if let Some(cell) = row.get(col_idx) {
+                        match cell {
+                            OwnedCell::Null => builder.append_null(),
+                            OwnedCell::Bool(b) => builder.append_value(*b),
+                            _ => builder.append_null(),
+                        }
+                    } else {
+                        builder.append_null();
+                    }
+                }
+                fields.push(Field::new(col_name, DataType::Boolean, true));
+                arrays.push(Arc::new(builder.finish()));
+            } else {
+                let mut builder = StringBuilder::with_capacity(num_rows, 0);
+                for _ in 0..num_rows {
+                    builder.append_null();
+                }
+                fields.push(Field::new(col_name, DataType::Utf8, true));
+                arrays.push(Arc::new(builder.finish()));
+            }
+        }
+
+        let schema = Arc::new(ArrowSchema::new(fields));
+        let batch = RecordBatch::try_new(schema, arrays)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+        let mut arrow_writer = ArrowWriter::try_new(writer, batch.schema(), None)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        arrow_writer
+            .write(&batch)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        arrow_writer
+            .close()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "parquet")]
+impl<W: Write> TabularEncoder for ParquetEncoder<W> {
+    fn write_row(&mut self, row: &[Cell<'_>]) -> io::Result<()> {
+        ParquetEncoder::write_row(self, row)
+    }
+    fn finish(&mut self) -> io::Result<()> {
+        ParquetEncoder::finish(self)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InferredColumn {
+    pub name: String,
+    pub data_type: String,
+}
+
+pub fn infer_csv_schema<R: io::Read>(
+    reader: R,
+    delimiter: u8,
+    has_header: bool,
+) -> io::Result<Vec<InferredColumn>> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(delimiter)
+        .has_headers(has_header)
+        .from_reader(reader);
+
+    let headers = if has_header {
+        rdr.headers()?
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    let mut record = csv::StringRecord::new();
+    let mut sampled_rows = Vec::new();
+    let mut num_cols = headers.len();
+
+    while rdr.read_record(&mut record)? {
+        if num_cols == 0 {
+            num_cols = record.len();
+        }
+        sampled_rows.push(record.clone());
+        if sampled_rows.len() >= 100 {
+            break;
+        }
+    }
+
+    let headers = if has_header {
+        headers
+    } else {
+        (0..num_cols).map(|i| format!("col_{}", i + 1)).collect()
+    };
+
+    let mut inferred = Vec::new();
+    for col_idx in 0..num_cols {
+        let mut is_bool = true;
+        let mut is_int = true;
+        let mut is_float = true;
+        let mut has_vals = false;
+
+        for row in &sampled_rows {
+            if let Some(val) = row.get(col_idx) {
+                let trimmed = val.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                has_vals = true;
+                if trimmed.to_lowercase() != "true" && trimmed.to_lowercase() != "false" {
+                    is_bool = false;
+                }
+                if trimmed.parse::<i64>().is_err() {
+                    is_int = false;
+                }
+                if trimmed.parse::<f64>().is_err() {
+                    is_float = false;
+                }
+            }
+        }
+
+        let dtype = if !has_vals {
+            "text"
+        } else if is_bool {
+            "boolean"
+        } else if is_int {
+            "integer"
+        } else if is_float {
+            "double"
+        } else {
+            "text"
+        };
+
+        inferred.push(InferredColumn {
+            name: headers
+                .get(col_idx)
+                .cloned()
+                .unwrap_or_else(|| format!("col_{}", col_idx + 1)),
+            data_type: dtype.to_string(),
+        });
+    }
+
+    Ok(inferred)
+}
+
+pub fn generate_inserts_from_csv<R: io::Read, W: io::Write>(
+    reader: R,
+    delimiter: u8,
+    has_header: bool,
+    table_name: &str,
+    mut sql_writer: W,
+    dialect: &dyn irodori_sql::dialect::SqlDialect,
+) -> io::Result<usize> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(delimiter)
+        .has_headers(has_header)
+        .from_reader(reader);
+
+    let headers = if has_header {
+        rdr.headers()?
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    let mut record = csv::StringRecord::new();
+    let mut num_cols = headers.len();
+    let mut count = 0;
+
+    let quoted_table = dialect.quote_identifier(table_name);
+
+    while rdr.read_record(&mut record)? {
+        if num_cols == 0 {
+            num_cols = record.len();
+        }
+        let col_names = if has_header {
+            headers.clone()
+        } else {
+            (0..num_cols).map(|i| format!("col_{}", i + 1)).collect()
+        };
+
+        let quoted_cols: Vec<String> = col_names
+            .iter()
+            .map(|c| dialect.quote_identifier(c))
+            .collect();
+        let cols_str = quoted_cols.join(", ");
+
+        let mut vals = Vec::new();
+        for val in record.iter() {
+            let trimmed = val.trim();
+            if trimmed.is_empty() || trimmed.to_lowercase() == "null" {
+                vals.push("NULL".to_string());
+            } else if trimmed.to_lowercase() == "true" {
+                vals.push("true".to_string());
+            } else if trimmed.to_lowercase() == "false" {
+                vals.push("false".to_string());
+            } else if trimmed.parse::<i64>().is_ok() || trimmed.parse::<f64>().is_ok() {
+                vals.push(trimmed.to_string());
+            } else {
+                let escaped = trimmed.replace('\'', "''");
+                vals.push(format!("'{escaped}'"));
+            }
+        }
+        let vals_str = vals.join(", ");
+
+        writeln!(
+            sql_writer,
+            "INSERT INTO {} ({}) VALUES ({});",
+            quoted_table, cols_str, vals_str
+        )?;
+        count += 1;
+    }
+
+    Ok(count)
+}
+
 fn validate_options(options: &DelimitedOptions) -> io::Result<()> {
     if options.delimiter == options.quote {
         return Err(io::Error::new(
@@ -587,5 +1022,57 @@ mod tests {
             String::from_utf8(out).unwrap(),
             "{\"id\":1,\"name\":\"Bob\"}\n{\"id\":2,\"name\":\"Cat\"}\n"
         );
+    }
+
+    #[test]
+    #[cfg(feature = "avro")]
+    fn avro_round_trip() {
+        let mut out = Vec::new();
+        let mut encoder = AvroEncoder::new(&mut out, &["id", "name"]).unwrap();
+        encoder
+            .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
+            .unwrap();
+        encoder.finish().unwrap();
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "parquet")]
+    fn parquet_round_trip() {
+        let mut out = Vec::new();
+        let mut encoder = ParquetEncoder::new(&mut out, &["id", "name"]);
+        encoder
+            .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
+            .unwrap();
+        encoder.finish().unwrap();
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_csv_inference_and_generation() {
+        let csv_data = "id,name,active\n1,Alice,true\n2,Bob,false\n3,Charlie,true\n";
+        let cols = infer_csv_schema(csv_data.as_bytes(), b',', true).unwrap();
+        assert_eq!(cols.len(), 3);
+        assert_eq!(cols[0].name, "id");
+        assert_eq!(cols[0].data_type, "integer");
+        assert_eq!(cols[1].name, "name");
+        assert_eq!(cols[1].data_type, "text");
+        assert_eq!(cols[2].name, "active");
+        assert_eq!(cols[2].data_type, "boolean");
+
+        let mut sql_out = Vec::new();
+        let dialect = irodori_sql::dialect::PostgresDialect;
+        let count = generate_inserts_from_csv(
+            csv_data.as_bytes(),
+            b',',
+            true,
+            "users",
+            &mut sql_out,
+            &dialect,
+        )
+        .unwrap();
+        assert_eq!(count, 3);
+        let sql_str = String::from_utf8(sql_out).unwrap();
+        assert!(sql_str.contains("INSERT INTO \"users\""));
     }
 }

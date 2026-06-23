@@ -17,17 +17,19 @@
 //! engine, with exact numerics/temporals rendered as strings to avoid precision
 //! and timezone loss. Oracle awaits a pure-Rust thin TNS driver.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use irodori_core::{IrodoriError, Result as IrodoriResult};
+use irodori_core::{AuditEventKind, IrodoriError, Result as IrodoriResult};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
+
+use crate::security::SecurityState;
 
 #[cfg(feature = "duckdb")]
 mod duck;
@@ -643,11 +645,7 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
         Wire::Oracle => Arc::new(OracleConn(oracle::connect(profile).await?)),
         Wire::Neo4j => Arc::new(Neo4jConnection(neo4j::connect(profile).await?)),
         Wire::InfluxDb => Arc::new(InfluxConnection(influx::connect(profile).await?)),
-        Wire::ClickHouse
-        | Wire::Memgraph
-        | Wire::Qdrant
-        | Wire::Milvus
-        | Wire::Pinecone => {
+        Wire::ClickHouse | Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {
             return Err(format!(
                 "{:?} driver is not yet fully implemented",
                 profile.engine
@@ -894,16 +892,48 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
 #[tauri::command]
 pub async fn db_connect(
     state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
     profile: ConnectionProfile,
 ) -> IrodoriResult<ConnectionInfo> {
-    connect_impl(state.inner(), profile)
-        .await
-        .map_err(IrodoriError::from)
+    let connection_id = profile.id.clone();
+    let engine = format!("{:?}", profile.engine);
+    let started = Instant::now();
+    match connect_impl(state.inner(), profile).await {
+        Ok(info) => {
+            security
+                .record(
+                    AuditEventKind::ConnectionOpen,
+                    Some(info.id.clone()),
+                    format!("opened {engine} connection"),
+                    BTreeMap::from([
+                        (
+                            "elapsedMs".to_string(),
+                            started.elapsed().as_millis().to_string(),
+                        ),
+                        ("serverVersion".to_string(), info.server_version.clone()),
+                    ]),
+                )
+                .await;
+            Ok(info)
+        }
+        Err(error) => {
+            security
+                .record(
+                    AuditEventKind::ConnectionFailed,
+                    Some(connection_id),
+                    error.clone(),
+                    BTreeMap::from([("engine".to_string(), engine)]),
+                )
+                .await;
+            Err(IrodoriError::from(error))
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn db_run_query(
     state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
     connection_id: String,
     sql: String,
     max_rows: Option<usize>,
@@ -912,7 +942,9 @@ pub async fn db_run_query(
 ) -> IrodoriResult<QueryResult> {
     // The managed run applies the optional timeout deadline and registers the
     // optional `query_id` so `db_cancel` can stop this specific statement.
-    run_query_managed_impl(
+    let audit_connection_id = connection_id.clone();
+    let audit_sql = sql.clone();
+    match run_query_managed_impl(
         state.inner(),
         connection_id,
         sql,
@@ -921,14 +953,56 @@ pub async fn db_run_query(
         query_id,
     )
     .await
-    .map_err(IrodoriError::from)
+    {
+        Ok(result) => {
+            security
+                .record(
+                    AuditEventKind::QueryRun,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([
+                        ("rowCount".to_string(), result.row_count.to_string()),
+                        ("elapsedMs".to_string(), result.elapsed_ms.to_string()),
+                        ("truncated".to_string(), result.truncated.to_string()),
+                    ]),
+                )
+                .await;
+            Ok(result)
+        }
+        Err(error) => {
+            security
+                .record(
+                    AuditEventKind::QueryFailed,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([("error".to_string(), error.clone())]),
+                )
+                .await;
+            Err(IrodoriError::from(error))
+        }
+    }
 }
 
 /// Cancel the in-flight query the UI started under `query_id`. Returns `true` when
 /// a matching run was found and signalled, `false` if it already finished.
 #[tauri::command]
-pub async fn db_cancel(state: tauri::State<'_, DbState>, query_id: String) -> IrodoriResult<bool> {
-    Ok(cancel_query_impl(state.inner(), query_id).await)
+pub async fn db_cancel(
+    state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
+    query_id: String,
+) -> IrodoriResult<bool> {
+    let cancelled = cancel_query_impl(state.inner(), query_id.clone()).await;
+    if cancelled {
+        security
+            .record(
+                AuditEventKind::QueryCancel,
+                None,
+                "query cancelled",
+                BTreeMap::from([("queryId".to_string(), query_id)]),
+            )
+            .await;
+    }
+    Ok(cancelled)
 }
 
 /// Run a query and stream its rows to the frontend over `on_event` (columns →
@@ -939,6 +1013,7 @@ pub async fn db_cancel(state: tauri::State<'_, DbState>, query_id: String) -> Ir
 #[tauri::command]
 pub async fn db_run_query_stream(
     state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
     connection_id: String,
     sql: String,
     max_rows: Option<usize>,
@@ -948,6 +1023,8 @@ pub async fn db_run_query_stream(
 ) -> IrodoriResult<()> {
     let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
     let started = Instant::now();
+    let audit_connection_id = connection_id.clone();
+    let audit_sql = sql.clone();
 
     let fetch = run_query_stream_impl(
         state.inner(),
@@ -974,12 +1051,37 @@ pub async fn db_run_query_stream(
     let (summary, forwarded) = tokio::join!(fetch, forward);
     forwarded?;
     let final_event = match summary {
-        Ok(s) => QueryStreamEvent::Done {
-            row_count: s.row_count,
-            truncated: s.truncated,
-            elapsed_ms: started.elapsed().as_millis() as u64,
-        },
-        Err(message) => QueryStreamEvent::Error { message },
+        Ok(s) => {
+            let elapsed_ms = started.elapsed().as_millis() as u64;
+            security
+                .record(
+                    AuditEventKind::QueryRun,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([
+                        ("rowCount".to_string(), s.row_count.to_string()),
+                        ("elapsedMs".to_string(), elapsed_ms.to_string()),
+                        ("truncated".to_string(), s.truncated.to_string()),
+                    ]),
+                )
+                .await;
+            QueryStreamEvent::Done {
+                row_count: s.row_count,
+                truncated: s.truncated,
+                elapsed_ms,
+            }
+        }
+        Err(message) => {
+            security
+                .record(
+                    AuditEventKind::QueryFailed,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([("error".to_string(), message.clone())]),
+                )
+                .await;
+            QueryStreamEvent::Error { message }
+        }
     };
     on_event
         .send(final_event)
@@ -1013,11 +1115,22 @@ pub async fn db_list_objects(
 #[tauri::command]
 pub async fn db_disconnect(
     state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
     connection_id: String,
 ) -> IrodoriResult<()> {
+    let audit_connection_id = connection_id.clone();
     disconnect_impl(state.inner(), connection_id)
         .await
-        .map_err(IrodoriError::from)
+        .map_err(IrodoriError::from)?;
+    security
+        .record(
+            AuditEventKind::ConnectionClose,
+            Some(audit_connection_id),
+            "closed connection",
+            BTreeMap::new(),
+        )
+        .await;
+    Ok(())
 }
 
 #[cfg(test)]

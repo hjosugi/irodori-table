@@ -10,6 +10,54 @@ export type IrodoriError = { kind: IrodoriErrorKind, message: string, code?: str
 
 export type CommandResult<T> = { ok: boolean, data?: T, error?: IrodoriError, };
 
+export type PrivacyMode = "normal" | "private";
+
+export type RedactionReport = { text: string, redactions: number, };
+
+export type RedactedExport = { content: string, redactions: number, eventCount: bigint, privacyMode: PrivacyMode, };
+
+export type SecretRef = { handle: string, service?: string, };
+
+export type TransportConfig = { "kind": "direct" } & DirectTransport | { "kind": "localFile" } & LocalFileTransport | { "kind": "sshTunnel" } & SshTunnelTransport | { "kind": "socks5Proxy" } & ProxyTransport | { "kind": "httpConnectProxy" } & ProxyTransport | { "kind": "chain" } & ProxyChainTransport;
+
+export type DirectTransport = { host: string, port?: number, tls: boolean, };
+
+export type LocalFileTransport = { path: string, };
+
+export type SshTunnelTransport = { name?: string, sshHost: string, sshPort: number, username: string, auth: SshAuthConfig, targetHost: string, targetPort: number, strictHostKey: boolean, hostKey?: string, };
+
+export type SshAuthConfig = { "kind": "agent" } | { "kind": "password", password: SecretRef, } | { "kind": "privateKey", private_key: SecretRef, passphrase?: SecretRef, };
+
+export type ProxyTransport = { name?: string, host: string, port: number, auth?: ProxyAuthConfig, targetHost?: string, targetPort?: number, tls: boolean, };
+
+export type ProxyAuthConfig = { username: string, password: SecretRef, };
+
+export type ProxyChainTransport = { targetHost: string, targetPort: number, tls: boolean, hops: Array<ProxyChainHop>, };
+
+export type ProxyChainHop = { name: string, config: ProxyHopConfig, };
+
+export type ProxyHopConfig = { "kind": "ssh" } & SshProxyHop | { "kind": "socks5" } & ProxyTransport | { "kind": "httpConnect" } & ProxyTransport;
+
+export type SshProxyHop = { sshHost: string, sshPort: number, username: string, auth: SshAuthConfig, strictHostKey: boolean, hostKey?: string, };
+
+export type DialTarget = { "kind": "tcp", host: string, port: number, tls: boolean, } | { "kind": "localFile", path: string, };
+
+export type TransportStepKind = "resolve" | "auth" | "directTcp" | "tls" | "localFile" | "sshTunnel" | "socks5Proxy" | "httpConnectProxy";
+
+export type TransportStep = { name: string, kind: TransportStepKind, endpoint?: string, };
+
+export type TransportPlan = { target: DialTarget, steps: Array<TransportStep>, };
+
+export type DiagnosticStageKind = "resolve" | "auth" | "directTcp" | "tls" | "localFile" | "sshTunnel" | "socks5Proxy" | "httpConnectProxy";
+
+export type DiagnosticStatus = "pending" | "succeeded" | "failed" | "skipped";
+
+export type DiagnosticStage = { name: string, kind: DiagnosticStageKind, status: DiagnosticStatus, durationMs: bigint, message?: string, };
+
+export type ConnectionDiagnostics = { target: DialTarget, stages: Array<DiagnosticStage>, firstFailure?: number, };
+
+export type DesktopSecretPurpose = "password" | "token" | "privateKey" | "privateKeyPassphrase" | "sshPassword" | "proxyPassword";
+
 export type DbObjectKind = "table" | "view" | "procedure";
 
 export type ConnectionStatus = "connected" | "idle";
@@ -99,4 +147,36 @@ export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {
 
 export function dbDisconnect(connectionId: string): Promise<void> {
   return invoke<void>("db_disconnect", { connectionId });
+}
+
+export function securityGetPrivacyMode(): Promise<PrivacyMode> {
+  return invoke<PrivacyMode>("security_get_privacy_mode");
+}
+
+export function securitySetPrivacyMode(mode: PrivacyMode): Promise<PrivacyMode> {
+  return invoke<PrivacyMode>("security_set_privacy_mode", { mode });
+}
+
+export function securityRedactText(text: string): Promise<RedactionReport> {
+  return invoke<RedactionReport>("security_redact_text", { text });
+}
+
+export function securityExportAudit(): Promise<RedactedExport> {
+  return invoke<RedactedExport>("security_export_audit");
+}
+
+export function securityStoreSecret(connectionId: string, purpose: DesktopSecretPurpose, value: string): Promise<SecretRef> {
+  return invoke<SecretRef>("security_store_secret", { connectionId, purpose, value });
+}
+
+export function securityDeleteSecret(secret: SecretRef): Promise<void> {
+  return invoke<void>("security_delete_secret", { secret });
+}
+
+export function networkTransportPlan(transport: TransportConfig): Promise<TransportPlan> {
+  return invoke<TransportPlan>("network_transport_plan", { transport });
+}
+
+export function networkDiagnoseTransport(transport: TransportConfig): Promise<ConnectionDiagnostics> {
+  return invoke<ConnectionDiagnostics>("network_diagnose_transport", { transport });
 }

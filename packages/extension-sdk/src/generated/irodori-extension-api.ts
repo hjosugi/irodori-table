@@ -52,9 +52,9 @@ export type ResultGridColumn = { name: string, dataType: string, nullable: boole
 
 export type ResultGridCell = { column: string, value: JsonValue, };
 
-export type ResultGridRow = { rowIndex: bigint, cells: Array<ResultGridCell>, };
+export type ResultGridRow = { rowIndex: number, cells: Array<ResultGridCell>, };
 
-export type ResultGridSelection = { columns: Array<string>, rows: Array<bigint>, cells: Array<ResultGridCell>, };
+export type ResultGridSelection = { columns: Array<string>, rows: Array<number>, cells: Array<ResultGridCell>, };
 
 export type ResultGridSnapshot = { columns: Array<ResultGridColumn>, rows: Array<ResultGridRow>, selection?: ResultGridSelection, truncated: boolean, };
 

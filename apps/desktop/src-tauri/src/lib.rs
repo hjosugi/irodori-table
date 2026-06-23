@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub mod db;
+pub mod security;
 
 #[derive(Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -126,6 +127,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(db::DbState::default())
+        .manage(security::SecurityState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
             db::db_connect,
@@ -134,7 +136,15 @@ pub fn run() {
             db::db_cancel,
             db::db_apply_edits,
             db::db_list_objects,
-            db::db_disconnect
+            db::db_disconnect,
+            security::security_get_privacy_mode,
+            security::security_set_privacy_mode,
+            security::security_redact_text,
+            security::security_export_audit,
+            security::security_store_secret,
+            security::security_delete_secret,
+            security::network_transport_plan,
+            security::network_diagnose_transport
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -163,6 +173,30 @@ mod typegen {
             .decl(&decl::<irodori_core::IrodoriErrorKind>())
             .decl(&decl::<irodori_core::IrodoriError>())
             .decl(&decl::<irodori_core::CommandResult<serde_json::Value>>())
+            .decl(&decl::<irodori_core::PrivacyMode>())
+            .decl(&decl::<irodori_core::RedactionReport>())
+            .decl(&decl::<irodori_core::RedactedExport>())
+            .decl(&decl::<irodori_core::SecretRef>())
+            .decl(&decl::<irodori_core::TransportConfig>())
+            .decl(&decl::<irodori_core::DirectTransport>())
+            .decl(&decl::<irodori_core::LocalFileTransport>())
+            .decl(&decl::<irodori_core::SshTunnelTransport>())
+            .decl(&decl::<irodori_core::SshAuthConfig>())
+            .decl(&decl::<irodori_core::ProxyTransport>())
+            .decl(&decl::<irodori_core::ProxyAuthConfig>())
+            .decl(&decl::<irodori_core::ProxyChainTransport>())
+            .decl(&decl::<irodori_core::ProxyChainHop>())
+            .decl(&decl::<irodori_core::ProxyHopConfig>())
+            .decl(&decl::<irodori_core::SshProxyHop>())
+            .decl(&decl::<irodori_proxy::DialTarget>())
+            .decl(&decl::<irodori_proxy::TransportStepKind>())
+            .decl(&decl::<irodori_proxy::TransportStep>())
+            .decl(&decl::<irodori_proxy::TransportPlan>())
+            .decl(&decl::<irodori_proxy::DiagnosticStageKind>())
+            .decl(&decl::<irodori_proxy::DiagnosticStatus>())
+            .decl(&decl::<irodori_proxy::DiagnosticStage>())
+            .decl(&decl::<irodori_proxy::ConnectionDiagnostics>())
+            .decl(&decl::<security::DesktopSecretPurpose>())
             .decl(&decl::<DbObjectKind>())
             .decl(&decl::<ConnectionStatus>())
             .decl(&decl::<DbObject>())
@@ -214,6 +248,34 @@ mod typegen {
             .command(
                 Command::returning("db_disconnect", TsType::void())
                     .arg(Arg::rust("connection_id", TsType::string())),
+            )
+            .command(Command::new("security_get_privacy_mode", "PrivacyMode"))
+            .command(
+                Command::new("security_set_privacy_mode", "PrivacyMode")
+                    .arg(Arg::new("mode", TsType::named("PrivacyMode"))),
+            )
+            .command(
+                Command::new("security_redact_text", "RedactionReport")
+                    .arg(Arg::new("text", TsType::string())),
+            )
+            .command(Command::new("security_export_audit", "RedactedExport"))
+            .command(
+                Command::new("security_store_secret", "SecretRef")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("purpose", TsType::named("DesktopSecretPurpose")))
+                    .arg(Arg::new("value", TsType::string())),
+            )
+            .command(
+                Command::returning("security_delete_secret", TsType::void())
+                    .arg(Arg::new("secret", TsType::named("SecretRef"))),
+            )
+            .command(
+                Command::new("network_transport_plan", "TransportPlan")
+                    .arg(Arg::new("transport", TsType::named("TransportConfig"))),
+            )
+            .command(
+                Command::new("network_diagnose_transport", "ConnectionDiagnostics")
+                    .arg(Arg::new("transport", TsType::named("TransportConfig"))),
             )
     }
 
