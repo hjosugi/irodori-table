@@ -1,0 +1,19 @@
+# Normalize line endings to LF in the working tree on every platform.
+#
+# Why this matters: the generated TypeScript bindings drift check
+# (`export_typescript_bindings`) compares the freshly-rendered string against the
+# committed `irodori-api.ts` with a raw equality check. On Windows CI, git would
+# otherwise check the file out with CRLF (autocrlf), so the raw comparison fails
+# even though every line is identical — which broke every release build. Forcing
+# LF keeps the committed file byte-identical to the LF-rendered output on Windows,
+# macOS, and Linux alike.
+* text=auto eol=lf
+
+# Binary assets must never be normalized.
+*.png binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.parquet binary
+*.avro binary
