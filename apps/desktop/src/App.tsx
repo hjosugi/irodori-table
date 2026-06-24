@@ -113,6 +113,8 @@ import {
 } from "./sql/formatter";
 import { selectedOrCurrentStatement } from "./sql/statements";
 import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
+import { RowDetailSidebar } from "./RowDetailSidebar";
+import { findTableMetadata, parseSourceTable } from "./row-detail";
 import "./App.css";
 
 const fallbackSnapshot: WorkspaceSnapshot = {
