@@ -13,3 +13,7 @@ path = "src/lib.rs"
 irodori-core = { path = "../irodori-core" }
 serde = { version = "1", features = ["derive"] }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
+ssh2 = { version = "0.9", features = ["vendored-openssl"] }
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
+tokio-util = { version = "0.7" }
+
