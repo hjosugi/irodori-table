@@ -7,7 +7,7 @@ use sqlx::{Row, ValueRef};
 use super::meta::MetaBuilder;
 use super::{
     hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, DbQuickSample,
-    IndexMetadata, RawResultSet, RowSet,
+    IndexMetadata, PreparedQuery, RawResultSet, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<SqlitePool, String> {
@@ -28,6 +28,14 @@ pub async fn version(pool: &SqlitePool) -> Option<String> {
 
 pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> Result<RowSet, String> {
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
+}
+
+pub async fn run_prepared_query(
+    pool: &SqlitePool,
+    query: &PreparedQuery,
+    cap: usize,
+) -> Result<RowSet, String> {
+    super::stream::collect_capped(bind_query(query).fetch(pool), cap, cell_to_json).await
 }
 
 pub async fn run_query_sets(
@@ -63,6 +71,14 @@ pub async fn stream_query(
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
     super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
+pub async fn stream_prepared_query(
+    pool: &SqlitePool,
+    query: &PreparedQuery,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
 }
 
 pub async fn stream_query_sets(
@@ -343,6 +359,37 @@ fn bind(
     use serde_json::Value;
     let mut q = sqlx::query(&stmt.sql);
     for value in &stmt.params {
+        q = match value {
+            Value::Null => q.bind(Option::<String>::None),
+            Value::Bool(b) => q.bind(*b),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    q.bind(i)
+                } else if let Some(f) = n.as_f64() {
+                    q.bind(f)
+                } else {
+                    q.bind(n.to_string())
+                }
+            }
+            Value::String(s) => q.bind(s.clone()),
+            other => q.bind(other.to_string()),
+        };
+    }
+    q
+}
+
+fn bind_query(
+    query: &PreparedQuery,
+) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>> {
+    bind_json(sqlx::query(&query.sql), &query.params)
+}
+
+fn bind_json<'q>(
+    mut q: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>>,
+    params: &'q [serde_json::Value],
+) -> sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>> {
+    use serde_json::Value;
+    for value in params {
         q = match value {
             Value::Null => q.bind(Option::<String>::None),
             Value::Bool(b) => q.bind(*b),

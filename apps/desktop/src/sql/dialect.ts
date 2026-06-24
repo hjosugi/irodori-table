@@ -68,6 +68,10 @@ export function formatterLanguage(engine: DbEngine): string {
       return "duckdb";
     case "clickhouse":
       return "clickhouse";
+    case "snowflake":
+      return "snowflake";
+    case "bigquery":
+      return "bigquery";
     case "postgres":
     case "cockroachdb":
     case "yugabytedb":

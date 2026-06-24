@@ -19,7 +19,7 @@ use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
 use super::{
     hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
-    DbObjectMetadataKind, IndexMetadata, RowSet, SchemaMetadata,
+    DbObjectMetadataKind, IndexMetadata, PreparedQuery, RowSet, SchemaMetadata,
 };
 
 pub type MssqlClient = Client<Compat<TcpStream>>;
@@ -101,6 +101,46 @@ pub async fn run_query(
     Ok((columns, rows, truncated))
 }
 
+pub async fn run_prepared_query(
+    client: &Arc<Mutex<MssqlClient>>,
+    query: &PreparedQuery,
+    cap: usize,
+) -> Result<RowSet, String> {
+    let params = mssql_params(&query.params);
+    let refs: Vec<&dyn tiberius::ToSql> =
+        params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
+    let mut guard = client.lock().await;
+    let mut stream = guard
+        .query(&query.sql, &refs)
+        .await
+        .map_err(|e| format!("query failed: {e}"))?;
+
+    let mut columns: Vec<String> = Vec::new();
+    let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
+    let mut truncated = false;
+    while let Some(item) = stream
+        .try_next()
+        .await
+        .map_err(|e| format!("query failed: {e}"))?
+    {
+        if let QueryItem::Row(row) = item {
+            if columns.is_empty() {
+                columns = row.columns().iter().map(|c| c.name().to_string()).collect();
+            }
+            if rows.len() < cap {
+                let cells: Vec<serde_json::Value> = row
+                    .cells()
+                    .map(|(_, data)| column_data_to_json(data))
+                    .collect();
+                rows.push(cells);
+            } else {
+                truncated = true;
+            }
+        }
+    }
+    Ok((columns, rows, truncated))
+}
+
 /// Incremental twin of [`run_query`]: stream rows to `ctx.sink` in batches and
 /// check `ctx.token` each row, so a cancel stops draining the TDS result promptly
 /// (cooperative server-side cancel for this non-pooled driver) instead of relying
@@ -113,6 +153,69 @@ pub async fn stream_query(
     let mut guard = client.lock().await;
     let mut stream = guard
         .query(sql, &[])
+        .await
+        .map_err(|e| format!("query failed: {e}"))?;
+
+    let mut columns_sent = false;
+    let mut batch: Vec<super::stream::Cells> = Vec::new();
+    let mut row_count: u64 = 0;
+    let mut truncated = false;
+    while let Some(item) = stream
+        .try_next()
+        .await
+        .map_err(|e| format!("query failed: {e}"))?
+    {
+        if let QueryItem::Row(row) = item {
+            if ctx.cancelled() {
+                return Err("query cancelled".to_string());
+            }
+            if !columns_sent {
+                ctx.columns(row.columns().iter().map(|c| c.name().to_string()).collect())
+                    .await?;
+                columns_sent = true;
+            }
+            if row_count as usize >= ctx.cap {
+                truncated = true;
+                break;
+            }
+            let cells: super::stream::Cells = row
+                .cells()
+                .map(|(_, data)| column_data_to_json(data))
+                .collect();
+            batch.push(cells);
+            row_count += 1;
+            if batch.len() >= ctx.batch_rows {
+                ctx.rows(std::mem::take(&mut batch)).await?;
+            }
+        }
+    }
+    ctx.rows(batch).await?;
+    if !columns_sent {
+        ctx.columns(Vec::new()).await?;
+    }
+    Ok(super::stream::StreamSummary {
+        result_sets: vec![super::stream::StreamResultSetSummary {
+            result_set_index: ctx.result_set_index,
+            row_count,
+            truncated,
+            elapsed_ms: 0,
+        }],
+        truncated,
+        row_count,
+    })
+}
+
+pub async fn stream_prepared_query(
+    client: &Arc<Mutex<MssqlClient>>,
+    query: &PreparedQuery,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    let params = mssql_params(&query.params);
+    let refs: Vec<&dyn tiberius::ToSql> =
+        params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
+    let mut guard = client.lock().await;
+    let mut stream = guard
+        .query(&query.sql, &refs)
         .await
         .map_err(|e| format!("query failed: {e}"))?;
 
@@ -554,6 +657,28 @@ enum MssqlParam {
     Int(i64),
     Float(f64),
     String(String),
+}
+
+fn mssql_param(value: &serde_json::Value) -> MssqlParam {
+    match value {
+        serde_json::Value::Null => MssqlParam::Null,
+        serde_json::Value::Bool(b) => MssqlParam::Bool(*b),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                MssqlParam::Int(i)
+            } else if let Some(f) = n.as_f64() {
+                MssqlParam::Float(f)
+            } else {
+                MssqlParam::String(n.to_string())
+            }
+        }
+        serde_json::Value::String(s) => MssqlParam::String(s.clone()),
+        other => MssqlParam::String(other.to_string()),
+    }
+}
+
+fn mssql_params(params: &[serde_json::Value]) -> Vec<MssqlParam> {
+    params.iter().map(mssql_param).collect()
 }
 
 impl tiberius::ToSql for MssqlParam {

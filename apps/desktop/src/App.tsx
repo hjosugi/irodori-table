@@ -37,10 +37,19 @@ import {
   Sun,
   Table2,
   TerminalSquare,
+  Upload,
 } from "lucide-react";
 import { runQueryStream } from "./db-stream";
 import { hasDiagram, toMermaidErd } from "./erd";
 import { errorMessage } from "./errors";
+import {
+  detectImportFileKind,
+  generateImportSql,
+  inferImportTableName,
+  parseImportText,
+  type ImportTextFormat,
+  type ParsedImport,
+} from "./importers";
 import {
   KEY_SEQUENCE_TIMEOUT_MS,
   commandHasConflict,
@@ -56,11 +65,29 @@ import {
   saveOverrides,
 } from "./keybindings";
 import {
+  buildResultExport,
+  resultExportFileName,
+  resultExportFormats,
+  type ResultExportFormat,
+} from "./result-export";
+import {
+  blankSchemaDraft,
+  buildSchemaSql,
+  schemaDraftFromObject,
+  schemaDraftId,
+  type SchemaColumnDraft,
+  type SchemaDesignerDraft,
+  type SchemaDesignerMode,
+  type SchemaForeignKeyDraft,
+  type SchemaIndexDraft,
+} from "./schema-designer";
+import {
   dbApplyEdits,
   dbCancel,
   dbConnect,
   dbDisconnect,
   dbListObjects,
+  dbQueryParameters,
   type CellValue,
   type ConnectionInfo,
   type ConnectionProfile,
@@ -69,6 +96,8 @@ import {
   type DbObjectMetadata,
   type QueryResult,
   type QueryResultSet,
+  type QueryParameterInput,
+  type QueryParameterPromptSet,
   type RowDelete,
   type RowInsert,
   type RowUpdate,
@@ -178,6 +207,10 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "qdrant", label: "Qdrant" },
   { value: "milvus", label: "Milvus" },
   { value: "pinecone", label: "Pinecone" },
+  { value: "snowflake", label: "Snowflake" },
+  { value: "bigquery", label: "Google BigQuery" },
+  { value: "redis", label: "Redis" },
+  { value: "cassandra", label: "Cassandra/ScyllaDB" },
 ];
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
@@ -198,6 +231,7 @@ type ConnectionDraft = {
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
+const queryParameterMemoryStorageKey = "irodori.queryParameters.v1";
 const themeStorageKey = "irodori.theme.v1";
 const vimModeStorageKey = "irodori.editor.vimMode.v1";
 const formatterStorageKey = "irodori.editor.formatter.v1";
@@ -269,6 +303,19 @@ type QueryHistoryItem = {
   truncated: boolean;
   error?: string;
   ranAt: string;
+};
+
+type QueryParameterMemory = Record<string, Record<string, string>>;
+
+type PendingQueryParameters = {
+  sql: string;
+  promptSet: QueryParameterPromptSet;
+};
+
+type ImportPreview = ParsedImport & {
+  fileName: string;
+  format: ImportTextFormat;
+  tableName: string;
 };
 
 const starterProfiles: ConnectionDraft[] = [
@@ -403,7 +450,14 @@ function defaultPort(engine: DbEngine) {
     case "h2":
       return "5435";
     case "clickhouse":
-      return "9000";
+      return "8123";
+    case "snowflake":
+    case "bigquery":
+      return "443";
+    case "redis":
+      return "6379";
+    case "cassandra":
+      return "9042";
     case "neo4j":
     case "memgraph":
       return "7687";
@@ -557,6 +611,81 @@ function loadQueryHistory(): QueryHistoryItem[] {
   }
 }
 
+function loadQueryParameterMemory(): QueryParameterMemory {
+  try {
+    const raw = window.localStorage.getItem(queryParameterMemoryStorageKey);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) {
+      return {};
+    }
+    const memory: QueryParameterMemory = {};
+    for (const [signature, values] of Object.entries(parsed)) {
+      if (!isRecord(values)) {
+        continue;
+      }
+      const entry: Record<string, string> = {};
+      for (const [key, value] of Object.entries(values)) {
+        if (typeof value === "string") {
+          entry[key] = value;
+        }
+      }
+      memory[signature] = entry;
+    }
+    return memory;
+  } catch {
+    return {};
+  }
+}
+
+function parseParameterValue(input: string): unknown {
+  const trimmed = input.trim();
+  if (trimmed === "null") {
+    return null;
+  }
+  if (trimmed === "true") {
+    return true;
+  }
+  if (trimmed === "false") {
+    return false;
+  }
+  if (/^-?\d+$/.test(trimmed)) {
+    const value = Number(trimmed);
+    if (Number.isSafeInteger(value)) {
+      return value;
+    }
+  }
+  if (/^-?(?:\d+\.\d+|\d+e[+-]?\d+|\d+\.\d+e[+-]?\d+)$/i.test(trimmed)) {
+    const value = Number(trimmed);
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return input;
+    }
+  }
+  return input;
+}
+
+function buildParameterInputs(
+  promptSet: QueryParameterPromptSet,
+  values: Record<string, string>,
+): QueryParameterInput[] {
+  return promptSet.prompts.map((prompt) => ({
+    key: prompt.key,
+    value: parseParameterValue(values[prompt.id] ?? ""),
+  }));
+}
+
 function compactSql(sql: string, maxLength = 92) {
   const compact = sql.replace(/\s+/g, " ").trim();
   if (compact.length <= maxLength) {
@@ -574,29 +703,6 @@ function formatHistoryTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function csvCell(value: unknown) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
-  if (/[",\r\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
-}
-
-function csvFromResult(result: Pick<QueryResult, "columns" | "rows">) {
-  const rows = result.rows.map((row) =>
-    result.columns.map((_, index) => csvCell(row[index])).join(","),
-  );
-  return [result.columns.map(csvCell).join(","), ...rows].join("\r\n");
-}
-
-function downloadName(connectionId: string) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `irodori-${connectionId}-${timestamp}.csv`;
 }
 
 function validateDraft(draft: ConnectionDraft): string | null {
@@ -662,6 +768,7 @@ const RESULTS_HEIGHT_MAX = 520;
 
 function App() {
   const gridRef = useRef<HTMLDivElement | null>(null);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const pendingGridScroll = useRef({ top: 0, left: 0 });
   const [gridScrollTop, setGridScrollTop] = useState(0);
@@ -754,8 +861,23 @@ function App() {
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [diagramSvg, setDiagramSvg] = useState("");
   const [diagramError, setDiagramError] = useState<string | null>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [schemaDesignerOpen, setSchemaDesignerOpen] = useState(false);
+  const [schemaDraft, setSchemaDraft] = useState<SchemaDesignerDraft>(
+    blankSchemaDraft,
+  );
   const mermaidReady = useRef(false);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
+  const [queryParameterMemory, setQueryParameterMemory] = useState<QueryParameterMemory>(
+    loadQueryParameterMemory,
+  );
+  const [pendingQueryParameters, setPendingQueryParameters] =
+    useState<PendingQueryParameters | null>(null);
+  const [parameterDraftValues, setParameterDraftValues] = useState<
+    Record<string, string>
+  >({});
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
   >({});
@@ -785,6 +907,13 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(history));
   }, [history]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      queryParameterMemoryStorageKey,
+      JSON.stringify(queryParameterMemory),
+    );
+  }, [queryParameterMemory]);
 
   useEffect(() => {
     window.localStorage.setItem(themeStorageKey, themeKind);
@@ -1391,7 +1520,7 @@ function App() {
         editorApiRef.current?.toggleComment();
         break;
       case "result.export":
-        exportCsv();
+        exportActiveResult("csv");
         break;
       case "edit.toggle":
         setEditMode((mode) => !mode);
@@ -1622,6 +1751,14 @@ function App() {
         activeResult.elapsedMs,
       )} ms`
     : "sample preview";
+  const importSqlPreview = importPreview
+    ? generateImportSql(
+        importPreview.tableName,
+        importPreview.columns,
+        importPreview.rows,
+      )
+    : "";
+  const schemaSqlPreview = buildSchemaSql(schemaDraft);
 
   function updateDraft(patch: Partial<ConnectionDraft>) {
     setDraft((current) => {
@@ -1792,21 +1929,120 @@ function App() {
     setHistory((current) => [item, ...current].slice(0, maxQueryHistoryItems));
   }
 
-  function exportCsv() {
+  function exportActiveResult(format: ResultExportFormat) {
     if (!activeResult) {
       return;
     }
-    const blob = new Blob(["\uFEFF", csvFromResult(activeResult)], {
-      type: "text/csv;charset=utf-8",
+    const target = inferEditTarget();
+    const exported = buildResultExport(activeResult, format, target?.table ?? "query_result");
+    const blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
+      type: exported.mime,
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = downloadName(activeConnectionId);
+    link.download = resultExportFileName(activeConnectionId, format);
     document.body.append(link);
     link.click();
     link.remove();
+    setExportMenuOpen(false);
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  async function handleImportFile(file: File) {
+    const kind = detectImportFileKind(file.name);
+    setImportPreview(null);
+    setImportError(null);
+    if (!kind) {
+      setImportError("Unsupported import file type");
+      return;
+    }
+    const text = await file.text();
+    if (kind === "sql") {
+      setQuery(text);
+      return;
+    }
+    if (kind === "excel") {
+      setImportError("Excel import is not available in the desktop UI yet");
+      return;
+    }
+    try {
+      const parsed = parseImportText(text, kind);
+      setImportPreview({
+        ...parsed,
+        fileName: file.name,
+        format: kind,
+        tableName: inferImportTableName(file.name),
+      });
+    } catch (error) {
+      setImportError(errorMessage(error));
+    }
+  }
+
+  function putImportSqlInEditor() {
+    if (!importPreview) {
+      return;
+    }
+    setQuery(
+      generateImportSql(
+        importPreview.tableName,
+        importPreview.columns,
+        importPreview.rows,
+      ),
+    );
+    setImportPreview(null);
+    setImportError(null);
+  }
+
+  function openBlankSchemaDesigner() {
+    setSchemaDraft(blankSchemaDraft());
+    setSchemaDesignerOpen(true);
+  }
+
+  function openObjectSchemaDesigner(object: DbObjectMetadata) {
+    setSchemaDraft(schemaDraftFromObject(object));
+    setSchemaDesignerOpen(true);
+  }
+
+  function putSchemaSqlInEditor() {
+    setQuery(buildSchemaSql(schemaDraft));
+    setSchemaDesignerOpen(false);
+  }
+
+  function updateSchemaColumn(
+    id: string,
+    patch: Partial<SchemaColumnDraft>,
+  ) {
+    setSchemaDraft((current) => ({
+      ...current,
+      columns: current.columns.map((column) =>
+        column.id === id ? { ...column, ...patch } : column,
+      ),
+    }));
+  }
+
+  function updateSchemaIndex(
+    id: string,
+    patch: Partial<SchemaIndexDraft>,
+  ) {
+    setSchemaDraft((current) => ({
+      ...current,
+      indexes: current.indexes.map((index) =>
+        index.id === id ? { ...index, ...patch } : index,
+      ),
+    }));
+  }
+
+  function updateSchemaForeignKey(
+    id: string,
+    patch: Partial<SchemaForeignKeyDraft>,
+  ) {
+    setSchemaDraft((current) => ({
+      ...current,
+      foreignKeys: current.foreignKeys.map((foreignKey) =>
+        foreignKey.id === id ? { ...foreignKey, ...patch } : foreignKey,
+      ),
+    }));
   }
 
   function formatQuery() {
@@ -1822,6 +2058,35 @@ function App() {
     const selection = editorApiRef.current?.getSelection() ?? { from: 0, to: 0 };
     const sqlToRun = selectedOrCurrentStatement(selection.from, selection.to, query);
     if (!sqlToRun) {
+      setQueryError("query is empty");
+      return;
+    }
+    try {
+      const promptSet = await dbQueryParameters(sqlToRun);
+      if (promptSet.prompts.length > 0) {
+        const remembered = queryParameterMemory[promptSet.signature] ?? {};
+        setParameterDraftValues(
+          Object.fromEntries(
+            promptSet.prompts.map((prompt) => [prompt.id, remembered[prompt.id] ?? ""]),
+          ),
+        );
+        setPendingQueryParameters({ sql: sqlToRun, promptSet });
+        setQueryError(null);
+        return;
+      }
+    } catch (error) {
+      setQueryError(errorMessage(error));
+      return;
+    }
+    await executeQuery(sqlToRun);
+  }
+
+  async function executeQuery(sqlToRun: string, params?: QueryParameterInput[]) {
+    if (!activeConnectionOpen) {
+      setQueryError(`not connected: ${activeConnectionId}`);
+      return;
+    }
+    if (!sqlToRun.trim()) {
       setQueryError("query is empty");
       return;
     }
@@ -1882,7 +2147,13 @@ function App() {
         });
       };
       await runQueryStream(
-        { connectionId: activeConnectionId, sql: sqlToRun, maxRows: 10_000, queryId },
+        {
+          connectionId: activeConnectionId,
+          sql: sqlToRun,
+          maxRows: 10_000,
+          queryId,
+          params,
+        },
         (event) => {
           switch (event.type) {
             case "columns":
@@ -1962,6 +2233,23 @@ function App() {
       runningQueryIdRef.current = null;
       setRunning(false);
     }
+  }
+
+  async function submitQueryParameters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const pending = pendingQueryParameters;
+    if (!pending) {
+      return;
+    }
+    const values = { ...parameterDraftValues };
+    const params = buildParameterInputs(pending.promptSet, values);
+    setQueryParameterMemory((current) => ({
+      ...current,
+      [pending.promptSet.signature]: values,
+    }));
+    setPendingQueryParameters(null);
+    setParameterDraftValues({});
+    await executeQuery(pending.sql, params);
   }
 
   // Ask the backend to stop the in-flight query; the pending run then rejects with
@@ -2345,6 +2633,15 @@ function App() {
               <button
                 className="mini-button"
                 type="button"
+                title="Schema designer"
+                aria-label="Schema designer"
+                onClick={openBlankSchemaDesigner}
+              >
+                <Plus size={14} />
+              </button>
+              <button
+                className="mini-button"
+                type="button"
                 title="ER diagram"
                 aria-label="ER diagram"
                 disabled={!hasDiagram(activeMetadata)}
@@ -2395,6 +2692,18 @@ function App() {
                             </small>
                           </summary>
                           <div className="metadata-children">
+                            {object.kind === "table" ? (
+                              <button
+                                className="metadata-row"
+                                type="button"
+                                title={`Design ${object.name}`}
+                                onClick={() => openObjectSchemaDesigner(object)}
+                              >
+                                <KeyRound size={14} />
+                                <span>Design table</span>
+                                <small>alter / index / FK</small>
+                              </button>
+                            ) : null}
                             {object.columns.map((column) => (
                               <button
                                 className="metadata-row"
@@ -2686,15 +2995,64 @@ function App() {
                 </span>
               </div>
               <div className="results-actions">
+                <div className="action-split">
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={!activeResult}
+                    onClick={() => exportActiveResult("csv")}
+                  >
+                    <Download size={13} />
+                    <span>CSV</span>
+                  </button>
+                  <button
+                    className="mini-button"
+                    type="button"
+                    title="Export formats"
+                    aria-label="Export formats"
+                    disabled={!activeResult}
+                    onClick={() => setExportMenuOpen((open) => !open)}
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  {exportMenuOpen ? (
+                    <div className="action-menu" role="menu">
+                      {resultExportFormats.map((format) => (
+                        <button
+                          key={format.id}
+                          type="button"
+                          role="menuitem"
+                          title={format.title}
+                          onClick={() => exportActiveResult(format.id)}
+                        >
+                          <span>{format.label}</span>
+                          <small>.{buildResultExport({ columns: [], rows: [] }, format.id).extension}</small>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   className="text-button"
                   type="button"
-                  disabled={!result}
-                  onClick={exportCsv}
+                  onClick={() => importFileRef.current?.click()}
                 >
-                  <Download size={13} />
-                  <span>CSV</span>
+                  <Upload size={13} />
+                  <span>Import</span>
                 </button>
+                <input
+                  ref={importFileRef}
+                  className="hidden-file-input"
+                  type="file"
+                  accept=".csv,.tsv,.tab,.json,.jsonl,.ndjson,.sql,.xls,.xlsx"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = "";
+                    if (file) {
+                      void handleImportFile(file);
+                    }
+                  }}
+                />
                 {editMode ? (
                   <>
                     <button
@@ -2931,6 +3289,61 @@ function App() {
         <span>{running ? "query running" : "idle"}</span>
       </footer>
 
+      {pendingQueryParameters ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setPendingQueryParameters(null)}
+          role="presentation"
+        >
+          <form
+            className="parameter-dialog"
+            role="dialog"
+            aria-label="Query parameters"
+            onSubmit={submitQueryParameters}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="parameter-header">
+              <KeyRound size={16} />
+              <strong>Query Parameters</strong>
+              <span>{compactSql(pendingQueryParameters.sql, 68)}</span>
+            </div>
+            <div className="parameter-list">
+              {pendingQueryParameters.promptSet.prompts.map((prompt, index) => (
+                <label className="parameter-row" key={prompt.id}>
+                  <span>
+                    <strong>{prompt.label}</strong>
+                    <small>{prompt.placeholder}</small>
+                  </span>
+                  <input
+                    autoFocus={index === 0}
+                    value={parameterDraftValues[prompt.id] ?? ""}
+                    onChange={(event) =>
+                      setParameterDraftValues((current) => ({
+                        ...current,
+                        [prompt.id]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="parameter-actions">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setPendingQueryParameters(null)}
+              >
+                Cancel
+              </button>
+              <button className="primary-button" type="submit">
+                <Play size={14} />
+                Run
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       {paletteOpen ? (
         <div
           className="palette-overlay"
@@ -2983,6 +3396,530 @@ function App() {
               ) : (
                 <div className="palette-empty">No matching commands</div>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {importPreview || importError ? (
+        <div
+          className="palette-overlay"
+          onClick={() => {
+            setImportPreview(null);
+            setImportError(null);
+          }}
+          role="presentation"
+        >
+          <div
+            className="data-dialog import-dialog"
+            role="dialog"
+            aria-label="Import preview"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dialog-header">
+              <strong>Import</strong>
+              <span>
+                {importPreview
+                  ? `${importPreview.fileName} · ${importPreview.format.toUpperCase()}`
+                  : "File"}
+              </span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  setImportPreview(null);
+                  setImportError(null);
+                }}
+              >
+                Close
+              </button>
+            </div>
+            {importError ? (
+              <div className="dialog-body">
+                <div className="result-error" role="alert">
+                  <AlertTriangle size={16} />
+                  <span>{importError}</span>
+                </div>
+              </div>
+            ) : null}
+            {importPreview ? (
+              <>
+                <div className="dialog-body">
+                  <div className="dialog-form-row">
+                    <label>
+                      <span>Table</span>
+                      <input
+                        value={importPreview.tableName}
+                        onChange={(event) =>
+                          setImportPreview((current) =>
+                            current
+                              ? { ...current, tableName: event.currentTarget.value }
+                              : current,
+                          )
+                        }
+                      />
+                    </label>
+                    <span className="dialog-stat">
+                      {toCount(importPreview.rows.length)} / {toCount(importPreview.totalRows)} rows
+                      {importPreview.truncated ? " capped" : ""}
+                    </span>
+                  </div>
+                  <div className="preview-table-wrap">
+                    <table className="preview-table">
+                      <thead>
+                        <tr>
+                          {importPreview.columns.map((column, index) => (
+                            <th key={`${column}-${index}`}>{column}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.rows.slice(0, 8).map((row, rowIndex) => (
+                          <tr key={rowIndex}>
+                            {importPreview.columns.map((_, columnIndex) => (
+                              <td key={columnIndex}>{formatCell(row[columnIndex])}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <pre className="sql-preview">{importSqlPreview}</pre>
+                </div>
+                <div className="dialog-footer">
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => void navigator.clipboard?.writeText(importSqlPreview)}
+                  >
+                    Copy SQL
+                  </button>
+                  <button
+                    className="primary-action"
+                    type="button"
+                    onClick={putImportSqlInEditor}
+                  >
+                    Put SQL in editor
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {schemaDesignerOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setSchemaDesignerOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="data-dialog schema-dialog"
+            role="dialog"
+            aria-label="Schema designer"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dialog-header">
+              <strong>Schema Designer</strong>
+              <span>
+                {schemaDraft.mode === "create" ? "CREATE TABLE" : "ALTER TABLE"}
+              </span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setSchemaDesignerOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="dialog-body schema-body">
+              <div className="dialog-form-row schema-target">
+                <label>
+                  <span>Mode</span>
+                  <select
+                    value={schemaDraft.mode}
+                    onChange={(event) =>
+                      setSchemaDraft((current) => ({
+                        ...current,
+                        mode: event.currentTarget.value as SchemaDesignerMode,
+                      }))
+                    }
+                  >
+                    <option value="create">Create</option>
+                    <option value="alter">Alter</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Schema</span>
+                  <input
+                    value={schemaDraft.schema}
+                    onChange={(event) =>
+                      setSchemaDraft((current) => ({
+                        ...current,
+                        schema: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Table</span>
+                  <input
+                    value={schemaDraft.table}
+                    onChange={(event) =>
+                      setSchemaDraft((current) => ({
+                        ...current,
+                        table: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              <section className="designer-section">
+                <header>
+                  <strong>Columns</strong>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() =>
+                      setSchemaDraft((current) => ({
+                        ...current,
+                        columns: [
+                          ...current.columns,
+                          {
+                            id: schemaDraftId("column"),
+                            name: "",
+                            dataType: "TEXT",
+                            nullable: true,
+                            primaryKey: false,
+                            defaultValue: "",
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    + Column
+                  </button>
+                </header>
+                <div className="designer-grid column-grid">
+                  {schemaDraft.columns.map((column) => {
+                    const locked = schemaDraft.mode === "alter" && column.existing;
+                    return (
+                      <div
+                        className={`designer-row${column.existing ? " is-existing" : ""}`}
+                        key={column.id}
+                      >
+                        <input
+                          aria-label="Column name"
+                          value={column.name}
+                          disabled={locked}
+                          onChange={(event) =>
+                            updateSchemaColumn(column.id, {
+                              name: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <input
+                          aria-label="Column type"
+                          value={column.dataType}
+                          disabled={locked}
+                          onChange={(event) =>
+                            updateSchemaColumn(column.id, {
+                              dataType: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <label className="check-cell">
+                          <input
+                            type="checkbox"
+                            checked={!column.nullable}
+                            disabled={locked}
+                            onChange={(event) =>
+                              updateSchemaColumn(column.id, {
+                                nullable: !event.currentTarget.checked,
+                              })
+                            }
+                          />
+                          <span>NN</span>
+                        </label>
+                        <label className="check-cell">
+                          <input
+                            type="checkbox"
+                            checked={column.primaryKey}
+                            disabled={locked}
+                            onChange={(event) =>
+                              updateSchemaColumn(column.id, {
+                                primaryKey: event.currentTarget.checked,
+                              })
+                            }
+                          />
+                          <span>PK</span>
+                        </label>
+                        <input
+                          aria-label="Default value"
+                          value={column.defaultValue}
+                          disabled={locked}
+                          placeholder="default"
+                          onChange={(event) =>
+                            updateSchemaColumn(column.id, {
+                              defaultValue: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <button
+                          className="mini-button"
+                          type="button"
+                          disabled={locked}
+                          onClick={() =>
+                            setSchemaDraft((current) => ({
+                              ...current,
+                              columns: current.columns.filter(
+                                (item) => item.id !== column.id,
+                              ),
+                            }))
+                          }
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="designer-section">
+                <header>
+                  <strong>Indexes</strong>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() =>
+                      setSchemaDraft((current) => ({
+                        ...current,
+                        indexes: [
+                          ...current.indexes,
+                          {
+                            id: schemaDraftId("index"),
+                            name: "",
+                            columns: "",
+                            unique: false,
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    + Index
+                  </button>
+                </header>
+                <div className="designer-grid index-grid">
+                  {schemaDraft.indexes.map((index) => {
+                    const locked = schemaDraft.mode === "alter" && index.existing;
+                    return (
+                      <div
+                        className={`designer-row${index.existing ? " is-existing" : ""}`}
+                        key={index.id}
+                      >
+                        <input
+                          aria-label="Index name"
+                          value={index.name}
+                          disabled={locked}
+                          placeholder="auto name"
+                          onChange={(event) =>
+                            updateSchemaIndex(index.id, {
+                              name: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <input
+                          aria-label="Index columns"
+                          value={index.columns}
+                          disabled={locked}
+                          placeholder="col_a, col_b"
+                          onChange={(event) =>
+                            updateSchemaIndex(index.id, {
+                              columns: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <label className="check-cell">
+                          <input
+                            type="checkbox"
+                            checked={index.unique}
+                            disabled={locked}
+                            onChange={(event) =>
+                              updateSchemaIndex(index.id, {
+                                unique: event.currentTarget.checked,
+                              })
+                            }
+                          />
+                          <span>Unique</span>
+                        </label>
+                        <button
+                          className="mini-button"
+                          type="button"
+                          disabled={locked}
+                          onClick={() =>
+                            setSchemaDraft((current) => ({
+                              ...current,
+                              indexes: current.indexes.filter(
+                                (item) => item.id !== index.id,
+                              ),
+                            }))
+                          }
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="designer-section">
+                <header>
+                  <strong>Foreign Keys</strong>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() =>
+                      setSchemaDraft((current) => ({
+                        ...current,
+                        foreignKeys: [
+                          ...current.foreignKeys,
+                          {
+                            id: schemaDraftId("fk"),
+                            name: "",
+                            columns: "",
+                            referencesSchema: "",
+                            referencesTable: "",
+                            referencesColumns: "",
+                            onDelete: "",
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    + FK
+                  </button>
+                </header>
+                <div className="designer-grid fk-grid">
+                  {schemaDraft.foreignKeys.map((foreignKey) => {
+                    const locked = schemaDraft.mode === "alter" && foreignKey.existing;
+                    return (
+                      <div
+                        className={`designer-row${foreignKey.existing ? " is-existing" : ""}`}
+                        key={foreignKey.id}
+                      >
+                        <input
+                          aria-label="Foreign key name"
+                          value={foreignKey.name}
+                          disabled={locked}
+                          placeholder="auto name"
+                          onChange={(event) =>
+                            updateSchemaForeignKey(foreignKey.id, {
+                              name: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <input
+                          aria-label="Foreign key columns"
+                          value={foreignKey.columns}
+                          disabled={locked}
+                          placeholder="local cols"
+                          onChange={(event) =>
+                            updateSchemaForeignKey(foreignKey.id, {
+                              columns: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <input
+                          aria-label="Referenced schema"
+                          value={foreignKey.referencesSchema}
+                          disabled={locked}
+                          placeholder="schema"
+                          onChange={(event) =>
+                            updateSchemaForeignKey(foreignKey.id, {
+                              referencesSchema: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <input
+                          aria-label="Referenced table"
+                          value={foreignKey.referencesTable}
+                          disabled={locked}
+                          placeholder="table"
+                          onChange={(event) =>
+                            updateSchemaForeignKey(foreignKey.id, {
+                              referencesTable: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <input
+                          aria-label="Referenced columns"
+                          value={foreignKey.referencesColumns}
+                          disabled={locked}
+                          placeholder="ref cols"
+                          onChange={(event) =>
+                            updateSchemaForeignKey(foreignKey.id, {
+                              referencesColumns: event.currentTarget.value,
+                            })
+                          }
+                        />
+                        <select
+                          aria-label="On delete"
+                          value={foreignKey.onDelete}
+                          disabled={locked}
+                          onChange={(event) =>
+                            updateSchemaForeignKey(foreignKey.id, {
+                              onDelete: event.currentTarget.value,
+                            })
+                          }
+                        >
+                          <option value="">ON DELETE</option>
+                          <option value="CASCADE">CASCADE</option>
+                          <option value="SET NULL">SET NULL</option>
+                          <option value="RESTRICT">RESTRICT</option>
+                          <option value="NO ACTION">NO ACTION</option>
+                        </select>
+                        <button
+                          className="mini-button"
+                          type="button"
+                          disabled={locked}
+                          onClick={() =>
+                            setSchemaDraft((current) => ({
+                              ...current,
+                              foreignKeys: current.foreignKeys.filter(
+                                (item) => item.id !== foreignKey.id,
+                              ),
+                            }))
+                          }
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <pre className="sql-preview schema-sql">{schemaSqlPreview}</pre>
+            </div>
+            <div className="dialog-footer">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => void navigator.clipboard?.writeText(schemaSqlPreview)}
+              >
+                Copy SQL
+              </button>
+              <button
+                className="primary-action"
+                type="button"
+                onClick={putSchemaSqlInEditor}
+              >
+                Put SQL in editor
+              </button>
             </div>
           </div>
         </div>

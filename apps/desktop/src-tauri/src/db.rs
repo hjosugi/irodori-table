@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use irodori_core::{AuditEventKind, IrodoriError, Result as IrodoriResult};
+use irodori_sql::params::{detect_parameters, query_signature, ParameterKey};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
 use tokio_util::sync::CancellationToken;
@@ -38,6 +39,9 @@ use irodori_completion::metadata::{
     SchemaMetadata as CmpSchemaMetadata,
 };
 
+mod bigquery;
+mod cassandra;
+mod clickhouse;
 #[cfg(feature = "duckdb")]
 mod duck;
 mod edit;
@@ -50,6 +54,8 @@ mod mysql;
 mod neo4j;
 mod oracle;
 mod postgres;
+mod redis;
+mod snowflake;
 mod sqlite;
 mod stream;
 
@@ -142,13 +148,7 @@ fn normalize_optional_text(value: &mut Option<String>) {
 fn is_unimplemented_wire(wire: Wire) -> bool {
     matches!(
         wire,
-        Wire::ClickHouse
-            | Wire::Neo4j
-            | Wire::Memgraph
-            | Wire::InfluxDb
-            | Wire::Qdrant
-            | Wire::Milvus
-            | Wire::Pinecone
+        Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone
     )
 }
 
@@ -192,18 +192,25 @@ fn normalize_profile(mut profile: ConnectionProfile) -> Result<ConnectionProfile
         Wire::DuckDb => {
             // Empty DuckDB profiles intentionally open an in-memory database.
         }
-        Wire::Postgres | Wire::Mysql | Wire::SqlServer | Wire::Mongo | Wire::Oracle => {
+        Wire::Postgres
+        | Wire::Mysql
+        | Wire::SqlServer
+        | Wire::Mongo
+        | Wire::Oracle
+        | Wire::ClickHouse
+        | Wire::Snowflake
+        | Wire::BigQuery
+        | Wire::Redis
+        | Wire::Cassandra
+        | Wire::Neo4j
+        | Wire::InfluxDb => {
             if profile.host.is_none() {
                 return Err("host is required when URL/DSN is not provided".into());
             }
         }
-        Wire::ClickHouse
-        | Wire::Neo4j
-        | Wire::Memgraph
-        | Wire::InfluxDb
-        | Wire::Qdrant
-        | Wire::Milvus
-        | Wire::Pinecone => unreachable!("unimplemented wires are rejected above"),
+        Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {
+            unreachable!("unimplemented wires are rejected above")
+        }
     }
 
     Ok(profile)
@@ -466,6 +473,11 @@ pub struct ConnectionProfile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub transport: Option<irodori_core::TransportConfig>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub options: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -510,6 +522,76 @@ pub struct QueryResultSet {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(tag = "kind", rename_all = "camelCase")]
+pub enum QueryParameterKey {
+    Name { name: String },
+    Position { position: u32 },
+}
+
+impl QueryParameterKey {
+    fn from_param_key(key: ParameterKey) -> Self {
+        match key {
+            ParameterKey::Name(name) => Self::Name { name },
+            ParameterKey::Position(position) => Self::Position { position },
+        }
+    }
+
+    fn to_param_key(&self) -> ParameterKey {
+        match self {
+            Self::Name { name } => ParameterKey::Name(name.clone()),
+            Self::Position { position } => ParameterKey::Position(*position),
+        }
+    }
+
+    fn id(&self) -> String {
+        match self {
+            Self::Name { name } => format!("name:{name}"),
+            Self::Position { position } => format!("position:{position}"),
+        }
+    }
+
+    fn label(&self) -> String {
+        match self {
+            Self::Name { name } => name.clone(),
+            Self::Position { position } => format!("${position}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct QueryParameterInput {
+    pub key: QueryParameterKey,
+    pub value: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct QueryParameterPrompt {
+    pub key: QueryParameterKey,
+    pub id: String,
+    pub label: String,
+    pub placeholder: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct QueryParameterPromptSet {
+    pub signature: String,
+    pub prompts: Vec<QueryParameterPrompt>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct PreparedQuery {
+    pub sql: String,
+    pub params: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -614,14 +696,114 @@ pub struct IndexMetadata {
     pub unique: bool,
 }
 
+pub fn query_parameter_prompt_set(sql: &str) -> Result<QueryParameterPromptSet, String> {
+    if sql.len() > MAX_SQL_BYTES {
+        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    let mut prompts = Vec::new();
+    for parameter in detect_parameters(sql) {
+        let key = QueryParameterKey::from_param_key(parameter.key());
+        if !seen.insert(key.clone()) {
+            continue;
+        }
+        prompts.push(QueryParameterPrompt {
+            id: key.id(),
+            label: key.label(),
+            key,
+            placeholder: parameter.placeholder,
+        });
+    }
+    Ok(QueryParameterPromptSet {
+        signature: query_signature(sql),
+        prompts,
+    })
+}
+
+fn bind_placeholder(wire: Wire, index: usize) -> String {
+    match wire {
+        Wire::Postgres => format!("${index}"),
+        Wire::SqlServer => format!("@P{index}"),
+        Wire::Oracle => format!(":{index}"),
+        Wire::Mysql | Wire::Sqlite | Wire::DuckDb => "?".to_string(),
+        Wire::Mongo
+        | Wire::ClickHouse
+        | Wire::Snowflake
+        | Wire::BigQuery
+        | Wire::Redis
+        | Wire::Cassandra
+        | Wire::Neo4j
+        | Wire::Memgraph
+        | Wire::InfluxDb
+        | Wire::Qdrant
+        | Wire::Milvus
+        | Wire::Pinecone => "?".to_string(),
+    }
+}
+
+fn prepare_query(
+    wire: Wire,
+    sql: &str,
+    params: Option<&[QueryParameterInput]>,
+) -> Result<PreparedQuery, String> {
+    let detected = detect_parameters(sql);
+    if detected.is_empty() {
+        return Ok(PreparedQuery {
+            sql: sql.to_string(),
+            params: Vec::new(),
+        });
+    }
+
+    let supplied = params.ok_or_else(|| "query parameters are required".to_string())?;
+    let values = supplied
+        .iter()
+        .map(|input| (input.key.to_param_key(), input.value.clone()))
+        .collect::<BTreeMap<_, _>>();
+
+    if split_sql_statements(sql).len() > 1 {
+        return Err("query parameters are supported for one statement at a time".to_string());
+    }
+
+    let mut rewritten = String::with_capacity(sql.len() + detected.len() * 2);
+    let mut bound = Vec::with_capacity(detected.len());
+    let mut cursor = 0;
+    for parameter in detected {
+        let value = values
+            .get(&parameter.key())
+            .cloned()
+            .ok_or_else(|| format!("missing value for parameter {}", parameter.placeholder))?;
+        rewritten.push_str(&sql[cursor..parameter.start]);
+        rewritten.push_str(&bind_placeholder(wire, bound.len() + 1));
+        cursor = parameter.end;
+        bound.push(value);
+    }
+    rewritten.push_str(&sql[cursor..]);
+    Ok(PreparedQuery {
+        sql: rewritten,
+        params: bound,
+    })
+}
+
 // ---- The per-engine connection abstraction ------------------------------------
 
 /// A live connection to one database. Each engine implements this over its native
 /// client; the rest of the app never matches on the engine.
 #[async_trait]
 trait Connection: Send + Sync {
+    fn wire(&self) -> Wire;
     async fn version(&self) -> Option<String>;
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String>;
+    async fn run_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        cap: usize,
+    ) -> Result<RowSet, String> {
+        if query.params.is_empty() {
+            self.run_query(&query.sql, cap).await
+        } else {
+            Err("query parameters are not supported for this engine yet".to_string())
+        }
+    }
     async fn run_query_sets(&self, sql: &str, cap: usize) -> Result<Vec<RawResultSet>, String> {
         let start = Instant::now();
         let (columns, rows, truncated) = self.run_query(sql, cap).await?;
@@ -671,6 +853,18 @@ trait Connection: Send + Sync {
         })
     }
 
+    async fn stream_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        if query.params.is_empty() {
+            self.stream_query(&query.sql, ctx).await
+        } else {
+            Err("query parameters are not supported for this engine yet".to_string())
+        }
+    }
+
     async fn stream_query_sets(
         &self,
         sql: &str,
@@ -692,11 +886,22 @@ struct PgConn {
 }
 #[async_trait]
 impl Connection for PgConn {
+    fn wire(&self) -> Wire {
+        self.engine.wire()
+    }
+
     async fn version(&self) -> Option<String> {
         postgres::version(&self.pool).await
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         postgres::run_query(&self.pool, sql, cap).await
+    }
+    async fn run_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        cap: usize,
+    ) -> Result<RowSet, String> {
+        postgres::run_prepared_query(&self.pool, query, cap).await
     }
     async fn stream_query(
         &self,
@@ -704,6 +909,13 @@ impl Connection for PgConn {
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         postgres::stream_query(&self.pool, sql, ctx).await
+    }
+    async fn stream_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        postgres::stream_prepared_query(&self.pool, query, ctx).await
     }
     async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
         postgres::apply_edits(&self.pool, edits).await
@@ -719,6 +931,10 @@ impl Connection for PgConn {
 struct Neo4jConnection(neo4j::Neo4jConn);
 #[async_trait]
 impl Connection for Neo4jConnection {
+    fn wire(&self) -> Wire {
+        Wire::Neo4j
+    }
+
     async fn version(&self) -> Option<String> {
         neo4j::version(&self.0).await
     }
@@ -734,6 +950,10 @@ impl Connection for Neo4jConnection {
 struct InfluxConnection(influx::InfluxConn);
 #[async_trait]
 impl Connection for InfluxConnection {
+    fn wire(&self) -> Wire {
+        Wire::InfluxDb
+    }
+
     async fn version(&self) -> Option<String> {
         influx::version(&self.0).await
     }
@@ -749,11 +969,22 @@ impl Connection for InfluxConnection {
 struct MysqlConn(sqlx::MySqlPool);
 #[async_trait]
 impl Connection for MysqlConn {
+    fn wire(&self) -> Wire {
+        Wire::Mysql
+    }
+
     async fn version(&self) -> Option<String> {
         mysql::version(&self.0).await
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mysql::run_query(&self.0, sql, cap).await
+    }
+    async fn run_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        cap: usize,
+    ) -> Result<RowSet, String> {
+        mysql::run_prepared_query(&self.0, query, cap).await
     }
     async fn stream_query(
         &self,
@@ -761,6 +992,13 @@ impl Connection for MysqlConn {
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         mysql::stream_query(&self.0, sql, ctx).await
+    }
+    async fn stream_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        mysql::stream_prepared_query(&self.0, query, ctx).await
     }
     async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
         mysql::apply_edits(&self.0, edits).await
@@ -776,11 +1014,22 @@ impl Connection for MysqlConn {
 struct SqliteConn(sqlx::SqlitePool);
 #[async_trait]
 impl Connection for SqliteConn {
+    fn wire(&self) -> Wire {
+        Wire::Sqlite
+    }
+
     async fn version(&self) -> Option<String> {
         sqlite::version(&self.0).await
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         sqlite::run_query(&self.0, sql, cap).await
+    }
+    async fn run_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        cap: usize,
+    ) -> Result<RowSet, String> {
+        sqlite::run_prepared_query(&self.0, query, cap).await
     }
     async fn run_query_sets(&self, sql: &str, cap: usize) -> Result<Vec<RawResultSet>, String> {
         sqlite::run_query_sets(&self.0, sql, cap).await
@@ -791,6 +1040,13 @@ impl Connection for SqliteConn {
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         sqlite::stream_query(&self.0, sql, ctx).await
+    }
+    async fn stream_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        sqlite::stream_prepared_query(&self.0, query, ctx).await
     }
     async fn stream_query_sets(
         &self,
@@ -813,11 +1069,22 @@ impl Connection for SqliteConn {
 struct MssqlConn(Arc<Mutex<mssql::MssqlClient>>);
 #[async_trait]
 impl Connection for MssqlConn {
+    fn wire(&self) -> Wire {
+        Wire::SqlServer
+    }
+
     async fn version(&self) -> Option<String> {
         mssql::version(&self.0).await
     }
     async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
         mssql::run_query(&self.0, sql, cap).await
+    }
+    async fn run_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        cap: usize,
+    ) -> Result<RowSet, String> {
+        mssql::run_prepared_query(&self.0, query, cap).await
     }
     async fn stream_query(
         &self,
@@ -825,6 +1092,13 @@ impl Connection for MssqlConn {
         ctx: &stream::StreamCtx,
     ) -> Result<stream::StreamSummary, String> {
         mssql::stream_query(&self.0, sql, ctx).await
+    }
+    async fn stream_prepared_query(
+        &self,
+        query: &PreparedQuery,
+        ctx: &stream::StreamCtx,
+    ) -> Result<stream::StreamSummary, String> {
+        mssql::stream_prepared_query(&self.0, query, ctx).await
     }
     async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
         mssql::apply_edits(&self.0, edits).await
@@ -838,6 +1112,10 @@ impl Connection for MssqlConn {
 struct MongoConn(mongo::MongoHandle);
 #[async_trait]
 impl Connection for MongoConn {
+    fn wire(&self) -> Wire {
+        Wire::Mongo
+    }
+
     async fn version(&self) -> Option<String> {
         mongo::version(&self.0).await
     }
@@ -853,6 +1131,10 @@ impl Connection for MongoConn {
 struct OracleConn(oracle::OracleHandle);
 #[async_trait]
 impl Connection for OracleConn {
+    fn wire(&self) -> Wire {
+        Wire::Oracle
+    }
+
     async fn version(&self) -> Option<String> {
         oracle::version(&self.0).await
     }
@@ -870,6 +1152,10 @@ struct DuckConn(Arc<std::sync::Mutex<duckdb::Connection>>);
 #[cfg(feature = "duckdb")]
 #[async_trait]
 impl Connection for DuckConn {
+    fn wire(&self) -> Wire {
+        Wire::DuckDb
+    }
+
     async fn version(&self) -> Option<String> {
         duck::version(&self.0)
     }
@@ -878,6 +1164,96 @@ impl Connection for DuckConn {
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         duck::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
+struct ClickHouseConnection(clickhouse::ClickHouseConn);
+#[async_trait]
+impl Connection for ClickHouseConnection {
+    fn wire(&self) -> Wire {
+        Wire::ClickHouse
+    }
+    async fn version(&self) -> Option<String> {
+        clickhouse::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        clickhouse::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        clickhouse::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
+struct SnowflakeConnection(snowflake::SnowflakeConn);
+#[async_trait]
+impl Connection for SnowflakeConnection {
+    fn wire(&self) -> Wire {
+        Wire::Snowflake
+    }
+    async fn version(&self) -> Option<String> {
+        snowflake::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        snowflake::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        snowflake::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
+struct BigQueryConnection(bigquery::BigQueryConn);
+#[async_trait]
+impl Connection for BigQueryConnection {
+    fn wire(&self) -> Wire {
+        Wire::BigQuery
+    }
+    async fn version(&self) -> Option<String> {
+        bigquery::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        bigquery::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        bigquery::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
+struct RedisConnection(redis::RedisConn);
+#[async_trait]
+impl Connection for RedisConnection {
+    fn wire(&self) -> Wire {
+        Wire::Redis
+    }
+    async fn version(&self) -> Option<String> {
+        redis::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        redis::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        redis::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
+struct CassandraConnection(cassandra::CassandraConn);
+#[async_trait]
+impl Connection for CassandraConnection {
+    fn wire(&self) -> Wire {
+        Wire::Cassandra
+    }
+    async fn version(&self) -> Option<String> {
+        cassandra::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        cassandra::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        cassandra::metadata(&self.0).await
     }
     async fn close(&self) {}
 }
@@ -917,7 +1293,12 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
         Wire::Oracle => Arc::new(OracleConn(oracle::connect(profile).await?)),
         Wire::Neo4j => Arc::new(Neo4jConnection(neo4j::connect(profile).await?)),
         Wire::InfluxDb => Arc::new(InfluxConnection(influx::connect(profile).await?)),
-        Wire::ClickHouse | Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {
+        Wire::ClickHouse => Arc::new(ClickHouseConnection(clickhouse::connect(profile).await?)),
+        Wire::Snowflake => Arc::new(SnowflakeConnection(snowflake::connect(profile).await?)),
+        Wire::BigQuery => Arc::new(BigQueryConnection(bigquery::connect(profile).await?)),
+        Wire::Redis => Arc::new(RedisConnection(redis::connect(profile).await?)),
+        Wire::Cassandra => Arc::new(CassandraConnection(cassandra::connect(profile).await?)),
+        Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {
             return Err(format!(
                 "{:?} driver is not yet fully implemented",
                 profile.engine
@@ -935,6 +1316,7 @@ pub struct DbState {
     /// `db_cancel` can stop a specific run. Entries are removed when the run ends.
     cancels: Arc<Mutex<HashMap<String, CancellationToken>>>,
     pub metadata_cache: Arc<Mutex<MetadataCache>>,
+    tunnels: Arc<Mutex<HashMap<String, tokio_util::sync::CancellationToken>>>,
 }
 
 impl Default for DbState {
@@ -943,6 +1325,7 @@ impl Default for DbState {
             conns: Arc::new(Mutex::new(HashMap::new())),
             cancels: Arc::new(Mutex::new(HashMap::new())),
             metadata_cache: Arc::new(Mutex::new(MetadataCache::new())),
+            tunnels: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -1128,18 +1511,238 @@ fn trigger_background_refresh(state: DbState, connection_id: String) {
     });
 }
 
+use irodori_proxy::{
+    start_forwarder, ResolvedProxy, ResolvedProxyAuth, ResolvedProxyChain, ResolvedProxyChainHop,
+    ResolvedProxyHopConfig, ResolvedSshAuth, ResolvedSshTunnel, ResolvedTransport,
+};
+
+async fn resolve_secret_ref(
+    store: &irodori_secure_store::OsKeychainStore,
+    secret_ref: &irodori_core::SecretRef,
+) -> Result<String, String> {
+    use irodori_secure_store::SecureStore;
+    store
+        .get(secret_ref)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("secret not found for handle: {}", secret_ref.handle))
+}
+
+async fn resolve_transport(
+    store: &irodori_secure_store::OsKeychainStore,
+    transport: &irodori_core::TransportConfig,
+) -> Result<ResolvedTransport, String> {
+    match transport {
+        irodori_core::TransportConfig::Direct(_) | irodori_core::TransportConfig::LocalFile(_) => {
+            Err("direct and local file transports do not require resolution".to_string())
+        }
+        irodori_core::TransportConfig::SshTunnel(tunnel) => {
+            let auth = match &tunnel.auth {
+                irodori_core::SshAuthConfig::Agent => ResolvedSshAuth::Agent,
+                irodori_core::SshAuthConfig::Password { password } => {
+                    let pass = resolve_secret_ref(store, password).await?;
+                    ResolvedSshAuth::Password(pass)
+                }
+                irodori_core::SshAuthConfig::PrivateKey {
+                    private_key,
+                    passphrase,
+                } => {
+                    let key = resolve_secret_ref(store, private_key).await?;
+                    let pass = match passphrase {
+                        Some(ref handle) => Some(resolve_secret_ref(store, handle).await?),
+                        None => None,
+                    };
+                    ResolvedSshAuth::PrivateKey {
+                        private_key: key,
+                        passphrase: pass,
+                    }
+                }
+            };
+            Ok(ResolvedTransport::SshTunnel(ResolvedSshTunnel {
+                ssh_host: tunnel.ssh_host.clone(),
+                ssh_port: tunnel.ssh_port,
+                username: tunnel.username.clone(),
+                auth,
+                target_host: tunnel.target_host.clone(),
+                target_port: tunnel.target_port,
+                strict_host_key: tunnel.strict_host_key,
+                host_key: tunnel.host_key.clone(),
+            }))
+        }
+        irodori_core::TransportConfig::Socks5Proxy(proxy) => {
+            let auth = match &proxy.auth {
+                Some(auth) => Some(ResolvedProxyAuth {
+                    username: auth.username.clone(),
+                    password: resolve_secret_ref(store, &auth.password).await?,
+                }),
+                None => None,
+            };
+            let target_host = proxy
+                .target_host
+                .clone()
+                .ok_or("proxy target host is missing")?;
+            let target_port = proxy.target_port.ok_or("proxy target port is missing")?;
+            Ok(ResolvedTransport::Socks5Proxy(ResolvedProxy {
+                host: proxy.host.clone(),
+                port: proxy.port,
+                auth,
+                target_host,
+                target_port,
+                tls: proxy.tls,
+            }))
+        }
+        irodori_core::TransportConfig::HttpConnectProxy(proxy) => {
+            let auth = match &proxy.auth {
+                Some(auth) => Some(ResolvedProxyAuth {
+                    username: auth.username.clone(),
+                    password: resolve_secret_ref(store, &auth.password).await?,
+                }),
+                None => None,
+            };
+            let target_host = proxy
+                .target_host
+                .clone()
+                .ok_or("proxy target host is missing")?;
+            let target_port = proxy.target_port.ok_or("proxy target port is missing")?;
+            Ok(ResolvedTransport::HttpConnectProxy(ResolvedProxy {
+                host: proxy.host.clone(),
+                port: proxy.port,
+                auth,
+                target_host,
+                target_port,
+                tls: proxy.tls,
+            }))
+        }
+        irodori_core::TransportConfig::Chain(chain) => {
+            let mut resolved_hops = Vec::new();
+            for hop in &chain.hops {
+                let resolved_hop_config = match &hop.config {
+                    irodori_core::ProxyHopConfig::Ssh(ssh_hop) => {
+                        let auth = match &ssh_hop.auth {
+                            irodori_core::SshAuthConfig::Agent => ResolvedSshAuth::Agent,
+                            irodori_core::SshAuthConfig::Password { password } => {
+                                let pass = resolve_secret_ref(store, password).await?;
+                                ResolvedSshAuth::Password(pass)
+                            }
+                            irodori_core::SshAuthConfig::PrivateKey {
+                                private_key,
+                                passphrase,
+                            } => {
+                                let key = resolve_secret_ref(store, private_key).await?;
+                                let pass = match passphrase {
+                                    Some(ref handle) => {
+                                        Some(resolve_secret_ref(store, handle).await?)
+                                    }
+                                    None => None,
+                                };
+                                ResolvedSshAuth::PrivateKey {
+                                    private_key: key,
+                                    passphrase: pass,
+                                }
+                            }
+                        };
+                        ResolvedProxyHopConfig::Ssh {
+                            ssh_host: ssh_hop.ssh_host.clone(),
+                            ssh_port: ssh_hop.ssh_port,
+                            username: ssh_hop.username.clone(),
+                            auth,
+                            strict_host_key: ssh_hop.strict_host_key,
+                            host_key: ssh_hop.host_key.clone(),
+                        }
+                    }
+                    irodori_core::ProxyHopConfig::Socks5(proxy) => {
+                        let auth = match &proxy.auth {
+                            Some(auth) => Some(ResolvedProxyAuth {
+                                username: auth.username.clone(),
+                                password: resolve_secret_ref(store, &auth.password).await?,
+                            }),
+                            None => None,
+                        };
+                        ResolvedProxyHopConfig::Socks5 {
+                            host: proxy.host.clone(),
+                            port: proxy.port,
+                            auth,
+                        }
+                    }
+                    irodori_core::ProxyHopConfig::HttpConnect(proxy) => {
+                        let auth = match &proxy.auth {
+                            Some(auth) => Some(ResolvedProxyAuth {
+                                username: auth.username.clone(),
+                                password: resolve_secret_ref(store, &auth.password).await?,
+                            }),
+                            None => None,
+                        };
+                        ResolvedProxyHopConfig::HttpConnect {
+                            host: proxy.host.clone(),
+                            port: proxy.port,
+                            auth,
+                        }
+                    }
+                };
+                resolved_hops.push(ResolvedProxyChainHop {
+                    name: hop.name.clone(),
+                    config: resolved_hop_config,
+                });
+            }
+            Ok(ResolvedTransport::Chain(ResolvedProxyChain {
+                target_host: chain.target_host.clone(),
+                target_port: chain.target_port,
+                tls: chain.tls,
+                hops: resolved_hops,
+            }))
+        }
+    }
+}
+
 pub async fn connect_impl(
     state: &DbState,
+    security: &SecurityState,
     profile: ConnectionProfile,
 ) -> Result<ConnectionInfo, String> {
-    let profile = normalize_profile(profile)?;
-    let conn = connect_engine(&profile)
-        .await
-        .map_err(|error| redact_secret_text(&error, &profile))?;
+    let mut profile = normalize_profile(profile)?;
+    let mut resolved_tunnel = None;
+
+    if let Some(transport) = &profile.transport {
+        if !matches!(
+            transport,
+            irodori_core::TransportConfig::Direct(_) | irodori_core::TransportConfig::LocalFile(_)
+        ) {
+            let resolved = resolve_transport(security.store(), transport).await?;
+            let (local_port, cancel_token) = start_forwarder(resolved)
+                .await
+                .map_err(|e| format!("failed to start local forwarder: {e}"))?;
+            profile.host = Some("127.0.0.1".to_string());
+            profile.port = Some(local_port);
+            profile.url = None;
+            resolved_tunnel = Some(cancel_token);
+        }
+    }
+
+    let conn_res = connect_engine(&profile).await;
+    let conn = match conn_res {
+        Ok(conn) => conn,
+        Err(error) => {
+            if let Some(cancel_token) = resolved_tunnel {
+                cancel_token.cancel();
+            }
+            return Err(redact_secret_text(&error, &profile));
+        }
+    };
+
     let server_version = conn.version().await.unwrap_or_else(|| "unknown".into());
     let old = state.conns.lock().await.insert(profile.id.clone(), conn);
     if let Some(old) = old {
         old.close().await;
+    }
+
+    if let Some(cancel_token) = resolved_tunnel {
+        let old = state
+            .tunnels
+            .lock()
+            .await
+            .insert(profile.id.clone(), cancel_token);
+        if let Some(old) = old {
+            old.cancel();
+        }
     }
 
     // Trigger background refresh immediately to warm up the cache!
@@ -1174,6 +1777,16 @@ pub async fn run_query_impl(
     sql: String,
     max_rows: Option<usize>,
 ) -> Result<QueryResult, String> {
+    run_query_with_params_impl(state, connection_id, sql, max_rows, None).await
+}
+
+pub async fn run_query_with_params_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    max_rows: Option<usize>,
+    params: Option<Vec<QueryParameterInput>>,
+) -> Result<QueryResult, String> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
         return Err("connection id is required".into());
@@ -1195,8 +1808,21 @@ pub async fn run_query_impl(
     };
 
     let cap = bounded_query_cap(max_rows)?;
+    let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
     let start = Instant::now();
-    let sets = conn.run_query_sets(&sql, cap).await?;
+    let sets = if prepared.params.is_empty() {
+        conn.run_query_sets(&prepared.sql, cap).await?
+    } else {
+        let (columns, rows, truncated) = conn.run_prepared_query(&prepared, cap).await?;
+        vec![RawResultSet {
+            statement_index: 0,
+            statement: sql,
+            columns,
+            rows,
+            elapsed_ms: start.elapsed().as_millis() as u64,
+            truncated,
+        }]
+    };
     let elapsed_ms = start.elapsed().as_millis() as u64;
     let result_sets = sets
         .into_iter()
@@ -1219,6 +1845,27 @@ pub async fn run_query_managed_impl(
     timeout_ms: Option<u64>,
     query_id: Option<String>,
 ) -> Result<QueryResult, String> {
+    run_query_managed_with_params_impl(
+        state,
+        connection_id,
+        sql,
+        max_rows,
+        timeout_ms,
+        query_id,
+        None,
+    )
+    .await
+}
+
+pub async fn run_query_managed_with_params_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    max_rows: Option<usize>,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
+) -> Result<QueryResult, String> {
     let token = CancellationToken::new();
     if let Some(qid) = &query_id {
         state
@@ -1232,7 +1879,7 @@ pub async fn run_query_managed_impl(
         tokio::select! {
             biased;
             _ = token.cancelled() => Err("query cancelled".to_string()),
-            result = run_query_impl(state, connection_id, sql, max_rows) => result,
+            result = run_query_with_params_impl(state, connection_id, sql, max_rows, params) => result,
         }
     };
     let result = with_timeout(timeout_ms, run).await;
@@ -1269,6 +1916,29 @@ pub(crate) async fn run_query_stream_impl(
     query_id: Option<String>,
     sink: mpsc::Sender<stream::FetchEvent>,
 ) -> Result<stream::StreamSummary, String> {
+    run_query_stream_with_params_impl(
+        state,
+        connection_id,
+        sql,
+        max_rows,
+        timeout_ms,
+        query_id,
+        None,
+        sink,
+    )
+    .await
+}
+
+pub(crate) async fn run_query_stream_with_params_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    max_rows: Option<usize>,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
+    sink: mpsc::Sender<stream::FetchEvent>,
+) -> Result<stream::StreamSummary, String> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
         return Err("connection id is required".into());
@@ -1288,6 +1958,7 @@ pub(crate) async fn run_query_stream_impl(
             .cloned()
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
+    let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
 
     let token = CancellationToken::new();
     if let Some(qid) = &query_id {
@@ -1309,7 +1980,13 @@ pub(crate) async fn run_query_stream_impl(
         tokio::select! {
             biased;
             _ = token.cancelled() => Err("query cancelled".to_string()),
-            result = conn.stream_query_sets(&sql, &ctx) => result,
+            result = async {
+                if prepared.params.is_empty() {
+                    conn.stream_query_sets(&prepared.sql, &ctx).await
+                } else {
+                    conn.stream_prepared_query(&prepared, &ctx).await
+                }
+            } => result,
         }
     };
     let result = with_timeout(timeout_ms, run).await;
@@ -1387,6 +2064,9 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
     }
     if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
         conn.close().await;
+    }
+    if let Some(cancel_token) = state.tunnels.lock().await.remove(&connection_id) {
+        cancel_token.cancel();
     }
     let mut cache = state.metadata_cache.lock().await;
     cache.invalidate_connection(&connection_id);
@@ -1698,7 +2378,7 @@ pub async fn db_connect(
     let connection_id = profile.id.clone();
     let engine = format!("{:?}", profile.engine);
     let started = Instant::now();
-    match connect_impl(state.inner(), profile).await {
+    match connect_impl(state.inner(), security.inner(), profile).await {
         Ok(info) => {
             security
                 .record(
@@ -1731,6 +2411,11 @@ pub async fn db_connect(
 }
 
 #[tauri::command]
+pub async fn db_query_parameters(sql: String) -> IrodoriResult<QueryParameterPromptSet> {
+    query_parameter_prompt_set(&sql).map_err(IrodoriError::from)
+}
+
+#[tauri::command]
 pub async fn db_run_query(
     state: tauri::State<'_, DbState>,
     security: tauri::State<'_, SecurityState>,
@@ -1739,18 +2424,20 @@ pub async fn db_run_query(
     max_rows: Option<usize>,
     timeout_ms: Option<u64>,
     query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
 ) -> IrodoriResult<QueryResult> {
     // The managed run applies the optional timeout deadline and registers the
     // optional `query_id` so `db_cancel` can stop this specific statement.
     let audit_connection_id = connection_id.clone();
     let audit_sql = sql.clone();
-    match run_query_managed_impl(
+    match run_query_managed_with_params_impl(
         state.inner(),
         connection_id,
         sql,
         max_rows,
         timeout_ms,
         query_id,
+        params,
     )
     .await
     {
@@ -1819,6 +2506,7 @@ pub async fn db_run_query_stream(
     max_rows: Option<usize>,
     timeout_ms: Option<u64>,
     query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
     on_event: tauri::ipc::Channel<QueryStreamEvent>,
 ) -> IrodoriResult<()> {
     let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
@@ -1826,13 +2514,14 @@ pub async fn db_run_query_stream(
     let audit_connection_id = connection_id.clone();
     let audit_sql = sql.clone();
 
-    let fetch = run_query_stream_impl(
+    let fetch = run_query_stream_with_params_impl(
         state.inner(),
         connection_id,
         sql,
         max_rows,
         timeout_ms,
         query_id,
+        params,
         tx,
     );
     let forward = async {
@@ -1982,9 +2671,13 @@ mod tests {
         let conn_id = "cache_test".to_string();
 
         // 1. Establish connection to temporary sqlite db
-        connect_impl(&state, temp_sqlite_profile(&conn_id))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile(&conn_id),
+        )
+        .await
+        .expect("connect");
 
         // Give a tiny yield to let the background refresh finish populating the cache
         tokio::time::sleep(Duration::from_millis(150)).await;
@@ -2089,7 +2782,7 @@ mod tests {
     #[tokio::test]
     async fn stream_delivers_header_then_rows() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("st"))
+        connect_impl(&state, &SecurityState::default(), temp_sqlite_profile("st"))
             .await
             .expect("connect");
         run_query_impl(
@@ -2153,9 +2846,13 @@ mod tests {
     #[tokio::test]
     async fn stream_caps_rows_and_flags_truncation() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("stcap"))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("stcap"),
+        )
+        .await
+        .expect("connect");
         run_query_impl(
             &state,
             "stcap".into(),
@@ -2216,9 +2913,13 @@ mod tests {
     #[tokio::test]
     async fn sqlite_multi_statement_run_returns_result_sets() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("multi"))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("multi"),
+        )
+        .await
+        .expect("connect");
 
         let result = run_query_impl(
             &state,
@@ -2242,9 +2943,13 @@ mod tests {
     #[tokio::test]
     async fn sqlite_multi_statement_stream_tags_result_set_events() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("multistream"))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("multistream"),
+        )
+        .await
+        .expect("connect");
 
         let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
         let summary = run_query_stream_impl(
@@ -2281,11 +2986,102 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn query_parameters_are_detected_bound_and_streamed() {
+        let state = DbState::default();
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("params"),
+        )
+        .await
+        .expect("connect");
+        run_query_impl(
+            &state,
+            "params".into(),
+            "create table t(id integer, name text, active integer)".into(),
+            None,
+        )
+        .await
+        .expect("create");
+        run_query_impl(
+            &state,
+            "params".into(),
+            "insert into t values (1,'ann',1),(2,'bob',0),(3,'ann',1)".into(),
+            None,
+        )
+        .await
+        .expect("insert");
+
+        let sql = "select id from t where name = :name and active = ? order by id";
+        let prompts = query_parameter_prompt_set(sql).expect("prompts");
+        assert_eq!(prompts.prompts.len(), 2);
+        assert_eq!(prompts.prompts[0].id, "name:name");
+        assert_eq!(prompts.prompts[1].id, "position:1");
+
+        let params = vec![
+            QueryParameterInput {
+                key: QueryParameterKey::Name {
+                    name: "name".into(),
+                },
+                value: serde_json::json!("ann"),
+            },
+            QueryParameterInput {
+                key: QueryParameterKey::Position { position: 1 },
+                value: serde_json::json!(1),
+            },
+        ];
+        let result = run_query_with_params_impl(
+            &state,
+            "params".into(),
+            sql.into(),
+            None,
+            Some(params.clone()),
+        )
+        .await
+        .expect("parameterized query");
+        assert_eq!(result.columns, vec!["id"]);
+        assert_eq!(
+            result.rows,
+            vec![vec![serde_json::json!(1)], vec![serde_json::json!(3)]]
+        );
+
+        let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let summary = run_query_stream_with_params_impl(
+            &state,
+            "params".into(),
+            "select name from t where id = :id".into(),
+            None,
+            None,
+            None,
+            Some(vec![QueryParameterInput {
+                key: QueryParameterKey::Name { name: "id".into() },
+                value: serde_json::json!(2),
+            }]),
+            tx,
+        )
+        .await
+        .expect("parameterized stream");
+        assert_eq!(summary.row_count, 1);
+
+        let mut rows = Vec::new();
+        while let Some(event) = rx.recv().await {
+            if let stream::FetchEvent::Rows { rows: mut r, .. } = event {
+                rows.append(&mut r);
+            }
+        }
+        assert_eq!(rows, vec![vec![serde_json::json!("bob")]]);
+    }
+
+    #[tokio::test]
     async fn stream_query_stops_on_a_cancelled_token() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("stcancel"))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("stcancel"),
+        )
+        .await
+        .expect("connect");
         run_query_impl(
             &state,
             "stcancel".into(),
@@ -2330,9 +3126,13 @@ mod tests {
     #[tokio::test]
     async fn apply_edits_commits_update_insert_delete() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("edit"))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("edit"),
+        )
+        .await
+        .expect("connect");
         run_query_impl(
             &state,
             "edit".into(),
@@ -2406,9 +3206,13 @@ mod tests {
     #[tokio::test]
     async fn metadata_reports_primary_and_foreign_keys() {
         let state = DbState::default();
-        connect_impl(&state, temp_sqlite_profile("keys"))
-            .await
-            .expect("connect");
+        connect_impl(
+            &state,
+            &SecurityState::default(),
+            temp_sqlite_profile("keys"),
+        )
+        .await
+        .expect("connect");
         run_query_impl(
             &state,
             "keys".into(),
@@ -2457,13 +3261,15 @@ mod tests {
             password: None,
             database: None,
             url: Some(format!("sqlite://{}?mode=rwc", path.display())),
+            transport: None,
+            options: Default::default(),
         }
     }
 
     #[tokio::test]
     async fn sqlite_connect_and_query_round_trip() {
         let state = DbState::default();
-        let info = connect_impl(&state, temp_sqlite_profile("rt"))
+        let info = connect_impl(&state, &SecurityState::default(), temp_sqlite_profile("rt"))
             .await
             .expect("connect");
         assert_eq!(info.engine, DbEngine::Sqlite);
@@ -2549,8 +3355,12 @@ mod tests {
             password: None,
             database: Some(":memory:".into()),
             url: None,
+            transport: None,
+            options: Default::default(),
         };
-        connect_impl(&state, profile).await.expect("connect memory");
+        connect_impl(&state, &SecurityState::default(), profile)
+            .await
+            .expect("connect memory");
         run_query_impl(
             &state,
             "mem".into(),
@@ -2578,7 +3388,9 @@ mod tests {
         let state = DbState::default();
         let mut invalid = temp_sqlite_profile("invalid");
         invalid.id = "  ".into();
-        let err = connect_impl(&state, invalid).await.unwrap_err();
+        let err = connect_impl(&state, &SecurityState::default(), invalid)
+            .await
+            .unwrap_err();
         assert!(err.contains("connection id is required"));
 
         let missing_host = ConnectionProfile {
@@ -2590,21 +3402,29 @@ mod tests {
             password: None,
             database: Some("samples".into()),
             url: None,
+            transport: None,
+            options: Default::default(),
         };
-        let err = connect_impl(&state, missing_host).await.unwrap_err();
+        let err = connect_impl(&state, &SecurityState::default(), missing_host)
+            .await
+            .unwrap_err();
         assert!(err.contains("host is required"));
 
         let unsupported = ConnectionProfile {
-            id: "clickhouse".into(),
-            engine: DbEngine::ClickHouse,
+            id: "pinecone".into(),
+            engine: DbEngine::Pinecone,
             host: Some("localhost".into()),
             port: None,
             user: None,
             password: None,
             database: None,
             url: None,
+            transport: None,
+            options: Default::default(),
         };
-        let err = connect_impl(&state, unsupported).await.unwrap_err();
+        let err = connect_impl(&state, &SecurityState::default(), unsupported)
+            .await
+            .unwrap_err();
         assert!(err.contains("production connector"));
 
         let err = run_query_impl(&state, " ".into(), "select 1".into(), None)
@@ -2618,6 +3438,7 @@ mod tests {
         let state = DbState::default();
         connect_impl(
             &state,
+            &SecurityState::default(),
             ConnectionProfile {
                 id: "bounds".into(),
                 engine: DbEngine::Sqlite,
@@ -2627,6 +3448,8 @@ mod tests {
                 password: None,
                 database: Some(":memory:".into()),
                 url: None,
+                transport: None,
+                options: Default::default(),
             },
         )
         .await
@@ -2693,8 +3516,10 @@ mod tests {
             password: None,
             database: Some(":memory:".into()),
             url: None,
+            transport: None,
+            options: Default::default(),
         };
-        connect_impl(&state, profile.clone())
+        connect_impl(&state, &SecurityState::default(), profile.clone())
             .await
             .expect("connect memory");
         run_query_impl(
@@ -2706,7 +3531,7 @@ mod tests {
         .await
         .expect("create");
 
-        connect_impl(&state, profile)
+        connect_impl(&state, &SecurityState::default(), profile)
             .await
             .expect("reconnect memory");
         let err = run_query_impl(&state, "replace".into(), "select * from t".into(), None)
@@ -2729,6 +3554,8 @@ mod tests {
             password: Some("secret".into()),
             database: None,
             url: Some("postgres://user:secret@localhost/samples".into()),
+            transport: None,
+            options: Default::default(),
         };
         let message = "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other;";
         let redacted = redact_secret_text(message, &profile);

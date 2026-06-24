@@ -8,7 +8,7 @@ use sqlx::{Column, Row, TypeInfo, ValueRef};
 use super::meta::MetaBuilder;
 use super::{
     hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, DbQuickSample,
-    IndexMetadata, RowSet,
+    IndexMetadata, PreparedQuery, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<MySqlPool, String> {
@@ -30,12 +30,28 @@ pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> Result<RowSet
     super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
 }
 
+pub async fn run_prepared_query(
+    pool: &MySqlPool,
+    query: &PreparedQuery,
+    cap: usize,
+) -> Result<RowSet, String> {
+    super::stream::collect_capped(bind_query(query).fetch(pool), cap, cell_to_json).await
+}
+
 pub async fn stream_query(
     pool: &MySqlPool,
     sql: &str,
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
     super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+}
+
+pub async fn stream_prepared_query(
+    pool: &MySqlPool,
+    query: &PreparedQuery,
+    ctx: &super::stream::StreamCtx,
+) -> Result<super::stream::StreamSummary, String> {
+    super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
 }
 
 /// Apply result-grid edits in one transaction (rolls back on the first failure).
@@ -82,6 +98,37 @@ fn bind(
     use serde_json::Value;
     let mut q = sqlx::query(&stmt.sql);
     for value in &stmt.params {
+        q = match value {
+            Value::Null => q.bind(Option::<String>::None),
+            Value::Bool(b) => q.bind(*b),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    q.bind(i)
+                } else if let Some(f) = n.as_f64() {
+                    q.bind(f)
+                } else {
+                    q.bind(n.to_string())
+                }
+            }
+            Value::String(s) => q.bind(s.clone()),
+            other => q.bind(other.to_string()),
+        };
+    }
+    q
+}
+
+fn bind_query(
+    query: &PreparedQuery,
+) -> sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments> {
+    bind_json(sqlx::query(&query.sql), &query.params)
+}
+
+fn bind_json<'q>(
+    mut q: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
+    params: &'q [serde_json::Value],
+) -> sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments> {
+    use serde_json::Value;
+    for value in params {
         q = match value {
             Value::Null => q.bind(Option::<String>::None),
             Value::Bool(b) => q.bind(*b),

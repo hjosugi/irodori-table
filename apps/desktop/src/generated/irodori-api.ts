@@ -68,13 +68,13 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "redis" | "cassandra";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**
  * Raw connection URL/DSN. Overrides the structured fields when present.
  */
-url?: string, };
+url?: string, transport?: TransportConfig, options?: { [key in string]: string }, };
 
 export type ConnectionInfo = { id: string, engine: DbEngine, serverVersion: string, };
 
@@ -87,6 +87,14 @@ export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>
  * hiding data.
  */
 truncated: boolean, message?: string, resultSets?: Array<QueryResultSet>, };
+
+export type QueryParameterKey = { "kind": "name", name: string, } | { "kind": "position", position: number, };
+
+export type QueryParameterInput = { key: QueryParameterKey, value: JsonValue, };
+
+export type QueryParameterPrompt = { key: QueryParameterKey, id: string, label: string, placeholder: string, };
+
+export type QueryParameterPromptSet = { signature: string, prompts: Array<QueryParameterPrompt>, };
 
 export type DatabaseMetadata = { schemas: Array<SchemaMetadata>, };
 
@@ -145,8 +153,12 @@ export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {
   return invoke<ConnectionInfo>("db_connect", { profile });
 }
 
-export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, timeoutMs?: number, queryId?: string): Promise<QueryResult> {
-  return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows, timeoutMs, queryId });
+export function dbQueryParameters(sql: string): Promise<QueryParameterPromptSet> {
+  return invoke<QueryParameterPromptSet>("db_query_parameters", { sql });
+}
+
+export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, timeoutMs?: number, queryId?: string, params?: Array<QueryParameterInput>): Promise<QueryResult> {
+  return invoke<QueryResult>("db_run_query", { connectionId, sql, maxRows, timeoutMs, queryId, params });
 }
 
 export function dbCancel(queryId: string): Promise<boolean> {

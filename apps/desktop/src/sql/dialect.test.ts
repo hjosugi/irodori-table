@@ -44,6 +44,10 @@ describe("cmDialect", () => {
     qdrant: { dialect: StandardSQL, formatter: "sql" },
     milvus: { dialect: StandardSQL, formatter: "sql" },
     pinecone: { dialect: StandardSQL, formatter: "sql" },
+    snowflake: { dialect: StandardSQL, formatter: "snowflake" },
+    bigquery: { dialect: StandardSQL, formatter: "bigquery" },
+    redis: { dialect: StandardSQL, formatter: "sql" },
+    cassandra: { dialect: StandardSQL, formatter: "sql" },
   };
 
   it("maps every engine to the expected CodeMirror SQL dialect", () => {

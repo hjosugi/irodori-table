@@ -1334,6 +1334,7 @@ mod tests {
     use std::io::{Read, Write};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+
     #[test]
     fn transport_plan_includes_ssh_auth_and_forwarding_steps() {
         let config = TransportConfig::SshTunnel(SshTunnelTransport {
@@ -1644,7 +1645,7 @@ mod tests {
             host: "127.0.0.1".to_string(),
             port: proxy_port,
             auth: None,
-            target_host: "127.0.0.1".to_string(),
+            target_host: "localhost".to_string(),
             target_port,
             tls: false,
         });

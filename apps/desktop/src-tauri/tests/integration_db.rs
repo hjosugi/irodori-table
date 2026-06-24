@@ -10,6 +10,7 @@
 use desktop_lib::db::{
     connect_impl, list_objects_impl, run_query_impl, ConnectionProfile, DbEngine, DbState,
 };
+use desktop_lib::security::SecurityState;
 
 fn url_profile(id: &str, engine: DbEngine, url: String) -> ConnectionProfile {
     ConnectionProfile {
@@ -21,12 +22,14 @@ fn url_profile(id: &str, engine: DbEngine, url: String) -> ConnectionProfile {
         password: None,
         database: None,
         url: Some(url),
+        transport: None,
+        options: Default::default(),
     }
 }
 
 async fn exercise(engine: DbEngine, url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, url_profile("it", engine, url))
+    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", engine, url))
         .await
         .expect("connect to sample db");
     assert_eq!(info.engine, engine);
@@ -171,7 +174,7 @@ fn mysql_samples() {
 /// through the existing postgres/mysql drivers, no seed required.
 async fn connect_only(engine: DbEngine, url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, url_profile("it", engine, url))
+    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", engine, url))
         .await
         .expect("connect");
     assert_eq!(info.engine, engine);
@@ -209,7 +212,7 @@ fn mariadb_connect() {
 /// string, e.g. `server=tcp:localhost,11433;User Id=sa;Password=...;TrustServerCertificate=true`.
 async fn exercise_mssql(url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, url_profile("it", DbEngine::SqlServer, url))
+    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", DbEngine::SqlServer, url))
         .await
         .expect("connect");
     assert_eq!(info.engine, DbEngine::SqlServer);
@@ -362,7 +365,7 @@ fn tidb_connect() {
 async fn exercise_duckdb() {
     let state = DbState::default();
     let profile = url_profile("it", DbEngine::DuckDb, ":memory:".into());
-    let info = match connect_impl(&state, profile).await {
+    let info = match connect_impl(&state, &SecurityState::default(), profile).await {
         Ok(info) => info,
         Err(e) if e.contains("not built in") => {
             eprintln!("skip: duckdb feature off");
@@ -429,7 +432,7 @@ fn duckdb_in_memory() {
 /// collection "query" projected to a table.
 async fn exercise_mongo(url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, url_profile("it", DbEngine::Mongo, url))
+    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", DbEngine::Mongo, url))
         .await
         .expect("connect");
     assert_eq!(info.engine, DbEngine::Mongo);
@@ -478,7 +481,7 @@ fn mongo_samples() {
 /// — Oracle's `database` field is the service name.
 async fn exercise_oracle(profile: ConnectionProfile) {
     let state = DbState::default();
-    let info = connect_impl(&state, profile).await.expect("connect");
+    let info = connect_impl(&state, &SecurityState::default(), profile).await.expect("connect");
     assert_eq!(info.engine, DbEngine::Oracle);
     assert!(!info.server_version.is_empty());
     eprintln!("connected: Oracle {}", info.server_version);
@@ -540,6 +543,8 @@ fn oracle_samples() {
         password: Some(env("IRODORI_ORACLE_PASSWORD", "irodori")),
         database: Some(env("IRODORI_ORACLE_SERVICE", "FREEPDB1")),
         url: None,
+        transport: None,
+        options: Default::default(),
     };
     tokio::runtime::Runtime::new()
         .unwrap()

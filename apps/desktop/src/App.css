@@ -1052,8 +1052,60 @@ body.panel-resizing .result-grid {
 }
 
 .results-actions {
+  position: relative;
   display: flex;
   gap: 7px;
+}
+
+.action-split {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 12;
+  display: grid;
+  min-width: 178px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-raised);
+  box-shadow: 0 12px 28px rgba(31, 35, 40, 0.18);
+}
+
+.action-menu button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.action-menu button:hover,
+.action-menu button:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+
+.action-menu small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.hidden-file-input {
+  display: none;
 }
 
 .result-grid {
@@ -1422,6 +1474,346 @@ body.panel-resizing .result-grid {
   text-align: center;
 }
 
+.parameter-dialog {
+  width: min(520px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 18px 50px rgba(31, 35, 40, 0.22);
+}
+
+.parameter-header {
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.parameter-header strong {
+  font-size: 13px;
+}
+
+.parameter-header span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parameter-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.parameter-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.parameter-row span {
+  min-width: 0;
+}
+
+.parameter-row strong,
+.parameter-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parameter-row strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.parameter-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.parameter-row input {
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.parameter-row input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 20%, transparent);
+}
+
+.parameter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.data-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(980px, 94vw);
+  max-height: 82vh;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 18px 50px rgba(31, 35, 40, 0.22);
+}
+
+.schema-dialog {
+  width: min(1180px, 96vw);
+}
+
+.dialog-header,
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog-header strong {
+  font-size: 14px;
+}
+
+.dialog-header span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
+
+.dialog-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.dialog-form-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.dialog-form-row label,
+.designer-row label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dialog-form-row input,
+.dialog-form-row select,
+.designer-row input,
+.designer-row select {
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.dialog-form-row input:focus,
+.dialog-form-row select:focus,
+.designer-row input:focus,
+.designer-row select:focus {
+  border-color: var(--focus);
+  outline: none;
+}
+
+.dialog-form-row input:disabled,
+.dialog-form-row select:disabled,
+.designer-row input:disabled,
+.designer-row select:disabled {
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+
+.dialog-stat {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.preview-table-wrap {
+  max-height: 190px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--editor-bg);
+}
+
+.preview-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.preview-table th,
+.preview-table td {
+  max-width: 220px;
+  padding: 5px 8px;
+  overflow: hidden;
+  border-right: 1px solid var(--cell-border);
+  border-bottom: 1px solid var(--cell-border);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-table th {
+  position: sticky;
+  top: 0;
+  background: var(--grid-header);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.sql-preview {
+  min-height: 124px;
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--editor-bg);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.schema-body {
+  gap: 10px;
+}
+
+.schema-target {
+  grid-template-columns: 130px minmax(130px, 0.6fr) minmax(180px, 1fr);
+}
+
+.designer-section {
+  display: grid;
+  gap: 6px;
+}
+
+.designer-section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.designer-section header strong {
+  font-size: 12px;
+}
+
+.designer-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.designer-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.designer-row:hover {
+  border-color: var(--border);
+  background: var(--hover);
+}
+
+.designer-row.is-existing {
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+}
+
+.column-grid .designer-row {
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 0.9fr) 54px 48px minmax(100px, 0.8fr) 30px;
+}
+
+.index-grid .designer-row {
+  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1fr) 86px 30px;
+}
+
+.fk-grid .designer-row {
+  grid-template-columns: minmax(130px, 0.7fr) minmax(120px, 0.7fr) minmax(110px, 0.6fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) 118px 30px;
+}
+
+.check-cell {
+  display: inline-flex;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  min-width: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--input-bg);
+  text-transform: none;
+}
+
+.check-cell input {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+}
+
+.schema-sql {
+  max-height: 220px;
+}
+
 /* ER diagram modal. */
 .diagram {
   display: flex;
@@ -1518,6 +1910,11 @@ body.panel-resizing .result-grid {
 .app-shell[data-theme="dark"] .profile-pill,
 .app-shell[data-theme="dark"] .connection-editor input,
 .app-shell[data-theme="dark"] .connection-editor select,
+.app-shell[data-theme="dark"] .dialog-form-row input,
+.app-shell[data-theme="dark"] .dialog-form-row select,
+.app-shell[data-theme="dark"] .designer-row input,
+.app-shell[data-theme="dark"] .designer-row select,
+.app-shell[data-theme="dark"] .check-cell,
 .app-shell[data-theme="dark"] .mode-toggle {
   border-color: #3c3c3c;
   color: #cccccc;
@@ -1526,7 +1923,11 @@ body.panel-resizing .result-grid {
 
 .app-shell[data-theme="dark"] .global-search input,
 .app-shell[data-theme="dark"] .connection-editor input,
-.app-shell[data-theme="dark"] .connection-editor select {
+.app-shell[data-theme="dark"] .connection-editor select,
+.app-shell[data-theme="dark"] .dialog-form-row input,
+.app-shell[data-theme="dark"] .dialog-form-row select,
+.app-shell[data-theme="dark"] .designer-row input,
+.app-shell[data-theme="dark"] .designer-row select {
   color: #d4d4d4;
 }
 
@@ -1563,6 +1964,8 @@ body.panel-resizing .result-grid {
 .app-shell[data-theme="dark"] .schema-tree summary:hover,
 .app-shell[data-theme="dark"] .object-tree summary:hover,
 .app-shell[data-theme="dark"] .metadata-row:hover,
+.app-shell[data-theme="dark"] .action-menu button:hover,
+.app-shell[data-theme="dark"] .designer-row:hover,
 .app-shell[data-theme="dark"] .completion-item:hover,
 .app-shell[data-theme="dark"] .history-item:hover,
 .app-shell[data-theme="dark"] .command-item:hover,
@@ -1575,7 +1978,13 @@ body.panel-resizing .result-grid {
 .app-shell[data-theme="dark"] .editor-pane,
 .app-shell[data-theme="dark"] .editor-meta,
 .app-shell[data-theme="dark"] .results-pane,
-.app-shell[data-theme="dark"] .results-header {
+.app-shell[data-theme="dark"] .results-header,
+.app-shell[data-theme="dark"] .data-dialog,
+.app-shell[data-theme="dark"] .dialog-header,
+.app-shell[data-theme="dark"] .dialog-footer,
+.app-shell[data-theme="dark"] .action-menu,
+.app-shell[data-theme="dark"] .preview-table-wrap,
+.app-shell[data-theme="dark"] .sql-preview {
   border-color: #303030;
   background: #1e1e1e;
 }
@@ -1614,7 +2023,9 @@ body.panel-resizing .result-grid {
 }
 
 .app-shell[data-theme="dark"] .grid-row span,
-.app-shell[data-theme="dark"] .grid-gutter {
+.app-shell[data-theme="dark"] .grid-gutter,
+.app-shell[data-theme="dark"] .preview-table th,
+.app-shell[data-theme="dark"] .preview-table td {
   border-color: #303030;
 }
 

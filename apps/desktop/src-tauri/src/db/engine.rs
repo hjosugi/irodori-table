@@ -7,7 +7,8 @@
 //! off the same registry.
 
 use irodori_sql::dialect::{
-    MySqlDialect, OracleDialect, PostgresDialect, SqlDialect, SqlServerDialect, SqliteDialect,
+    MySqlDialect, OracleDialect, PostgresDialect, SnowflakeDialect, SqlDialect, SqlServerDialect,
+    SqliteDialect,
 };
 use irodori_sql::metamodel::{
     InformationSchemaMetamodel, MySqlInformationSchema, PostgresInformationSchema,
@@ -86,6 +87,18 @@ pub enum DbEngine {
     #[serde(rename = "pinecone")]
     #[ts(rename = "pinecone")]
     Pinecone,
+    #[serde(rename = "snowflake")]
+    #[ts(rename = "snowflake")]
+    Snowflake,
+    #[serde(rename = "bigquery")]
+    #[ts(rename = "bigquery")]
+    BigQuery,
+    #[serde(rename = "redis")]
+    #[ts(rename = "redis")]
+    Redis,
+    #[serde(rename = "cassandra")]
+    #[ts(rename = "cassandra")]
+    Cassandra,
 }
 
 /// The wire protocol an engine speaks — i.e. which connector handles it.
@@ -105,6 +118,10 @@ pub(crate) enum Wire {
     Qdrant,
     Milvus,
     Pinecone,
+    Snowflake,
+    BigQuery,
+    Redis,
+    Cassandra,
 }
 
 impl DbEngine {
@@ -130,6 +147,10 @@ impl DbEngine {
             DbEngine::Qdrant => Wire::Qdrant,
             DbEngine::Milvus => Wire::Milvus,
             DbEngine::Pinecone => Wire::Pinecone,
+            DbEngine::Snowflake => Wire::Snowflake,
+            DbEngine::BigQuery => Wire::BigQuery,
+            DbEngine::Redis => Wire::Redis,
+            DbEngine::Cassandra => Wire::Cassandra,
         }
     }
 
@@ -145,11 +166,14 @@ impl DbEngine {
             DbEngine::SqlServer => 1433,
             DbEngine::Oracle => 1521,
             DbEngine::Mongo => 27017,
-            DbEngine::ClickHouse => 9000,
+            DbEngine::ClickHouse => 8123,
             DbEngine::Neo4j | DbEngine::Memgraph => 7687,
             DbEngine::InfluxDb => 8086,
             DbEngine::Qdrant => 6333,
             DbEngine::Milvus => 19530,
+            DbEngine::Snowflake | DbEngine::BigQuery => 443,
+            DbEngine::Redis => 6379,
+            DbEngine::Cassandra => 9042,
             DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
         }
     }
@@ -164,12 +188,16 @@ impl DbEngine {
             Wire::Postgres
             | Wire::Mongo
             | Wire::ClickHouse
+            | Wire::BigQuery
+            | Wire::Redis
+            | Wire::Cassandra
             | Wire::Neo4j
             | Wire::Memgraph
             | Wire::InfluxDb
             | Wire::Qdrant
             | Wire::Milvus
             | Wire::Pinecone => Box::new(PostgresDialect),
+            Wire::Snowflake => Box::new(SnowflakeDialect),
         }
     }
 
@@ -183,6 +211,10 @@ impl DbEngine {
             | Wire::Oracle
             | Wire::Mongo
             | Wire::ClickHouse
+            | Wire::Snowflake
+            | Wire::BigQuery
+            | Wire::Redis
+            | Wire::Cassandra
             | Wire::Neo4j
             | Wire::Memgraph
             | Wire::InfluxDb
@@ -232,6 +264,10 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         | Wire::Mongo
         | Wire::Oracle
         | Wire::ClickHouse
+        | Wire::Snowflake
+        | Wire::BigQuery
+        | Wire::Redis
+        | Wire::Cassandra
         | Wire::Neo4j
         | Wire::Memgraph
         | Wire::InfluxDb
@@ -275,7 +311,7 @@ mod tests {
         (DbEngine::TiDb, Wire::Mysql, 4000),
         (DbEngine::Neon, Wire::Postgres, 5432),
         (DbEngine::H2, Wire::Postgres, 5435),
-        (DbEngine::ClickHouse, Wire::ClickHouse, 9000),
+        (DbEngine::ClickHouse, Wire::ClickHouse, 8123),
         (DbEngine::Neo4j, Wire::Neo4j, 7687),
         (DbEngine::Memgraph, Wire::Memgraph, 7687),
         (DbEngine::InfluxDb, Wire::InfluxDb, 8086),
@@ -294,6 +330,8 @@ mod tests {
             password: None,
             database: Some("sample".into()),
             url: None,
+            transport: None,
+            options: Default::default(),
         }
     }
 

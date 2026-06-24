@@ -54,6 +54,10 @@ impl Default for SecurityState {
 }
 
 impl SecurityState {
+    pub fn store(&self) -> &OsKeychainStore {
+        &self.store
+    }
+
     pub async fn privacy_mode(&self) -> PrivacyMode {
         *self.privacy_mode.lock().await
     }

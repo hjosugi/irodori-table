@@ -80,7 +80,8 @@ pub trait SqlDialect: Send + Sync {
         }
     }
 
-    /// Positional placeholder for parameters. Postgres uses `$1`, Oracle uses `:1`, others use `?`.
+    /// Positional placeholder for parameters. Postgres uses `$1`, SQL Server
+    /// uses `@P1`, Oracle uses `:1`, and MySQL/SQLite use `?`.
     fn placeholder(&self, n: usize) -> String;
 
     /// Prefix to explain/analyze query.
@@ -166,8 +167,8 @@ impl SqlDialect for SqlServerDialect {
     fn quote_identifier(&self, ident: &str) -> String {
         format!("[{}]", ident.replace(']', "]]"))
     }
-    fn placeholder(&self, _n: usize) -> String {
-        "?".to_string()
+    fn placeholder(&self, n: usize) -> String {
+        format!("@P{n}")
     }
     fn explain_prefix(&self, _analyze: bool) -> String {
         "EXPLAIN ".to_string()
@@ -318,6 +319,15 @@ mod tests {
         assert!(MySqlDialect.is_keyword("auto_increment"));
         assert!(OracleDialect.is_keyword("varchar2"));
         assert!(!SqliteDialect.is_keyword("customer_id"));
+    }
+
+    #[test]
+    fn renders_driver_placeholders() {
+        assert_eq!(PostgresDialect.placeholder(2), "$2");
+        assert_eq!(MySqlDialect.placeholder(2), "?");
+        assert_eq!(SqliteDialect.placeholder(2), "?");
+        assert_eq!(SqlServerDialect.placeholder(2), "@P2");
+        assert_eq!(OracleDialect.placeholder(2), ":2");
     }
 
     #[test]

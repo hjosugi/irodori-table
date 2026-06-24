@@ -6,6 +6,7 @@
 // `src-tauri/src/db.rs` (a `type`-tagged union: columns → rows → done | error).
 
 import { Channel, invoke } from "@tauri-apps/api/core";
+import type { QueryParameterInput } from "./generated/irodori-api";
 
 export type QueryStreamEvent =
   | { type: "columns"; resultSetIndex: number; columns: string[] }
@@ -31,6 +32,7 @@ export interface RunQueryStreamArgs {
   timeoutMs?: number;
   /** Pass an id to make the run cancellable via `dbCancel(queryId)`. */
   queryId?: string;
+  params?: QueryParameterInput[];
 }
 
 /// Start a streaming query; `onEvent` is called for each batch as it arrives. The
@@ -48,6 +50,7 @@ export function runQueryStream(
     maxRows: args.maxRows,
     timeoutMs: args.timeoutMs,
     queryId: args.queryId,
+    params: args.params,
     onEvent: channel,
   });
 }

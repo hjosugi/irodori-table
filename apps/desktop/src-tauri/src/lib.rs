@@ -132,6 +132,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
             db::db_connect,
+            db::db_query_parameters,
             db::db_run_query,
             db::db_run_query_stream,
             db::db_cancel,
@@ -212,6 +213,10 @@ mod typegen {
             .decl(&decl::<db::ConnectionInfo>())
             .decl(&decl::<db::QueryResultSet>())
             .decl(&decl::<db::QueryResult>())
+            .decl(&decl::<db::QueryParameterKey>())
+            .decl(&decl::<db::QueryParameterInput>())
+            .decl(&decl::<db::QueryParameterPrompt>())
+            .decl(&decl::<db::QueryParameterPromptSet>())
             .decl(&decl::<db::DatabaseMetadata>())
             .decl(&decl::<db::SchemaMetadata>())
             .decl(&decl::<db::ForeignKey>())
@@ -238,12 +243,19 @@ mod typegen {
                     .arg(Arg::new("profile", TsType::named("ConnectionProfile"))),
             )
             .command(
+                Command::new("db_query_parameters", "QueryParameterPromptSet")
+                    .arg(Arg::new("sql", TsType::string())),
+            )
+            .command(
                 Command::new("db_run_query", "QueryResult")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("sql", TsType::string()))
                     .arg(Arg::rust("max_rows", TsType::number()).optional())
                     .arg(Arg::rust("timeout_ms", TsType::number()).optional())
-                    .arg(Arg::rust("query_id", TsType::string()).optional()),
+                    .arg(Arg::rust("query_id", TsType::string()).optional())
+                    .arg(
+                        Arg::new("params", TsType::named("Array<QueryParameterInput>")).optional(),
+                    ),
             )
             .command(
                 Command::returning("db_cancel", TsType::boolean())
