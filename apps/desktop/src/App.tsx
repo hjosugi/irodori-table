@@ -1066,6 +1066,20 @@ function App() {
     "lifetime_value",
     "last_order_at",
   ];
+  // Resolve which table the active result came from so foreign-key cells become
+  // navigable in the row-detail drawer. Falls back to column matching; a null table
+  // simply disables FK links while the rest of the detail view still works.
+  const rowDetailTable = findTableMetadata(
+    activeMetadata,
+    parseSourceTable(query),
+    resultColumns,
+  );
+  // The raw (unformatted) values of the selected original row. Staged "new" rows
+  // (keys starting with "n") have no backing result row, so they have no detail view.
+  const selectedRowValues =
+    activeResult && selectedRowKey && selectedRowKey.startsWith("o")
+      ? (activeResult.rows[Number(selectedRowKey.slice(1))] ?? null)
+      : null;
   const gridGutterWidth = editMode ? GRID_GUTTER_WIDTH : 0;
   const gridTotalWidth = Math.max(
     1,
