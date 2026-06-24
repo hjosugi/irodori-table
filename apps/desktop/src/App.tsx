@@ -3122,6 +3122,7 @@ function App() {
                 <span>{queryError}</span>
               </div>
             ) : null}
+            <div className="result-body">
             <div
               className="result-grid"
               role="table"
@@ -3291,6 +3292,18 @@ function App() {
                   aria-hidden="true"
                 />
               ) : null}
+            </div>
+            {selectedRowValues ? (
+              <RowDetailSidebar
+                columns={resultColumns}
+                values={selectedRowValues}
+                table={rowDetailTable}
+                metadata={activeMetadata}
+                engine={editorEngine}
+                connectionId={activeConnectionId}
+                onClose={() => setSelectedRowKey(null)}
+              />
+            ) : null}
             </div>
           </section>
         </section>
