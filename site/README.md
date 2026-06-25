@@ -1,11 +1,16 @@
 # Irodori Table Website
 
-This directory is the static official site and lightweight documentation hub for
-Irodori Table.
+This directory is the static official site and documentation hub for Irodori
+Table. It has no build step:
+
+- `index.html` — official landing page.
+- `docs.html` — user-facing documentation entry point.
+- `search-data.js` — client-side full-text search index.
+- `search.js` — search UI behavior shared by the landing page and docs page.
 
 ## Local preview
 
-Open `site/index.html` directly, or serve the directory:
+Open `site/index.html` or `site/docs.html` directly, or serve the directory:
 
 ```sh
 python3 -m http.server 8080 --directory site
