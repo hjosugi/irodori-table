@@ -1,0 +1,73 @@
+name: Release dry run
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux-appimage:
+    name: Linux AppImage dry run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout irodori-table
+        uses: actions/checkout@v4
+
+      - name: Checkout typebridge
+        uses: actions/checkout@v4
+        with:
+          repository: hjosugi/typebridge
+          path: _typebridge
+
+      - name: Position typebridge as a sibling
+        shell: bash
+        run: mv "$GITHUB_WORKSPACE/_typebridge" "$GITHUB_WORKSPACE/../typebridge"
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            mold \
+            wget
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          key: release-dry-run-linux
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Build debug AppImage
+        working-directory: apps/desktop
+        run: npm run release:appimage -- --debug
+
+      - name: Verify AppImage artifact
+        working-directory: apps/desktop
+        run: npm run release:verify-linux -- --debug
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: irodori-table-debug-appimage
+          path: target/debug/bundle/appimage/*.AppImage
+          if-no-files-found: error

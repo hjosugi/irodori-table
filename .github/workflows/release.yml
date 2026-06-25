@@ -88,3 +88,8 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           projectPath: apps/desktop
+
+      - name: Verify Linux AppImage artifact
+        if: matrix.platform == 'ubuntu-latest'
+        working-directory: apps/desktop
+        run: npm run release:verify-linux

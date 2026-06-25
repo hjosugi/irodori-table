@@ -12,6 +12,7 @@
     "build": "npm run typegen && tsc && vite build",
     "release:appimage": "node tools/build-linux-release.mjs appimage",
     "release:linux": "node tools/build-linux-release.mjs linux",
+    "release:verify-linux": "node tools/verify-linux-release.mjs",
     "release:patch": "node tools/release.mjs patch",
     "release:minor": "node tools/release.mjs minor",
     "release:major": "node tools/release.mjs major",

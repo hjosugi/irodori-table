@@ -36,11 +36,23 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      # The committed .cargo/config.toml links Linux builds with mold, so it
-      # must be present on the Ubuntu runner.
-      - name: Install mold (Ubuntu only)
+      # The committed .cargo/config.toml links Linux builds with mold, and the
+      # desktop crate needs WebKit/GTK headers on Linux.
+      - name: Install Rust/Linux build dependencies (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y mold
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            mold \
+            wget
 
       # Reuse compiled dependencies across runs instead of rebuilding the whole
       # tree every time. Workspace target dir lives at the repo root.
@@ -59,6 +71,9 @@ jobs:
 
       - name: Build Rust workspace scaffold
         run: cargo build
+
+      - name: Run Rust workspace tests
+        run: cargo test --workspace
 
       - name: Check generated TypeScript bindings
         run: node apps/desktop/tools/typegen.mjs --check
