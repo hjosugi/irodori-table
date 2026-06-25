@@ -10,5 +10,8 @@ export default defineConfig({
   server: {
     port: 1422,
     strictPort: false,
+    proxy: {
+      "/api": "http://localhost:1423",
+    },
   },
 });

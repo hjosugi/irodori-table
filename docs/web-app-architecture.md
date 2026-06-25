@@ -19,6 +19,23 @@ the desktop app.
 
 ## Online endpoint contract
 
+For local Docker verification, run the Postgres-backed endpoint from `apps/web`:
+
+```sh
+docker compose -f compose.endpoint.yaml up --build
+```
+
+In rootless Podman or sandboxed environments where compose cannot create a
+bridge network, use the host-network variant instead:
+
+```sh
+docker compose -f compose.endpoint.host.yaml up --build
+```
+
+Then run the web app with `npm run dev`. The Vite dev server proxies `/api/*`
+to `http://localhost:1423`, so the default `Online API` profile can execute
+queries through Docker.
+
 The web app posts JSON to the configured endpoint:
 
 ```json
