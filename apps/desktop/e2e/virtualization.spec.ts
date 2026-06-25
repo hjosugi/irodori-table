@@ -69,6 +69,12 @@ const wideTableFixture = {
 function createVirtualizationMockBackend(
   fixture: VirtualizedResultFixture,
 ): VirtualizationMockBackend {
+  const tableColumns = fixture.columns.map((column, index) => ({
+    name: column,
+    dataType: index === 0 ? "text" : "varchar",
+    nullable: index !== 0,
+    ordinal: index + 1,
+  }));
   return {
     fixture,
     workspace: {
@@ -91,7 +97,24 @@ function createVirtualizationMockBackend(
         },
       ],
     },
-    metadata: { schemas: [{ name: "public", objects: [] }] },
+    metadata: {
+      schemas: [
+        {
+          name: "public",
+          objects: [
+            {
+              schema: "public",
+              name: "huge_table",
+              kind: "table",
+              columns: tableColumns,
+              indexes: [],
+              primaryKey: [fixture.columns[0]],
+              foreignKeys: [],
+            },
+          ],
+        },
+      ],
+    },
     parameterPromptSet: { prompts: [], signature: "mock-sig" },
   };
 }
@@ -291,7 +314,15 @@ async function connectMockDatabase(page: Page) {
   await expect(page.locator(".editor-meta")).toContainText("ready");
 }
 
+async function replaceEditorText(page: Page, text: string) {
+  const editor = page.locator(".cm-content");
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.type(text);
+}
+
 async function runFixtureQuery(page: Page, expectedDoneCount: number) {
+  await replaceEditorText(page, "select * from huge_table;");
   await page.getByRole("button", { name: "Run Current", exact: true }).click();
   await waitForCompletedRun(page, expectedDoneCount);
 }

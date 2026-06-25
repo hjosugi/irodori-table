@@ -116,6 +116,10 @@ import {
   type ResultGridRowOrigin,
 } from "./result-view-model";
 import {
+  deriveResultEditTarget,
+  type ResultEditTarget,
+} from "./result-edit-target";
+import {
   blankSchemaDraft,
   buildSchemaSql,
   schemaDraftFromObject,
@@ -157,12 +161,7 @@ import {
   type SqlFormatterId,
 } from "./sql/formatter";
 import { selectedOrCurrentStatement } from "./sql/statements";
-import {
-  cssVariables,
-  darkTheme,
-  lightTheme,
-  type ThemeKind,
-} from "./theme";
+import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
@@ -840,10 +839,18 @@ function validateDraft(draft: ConnectionDraft): string | null {
   if (draft.mode === "url" && !draft.url.trim()) {
     return "URL/DSN is required";
   }
-  if (draft.mode === "fields" && draft.engine === "sqlite" && !draft.database.trim()) {
+  if (
+    draft.mode === "fields" &&
+    draft.engine === "sqlite" &&
+    !draft.database.trim()
+  ) {
     return "SQLite needs a file path or :memory:";
   }
-  if (draft.mode === "fields" && draft.engine !== "sqlite" && draft.engine !== "duckdb") {
+  if (
+    draft.mode === "fields" &&
+    draft.engine !== "sqlite" &&
+    draft.engine !== "duckdb"
+  ) {
     if (!draft.host.trim()) {
       return "host is required";
     }
@@ -884,6 +891,9 @@ const GRID_OVERSCAN = 8;
 const GRID_COLUMN_WIDTH = 148;
 const GRID_COLUMN_OVERSCAN = 2;
 const GRID_GUTTER_WIDTH = 34;
+const GRID_WINDOWED_ROW_THRESHOLD = 50_000;
+const GRID_WINDOWED_CELL_THRESHOLD = 250_000;
+const GRID_COPY_ROW_LIMIT = 50_000;
 const SIDEBAR_WIDTH_MIN = 220;
 const SIDEBAR_WIDTH_MAX = 420;
 const INSPECTOR_WIDTH_MIN = 220;
@@ -1001,17 +1011,17 @@ function App() {
   const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
   const [diagramZoom, setDiagramZoom] = useState(1);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(
+    null,
+  );
   const [importError, setImportError] = useState<string | null>(null);
   const [schemaDesignerOpen, setSchemaDesignerOpen] = useState(false);
-  const [schemaDraft, setSchemaDraft] = useState<SchemaDesignerDraft>(
-    blankSchemaDraft,
-  );
+  const [schemaDraft, setSchemaDraft] =
+    useState<SchemaDesignerDraft>(blankSchemaDraft);
   const diagramInitializedFor = useRef<string | null>(null);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
-  const [queryParameterMemory, setQueryParameterMemory] = useState<QueryParameterMemory>(
-    loadQueryParameterMemory,
-  );
+  const [queryParameterMemory, setQueryParameterMemory] =
+    useState<QueryParameterMemory>(loadQueryParameterMemory);
   const [pendingQueryParameters, setPendingQueryParameters] =
     useState<PendingQueryParameters | null>(null);
   const [parameterDraftValues, setParameterDraftValues] = useState<
@@ -1020,7 +1030,9 @@ function App() {
   const [metadataByConnection, setMetadataByConnection] = useState<
     Record<string, DatabaseMetadata>
   >({});
-  const [metadataLoading, setMetadataLoading] = useState<Set<string>>(new Set());
+  const [metadataLoading, setMetadataLoading] = useState<Set<string>>(
+    new Set(),
+  );
   const [metadataErrors, setMetadataErrors] = useState<Record<string, string>>(
     {},
   );
@@ -1044,7 +1056,10 @@ function App() {
   }, [profiles]);
 
   useEffect(() => {
-    window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(history));
+    window.localStorage.setItem(
+      queryHistoryStorageKey,
+      JSON.stringify(history),
+    );
   }, [history]);
 
   useEffect(() => {
@@ -1075,7 +1090,10 @@ function App() {
   }, [sidebarWidth]);
 
   useEffect(() => {
-    window.localStorage.setItem(inspectorWidthStorageKey, String(inspectorWidth));
+    window.localStorage.setItem(
+      inspectorWidthStorageKey,
+      String(inspectorWidth),
+    );
   }, [inspectorWidth]);
 
   useEffect(() => {
@@ -1102,7 +1120,9 @@ function App() {
       connections[0],
     [activeConnectionId, connections],
   );
-  const activeProfile = profiles.find((profile) => profile.id === activeConnectionId);
+  const activeProfile = profiles.find(
+    (profile) => profile.id === activeConnectionId,
+  );
   const activeEngine = activeProfile?.engine ?? draft.engine;
 
   const activeConnectionOpen = connectedIds.has(activeConnectionId);
@@ -1123,7 +1143,9 @@ function App() {
   const availableDiagramSchemas = useMemo(
     () =>
       activeMetadata?.schemas
-        .filter((schema) => schema.objects.some((object) => object.kind === "table"))
+        .filter((schema) =>
+          schema.objects.some((object) => object.kind === "table"),
+        )
         .map((schema) => schema.name) ?? [],
     [activeMetadata],
   );
@@ -1210,8 +1232,9 @@ function App() {
     ];
   }, [result]);
   const activeResult =
-    resultSets[Math.min(activeResultIndex, Math.max(0, resultSets.length - 1))] ??
-    null;
+    resultSets[
+      Math.min(activeResultIndex, Math.max(0, resultSets.length - 1))
+    ] ?? null;
 
   useEffect(() => {
     if (activeResultIndex >= resultSets.length) {
@@ -1288,16 +1311,22 @@ function App() {
   // Build the display rows from raw results plus staged edits, filters, and sort.
   const resultGridView = useMemo(
     () =>
-      buildResultGridViewModel({
-        rows: activeResult?.rows ?? resultRows,
-        cellEdits,
-        newRows,
-        deletedRows,
-        filterRules,
-        quickFilter,
-        filterJoin,
-        sortRules,
-      }),
+      buildResultGridViewModel(
+        {
+          rows: activeResult?.rows ?? resultRows,
+          cellEdits,
+          newRows,
+          deletedRows,
+          filterRules,
+          quickFilter,
+          filterJoin,
+          sortRules,
+        },
+        {
+          windowedRowThreshold: GRID_WINDOWED_ROW_THRESHOLD,
+          windowedCellThreshold: GRID_WINDOWED_CELL_THRESHOLD,
+        },
+      ),
     [
       activeResult?.rows,
       cellEdits,
@@ -1311,18 +1340,18 @@ function App() {
   );
   const {
     activeFilters,
-    displayRows,
     filteredOutCount,
     filtersActive,
     pendingCount,
     sortRuleByColumn,
-    unfilteredRows,
+    totalRowCount,
+    unfilteredRowCount,
   } = resultGridView;
 
   // Virtualize the result grid: render only the rows in (and just around) the
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
   // ~30 DOM rows instead of 10k, so streaming stays smooth.
-  const totalRows = displayRows.length;
+  const totalRows = totalRowCount;
   const rowWindow = calculateResultGridVirtualRowWindow({
     rowCount: totalRows,
     scrollTop: gridScrollTop,
@@ -1334,7 +1363,7 @@ function App() {
   const lastVisible = rowWindow.lastRowIndex;
   const topPad = rowWindow.topPadPx;
   const bottomPad = rowWindow.bottomPadPx;
-  const visibleRows = displayRows.slice(firstVisible, lastVisible);
+  const visibleRows = resultGridView.rowsInRange(firstVisible, lastVisible);
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
     pendingGridScroll.current = {
@@ -1375,7 +1404,11 @@ function App() {
         break;
       case "inspector":
         setInspectorWidth((current) =>
-          clampNumber(current + delta, INSPECTOR_WIDTH_MIN, INSPECTOR_WIDTH_MAX),
+          clampNumber(
+            current + delta,
+            INSPECTOR_WIDTH_MIN,
+            INSPECTOR_WIDTH_MAX,
+          ),
         );
         break;
       case "results":
@@ -1554,7 +1587,9 @@ function App() {
         const key = `o${origin.index}:${col}`;
         const originalRaw = activeResult?.rows[origin.index]?.[col] ?? null;
         const unchanged =
-          value === null ? originalRaw === null : value === formatCell(originalRaw);
+          value === null
+            ? originalRaw === null
+            : value === formatCell(originalRaw);
         if (unchanged) {
           next.delete(key);
         } else {
@@ -1577,6 +1612,10 @@ function App() {
   }
 
   function addNewRow() {
+    if (!canEditActiveResult()) {
+      setCommitError("result editing needs a single table query with a visible key");
+      return;
+    }
     setNewRows((current) => [...current, resultColumns.map(() => "")]);
     setEditMode(true);
   }
@@ -1596,7 +1635,9 @@ function App() {
         return next;
       });
     } else {
-      setNewRows((current) => current.filter((_, index) => index !== origin.index));
+      setNewRows((current) =>
+        current.filter((_, index) => index !== origin.index),
+      );
     }
     setEditingCell(null);
     setSelectedRowKey((current) => (current === rowKey ? null : current));
@@ -1604,18 +1645,23 @@ function App() {
 
   // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
   // and into staged new rows as needed.
-  function pasteTableAt(origin: ResultGridRowOrigin, startCol: number, text: string) {
+  function pasteTableAt(
+    origin: ResultGridRowOrigin,
+    startCol: number,
+    text: string,
+  ) {
     const block = parseClipboardTable(text);
     if (block.length === 0) {
       return;
     }
-    const orderedKeys = displayRows.map((row) => row.key);
-    const startPos = orderedKeys.indexOf(resultGridRowKey(origin));
+    const startPos = resultGridView.displayIndexForKey(
+      resultGridRowKey(origin),
+    );
+    if (startPos < 0) {
+      return;
+    }
     block.forEach((cells, rowOffset) => {
-      const targetKey = orderedKeys[startPos + rowOffset];
-      const target = targetKey
-        ? displayRows.find((row) => row.key === targetKey)?.origin
-        : undefined;
+      const target = resultGridView.rowAt(startPos + rowOffset)?.origin;
       if (target) {
         cells.forEach((value, colOffset) => {
           const col = startCol + colOffset;
@@ -1627,7 +1673,9 @@ function App() {
         // Past the last row: append as new rows.
         const newRow = resultColumns.map((_, col) => {
           const colOffset = col - startCol;
-          return colOffset >= 0 && colOffset < cells.length ? cells[colOffset] : "";
+          return colOffset >= 0 && colOffset < cells.length
+            ? cells[colOffset]
+            : "";
         });
         setNewRows((current) => [...current, newRow]);
       }
@@ -1665,26 +1713,26 @@ function App() {
   }
 
   function moveSelectedCell(rowDelta: number, colDelta: number) {
-    if (displayRows.length === 0 || resultColumns.length === 0) {
+    if (totalRows === 0 || resultColumns.length === 0) {
       return;
     }
-    const currentKey = selectedCell?.key ?? selectedRowKey ?? displayRows[0].key;
-    const currentRowIndex = Math.max(
-      0,
-      displayRows.findIndex((row) => row.key === currentKey),
-    );
+    const firstRow = resultGridView.rowAt(0);
+    const currentKey = selectedCell?.key ?? selectedRowKey ?? firstRow?.key;
+    const currentRowIndex = currentKey
+      ? Math.max(0, resultGridView.displayIndexForKey(currentKey))
+      : 0;
     const currentCol = selectedCell?.col ?? 0;
     const nextRowIndex = clampNumber(
       currentRowIndex + rowDelta,
       0,
-      displayRows.length - 1,
+      totalRows - 1,
     );
     const nextCol = clampNumber(
       currentCol + colDelta,
       0,
       Math.max(0, resultColumns.length - 1),
     );
-    const nextRow = displayRows[nextRowIndex];
+    const nextRow = resultGridView.rowAt(nextRowIndex);
     if (!nextRow) {
       return;
     }
@@ -1697,12 +1745,20 @@ function App() {
       return null;
     }
     const key = selectedCell?.key ?? selectedRowKey;
-    return displayRows.find((row) => row.key === key) ?? null;
+    if (!key) {
+      return null;
+    }
+    const index = resultGridView.displayIndexForKey(key);
+    return index >= 0 ? resultGridView.rowAt(index) : null;
   }
 
   function selectedRowForCopy() {
     const key = selectedRowKey ?? selectedCell?.key;
-    return key ? (displayRows.find((row) => row.key === key) ?? null) : null;
+    if (!key) {
+      return null;
+    }
+    const index = resultGridView.displayIndexForKey(key);
+    return index >= 0 ? resultGridView.rowAt(index) : null;
   }
 
   function copyCellsForRow(row: ResultGridRowLike): string[] {
@@ -1711,7 +1767,7 @@ function App() {
 
   function selectedGridCopyText(): string | null {
     if (selectedCell) {
-      const row = displayRows.find((item) => item.key === selectedCell.key);
+      const row = selectedDisplayRow();
       if (row) {
         return row.cells[selectedCell.col] ?? "";
       }
@@ -1743,14 +1799,27 @@ function App() {
       return;
     }
     const row = selectedRowForCopy();
-    await copyGridText(row ? formatResultGridTsvRow(copyCellsForRow(row)) : null);
+    await copyGridText(
+      row ? formatResultGridTsvRow(copyCellsForRow(row)) : null,
+    );
   }
 
   async function copyVisibleResult() {
     if (editingCell || resultColumns.length === 0) {
       return;
     }
-    await copyGridText(formatResultGridTsv(resultColumns, displayRows));
+    if (totalRows > GRID_COPY_ROW_LIMIT) {
+      setQueryError(
+        `Copy is capped at ${toCount(GRID_COPY_ROW_LIMIT)} displayed rows; use Export for larger results.`,
+      );
+      return;
+    }
+    await copyGridText(
+      formatResultGridTsv(
+        resultColumns,
+        resultGridView.rowsInRange(0, totalRows),
+      ),
+    );
   }
 
   function onGridKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
@@ -1762,7 +1831,7 @@ function App() {
     ) {
       return;
     }
-    const row = selectedDisplayRow() ?? displayRows[0];
+    const row = selectedDisplayRow() ?? resultGridView.rowAt(0);
     const col = selectedCell?.col ?? 0;
     if (!row || resultColumns.length === 0) {
       return;
@@ -1826,7 +1895,11 @@ function App() {
       return;
     }
     event.preventDefault();
-    pasteTableAt(row.origin, selectedCell.col, event.clipboardData.getData("text"));
+    pasteTableAt(
+      row.origin,
+      selectedCell.col,
+      event.clipboardData.getData("text"),
+    );
   }
 
   function onGridCopy(event: ReactClipboardEvent<HTMLDivElement>) {
@@ -1841,41 +1914,16 @@ function App() {
     event.clipboardData.setData("text/plain", text);
   }
 
-  // Infer the table to write back to from the last run's `from <table>` and the
-  // key columns from its metadata (a unique index, else every result column).
-  function inferEditTarget(): {
-    schema?: string;
-    table: string;
-    keyColumns: string[];
-  } | null {
-    const match = lastRunSql.match(/\bfrom\s+([`"[\]\w.]+)/i);
-    if (!match) {
-      return null;
-    }
-    const raw = match[1].replace(/[`"[\]]/g, "");
-    const parts = raw.split(".");
-    const table = parts[parts.length - 1];
-    const schema = parts.length > 1 ? parts[parts.length - 2] : undefined;
-    if (!table) {
-      return null;
-    }
-    const meta = metadataByConnection[activeConnectionId];
-    const object = meta?.schemas
-      .flatMap((s) => s.objects)
-      .find((o) => o.name === table && (schema ? o.schema === schema : true));
-    // Prefer the real primary key, then any unique index, then every column.
-    const primaryKey = object?.primaryKey ?? [];
-    const unique = object?.indexes.find((index) => index.unique);
-    const candidate =
-      primaryKey.length > 0
-        ? primaryKey
-        : unique
-          ? unique.columns
-          : resultColumns;
-    const keyColumns = candidate.every((c) => resultColumns.includes(c))
-      ? candidate
-      : resultColumns;
-    return { schema, table, keyColumns };
+  function inferEditTarget(): ResultEditTarget | null {
+    return deriveResultEditTarget({
+      sql: lastRunSql,
+      metadata: metadataByConnection[activeConnectionId],
+      resultColumns,
+    });
+  }
+
+  function canEditActiveResult(): boolean {
+    return Boolean(result && inferEditTarget());
   }
 
   function originalCell(rowIndex: number, column: string): CellValue {
@@ -1886,7 +1934,9 @@ function App() {
   async function commitEdits() {
     const target = inferEditTarget();
     if (!target) {
-      setCommitError("could not detect an editable target table from the query");
+      setCommitError(
+        "could not detect an editable target table from the query",
+      );
       return;
     }
     const updates: RowUpdate[] = [];
@@ -1981,7 +2031,14 @@ function App() {
         void copyVisibleResult();
         break;
       case "edit.toggle":
-        setEditMode((mode) => !mode);
+        if (editMode) {
+          setEditMode(false);
+        } else if (canEditActiveResult()) {
+          setEditMode(true);
+          setCommitError(null);
+        } else {
+          setCommitError("result editing needs a single table query with a visible key");
+        }
         break;
       case "edit.addRow":
         addNewRow();
@@ -1992,7 +2049,10 @@ function App() {
     }
   }
 
-  const keymap = { ...resultCopyDefaultKeymap, ...effectiveKeymap(keymapOverrides) };
+  const keymap = {
+    ...resultCopyDefaultKeymap,
+    ...effectiveKeymap(keymapOverrides),
+  };
   const keymapConflicts = findConflicts(keymap, appCommandCatalog);
   const paletteResults = appCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
@@ -2036,7 +2096,10 @@ function App() {
     setRecordingSequence([]);
   }
 
-  function commitRecordedKeybinding(commandId: string, sequence: readonly string[]) {
+  function commitRecordedKeybinding(
+    commandId: string,
+    sequence: readonly string[],
+  ) {
     const chord = sequence.join(" ");
     if (!chord) {
       cancelRecording();
@@ -2159,7 +2222,9 @@ function App() {
       return;
     }
     if (!activeMetadata || !hasDiagram(activeMetadata)) {
-      setDiagramError("No tables to diagram yet — connect and load metadata first.");
+      setDiagramError(
+        "No tables to diagram yet — connect and load metadata first.",
+      );
       return;
     }
     setDiagramError(null);
@@ -2169,7 +2234,9 @@ function App() {
     if (diagramInitializedFor.current !== initKey) {
       setDiagramSchemaNames(
         activeMetadata.schemas
-          .filter((schema) => schema.objects.some((object) => object.kind === "table"))
+          .filter((schema) =>
+            schema.objects.some((object) => object.kind === "table"),
+          )
           .map((schema) => schema.name),
       );
       setDiagramSearch(pendingDiagramSearchRef.current ?? "");
@@ -2198,7 +2265,7 @@ function App() {
     : "sample preview";
   const displayedResultSummary =
     activeResult && filtersActive
-      ? `${toCount(totalRows)} / ${toCount(unfilteredRows.length)} shown · ${resultSummary}`
+      ? `${toCount(totalRows)} / ${toCount(unfilteredRowCount)} shown · ${resultSummary}`
       : resultSummary;
   const importSqlPreview = importPreview
     ? generateImportSql(
@@ -2233,7 +2300,9 @@ function App() {
     }
     const cleanDraft = sanitizedProfile(draft);
     setProfiles((current) => {
-      const existing = current.findIndex((profile) => profile.id === cleanDraft.id);
+      const existing = current.findIndex(
+        (profile) => profile.id === cleanDraft.id,
+      );
       if (existing === -1) {
         return [...current, cleanDraft];
       }
@@ -2290,7 +2359,9 @@ function App() {
         id: testId,
       });
       await dbDisconnect(testId);
-      setConnectionError(`Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`);
+      setConnectionError(
+        `Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`,
+      );
     } catch (error) {
       setConnectionError(errorMessage(error));
     } finally {
@@ -2309,7 +2380,11 @@ function App() {
       const started = performance.now();
       const info = await dbConnect(profileFromDraft(draft));
       const elapsedMs = Math.max(1, Math.round(performance.now() - started));
-      const nextConnection = describeConnection(info, elapsedMs, draft.name.trim());
+      const nextConnection = describeConnection(
+        info,
+        elapsedMs,
+        draft.name.trim(),
+      );
       setLiveConnections((current) => ({
         ...current,
         [nextConnection.id]: nextConnection,
@@ -2345,7 +2420,10 @@ function App() {
     });
   }
 
-  async function refreshObjects(connectionId = activeConnectionId, force = false) {
+  async function refreshObjects(
+    connectionId = activeConnectionId,
+    force = false,
+  ) {
     if (!force && !connectedIds.has(connectionId)) {
       return;
     }
@@ -2383,7 +2461,11 @@ function App() {
       return;
     }
     const target = inferEditTarget();
-    const exported = buildResultExport(activeResult, format, target?.table ?? "query_result");
+    const exported = buildResultExport(
+      activeResult,
+      format,
+      target?.table ?? "query_result",
+    );
     const blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
       type: exported.mime,
     });
@@ -2461,7 +2543,10 @@ function App() {
     }
     const bounds = diagramCanvasRef.current.getBoundingClientRect();
     const nextZoom = clampNumber(
-      Math.min(bounds.width / diagramLayout.width, bounds.height / diagramLayout.height),
+      Math.min(
+        bounds.width / diagramLayout.width,
+        bounds.height / diagramLayout.height,
+      ),
       0.25,
       1.25,
     );
@@ -2539,10 +2624,7 @@ function App() {
     editorApiRef.current?.focus();
   }
 
-  function updateSchemaColumn(
-    id: string,
-    patch: Partial<SchemaColumnDraft>,
-  ) {
+  function updateSchemaColumn(id: string, patch: Partial<SchemaColumnDraft>) {
     setSchemaDraft((current) => ({
       ...current,
       columns: current.columns.map((column) =>
@@ -2551,10 +2633,7 @@ function App() {
     }));
   }
 
-  function updateSchemaIndex(
-    id: string,
-    patch: Partial<SchemaIndexDraft>,
-  ) {
+  function updateSchemaIndex(id: string, patch: Partial<SchemaIndexDraft>) {
     setSchemaDraft((current) => ({
       ...current,
       indexes: current.indexes.map((index) =>
@@ -2585,8 +2664,15 @@ function App() {
       setQueryError(`not connected: ${activeConnectionId}`);
       return;
     }
-    const selection = editorApiRef.current?.getSelection() ?? { from: 0, to: 0 };
-    const sqlToRun = selectedOrCurrentStatement(selection.from, selection.to, query);
+    const selection = editorApiRef.current?.getSelection() ?? {
+      from: 0,
+      to: 0,
+    };
+    const sqlToRun = selectedOrCurrentStatement(
+      selection.from,
+      selection.to,
+      query,
+    );
     if (!sqlToRun) {
       setQueryError("query is empty");
       return;
@@ -2644,14 +2730,20 @@ function App() {
     await executeQuery(sqlToRun);
   }
 
-  async function openQueryParameterPrompt(sqlToRun: string, requirePrompt: boolean) {
+  async function openQueryParameterPrompt(
+    sqlToRun: string,
+    requirePrompt: boolean,
+  ) {
     try {
       const promptSet = await dbQueryParameters(sqlToRun);
       if (promptSet.prompts.length > 0) {
         const remembered = queryParameterMemory[promptSet.signature] ?? {};
         setParameterDraftValues(
           Object.fromEntries(
-            promptSet.prompts.map((prompt) => [prompt.id, remembered[prompt.id] ?? ""]),
+            promptSet.prompts.map((prompt) => [
+              prompt.id,
+              remembered[prompt.id] ?? "",
+            ]),
           ),
         );
         setPendingQueryParameters({ sql: sqlToRun, promptSet });
@@ -2669,7 +2761,10 @@ function App() {
     return false;
   }
 
-  async function executeQuery(sqlToRun: string, params?: QueryParameterInput[]) {
+  async function executeQuery(
+    sqlToRun: string,
+    params?: QueryParameterInput[],
+  ) {
     if (!activeConnectionOpen) {
       setQueryError(`not connected: ${activeConnectionId}`);
       return;
@@ -2696,6 +2791,7 @@ function App() {
     const ranAt = new Date().toISOString();
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     runningQueryIdRef.current = queryId;
+    let publishRaf: number | null = null;
     try {
       // Stream the run so the grid fills as batches arrive instead of waiting for
       // the whole result. Query errors surface as an "error" event (the command
@@ -2716,7 +2812,11 @@ function App() {
         }
         return streamResultSets[index];
       };
-      const publishStreamResult = () => {
+      const publishStreamResultNow = () => {
+        if (publishRaf !== null) {
+          window.cancelAnimationFrame(publishRaf);
+          publishRaf = null;
+        }
         const first = ensureResultSet(0);
         setResult({
           columns: first.columns,
@@ -2734,6 +2834,15 @@ function App() {
               : undefined,
         });
       };
+      const scheduleStreamResultPublish = () => {
+        if (publishRaf !== null) {
+          return;
+        }
+        publishRaf = window.requestAnimationFrame(() => {
+          publishRaf = null;
+          publishStreamResultNow();
+        });
+      };
       await runQueryStream(
         {
           connectionId: activeConnectionId,
@@ -2746,7 +2855,7 @@ function App() {
           switch (event.type) {
             case "columns":
               ensureResultSet(event.resultSetIndex).columns = event.columns;
-              publishStreamResult();
+              publishStreamResultNow();
               break;
             case "rows":
               {
@@ -2755,7 +2864,7 @@ function App() {
                 set.rowCount = BigInt(set.rows.length);
                 set.elapsedMs = BigInt(Math.round(performance.now() - started));
               }
-              publishStreamResult();
+              scheduleStreamResultPublish();
               break;
             case "done":
               for (const summary of event.resultSets) {
@@ -2763,9 +2872,11 @@ function App() {
                 set.rowCount = BigInt(summary.rowCount);
                 set.elapsedMs = BigInt(summary.elapsedMs || event.elapsedMs);
                 set.truncated = summary.truncated;
-                set.message = summary.truncated ? "result capped at 10000 rows" : undefined;
+                set.message = summary.truncated
+                  ? "result capped at 10000 rows"
+                  : undefined;
               }
-              publishStreamResult();
+              publishStreamResultNow();
               appendHistory({
                 id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 connectionId: activeConnectionId,
@@ -2818,6 +2929,9 @@ function App() {
         ranAt,
       });
     } finally {
+      if (publishRaf !== null) {
+        window.cancelAnimationFrame(publishRaf);
+      }
       runningQueryIdRef.current = null;
       setRunning(false);
     }
@@ -2928,7 +3042,11 @@ function App() {
           aria-pressed={!sidebarOpen}
           onClick={() => setSidebarOpen((open) => !open)}
         >
-          {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
+          {sidebarOpen ? (
+            <PanelLeftClose size={15} />
+          ) : (
+            <PanelLeftOpen size={15} />
+          )}
         </button>
         <button className="connection-select" type="button">
           <Database size={16} />
@@ -3010,7 +3128,9 @@ function App() {
         <div className="latency">
           <Bolt size={14} />
           <span>
-            {activeConnectionOpen ? `${activeConnection.latencyMs} ms` : "closed"}
+            {activeConnectionOpen
+              ? `${activeConnection.latencyMs} ms`
+              : "closed"}
           </span>
         </div>
         <div className="latency proxy">
@@ -3019,346 +3139,383 @@ function App() {
         </div>
       </section>
 
-      <div className={sidebarOpen ? "workspace" : "workspace sidebar-collapsed"}>
+      <div
+        className={sidebarOpen ? "workspace" : "workspace sidebar-collapsed"}
+      >
         {sidebarOpen ? (
-        <aside className="sidebar">
-          <section className="sidebar-section connection-section">
-            <div className="section-heading">
-              <span>Connections</span>
-              <button
-                className="mini-button"
-                type="button"
-                title="New connection"
-                aria-label="New connection"
-                onClick={addProfile}
+          <aside className="sidebar">
+            <section className="sidebar-section connection-section">
+              <div className="section-heading">
+                <span>Connections</span>
+                <button
+                  className="mini-button"
+                  type="button"
+                  title="New connection"
+                  aria-label="New connection"
+                  onClick={addProfile}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              <form
+                className="connection-editor"
+                onSubmit={connectActiveProfile}
               >
-                <Plus size={14} />
-              </button>
-            </div>
-            <form className="connection-editor" onSubmit={connectActiveProfile}>
-              <div className="profile-strip" aria-label="Connection profiles">
-                {profiles.map((profile) => (
+                <div className="profile-strip" aria-label="Connection profiles">
+                  {profiles.map((profile) => (
+                    <button
+                      className={
+                        profile.id === selectedProfileId
+                          ? "profile-pill active"
+                          : "profile-pill"
+                      }
+                      key={profile.id}
+                      type="button"
+                      onClick={() => selectProfile(profile)}
+                    >
+                      <Database size={13} />
+                      <span>{profile.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="quick-connect-row">
+                  <input
+                    aria-label="Connection name"
+                    placeholder="Name"
+                    value={draft.name}
+                    onChange={(event) =>
+                      updateDraft({ name: event.currentTarget.value })
+                    }
+                  />
+                  <input
+                    aria-label="Connection id"
+                    placeholder="ID"
+                    value={draft.id}
+                    onChange={(event) =>
+                      updateDraft({ id: event.currentTarget.value })
+                    }
+                  />
+                </div>
+                <div className="quick-connect-row">
+                  <select
+                    aria-label="Engine"
+                    value={draft.engine}
+                    onChange={(event) =>
+                      updateDraft({
+                        engine: event.currentTarget.value as DbEngine,
+                      })
+                    }
+                  >
+                    {engineOptions.map((engine) => (
+                      <option key={engine.value} value={engine.value}>
+                        {engine.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div
+                    className="mode-toggle"
+                    aria-label="Connection input mode"
+                  >
+                    <button
+                      className={draft.mode === "url" ? "active" : ""}
+                      type="button"
+                      onClick={() => updateDraft({ mode: "url" })}
+                    >
+                      URL
+                    </button>
+                    <button
+                      className={draft.mode === "fields" ? "active" : ""}
+                      type="button"
+                      onClick={() => updateDraft({ mode: "fields" })}
+                    >
+                      Fields
+                    </button>
+                  </div>
+                </div>
+                {draft.mode === "url" ? (
+                  <input
+                    aria-label="Connection URL"
+                    placeholder="URL / DSN"
+                    value={draft.url}
+                    onChange={(event) =>
+                      updateDraft({ url: event.currentTarget.value })
+                    }
+                  />
+                ) : (
+                  <>
+                    <div className="quick-connect-row host-row">
+                      <input
+                        aria-label="Host"
+                        placeholder="Host"
+                        value={draft.host}
+                        onChange={(event) =>
+                          updateDraft({ host: event.currentTarget.value })
+                        }
+                      />
+                      <input
+                        aria-label="Port"
+                        placeholder="Port"
+                        inputMode="numeric"
+                        value={draft.port}
+                        onChange={(event) =>
+                          updateDraft({ port: event.currentTarget.value })
+                        }
+                      />
+                    </div>
+                    <div className="quick-connect-row">
+                      <input
+                        aria-label="User"
+                        placeholder="User"
+                        value={draft.user}
+                        onChange={(event) =>
+                          updateDraft({ user: event.currentTarget.value })
+                        }
+                      />
+                      <input
+                        aria-label="Password"
+                        placeholder="Password"
+                        type="password"
+                        value={draft.password}
+                        onChange={(event) =>
+                          updateDraft({ password: event.currentTarget.value })
+                        }
+                      />
+                    </div>
+                    <input
+                      aria-label="Database"
+                      placeholder="Database / service / path"
+                      value={draft.database}
+                      onChange={(event) =>
+                        updateDraft({ database: event.currentTarget.value })
+                      }
+                    />
+                  </>
+                )}
+                <div className="quick-connect-actions">
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => saveDraft()}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={testingConnection}
+                    onClick={testActiveProfile}
+                  >
+                    {testingConnection ? "Testing" : "Test"}
+                  </button>
+                  <button
+                    className="primary-action compact"
+                    type="submit"
+                    disabled={connecting}
+                  >
+                    <Database size={14} />
+                    <span>{connecting ? "Connecting" : "Connect"}</span>
+                  </button>
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={!activeConnectionOpen}
+                    onClick={disconnectActiveProfile}
+                  >
+                    Disconnect
+                  </button>
+                  <button
+                    className="text-button danger"
+                    type="button"
+                    onClick={deleteProfile}
+                  >
+                    Delete
+                  </button>
+                </div>
+                {connectionError ? (
+                  <p className="inline-error">
+                    <AlertTriangle size={13} />
+                    <span>{connectionError}</span>
+                  </p>
+                ) : null}
+              </form>
+              <div className="connection-list">
+                {connections.map((connection) => (
                   <button
                     className={
-                      profile.id === selectedProfileId
-                        ? "profile-pill active"
-                        : "profile-pill"
+                      connection.id === activeConnectionId
+                        ? "connection-item active"
+                        : "connection-item"
                     }
-                    key={profile.id}
+                    key={connection.id}
                     type="button"
-                    onClick={() => selectProfile(profile)}
+                    onClick={() => setActiveConnectionId(connection.id)}
                   >
-                    <Database size={13} />
-                    <span>{profile.name}</span>
+                    <Database size={16} />
+                    <span>
+                      <strong>{connection.name}</strong>
+                      <small>{connection.engine}</small>
+                    </span>
+                    <i className={connection.status} />
                   </button>
                 ))}
               </div>
-              <div className="quick-connect-row">
-                <input
-                  aria-label="Connection name"
-                  placeholder="Name"
-                  value={draft.name}
-                  onChange={(event) => updateDraft({ name: event.currentTarget.value })}
-                />
-                <input
-                  aria-label="Connection id"
-                  placeholder="ID"
-                  value={draft.id}
-                  onChange={(event) => updateDraft({ id: event.currentTarget.value })}
-                />
-              </div>
-              <div className="quick-connect-row">
-                <select
-                  aria-label="Engine"
-                  value={draft.engine}
-                  onChange={(event) =>
-                    updateDraft({ engine: event.currentTarget.value as DbEngine })
-                  }
-                >
-                  {engineOptions.map((engine) => (
-                    <option key={engine.value} value={engine.value}>
-                      {engine.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="mode-toggle" aria-label="Connection input mode">
-                  <button
-                    className={draft.mode === "url" ? "active" : ""}
-                    type="button"
-                    onClick={() => updateDraft({ mode: "url" })}
-                  >
-                    URL
-                  </button>
-                  <button
-                    className={draft.mode === "fields" ? "active" : ""}
-                    type="button"
-                    onClick={() => updateDraft({ mode: "fields" })}
-                  >
-                    Fields
-                  </button>
-                </div>
-              </div>
-              {draft.mode === "url" ? (
-                <input
-                  aria-label="Connection URL"
-                  placeholder="URL / DSN"
-                  value={draft.url}
-                  onChange={(event) => updateDraft({ url: event.currentTarget.value })}
-                />
-              ) : (
-                <>
-                  <div className="quick-connect-row host-row">
-                    <input
-                      aria-label="Host"
-                      placeholder="Host"
-                      value={draft.host}
-                      onChange={(event) => updateDraft({ host: event.currentTarget.value })}
-                    />
-                    <input
-                      aria-label="Port"
-                      placeholder="Port"
-                      inputMode="numeric"
-                      value={draft.port}
-                      onChange={(event) => updateDraft({ port: event.currentTarget.value })}
-                    />
-                  </div>
-                  <div className="quick-connect-row">
-                    <input
-                      aria-label="User"
-                      placeholder="User"
-                      value={draft.user}
-                      onChange={(event) => updateDraft({ user: event.currentTarget.value })}
-                    />
-                    <input
-                      aria-label="Password"
-                      placeholder="Password"
-                      type="password"
-                      value={draft.password}
-                      onChange={(event) =>
-                        updateDraft({ password: event.currentTarget.value })
-                      }
-                    />
-                  </div>
-                  <input
-                    aria-label="Database"
-                    placeholder="Database / service / path"
-                    value={draft.database}
-                    onChange={(event) =>
-                      updateDraft({ database: event.currentTarget.value })
-                    }
-                  />
-                </>
-              )}
-              <div className="quick-connect-actions">
-                <button className="text-button" type="button" onClick={() => saveDraft()}>
-                  Save
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  disabled={testingConnection}
-                  onClick={testActiveProfile}
-                >
-                  {testingConnection ? "Testing" : "Test"}
-                </button>
-                <button
-                  className="primary-action compact"
-                  type="submit"
-                  disabled={connecting}
-                >
-                  <Database size={14} />
-                  <span>{connecting ? "Connecting" : "Connect"}</span>
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  disabled={!activeConnectionOpen}
-                  onClick={disconnectActiveProfile}
-                >
-                  Disconnect
-                </button>
-                <button className="text-button danger" type="button" onClick={deleteProfile}>
-                  Delete
-                </button>
-              </div>
-              {connectionError ? (
-                <p className="inline-error">
-                  <AlertTriangle size={13} />
-                  <span>{connectionError}</span>
-                </p>
-              ) : null}
-            </form>
-            <div className="connection-list">
-              {connections.map((connection) => (
-                <button
-                  className={
-                    connection.id === activeConnectionId
-                      ? "connection-item active"
-                      : "connection-item"
-                  }
-                  key={connection.id}
-                  type="button"
-                  onClick={() => setActiveConnectionId(connection.id)}
-                >
-                  <Database size={16} />
-                  <span>
-                    <strong>{connection.name}</strong>
-                    <small>{connection.engine}</small>
-                  </span>
-                  <i className={connection.status} />
-                </button>
-              ))}
-            </div>
-          </section>
+            </section>
 
-          <section className="sidebar-section browser-section">
-            <div className="section-heading">
-              <span>
-                {activeMetadata
-                  ? `${activeMetadata.schemas.length} schemas`
-                  : "public"}
-              </span>
-              <button
-                className="mini-button"
-                type="button"
-                title="Schema designer"
-                aria-label="Schema designer"
-                onClick={openBlankSchemaDesigner}
-              >
-                <Plus size={14} />
-              </button>
-              <button
-                className="mini-button"
-                type="button"
-                title="ER diagram"
-                aria-label="ER diagram"
-                disabled={!hasDiagram(activeMetadata)}
-                onClick={() => setDiagramOpen(true)}
-              >
-                <Share2 size={14} />
-              </button>
-              <button
-                className="mini-button"
-                type="button"
-                title="Refresh objects"
-                aria-label="Refresh objects"
-                disabled={!activeConnectionOpen || activeMetadataLoading}
-                onClick={() => refreshObjects()}
-              >
-                <RefreshCw size={14} />
-              </button>
-            </div>
-            <div className="object-browser">
-              {activeMetadataLoading ? (
-                <div className="empty-browser loading" role="status">
-                  Loading objects...
-                </div>
-              ) : activeMetadataError ? (
-                <div className="inline-error browser-error">
-                  <AlertTriangle size={13} />
-                  <span>{activeMetadataError}</span>
-                </div>
-              ) : activeMetadata ? (
-                activeMetadata.schemas.length > 0 ? (
-                  activeMetadata.schemas.map((schema) => (
-                    <details className="schema-tree" key={schema.name} open>
-                      <summary>
-                        <Folder size={14} />
-                        <span>{schema.name}</span>
-                        <small>{schema.objects.length}</small>
-                      </summary>
-                      {schema.objects.map((object) => (
-                        <details
-                          className="object-tree"
-                          key={`${object.schema}.${object.name}`}
-                        >
-                          <summary>
-                            <Table2 size={15} />
-                            <span>{object.name}</span>
-                            <small>
-                              {objectKindLabel(object)} · {object.columns.length}
-                            </small>
-                          </summary>
-                          <div className="metadata-children">
-                            {object.kind === "table" ? (
-                              <button
-                                className="metadata-row"
-                                type="button"
-                                title={`Design ${object.name}`}
-                                onClick={() => openObjectSchemaDesigner(object)}
-                              >
-                                <KeyRound size={14} />
-                                <span>Design table</span>
-                                <small>alter / index / FK</small>
-                              </button>
-                            ) : null}
-                            {object.columns.map((column) => (
-                              <button
-                                className="metadata-row"
-                                key={`${object.schema}.${object.name}.${column.name}`}
-                                type="button"
-                                title={`${column.name}: ${column.dataType}`}
-                              >
-                                <Columns3 size={14} />
-                                <span>{column.name}</span>
-                                <small>
-                                  {column.dataType}
-                                  {column.nullable ? "" : " not null"}
-                                </small>
-                              </button>
-                            ))}
-                            {object.indexes.map((index) => (
-                              <button
-                                className="metadata-row"
-                                key={`${object.schema}.${object.name}.${index.name}`}
-                                type="button"
-                                title={`${index.name}: ${index.columns.join(", ")}`}
-                              >
-                                <KeyRound size={14} />
-                                <span>{index.name}</span>
-                                <small>
-                                  {index.unique ? "unique" : "index"}
-                                  {index.columns.length > 0
-                                    ? ` · ${index.columns.join(", ")}`
-                                    : ""}
-                                </small>
-                              </button>
-                            ))}
-                          </div>
-                        </details>
-                      ))}
-                    </details>
+            <section className="sidebar-section browser-section">
+              <div className="section-heading">
+                <span>
+                  {activeMetadata
+                    ? `${activeMetadata.schemas.length} schemas`
+                    : "public"}
+                </span>
+                <button
+                  className="mini-button"
+                  type="button"
+                  title="Schema designer"
+                  aria-label="Schema designer"
+                  onClick={openBlankSchemaDesigner}
+                >
+                  <Plus size={14} />
+                </button>
+                <button
+                  className="mini-button"
+                  type="button"
+                  title="ER diagram"
+                  aria-label="ER diagram"
+                  disabled={!hasDiagram(activeMetadata)}
+                  onClick={() => setDiagramOpen(true)}
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
+                  className="mini-button"
+                  type="button"
+                  title="Refresh objects"
+                  aria-label="Refresh objects"
+                  disabled={!activeConnectionOpen || activeMetadataLoading}
+                  onClick={() => refreshObjects()}
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+              <div className="object-browser">
+                {activeMetadataLoading ? (
+                  <div className="empty-browser loading" role="status">
+                    Loading objects...
+                  </div>
+                ) : activeMetadataError ? (
+                  <div className="inline-error browser-error">
+                    <AlertTriangle size={13} />
+                    <span>{activeMetadataError}</span>
+                  </div>
+                ) : activeMetadata ? (
+                  activeMetadata.schemas.length > 0 ? (
+                    activeMetadata.schemas.map((schema) => (
+                      <details className="schema-tree" key={schema.name} open>
+                        <summary>
+                          <Folder size={14} />
+                          <span>{schema.name}</span>
+                          <small>{schema.objects.length}</small>
+                        </summary>
+                        {schema.objects.map((object) => (
+                          <details
+                            className="object-tree"
+                            key={`${object.schema}.${object.name}`}
+                          >
+                            <summary>
+                              <Table2 size={15} />
+                              <span>{object.name}</span>
+                              <small>
+                                {objectKindLabel(object)} ·{" "}
+                                {object.columns.length}
+                              </small>
+                            </summary>
+                            <div className="metadata-children">
+                              {object.kind === "table" ? (
+                                <button
+                                  className="metadata-row"
+                                  type="button"
+                                  title={`Design ${object.name}`}
+                                  onClick={() =>
+                                    openObjectSchemaDesigner(object)
+                                  }
+                                >
+                                  <KeyRound size={14} />
+                                  <span>Design table</span>
+                                  <small>alter / index / FK</small>
+                                </button>
+                              ) : null}
+                              {object.columns.map((column) => (
+                                <button
+                                  className="metadata-row"
+                                  key={`${object.schema}.${object.name}.${column.name}`}
+                                  type="button"
+                                  title={`${column.name}: ${column.dataType}`}
+                                >
+                                  <Columns3 size={14} />
+                                  <span>{column.name}</span>
+                                  <small>
+                                    {column.dataType}
+                                    {column.nullable ? "" : " not null"}
+                                  </small>
+                                </button>
+                              ))}
+                              {object.indexes.map((index) => (
+                                <button
+                                  className="metadata-row"
+                                  key={`${object.schema}.${object.name}.${index.name}`}
+                                  type="button"
+                                  title={`${index.name}: ${index.columns.join(", ")}`}
+                                >
+                                  <KeyRound size={14} />
+                                  <span>{index.name}</span>
+                                  <small>
+                                    {index.unique ? "unique" : "index"}
+                                    {index.columns.length > 0
+                                      ? ` · ${index.columns.join(", ")}`
+                                      : ""}
+                                  </small>
+                                </button>
+                              ))}
+                            </div>
+                          </details>
+                        ))}
+                      </details>
+                    ))
+                  ) : (
+                    <div className="empty-browser">No objects found</div>
+                  )
+                ) : activeConnection.objects.length > 0 ? (
+                  activeConnection.objects.map((object) => (
+                    <button
+                      className="object-row"
+                      key={object.name}
+                      type="button"
+                    >
+                      {object.kind === "procedure" ? (
+                        <TerminalSquare size={15} />
+                      ) : (
+                        <Table2 size={15} />
+                      )}
+                      <span>{object.name}</span>
+                      <small>{object.rows ?? object.kind}</small>
+                    </button>
                   ))
                 ) : (
-                  <div className="empty-browser">No objects found</div>
-                )
-              ) : activeConnection.objects.length > 0 ? (
-                activeConnection.objects.map((object) => (
-                  <button className="object-row" key={object.name} type="button">
-                    {object.kind === "procedure" ? (
-                      <TerminalSquare size={15} />
-                    ) : (
-                      <Table2 size={15} />
-                    )}
-                    <span>{object.name}</span>
-                    <small>{object.rows ?? object.kind}</small>
-                  </button>
-                ))
-              ) : (
-                <div className="empty-browser">No objects loaded</div>
-              )}
-            </div>
-          </section>
-          <div
-            className="panel-resizer sidebar-resizer"
-            role="separator"
-            aria-label="Resize sidebar"
-            aria-orientation="vertical"
-            tabIndex={0}
-            onPointerDown={(event) => beginPanelResize("sidebar", event)}
-            onKeyDown={(event) => onPanelResizeKey("sidebar", event)}
-          />
-        </aside>
+                  <div className="empty-browser">No objects loaded</div>
+                )}
+              </div>
+            </section>
+            <div
+              className="panel-resizer sidebar-resizer"
+              role="separator"
+              aria-label="Resize sidebar"
+              aria-orientation="vertical"
+              tabIndex={0}
+              onPointerDown={(event) => beginPanelResize("sidebar", event)}
+              onKeyDown={(event) => onPanelResizeKey("sidebar", event)}
+            />
+          </aside>
         ) : null}
 
         <section className="main-pane">
@@ -3392,7 +3549,11 @@ function App() {
               <div className="editor-meta">
                 <span>{activeTabLabel}</span>
                 <span>
-                  {running ? "running..." : activeConnectionOpen ? "ready" : "closed"}
+                  {running
+                    ? "running..."
+                    : activeConnectionOpen
+                      ? "ready"
+                      : "closed"}
                 </span>
               </div>
               <div className="editor-shell">
@@ -3426,7 +3587,9 @@ function App() {
                 </div>
                 <div className="completion-list">
                   {activeMetadataLoading ? (
-                    <div className="empty-browser loading">Loading metadata</div>
+                    <div className="empty-browser loading">
+                      Loading metadata
+                    </div>
                   ) : activeMetadataError ? (
                     <div className="empty-browser">
                       <AlertTriangle size={14} />
@@ -3444,7 +3607,9 @@ function App() {
                       </button>
                     ))
                   ) : (
-                    <div className="empty-browser">Connect to load completion metadata</div>
+                    <div className="empty-browser">
+                      Connect to load completion metadata
+                    </div>
                   )}
                 </div>
               </section>
@@ -3460,7 +3625,11 @@ function App() {
                         className={`history-item ${item.status}`}
                         key={item.id}
                         type="button"
-                        title={item.status === "error" && item.error ? item.error : item.sql}
+                        title={
+                          item.status === "error" && item.error
+                            ? item.error
+                            : item.sql
+                        }
                         onClick={() => setQuery(item.sql)}
                       >
                         <strong>{compactSql(item.sql)}</strong>
@@ -3547,7 +3716,9 @@ function App() {
             </aside>
           </div>
 
-          <section className={running ? "results-pane is-running" : "results-pane"}>
+          <section
+            className={running ? "results-pane is-running" : "results-pane"}
+          >
             <div
               className="panel-resizer results-resizer"
               role="separator"
@@ -3560,14 +3731,20 @@ function App() {
             <div className="results-header">
               <div className="results-title">
                 {resultSets.length > 1 ? (
-                  <div className="result-tabs" role="tablist" aria-label="Result sets">
+                  <div
+                    className="result-tabs"
+                    role="tablist"
+                    aria-label="Result sets"
+                  >
                     {resultSets.map((set, index) => (
                       <button
                         key={set.statementIndex}
                         type="button"
                         role="tab"
                         aria-selected={index === activeResultIndex}
-                        className={index === activeResultIndex ? "active" : undefined}
+                        className={
+                          index === activeResultIndex ? "active" : undefined
+                        }
                         title={set.statement}
                         onClick={() => {
                           setActiveResultIndex(index);
@@ -3633,7 +3810,9 @@ function App() {
                 >
                   <ListFilter size={13} />
                   <span>
-                    {activeFilters.length > 0 ? `Filter ${activeFilters.length}` : "Filter"}
+                    {activeFilters.length > 0
+                      ? `Filter ${activeFilters.length}`
+                      : "Filter"}
                   </span>
                 </button>
                 <div className="action-split">
@@ -3667,7 +3846,15 @@ function App() {
                           onClick={() => exportActiveResult(format.id)}
                         >
                           <span>{format.label}</span>
-                          <small>.{buildResultExport({ columns: [], rows: [] }, format.id).extension}</small>
+                          <small>
+                            .
+                            {
+                              buildResultExport(
+                                { columns: [], rows: [] },
+                                format.id,
+                              ).extension
+                            }
+                          </small>
                         </button>
                       ))}
                     </div>
@@ -3708,7 +3895,8 @@ function App() {
                     <button
                       className="text-button"
                       type="button"
-                      disabled={!result}
+                      disabled={!canEditActiveResult()}
+                      title="Requires a single-table result with a visible primary or unique key"
                       onClick={addNewRow}
                     >
                       + Row
@@ -3719,7 +3907,9 @@ function App() {
                       disabled={pendingCount === 0 || committing}
                       onClick={() => void commitEdits()}
                     >
-                      {committing ? "Committing…" : `Commit${pendingCount ? ` (${pendingCount})` : ""}`}
+                      {committing
+                        ? "Committing…"
+                        : `Commit${pendingCount ? ` (${pendingCount})` : ""}`}
                     </button>
                     <button
                       className="text-button"
@@ -3736,8 +3926,12 @@ function App() {
                   <button
                     className="text-button"
                     type="button"
-                    disabled={!result}
-                    onClick={() => setEditMode(true)}
+                    disabled={!canEditActiveResult()}
+                    title="Requires a single-table result with a visible primary or unique key"
+                    onClick={() => {
+                      setCommitError(null);
+                      setEditMode(true);
+                    }}
                   >
                     Edit Data
                   </button>
@@ -3764,7 +3958,11 @@ function App() {
                       ? `${toCount(filteredOutCount)} hidden`
                       : "No active filters"}
                   </span>
-                  <div className="segmented-control" role="group" aria-label="Filter join">
+                  <div
+                    className="segmented-control"
+                    role="group"
+                    aria-label="Filter join"
+                  >
                     <button
                       type="button"
                       className={filterJoin === "and" ? "active" : undefined}
@@ -3850,7 +4048,10 @@ function App() {
                             }
                           >
                             {resultFilterOperators.map((operator) => (
-                              <option key={operator.value} value={operator.value}>
+                              <option
+                                key={operator.value}
+                                value={operator.value}
+                              >
                                 {operator.label}
                               </option>
                             ))}
@@ -3885,196 +4086,53 @@ function App() {
               </div>
             ) : null}
             <div className="result-body">
-            <div
-              className="result-grid"
-              role="table"
-              aria-label="Query result"
-              aria-rowcount={totalRows + 1}
-              aria-colcount={resultColumns.length + (editMode ? 1 : 0)}
-              ref={gridRef}
-              tabIndex={0}
-              onScroll={onGridScroll}
-              onKeyDown={onGridKeyDown}
-              onPaste={onGridPaste}
-              onCopy={onGridCopy}
-            >
               <div
-                className="grid-row header"
-                role="row"
-                style={gridRowStyle}
+                className="result-grid"
+                role="table"
+                aria-label="Query result"
+                aria-rowcount={totalRows + 1}
+                aria-colcount={resultColumns.length + (editMode ? 1 : 0)}
+                ref={gridRef}
+                tabIndex={0}
+                onScroll={onGridScroll}
+                onKeyDown={onGridKeyDown}
+                onPaste={onGridPaste}
+                onCopy={onGridCopy}
               >
-                {editMode ? <span className="grid-gutter" aria-hidden="true" /> : null}
-                {leftColumnPad > 0 ? (
-                  <span className="grid-col-pad" aria-hidden="true" />
-                ) : null}
-                {visibleColumnIndexes.map((colIndex) => {
-                  const column = resultColumns[colIndex];
-                  const sortRule = sortRuleByColumn.get(colIndex);
-                  return (
-                    <span
-                      role="columnheader"
-                      aria-colindex={editMode ? colIndex + 2 : colIndex + 1}
-                      key={`${column}-${colIndex}`}
-                      className={`sortable${sortRule ? " sorted" : ""}`}
-                      title="Click to sort. Shift-click to add a sort key."
-                      onClick={(event) => toggleSort(colIndex, event.shiftKey)}
-                    >
-                      <b className="column-label">{column}</b>
-                      {sortRule ? (
-                        <em className="sort-indicator">
-                          {sortRule.direction === "asc" ? "▲" : "▼"}
-                          {sortRules.length > 1 ? (
-                            <small>{sortRule.priority}</small>
-                          ) : null}
-                        </em>
-                      ) : null}
-                    </span>
-                  );
-                })}
-                {rightColumnPad > 0 ? (
-                  <span className="grid-col-pad" aria-hidden="true" />
-                ) : null}
-              </div>
-              {topPad > 0 ? (
                 <div
-                  className="grid-pad"
-                  style={{ height: topPad, minWidth: gridTotalWidth, width: gridTotalWidth }}
-                  aria-hidden="true"
-                />
-              ) : null}
-              {running && totalRows === 0 ? (
-                <div
-                  className="grid-state loading"
-                  role="status"
-                  style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
-                >
-                  Running query...
-                </div>
-              ) : null}
-              {!running && totalRows === 0 ? (
-                <div
-                  className="grid-state"
+                  className="grid-row header"
                   role="row"
-                  style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
-                >
-                  {filtersActive && unfilteredRows.length > 0
-                    ? "No rows match filters"
-                    : "No rows returned"}
-                </div>
-              ) : null}
-              {visibleRows.map((row, visibleRowIndex) => (
-                <div
-                  className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}${selectedRowKey === row.key ? " row-selected" : ""}`}
-                  role="row"
-                  aria-selected={selectedRowKey === row.key}
-                  aria-rowindex={firstVisible + visibleRowIndex + 2}
-                  key={row.key}
-                  tabIndex={0}
                   style={gridRowStyle}
-                  onClick={() => selectGridRow(row.key, true)}
-                  onFocus={() => selectGridRow(row.key)}
                 >
                   {editMode ? (
-                    <button
-                      className="grid-gutter delete-row"
-                      type="button"
-                      title="Delete row"
-                      aria-label="Delete row"
-                      onClick={() => deleteRow(row.origin)}
-                    >
-                      ×
-                    </button>
+                    <span className="grid-gutter" aria-hidden="true" />
                   ) : null}
                   {leftColumnPad > 0 ? (
                     <span className="grid-col-pad" aria-hidden="true" />
                   ) : null}
-                  {visibleColumnIndexes.map((cellIndex) => {
-                    const cell = row.cells[cellIndex] ?? "";
-                    const isEditing =
-                      editingCell?.key === row.key && editingCell.col === cellIndex;
-                    const isEdited =
-                      row.origin.kind === "orig" &&
-                      cellEdits.has(`o${row.origin.index}:${cellIndex}`);
-                    const isSelected =
-                      selectedCell?.key === row.key && selectedCell.col === cellIndex;
-                    const cellClass = [
-                      isEdited ? "cell-edited" : "",
-                      isSelected ? "cell-selected" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ");
+                  {visibleColumnIndexes.map((colIndex) => {
+                    const column = resultColumns[colIndex];
+                    const sortRule = sortRuleByColumn.get(colIndex);
                     return (
                       <span
-                        role="cell"
-                        key={cellIndex}
-                        aria-colindex={editMode ? cellIndex + 2 : cellIndex + 1}
-                        aria-selected={isSelected}
-                        className={cellClass || undefined}
-                        title={cell}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          selectGridCell(row.key, cellIndex);
-                        }}
-                        onDoubleClick={() => {
-                          beginCellEdit(row.key, cellIndex);
-                        }}
-                        onPaste={(event) => {
-                          if (!editMode) {
-                            return;
-                          }
-                          event.preventDefault();
-                          pasteTableAt(
-                            row.origin,
-                            cellIndex,
-                            event.clipboardData.getData("text"),
-                          );
-                        }}
+                        role="columnheader"
+                        aria-colindex={editMode ? colIndex + 2 : colIndex + 1}
+                        key={`${column}-${colIndex}`}
+                        className={`sortable${sortRule ? " sorted" : ""}`}
+                        title="Click to sort. Shift-click to add a sort key."
+                        onClick={(event) =>
+                          toggleSort(colIndex, event.shiftKey)
+                        }
                       >
-                        {isEditing ? (
-                          <div className="cell-editor">
-                            <input
-                              className="cell-input"
-                              autoFocus
-                              defaultValue={editingCell?.seed ?? cell}
-                              onBlur={(event) => {
-                                setCellValue(row.origin, cellIndex, event.target.value);
-                                setEditingCell(null);
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  setCellValue(
-                                    row.origin,
-                                    cellIndex,
-                                    event.currentTarget.value,
-                                  );
-                                  setEditingCell(null);
-                                } else if (event.key === "Escape") {
-                                  setEditingCell(null);
-                                } else if (
-                                  event.key === "Backspace" &&
-                                  (event.ctrlKey || event.metaKey)
-                                ) {
-                                  event.preventDefault();
-                                  setCellValue(row.origin, cellIndex, null);
-                                  setEditingCell(null);
-                                }
-                              }}
-                            />
-                            <button
-                              type="button"
-                              title="Set NULL"
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => {
-                                setCellValue(row.origin, cellIndex, null);
-                                setEditingCell(null);
-                              }}
-                            >
-                              NULL
-                            </button>
-                          </div>
-                        ) : (
-                          cell
-                        )}
+                        <b className="column-label">{column}</b>
+                        {sortRule ? (
+                          <em className="sort-indicator">
+                            {sortRule.direction === "asc" ? "▲" : "▼"}
+                            {sortRules.length > 1 ? (
+                              <small>{sortRule.priority}</small>
+                            ) : null}
+                          </em>
+                        ) : null}
                       </span>
                     );
                   })}
@@ -4082,30 +4140,189 @@ function App() {
                     <span className="grid-col-pad" aria-hidden="true" />
                   ) : null}
                 </div>
-              ))}
-              {bottomPad > 0 ? (
-                <div
-                  className="grid-pad"
-                  style={{
-                    height: bottomPad,
-                    minWidth: gridTotalWidth,
-                    width: gridTotalWidth,
-                  }}
-                  aria-hidden="true"
+                {topPad > 0 ? (
+                  <div
+                    className="grid-pad"
+                    style={{
+                      height: topPad,
+                      minWidth: gridTotalWidth,
+                      width: gridTotalWidth,
+                    }}
+                    aria-hidden="true"
+                  />
+                ) : null}
+                {running && totalRows === 0 ? (
+                  <div
+                    className="grid-state loading"
+                    role="status"
+                    style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
+                  >
+                    Running query...
+                  </div>
+                ) : null}
+                {!running && totalRows === 0 ? (
+                  <div
+                    className="grid-state"
+                    role="row"
+                    style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
+                  >
+                    {filtersActive && unfilteredRowCount > 0
+                      ? "No rows match filters"
+                      : "No rows returned"}
+                  </div>
+                ) : null}
+                {visibleRows.map((row, visibleRowIndex) => (
+                  <div
+                    className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}${selectedRowKey === row.key ? " row-selected" : ""}`}
+                    role="row"
+                    aria-selected={selectedRowKey === row.key}
+                    aria-rowindex={firstVisible + visibleRowIndex + 2}
+                    key={row.key}
+                    tabIndex={0}
+                    style={gridRowStyle}
+                    onClick={() => selectGridRow(row.key, true)}
+                    onFocus={() => selectGridRow(row.key)}
+                  >
+                    {editMode ? (
+                      <button
+                        className="grid-gutter delete-row"
+                        type="button"
+                        title="Delete row"
+                        aria-label="Delete row"
+                        onClick={() => deleteRow(row.origin)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                    {leftColumnPad > 0 ? (
+                      <span className="grid-col-pad" aria-hidden="true" />
+                    ) : null}
+                    {visibleColumnIndexes.map((cellIndex) => {
+                      const cell = row.cells[cellIndex] ?? "";
+                      const isEditing =
+                        editingCell?.key === row.key &&
+                        editingCell.col === cellIndex;
+                      const isEdited =
+                        row.origin.kind === "orig" &&
+                        cellEdits.has(`o${row.origin.index}:${cellIndex}`);
+                      const isSelected =
+                        selectedCell?.key === row.key &&
+                        selectedCell.col === cellIndex;
+                      const cellClass = [
+                        isEdited ? "cell-edited" : "",
+                        isSelected ? "cell-selected" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
+                      return (
+                        <span
+                          role="cell"
+                          key={cellIndex}
+                          aria-colindex={
+                            editMode ? cellIndex + 2 : cellIndex + 1
+                          }
+                          aria-selected={isSelected}
+                          className={cellClass || undefined}
+                          title={cell}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            selectGridCell(row.key, cellIndex);
+                          }}
+                          onDoubleClick={() => {
+                            beginCellEdit(row.key, cellIndex);
+                          }}
+                          onPaste={(event) => {
+                            if (!editMode) {
+                              return;
+                            }
+                            event.preventDefault();
+                            pasteTableAt(
+                              row.origin,
+                              cellIndex,
+                              event.clipboardData.getData("text"),
+                            );
+                          }}
+                        >
+                          {isEditing ? (
+                            <div className="cell-editor">
+                              <input
+                                className="cell-input"
+                                autoFocus
+                                defaultValue={editingCell?.seed ?? cell}
+                                onBlur={(event) => {
+                                  setCellValue(
+                                    row.origin,
+                                    cellIndex,
+                                    event.target.value,
+                                  );
+                                  setEditingCell(null);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    setCellValue(
+                                      row.origin,
+                                      cellIndex,
+                                      event.currentTarget.value,
+                                    );
+                                    setEditingCell(null);
+                                  } else if (event.key === "Escape") {
+                                    setEditingCell(null);
+                                  } else if (
+                                    event.key === "Backspace" &&
+                                    (event.ctrlKey || event.metaKey)
+                                  ) {
+                                    event.preventDefault();
+                                    setCellValue(row.origin, cellIndex, null);
+                                    setEditingCell(null);
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                title="Set NULL"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                  setCellValue(row.origin, cellIndex, null);
+                                  setEditingCell(null);
+                                }}
+                              >
+                                NULL
+                              </button>
+                            </div>
+                          ) : (
+                            cell
+                          )}
+                        </span>
+                      );
+                    })}
+                    {rightColumnPad > 0 ? (
+                      <span className="grid-col-pad" aria-hidden="true" />
+                    ) : null}
+                  </div>
+                ))}
+                {bottomPad > 0 ? (
+                  <div
+                    className="grid-pad"
+                    style={{
+                      height: bottomPad,
+                      minWidth: gridTotalWidth,
+                      width: gridTotalWidth,
+                    }}
+                    aria-hidden="true"
+                  />
+                ) : null}
+              </div>
+              {selectedRowValues ? (
+                <RowDetailSidebar
+                  columns={resultColumns}
+                  values={selectedRowValues}
+                  table={rowDetailTable}
+                  metadata={activeMetadata}
+                  engine={editorEngine}
+                  connectionId={activeConnectionId}
+                  onClose={() => setSelectedRowKey(null)}
                 />
               ) : null}
-            </div>
-            {selectedRowValues ? (
-              <RowDetailSidebar
-                columns={resultColumns}
-                values={selectedRowValues}
-                table={rowDetailTable}
-                metadata={activeMetadata}
-                engine={editorEngine}
-                connectionId={activeConnectionId}
-                onClose={() => setSelectedRowKey(null)}
-              />
-            ) : null}
             </div>
           </section>
         </section>
@@ -4284,14 +4501,18 @@ function App() {
                         onChange={(event) =>
                           setImportPreview((current) =>
                             current
-                              ? { ...current, tableName: event.currentTarget.value }
+                              ? {
+                                  ...current,
+                                  tableName: event.currentTarget.value,
+                                }
                               : current,
                           )
                         }
                       />
                     </label>
                     <span className="dialog-stat">
-                      {toCount(importPreview.rows.length)} / {toCount(importPreview.totalRows)} rows
+                      {toCount(importPreview.rows.length)} /{" "}
+                      {toCount(importPreview.totalRows)} rows
                       {importPreview.truncated ? " capped" : ""}
                     </span>
                   </div>
@@ -4308,7 +4529,9 @@ function App() {
                         {importPreview.rows.slice(0, 8).map((row, rowIndex) => (
                           <tr key={rowIndex}>
                             {importPreview.columns.map((_, columnIndex) => (
-                              <td key={columnIndex}>{formatCell(row[columnIndex])}</td>
+                              <td key={columnIndex}>
+                                {formatCell(row[columnIndex])}
+                              </td>
                             ))}
                           </tr>
                         ))}
@@ -4321,7 +4544,9 @@ function App() {
                   <button
                     className="text-button"
                     type="button"
-                    onClick={() => void navigator.clipboard?.writeText(importSqlPreview)}
+                    onClick={() =>
+                      void navigator.clipboard?.writeText(importSqlPreview)
+                    }
                   >
                     Copy SQL
                   </button>
@@ -4435,7 +4660,8 @@ function App() {
                 </header>
                 <div className="designer-grid column-grid">
                   {schemaDraft.columns.map((column) => {
-                    const locked = schemaDraft.mode === "alter" && column.existing;
+                    const locked =
+                      schemaDraft.mode === "alter" && column.existing;
                     return (
                       <div
                         className={`designer-row${column.existing ? " is-existing" : ""}`}
@@ -4545,7 +4771,8 @@ function App() {
                 </header>
                 <div className="designer-grid index-grid">
                   {schemaDraft.indexes.map((index) => {
-                    const locked = schemaDraft.mode === "alter" && index.existing;
+                    const locked =
+                      schemaDraft.mode === "alter" && index.existing;
                     return (
                       <div
                         className={`designer-row${index.existing ? " is-existing" : ""}`}
@@ -4636,7 +4863,8 @@ function App() {
                 </header>
                 <div className="designer-grid fk-grid">
                   {schemaDraft.foreignKeys.map((foreignKey) => {
-                    const locked = schemaDraft.mode === "alter" && foreignKey.existing;
+                    const locked =
+                      schemaDraft.mode === "alter" && foreignKey.existing;
                     return (
                       <div
                         className={`designer-row${foreignKey.existing ? " is-existing" : ""}`}
@@ -4740,7 +4968,9 @@ function App() {
               <button
                 className="text-button"
                 type="button"
-                onClick={() => void navigator.clipboard?.writeText(schemaSqlPreview)}
+                onClick={() =>
+                  void navigator.clipboard?.writeText(schemaSqlPreview)
+                }
               >
                 Copy SQL
               </button>
@@ -4792,18 +5022,24 @@ function App() {
                 title="Zoom out"
                 aria-label="Zoom out"
                 disabled={!diagramLayout}
-                onClick={() => setDiagramZoom((zoom) => clampNumber(zoom - 0.1, 0.25, 2))}
+                onClick={() =>
+                  setDiagramZoom((zoom) => clampNumber(zoom - 0.1, 0.25, 2))
+                }
               >
                 <ZoomOut size={13} />
               </button>
-              <span className="diagram-zoom">{Math.round(diagramZoom * 100)}%</span>
+              <span className="diagram-zoom">
+                {Math.round(diagramZoom * 100)}%
+              </span>
               <button
                 className="mini-button"
                 type="button"
                 title="Zoom in"
                 aria-label="Zoom in"
                 disabled={!diagramLayout}
-                onClick={() => setDiagramZoom((zoom) => clampNumber(zoom + 0.1, 0.25, 2))}
+                onClick={() =>
+                  setDiagramZoom((zoom) => clampNumber(zoom + 0.1, 0.25, 2))
+                }
               >
                 <ZoomIn size={13} />
               </button>
@@ -4869,7 +5105,9 @@ function App() {
                 <input
                   value={diagramSearch}
                   placeholder="Filter schemas, tables, columns"
-                  onChange={(event) => setDiagramSearch(event.currentTarget.value)}
+                  onChange={(event) =>
+                    setDiagramSearch(event.currentTarget.value)
+                  }
                 />
               </label>
               <div className="diagram-schema-actions">
@@ -4888,7 +5126,11 @@ function App() {
                   None
                 </button>
               </div>
-              <div className="diagram-schema-list" role="group" aria-label="Schemas">
+              <div
+                className="diagram-schema-list"
+                role="group"
+                aria-label="Schemas"
+              >
                 {availableDiagramSchemas.map((schema) => {
                   const active = diagramSchemaNames.includes(schema);
                   return (
@@ -4918,10 +5160,15 @@ function App() {
                   <span>{diagramError}</span>
                 </div>
               ) : null}
-              {!diagramError && (!diagramLayout || diagramLayout.tables.length === 0) ? (
-                <div className="grid-state">No tables match the current diagram filters</div>
+              {!diagramError &&
+              (!diagramLayout || diagramLayout.tables.length === 0) ? (
+                <div className="grid-state">
+                  No tables match the current diagram filters
+                </div>
               ) : null}
-              {!diagramError && diagramLayout && diagramLayout.tables.length > 0 ? (
+              {!diagramError &&
+              diagramLayout &&
+              diagramLayout.tables.length > 0 ? (
                 <div
                   className="diagram-stage"
                   style={{
@@ -4944,9 +5191,7 @@ function App() {
                     />
                   </div>
                 </div>
-              ) : (
-                null
-              )}
+              ) : null}
             </div>
           </div>
         </div>

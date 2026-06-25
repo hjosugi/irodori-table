@@ -39,6 +39,11 @@ export type ResultGridViewModelOptions = {
    * path. The default keeps existing callers materialized unless they opt in.
    */
   windowedRowThreshold?: number;
+  /**
+   * Wide-but-not-tall results can still be expensive to format eagerly. When
+   * rows * estimated columns crosses this threshold, use the same lazy path.
+   */
+  windowedCellThreshold?: number;
 };
 
 export type ResultGridViewModel = {
@@ -205,10 +210,13 @@ export function buildSortRulePriorityMap(
 function canUseWindowedViewModel(
   input: ResultGridViewModelInput,
   activeFilters: readonly ResultFilterRule[],
-  threshold: number,
+  rowThreshold: number,
+  cellThreshold: number,
 ): boolean {
+  const firstRowWidth = input.rows[0]?.length ?? input.newRows[0]?.length ?? 0;
+  const estimatedCellCount = (input.rows.length + input.newRows.length) * firstRowWidth;
   return (
-    input.rows.length > threshold &&
+    (input.rows.length > rowThreshold || estimatedCellCount > cellThreshold) &&
     input.quickFilter.trim().length === 0 &&
     activeFilters.length === 0 &&
     input.sortRules.length === 0
@@ -301,6 +309,7 @@ export function buildResultGridViewModel(
       input,
       activeFilters,
       options.windowedRowThreshold ?? Number.POSITIVE_INFINITY,
+      options.windowedCellThreshold ?? Number.POSITIVE_INFINITY,
     )
   ) {
     return buildWindowedResultGridViewModel(input, activeFilters);
