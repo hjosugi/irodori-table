@@ -1,5 +1,10 @@
 //! Optional local/headless data API runtime.
 
+pub mod audit;
+pub mod auth;
+pub mod guard;
+pub mod model;
+
 pub const CRATE_NAME: &str = "irodori-server";
 
 // Dependency smoke check — confirms the offline crate sources are available before

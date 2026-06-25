@@ -1,4 +1,4 @@
-# Contributing
+f# Contributing
 
 Irodori Table is built as a permissive, clean-room project. Contributions should
 be easy for downstream users to copy, fork, embed, or compete with under
@@ -35,6 +35,8 @@ scripts/check-licenses.sh
 
 The root workspace contains the Rust crate skeletons used by the roadmap. The
 desktop app remains in `apps/desktop`.
+
+For system packages, troubleshooting webview rendering bugs on Wayland/NVIDIA, and debugging procedures on Linux (particularly Arch Linux or CachyOS), please refer to [docs/linux-development.md](docs/linux-development.md).
 
 ```sh
 cargo build

@@ -3065,6 +3065,7 @@ name = "irodori-server"
 version = "0.2.5"
 dependencies = [
  "bytes",
+ "futures",
  "http-body-util",
  "hyper",
  "hyper-util",
