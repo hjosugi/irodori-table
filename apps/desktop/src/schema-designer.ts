@@ -122,54 +122,74 @@ export function splitIdentifierList(value: string) {
 }
 
 function buildCreateSql(draft: SchemaDesignerDraft, table: string) {
-  const columns = draft.columns
-    .filter((column) => column.name.trim() !== "")
+  const columnDefinitions = draft.columns
+    .filter(hasColumnName)
     .map((column) => `  ${columnDefinition(column)}`);
-  const primaryKeyColumns = draft.columns
-    .filter((column) => column.primaryKey && column.name.trim() !== "")
-    .map((column) => column.name);
-  if (primaryKeyColumns.length > 0) {
-    columns.push(
-      `  PRIMARY KEY (${primaryKeyColumns.map(quoteIdentifier).join(", ")})`,
-    );
-  }
-  draft.foreignKeys
-    .filter((foreignKey) => hasForeignKeyShape(foreignKey))
-    .forEach((foreignKey) => {
-      columns.push(`  ${foreignKeyConstraint(draft.table, foreignKey)}`);
-    });
-
-  const statements = [`CREATE TABLE ${table} (\n${columns.join(",\n")}\n);`];
-  draft.indexes
-    .filter((index) => hasIndexShape(index))
-    .forEach((index) => statements.push(createIndexStatement(table, draft.table, index)));
+  const tableConstraints = [
+    primaryKeyConstraint(draft.columns),
+    ...draft.foreignKeys
+      .filter(hasForeignKeyShape)
+      .map((foreignKey) => foreignKeyConstraint(draft.table, foreignKey)),
+  ]
+    .filter((constraint): constraint is string => constraint !== "")
+    .map((constraint) => `  ${constraint}`);
+  const createTableStatement = `CREATE TABLE ${table} (\n${[
+    ...columnDefinitions,
+    ...tableConstraints,
+  ].join(",\n")}\n);`;
+  const statements = [
+    createTableStatement,
+    ...draft.indexes
+      .filter(hasIndexShape)
+      .map((index) => createIndexStatement(table, draft.table, index)),
+  ];
   return `${statements.join("\n\n")}\n`;
 }
 
 function buildAlterSql(draft: SchemaDesignerDraft, table: string) {
-  const statements: string[] = [];
-  draft.columns
-    .filter((column) => !column.existing && column.name.trim() !== "")
-    .forEach((column) =>
-      statements.push(`ALTER TABLE ${table} ADD COLUMN ${columnDefinition(column)};`),
-    );
-  draft.indexes
-    .filter((index) => !index.existing && hasIndexShape(index))
-    .forEach((index) => statements.push(createIndexStatement(table, draft.table, index)));
-  draft.foreignKeys
-    .filter((foreignKey) => !foreignKey.existing && hasForeignKeyShape(foreignKey))
-    .forEach((foreignKey) =>
-      statements.push(
-        `ALTER TABLE ${table} ADD CONSTRAINT ${quoteIdentifier(
-          foreignKey.name || defaultForeignKeyName(draft.table, splitIdentifierList(foreignKey.columns)),
-        )} ${foreignKeyReference(foreignKey)};`,
-      ),
-    );
+  const statements = [
+    ...draft.columns
+      .filter((column) => !column.existing && hasColumnName(column))
+      .map((column) => addColumnStatement(table, column)),
+    ...draft.indexes
+      .filter((index) => !index.existing && hasIndexShape(index))
+      .map((index) => createIndexStatement(table, draft.table, index)),
+    ...draft.foreignKeys
+      .filter((foreignKey) => !foreignKey.existing && hasForeignKeyShape(foreignKey))
+      .map((foreignKey) => addForeignKeyStatement(table, draft.table, foreignKey)),
+  ];
 
   if (statements.length === 0) {
     return "-- Add a new column, index, or foreign key to generate ALTER SQL.\n";
   }
   return `${statements.join("\n\n")}\n`;
+}
+
+function hasColumnName(column: SchemaColumnDraft) {
+  return column.name.trim() !== "";
+}
+
+function addColumnStatement(table: string, column: SchemaColumnDraft) {
+  return `ALTER TABLE ${table} ADD COLUMN ${columnDefinition(column)};`;
+}
+
+function addForeignKeyStatement(
+  table: string,
+  tableName: string,
+  foreignKey: SchemaForeignKeyDraft,
+) {
+  return `ALTER TABLE ${table} ADD CONSTRAINT ${quoteIdentifier(
+    foreignKey.name || defaultForeignKeyName(tableName, splitIdentifierList(foreignKey.columns)),
+  )} ${foreignKeyReference(foreignKey)};`;
+}
+
+function primaryKeyConstraint(columns: SchemaColumnDraft[]) {
+  const primaryKeyColumns = columns
+    .filter((column) => column.primaryKey && hasColumnName(column))
+    .map((column) => column.name);
+  return primaryKeyColumns.length > 0
+    ? `PRIMARY KEY (${primaryKeyColumns.map(quoteIdentifier).join(", ")})`
+    : "";
 }
 
 function columnDefinition(column: SchemaColumnDraft) {

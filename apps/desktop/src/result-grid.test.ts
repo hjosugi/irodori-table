@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyResultFilters,
   applyResultSort,
+  calculateResultGridVirtualRowWindow,
   cycleResultSortRules,
   type ResultGridRowLike,
 } from "./result-grid";
@@ -105,5 +106,52 @@ describe("result grid model", () => {
         "and",
       ),
     ).toHaveLength(0);
+  });
+
+  it("calculates the virtual row window and spacer heights", () => {
+    expect(
+      calculateResultGridVirtualRowWindow({
+        rowCount: 1_000,
+        scrollTop: 270,
+        viewportHeight: 135,
+        rowHeight: 27,
+        overscan: 2,
+      }),
+    ).toEqual({
+      firstRowIndex: 8,
+      lastRowIndex: 17,
+      renderedRowCount: 9,
+      maxRenderedRowCount: 9,
+      topPadPx: 216,
+      bottomPadPx: 26_541,
+    });
+  });
+
+  it("bounds virtual row windows at empty and short results", () => {
+    expect(
+      calculateResultGridVirtualRowWindow({
+        rowCount: 0,
+        scrollTop: 500,
+        viewportHeight: 135,
+        rowHeight: 27,
+        overscan: 2,
+      }),
+    ).toMatchObject({
+      firstRowIndex: 0,
+      lastRowIndex: 0,
+      renderedRowCount: 0,
+      topPadPx: 0,
+      bottomPadPx: 0,
+    });
+
+    expect(
+      calculateResultGridVirtualRowWindow({
+        rowCount: 4,
+        scrollTop: 0,
+        viewportHeight: 270,
+        rowHeight: 27,
+        overscan: 8,
+      }).renderedRowCount,
+    ).toBe(4);
   });
 });

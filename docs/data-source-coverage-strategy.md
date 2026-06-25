@@ -20,7 +20,7 @@ Each adapter declares:
 - explain/profile support;
 - import/export capabilities.
 
-The UI should keep one familiar workbench while changing the specialized panes per source type. Snowsight-style parity gaps must be designed as shared product capabilities, not as desktop-only widgets: schema-aware autocomplete, optional Copilot-style inline help, explain/query profile, advanced filters, inline editing, and charts/dashboards need reusable contracts that desktop, local API, and future hosts can share.
+The UI should keep one familiar workbench while changing the specialized panes per source type. Snowsight-style parity gaps must be designed as shared product capabilities, not as desktop-only widgets: schema-aware autocomplete, optional Copilot-style inline help/MCP, explain/query profile, advanced filters, inline editing, query-result graph views, and charts/dashboards need reusable contracts that desktop, local API, and future hosts can share.
 
 ## Coverage Tiers
 
@@ -36,13 +36,9 @@ These prove connection management, editor execution, object browser, result grid
 - MySQL/MariaDB
 - SQL Server
 - Oracle Database
-- YugabyteDB YSQL
-- CockroachDB
 - DuckDB
-- Redis
-- MongoDB
 
-YugabyteDB should start through its PostgreSQL-compatible YSQL surface, then add distributed-database affordances such as tablets, regions, follower reads, query diagnostics, xCluster, and node/session visibility where public APIs allow it.
+This tier stays focused on daily-driver relational workflows and enterprise SQL coverage. DuckDB is included early because it doubles as a local analytics engine and lakehouse execution option. Wire-compatible or partially landed adapters can exist before this tier is complete, but first-class source UX remains tracked by the backlog ticket for each source.
 
 Oracle is a roadmap non-negotiable, so its connection story must be as easy as the rest. The target is a **thin driver**: a pure-Rust implementation of the Oracle Net/TNS protocol that needs no Oracle Instant Client — the same approach that makes A5:SQL Mk-2's "direct connection" mode (and the JDBC Thin / python-oracledb thin / node-oracledb thin drivers) client-free. The user supplies a connection descriptor (host/port/service), not a `tnsnames.ora` plus a client install.
 
@@ -54,6 +50,8 @@ Oracle is a roadmap non-negotiable, so its connection story must be as easy as t
 
 - InfluxDB and other time-series engines
 - Neo4j and graph databases
+- YugabyteDB YSQL
+- CockroachDB
 - Cassandra/ScyllaDB and wide-column stores
 - ClickHouse
 - BigQuery
@@ -72,6 +70,12 @@ Oracle is a roadmap non-negotiable, so its connection story must be as easy as t
 - TimescaleDB
 - ArangoDB
 - Memgraph
+- Redis
+- MongoDB
+
+YugabyteDB should start through its PostgreSQL-compatible YSQL surface, then add distributed-database affordances such as tablets, regions, follower reads, query diagnostics, xCluster, and node/session visibility where public APIs allow it.
+
+MongoDB, Redis, Cassandra, CockroachDB, ClickHouse, BigQuery, Snowflake, and wire-compatible engines may have landed adapter pieces before the full source experience is done. Treat those as implementation progress snapshots, not completion of native browsing, editing, completion, explain/profile, visualization, or cross-platform contracts.
 
 ### Priority Within P2: Lakehouse And Cloud Warehouse Auth
 
@@ -81,16 +85,16 @@ Oracle is a roadmap non-negotiable, so its connection story must be as easy as t
 - Apache Hive stays in scope mainly as a catalog/metastore source for Iceberg and legacy warehouses.
 - Elasticsearch/OpenSearch are the first search sources; study Kibana Discover and Dev Tools console for query-and-browse expectations (behavior only — Kibana is source-available under Elastic License 2.0 / SSPL / AGPL).
 
-### Later: Specialized/Managed And Visual Heavy Features
+### Shared Visual Model, Heavy Consoles Later
 
-- Cross-platform chart/visualization definition model and BI-style dashboards
-  (P2 / Phase 6; not implemented)
-- Advanced ERD analysis/authoring beyond the current schema ERD baseline, plus
-  graph exploration beyond query-result visualization
-- long-running monitoring consoles
-- admin dashboards for every distributed engine
+- P1 shared query-result graph, chart, worksheet visualization, and dashboard definition model (open; not implemented). Plan the serializable model/API early enough to shape result frames, filters, saved queries, exports, and extension visualizers across desktop, local API, and future hosts.
+- Advanced ERD analysis/authoring beyond the current schema ERD baseline.
+- Full graph exploration workspace beyond query-result graph visualization.
+- BI-dashboard polish beyond the shared result-to-visualization model.
+- Long-running monitoring consoles.
+- Admin dashboards for every distributed engine.
 
-These are valuable, but they should not delay the editor, completion, result handling, connection, proxy, and extension foundations. The dashboard/chart data model should still be planned early enough that filters, result frames, saved queries, and extension visualizers do not become desktop-only.
+These are valuable, but they should not delay the editor, completion, result handling, connection, proxy, source-adapter, and extension foundations. The visual/dashboard model is early product architecture; heavy managed/admin console coverage is later product depth.
 
 ## Source-Type UI Requirements
 

@@ -10,6 +10,7 @@ Layering rule:
 
 1. Deterministic completion is the core editor contract. It runs locally, works offline, uses structured metadata, and must be good enough before any AI path matters.
 2. Optional AI is an overlay. It can explain, draft, repair, or propose text/diffs, but it is off by default, permission-scoped, and must never replace or block deterministic completion.
+3. ML infrastructure is required even though user-facing AI is optional. Ranking experiments, provider/model evaluation, local dataset preparation, and quality regression checks must run through the same background job and privacy model as huge index builds and other batch work.
 
 ## Deterministic Completion First
 
@@ -42,6 +43,18 @@ Quality bars:
 - Suggestions must be cancellable, fast, and stable while metadata refreshes in the background.
 - Completion must work offline and without AI.
 - Completion must never leak result data or secrets to an external provider.
+- Large metadata/search indexes must build incrementally in background jobs with progress, cancellation, checkpoint/resume, bounded memory, and measurable throughput.
+
+## ML And Batch Requirements
+
+ML is a product-quality requirement for ranking, evaluation, and optional assistant
+quality, but it must not turn the editor into a network-dependent product.
+
+- Dataset generation uses only permitted local artifacts: dialect facts, source snapshots, schema metadata, query history, selected editor context, execution errors, and opt-in result samples.
+- Evaluation runs are versioned jobs with reproducible inputs, model/provider metadata, quality metrics, latency/cost metrics, and artifact hashes.
+- Huge index builds, embedding/vector indexes, metadata indexes, and source-search indexes are cancellable, checkpointed, and disk-backed where needed.
+- Batch work uses the shared job model so desktop, local API, and future hosts can inspect progress, cancel work, resume where safe, and collect logs/artifacts consistently.
+- External provider calls are forbidden unless workspace policy explicitly permits the specific data classes used by that run.
 
 ## Optional AI Layer
 

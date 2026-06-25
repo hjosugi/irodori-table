@@ -36,6 +36,23 @@ export type ResultGridRowLike = {
   cells: readonly string[];
 };
 
+export type ResultGridVirtualRowWindowInput = {
+  rowCount: number;
+  scrollTop: number;
+  viewportHeight: number;
+  rowHeight: number;
+  overscan: number;
+};
+
+export type ResultGridVirtualRowWindow = {
+  firstRowIndex: number;
+  lastRowIndex: number;
+  renderedRowCount: number;
+  maxRenderedRowCount: number;
+  topPadPx: number;
+  bottomPadPx: number;
+};
+
 export const resultFilterOperators: Array<{
   value: ResultFilterOperator;
   label: string;
@@ -77,6 +94,45 @@ export function isResultFilterRuleActive(rule: ResultFilterRule) {
 
 export function activeResultFilters(filters: readonly ResultFilterRule[]) {
   return filters.filter(isResultFilterRuleActive);
+}
+
+export function calculateResultGridVirtualRowWindow({
+  rowCount,
+  scrollTop,
+  viewportHeight,
+  rowHeight,
+  overscan,
+}: ResultGridVirtualRowWindowInput): ResultGridVirtualRowWindow {
+  if (!Number.isFinite(rowHeight) || rowHeight <= 0) {
+    throw new Error("rowHeight must be a positive finite number");
+  }
+  const boundedRowCount = Math.max(0, Math.floor(rowCount));
+  const boundedScrollTop = Math.max(0, scrollTop);
+  const boundedViewportHeight = Math.max(0, viewportHeight);
+  const boundedOverscan = Math.max(0, Math.floor(overscan));
+  const firstRowIndex = Math.min(
+    boundedRowCount,
+    Math.max(
+      0,
+      Math.floor(boundedScrollTop / rowHeight) - boundedOverscan,
+    ),
+  );
+  const maxRenderedRowCount =
+    Math.ceil(boundedViewportHeight / rowHeight) + boundedOverscan * 2;
+  const lastRowIndex = Math.min(
+    boundedRowCount,
+    firstRowIndex + maxRenderedRowCount,
+  );
+  const renderedRowCount = Math.max(0, lastRowIndex - firstRowIndex);
+
+  return {
+    firstRowIndex,
+    lastRowIndex,
+    renderedRowCount,
+    maxRenderedRowCount,
+    topPadPx: firstRowIndex * rowHeight,
+    bottomPadPx: Math.max(0, (boundedRowCount - lastRowIndex) * rowHeight),
+  };
 }
 
 // Sort comparator for grid cells: numeric when both sides parse as finite

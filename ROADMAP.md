@@ -19,6 +19,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - VS Code-compatible theme ingestion where possible, with an internal normalized theme model.
 - GPU-aware rendering for hot paths such as editor text, result grids, scrolling, selection, and pane redraws, with a reliable CPU/software fallback.
 - Bounded-memory result handling: stream rows (never buffer whole result sets), cap pages by default, and offer optional disk offload so huge results never exhaust RAM the way some clients do. Add automatic parallelism (chunked fetch, parallel introspection/export) for large workloads.
+- Long-running batch work is first-class: huge local index builds, ML dataset/evaluation runs, knowledge refreshes, imports/exports, bulk edits, and source scans run through cancellable, checkpointed jobs with progress, logs, resource limits, and headless/API access.
 - Extension development is first-class: documented manifest, typed APIs, local dev mode, capability-scoped permissions, and `MIT OR 0BSD` official templates.
 - Current product research is tracked continuously so Irodori learns from highly rated clients without cloning their protected expression.
 - A local SQLite knowledge base stores official DB specs, release notes, product research, AI integration notes, and implementation facts for future features and bug fixes.
@@ -63,6 +64,8 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   - `irodori-completion`: parser-aware deterministic completion, ranking, snippets, signature help, and optional provider hooks.
   - `irodori-ai`: opt-in AI provider abstraction, local model support, audit log, redaction, and MCP bridge.
   - `irodori-knowledge`: local SQLite-backed source snapshots, extracted facts, implementation notes, and search over DB/client specs.
+  - `irodori-jobs`: long-running job runtime for large index construction, ML/eval pipelines, knowledge refresh, imports/exports, bulk edits, and other batch work with cancellation, checkpoints, progress, and resource budgets.
+  - `irodori-ml`: local-first ML dataset preparation, evaluation, ranking experiments, and provider/model benchmarking; user data never leaves the machine unless an explicit workspace policy allows that class of data.
   - `irodori-io`: shared export/import encoders — CSV/TSV (header toggle, delimiter/quote control), SQL INSERT/UPSERT, JSON/NDJSON, Avro, Parquet — plus dump/restore orchestration.
   - `irodori-server`: optional headless/local HTTP API exposing read and safe-write data operations over the same adapter, proxy, and security model (study PostgREST and DuckDB httpserver patterns, implement independently).
   - `irodori-i18n`: ja/en message catalogs with a normalized localization model (ICU MessageFormat / Project Fluent style), wired through both Rust and the web UI.

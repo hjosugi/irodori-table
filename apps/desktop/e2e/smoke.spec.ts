@@ -6,7 +6,11 @@ const ignorable = (message: string) => /tauri|invoke|__TAURI/i.test(message);
 
 test("editor shell renders, themes, and formats", async ({ page }) => {
   const pageErrors: string[] = [];
-  page.on("pageerror", (error) => pageErrors.push(String(error)));
+  page.on("pageerror", (error) => {
+    console.error("BROWSER PAGE ERROR:", error);
+    pageErrors.push(String(error));
+  });
+  page.on("console", (msg) => console.log("BROWSER LOG:", msg.text()));
 
   await page.goto("/");
 
@@ -50,7 +54,7 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type("select a, b from t where a = 1");
   await expect(page.locator(".cm-line")).toHaveCount(1);
-  await page.getByRole("button", { name: "Format SQL" }).click();
+  await page.locator(".toolbar").getByRole("button", { name: "Format SQL" }).click();
   expect(await page.locator(".cm-line").count()).toBeGreaterThan(1);
 
   // No unexpected (non-Tauri) uncaught errors.

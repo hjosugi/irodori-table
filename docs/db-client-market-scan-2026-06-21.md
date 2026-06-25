@@ -44,7 +44,7 @@ Sources:
 
 ### Snowsight / Snowflake Workspaces
 
-Use Snowsight and Workspaces as the cloud-warehouse analysis benchmark, not as a claim that Irodori matches Snowflake feature-for-feature. Strong reference signals: workspace-based SQL editing, interactive result statistics and filters, query profile inspection, dashboards/charts from query results, and Snowflake Copilot inline assistance. Irodori gaps to track across platforms: user-facing schema/table/column autocomplete is not product-wired beyond keyword completion, optional Copilot-style inline suggestions are not implemented, charts/dashboards are Phase 6/open, explain/query profile is open P1 work, inline result editing is partial/skeleton, and advanced filters are not implemented beyond current single-column sort.
+Use Snowsight and Workspaces as the cloud-warehouse analysis benchmark, not as a claim that Irodori matches Snowflake feature-for-feature. Strong reference signals: workspace-based SQL editing, interactive result statistics and filters, query profile inspection, dashboards/charts from query results, and Snowflake Copilot inline assistance. Irodori gaps to track across platforms: user-facing schema/table/column autocomplete is not product-wired beyond keyword completion, optional Copilot-style inline suggestions are not implemented, the shared chart/dashboard model is open P1 work, explain/query profile is open P1 work, inline result editing is partial/skeleton, and advanced filters are not implemented beyond current single-column sort.
 
 Sources:
 

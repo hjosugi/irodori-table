@@ -8,27 +8,25 @@ export type ParsedImport = {
   truncated: boolean;
 };
 
+const importFileKindByExtension: Array<{
+  kind: ImportFileKind;
+  extensions: string[];
+}> = [
+  { kind: "csv", extensions: [".csv"] },
+  { kind: "tsv", extensions: [".tsv", ".tab"] },
+  { kind: "json", extensions: [".json"] },
+  { kind: "jsonl", extensions: [".jsonl", ".ndjson"] },
+  { kind: "sql", extensions: [".sql"] },
+  { kind: "excel", extensions: [".xls", ".xlsx"] },
+];
+
 export function detectImportFileKind(fileName: string): ImportFileKind | null {
   const lower = fileName.toLowerCase();
-  if (lower.endsWith(".csv")) {
-    return "csv";
-  }
-  if (lower.endsWith(".tsv") || lower.endsWith(".tab")) {
-    return "tsv";
-  }
-  if (lower.endsWith(".json")) {
-    return "json";
-  }
-  if (lower.endsWith(".jsonl") || lower.endsWith(".ndjson")) {
-    return "jsonl";
-  }
-  if (lower.endsWith(".sql")) {
-    return "sql";
-  }
-  if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
-    return "excel";
-  }
-  return null;
+  return (
+    importFileKindByExtension.find(({ extensions }) =>
+      extensions.some((extension) => lower.endsWith(extension)),
+    )?.kind ?? null
+  );
 }
 
 export function inferImportTableName(fileName: string) {
@@ -45,17 +43,17 @@ export function parseImportText(
   format: ImportTextFormat,
   maxRows = 10000,
 ): ParsedImport {
-  switch (format) {
-    case "csv":
-      return parseDelimitedImport(text, ",", maxRows);
-    case "tsv":
-      return parseDelimitedImport(text, "\t", maxRows);
-    case "json":
-      return parseJsonImport(text, maxRows);
-    case "jsonl":
-      return parseJsonLinesImport(text, maxRows);
-  }
+  return importTextParsers[format](text, maxRows);
 }
+
+type ImportTextParser = (text: string, maxRows: number) => ParsedImport;
+
+const importTextParsers: Record<ImportTextFormat, ImportTextParser> = {
+  csv: (text, maxRows) => parseDelimitedImport(text, ",", maxRows),
+  tsv: (text, maxRows) => parseDelimitedImport(text, "\t", maxRows),
+  json: parseJsonImport,
+  jsonl: parseJsonLinesImport,
+};
 
 export function generateImportSql(
   tableName: string,
@@ -65,31 +63,10 @@ export function generateImportSql(
 ) {
   const table = quoteIdentifier(sanitizeSqlName(tableName || "imported_rows"));
   const cleanedColumns = normalizeColumns(columns);
-  const quotedColumns = cleanedColumns.map(quoteIdentifier);
-  const statements: string[] = [];
-  if (includeCreate) {
-    const types = cleanedColumns.map((_, index) =>
-      inferSqlType(rows.map((row) => row[index])),
-    );
-    statements.push(
-      `CREATE TABLE IF NOT EXISTS ${table} (\n${cleanedColumns
-        .map((column, index) => `  ${quoteIdentifier(column)} ${types[index]}`)
-        .join(",\n")}\n);`,
-    );
-  }
-  if (rows.length > 0) {
-    const values = rows
-      .map(
-        (row) =>
-          `  (${cleanedColumns
-            .map((_, index) => sqlLiteral(row[index] ?? null))
-            .join(", ")})`,
-      )
-      .join(",\n");
-    statements.push(
-      `INSERT INTO ${table} (${quotedColumns.join(", ")}) VALUES\n${values};`,
-    );
-  }
+  const statements = [
+    includeCreate ? createImportTableStatement(table, cleanedColumns, rows) : null,
+    rows.length > 0 ? insertImportRowsStatement(table, cleanedColumns, rows) : null,
+  ].filter(isPresent);
   return `${statements.join("\n\n")}\n`;
 }
 
@@ -109,17 +86,13 @@ function parseDelimitedImport(
 ): ParsedImport {
   const table = parseDelimitedRows(text, delimiter);
   if (table.length === 0) {
-    return { columns: [], rows: [], totalRows: 0, truncated: false };
+    return emptyParsedImport();
   }
-  const columns = table[0].map((column, index) => column || `column_${index + 1}`);
-  const allRows = table.slice(1).filter((row) => row.some((cell) => cell !== ""));
-  const rows = allRows.slice(0, maxRows);
-  return {
-    columns,
-    rows,
-    totalRows: allRows.length,
-    truncated: allRows.length > rows.length,
-  };
+  return parsedImport(
+    delimitedColumns(table[0]),
+    table.slice(1).filter(hasDelimitedContent),
+    maxRows,
+  );
 }
 
 function parseDelimitedRows(text: string, delimiter: string) {
@@ -169,63 +142,41 @@ function parseDelimitedRows(text: string, delimiter: string) {
 }
 
 function parseJsonImport(text: string, maxRows: number): ParsedImport {
-  const value = JSON.parse(text) as unknown;
-  return rowsFromJsonValues(extractJsonRows(value), maxRows);
+  return rowsFromJsonValues(extractJsonRows(parseJsonValue(text)), maxRows);
 }
 
 function parseJsonLinesImport(text: string, maxRows: number): ParsedImport {
-  const values = text
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .filter((line) => line.trim() !== "")
-    .map((line) => JSON.parse(line) as unknown);
-  return rowsFromJsonValues(values, maxRows);
+  return rowsFromJsonValues(jsonLines(text).map(parseJsonValue), maxRows);
 }
 
 function extractJsonRows(value: unknown): unknown[] {
   if (Array.isArray(value)) {
     return value;
   }
-  if (isRecord(value)) {
-    if (Array.isArray(value.rows)) {
-      return value.rows;
-    }
-    if (Array.isArray(value.data)) {
-      return value.data;
-    }
+  if (!isRecord(value)) {
+    return [value];
   }
-  return [value];
+  return firstJsonArrayProperty(value, ["rows", "data"]) ?? [value];
 }
 
 function rowsFromJsonValues(values: unknown[], maxRows: number): ParsedImport {
   const columns = columnsFromJsonValues(values);
-  const allRows = values.map((value) => valueToRow(value, columns));
-  const rows = allRows.slice(0, maxRows);
-  return {
+  return parsedImport(
     columns,
-    rows,
-    totalRows: allRows.length,
-    truncated: allRows.length > rows.length,
-  };
+    values.map((value) => valueToRow(value, columns)),
+    maxRows,
+  );
 }
 
 function columnsFromJsonValues(values: unknown[]) {
-  const columns: string[] = [];
-  let maxArrayLength = 0;
-  values.forEach((value) => {
-    if (isRecord(value)) {
-      Object.keys(value).forEach((key) => {
-        if (!columns.includes(key)) {
-          columns.push(key);
-        }
-      });
-    } else if (Array.isArray(value)) {
-      maxArrayLength = Math.max(maxArrayLength, value.length);
-    }
-  });
-  if (columns.length > 0) {
-    return columns;
+  const recordColumns = unique(values.flatMap(recordKeys));
+  if (recordColumns.length > 0) {
+    return recordColumns;
   }
+  const maxArrayLength = values.reduce(
+    (maxLength, value) => (Array.isArray(value) ? Math.max(maxLength, value.length) : maxLength),
+    0,
+  );
   if (maxArrayLength > 0) {
     return Array.from({ length: maxArrayLength }, (_, index) => `column_${index + 1}`);
   }
@@ -243,13 +194,14 @@ function valueToRow(value: unknown, columns: string[]) {
 }
 
 function normalizeColumns(columns: string[]) {
-  const seen = new Map<string, number>();
-  return columns.map((column, index) => {
-    const base = sanitizeSqlName(String(column || `column_${index + 1}`));
-    const count = seen.get(base.toLowerCase()) ?? 0;
-    seen.set(base.toLowerCase(), count + 1);
-    return count === 0 ? base : `${base}_${count + 1}`;
-  });
+  return columns.reduce(
+    (state, column, index) => {
+      const base = sanitizeSqlName(String(column || `column_${index + 1}`));
+      state.names.push(nextUniqueName(base, state.counts));
+      return state;
+    },
+    { counts: new Map<string, number>(), names: [] as string[] },
+  ).names;
 }
 
 function inferSqlType(values: unknown[]) {
@@ -257,17 +209,90 @@ function inferSqlType(values: unknown[]) {
   if (present.length === 0) {
     return "TEXT";
   }
-  if (present.every(isBooleanLike)) {
-    return "BOOLEAN";
-  }
-  if (present.every(isIntegerLike)) {
-    return "INTEGER";
-  }
-  if (present.every(isNumberLike)) {
-    return "REAL";
-  }
-  return "TEXT";
+  return sqlTypeChecks.find(({ matches }) => present.every(matches))?.type ?? "TEXT";
 }
+
+function createImportTableStatement(table: string, columns: string[], rows: unknown[][]) {
+  const types = columns.map((_, index) => inferSqlType(rows.map((row) => row[index])));
+  const definitions = columns
+    .map((column, index) => `  ${quoteIdentifier(column)} ${types[index]}`)
+    .join(",\n");
+  return `CREATE TABLE IF NOT EXISTS ${table} (\n${definitions}\n);`;
+}
+
+function insertImportRowsStatement(table: string, columns: string[], rows: unknown[][]) {
+  const quotedColumns = columns.map(quoteIdentifier).join(", ");
+  const values = rows.map((row) => `  (${importRowSqlValues(columns, row)})`).join(",\n");
+  return `INSERT INTO ${table} (${quotedColumns}) VALUES\n${values};`;
+}
+
+function importRowSqlValues(columns: string[], row: unknown[]) {
+  return columns.map((_, index) => sqlLiteral(row[index] ?? null)).join(", ");
+}
+
+function emptyParsedImport(): ParsedImport {
+  return { columns: [], rows: [], totalRows: 0, truncated: false };
+}
+
+function parsedImport(columns: string[], allRows: unknown[][], maxRows: number): ParsedImport {
+  const rows = allRows.slice(0, maxRows);
+  return {
+    columns,
+    rows,
+    totalRows: allRows.length,
+    truncated: allRows.length > rows.length,
+  };
+}
+
+function delimitedColumns(columns: string[]) {
+  return columns.map((column, index) => column || `column_${index + 1}`);
+}
+
+function hasDelimitedContent(row: string[]) {
+  return row.some((cell) => cell !== "");
+}
+
+function parseJsonValue(text: string): unknown {
+  return JSON.parse(text) as unknown;
+}
+
+function jsonLines(text: string) {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .filter((line) => line.trim() !== "");
+}
+
+function firstJsonArrayProperty(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+): unknown[] | null {
+  return keys.reduce<unknown[] | null>(
+    (found, key) => found ?? (Array.isArray(value[key]) ? value[key] : null),
+    null,
+  );
+}
+
+function recordKeys(value: unknown) {
+  return isRecord(value) ? Object.keys(value) : [];
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values));
+}
+
+function nextUniqueName(base: string, counts: Map<string, number>) {
+  const key = base.toLowerCase();
+  const count = counts.get(key) ?? 0;
+  counts.set(key, count + 1);
+  return count === 0 ? base : `${base}_${count + 1}`;
+}
+
+const sqlTypeChecks = [
+  { type: "BOOLEAN", matches: isBooleanLike },
+  { type: "INTEGER", matches: isIntegerLike },
+  { type: "REAL", matches: isNumberLike },
+] as const;
 
 function isBooleanLike(value: unknown) {
   if (typeof value === "boolean") {

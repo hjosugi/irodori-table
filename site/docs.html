@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Irodori Table | ドキュメント</title>
+    <meta
+      name="description"
+      content="Irodori Table の公式ドキュメント。インストール、接続、クエリ実行、補完、結果グリッド、拡張 SDK、開発状況をまとめています。"
+    />
+    <meta property="og:title" content="Irodori Table | ドキュメント" />
+    <meta
+      property="og:description"
+      content="Irodori Table の使い方、開発状況、ロードマップを全文検索できる公式ドキュメント。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hjosugi.github.io/irodori-table/docs.html" />
+    <link rel="icon" href="assets/irodori-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へ移動</a>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand-link" href="index.html#top" aria-label="Irodori Table ホーム">
+          <img src="assets/irodori-icon.svg" alt="" width="32" height="32" />
+          <span>Irodori Table</span>
+        </a>
+        <nav class="site-nav" aria-label="主要ナビゲーション">
+          <a href="index.html#features">特長</a>
+          <a href="index.html#sources">対応予定</a>
+          <a href="#search">検索</a>
+          <a href="docs.html" aria-current="page">ドキュメント</a>
+          <a href="https://github.com/hjosugi/irodori-table">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="container page-hero-inner">
+          <div>
+            <p class="eyebrow">Official docs</p>
+            <h1>ドキュメント</h1>
+            <p class="lead">
+              Irodori Table の現在地、起動方法、対応データソース、エディタ、補完、結果グリッド、
+              拡張 SDK の入口です。開発中の機能は status を明記しています。
+            </p>
+          </div>
+          <dl class="hero-facts docs-facts" aria-label="ドキュメント概要">
+            <div>
+              <dt>Status</dt>
+              <dd>Development preview</dd>
+            </div>
+            <div>
+              <dt>Search</dt>
+              <dd>Client-side full text</dd>
+            </div>
+            <div>
+              <dt>Updated</dt>
+              <dd>2026-06-25</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section id="search" class="section search-section">
+        <div class="container search-layout">
+          <div class="section-heading compact">
+            <p class="eyebrow">Full-text search</p>
+            <h2>探す場所から始める。</h2>
+            <p>
+              この検索は `search-data.js` にある公開ドキュメント全文をブラウザ内で照合します。
+              クエリや接続情報は外部に送信されません。
+            </p>
+          </div>
+          <div class="search-panel" data-search>
+            <label class="search-label" for="docs-search">検索語</label>
+            <div class="search-control">
+              <input
+                id="docs-search"
+                name="q"
+                type="search"
+                autocomplete="off"
+                placeholder="例: run current, MongoDB, keybinding, extension"
+                data-search-input
+              />
+              <a class="button secondary" href="#overview">先頭へ</a>
+            </div>
+            <p class="search-status" data-search-status>キーワードを入力してください。</p>
+            <div class="search-results" data-search-results></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section docs-section" id="overview">
+        <div class="container docs-layout">
+          <aside class="docs-sidebar" aria-label="ドキュメント目次">
+            <a href="#overview">概要</a>
+            <a href="#quick-start">Quick start</a>
+            <a href="#connections">接続と対応 DB</a>
+            <a href="#query-editor">クエリエディタ</a>
+            <a href="#completion">補完</a>
+            <a href="#results">結果グリッド</a>
+            <a href="#security">セキュリティ</a>
+            <a href="#extensions">拡張 SDK</a>
+            <a href="#project-docs">設計ドキュメント</a>
+          </aside>
+
+          <article class="docs-article">
+            <section class="doc-section">
+              <p class="eyebrow">Overview</p>
+              <h2>現在の位置づけ</h2>
+              <p>
+                Irodori Table は、軽量なオープンソース DB ワークベンチを目指す開発中プロジェクトです。
+                Rust コア、Tauri デスクトップ、React UI、CodeMirror 6 エディタで構成しています。
+                現時点では安定リリース前の development preview です。
+              </p>
+              <div class="callout">
+                <strong>公開ステータス</strong>
+                <p>
+                  日常利用できる完成版としてではなく、接続エンジン、クエリ実行、結果表示、
+                  補完、拡張基盤を段階的に検証している状態として扱ってください。
+                </p>
+              </div>
+            </section>
+
+            <section class="doc-section" id="quick-start">
+              <p class="eyebrow">Quick start</p>
+              <h2>ローカルで起動する</h2>
+              <p>
+                デスクトップアプリは `apps/desktop` にあります。ブラウザ preview は Tauri API がない場合に
+                mock shell として動きます。実接続やローカル OS 機能は Tauri shell で確認します。
+              </p>
+              <pre class="code-block"><code>cd apps/desktop
+npm install
+npm run dev</code></pre>
+              <p>型生成、TypeScript、Vite build まで確認する場合は次を実行します。</p>
+              <pre class="code-block"><code>cd apps/desktop
+npm run build</code></pre>
+              <p>GitHub Pages の公式サイトだけ確認する場合は、リポジトリ root から次で表示できます。</p>
+              <pre class="code-block"><code>python3 -m http.server 8080 --directory site</code></pre>
+            </section>
+
+            <section class="doc-section" id="connections">
+              <p class="eyebrow">Connections</p>
+              <h2>接続と対応データソース</h2>
+              <p>
+                実装済みの接続層は SQL だけでなく document / key-value / warehouse 系にも広げています。
+                UI と metadata の品質はエンジンごとに差があるため、詳細な検証状況は
+                implementation progress を正とします。
+              </p>
+              <div class="status-list">
+                <span class="status-pill">PostgreSQL</span>
+                <span class="status-pill">MySQL</span>
+                <span class="status-pill">MariaDB</span>
+                <span class="status-pill">SQL Server</span>
+                <span class="status-pill">Oracle</span>
+                <span class="status-pill">SQLite</span>
+                <span class="status-pill">DuckDB</span>
+                <span class="status-pill">MongoDB</span>
+                <span class="status-pill">ClickHouse</span>
+                <span class="status-pill">Snowflake</span>
+                <span class="status-pill">BigQuery</span>
+                <span class="status-pill">Redis</span>
+                <span class="status-pill">Cassandra</span>
+              </div>
+            </section>
+
+            <section class="doc-section" id="query-editor">
+              <p class="eyebrow">Query editor</p>
+              <h2>クエリを書く、実行する</h2>
+              <p>
+                エディタは CodeMirror 6 を使い、エンジンに応じた SQL dialect、Vim mode、format action、
+                comment toggle、Run Current / selection 実行の導線を持ちます。クエリ履歴は接続ごとに残り、
+                実行結果には elapsed time、row count、truncated status が表示されます。
+              </p>
+              <pre class="code-block"><code>select c.id, c.name, sum(o.total) as lifetime_value
+from customers c
+join orders o on o.customer_id = c.id
+where o.created_at &gt;= now() - interval '90 days'
+group by c.id, c.name;</code></pre>
+            </section>
+
+            <section class="doc-section" id="completion">
+              <p class="eyebrow">Completion</p>
+              <h2>軽量な schema-aware completion</h2>
+              <p>
+                補完は外部サービスや AI に依存しません。現在の文、カーソル周辺、ローカル metadata を浅く見て、
+                schema、table、view、column、routine、keyword、alias、FK join snippet を候補にします。
+                巨大なインデックスや重い全体解析ではなく、入力を止めないことを優先しています。
+              </p>
+              <div class="callout">
+                <strong>現在できること</strong>
+                <p>
+                  `schema.` から relation、`alias.` から column、`JOIN` の relation 位置で外部キーに基づく
+                  `table alias on left.col = right.col` 形式の候補を出します。
+                </p>
+              </div>
+            </section>
+
+            <section class="doc-section" id="results">
+              <p class="eyebrow">Results</p>
+              <h2>結果グリッドと export</h2>
+              <p>
+                結果はストリーミングと上限付き取得を前提にしています。デフォルトでは巨大 result set を丸ごと
+                メモリに積まず、truncated flag で上限到達を示します。UI 側は row virtualization で表示行を絞り、
+                CSV export を提供します。
+              </p>
+            </section>
+
+            <section class="doc-section" id="security">
+              <p class="eyebrow">Security</p>
+              <h2>秘密情報と接続経路</h2>
+              <p>
+                パスワードは UI で session-only として扱い、永続化対象から外します。Rust 側には secure-store、
+                redaction、audit log、direct / SSH / SOCKS5 / HTTP CONNECT / multi-hop proxy の設計があります。
+                UI への完全な接続は段階的に進めています。
+              </p>
+            </section>
+
+            <section class="doc-section" id="extensions">
+              <p class="eyebrow">Extensions</p>
+              <h2>拡張 SDK</h2>
+              <p>
+                `irodori.extension.json`、TypeScript SDK、typed API、dev fixture、テーマ、結果ビュー、driver、
+                dialect API を段階的に公開する方針です。公式テンプレートは `MIT OR 0BSD` に揃えます。
+              </p>
+            </section>
+
+            <section class="doc-section" id="project-docs">
+              <p class="eyebrow">Project docs</p>
+              <h2>詳細な設計・進捗</h2>
+              <div class="link-list">
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/ROADMAP.md">
+                  Roadmap
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-progress.md">
+                  Implementation progress
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-backlog.md">
+                  Implementation backlog
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/feature-matrix.md">
+                  Feature matrix
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/completion-and-ai-strategy.md">
+                  Completion and AI strategy
+                </a>
+              </div>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand-link" href="index.html#top">
+          <img src="assets/irodori-icon.svg" alt="" width="28" height="28" />
+          <span>Irodori Table</span>
+        </a>
+        <p>MIT OR 0BSD. Built as an open-source database workbench.</p>
+      </div>
+    </footer>
+    <script src="search-data.js"></script>
+    <script src="search.js"></script>
+  </body>
+</html>

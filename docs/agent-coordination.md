@@ -89,13 +89,18 @@ needs product wiring and tests before it can close any schema-aware autocomplete
   (THEME-001b — converting deep `App.css` hardcoded panels to vars).
 
 ### 2026-06-22 (later 2) — Claude
-- Wired **schema-aware completion** in the CM6 editor: the active connection's
-  `DatabaseMetadata` → CM6 `sql({ schema, defaultSchema })`, so tables and
-  `table.`→columns complete. `tsc` + `vite build` green.
+> Historical implementation note only; for product status, use the 2026-06-25
+> correction above.
+
+- Historical attempt: wired active `DatabaseMetadata` into CM6
+  `sql({ schema, defaultSchema })`, so tables and `table.`->columns were expected
+  to complete in that slice. Product status still requires revalidation through
+  the shared completion contract before calling this schema-aware autocomplete
+  shipped. `tsc` + `vite build` was green for that historical change.
 - **This consumes the introspection you own** (`db_list_objects` → `DatabaseMetadata`).
-  When you enrich per-engine metadata (routines, comments, Mongo nested fields, etc.),
-  editor completion gets better for free — no frontend change needed beyond new kinds.
-  If you add object *kinds* beyond table/view/index, ping me so I map them.
+  If this path is revalidated, richer per-engine metadata (routines, comments,
+  Mongo nested fields, etc.) should improve editor completion through the shared
+  completion contract rather than one-off frontend wiring.
 
 ### 2026-06-22 (later) — Claude
 - **Took in Codex PR #1** (`codex/implement-connect_engine-for-new-databases`):

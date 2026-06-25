@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-Last updated: 2026-06-24 JST.
+Last updated: 2026-06-25 JST.
 
 This is the ticket-level breakdown of `ROADMAP.md`. Each item is sized to be picked
 up and finished on its own, one at a time, with a testable "Done when" line. Work
@@ -17,9 +17,10 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## Legend
 
-- **Priority:** `P0` first usable product · `P1` daily-driver quality · `P2` advanced/polish · `Later` deferred.
+- **Priority:** `P0` first usable product / release blocker · `P1` daily-driver parity and competitive gaps that block daily-driver quality · `P2` broader adapter coverage, non-blocking competitive gaps, advanced workflows, and polish that can follow daily-driver parity · `Later` deferred.
 - **Size:** `S` ≤1 day · `M` a few days · `L` a week+ / needs a spike first.
 - **ID:** `EPIC-NNN`. IDs are stable; do not renumber. Add new work with the next free number.
+- **Priority rule:** `P0`/`P1` tickets should not depend on `P2` implementation tickets. If a parity feature must be reusable by later surfaces, define the shared contract in the `P0`/`P1` ticket and let the `P2` surface consume it later.
 
 ## Epics
 
@@ -45,6 +46,15 @@ top to bottom within an epic unless a dependency says otherwise.
 | ADV | Advanced workflows | Phase 6 |
 | PERF | Performance / GPU | Architecture |
 | QA | Test automation + CI | Architecture |
+
+---
+
+## Parity Guardrails
+
+These are explicit competitive gaps, not closed by nearby core-library work alone.
+
+- **Snowsight:** schema-aware autocomplete is open (`CMPL-002A`); Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); advanced filters are open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
+- **Beekeeper:** no-code schema editor is open (`ADV-003`); import/export parity is open/partial by format (`IO`); Query Magics and AI Shell are open (`AI-005`, `AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization and the 1M-row scroll benchmark are open (`EXEC-004A`, `EXEC-004B`).
 
 ---
 
@@ -125,6 +135,38 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Done when:** a scheduled job (CI cron or local task) runs refresh and reports diffs; failures are visible.
 - **Depends on:** KNOW-003
 - **Size:** M · **Priority:** P2
+
+---
+
+## JOB — Batch Jobs, Huge Indexes, And ML Pipelines
+
+These are product foundations, not later polish. Irodori must support huge local
+index construction, ML/evaluation workloads, knowledge refreshes, imports/exports,
+bulk edits, and source scans without blocking the interactive desktop.
+
+### JOB-001 — Long-running job runtime
+- **Goal:** One cancellable runtime for all large local/background work.
+- **Done when:** jobs have stable IDs, status, progress, cancellation, structured logs, artifacts, errors, retry policy, concurrency limits, CPU/memory/disk budgets, and checkpoint/resume hooks; the desktop can show active/history jobs and the same model is usable by the local API.
+- **Depends on:** FND-006, SHELL-001
+- **Size:** L · **Priority:** P1
+
+### JOB-002 — Huge local index builder
+- **Goal:** Build and refresh large search/metadata indexes without freezing the app.
+- **Done when:** knowledge snapshots, source registries, schema metadata, query history, and implementation notes can be indexed incrementally with chunked ingest, disk-backed state, backpressure, progress, cancellation, and checkpointed resume; a synthetic large-corpus benchmark records throughput and peak memory.
+- **Depends on:** JOB-001, KNOW-002, CMPL-001
+- **Size:** L · **Priority:** P1
+
+### JOB-003 — ML dataset, evaluation, and ranking pipeline
+- **Goal:** Make ML useful for completion/ranking/AI quality while keeping runtime AI optional.
+- **Done when:** permitted local artifacts can produce versioned train/eval datasets; local or provider-backed evaluation runs through the job runtime; reports include quality, latency, cost, privacy inputs used, and reproducible artifact hashes; no query text, schema, result sample, or history leaves the machine unless workspace policy explicitly allows that class of data.
+- **Depends on:** JOB-001, AI-001, AI-002, KNOW-004
+- **Size:** L · **Priority:** P1
+
+### JOB-004 — Batch operation contracts
+- **Goal:** Stop treating imports, exports, refreshes, index builds, ML runs, and bulk edits as unrelated one-off flows.
+- **Done when:** import/export, knowledge refresh, huge index builds, ML/eval runs, and safe bulk edits expose the same job envelope for progress, cancellation, logs, artifact paths, resumability, and headless/API execution; at least two existing workflows are migrated to prove the contract.
+- **Depends on:** JOB-001, IO-001
+- **Size:** L · **Priority:** P1
 
 ---
 
@@ -339,9 +381,9 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### EXEC-005A — Advanced result filters
 - **Goal:** Snowsight-style result exploration without forcing users to rewrite SQL for every slice.
-- **Done when:** users can build multi-column filters with typed predicates, ranges, value lists, null/empty checks, search, and saved filter state; generated server-side/filter-plan SQL is previewable where it incurs database work; the same filter expression model is usable by desktop, local API, and future hosts.
+- **Done when:** users can build multi-column filters with typed predicates, ranges, value lists, null/empty checks, search, and saved filter state; generated server-side/filter-plan SQL is previewable where it incurs database work; the filter expression model is serializable so desktop can use it now and the local API/future hosts can reuse it when those surfaces land.
 - **Status:** Open. Current product behavior should be described as single-column sort only, not advanced filtering.
-- **Depends on:** EXEC-005, API-002
+- **Depends on:** EXEC-005
 - **Size:** M · **Priority:** P1
 
 ### EXEC-006 — Query parameters
@@ -558,9 +600,9 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### CMPL-002A — Cross-platform schema-aware autocomplete
 - **Goal:** Close the Snowsight/TablePlus parity gap without making completion desktop-only.
-- **Done when:** the desktop editor and shared completion service suggest schemas, tables, columns, and qualified `table.column` paths from live metadata; behavior is tested for SQLite/PostgreSQL/MySQL at minimum; the same request/response model can be reused by the local API and future web/native hosts.
+- **Done when:** the desktop editor and shared completion service suggest schemas, tables, columns, and qualified `table.column` paths from live metadata; behavior is tested for SQLite/PostgreSQL/MySQL at minimum; the request/response model is serializable so the local API and future web/native hosts can reuse it when those surfaces land.
 - **Status:** Open. Current product behavior should be documented as keyword autocomplete only until this wiring is verified.
-- **Depends on:** CMPL-001, CMPL-002, EDIT-002, API-001
+- **Depends on:** CMPL-001, CMPL-002, EDIT-002
 - **Size:** M · **Priority:** P0
 
 ### CMPL-003 — Context-aware completion (aliases, CTEs, subqueries)
@@ -716,10 +758,11 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** SRC-001, CONN-003
 - **Size:** L · **Priority:** P2
 
-### SRC-012 — Document/KV/search sources (MongoDB, Redis, Cassandra ✅)
-- **Goal:** MongoDB, Redis, Elasticsearch/OpenSearch, plus Cassandra/Couchbase/DynamoDB/Arango/Memgraph by maturity.
-- **Done when:** native query surface, collection/keyspace/index browser, document viewer/editor with patch preview, and field/operator/stage completion work for the first targets (MongoDB, Redis, Elasticsearch).
+### SRC-012 — Document/KV/search sources 🚧 (MongoDB, Redis, Cassandra landed; more open)
+- **Goal:** MongoDB, Redis, Elasticsearch/OpenSearch, Cassandra/Scylla, plus Couchbase/DynamoDB/Arango/Memgraph by maturity.
+- **Done when:** native query surface, collection/keyspace/index browser, document viewer/editor with patch preview, and field/operator/stage completion work for the first targets (MongoDB, Redis, Elasticsearch, Cassandra/Scylla).
 - **Done (MongoDB, Redis, Cassandra):** mongodb.rs (mongodb driver), redis.rs (redis client with command parser mapping to grid), and cassandra.rs (scylla driver using new lazy DeserializeRow API) implemented and verified via tests.
+- **Remaining:** Elasticsearch/OpenSearch and the broader document/KV set are open; Bigtable/HBase wide-column work is tracked separately in `SRC-014`.
 - **Depends on:** SRC-001
 - **Size:** L · **Priority:** P2
 
@@ -728,9 +771,18 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** SRC-010
 - **Size:** L · **Priority:** Later
 
+### SRC-014 — Google Bigtable / HBase wide-column adapter
+- **Goal:** First-class wide-column source support beyond Cassandra.
+- **Done when:** Bigtable connects via service-account and application-default credentials; instances, clusters, tables, and column families are browsable; bounded row-key range scans and cell-version display stream into the grid; filters are explicit and previewable; the HBase-compatible path is evaluated or split into its own ticket; browse/completion semantics are documented.
+- **Status:** Open. Cassandra/Scylla-driver support landed under `SRC-012`; no Bigtable/HBase adapter is implemented here yet.
+- **Depends on:** SRC-001, EXEC-004A
+- **Size:** L · **Priority:** P2
+
 ---
 
 ## IO — Export/Import + Dump/Restore
+
+**Beekeeper import/export parity status:** open/partial. The export encoder and CSV/TSV import are the P0/P1 foundations; JSON/NDJSON, Avro, Parquet, and dialect dump/restore remain open. Do not describe full import/export parity as implemented until the grid/browser flows are wired across these formats.
 
 ### IO-001 — Export encoder layer
 - **Goal:** Shared, streaming encoders in `irodori-io`.
@@ -837,6 +889,7 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Done when:** the editor recognizes explicit magic commands before execution, shows a preview of the expanded SQL/action, and supports at least schema inspect, explain, export, ERD open, result-to-file, and parameter prompt flows; normal SQL with similar text is never intercepted.
 - **Syntax:** line-leading commands only (`\\describe table`, `\\explain`, `\\export csv`, `\\erd schema.table`, `\\params`) plus a command-palette equivalent for every magic.
 - **Safety:** every magic is parsed locally, audited as a structured action, and either expands to visible SQL or calls an existing scoped command; destructive commands require the same confirmation path as hand-written SQL.
+- **Status:** Open. No Query Magics command layer is implemented.
 - **Test plan:** parser fixtures, command expansion tests per dialect, and editor/command-palette smoke tests.
 - **Depends on:** EXEC-006, IO-001, ADV-004A
 - **Size:** M · **Priority:** P1
@@ -846,6 +899,7 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Done when:** a dockable shell can answer with context from selected SQL, active schema metadata, query errors, and opt-in result samples; it can propose SQL patches but cannot run them without putting SQL in the editor first; local/OpenAI-compatible providers work behind the same provider interface.
 - **Safety:** off by default; workspace policy controls provider, schema sharing, SQL text sharing, and result sample sharing; every payload is visible in an audit panel and redacted before send.
 - **UX:** VS Code-like side panel with chat history scoped to the connection/workspace, "Insert into editor", "Explain plan", "Fix error", and "Generate test query" actions.
+- **Status:** Open. No AI Shell UI/provider flow is implemented.
 - **Test plan:** provider mock tests, redaction/audit tests, no-network default test, and Playwright smoke for shell open/insert workflow.
 - **Depends on:** AI-001, AI-002, EXEC-006, CMPL-002
 - **Size:** L · **Priority:** P1
@@ -864,38 +918,44 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-007
 - **Size:** L · **Priority:** P2
 
-### ADV-003 — Table designer + indexes/constraints UI
+### ADV-003 — No-code schema editor / table designer
+- **Goal:** Close the Beekeeper-style no-code schema editor gap.
 - **Done when:** create/alter tables, indexes, and constraints through a UI that emits reviewable DDL.
+- **Status:** Open. There is no no-code schema editor/table designer yet.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P2
 
-### ADV-004 — ERD + graph views 🚧 (schema ERD/export/layout implemented; graph views open)
-- **Done when:** ERD renders from schema and query-result graph views render; explicitly after core editor/query/browser are excellent.
+### ADV-004 — ERD baseline + graph-view umbrella 🚧 (schema ERD implemented; graph views open)
+- **Done when:** schema ERD renders from metadata; image export, multi-schema representation, and layout quality are tracked in `ADV-004A`-`ADV-004C`; query-result graph views are tracked in `ADV-004D`.
 - **Done (schema ERD SVG renderer):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders a deterministic SVG ERD from the active connection's metadata. `src/erd.ts` builds the pure metadata->model->layout path and still generates copyable Mermaid source for interoperability. The modal groups tables into schema bands, disambiguates duplicate table names with `schema.table`, resolves cross-schema FKs, and provides schema chips, schema/table/column search, zoom/fit controls, SVG/PNG downloads, SVG text copy, and PNG clipboard copy where the platform supports it.
-- **Remaining:** query-result graph views; FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done); visual regression screenshots, PNG pixel/non-empty export smoke, edge-overlap/label-visibility smoke, and a recorded/manual large-schema benchmark.
+- **Status:** Partial. Schema ERD baseline is implemented; graph views and ERD QA hardening are open in the `ADV-004` subitems.
+- **Remaining:** query-result graph views (`ADV-004D`); FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done); visual regression screenshots, PNG pixel/non-empty export smoke, edge-overlap/label-visibility smoke, and a recorded/manual large-schema benchmark.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P1
 
-### ADV-004A — ERD image export ✅
+### ADV-004A — ERD image export 🚧 (feature implemented; export QA open)
 - **Goal:** Make diagrams shareable outside the app.
 - **Done when:** the ERD modal exports SVG and PNG from the currently rendered diagram; exported files include the current theme, schema/table labels, PK/FK markers, and viewport-independent dimensions; copy-to-clipboard supports SVG text and PNG image where the platform allows.
 - **Done:** the ERD modal serializes the rendered SVG with embedded theme styles, downloads SVG, renders PNG through canvas for download, copies SVG text, and copies PNG through the ClipboardItem path where the WebView/browser supports it.
+- **Status:** Partial until required export smoke/pixel checks are in place.
 - **Remaining QA:** focused SVG serialization unit coverage, Playwright export smoke, and pixel/non-empty checks for PNG output.
 - **Depends on:** ADV-004
 - **Size:** S · **Priority:** P1
 
-### ADV-004B — Multi-schema ERD representation ✅
+### ADV-004B — Multi-schema ERD representation 🚧 (feature implemented; dense-schema QA open)
 - **Goal:** Make cross-schema databases readable instead of turning every schema into one flat graph.
 - **Done when:** diagrams can group tables by schema using visible bands/clusters; same-table-name collisions are disambiguated; cross-schema FK edges remain legible; users can filter schemas/tables before rendering; the Mermaid/source export preserves schema qualification.
 - **Done:** schema bands/clusters are generated by the SVG layout; same-name tables are labelled with schema qualification; cross-schema edges are dashed; schema chips and text search filter the diagram before layout; Mermaid export uses schema-qualified safe IDs. Unit coverage exercises duplicate names, cross-schema FKs, schema/search filtering, missing FK targets, and Mermaid qualification.
+- **Status:** Partial until many-schema/dense-edge visual checks are recorded.
 - **Remaining QA:** screenshot/visual checks for many-schema databases and dense cross-schema edge sets.
 - **Depends on:** BROWSE-001, ADV-004
 - **Size:** M · **Priority:** P1
 
-### ADV-004C — ERD layout quality pass ✅
+### ADV-004C — ERD layout quality pass 🚧 (feature implemented; dense-edge benchmark open)
 - **Goal:** Make ERD useful on real schemas, not just demos.
 - **Done when:** a large-schema fixture renders with bounded table overlap, readable labels, zoom/pan/fit controls, schema/table search, and stable relayout after filtering; the layout strategy is documented behind the metadata model.
 - **Done:** the layout strategy moved from Mermaid-rendered output to deterministic schema-stacked SVG cards. Unit tests cover duplicate names, cross-schema FKs, filtering, Mermaid qualification, and a 100-table fixture with table-overlap assertions. The modal has zoom in/out, fit, scroll-based pan, schema filters, and search.
+- **Status:** Partial until visual regression and 100-table / 250-edge benchmark evidence are recorded.
 - **Remaining QA:** visual regression screenshots for small, medium, and wide schemas; edge-overlap/label-visibility smoke checks; and a recorded/manual benchmark against a 100-table / 250-edge seed. Current automated coverage proves 100-table table placement and 99 FK edges, not the full dense-edge visual target.
 - **Depends on:** ADV-004B
 - **Size:** L · **Priority:** P1
@@ -909,9 +969,9 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ### ADV-004E — Charts, worksheet visualizations, and dashboards
 - **Goal:** Cover Snowsight-style visual analysis from query results across platforms.
-- **Done when:** result sets can become charts with explicit x/y/series/type mappings; dashboards can save multiple visual tiles against queries; the visualization spec is serializable so desktop, local API, and future hosts render the same definition; exports include image and data paths.
-- **Status:** Open. No charts, dashboards, or worksheet-style visualizations are implemented; the shared visualization model/API is P1 and must be cross-platform even if richer dashboard polish lands later.
-- **Depends on:** EXEC-002, EXEC-005A, API-002, EXT-004, IO-001
+- **Done when:** result sets can become charts with explicit x/y/series/type mappings; dashboards can save multiple visual tiles against queries; the visualization spec is serializable so desktop can render it now and the local API/future hosts can reuse it when those surfaces land; exports include image and data paths.
+- **Status:** Open. No charts, dashboards, or worksheet-style visualizations are implemented; the shared visualization model is P1 and must be cross-platform even if richer dashboard polish lands later.
+- **Depends on:** EXEC-002, EXEC-005A, EXT-004, IO-001
 - **Size:** L · **Priority:** P1
 
 ### ADV-005 — Plugin API for drivers/themes/formatters/visualizers + registry

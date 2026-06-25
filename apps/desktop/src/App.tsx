@@ -1,9 +1,9 @@
 import {
+  type ClipboardEvent as ReactClipboardEvent,
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type RefObject,
   type UIEvent,
   useEffect,
   useMemo,
@@ -54,8 +54,16 @@ import {
   layoutErdModel,
   toMermaidErd,
   type ErdLayout,
-  type ErdLayoutTable,
 } from "./erd";
+import {
+  downloadBlob,
+  erdFileName,
+  serializeSvgElement,
+  svgMarkupToPngBlob,
+  writePngBlobToClipboard,
+  writeTextToClipboard,
+} from "./erd-export";
+import { ErdSvg, erdSvgStyle } from "./erd-svg";
 import { errorMessage } from "./errors";
 import {
   detectImportFileKind,
@@ -86,9 +94,6 @@ import {
   type ResultExportFormat,
 } from "./result-export";
 import {
-  activeResultFilters,
-  applyResultFilters,
-  applyResultSort,
   cycleResultSortRules,
   resultFilterNeedsValue,
   resultFilterOperators,
@@ -97,6 +102,13 @@ import {
   type ResultFilterRule,
   type ResultSortRule,
 } from "./result-grid";
+import {
+  buildResultGridViewModel,
+  formatResultGridCell as formatCell,
+  resultGridRowKey,
+  type ResultGridDraftCell as GridCellDraft,
+  type ResultGridRowOrigin,
+} from "./result-view-model";
 import {
   blankSchemaDraft,
   buildSchemaSql,
@@ -143,7 +155,6 @@ import {
   cssVariables,
   darkTheme,
   lightTheme,
-  type IrodoriTheme,
   type ThemeKind,
 } from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
@@ -424,36 +435,6 @@ function describeConnection(
     proxy: "direct",
     objects: [],
   };
-}
-
-function formatCell(value: unknown) {
-  if (value === null) {
-    return "NULL";
-  }
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-  return String(value);
-}
-
-// Sort comparator for grid cells: numeric when both sides parse as finite
-// numbers, otherwise a locale-aware string compare. "NULL" sorts first.
-function compareCells(a: string, b: string) {
-  if (a === b) {
-    return 0;
-  }
-  if (a === "NULL") {
-    return -1;
-  }
-  if (b === "NULL") {
-    return 1;
-  }
-  const na = Number(a);
-  const nb = Number(b);
-  if (a.trim() !== "" && b.trim() !== "" && !Number.isNaN(na) && !Number.isNaN(nb)) {
-    return na - nb;
-  }
-  return a.localeCompare(b);
 }
 
 // Parse pasted clipboard text (TSV, or CSV as a fallback) into a grid of strings.
@@ -801,342 +782,6 @@ const INSPECTOR_WIDTH_MIN = 220;
 const INSPECTOR_WIDTH_MAX = 420;
 const RESULTS_HEIGHT_MIN = 150;
 const RESULTS_HEIGHT_MAX = 520;
-const ERD_EXPORT_MAX_CANVAS_SIDE = 16_384;
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-function erdFileName(connectionId: string, extension: string) {
-  const safeConnectionId = sanitizeFileNamePart(connectionId, "connection");
-  const safeExtension =
-    sanitizeFileNamePart(extension, "dat").replace(/\./g, "").toLowerCase() || "dat";
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `irodori-erd-${safeConnectionId}-${timestamp}.${safeExtension}`;
-}
-
-function sanitizeFileNamePart(value: string, fallback: string) {
-  const sanitized = value
-    .trim()
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-  return sanitized || fallback;
-}
-
-function serializeSvgElement(svg: SVGSVGElement) {
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  clone.setAttribute("version", "1.1");
-  clone.querySelectorAll("style").forEach((style) => {
-    style.setAttribute("type", "text/css");
-  });
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(clone)}`;
-}
-
-function dataUrlToBlob(dataUrl: string) {
-  const [metadata, data] = dataUrl.split(",", 2);
-  const mime = metadata.match(/^data:([^;,]+)/)?.[1] ?? "image/png";
-  const binary = window.atob(data);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return new Blob([bytes], { type: mime });
-}
-
-function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    if (typeof canvas.toBlob === "function") {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Could not encode PNG"));
-        }
-      }, "image/png");
-      return;
-    }
-    try {
-      resolve(dataUrlToBlob(canvas.toDataURL("image/png")));
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function erdPngScale(width: number, height: number) {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    throw new Error("ERD has invalid dimensions");
-  }
-  const maxSafeScale = Math.min(
-    ERD_EXPORT_MAX_CANVAS_SIDE / width,
-    ERD_EXPORT_MAX_CANVAS_SIDE / height,
-  );
-  if (maxSafeScale < 1) {
-    throw new Error("ERD is too large to export as PNG; export SVG instead");
-  }
-  const deviceScale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  return Math.min(deviceScale, maxSafeScale);
-}
-
-function svgMarkupToPngBlob(
-  svgMarkup: string,
-  width: number,
-  height: number,
-): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const image = new Image();
-    image.onload = () => {
-      try {
-        const scale = erdPngScale(width, height);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.ceil(width * scale);
-        canvas.height = Math.ceil(height * scale);
-        const context = canvas.getContext("2d");
-        if (!context) {
-          throw new Error("Canvas is not available");
-        }
-        context.setTransform(scale, 0, 0, scale, 0, 0);
-        context.drawImage(image, 0, 0, width, height);
-        URL.revokeObjectURL(url);
-        void canvasToPngBlob(canvas).then(resolve, reject);
-      } catch (error) {
-        URL.revokeObjectURL(url);
-        reject(error);
-      }
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Could not render SVG"));
-    };
-    image.src = url;
-  });
-}
-
-function legacyCopyTextToClipboard(text: string) {
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "true");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  textarea.style.top = "0";
-  document.body.append(textarea);
-  textarea.focus();
-  textarea.select();
-  try {
-    return document.execCommand("copy");
-  } finally {
-    textarea.remove();
-  }
-}
-
-async function writeTextToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch (error) {
-      if (legacyCopyTextToClipboard(text)) {
-        return;
-      }
-      throw error;
-    }
-  }
-  if (!legacyCopyTextToClipboard(text)) {
-    throw new Error("Text clipboard is not available in this environment");
-  }
-}
-
-async function writePngBlobToClipboard(blob: Blob) {
-  const clipboard = navigator.clipboard;
-  const ClipboardItemCtor = window.ClipboardItem;
-  if (
-    !clipboard ||
-    typeof clipboard.write !== "function" ||
-    typeof ClipboardItemCtor !== "function"
-  ) {
-    throw new Error("PNG clipboard is not available in this environment");
-  }
-  if (
-    typeof ClipboardItemCtor.supports === "function" &&
-    !ClipboardItemCtor.supports("image/png")
-  ) {
-    throw new Error("PNG clipboard is not supported in this environment");
-  }
-  const pngBlob = blob.type === "image/png" ? blob : new Blob([blob], { type: "image/png" });
-  await clipboard.write([new ClipboardItemCtor({ "image/png": pngBlob })]);
-}
-
-function erdSvgStyle(theme: IrodoriTheme) {
-  const { ui, syntax } = theme;
-  return `
-    .erd-bg { fill: ${ui.editorBg}; }
-    .erd-schema { fill: ${ui.surfaceMuted}; stroke: ${ui.border}; stroke-width: 1; }
-    .erd-schema-title { fill: ${ui.muted}; font: 700 13px Inter, ui-sans-serif, system-ui; }
-    .erd-table { fill: ${ui.surfaceRaised}; stroke: ${ui.borderStrong}; stroke-width: 1; }
-    .erd-table-header { fill: ${ui.gridHeader}; stroke: ${ui.border}; stroke-width: 1; }
-    .erd-table-title { fill: ${ui.text}; font: 700 12px SFMono-Regular, Consolas, monospace; }
-    .erd-column { fill: ${ui.text}; font: 11px SFMono-Regular, Consolas, monospace; }
-    .erd-column-type { fill: ${ui.muted}; font: 10px SFMono-Regular, Consolas, monospace; }
-    .erd-badge { fill: ${ui.selectedStrong}; stroke: ${ui.focus}; stroke-width: 1; }
-    .erd-badge-text { fill: ${ui.focus}; font: 700 9px Inter, ui-sans-serif, system-ui; }
-    .erd-edge { fill: none; stroke: ${ui.borderStrong}; stroke-width: 1.3; }
-    .erd-edge.cross { stroke: ${syntax.property}; stroke-dasharray: 5 4; }
-    .erd-svg marker path { fill: ${ui.borderStrong}; }
-    .erd-edge-label-bg { fill: ${ui.editorBg}; opacity: 0.92; }
-    .erd-edge-label { fill: ${ui.muted}; font: 10px SFMono-Regular, Consolas, monospace; }
-    .erd-muted { fill: ${ui.muted}; font: 10px SFMono-Regular, Consolas, monospace; }
-  `;
-}
-
-function truncateErdText(value: string, maxLength: number) {
-  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
-}
-
-function ErdSvg({
-  layout,
-  svgRef,
-  svgStyle,
-}: {
-  layout: ErdLayout;
-  svgRef: RefObject<SVGSVGElement | null>;
-  svgStyle: string;
-}) {
-  return (
-    <svg
-      ref={svgRef}
-      className="erd-svg"
-      xmlns="http://www.w3.org/2000/svg"
-      width={layout.width}
-      height={layout.height}
-      viewBox={`0 0 ${layout.width} ${layout.height}`}
-      role="img"
-      aria-label="Entity relationship diagram"
-    >
-      <style>{svgStyle}</style>
-      <defs>
-        <marker
-          id="erd-arrow-one"
-          markerHeight="8"
-          markerWidth="10"
-          orient="auto"
-          refX="8"
-          refY="4"
-          viewBox="0 0 10 8"
-        >
-          <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
-        </marker>
-      </defs>
-      <rect className="erd-bg" x="0" y="0" width={layout.width} height={layout.height} />
-      {layout.schemas.map((schema) => (
-        <g key={schema.name}>
-          <rect
-            className="erd-schema"
-            x={schema.x}
-            y={schema.y}
-            width={schema.width}
-            height={schema.height}
-            rx="7"
-          />
-          <text className="erd-schema-title" x={schema.x + 16} y={schema.y + 22}>
-            {schema.name}
-          </text>
-          <text
-            className="erd-muted"
-            x={schema.x + schema.width - 72}
-            y={schema.y + 22}
-          >
-            {schema.tableCount} tables
-          </text>
-        </g>
-      ))}
-      {layout.edges.map((edge) => (
-        <g key={edge.id}>
-          <path
-            className={`erd-edge${edge.crossSchema ? " cross" : ""}`}
-            d={edge.path}
-            markerEnd="url(#erd-arrow-one)"
-          />
-          <rect
-            className="erd-edge-label-bg"
-            x={edge.labelX - 42}
-            y={edge.labelY - 12}
-            width="84"
-            height="17"
-            rx="3"
-          />
-          <text className="erd-edge-label" x={edge.labelX} y={edge.labelY} textAnchor="middle">
-            {truncateErdText(edge.label, 16)}
-          </text>
-        </g>
-      ))}
-      {layout.tables.map((node) => (
-        <ErdTableNode key={node.table.id} node={node} />
-      ))}
-    </svg>
-  );
-}
-
-function ErdTableNode({ node }: { node: ErdLayoutTable }) {
-  return (
-    <g transform={`translate(${node.x} ${node.y})`}>
-      <title>{node.table.id}</title>
-      <rect className="erd-table" x="0" y="0" width={node.width} height={node.height} rx="5" />
-      <rect
-        className="erd-table-header"
-        x="0"
-        y="0"
-        width={node.width}
-        height="30"
-        rx="5"
-      />
-      <text className="erd-table-title" x="10" y="20">
-        {truncateErdText(node.table.label, 30)}
-      </text>
-      {node.table.columns.map((column, index) => {
-        const y = 49 + index * 20;
-        return (
-          <g key={`${column.name}-${index}`}>
-            {column.primaryKey ? <ErdBadge x={9} y={y - 13} label="PK" /> : null}
-            {column.foreignKey ? <ErdBadge x={column.primaryKey ? 37 : 9} y={y - 13} label="FK" /> : null}
-            <text className="erd-column" x={column.primaryKey || column.foreignKey ? 68 : 12} y={y}>
-              {truncateErdText(column.name, 22)}
-            </text>
-            <text className="erd-column-type" x={node.width - 10} y={y} textAnchor="end">
-              {truncateErdText(column.dataType, 18)}
-            </text>
-          </g>
-        );
-      })}
-      {node.table.hiddenColumnCount > 0 ? (
-        <text className="erd-muted" x="12" y={node.height - 8}>
-          + {node.table.hiddenColumnCount} more columns
-        </text>
-      ) : null}
-    </g>
-  );
-}
-
-function ErdBadge({ x, y, label }: { x: number; y: number; label: string }) {
-  return (
-    <g>
-      <rect className="erd-badge" x={x} y={y} width="22" height="13" rx="3" />
-      <text className="erd-badge-text" x={x + 11} y={y + 10} textAnchor="middle">
-        {label}
-      </text>
-    </g>
-  );
-}
 
 function App() {
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -1209,16 +854,25 @@ function App() {
   const [lastRunSql, setLastRunSql] = useState<string>("");
   // Staged (non-immediate) result editing: changes accumulate until Commit.
   const [editMode, setEditMode] = useState(false);
-  const [cellEdits, setCellEdits] = useState<Map<string, string>>(new Map());
-  const [newRows, setNewRows] = useState<string[][]>([]);
+  const [cellEdits, setCellEdits] = useState<Map<string, GridCellDraft>>(
+    new Map(),
+  );
+  const [newRows, setNewRows] = useState<GridCellDraft[][]>([]);
   const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
   const [editingCell, setEditingCell] = useState<{
     key: string;
     col: number;
+    seed?: string;
   } | null>(null);
-  const [sort, setSort] = useState<{ col: number; dir: "asc" | "desc" } | null>(
-    null,
-  );
+  const [selectedCell, setSelectedCell] = useState<{
+    key: string;
+    col: number;
+  } | null>(null);
+  const [sortRules, setSortRules] = useState<ResultSortRule[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [quickFilter, setQuickFilter] = useState("");
+  const [filterJoin, setFilterJoin] = useState<ResultFilterJoin>("and");
+  const [filterRules, setFilterRules] = useState<ResultFilterRule[]>([]);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
@@ -1458,6 +1112,7 @@ function App() {
     setGridScrollTop(0);
     setGridScrollLeft(0);
     setSelectedRowKey(null);
+    setSelectedCell(null);
   }, [activeResultIndex, result]);
 
   const resultColumns = activeResult?.columns ?? [
@@ -1521,50 +1176,39 @@ function App() {
     width: gridTotalWidth,
   };
 
-  // Build the display rows: original rows (with any staged cell edits overlaid,
-  // staged-deleted rows skipped) followed by staged new rows. `key` ties a display
-  // row back to its origin so an edit maps to the right row regardless of sorting.
-  const baseCells = activeResult?.rows.map((row) => row.map(formatCell)) ?? resultRows;
-  const displayRows: {
-    key: string;
-    origin: { kind: "orig"; index: number } | { kind: "new"; index: number };
-    cells: string[];
-    state: "clean" | "edited" | "new";
-  }[] = [];
-  baseCells.forEach((cells, index) => {
-    if (deletedRows.has(index)) {
-      return;
-    }
-    let state: "clean" | "edited" = "clean";
-    const overlaid = cells.map((cell, col) => {
-      const edit = cellEdits.get(`o${index}:${col}`);
-      if (edit !== undefined) {
-        state = "edited";
-        return edit;
-      }
-      return cell;
-    });
-    displayRows.push({
-      key: `o${index}`,
-      origin: { kind: "orig", index },
-      cells: overlaid,
-      state,
-    });
-  });
-  newRows.forEach((cells, index) => {
-    displayRows.push({
-      key: `n${index}`,
-      origin: { kind: "new", index },
-      cells,
-      state: "new",
-    });
-  });
-  if (sort) {
-    const { col, dir } = sort;
-    displayRows.sort(
-      (a, b) => compareCells(a.cells[col] ?? "", b.cells[col] ?? "") * (dir === "asc" ? 1 : -1),
-    );
-  }
+  // Build the display rows from raw results plus staged edits, filters, and sort.
+  const resultGridView = useMemo(
+    () =>
+      buildResultGridViewModel({
+        rows: activeResult?.rows ?? resultRows,
+        cellEdits,
+        newRows,
+        deletedRows,
+        filterRules,
+        quickFilter,
+        filterJoin,
+        sortRules,
+      }),
+    [
+      activeResult?.rows,
+      cellEdits,
+      newRows,
+      deletedRows,
+      filterRules,
+      quickFilter,
+      filterJoin,
+      sortRules,
+    ],
+  );
+  const {
+    activeFilters,
+    displayRows,
+    filteredOutCount,
+    filtersActive,
+    pendingCount,
+    sortRuleByColumn,
+    unfilteredRows,
+  } = resultGridView;
 
   // Virtualize the result grid: render only the rows in (and just around) the
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
@@ -1580,7 +1224,6 @@ function App() {
   const topPad = firstVisible * GRID_ROW_HEIGHT;
   const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
   const visibleRows = displayRows.slice(firstVisible, lastVisible);
-  const pendingCount = cellEdits.size + newRows.length + deletedRows.size;
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
     pendingGridScroll.current = {
@@ -1595,6 +1238,19 @@ function App() {
       setGridScrollTop(pendingGridScroll.current.top);
       setGridScrollLeft(pendingGridScroll.current.left);
     });
+  }
+
+  function resetGridScrollPosition(clearSelection = false) {
+    if (gridRef.current) {
+      gridRef.current.scrollTop = 0;
+      gridRef.current.scrollLeft = 0;
+    }
+    setGridScrollTop(0);
+    setGridScrollLeft(0);
+    if (clearSelection) {
+      setSelectedRowKey(null);
+      setSelectedCell(null);
+    }
   }
 
   type PanelResizeKind = "sidebar" | "inspector" | "results";
@@ -1701,31 +1357,86 @@ function App() {
     setNewRows([]);
     setDeletedRows(new Set());
     setEditingCell(null);
+    setSelectedCell(null);
     setCommitError(null);
   }
 
-  function toggleSort(col: number) {
-    setSort((current) => {
-      if (!current || current.col !== col) {
-        return { col, dir: "asc" };
-      }
-      return current.dir === "asc" ? { col, dir: "desc" } : null;
-    });
+  function resetGridView() {
+    setSortRules([]);
+    setQuickFilter("");
+    setFilterRules([]);
+    setFilterJoin("and");
+    setFiltersOpen(false);
+  }
+
+  function toggleSort(col: number, additive = false) {
+    setSortRules((current) => cycleResultSortRules(current, col, additive));
+    resetGridScrollPosition();
+  }
+
+  function addFilterRule(columnIndex: number | "any" = "any") {
+    setFilterRules((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        columnIndex,
+        operator: "contains",
+        value: "",
+        enabled: true,
+      },
+    ]);
+    setFiltersOpen(true);
+    resetGridScrollPosition(true);
+  }
+
+  function updateFilterRule(id: string, patch: Partial<ResultFilterRule>) {
+    setFilterRules((current) =>
+      current.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
+    );
+    resetGridScrollPosition(true);
+  }
+
+  function removeFilterRule(id: string) {
+    setFilterRules((current) => current.filter((rule) => rule.id !== id));
+    resetGridScrollPosition(true);
+  }
+
+  function clearResultFilters() {
+    setQuickFilter("");
+    setFilterRules([]);
+    setFilterJoin("and");
+    resetGridScrollPosition(true);
+  }
+
+  function selectGridCell(rowKey: string, col: number) {
+    setSelectedRowKey(rowKey);
+    setSelectedCell({ key: rowKey, col });
+    gridRef.current?.focus({ preventScroll: true });
+  }
+
+  function beginCellEdit(key: string, col: number, seed?: string) {
+    if (!editMode) {
+      return;
+    }
+    selectGridCell(key, col);
+    setEditingCell(seed === undefined ? { key, col } : { key, col, seed });
   }
 
   // Stage a single cell's new value against its origin (an original row keeps the
   // edit in `cellEdits`; a staged new row mutates `newRows`).
   function setCellValue(
-    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
+    origin: ResultGridRowOrigin,
     col: number,
-    value: string,
+    value: GridCellDraft,
   ) {
     if (origin.kind === "orig") {
       setCellEdits((current) => {
         const next = new Map(current);
         const key = `o${origin.index}:${col}`;
-        const original = formatCell(activeResult?.rows[origin.index]?.[col] ?? null);
-        if (value === original) {
+        const originalRaw = activeResult?.rows[origin.index]?.[col] ?? null;
+        const unchanged =
+          value === null ? originalRaw === null : value === formatCell(originalRaw);
+        if (unchanged) {
           next.delete(key);
         } else {
           next.set(key, value);
@@ -1752,10 +1463,8 @@ function App() {
   }
 
   // Stage a row delete (original rows) or drop a staged new row.
-  function deleteRow(
-    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
-  ) {
-    const rowKey = `${origin.kind === "orig" ? "o" : "n"}${origin.index}`;
+  function deleteRow(origin: ResultGridRowOrigin) {
+    const rowKey = resultGridRowKey(origin);
     if (origin.kind === "orig") {
       setDeletedRows((current) => new Set(current).add(origin.index));
       setCellEdits((current) => {
@@ -1776,17 +1485,13 @@ function App() {
 
   // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
   // and into staged new rows as needed.
-  function pasteTableAt(
-    origin: { kind: "orig"; index: number } | { kind: "new"; index: number },
-    startCol: number,
-    text: string,
-  ) {
+  function pasteTableAt(origin: ResultGridRowOrigin, startCol: number, text: string) {
     const block = parseClipboardTable(text);
     if (block.length === 0) {
       return;
     }
     const orderedKeys = displayRows.map((row) => row.key);
-    const startPos = orderedKeys.indexOf(`${origin.kind === "orig" ? "o" : "n"}${origin.index}`);
+    const startPos = orderedKeys.indexOf(resultGridRowKey(origin));
     block.forEach((cells, rowOffset) => {
       const targetKey = orderedKeys[startPos + rowOffset];
       const target = targetKey
@@ -1809,6 +1514,147 @@ function App() {
       }
     });
     setEditMode(true);
+  }
+
+  function scrollGridCellIntoView(rowIndex: number, col: number) {
+    const element = gridRef.current;
+    if (!element) {
+      return;
+    }
+    const targetTop = rowIndex * GRID_ROW_HEIGHT;
+    const targetBottom = targetTop + GRID_ROW_HEIGHT;
+    let nextTop = element.scrollTop;
+    if (targetTop < element.scrollTop) {
+      nextTop = targetTop;
+    } else if (targetBottom > element.scrollTop + element.clientHeight) {
+      nextTop = targetBottom - element.clientHeight;
+    }
+
+    const targetLeft = gridGutterWidth + col * GRID_COLUMN_WIDTH;
+    const targetRight = targetLeft + GRID_COLUMN_WIDTH;
+    let nextLeft = element.scrollLeft;
+    if (targetLeft < element.scrollLeft) {
+      nextLeft = targetLeft;
+    } else if (targetRight > element.scrollLeft + element.clientWidth) {
+      nextLeft = targetRight - element.clientWidth;
+    }
+
+    element.scrollTop = Math.max(0, nextTop);
+    element.scrollLeft = Math.max(0, nextLeft);
+    setGridScrollTop(element.scrollTop);
+    setGridScrollLeft(element.scrollLeft);
+  }
+
+  function moveSelectedCell(rowDelta: number, colDelta: number) {
+    if (displayRows.length === 0 || resultColumns.length === 0) {
+      return;
+    }
+    const currentKey = selectedCell?.key ?? selectedRowKey ?? displayRows[0].key;
+    const currentRowIndex = Math.max(
+      0,
+      displayRows.findIndex((row) => row.key === currentKey),
+    );
+    const currentCol = selectedCell?.col ?? 0;
+    const nextRowIndex = clampNumber(
+      currentRowIndex + rowDelta,
+      0,
+      displayRows.length - 1,
+    );
+    const nextCol = clampNumber(
+      currentCol + colDelta,
+      0,
+      Math.max(0, resultColumns.length - 1),
+    );
+    const nextRow = displayRows[nextRowIndex];
+    if (!nextRow) {
+      return;
+    }
+    selectGridCell(nextRow.key, nextCol);
+    scrollGridCellIntoView(nextRowIndex, nextCol);
+  }
+
+  function selectedDisplayRow() {
+    if (!selectedCell && !selectedRowKey) {
+      return null;
+    }
+    const key = selectedCell?.key ?? selectedRowKey;
+    return displayRows.find((row) => row.key === key) ?? null;
+  }
+
+  function onGridKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      event.target instanceof HTMLSelectElement ||
+      editingCell
+    ) {
+      return;
+    }
+    const row = selectedDisplayRow() ?? displayRows[0];
+    const col = selectedCell?.col ?? 0;
+    if (!row || resultColumns.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSelectedCell(-1, 0);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSelectedCell(1, 0);
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      moveSelectedCell(0, -1);
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      moveSelectedCell(0, 1);
+      return;
+    }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      moveSelectedCell(0, event.shiftKey ? -1 : 1);
+      return;
+    }
+    if (event.key === "Enter" || event.key === "F2") {
+      if (editMode) {
+        event.preventDefault();
+        beginCellEdit(row.key, col);
+      }
+      return;
+    }
+    if ((event.key === "Delete" || event.key === "Backspace") && editMode) {
+      event.preventDefault();
+      setCellValue(row.origin, col, event.ctrlKey || event.metaKey ? null : "");
+      return;
+    }
+    if (
+      editMode &&
+      event.key.length === 1 &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      beginCellEdit(row.key, col, event.key);
+    }
+  }
+
+  function onGridPaste(event: ReactClipboardEvent<HTMLDivElement>) {
+    if (!editMode) {
+      return;
+    }
+    const row = selectedDisplayRow();
+    if (!row || !selectedCell) {
+      return;
+    }
+    event.preventDefault();
+    pasteTableAt(row.origin, selectedCell.col, event.clipboardData.getData("text"));
   }
 
   // Infer the table to write back to from the last run's `from <table>` and the
@@ -1873,7 +1719,10 @@ function App() {
         keys: target.keyColumns.map((column) => originalCell(rowIndex, column)),
         set: cols.map((col) => ({
           column: resultColumns[col],
-          value: cellEdits.get(`o${rowIndex}:${col}`) ?? null,
+          value:
+            cellEdits.get(`o${rowIndex}:${col}`) === undefined
+              ? null
+              : cellEdits.get(`o${rowIndex}:${col}`)!,
         })),
       });
     }
@@ -2149,6 +1998,10 @@ function App() {
         activeResult.elapsedMs,
       )} ms`
     : "sample preview";
+  const displayedResultSummary =
+    activeResult && filtersActive
+      ? `${toCount(totalRows)} / ${toCount(unfilteredRows.length)} shown · ${resultSummary}`
+      : resultSummary;
   const importSqlPreview = importPreview
     ? generateImportSql(
         importPreview.tableName,
@@ -2568,9 +2421,9 @@ function App() {
     setQueryError(null);
     setLastRunSql(sqlToRun);
     setActiveResultIndex(0);
-    // A new run invalidates any staged edits and resets the scroll/sort view.
+    // A new run invalidates any staged edits and resets the scroll/filter/sort view.
     resetEdits();
-    setSort(null);
+    resetGridView();
     if (gridRef.current) {
       gridRef.current.scrollTop = 0;
       gridRef.current.scrollLeft = 0;
@@ -3443,7 +3296,7 @@ function App() {
                         onClick={() => {
                           setActiveResultIndex(index);
                           resetEdits();
-                          setSort(null);
+                          resetGridView();
                           if (gridRef.current) {
                             gridRef.current.scrollTop = 0;
                             gridRef.current.scrollLeft = 0;
@@ -3464,11 +3317,48 @@ function App() {
                   {queryError
                     ? "failed"
                     : pendingCount > 0
-                      ? `${resultSummary} · ${pendingCount} pending`
-                      : resultSummary}
+                      ? `${displayedResultSummary} · ${pendingCount} pending`
+                      : displayedResultSummary}
                 </span>
               </div>
               <div className="results-actions">
+                <label className="result-quick-filter">
+                  <Search size={13} />
+                  <input
+                    aria-label="Quick result filter"
+                    value={quickFilter}
+                    disabled={!activeResult}
+                    placeholder="Filter rows"
+                    onChange={(event) => {
+                      setQuickFilter(event.currentTarget.value);
+                      resetGridScrollPosition(true);
+                    }}
+                  />
+                  {quickFilter ? (
+                    <button
+                      type="button"
+                      aria-label="Clear quick filter"
+                      title="Clear quick filter"
+                      onClick={() => {
+                        setQuickFilter("");
+                        resetGridScrollPosition(true);
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  ) : null}
+                </label>
+                <button
+                  className={`text-button${filtersOpen || filtersActive ? " active" : ""}`}
+                  type="button"
+                  disabled={!activeResult}
+                  onClick={() => setFiltersOpen((open) => !open)}
+                >
+                  <ListFilter size={13} />
+                  <span>
+                    {activeFilters.length > 0 ? `Filter ${activeFilters.length}` : "Filter"}
+                  </span>
+                </button>
                 <div className="action-split">
                   <button
                     className="text-button"
@@ -3580,6 +3470,134 @@ function App() {
                 <span>{queryError}</span>
               </div>
             ) : null}
+            {filtersOpen || filterRules.length > 0 ? (
+              <div className="result-filter-panel">
+                <div className="result-filter-toolbar">
+                  <span>
+                    {filtersActive
+                      ? `${toCount(filteredOutCount)} hidden`
+                      : "No active filters"}
+                  </span>
+                  <div className="segmented-control" role="group" aria-label="Filter join">
+                    <button
+                      type="button"
+                      className={filterJoin === "and" ? "active" : undefined}
+                      onClick={() => setFilterJoin("and")}
+                    >
+                      AND
+                    </button>
+                    <button
+                      type="button"
+                      className={filterJoin === "or" ? "active" : undefined}
+                      onClick={() => setFilterJoin("or")}
+                    >
+                      OR
+                    </button>
+                  </div>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => addFilterRule("any")}
+                  >
+                    <Plus size={13} />
+                    <span>Rule</span>
+                  </button>
+                  {filtersActive ? (
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={clearResultFilters}
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                {filterRules.length > 0 ? (
+                  <div className="result-filter-rules">
+                    {filterRules.map((rule) => {
+                      const needsValue = resultFilterNeedsValue(rule.operator);
+                      return (
+                        <div className="result-filter-rule" key={rule.id}>
+                          <label className="check-cell compact">
+                            <input
+                              type="checkbox"
+                              checked={rule.enabled}
+                              aria-label="Filter enabled"
+                              onChange={(event) =>
+                                updateFilterRule(rule.id, {
+                                  enabled: event.currentTarget.checked,
+                                })
+                              }
+                            />
+                          </label>
+                          <select
+                            aria-label="Filter column"
+                            value={
+                              rule.columnIndex === "any"
+                                ? "any"
+                                : String(rule.columnIndex)
+                            }
+                            onChange={(event) =>
+                              updateFilterRule(rule.id, {
+                                columnIndex:
+                                  event.currentTarget.value === "any"
+                                    ? "any"
+                                    : Number(event.currentTarget.value),
+                              })
+                            }
+                          >
+                            <option value="any">Any column</option>
+                            {resultColumns.map((column, index) => (
+                              <option value={index} key={`${column}-${index}`}>
+                                {column}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            aria-label="Filter operator"
+                            value={rule.operator}
+                            onChange={(event) =>
+                              updateFilterRule(rule.id, {
+                                operator: event.currentTarget
+                                  .value as ResultFilterOperator,
+                              })
+                            }
+                          >
+                            {resultFilterOperators.map((operator) => (
+                              <option key={operator.value} value={operator.value}>
+                                {operator.label}
+                              </option>
+                            ))}
+                          </select>
+                          {needsValue ? (
+                            <input
+                              aria-label="Filter value"
+                              value={rule.value}
+                              onChange={(event) =>
+                                updateFilterRule(rule.id, {
+                                  value: event.currentTarget.value,
+                                })
+                              }
+                            />
+                          ) : (
+                            <span className="filter-value-placeholder">--</span>
+                          )}
+                          <button
+                            className="mini-button"
+                            type="button"
+                            title="Remove filter"
+                            aria-label="Remove filter"
+                            onClick={() => removeFilterRule(rule.id)}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="result-body">
             <div
               className="result-grid"
@@ -3590,6 +3608,8 @@ function App() {
               ref={gridRef}
               tabIndex={0}
               onScroll={onGridScroll}
+              onKeyDown={onGridKeyDown}
+              onPaste={onGridPaste}
             >
               <div
                 className="grid-row header"
@@ -3602,20 +3622,25 @@ function App() {
                 ) : null}
                 {visibleColumnIndexes.map((colIndex) => {
                   const column = resultColumns[colIndex];
+                  const sortRule = sortRuleByColumn.get(colIndex);
                   return (
                     <span
                       role="columnheader"
                       aria-colindex={editMode ? colIndex + 2 : colIndex + 1}
                       key={`${column}-${colIndex}`}
-                      className="sortable"
-                      onClick={() => toggleSort(colIndex)}
+                      className={`sortable${sortRule ? " sorted" : ""}`}
+                      title="Click to sort. Shift-click to add a sort key."
+                      onClick={(event) => toggleSort(colIndex, event.shiftKey)}
                     >
-                      {column}
-                      {sort?.col === colIndex
-                        ? sort.dir === "asc"
-                          ? " ▲"
-                          : " ▼"
-                        : ""}
+                      <b className="column-label">{column}</b>
+                      {sortRule ? (
+                        <em className="sort-indicator">
+                          {sortRule.direction === "asc" ? "▲" : "▼"}
+                          {sortRules.length > 1 ? (
+                            <small>{sortRule.priority}</small>
+                          ) : null}
+                        </em>
+                      ) : null}
                     </span>
                   );
                 })}
@@ -3645,7 +3670,9 @@ function App() {
                   role="row"
                   style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
                 >
-                  No rows returned
+                  {filtersActive && unfilteredRows.length > 0
+                    ? "No rows match filters"
+                    : "No rows returned"}
                 </div>
               ) : null}
               {visibleRows.map((row, visibleRowIndex) => (
@@ -3678,21 +3705,31 @@ function App() {
                     const cell = row.cells[cellIndex] ?? "";
                     const isEditing =
                       editingCell?.key === row.key && editingCell.col === cellIndex;
+                    const isEdited =
+                      row.origin.kind === "orig" &&
+                      cellEdits.has(`o${row.origin.index}:${cellIndex}`);
+                    const isSelected =
+                      selectedCell?.key === row.key && selectedCell.col === cellIndex;
+                    const cellClass = [
+                      isEdited ? "cell-edited" : "",
+                      isSelected ? "cell-selected" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ");
                     return (
                       <span
                         role="cell"
                         key={cellIndex}
                         aria-colindex={editMode ? cellIndex + 2 : cellIndex + 1}
-                        className={
-                          row.origin.kind === "orig" &&
-                          cellEdits.has(`o${row.origin.index}:${cellIndex}`)
-                            ? "cell-edited"
-                            : undefined
-                        }
+                        aria-selected={isSelected}
+                        className={cellClass || undefined}
+                        title={cell}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          selectGridCell(row.key, cellIndex);
+                        }}
                         onDoubleClick={() => {
-                          if (editMode) {
-                            setEditingCell({ key: row.key, col: cellIndex });
-                          }
+                          beginCellEdit(row.key, cellIndex);
                         }}
                         onPaste={(event) => {
                           if (!editMode) {
@@ -3707,27 +3744,47 @@ function App() {
                         }}
                       >
                         {isEditing ? (
-                          <input
-                            className="cell-input"
-                            autoFocus
-                            defaultValue={cell}
-                            onBlur={(event) => {
-                              setCellValue(row.origin, cellIndex, event.target.value);
-                              setEditingCell(null);
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                setCellValue(
-                                  row.origin,
-                                  cellIndex,
-                                  event.currentTarget.value,
-                                );
+                          <div className="cell-editor">
+                            <input
+                              className="cell-input"
+                              autoFocus
+                              defaultValue={editingCell?.seed ?? cell}
+                              onBlur={(event) => {
+                                setCellValue(row.origin, cellIndex, event.target.value);
                                 setEditingCell(null);
-                              } else if (event.key === "Escape") {
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  setCellValue(
+                                    row.origin,
+                                    cellIndex,
+                                    event.currentTarget.value,
+                                  );
+                                  setEditingCell(null);
+                                } else if (event.key === "Escape") {
+                                  setEditingCell(null);
+                                } else if (
+                                  event.key === "Backspace" &&
+                                  (event.ctrlKey || event.metaKey)
+                                ) {
+                                  event.preventDefault();
+                                  setCellValue(row.origin, cellIndex, null);
+                                  setEditingCell(null);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              title="Set NULL"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                setCellValue(row.origin, cellIndex, null);
                                 setEditingCell(null);
-                              }
-                            }}
-                          />
+                              }}
+                            >
+                              NULL
+                            </button>
+                          </div>
                         ) : (
                           cell
                         )}

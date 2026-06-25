@@ -1,12 +1,13 @@
 // CodeMirror 6 SQL editor (ADR 0001).
 //
 // The host is CM6: `basicSetup` gives line numbers, history, bracket matching,
-// active-line highlight, and keyword autocompletion; `@codemirror/lang-sql`
+// active-line highlight, and autocomplete plumbing; `@codemirror/lang-sql`
 // supplies dialect-aware parsing bound to the active engine. Irodori's SQL
 // highlighting helper maps parser tokens into the normalized theme model, with
-// Tree-sitter activation gated on bundled solid grammars. Schema-aware
-// completion is fed from introspection metadata. The formatter defaults to
-// `sql-formatter`, dialect-mapped per engine, behind a configurable hook.
+// Tree-sitter activation gated on bundled solid grammars. Completion stays
+// deliberately light: local metadata plus shallow current-statement context.
+// The formatter defaults to `sql-formatter`, dialect-mapped per engine, behind
+// a configurable hook.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
@@ -14,9 +15,8 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { indentWithTab, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
-import { sql } from "@codemirror/lang-sql";
 import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
-import { buildSqlConfig } from "./sql/dialect";
+import { buildSqlExtensions } from "./sql/dialect";
 import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
 import { sqlHighlightingExtensions } from "./sql/highlighting";
 import { editorThemeExtensions, type IrodoriTheme } from "./theme";
@@ -71,7 +71,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
           vimConf.of(vimMode ? vim() : []),
           basicSetup,
           keymap.of([indentWithTab]),
-          sqlConf.of(sql(buildSqlConfig(engine, metadata))),
+          sqlConf.of(buildSqlExtensions(engine, metadata)),
           themeConf.of(editorThemeExtensions(theme)),
           highlightConf.of(sqlHighlightingExtensions(engine, theme.syntax)),
           EditorView.updateListener.of((update) => {
@@ -110,12 +110,12 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     }
   }, [value]);
 
-  // Reconfigure dialect + completion schema when the engine or metadata changes.
+  // Reconfigure dialect + metadata completion when the engine or metadata changes.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
-      effects: sqlConf.reconfigure(sql(buildSqlConfig(engine, metadata))),
+      effects: sqlConf.reconfigure(buildSqlExtensions(engine, metadata)),
     });
   }, [engine, metadata, sqlConf]);
 

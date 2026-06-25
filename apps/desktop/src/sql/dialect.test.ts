@@ -13,9 +13,14 @@ import {
   buildSqlConfig,
   cmDialect,
   formatterLanguage,
-  metadataToNamespace,
 } from "./dialect";
-import type { DatabaseMetadata, DbEngine } from "../generated/irodori-api";
+import { buildSqlCompletionIndex, completeSqlLightweight } from "./completion";
+import type {
+  ColumnMetadata,
+  DatabaseMetadata,
+  DbEngine,
+  DbObjectMetadata,
+} from "../generated/irodori-api";
 
 describe("cmDialect", () => {
   const engineExpectations: Record<
@@ -87,9 +92,31 @@ const meta: DatabaseMetadata = {
         },
         {
           schema: "public",
+          name: "orders",
+          kind: "table",
+          columns: [
+            { name: "id", dataType: "int4", nullable: false, ordinal: 1 },
+            { name: "user_id", dataType: "int4", nullable: false, ordinal: 2 },
+            { name: "total", dataType: "numeric", nullable: false, ordinal: 3 },
+          ],
+          indexes: [],
+          primaryKey: ["id"],
+          foreignKeys: [],
+        },
+        {
+          schema: "public",
           name: "v_active",
           kind: "view",
           columns: [{ name: "id", dataType: "int4", nullable: false, ordinal: 1 }],
+          indexes: [],
+          primaryKey: [],
+          foreignKeys: [],
+        },
+        {
+          schema: "public",
+          name: "normalize_email",
+          kind: "function",
+          columns: [],
           indexes: [],
           primaryKey: [],
           foreignKeys: [],
@@ -105,35 +132,170 @@ const meta: DatabaseMetadata = {
         },
       ],
     },
+    {
+      name: "sales",
+      objects: [
+        {
+          schema: "sales",
+          name: "invoices",
+          kind: "table",
+          columns: [
+            { name: "id", dataType: "int4", nullable: false, ordinal: 1 },
+            { name: "status", dataType: "text", nullable: false, ordinal: 2 },
+          ],
+          indexes: [],
+          primaryKey: ["id"],
+          foreignKeys: [],
+        },
+      ],
+    },
   ],
 };
 
-describe("metadataToNamespace", () => {
-  it("returns undefined for empty metadata", () => {
-    expect(metadataToNamespace(undefined)).toBeUndefined();
-    expect(metadataToNamespace({ schemas: [] })).toBeUndefined();
+function sqlWithCursor(sql: string): { doc: string; pos: number } {
+  const pos = sql.indexOf("|");
+  if (pos < 0) return { doc: sql, pos: sql.length };
+  return { doc: sql.slice(0, pos) + sql.slice(pos + 1), pos };
+}
+
+function completionLabels(sql: string, metadata = meta, explicit = false): string[] {
+  const { doc, pos } = sqlWithCursor(sql);
+  return (
+    completeSqlLightweight({
+      doc,
+      pos,
+      engine: "postgres",
+      explicit,
+      index: buildSqlCompletionIndex(metadata),
+    })?.options.map((option) => option.label) ?? []
+  );
+}
+
+function completionApplies(sql: string, metadata = meta, explicit = false): string[] {
+  const { doc, pos } = sqlWithCursor(sql);
+  return (
+    completeSqlLightweight({
+      doc,
+      pos,
+      engine: "postgres",
+      explicit,
+      index: buildSqlCompletionIndex(metadata),
+    })?.options.map((option) => String(option.apply ?? option.label)) ?? []
+  );
+}
+
+function table(
+  schema: string,
+  name: string,
+  columns: string[] = ["id"],
+): DbObjectMetadata {
+  return {
+    schema,
+    name,
+    kind: "table",
+    columns: columns.map<ColumnMetadata>((column, index) => ({
+      name: column,
+      dataType: "text",
+      nullable: true,
+      ordinal: index + 1,
+    })),
+    indexes: [],
+    primaryKey: [],
+    foreignKeys: [],
+  };
+}
+
+describe("completeSqlLightweight", () => {
+  it("returns no metadata completions for empty metadata", () => {
+    expect(
+      completeSqlLightweight({
+        doc: "select * from u",
+        engine: "postgres",
+        index: buildSqlCompletionIndex(undefined),
+      }),
+    ).toBeNull();
+    expect(
+      completeSqlLightweight({
+        doc: "select * from u",
+        engine: "postgres",
+        index: buildSqlCompletionIndex({ schemas: [] }),
+      }),
+    ).toBeNull();
   });
-  it("builds schema -> table -> columns and skips indexes", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ns = metadataToNamespace(meta) as Record<string, any>;
-    expect(Object.keys(ns)).toEqual(["public"]);
-    expect(Object.keys(ns.public).sort()).toEqual(["users", "v_active"]);
-    expect(ns.public.users.self.label).toBe("users");
-    expect(ns.public.users.children.map((c: { label: string }) => c.label)).toEqual([
+
+  it("suggests only relations and schemas in FROM/JOIN positions", () => {
+    const labels = completionLabels("select * from us");
+    expect(labels).toEqual(["users"]);
+    expect(labels).not.toContain("email");
+    expect(labels).not.toContain("users_pkey");
+    expect(labels).not.toContain("normalize_email");
+  });
+
+  it("completes schema-qualified relation names", () => {
+    expect(completionLabels("select * from sales.")).toEqual(["invoices"]);
+    expect(completionApplies("select * from sales.")).toEqual(["invoices"]);
+  });
+
+  it("completes columns from a table alias after a dot", () => {
+    expect(completionLabels("select * from users u where u.")).toEqual([
       "id",
       "email",
     ]);
-    expect(ns.public.users.children[0].detail).toContain("not null");
-    expect(ns.public.users.children[1].detail).toBe("text");
+  });
+
+  it("uses the current statement only for unqualified columns", () => {
+    expect(
+      completionLabels("select * from users; select * from orders o where em"),
+    ).not.toContain("email");
+    expect(
+      completionLabels("select * from users; select * from orders o where to"),
+    ).toEqual(["o.total"]);
+  });
+
+  it("qualifies column labels when more than one relation is in scope", () => {
+    expect(
+      completionLabels("select * from users u join orders o on o.user_id = u.id where id"),
+    ).toEqual(expect.arrayContaining(["u.id", "o.id"]));
+  });
+
+  it("suggests routines only when no relation is in scope", () => {
+    expect(completionLabels("select norm")).toEqual(["normalize_email"]);
+  });
+
+  it("caps metadata candidates after applying the typed prefix", () => {
+    const manyTables: DatabaseMetadata = {
+      schemas: [
+        {
+          name: "public",
+          objects: Array.from({ length: 80 }, (_, index) =>
+            table("public", `table_${String(index).padStart(2, "0")}`),
+          ),
+        },
+      ],
+    };
+
+    expect(completionLabels("select * from ", manyTables, true)).toHaveLength(50);
+    expect(completionLabels("select * from table_7", manyTables)).toEqual([
+      "table_70",
+      "table_71",
+      "table_72",
+      "table_73",
+      "table_74",
+      "table_75",
+      "table_76",
+      "table_77",
+      "table_78",
+      "table_79",
+    ]);
   });
 });
 
 describe("buildSqlConfig", () => {
-  it("always sets the dialect and adds schema only when metadata exists", () => {
+  it("sets the dialect without binding broad schema completion", () => {
     const withMeta = buildSqlConfig("postgres", meta);
     expect(withMeta.dialect).toBe(PostgreSQL);
-    expect(withMeta.schema).toBeDefined();
-    expect(withMeta.defaultSchema).toBe("public");
+    expect(withMeta.schema).toBeUndefined();
+    expect(withMeta.defaultSchema).toBeUndefined();
 
     const without = buildSqlConfig("mysql", undefined);
     expect(without.dialect).toBe(MySQL);

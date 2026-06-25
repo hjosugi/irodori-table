@@ -10,9 +10,26 @@ The goal is to make future implementation and bug fixing less dependent on memor
 - Schema: `knowledge/schema.sql`
 - Source registry: `knowledge/sources.json`
 - Refresh script: `tools/knowledge/refresh.mjs`
+- Analysis script: `tools/knowledge/analyze.mjs`
 - Query script: `tools/knowledge/query.mjs`
 
 The SQLite DB is intentionally ignored by Git. The schema and source registry are tracked.
+
+## Task Navigation
+
+Use this document for the knowledge-base system itself: source registry shape,
+refresh/query workflow, source policy, and what kinds of facts belong in the local
+store. It should not duplicate the product backlog.
+
+- Product capability status belongs in `docs/feature-matrix.md`.
+- Ticket status belongs in `docs/implementation-backlog.md`.
+- Built-and-verified snapshots belong in `docs/implementation-progress.md`.
+- Parallel-worker ownership and handoffs belong in `docs/agent-coordination.md`.
+
+When a task depends on vendor behavior or DB-client precedent, query this knowledge
+base first, then record the implementation outcome in the owning task doc. A
+knowledge snapshot or source-registry update is evidence for future work; it does
+not by itself close a product feature without linked implementation and verification.
 
 ## Source Registry Schema
 
@@ -76,6 +93,37 @@ Search snapshots:
 node tools/knowledge/query.mjs "ALTER TABLE"
 ```
 
+Generate local facts and implementation notes from the latest stored snapshots:
+
+```bash
+node tools/knowledge/analyze.mjs
+```
+
+Preview generated facts without writing:
+
+```bash
+node tools/knowledge/analyze.mjs --dry-run
+```
+
+Analyze only text segments added since the previous stored snapshot for each
+source. This is the recommended mode for routine refreshes because it focuses
+implementation notes on new upstream behavior:
+
+```bash
+node tools/knowledge/analyze.mjs --changed-only
+```
+
+On the first snapshot for a source, `--changed-only` falls back to full analysis
+so the source can be seeded. Add `--strict-changed` to skip sources without a
+previous snapshot.
+
+List or search generated facts and implementation notes:
+
+```bash
+node tools/knowledge/query.mjs --facts auth
+node tools/knowledge/query.mjs --notes driver
+```
+
 ## What To Store
 
 - Official release notes and migration notes.
@@ -109,5 +157,15 @@ node tools/knowledge/query.mjs "ALTER TABLE"
 
 - Local: run the refresh script manually while developing.
 - Scheduled: later add a weekly GitHub Actions job or local cron that refreshes sources and opens a report.
-- Smarter extraction: add per-product extractors for versions, breaking changes, SQL syntax changes, new functions, deprecated features, and driver-impacting changes.
+- Large index builds: source snapshots, generated facts, implementation notes,
+  schema metadata, and query-history search indexes must be built through the
+  shared job runtime with progress, cancellation, checkpoint/resume, bounded
+  memory, and disk-backed state where needed.
+- Smarter extraction: `tools/knowledge/analyze.mjs` starts with deterministic
+  rule-based classification for versions, breaking changes, SQL syntax,
+  authentication, metadata, result UI, visualization, and driver-impacting
+  changes. Add per-product extractors when a source needs higher precision.
+- ML/evaluation: any model-ranking or provider-evaluation dataset derived from
+  knowledge snapshots must record source IDs, snapshot hashes, privacy inputs,
+  metrics, and artifact hashes so runs are reproducible and auditable.
 - Integration: surface relevant facts in the app when implementing a dialect feature or debugging a query issue.

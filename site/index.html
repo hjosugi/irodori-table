@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Irodori Table | 公式ドキュメント</title>
+    <title>Irodori Table | 公式サイト</title>
     <meta
       name="description"
       content="Irodori Table は、毎日データベースに向き合う人のための軽量なオープンソース SQL GUI です。Rust と Tauri を軸に、広いデータソース対応、キーボード操作、拡張性を重視しています。"
     />
-    <meta property="og:title" content="Irodori Table | 公式ドキュメント" />
+    <meta property="og:title" content="Irodori Table | 公式サイト" />
     <meta
       property="og:description"
       content="軽量、キーボード中心、広いデータソース対応を目指すオープンソース SQL GUI。"
@@ -30,7 +30,8 @@
         <nav class="site-nav" aria-label="主要ナビゲーション">
           <a href="#features">特長</a>
           <a href="#sources">対応予定</a>
-          <a href="#docs">ドキュメント</a>
+          <a href="#search">検索</a>
+          <a href="docs.html">ドキュメント</a>
           <a href="#roadmap">ロードマップ</a>
           <a href="https://github.com/hjosugi/irodori-table">GitHub</a>
         </nav>
@@ -49,7 +50,7 @@
               接続、実行、調査を速くします。
             </p>
             <div class="hero-actions" aria-label="主要アクション">
-              <a class="button primary" href="#docs">ドキュメントを見る</a>
+              <a class="button primary" href="docs.html">ドキュメントを見る</a>
               <a class="button secondary" href="https://github.com/hjosugi/irodori-table">
                 GitHub で見る
               </a>
@@ -143,15 +144,44 @@ order by value desc;</code></pre>
         <div class="container status-grid">
           <div>
             <strong>現在地</strong>
-            <span>データベースエンジン層とデスクトップ UI の縦切りを実装中</span>
+            <span>Development preview。日常利用前の実装・検証段階</span>
           </div>
           <div>
             <strong>Verified</strong>
-            <span>PostgreSQL / MySQL / MariaDB / SQL Server / Oracle / DuckDB / MongoDB / SQLite</span>
+            <span>PostgreSQL / MySQL / MariaDB / SQL Server / Oracle / DuckDB / MongoDB / SQLite など</span>
           </div>
           <div>
             <strong>Goal</strong>
             <span>軽さ、広い接続範囲、深い補完、完全なキーバインド制御</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="search" class="section search-section">
+        <div class="container search-layout">
+          <div class="section-heading compact">
+            <p class="eyebrow">Site search</p>
+            <h2>公式ドキュメントを全文検索。</h2>
+            <p>
+              接続、補完、結果グリッド、拡張 SDK、ロードマップなど、公開ドキュメント全体を
+              ブラウザ内で検索できます。外部サービスには送信しません。
+            </p>
+          </div>
+          <div class="search-panel" data-search>
+            <label class="search-label" for="site-search">検索語</label>
+            <div class="search-control">
+              <input
+                id="site-search"
+                name="q"
+                type="search"
+                autocomplete="off"
+                placeholder="例: completion, Oracle, CSV, proxy"
+                data-search-input
+              />
+              <a class="button secondary" href="docs.html">Docs</a>
+            </div>
+            <p class="search-status" data-search-status>キーワードを入力してください。</p>
+            <div class="search-results" data-search-results></div>
           </div>
         </div>
       </section>
@@ -239,11 +269,16 @@ order by value desc;</code></pre>
           <p class="eyebrow">Documentation</p>
           <h2>実装方針と開発状況を公開しています。</h2>
           <p>
-            公式サイトは概要を短くまとめ、詳細はリポジトリ内ドキュメントを正とします。
-            現時点では開発者向けの情報が中心です。
+            公式サイトには利用者向けのドキュメントページを置き、詳細な設計・進捗は
+            リポジトリ内ドキュメントへリンクしています。
           </p>
         </div>
         <div class="container docs-grid">
+          <a class="doc-card" href="docs.html">
+            <span>00</span>
+            <h3>Official Docs</h3>
+            <p>インストール、接続、クエリ、補完、結果グリッド、開発状況の入口。</p>
+          </a>
           <a class="doc-card" href="https://github.com/hjosugi/irodori-table/blob/main/ROADMAP.md">
             <span>01</span>
             <h3>Roadmap</h3>
@@ -328,5 +363,7 @@ order by value desc;</code></pre>
         <p>MIT OR 0BSD. Built as an open-source database workbench.</p>
       </div>
     </footer>
+    <script src="search-data.js"></script>
+    <script src="search.js"></script>
   </body>
 </html>

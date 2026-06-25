@@ -9,8 +9,8 @@
 At the time this ADR was opened, the query editor was a plain `<textarea>` in
 `apps/desktop/src/App.tsx` with hand-rolled SQL helpers (`statementDelimiters`,
 `dollarTagAt`, `compactSql`). The first CM6 implementation now exists. The
-remaining goal is production-quality dialect-aware **syntax highlighting** and a
-**SQL formatter**, on a path that also supports deterministic completion, Vim,
+ADR records the path to production-quality dialect-aware **syntax highlighting**
+and **SQL formatting**, while preserving room for deterministic completion, Vim,
 multi-cursor, and large-file performance.
 
 Constraints from existing docs:
