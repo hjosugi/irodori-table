@@ -1,0 +1,74 @@
+name: Knowledge refresh
+
+# Scheduled "COLLECT" pipeline: pull official DB docs into the knowledge base,
+# extract facts, (optionally) run the ML cheatsheet extractor, regenerate the
+# cheatsheets, and open a PR with whatever changed. The knowledge SQLite DB itself
+# is gitignored and rebuilt each run; only generated docs land in the PR.
+#
+# ML extraction is optional. It runs only when the IRODORI_LLM_* secrets are set;
+# otherwise tools/knowledge/ml-extract.mjs is a safe no-op and the deterministic
+# rule-based facts still feed the generators.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Max sources to fetch this run
+        default: "16"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: knowledge-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh knowledge and regenerate docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Fetch official docs into the knowledge base
+        run: node tools/knowledge/refresh.mjs --limit "${{ github.event.inputs.limit || '16' }}"
+
+      - name: Extract facts (rule-based, deterministic)
+        run: node tools/knowledge/analyze.mjs --changed-only
+
+      - name: ML cheatsheet extraction (optional)
+        env:
+          IRODORI_LLM_BASE_URL: ${{ secrets.IRODORI_LLM_BASE_URL }}
+          IRODORI_LLM_API_KEY: ${{ secrets.IRODORI_LLM_API_KEY }}
+          IRODORI_LLM_MODEL: ${{ secrets.IRODORI_LLM_MODEL }}
+        run: node tools/knowledge/ml-extract.mjs --all --limit 12
+
+      - name: Regenerate cheatsheets
+        run: node tools/knowledge/cheatsheet.mjs
+
+      - name: Verify registry guards still pass
+        run: node tools/docs/support-status.mjs
+
+      - name: Open pull request with regenerated docs
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: knowledge/auto-refresh
+          title: "chore(knowledge): scheduled docs refresh"
+          commit-message: "chore(knowledge): scheduled docs refresh"
+          body: |
+            Automated knowledge refresh: regenerated cheatsheets from the latest
+            official-doc snapshots and (when configured) ML cheatsheet extraction.
+
+            Review the cheatsheet diffs before merging. The knowledge SQLite DB is
+            gitignored, so only generated docs appear here.
+          add-paths: |
+            docs/cheatsheets/**
+            knowledge/sources.json

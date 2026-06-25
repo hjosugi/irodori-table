@@ -123,24 +123,36 @@ themselves.
    README/template, flagship Neo4j cheatsheet, this plan.
 2. **`engines.json` seed + `support-status.mjs --check`** (done): CI-checked
    registry drift guard. Pure-local, no network, no model.
-3. **`engines.json` emitter + support-status renderer**: make ask #1 generated
-   rather than hand-curated.
-4. **`cheatsheet.mjs` generator** rendering from curated `area='cheatsheet'` facts,
-   reproducing `neo4j.md`. Still deterministic.
-5. **Scheduled `refresh.mjs` + `analyze.mjs --changed-only`** job that feeds the
-   generator and opens a PR (ask #4 collection).
-6. **ML extractor** behind a flag with full provenance (ask #4 quality).
-7. **Feature-event recording + merge-triggered regeneration** (ask #5).
+3. **`engines.json` emitter + support-status renderer**: make ask #1 sections 1–3
+   *rendered* from `engines.json` (not just checked). Not yet built — the curated
+   doc + membership check cover it for now.
+4. **`cheatsheet.mjs` generator** (done): validates `<!-- seed -->` pages
+   (`neo4j.md`) and renders others from `knowledge/cheatsheets/<id>.json` fixtures
+   or `area='cheatsheet'` facts (`postgres.md` is the first generated page).
+   `--check` guards staleness in CI.
+5. **Scheduled refresh + regenerate** (done): `.github/workflows/knowledge-refresh.yml`
+   runs `refresh` → `analyze --changed-only` → `ml-extract` → `cheatsheet`, then
+   opens a PR (ask #4 collection). Mirrored by `make knowledge-refresh` / `make docs`.
+6. **ML extractor** (done): `tools/knowledge/ml-extract.mjs` calls any
+   OpenAI-compatible endpoint (local or hosted) to emit `area='cheatsheet'` facts
+   with full provenance. Optional — a no-op offline (ask #4 quality).
+7. **Feature-event recording** (done): `tools/knowledge/record-feature.mjs` writes
+   to `implementation_notes` (flags or `Doc-Update:` commit trailers). PR validation
+   is `.github/workflows/docs-check.yml`; scheduled regeneration carries it into the
+   generated docs. Folding notes into per-cheatsheet "Irodori-specific behavior"
+   sections is the remaining piece (ask #5).
 
-Steps 3–4 are buildable next with no new dependencies. Steps 5–7 introduce
-scheduling and (optionally) a model provider; confirm scope before building those.
+Only step 3 (full doc rendering from `engines.json`) remains; everything else is
+wired and runs green via `make docs-check`.
 
 ## Open decisions
 
 - **Memgraph & vector DBs:** finish or defer (see support-status §5) before
   generating cheatsheets for them.
-- **Model provider for #4 extraction:** which provider, and is offline rule-based
-  acceptable as the default until then? (ROADMAP says AI is optional/off by
-  default.)
-- **Generated-doc commit policy:** commit regenerated docs directly on merge, or
-  always via PR for review?
+- **Model provider for #4 extraction:** decided — any **OpenAI-compatible**
+  endpoint (local Ollama/LM Studio/vLLM or a hosted gateway) via
+  `IRODORI_LLM_BASE_URL` / `IRODORI_LLM_MODEL` / `IRODORI_LLM_API_KEY`. Offline
+  rule-based stays the default; ML is off unless those are set.
+- **Generated-doc commit policy:** the scheduled job opens a PR (review before
+  merge) rather than committing to `main` directly. Revisit if the volume makes
+  review noise.

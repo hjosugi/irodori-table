@@ -1,0 +1,39 @@
+name: Docs check
+
+# Fast, node-only guards for the generated/curated data-source docs. Keeps the
+# DbEngine registry, knowledge/engines.json, the support-status inventory, and the
+# per-engine cheatsheets from drifting apart. No Rust build, no network, no model.
+
+on:
+  pull_request:
+    paths:
+      - apps/desktop/src-tauri/src/db/engine.rs
+      - apps/desktop/src-tauri/src/db.rs
+      - knowledge/engines.json
+      - knowledge/sources.json
+      - knowledge/cheatsheets/**
+      - docs/data-source-support-status.md
+      - docs/cheatsheets/**
+      - tools/docs/**
+      - tools/knowledge/cheatsheet.mjs
+      - .github/workflows/docs-check.yml
+  push:
+    branches:
+      - main
+
+jobs:
+  docs-check:
+    name: Validate data-source docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Support-status registry guard
+        run: node tools/docs/support-status.mjs
+
+      - name: Cheatsheets up to date
+        run: node tools/knowledge/cheatsheet.mjs --check

@@ -16,7 +16,7 @@ automatic data collection that feeds it are specified in
 | Cheatsheet | Engine(s) covered | Status |
 |---|---|---|
 | [neo4j.md](neo4j.md) | Neo4j (graph, Bolt/Cypher); Memgraph notes | Seed (flagship) |
-| _postgres.md_ | PostgreSQL (+ Cockroach/Yugabyte/Redshift/Timescale/Neon) | Planned |
+| [postgres.md](postgres.md) | PostgreSQL (+ Cockroach/Yugabyte/Redshift/Timescale/Neon) | Generated (`knowledge/cheatsheets/postgres.json`) |
 | _mysql.md_ | MySQL / MariaDB / TiDB | Planned |
 | _sqlite.md_ | SQLite | Planned |
 | _sqlserver.md_ | SQL Server | Planned |

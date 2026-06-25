@@ -12,7 +12,8 @@
 
 RELEASE := node apps/desktop/tools/release.mjs
 
-.PHONY: release release-patch release-minor release-major run-linux run-linux-release
+.PHONY: release release-patch release-minor release-major run-linux run-linux-release \
+        knowledge-refresh knowledge-analyze ml-extract docs docs-check
 
 release: release-patch
 
@@ -35,3 +36,26 @@ run-linux:
 
 run-linux-release:
 	RELEASE=1 node apps/desktop/tools/install-linux.mjs
+
+# Knowledge base + generated data-source docs.
+#   make knowledge-refresh   # fetch official docs, then extract facts (changed-only)
+#   make ml-extract          # optional model-backed cheatsheet extraction (needs IRODORI_LLM_*)
+#   make docs                # regenerate per-engine cheatsheets from facts/fixtures
+#   make docs-check          # CI guards: registry drift + cheatsheets up to date
+LIMIT ?= 16
+knowledge-refresh:
+	node tools/knowledge/refresh.mjs --limit $(LIMIT)
+	node tools/knowledge/analyze.mjs --changed-only
+
+knowledge-analyze:
+	node tools/knowledge/analyze.mjs --changed-only
+
+ml-extract:
+	node tools/knowledge/ml-extract.mjs --all --limit 12
+
+docs:
+	node tools/knowledge/cheatsheet.mjs
+
+docs-check:
+	node tools/docs/support-status.mjs
+	node tools/knowledge/cheatsheet.mjs --check
