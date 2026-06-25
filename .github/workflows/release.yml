@@ -88,25 +88,3 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           projectPath: apps/desktop
-
-      # Ship the raw single-file binary as an "install-free" download. Tauri
-      # embeds the frontend into the exe, so it launches by double-click with no
-      # installer; it only needs the WebView2 runtime, which ships with Windows
-      # 10 (1803+) and 11. tauri-action created the draft release above, so we
-      # just attach one more asset to the same tag.
-      - name: Upload portable Windows exe
-        if: matrix.platform == 'windows-latest'
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          exe="target/release/irodori-table-desktop.exe"
-          if [ ! -f "$exe" ]; then
-            echo "Expected portable binary not found: $exe" >&2
-            ls -la target/release || true
-            exit 1
-          fi
-          dest="Irodori.Table_${GITHUB_REF_NAME#v}_x64_portable.exe"
-          cp "$exe" "$dest"
-          echo "Uploading $dest (from $exe)"
-          gh release upload "$GITHUB_REF_NAME" "$dest" --clobber
