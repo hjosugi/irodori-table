@@ -101,6 +101,25 @@ describe("findTableMetadata", () => {
     expect(found?.name).toBe("orders");
   });
 
+  it("uses result columns to disambiguate duplicate FROM-clause names", () => {
+    const duplicateMeta = metadata(
+      table("orders", ["id", "created_at"], [], "public"),
+      table("orders", ["id", "customer_id", "total"], [], "sales"),
+    );
+    const found = findTableMetadata(duplicateMeta, { table: "orders" }, ["id", "customer_id"]);
+    expect(found?.schema).toBe("sales");
+  });
+
+  it("keeps a unique FROM-clause match even when result columns are computed", () => {
+    const found = findTableMetadata(meta, { table: "orders" }, ["count"]);
+    expect(found?.name).toBe("orders");
+  });
+
+  it("falls back to column matching when the FROM table is unknown", () => {
+    const found = findTableMetadata(meta, { table: "missing_table" }, ["id", "name"]);
+    expect(found?.name).toBe("customers");
+  });
+
   it("falls back to a unique column superset when FROM is unknown", () => {
     const found = findTableMetadata(meta, null, ["id", "name"]);
     expect(found?.name).toBe("customers");

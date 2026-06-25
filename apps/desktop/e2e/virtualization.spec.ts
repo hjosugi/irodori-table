@@ -247,12 +247,12 @@ async function waitForGridPaint() {
 }
 
 async function connectMockDatabase(page: Page) {
-  await page.getByRole("button", { name: "Connect" }).click();
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.locator(".editor-meta")).toContainText("ready");
 }
 
 async function runFixtureQuery(page: Page, expectedDoneCount: number) {
-  await page.getByRole("button", { name: "Run Current" }).click();
+  await page.getByRole("button", { name: "Run Current", exact: true }).click();
   await waitForCompletedRun(page, expectedDoneCount);
 }
 
@@ -352,7 +352,7 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     );
     await expectRenderedRowsWithinBudget(grid, renderedRows);
 
-    await page.getByRole("button", { name: "Edit Data" }).click();
+    await page.getByRole("button", { name: "Edit Data", exact: true }).click();
     await scrollGridTo(grid, { left: 200 });
     await expectStickyGutterPinned(grid);
 

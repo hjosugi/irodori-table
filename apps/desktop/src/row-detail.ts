@@ -16,6 +16,8 @@ export type DetailValue = {
   json: boolean;
 };
 
+export type SourceTableRef = { schema?: string; table: string };
+
 /** Format a raw cell value for the detail panel, pretty-printing JSON containers. */
 export function formatDetailValue(value: unknown): DetailValue {
   if (value === null || value === undefined) {
@@ -27,9 +29,13 @@ export function formatDetailValue(value: unknown): DetailValue {
   return { text: String(value), json: false };
 }
 
+function normalizeId(value: string): string {
+  return value.toLowerCase();
+}
+
 /** Case-insensitive identifier comparison (most SQL engines fold unquoted names). */
 function eqId(a: string, b: string): boolean {
-  return a.toLowerCase() === b.toLowerCase();
+  return normalizeId(a) === normalizeId(b);
 }
 
 function stripIdentQuotes(raw: string): string {
@@ -59,7 +65,7 @@ function stripIdentQuotes(raw: string): string {
  * return the first table or null; callers validate the result against live metadata and
  * fall back to column matching, so a wrong guess degrades gracefully.
  */
-export function parseSourceTable(sql: string): { schema?: string; table: string } | null {
+export function parseSourceTable(sql: string): SourceTableRef | null {
   const match = /\bfrom\s+([`"[]?[\w$]+[`"\]]?)\s*(?:\.\s*([`"[]?[\w$]+[`"\]]?))?/i.exec(sql);
   if (!match) {
     return null;
@@ -82,8 +88,54 @@ function columnsSuperset(table: DbObjectMetadata, resultColumns: string[]): bool
   if (resultColumns.length === 0) {
     return false;
   }
-  const names = new Set(table.columns.map((column) => column.name.toLowerCase()));
-  return resultColumns.every((column) => names.has(column.toLowerCase()));
+  const names = new Set(table.columns.map((column) => normalizeId(column.name)));
+  return resultColumns.every((column) => names.has(normalizeId(column)));
+}
+
+type TableCandidateScore = {
+  table: DbObjectMetadata;
+  sourceMatch: boolean;
+  resultColumnsCovered: boolean;
+};
+
+function tableMatchesSource(table: DbObjectMetadata, source: SourceTableRef | null): boolean {
+  return (
+    source !== null &&
+    eqId(table.name, source.table) &&
+    (source.schema === undefined || eqId(table.schema, source.schema))
+  );
+}
+
+function scoreTableCandidate(
+  table: DbObjectMetadata,
+  source: SourceTableRef | null,
+  resultColumns: string[],
+): TableCandidateScore {
+  return {
+    table,
+    sourceMatch: tableMatchesSource(table, source),
+    resultColumnsCovered: columnsSuperset(table, resultColumns),
+  };
+}
+
+function pickSourceCandidate(candidates: TableCandidateScore[]): DbObjectMetadata | null {
+  const sourceMatches = candidates.filter((candidate) => candidate.sourceMatch);
+  if (sourceMatches.length === 0) {
+    return null;
+  }
+  if (sourceMatches.length === 1) {
+    return sourceMatches[0].table;
+  }
+  return (
+    sourceMatches.find((candidate) => candidate.resultColumnsCovered) ?? sourceMatches[0]
+  ).table;
+}
+
+function pickUniqueResultColumnCandidate(
+  candidates: TableCandidateScore[],
+): DbObjectMetadata | null {
+  const resultColumnMatches = candidates.filter((candidate) => candidate.resultColumnsCovered);
+  return resultColumnMatches.length === 1 ? resultColumnMatches[0].table : null;
 }
 
 /**
@@ -93,28 +145,16 @@ function columnsSuperset(table: DbObjectMetadata, resultColumns: string[]): bool
  */
 export function findTableMetadata(
   metadata: DatabaseMetadata | undefined,
-  source: { schema?: string; table: string } | null,
+  source: SourceTableRef | null,
   resultColumns: string[],
 ): DbObjectMetadata | null {
   if (!metadata) {
     return null;
   }
-  const tables = allTables(metadata);
-  if (source) {
-    const matches = tables.filter(
-      (table) =>
-        eqId(table.name, source.table) &&
-        (source.schema === undefined || eqId(table.schema, source.schema)),
-    );
-    if (matches.length === 1) {
-      return matches[0];
-    }
-    if (matches.length > 1) {
-      return matches.find((table) => columnsSuperset(table, resultColumns)) ?? matches[0];
-    }
-  }
-  const supersets = tables.filter((table) => columnsSuperset(table, resultColumns));
-  return supersets.length === 1 ? supersets[0] : null;
+  const candidates = allTables(metadata).map((table) =>
+    scoreTableCandidate(table, source, resultColumns),
+  );
+  return pickSourceCandidate(candidates) ?? pickUniqueResultColumnCandidate(candidates);
 }
 
 /** Look up a referenced table's metadata by (optional) schema and name. */
@@ -148,22 +188,21 @@ export function foreignKeyColumns(
   table: DbObjectMetadata | null,
   resultColumns: string[],
 ): Map<number, ColumnForeignKey> {
-  const map = new Map<number, ColumnForeignKey>();
   if (!table) {
-    return map;
+    return new Map();
   }
-  const lower = resultColumns.map((column) => column.toLowerCase());
-  for (const fk of table.foreignKeys) {
-    const columnIndexes = fk.columns.map((column) => lower.indexOf(column.toLowerCase()));
+  const lowerResultColumns = resultColumns.map(normalizeId);
+  const entries = table.foreignKeys.flatMap((fk): Array<[number, ColumnForeignKey]> => {
+    const columnIndexes = fk.columns.map((column) =>
+      lowerResultColumns.indexOf(normalizeId(column)),
+    );
     if (columnIndexes.some((index) => index < 0)) {
-      continue;
+      return [];
     }
     const binding: ColumnForeignKey = { fk, columnIndexes };
-    for (const index of columnIndexes) {
-      map.set(index, binding);
-    }
-  }
-  return map;
+    return columnIndexes.map((index) => [index, binding]);
+  });
+  return new Map(entries);
 }
 
 /** Quote a SQL identifier for the given engine. */

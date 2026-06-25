@@ -33,64 +33,66 @@ export const resultExportFormats: Array<{
   { id: "markdown", label: "Markdown", title: "Markdown table" },
 ];
 
+type ResultSerializer = (result: ResultLike, tableName: string) => string;
+
+const resultExportDefinitions: Record<
+  ResultExportFormat,
+  Omit<ResultExport, "content"> & { serialize: ResultSerializer }
+> = {
+  csv: {
+    serialize: (result) => delimitedFromResult(result, ","),
+    mime: "text/csv;charset=utf-8",
+    extension: "csv",
+    bom: true,
+  },
+  tsv: {
+    serialize: (result) => delimitedFromResult(result, "\t"),
+    mime: "text/tab-separated-values;charset=utf-8",
+    extension: "tsv",
+    bom: true,
+  },
+  json: {
+    serialize: jsonFromResult,
+    mime: "application/json;charset=utf-8",
+    extension: "json",
+    bom: false,
+  },
+  jsonl: {
+    serialize: jsonLinesFromResult,
+    mime: "application/x-ndjson;charset=utf-8",
+    extension: "jsonl",
+    bom: false,
+  },
+  sql: {
+    serialize: sqlInsertsFromResult,
+    mime: "application/sql;charset=utf-8",
+    extension: "sql",
+    bom: false,
+  },
+  excel: {
+    serialize: excelWorkbookFromResult,
+    mime: "application/vnd.ms-excel;charset=utf-8",
+    extension: "xls",
+    bom: true,
+  },
+  markdown: {
+    serialize: markdownFromResult,
+    mime: "text/markdown;charset=utf-8",
+    extension: "md",
+    bom: false,
+  },
+};
+
 export function buildResultExport(
   result: ResultLike,
   format: ResultExportFormat,
   tableName = "query_result",
 ): ResultExport {
-  switch (format) {
-    case "csv":
-      return {
-        content: delimitedFromResult(result, ","),
-        mime: "text/csv;charset=utf-8",
-        extension: "csv",
-        bom: true,
-      };
-    case "tsv":
-      return {
-        content: delimitedFromResult(result, "\t"),
-        mime: "text/tab-separated-values;charset=utf-8",
-        extension: "tsv",
-        bom: true,
-      };
-    case "json":
-      return {
-        content: `${JSON.stringify(result.rows.map((row) => rowToRecord(result.columns, row)), null, 2)}\n`,
-        mime: "application/json;charset=utf-8",
-        extension: "json",
-        bom: false,
-      };
-    case "jsonl":
-      return {
-        content: `${result.rows
-          .map((row) => JSON.stringify(rowToRecord(result.columns, row)))
-          .join("\n")}\n`,
-        mime: "application/x-ndjson;charset=utf-8",
-        extension: "jsonl",
-        bom: false,
-      };
-    case "sql":
-      return {
-        content: sqlInsertsFromResult(result, tableName),
-        mime: "application/sql;charset=utf-8",
-        extension: "sql",
-        bom: false,
-      };
-    case "excel":
-      return {
-        content: excelWorkbookFromResult(result),
-        mime: "application/vnd.ms-excel;charset=utf-8",
-        extension: "xls",
-        bom: true,
-      };
-    case "markdown":
-      return {
-        content: markdownFromResult(result),
-        mime: "text/markdown;charset=utf-8",
-        extension: "md",
-        bom: false,
-      };
-  }
+  const { serialize, ...definition } = resultExportDefinitions[format];
+  return {
+    ...definition,
+    content: serialize(result, tableName),
+  };
 }
 
 export function resultExportFileName(
@@ -98,12 +100,23 @@ export function resultExportFileName(
   format: ResultExportFormat,
   now = new Date(),
 ) {
-  const extension =
-    resultExportFormats.find((item) => item.id === format)?.id === "excel"
-      ? "xls"
-      : buildResultExport({ columns: [], rows: [] }, format).extension;
+  const extension = resultExportDefinitions[format].extension;
   const timestamp = now.toISOString().replace(/[:.]/g, "-");
   return `irodori-${connectionId}-${timestamp}.${extension}`;
+}
+
+function jsonFromResult(result: ResultLike) {
+  return `${JSON.stringify(recordsFromResult(result), null, 2)}\n`;
+}
+
+function jsonLinesFromResult(result: ResultLike) {
+  return `${recordsFromResult(result)
+    .map((record) => JSON.stringify(record))
+    .join("\n")}\n`;
+}
+
+function recordsFromResult(result: ResultLike) {
+  return result.rows.map((row) => rowToRecord(result.columns, row));
 }
 
 function rowToRecord(columns: string[], row: unknown[]) {
@@ -152,13 +165,14 @@ function delimitedCell(value: unknown, delimiter: string) {
 }
 
 function delimitedFromResult(result: ResultLike, delimiter: string) {
-  const rows = result.rows.map((row) =>
-    result.columns.map((_, index) => delimitedCell(row[index], delimiter)).join(delimiter),
-  );
   return [
-    result.columns.map((column) => delimitedCell(column, delimiter)).join(delimiter),
-    ...rows,
+    delimitedValues(result.columns, delimiter),
+    ...result.rows.map((row) => delimitedValues(rowValues(result.columns, row), delimiter)),
   ].join("\r\n");
+}
+
+function delimitedValues(values: unknown[], delimiter: string) {
+  return values.map((value) => delimitedCell(value, delimiter)).join(delimiter);
 }
 
 function quoteIdentifier(name: string) {
@@ -190,11 +204,12 @@ function sqlInsertsFromResult(result: ResultLike, tableName: string) {
     return `-- No rows to export for ${table}.\n`;
   }
   return `${result.rows
-    .map((row) => {
-      const values = result.columns.map((_, index) => sqlLiteral(row[index])).join(", ");
-      return `INSERT INTO ${table} (${columns}) VALUES (${values});`;
-    })
+    .map((row) => sqlInsertStatement(table, columns, rowValues(result.columns, row)))
     .join("\n")}\n`;
+}
+
+function sqlInsertStatement(table: string, columns: string, values: unknown[]) {
+  return `INSERT INTO ${table} (${columns}) VALUES (${values.map(sqlLiteral).join(", ")});`;
 }
 
 function escapeMarkdownCell(value: unknown) {
@@ -205,13 +220,14 @@ function escapeMarkdownCell(value: unknown) {
 }
 
 function markdownFromResult(result: ResultLike) {
-  const header = `| ${result.columns.map(escapeMarkdownCell).join(" | ")} |`;
-  const divider = `| ${result.columns.map(() => "---").join(" | ")} |`;
-  const rows = result.rows.map(
-    (row) =>
-      `| ${result.columns.map((_, index) => escapeMarkdownCell(row[index])).join(" | ")} |`,
-  );
+  const header = markdownRow(result.columns);
+  const divider = markdownRow(result.columns.map(() => "---"));
+  const rows = result.rows.map((row) => markdownRow(rowValues(result.columns, row)));
   return [header, divider, ...rows].join("\n") + "\n";
+}
+
+function markdownRow(values: unknown[]) {
+  return `| ${values.map(escapeMarkdownCell).join(" | ")} |`;
 }
 
 function escapeHtml(value: unknown) {
@@ -223,21 +239,20 @@ function escapeHtml(value: unknown) {
 }
 
 function excelWorkbookFromResult(result: ResultLike) {
-  const header = result.columns
-    .map((column) => `<th>${escapeHtml(column)}</th>`)
-    .join("");
-  const rows = result.rows
-    .map(
-      (row) =>
-        `<tr>${result.columns
-          .map((_, index) => `<td>${escapeHtml(row[index])}</td>`)
-          .join("")}</tr>`,
-    )
-    .join("");
+  const header = result.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+  const rows = result.rows.map((row) => htmlRow(rowValues(result.columns, row))).join("");
   return [
     "<!doctype html>",
     '<html><head><meta charset="utf-8"></head><body>',
     `<table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table>`,
     "</body></html>",
   ].join("");
+}
+
+function htmlRow(values: unknown[]) {
+  return `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
+}
+
+function rowValues(columns: string[], row: unknown[]) {
+  return columns.map((_, index) => row[index]);
 }
