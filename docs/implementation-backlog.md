@@ -312,9 +312,23 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Goal:** Smooth scrolling over huge results.
 - **Done when:** the grid renders only visible rows/cols; 1M-row synthetic result scrolls without jank in a benchmark.
 - **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely.
-- **Remaining:** column virtualization for very wide results, and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
+- **Remaining:** wide-column hardening and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
 - **Depends on:** EXEC-002
 - **Size:** L · **Priority:** P0
+
+### EXEC-004A — Wide-column virtualization hardening
+- **Goal:** Keep the grid smooth when a result has hundreds or thousands of columns.
+- **Done when:** a synthetic `1,000 rows x 2,000 columns` result renders only the visible column window plus overscan; DOM cell count stays bounded by viewport rows * viewport columns; horizontal scroll, sort, selected row, staged edit cells, paste, and edit-mode gutter keep correct column indexes; sticky headers and left/right spacer widths remain stable at desktop and narrow widths.
+- **Test plan:** pure window-calculation tests, Playwright smoke for a 2k-column fixture, and a DOM-node budget assertion after horizontal and diagonal scroll.
+- **Depends on:** EXEC-004
+- **Size:** M · **Priority:** P0
+
+### EXEC-004B — 1M-row synthetic scroll benchmark
+- **Goal:** Turn "smooth huge result scrolling" into a release gate instead of a subjective check.
+- **Done when:** a benchmark can inject a synthetic 1,000,000-row result without loading 1M DOM rows; scripted top/middle/bottom/rapid scroll completes within the budget; rendered row count stays near viewport + overscan; no blank grid frames are captured.
+- **Benchmark budget:** desktop Playwright run records scroll duration, max DOM rows/cells, and dropped-frame proxy metrics; failure threshold is documented and stable enough for CI or nightly perf runs.
+- **Depends on:** EXEC-004A
+- **Size:** M · **Priority:** P0
 
 ### EXEC-005 — Copy + client-side sort/filter (current page)
 - **Goal:** Basic in-grid data handling.
@@ -652,9 +666,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** SRC-001
 - **Size:** M · **Priority:** P1
 
-### SRC-007 — Distributed/warehouse SQL batch
+### SRC-007 — Distributed/warehouse SQL batch (ClickHouse, BigQuery ✅)
 - **Goal:** CockroachDB, ClickHouse, BigQuery, Redshift, Trino/Presto, TiDB, Databricks/Spark SQL.
 - **Done when:** each connects and reaches baseline parity behind the adapter trait; tracked individually but share the SQL pipeline.
+- **Done (ClickHouse, BigQuery):** clickhouse.rs (pure HTTP REST client) and bigquery.rs (pure HTTP REST client with Service Account signing) implemented and verified via integration tests. CockroachDB and TiDB also verified as postgres/mysql wire-compatible.
 - **Depends on:** SRC-001
 - **Size:** L · **Priority:** P2
 
@@ -674,15 +689,17 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** SRC-001, SRC-006
 - **Size:** L · **Priority:** P2
 
-### SRC-011 — Snowflake adapter with full auth coverage
+### SRC-011 — Snowflake adapter with full auth coverage ✅
 - **Goal:** Every common Snowflake auth path.
 - **Done when:** password, key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens connect; warehouse/role/database context switching works; auth matrix covered by tests where possible.
+- **Done:** snowflake.rs (pure HTTP REST client using Session REST API with JWT key-pair or password flow) implemented, database context switching integrated, and verified via unit tests.
 - **Depends on:** SRC-001, CONN-003
 - **Size:** L · **Priority:** P2
 
-### SRC-012 — Document/KV/search sources
+### SRC-012 — Document/KV/search sources (MongoDB, Redis, Cassandra ✅)
 - **Goal:** MongoDB, Redis, Elasticsearch/OpenSearch, plus Cassandra/Couchbase/DynamoDB/Arango/Memgraph by maturity.
 - **Done when:** native query surface, collection/keyspace/index browser, document viewer/editor with patch preview, and field/operator/stage completion work for the first targets (MongoDB, Redis, Elasticsearch).
+- **Done (MongoDB, Redis, Cassandra):** mongodb.rs (mongodb driver), redis.rs (redis client with command parser mapping to grid), and cassandra.rs (scylla driver using new lazy DeserializeRow API) implemented and verified via tests.
 - **Depends on:** SRC-001
 - **Size:** L · **Priority:** P2
 
@@ -788,6 +805,24 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** AI-002
 - **Size:** L · **Priority:** P2
 
+### AI-004 — Query Magics command layer
+- **Goal:** Add Beekeeper-style command shortcuts without making SQL execution ambiguous.
+- **Done when:** the editor recognizes explicit magic commands before execution, shows a preview of the expanded SQL/action, and supports at least schema inspect, explain, export, ERD open, result-to-file, and parameter prompt flows; normal SQL with similar text is never intercepted.
+- **Syntax:** line-leading commands only (`\\describe table`, `\\explain`, `\\export csv`, `\\erd schema.table`, `\\params`) plus a command-palette equivalent for every magic.
+- **Safety:** every magic is parsed locally, audited as a structured action, and either expands to visible SQL or calls an existing scoped command; destructive commands require the same confirmation path as hand-written SQL.
+- **Test plan:** parser fixtures, command expansion tests per dialect, and editor/command-palette smoke tests.
+- **Depends on:** EXEC-006, IO-001, ADV-004A
+- **Size:** M · **Priority:** P1
+
+### AI-005 — AI Shell
+- **Goal:** Optional, privacy-controlled assistant for query drafting, explanation, and repair.
+- **Done when:** a dockable shell can answer with context from selected SQL, active schema metadata, query errors, and opt-in result samples; it can propose SQL patches but cannot run them without putting SQL in the editor first; local/OpenAI-compatible providers work behind the same provider interface.
+- **Safety:** off by default; workspace policy controls provider, schema sharing, SQL text sharing, and result sample sharing; every payload is visible in an audit panel and redacted before send.
+- **UX:** VS Code-like side panel with chat history scoped to the connection/workspace, "Insert into editor", "Explain plan", "Fix error", and "Generate test query" actions.
+- **Test plan:** provider mock tests, redaction/audit tests, no-network default test, and Playwright smoke for shell open/insert workflow.
+- **Depends on:** AI-001, AI-002, EXEC-006, CMPL-002
+- **Size:** L · **Priority:** P1
+
 ---
 
 ## ADV — Advanced Workflows
@@ -810,9 +845,30 @@ top to bottom within an epic unless a dependency says otherwise.
 ### ADV-004 — ERD + graph views 🚧 (schema ERD done)
 - **Done when:** ERD renders from schema and query-result graph views render; explicitly after core editor/query/browser are excellent.
 - **Done (schema ERD via Mermaid):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders an `erDiagram` from the active connection's metadata — base tables with their columns, `PK`/`FK` markers, and many-to-one FK edges. `src/erd.ts` is the pure metadata→Mermaid generator (sanitized identifiers, only edges whose target table is present, so the graph stays clean); the modal can copy the Mermaid source. Mermaid is dynamically imported so it stays out of the main bundle (~240 kB) in its own ~610 kB chunk loaded on first open. Needs the new FK/PK metadata (below).
-- **Remaining:** reduce edge/box overlap further (evaluate the Mermaid ELK layout), query-result graph views, and FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done).
+- **Remaining:** image export, multi-schema representation, layout-quality pass, query-result graph views, and FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done).
 - **Depends on:** BROWSE-001
-- **Size:** L · **Priority:** Later
+- **Size:** L · **Priority:** P1
+
+### ADV-004A — ERD image export
+- **Goal:** Make diagrams shareable outside the app.
+- **Done when:** the ERD modal exports SVG and PNG from the currently rendered diagram; exported files include the current theme, schema/table labels, PK/FK markers, and viewport-independent dimensions; copy-to-clipboard supports SVG text and PNG image where the platform allows.
+- **Test plan:** pure SVG serialization test, Playwright export smoke, and pixel/non-empty checks for PNG output.
+- **Depends on:** ADV-004
+- **Size:** S · **Priority:** P1
+
+### ADV-004B — Multi-schema ERD representation
+- **Goal:** Make cross-schema databases readable instead of turning every schema into one flat graph.
+- **Done when:** diagrams can group tables by schema using visible bands/clusters; same-table-name collisions are disambiguated; cross-schema FK edges remain legible; users can filter schemas/tables before rendering; the Mermaid/source export preserves schema qualification.
+- **Test plan:** metadata fixtures with duplicate table names, cross-schema FKs, missing target schemas, and large schema counts.
+- **Depends on:** BROWSE-001, ADV-004
+- **Size:** M · **Priority:** P1
+
+### ADV-004C — ERD layout quality pass
+- **Goal:** Make ERD useful on real schemas, not just demos.
+- **Done when:** a 100-table / 250-edge fixture renders with bounded overlap, readable labels, zoom/pan/fit controls, schema/table search, and stable relayout after filtering; the layout strategy is documented (Mermaid ELK if sufficient, otherwise a custom layout path behind the same metadata model).
+- **Test plan:** visual regression screenshots for small, medium, and wide schemas; edge-overlap/label-visibility smoke checks; manual benchmark against the 100-table seed.
+- **Depends on:** ADV-004B
+- **Size:** L · **Priority:** P1
 
 ### ADV-005 — Plugin API for drivers/themes/formatters/visualizers + registry
 - **Done when:** third-party drivers, themes, formatters, and result visualizers load via a stable plugin API; a registry path exists after the local SDK is solid.

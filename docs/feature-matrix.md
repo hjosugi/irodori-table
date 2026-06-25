@@ -49,9 +49,10 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Completion | Dialect-aware ranking and insert behavior | P1 | Daily-driver quality |
 | Completion | Join suggestions, signatures, generated column lists | P1 | DataGrip-level baseline |
 | Completion | Offline deterministic completion without AI | P0 | User requirement |
-| Completion | Optional AI assistance | P2 | DataGrip, DBeaver, DbVisualizer, research watchlist |
+| Completion | Optional AI assistance | P1 | DataGrip, DBeaver, DbVisualizer, research watchlist; off by default |
+| AI | Query Magics command layer | P1 | Beekeeper parity, power-user query workflow |
+| AI | AI Shell with local/OpenAI-compatible providers | P1 | Optional privacy-preserving assistance |
 | AI | MCP bridge for Copilot-compatible workflows | P2 | GitHub Copilot MCP docs |
-| AI | Local model and OpenAI-compatible provider API | P2 | Optional privacy-preserving assistance |
 | Knowledge | Local SQLite source/fact store | P0 | Implementation and bug-fix memory |
 | Knowledge | Automated official-doc/release-note refresh | P1 | Keep DB dialect knowledge current |
 | Knowledge | Per-dialect feature extraction | P1 | Completion and compatibility planning |
@@ -60,7 +61,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Type Bridge | Extension SDK type/schema generation | P1 | Easy extension development |
 | Browser | Schemas, tables, views, columns, indexes | P0 | Baseline |
 | Browser | Functions, procedures, triggers, packages | P1 | Oracle/enterprise needs |
-| Results | Virtualized result grid | P0 | Performance requirement |
+| Results | Virtualized result grid, including wide columns and 1M-row benchmark | P0 | Performance requirement |
 | Results | Copy, CSV export, basic filtering/sorting | P0 | Baseline |
 | Results | Editable result rows with safe transaction flow | P1 | Current client baseline |
 | Results | Run-to-file for huge result sets | P1 | Large data workflow |
@@ -82,7 +83,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Extensibility | Driver/theme/plugin API | P1 | Long-term ecosystem |
 | Extensibility | Rust/Wasm extension path | P2 | High-performance add-ons |
 | Extensibility | Data-source adapter API for SQL, time-series, graph, document, KV, search, and warehouse sources | P1 | Avoid core-only support bottleneck |
-| Visualization | ERD and graph views | Later | Explicitly lower priority |
+| Visualization | ERD image export, multi-schema ERD, layout-quality pass, graph views | P1 | Beekeeper parity and schema comprehension |
 
 ## Reference Projects In Workspace
 

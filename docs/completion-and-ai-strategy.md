@@ -42,6 +42,7 @@ AI should sit above the deterministic engine as an opt-in assistant:
 
 - Natural-language-to-SQL generation.
 - Inline SQL ghost text, only when enabled.
+- AI Shell: a dockable chat panel scoped to the current connection/workspace.
 - Query/error explanation and suggested fixes.
 - Explain-plan summary.
 - Schema-aware chat.
@@ -62,6 +63,12 @@ Privacy rules:
 - Result data is never sent unless the user explicitly allows it for the current action.
 - Redaction should run before provider calls.
 - Every AI request should be inspectable in an audit panel.
+
+Execution boundary:
+
+- AI suggestions are text until the user inserts them into the editor.
+- The AI Shell cannot run SQL directly; it can only populate the editor or call explicitly scoped read-only tools.
+- Query Magics are not AI. They are local, explicit, line-leading commands such as `\describe`, `\explain`, `\export`, `\erd`, and `\params`, with command-palette equivalents and previewable expansion/action plans.
 
 ## Copilot Compatibility Direction
 

@@ -27,6 +27,11 @@ connector/registry, with per-engine modules under
 | MongoDB | `mongodb` (document store) | ✅ | real MongoDB 7.0 |
 | Oracle | `oracle-rs` (pure-Rust thin TNS) | ✅ | real Oracle 23ai/26ai Free |
 | SQLite | sqlx `SqlitePool` | ✅ | unit round-trip |
+| ClickHouse | pure-Rust HTTP REST | ✅ | real ClickHouse 24.3 (HTTP) |
+| Snowflake | pure-Rust HTTP REST (MFA/JWT/OAuth/Token) | ✅ | Snowflake SQL API |
+| BigQuery | pure-Rust HTTP REST (GCP Service Account JWT) | ✅ | Google Cloud BigQuery API |
+| Redis | `redis` (pure-Rust client) | ✅ | real Redis 7.2 |
+| Cassandra | `scylla` (pure-Rust client) | ✅ | real Cassandra 4.0 / ScyllaDB |
 | Redshift | sqlx (pg wire) | wire-compatible | AWS-only (no local container) |
 
 Every engine has a test in `tests/integration_db.rs` (or a unit test); run any
