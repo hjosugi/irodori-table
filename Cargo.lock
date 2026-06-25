@@ -2978,14 +2978,14 @@ dependencies = [
 
 [[package]]
 name = "irodori-completion"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "irodori-sql",
 ]
 
 [[package]]
 name = "irodori-core"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "serde",
  "serde_json",
@@ -2994,11 +2994,11 @@ dependencies = [
 
 [[package]]
 name = "irodori-data-sources"
-version = "0.2.3"
+version = "0.2.4"
 
 [[package]]
 name = "irodori-extension"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "serde",
  "serde_json",
@@ -3009,11 +3009,11 @@ dependencies = [
 
 [[package]]
 name = "irodori-i18n"
-version = "0.2.3"
+version = "0.2.4"
 
 [[package]]
 name = "irodori-io"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "apache-avro",
  "arrow",
@@ -3026,7 +3026,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-knowledge"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "serde",
  "sha2",
@@ -3036,7 +3036,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-proxy"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "irodori-core",
  "serde",
@@ -3048,22 +3048,22 @@ dependencies = [
 
 [[package]]
 name = "irodori-secure-store"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "irodori-core",
 ]
 
 [[package]]
 name = "irodori-server"
-version = "0.2.3"
+version = "0.2.4"
 
 [[package]]
 name = "irodori-sql"
-version = "0.2.3"
+version = "0.2.4"
 
 [[package]]
 name = "irodori-table-desktop"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "async-trait",
  "duckdb",
