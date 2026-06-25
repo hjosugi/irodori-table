@@ -85,7 +85,11 @@ describe("theme model", () => {
     expect(result.theme.ui.blue).toBe("#82aaff");
     expect(result.theme.ui.purple).toBe("#c792ea");
     expect(result.unsupported.colors).toContain("notebook.cellBorderColor");
-    expect(result.warnings.some((warning) => warning.includes("unsupported workbench"))).toBe(true);
+    expect(
+      result.warnings.some((warning) =>
+        warning.includes("unsupported workbench"),
+      ),
+    ).toBe(true);
   });
 
   it("imports VS Code TextMate and semantic token colors", () => {
@@ -177,7 +181,9 @@ describe("theme model", () => {
     expect(result.theme.syntax.bool).toBe("#ff5370");
     expect(result.unsupported.tokenScopes).toContain("markup.heading");
     expect(result.unsupported.semanticTokenColors).toContain("unknownTokenType");
-    expect(result.warnings.some((warning) => warning.includes("Broken foreground"))).toBe(true);
+    expect(
+      result.warnings.some((warning) => warning.includes("Broken foreground")),
+    ).toBe(true);
   });
 
   it("degrades gracefully for partial or malformed VS Code theme input", () => {
@@ -196,7 +202,10 @@ describe("theme model", () => {
       name: "Partial Light",
       type: "light",
       license: "Apache-2.0",
-      colors: { "editor.background": "#ffffff", "editor.foreground": "black" },
+      colors: {
+        "editor.background": "#ffffff",
+        "editor.foreground": "black",
+      },
       tokenColors: { scope: "keyword" },
       semanticTokenColors: { keyword: { foreground: "#005cc5" } },
     });
