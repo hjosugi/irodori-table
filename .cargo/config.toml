@@ -1,0 +1,9 @@
+# Build acceleration. Keep entries target-scoped so they only apply where the
+# tool is guaranteed to exist.
+
+# mold is a much faster linker than the default bfd/gold, and linking dominates
+# incremental Tauri rebuilds — this is the single biggest local-build win.
+# mold ships on CachyOS by default and the CI Ubuntu jobs apt-install it.
+# gcc >= 12.1 understands -fuse-ld=mold (dev boxes and CI runners are newer).
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]

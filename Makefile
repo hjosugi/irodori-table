@@ -12,7 +12,7 @@
 
 RELEASE := node apps/desktop/tools/release.mjs
 
-.PHONY: release release-patch release-minor release-major
+.PHONY: release release-patch release-minor release-major run-linux run-linux-release
 
 release: release-patch
 
@@ -24,3 +24,14 @@ release-minor:
 
 release-major:
 	$(RELEASE) major
+
+# Local real-device testing on Linux (CachyOS/Arch, etc.): build an AppImage,
+# install it to ~/Applications, register a launcher entry, and open it.
+#   make run-linux           # fast debug build (default)
+#   make run-linux-release   # optimized build
+# Set NO_LAUNCH=1 to install without opening.
+run-linux:
+	node apps/desktop/tools/install-linux.mjs
+
+run-linux-release:
+	RELEASE=1 node apps/desktop/tools/install-linux.mjs

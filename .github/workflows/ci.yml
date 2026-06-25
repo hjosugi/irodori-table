@@ -36,6 +36,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # The committed .cargo/config.toml links Linux builds with mold, so it
+      # must be present on the Ubuntu runner.
+      - name: Install mold (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y mold
+
       # Reuse compiled dependencies across runs instead of rebuilding the whole
       # tree every time. Workspace target dir lives at the repo root.
       - name: Cache Rust build
