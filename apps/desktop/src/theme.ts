@@ -2,8 +2,8 @@
 //
 // One model is the single source of truth for both the workbench UI (driven via
 // CSS custom properties on `.app-shell`) and the editor (driven via CodeMirror
-// extensions). VS Code theme import (THEME-002) will normalize *into* this model
-// rather than the app consuming TextMate scopes directly.
+// extensions). VS Code theme imports normalize *into* this model rather than
+// the app consuming TextMate scopes directly.
 
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
@@ -177,6 +177,199 @@ export const themes: Record<ThemeKind, IrodoriTheme> = {
   dark: darkTheme,
 };
 
+export interface VsCodeThemeImportOptions {
+  fallbackTheme?: IrodoriTheme;
+  licenseNote?: string;
+  name?: string;
+}
+
+export interface VsCodeThemeUnsupportedKeys {
+  colors: string[];
+  tokenScopes: string[];
+  semanticTokenColors: string[];
+}
+
+export interface VsCodeThemeImportResult {
+  theme: IrodoriTheme;
+  warnings: string[];
+  licenseNote: string;
+  unsupported: VsCodeThemeUnsupportedKeys;
+}
+
+type JsonObject = Record<string, unknown>;
+type UiColorRole = keyof IrodoriUiColors;
+
+const vscodeWorkbenchColorMappings: Record<string, readonly UiColorRole[]> = {
+  foreground: ["text"],
+  descriptionForeground: ["muted"],
+  disabledForeground: ["muted"],
+  errorForeground: ["red"],
+  focusBorder: ["focus"],
+  contrastBorder: ["borderStrong"],
+  "activityBar.background": ["chrome"],
+  "activityBar.border": ["border"],
+  "badge.background": ["blue"],
+  "button.background": ["blue"],
+  "charts.blue": ["blue"],
+  "charts.foreground": ["text"],
+  "charts.green": ["green"],
+  "charts.purple": ["purple"],
+  "charts.red": ["red"],
+  "charts.yellow": ["amber"],
+  "dropdown.background": ["inputBg"],
+  "dropdown.border": ["border"],
+  "editor.background": ["editorBg"],
+  "editor.findMatchBackground": ["selectedStrong"],
+  "editor.findMatchHighlightBackground": ["selected"],
+  "editor.foreground": ["text"],
+  "editor.inactiveSelectionBackground": ["selected"],
+  "editor.lineHighlightBackground": ["activeLine"],
+  "editor.selectionBackground": ["selection", "selectedStrong"],
+  "editor.selectionHighlightBackground": ["selected"],
+  "editorError.foreground": ["red"],
+  "editorGroup.border": ["borderStrong"],
+  "editorGutter.background": ["gutterBg"],
+  "editorHint.foreground": ["teal"],
+  "editorInfo.foreground": ["blue"],
+  "editorLineNumber.foreground": ["gutterText", "muted"],
+  "editorOverviewRuler.errorForeground": ["red"],
+  "editorOverviewRuler.warningForeground": ["amber"],
+  "editorWarning.foreground": ["amber"],
+  "editorWidget.background": ["surfaceRaised"],
+  "editorWidget.border": ["border"],
+  "editorCursor.foreground": ["caret"],
+  "input.background": ["inputBg"],
+  "input.border": ["border"],
+  "input.foreground": ["text"],
+  "inputValidation.errorBackground": ["dangerBg"],
+  "inputValidation.errorBorder": ["red"],
+  "inputValidation.warningBackground": ["warningBg"],
+  "inputValidation.warningBorder": ["amber"],
+  "list.activeSelectionBackground": ["selectedStrong"],
+  "list.focusBackground": ["selected"],
+  "list.hoverBackground": ["hover"],
+  "list.inactiveSelectionBackground": ["selected"],
+  "list.highlightForeground": ["blue"],
+  "menu.background": ["surfaceRaised"],
+  "menu.border": ["border"],
+  "panel.background": ["surfaceRaised"],
+  "panel.border": ["border"],
+  "peekView.border": ["borderStrong"],
+  "problemsErrorIcon.foreground": ["red"],
+  "problemsInfoIcon.foreground": ["blue"],
+  "problemsWarningIcon.foreground": ["amber"],
+  "sideBar.background": ["surface"],
+  "sideBar.border": ["border"],
+  "sideBar.foreground": ["text"],
+  "sideBarSectionHeader.background": ["surfaceMuted"],
+  "sideBarSectionHeader.border": ["border"],
+  "statusBar.background": ["chrome"],
+  "statusBar.border": ["border"],
+  "tab.activeBackground": ["surfaceRaised"],
+  "tab.border": ["border"],
+  "tab.inactiveBackground": ["surface"],
+  "terminal.ansiBlue": ["blue"],
+  "terminal.ansiBrightBlue": ["blue"],
+  "terminal.ansiBrightCyan": ["teal"],
+  "terminal.ansiBrightGreen": ["green"],
+  "terminal.ansiBrightMagenta": ["purple"],
+  "terminal.ansiBrightRed": ["red"],
+  "terminal.ansiBrightYellow": ["amber"],
+  "terminal.ansiCyan": ["teal"],
+  "terminal.ansiGreen": ["green"],
+  "terminal.ansiMagenta": ["purple"],
+  "terminal.ansiRed": ["red"],
+  "terminal.ansiYellow": ["amber"],
+  "titleBar.activeBackground": ["chrome"],
+  "titleBar.border": ["border"],
+  "titleBar.inactiveBackground": ["surfaceMuted"],
+};
+
+const vscodeWorkbenchSyntaxMappings: Record<
+  string,
+  readonly SyntaxTokenRole[]
+> = {
+  foreground: ["name"],
+  "editor.foreground": ["name"],
+};
+
+const semanticTokenRoleAliases: Record<string, SyntaxTokenRole> = {
+  boolean: "bool",
+  bracket: "bracket",
+  class: "type",
+  comment: "comment",
+  decorator: "property",
+  enum: "type",
+  enummember: "property",
+  event: "property",
+  function: "function",
+  interface: "type",
+  keyword: "keyword",
+  label: "name",
+  macro: "function",
+  method: "function",
+  modifier: "keyword",
+  namespace: "type",
+  null: "bool",
+  number: "number",
+  operator: "operator",
+  parameter: "name",
+  property: "property",
+  punctuation: "punctuation",
+  regexp: "string",
+  string: "string",
+  struct: "type",
+  type: "type",
+  typeparameter: "type",
+  variable: "name",
+};
+
+/** Normalize a VS Code color theme object into the internal theme model. */
+export function importVsCodeTheme(
+  source: unknown,
+  options: VsCodeThemeImportOptions = {},
+): VsCodeThemeImportResult {
+  const warnings: string[] = [];
+  const unsupported: VsCodeThemeUnsupportedKeys = {
+    colors: [],
+    tokenScopes: [],
+    semanticTokenColors: [],
+  };
+
+  if (!isJsonObject(source)) {
+    warnings.push("Theme import expected a JSON object; using fallback theme.");
+  }
+
+  const kind =
+    inferVsCodeThemeKind(source) ?? options.fallbackTheme?.kind ?? "dark";
+  const theme = cloneTheme(options.fallbackTheme ?? themes[kind]);
+  theme.kind = kind;
+  theme.name =
+    options.name ??
+    (isJsonObject(source) ? readString(source.name) : undefined) ??
+    "Imported VS Code Theme";
+
+  if (isJsonObject(source)) {
+    applyVsCodeWorkbenchColors(source.colors, theme, warnings, unsupported);
+    applyVsCodeTokenColors(source.tokenColors, theme, warnings, unsupported);
+    applyVsCodeSemanticTokenColors(
+      source.semanticTokenColors,
+      theme,
+      warnings,
+      unsupported,
+    );
+  }
+
+  appendUnsupportedWarnings(unsupported, warnings);
+
+  return {
+    theme,
+    warnings,
+    licenseNote: licenseNoteForImport(source, options),
+    unsupported,
+  };
+}
+
 /** CSS custom properties for the workbench shell. Spread onto `.app-shell` style. */
 export function cssVariables(theme: IrodoriTheme): Record<string, string> {
   const { ui } = theme;
@@ -251,4 +444,466 @@ export function editorThemeExtensions(theme: IrodoriTheme): Extension {
   );
 
   return [chrome];
+}
+
+function applyVsCodeWorkbenchColors(
+  value: unknown,
+  theme: IrodoriTheme,
+  warnings: string[],
+  unsupported: VsCodeThemeUnsupportedKeys,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isJsonObject(value)) {
+    warnings.push("Ignored VS Code colors because it is not an object.");
+    return;
+  }
+
+  for (const [key, rawColor] of Object.entries(value)) {
+    const uiRoles = vscodeWorkbenchColorMappings[key];
+    const syntaxRoles = vscodeWorkbenchSyntaxMappings[key] ?? [];
+    if (!uiRoles && syntaxRoles.length === 0) {
+      pushUnique(unsupported.colors, key);
+      continue;
+    }
+
+    const color = readThemeColor(
+      rawColor,
+      `VS Code workbench color "${key}"`,
+      warnings,
+    );
+    if (!color) {
+      continue;
+    }
+
+    for (const role of uiRoles ?? []) {
+      theme.ui[role] = color;
+    }
+    for (const role of syntaxRoles) {
+      theme.syntax[role] = color;
+    }
+  }
+}
+
+function applyVsCodeTokenColors(
+  value: unknown,
+  theme: IrodoriTheme,
+  warnings: string[],
+  unsupported: VsCodeThemeUnsupportedKeys,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    warnings.push("Ignored VS Code tokenColors because it is not an array.");
+    return;
+  }
+
+  value.forEach((rule, index) => {
+    if (!isJsonObject(rule)) {
+      warnings.push(`Ignored tokenColors[${index}] because it is not an object.`);
+      return;
+    }
+    const settings = rule.settings;
+    if (!isJsonObject(settings)) {
+      warnings.push(
+        `Ignored tokenColors[${index}] because settings is not an object.`,
+      );
+      return;
+    }
+
+    const label = readString(rule.name) ?? `tokenColors[${index}]`;
+    const foreground = readOptionalThemeColor(
+      settings.foreground,
+      `${label} foreground`,
+      warnings,
+    );
+    const background = readOptionalThemeColor(
+      settings.background,
+      `${label} background`,
+      warnings,
+    );
+    const hasScope = rule.scope !== undefined;
+    const scopes = textMateScopesForRule(rule.scope, label, warnings);
+
+    if (scopes.length === 0) {
+      if (hasScope) {
+        return;
+      }
+      if (foreground) {
+        theme.ui.text = foreground;
+        theme.syntax.name = foreground;
+      }
+      if (background) {
+        theme.ui.editorBg = background;
+      }
+      return;
+    }
+
+    if (!foreground) {
+      return;
+    }
+
+    for (const scope of scopes) {
+      const roles = syntaxRolesForTextMateScope(scope);
+      if (roles.length === 0) {
+        pushUnique(unsupported.tokenScopes, scope);
+        continue;
+      }
+      for (const role of roles) {
+        theme.syntax[role] = foreground;
+      }
+    }
+  });
+}
+
+function applyVsCodeSemanticTokenColors(
+  value: unknown,
+  theme: IrodoriTheme,
+  warnings: string[],
+  unsupported: VsCodeThemeUnsupportedKeys,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isJsonObject(value)) {
+    warnings.push(
+      "Ignored VS Code semanticTokenColors because it is not an object.",
+    );
+    return;
+  }
+
+  for (const [key, rawEntry] of Object.entries(value)) {
+    const roles = syntaxRolesForSemanticTokenKey(key);
+    if (roles.length === 0) {
+      pushUnique(unsupported.semanticTokenColors, key);
+      continue;
+    }
+
+    const color = semanticTokenForeground(rawEntry, key, warnings);
+    if (!color) {
+      continue;
+    }
+
+    for (const role of roles) {
+      theme.syntax[role] = color;
+    }
+  }
+}
+
+function appendUnsupportedWarnings(
+  unsupported: VsCodeThemeUnsupportedKeys,
+  warnings: string[],
+): void {
+  unsupported.colors.sort();
+  unsupported.tokenScopes.sort();
+  unsupported.semanticTokenColors.sort();
+
+  if (unsupported.colors.length > 0) {
+    warnings.push(
+      `Ignored ${unsupported.colors.length} unsupported workbench color key(s): ${previewList(
+        unsupported.colors,
+      )}.`,
+    );
+  }
+  if (unsupported.tokenScopes.length > 0) {
+    warnings.push(
+      `Ignored ${unsupported.tokenScopes.length} unsupported TextMate scope(s): ${previewList(
+        unsupported.tokenScopes,
+      )}.`,
+    );
+  }
+  if (unsupported.semanticTokenColors.length > 0) {
+    warnings.push(
+      `Ignored ${
+        unsupported.semanticTokenColors.length
+      } unsupported semantic token key(s): ${previewList(
+        unsupported.semanticTokenColors,
+      )}.`,
+    );
+  }
+}
+
+function syntaxRolesForTextMateScope(scopeSelector: string): SyntaxTokenRole[] {
+  const scope = scopeSelector.toLowerCase();
+  if (scope.includes("comment")) {
+    return ["comment"];
+  }
+  if (
+    scope.includes("string") ||
+    scope.includes("constant.character") ||
+    scope.includes("constant.other.symbol") ||
+    scope.includes("regexp")
+  ) {
+    return ["string"];
+  }
+  if (scope.includes("constant.numeric") || scope.includes("number")) {
+    return ["number"];
+  }
+  if (
+    scope.includes("constant.language") ||
+    scope.includes("support.constant") ||
+    scope.includes("boolean") ||
+    scope.includes("null")
+  ) {
+    return ["bool"];
+  }
+  if (
+    scope.includes("entity.name.function") ||
+    scope.includes("support.function") ||
+    scope.includes("meta.function-call") ||
+    scope.includes("function")
+  ) {
+    return ["function"];
+  }
+  if (
+    scope.includes("entity.name.type") ||
+    scope.includes("entity.name.class") ||
+    scope.includes("entity.name.enum") ||
+    scope.includes("entity.name.struct") ||
+    scope.includes("support.type") ||
+    scope.includes("storage.type")
+  ) {
+    return ["type"];
+  }
+  if (
+    scope.includes("variable.other.property") ||
+    scope.includes("support.variable.property") ||
+    scope.includes("entity.other.attribute-name") ||
+    scope.includes("property") ||
+    scope.includes("field")
+  ) {
+    return ["property"];
+  }
+  if (scope.includes("keyword.operator") || scope.includes("operator")) {
+    return ["operator"];
+  }
+  if (
+    scope.includes("keyword") ||
+    scope.includes("storage.modifier") ||
+    scope.includes("storage.control") ||
+    scope.includes("storage")
+  ) {
+    return ["keyword"];
+  }
+  if (
+    scope.includes("punctuation.section") ||
+    scope.includes("brace") ||
+    scope.includes("bracket") ||
+    scope.includes("paren")
+  ) {
+    return ["bracket"];
+  }
+  if (
+    scope.includes("punctuation") ||
+    scope.includes("separator") ||
+    scope.includes("delimiter")
+  ) {
+    return ["punctuation"];
+  }
+  if (
+    scope.includes("variable") ||
+    scope.includes("identifier") ||
+    scope.includes("entity.name") ||
+    scope.includes("support.variable")
+  ) {
+    return ["name"];
+  }
+  return [];
+}
+
+function syntaxRolesForSemanticTokenKey(key: string): SyntaxTokenRole[] {
+  const parts = key.toLowerCase().split(/[^a-z0-9_*]+/).filter(Boolean);
+  for (const part of parts) {
+    const role = semanticTokenRoleAliases[part];
+    if (role) {
+      return [role];
+    }
+  }
+  return [];
+}
+
+function semanticTokenForeground(
+  value: unknown,
+  key: string,
+  warnings: string[],
+): string | undefined {
+  if (typeof value === "string") {
+    return readThemeColor(value, `semantic token "${key}"`, warnings);
+  }
+  if (isJsonObject(value)) {
+    return readOptionalThemeColor(
+      value.foreground,
+      `semantic token "${key}" foreground`,
+      warnings,
+    );
+  }
+  warnings.push(`Ignored semantic token "${key}" because it is not a color.`);
+  return undefined;
+}
+
+function textMateScopesForRule(
+  value: unknown,
+  label: string,
+  warnings: string[],
+): string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (typeof value === "string") {
+    return splitTextMateScopeSelector(value);
+  }
+  if (!Array.isArray(value)) {
+    warnings.push(`Ignored ${label} scope because it is not a string or array.`);
+    return [];
+  }
+
+  const scopes: string[] = [];
+  value.forEach((scope, index) => {
+    if (typeof scope !== "string") {
+      warnings.push(
+        `Ignored ${label} scope[${index}] because it is not a string.`,
+      );
+      return;
+    }
+    scopes.push(...splitTextMateScopeSelector(scope));
+  });
+  return scopes;
+}
+
+function splitTextMateScopeSelector(selector: string): string[] {
+  return selector
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+}
+
+function inferVsCodeThemeKind(source: unknown): ThemeKind | undefined {
+  if (!isJsonObject(source)) {
+    return undefined;
+  }
+
+  const type = readString(source.type)?.toLowerCase();
+  if (type?.includes("light")) {
+    return "light";
+  }
+  if (type?.includes("dark") || type === "hc") {
+    return "dark";
+  }
+
+  const colors = source.colors;
+  if (!isJsonObject(colors)) {
+    return undefined;
+  }
+  const editorBackground = colors["editor.background"];
+  if (typeof editorBackground !== "string" || !isVsCodeColor(editorBackground)) {
+    return undefined;
+  }
+  const luminance = relativeLuminance(editorBackground);
+  if (luminance === undefined) {
+    return undefined;
+  }
+  return luminance > 0.5 ? "light" : "dark";
+}
+
+function relativeLuminance(color: string): number | undefined {
+  const hex = color.slice(1);
+  const rgb =
+    hex.length === 3 || hex.length === 4
+      ? [hex[0], hex[1], hex[2]].map((part) => parseInt(part + part, 16))
+      : hex.length === 6 || hex.length === 8
+        ? [
+            parseInt(hex.slice(0, 2), 16),
+            parseInt(hex.slice(2, 4), 16),
+            parseInt(hex.slice(4, 6), 16),
+          ]
+        : undefined;
+  if (!rgb) {
+    return undefined;
+  }
+
+  const [red, green, blue] = rgb.map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function readThemeColor(
+  value: unknown,
+  label: string,
+  warnings: string[],
+): string | undefined {
+  if (typeof value !== "string" || !isVsCodeColor(value)) {
+    warnings.push(`Ignored ${label} because it is not a supported hex color.`);
+    return undefined;
+  }
+  return value;
+}
+
+function readOptionalThemeColor(
+  value: unknown,
+  label: string,
+  warnings: string[],
+): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return readThemeColor(value, label, warnings);
+}
+
+function isVsCodeColor(value: string): boolean {
+  return /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(
+    value,
+  );
+}
+
+function licenseNoteForImport(
+  source: unknown,
+  options: VsCodeThemeImportOptions,
+): string {
+  if (options.licenseNote) {
+    return options.licenseNote;
+  }
+
+  const declaredLicense = isJsonObject(source)
+    ? readString(source.license) ?? readString(source.licenseNote)
+    : undefined;
+  if (declaredLicense) {
+    return `Imported VS Code theme declares license: ${declaredLicense}. Verify terms before redistribution.`;
+  }
+  return "Verify the source VS Code theme license before importing or redistributing it.";
+}
+
+function cloneTheme(theme: IrodoriTheme): IrodoriTheme {
+  return {
+    name: theme.name,
+    kind: theme.kind,
+    ui: { ...theme.ui },
+    syntax: { ...theme.syntax },
+  };
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : undefined;
+}
+
+function pushUnique(values: string[], value: string): void {
+  if (!values.includes(value)) {
+    values.push(value);
+  }
+}
+
+function previewList(values: readonly string[]): string {
+  const preview = values.slice(0, 8).join(", ");
+  return values.length > 8 ? `${preview}, ...` : preview;
 }

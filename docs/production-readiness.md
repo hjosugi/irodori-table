@@ -1,6 +1,6 @@
 # Production Readiness
 
-Last updated: 2026-06-22 JST.
+Last updated: 2026-06-26 JST.
 
 This checklist is the release gate for turning Irodori Table from a working
 prototype into a dependable database client. It intentionally separates
@@ -26,8 +26,9 @@ only the supported set.
 - Query execution: cancellable running queries, per-connection query timeout,
   fetch-more pagination, and run-to-file export for result sets beyond the memory
   cap.
-- Result grid: typed column metadata, copy/export modes, CSV/TSV/JSON export tests,
-  and virtualized rendering for large pages.
+- Result grid: typed column metadata, copy modes, current-result export tests for
+  CSV/TSV/JSON/JSONL/SQL/Excel-compatible HTML workbook/Markdown, native XLSX
+  tracking, saved/server-side filters, and virtualized rendering for large pages.
 - Object browser: lazy schema/table expansion, metadata cache with invalidation,
   row estimates, comments, routines/triggers/packages, and per-engine fallback
   behavior when catalogs differ.
@@ -43,6 +44,13 @@ only the supported set.
   and result-window bounds.
 - Connection errors redact URL passwords plus ADO `Password=` and `PWD=` values.
 - Reconnecting an existing connection ID closes the previous handle.
-- Query history, selected/current statement execution, and CSV export are wired in
-  the desktop UI.
-
+- Query history, selected/current statement execution, current-result export
+  formats (CSV/TSV/JSON/JSONL/SQL/Excel-compatible HTML workbook/Markdown),
+  client-side quick/rule filters, and multi-column sort are wired in the desktop
+  UI.
+- Schema ERD UI and SVG/PNG export helpers are wired, but visual/export smoke
+  evidence and query-result graph views remain open.
+- Vim mode is wired with Playwright smoke coverage for toggle, insert, and a
+  normal-mode delete flow; deeper Vim parity remains open.
+- Linux AppImage v0.2.4 has been released. Cross-platform installer/signing and
+  update-channel decisions are still release-readiness work.

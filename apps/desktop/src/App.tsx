@@ -81,6 +81,7 @@ import {
   eventToChord,
   findConflicts,
   formatKeySequence,
+  type CommandMeta,
   type KeybindingScope,
   type Keymap,
   loadOverrides,
@@ -94,12 +95,17 @@ import {
   type ResultExportFormat,
 } from "./result-export";
 import {
+  calculateResultGridVirtualColumnWindow,
+  calculateResultGridVirtualRowWindow,
   cycleResultSortRules,
+  formatResultGridTsv,
+  formatResultGridTsvRow,
   resultFilterNeedsValue,
   resultFilterOperators,
   type ResultFilterJoin,
   type ResultFilterOperator,
   type ResultFilterRule,
+  type ResultGridRowLike,
   type ResultSortRule,
 } from "./result-grid";
 import {
@@ -160,6 +166,36 @@ import {
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import "./App.css";
+
+const resultCopyCommands: CommandMeta[] = [
+  {
+    id: "result.copySelection",
+    title: "Copy selected cell or row",
+    category: "Result",
+    scope: "grid",
+  },
+  {
+    id: "result.copyRow",
+    title: "Copy selected row as TSV",
+    category: "Result",
+    scope: "grid",
+  },
+  {
+    id: "result.copyVisible",
+    title: "Copy visible result as TSV",
+    category: "Result",
+    scope: "grid",
+  },
+];
+
+const appCommandCatalog: CommandMeta[] = [
+  ...commandCatalog,
+  ...resultCopyCommands,
+];
+
+const resultCopyDefaultKeymap: Keymap = {
+  "result.copySelection": "Mod+C",
+};
 
 const fallbackSnapshot: WorkspaceSnapshot = {
   activeConnectionId: "local-pg",
@@ -334,6 +370,30 @@ function keyScopeFromTarget(
     return "grid";
   }
   return "global";
+}
+
+function isEditableTarget(target: EventTarget | null): target is HTMLElement {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT" ||
+    target.isContentEditable
+  );
+}
+
+function isCellEditorClipboardShortcut(
+  event: KeyboardEvent,
+  target: HTMLElement | null,
+): boolean {
+  return (
+    !!target?.closest(".cell-editor") &&
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    ["c", "x", "v"].includes(event.key.toLowerCase())
+  );
 }
 
 const maxQueryHistoryItems = 50;
@@ -1140,27 +1200,21 @@ function App() {
     1,
     gridGutterWidth + resultColumns.length * GRID_COLUMN_WIDTH,
   );
-  const firstVisibleColumn = Math.max(
-    0,
-    Math.floor(Math.max(0, gridScrollLeft - gridGutterWidth) / GRID_COLUMN_WIDTH) -
-      GRID_COLUMN_OVERSCAN,
-  );
-  const columnWindowSize =
-    Math.ceil(Math.max(0, gridViewportWidth - gridGutterWidth) / GRID_COLUMN_WIDTH) +
-    GRID_COLUMN_OVERSCAN * 2;
-  const lastVisibleColumn = Math.min(
-    resultColumns.length,
-    firstVisibleColumn + columnWindowSize,
-  );
+  const columnWindow = calculateResultGridVirtualColumnWindow({
+    columnCount: resultColumns.length,
+    scrollLeft: Math.max(0, gridScrollLeft - gridGutterWidth),
+    viewportWidth: Math.max(0, gridViewportWidth - gridGutterWidth),
+    columnWidth: GRID_COLUMN_WIDTH,
+    overscan: GRID_COLUMN_OVERSCAN,
+  });
+  const firstVisibleColumn = columnWindow.firstColumnIndex;
+  const lastVisibleColumn = columnWindow.lastColumnIndex;
   const visibleColumnIndexes = Array.from(
     { length: Math.max(0, lastVisibleColumn - firstVisibleColumn) },
     (_, index) => firstVisibleColumn + index,
   );
-  const leftColumnPad = firstVisibleColumn * GRID_COLUMN_WIDTH;
-  const rightColumnPad = Math.max(
-    0,
-    (resultColumns.length - lastVisibleColumn) * GRID_COLUMN_WIDTH,
-  );
+  const leftColumnPad = columnWindow.leftPadPx;
+  const rightColumnPad = columnWindow.rightPadPx;
   // In Edit Data mode a leading gutter column holds the per-row delete control.
   const gridTemplateColumns = [
     editMode ? `${GRID_GUTTER_WIDTH}px` : null,
@@ -1214,15 +1268,17 @@ function App() {
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
   // ~30 DOM rows instead of 10k, so streaming stays smooth.
   const totalRows = displayRows.length;
-  const firstVisible = Math.max(
-    0,
-    Math.floor(gridScrollTop / GRID_ROW_HEIGHT) - GRID_OVERSCAN,
-  );
-  const windowSize =
-    Math.ceil(gridViewportHeight / GRID_ROW_HEIGHT) + GRID_OVERSCAN * 2;
-  const lastVisible = Math.min(totalRows, firstVisible + windowSize);
-  const topPad = firstVisible * GRID_ROW_HEIGHT;
-  const bottomPad = Math.max(0, (totalRows - lastVisible) * GRID_ROW_HEIGHT);
+  const rowWindow = calculateResultGridVirtualRowWindow({
+    rowCount: totalRows,
+    scrollTop: gridScrollTop,
+    viewportHeight: gridViewportHeight,
+    rowHeight: GRID_ROW_HEIGHT,
+    overscan: GRID_OVERSCAN,
+  });
+  const firstVisible = rowWindow.firstRowIndex;
+  const lastVisible = rowWindow.lastRowIndex;
+  const topPad = rowWindow.topPadPx;
+  const bottomPad = rowWindow.bottomPadPx;
   const visibleRows = displayRows.slice(firstVisible, lastVisible);
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
@@ -1414,6 +1470,14 @@ function App() {
     gridRef.current?.focus({ preventScroll: true });
   }
 
+  function selectGridRow(rowKey: string, focusGrid = false) {
+    setSelectedRowKey(rowKey);
+    setSelectedCell(null);
+    if (focusGrid) {
+      gridRef.current?.focus({ preventScroll: true });
+    }
+  }
+
   function beginCellEdit(key: string, col: number, seed?: string) {
     if (!editMode) {
       return;
@@ -1581,6 +1645,59 @@ function App() {
     return displayRows.find((row) => row.key === key) ?? null;
   }
 
+  function selectedRowForCopy() {
+    const key = selectedRowKey ?? selectedCell?.key;
+    return key ? (displayRows.find((row) => row.key === key) ?? null) : null;
+  }
+
+  function copyCellsForRow(row: ResultGridRowLike): string[] {
+    return resultColumns.map((_, index) => row.cells[index] ?? "");
+  }
+
+  function selectedGridCopyText(): string | null {
+    if (selectedCell) {
+      const row = displayRows.find((item) => item.key === selectedCell.key);
+      if (row) {
+        return row.cells[selectedCell.col] ?? "";
+      }
+    }
+    const row = selectedRowForCopy();
+    return row ? formatResultGridTsvRow(copyCellsForRow(row)) : null;
+  }
+
+  async function copyGridText(text: string | null) {
+    if (text === null) {
+      return;
+    }
+    try {
+      await writeTextToClipboard(text);
+    } catch (error) {
+      setQueryError(errorMessage(error));
+    }
+  }
+
+  async function copySelectedGridCellOrRow() {
+    if (editingCell) {
+      return;
+    }
+    await copyGridText(selectedGridCopyText());
+  }
+
+  async function copySelectedGridRow() {
+    if (editingCell) {
+      return;
+    }
+    const row = selectedRowForCopy();
+    await copyGridText(row ? formatResultGridTsvRow(copyCellsForRow(row)) : null);
+  }
+
+  async function copyVisibleResult() {
+    if (editingCell || resultColumns.length === 0) {
+      return;
+    }
+    await copyGridText(formatResultGridTsv(resultColumns, displayRows));
+  }
+
   function onGridKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (
       event.target instanceof HTMLInputElement ||
@@ -1655,6 +1772,18 @@ function App() {
     }
     event.preventDefault();
     pasteTableAt(row.origin, selectedCell.col, event.clipboardData.getData("text"));
+  }
+
+  function onGridCopy(event: ReactClipboardEvent<HTMLDivElement>) {
+    if (editingCell || isEditableTarget(event.target)) {
+      return;
+    }
+    const text = selectedGridCopyText();
+    if (text === null) {
+      return;
+    }
+    event.preventDefault();
+    event.clipboardData.setData("text/plain", text);
   }
 
   // Infer the table to write back to from the last run's `from <table>` and the
@@ -1787,6 +1916,15 @@ function App() {
       case "result.export":
         exportActiveResult("csv");
         break;
+      case "result.copySelection":
+        void copySelectedGridCellOrRow();
+        break;
+      case "result.copyRow":
+        void copySelectedGridRow();
+        break;
+      case "result.copyVisible":
+        void copyVisibleResult();
+        break;
       case "edit.toggle":
         setEditMode((mode) => !mode);
         break;
@@ -1799,9 +1937,9 @@ function App() {
     }
   }
 
-  const keymap = effectiveKeymap(keymapOverrides);
-  const keymapConflicts = findConflicts(keymap);
-  const paletteResults = commandCatalog.filter((command) =>
+  const keymap = { ...resultCopyDefaultKeymap, ...effectiveKeymap(keymapOverrides) };
+  const keymapConflicts = findConflicts(keymap, appCommandCatalog);
+  const paletteResults = appCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
       .includes(paletteQuery.trim().toLowerCase()),
@@ -1907,6 +2045,9 @@ function App() {
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
+      if (typing && isCellEditorClipboardShortcut(event, target)) {
+        return;
+      }
       const scope = keyScopeFromTarget(target, activeKeyScopeRef.current);
       if (scope !== activeKeyScopeRef.current) {
         activeKeyScopeRef.current = scope;
@@ -1923,6 +2064,7 @@ function App() {
         scope,
         chord,
         pending: pendingKeySequenceRef.current,
+        commands: appCommandCatalog,
         allowBare: !typing,
       });
       if (resolution.kind === "pending") {
@@ -3211,7 +3353,7 @@ function App() {
                   <Layers3 size={14} />
                 </div>
                 <div className="command-list">
-                  {commandCatalog.map((command) => {
+                  {appCommandCatalog.map((command) => {
                     const chord = keymap[command.id];
                     const conflicted = commandHasConflict(
                       keymapConflicts,
@@ -3304,6 +3446,7 @@ function App() {
                           setGridScrollTop(0);
                           setGridScrollLeft(0);
                           setSelectedRowKey(null);
+                          setSelectedCell(null);
                         }}
                       >
                         Result {index + 1}
@@ -3396,6 +3539,15 @@ function App() {
                     </div>
                   ) : null}
                 </div>
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={!activeResult}
+                  onClick={() => void copyVisibleResult()}
+                >
+                  <Copy size={13} />
+                  <span>Copy TSV</span>
+                </button>
                 <button
                   className="text-button"
                   type="button"
@@ -3610,6 +3762,7 @@ function App() {
               onScroll={onGridScroll}
               onKeyDown={onGridKeyDown}
               onPaste={onGridPaste}
+              onCopy={onGridCopy}
             >
               <div
                 className="grid-row header"
@@ -3684,8 +3837,8 @@ function App() {
                   key={row.key}
                   tabIndex={0}
                   style={gridRowStyle}
-                  onClick={() => setSelectedRowKey(row.key)}
-                  onFocus={() => setSelectedRowKey(row.key)}
+                  onClick={() => selectGridRow(row.key, true)}
+                  onFocus={() => selectGridRow(row.key)}
                 >
                   {editMode ? (
                     <button

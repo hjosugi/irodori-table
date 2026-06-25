@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-Last updated: 2026-06-25 JST.
+Last updated: 2026-06-26 JST.
 
 This is the ticket-level breakdown of `ROADMAP.md`. Each item is sized to be picked
 up and finished on its own, one at a time, with a testable "Done when" line. Work
@@ -53,8 +53,8 @@ top to bottom within an epic unless a dependency says otherwise.
 
 These are explicit competitive gaps, not closed by nearby core-library work alone.
 
-- **Snowsight:** schema-aware autocomplete is open (`CMPL-002A`); Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); advanced filters are open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
-- **Beekeeper:** no-code schema editor is open (`ADV-003`); import/export parity is open/partial by format (`IO`); Query Magics and AI Shell are open (`AI-005`, `AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization and the 1M-row scroll benchmark are open (`EXEC-004A`, `EXEC-004B`).
+- **Snowsight:** schema-aware autocomplete is open (`CMPL-002A`); Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); desktop result exploration now has client-side quick filtering, multi-rule predicate filters, and multi-column sort, but saved filters plus server-side/filter-plan SQL remain open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
+- **Beekeeper:** no-code schema editor is open (`ADV-003`); current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; Query Magics and AI Shell are open (`AI-005`, `AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization hardening and the 1M-row scroll benchmark remain open (`EXEC-004A`, `EXEC-004B`).
 
 ---
 
@@ -182,9 +182,10 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P0
 
-### TB-002 — `typegen` command + CI drift check
+### TB-002 — `typegen` command + CI drift check ✅
 - **Goal:** Make stale bindings a CI failure.
 - **Done when:** a friendly `typegen` command regenerates bindings; `typegen --check` fails CI on drift with a readable diff.
+- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typebridge tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI runs that check in the Rust job after `typebridge` is available.
 - **Depends on:** TB-001
 - **Size:** M · **Priority:** P0
 
@@ -232,6 +233,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### SHELL-005 — Packaging + auto-update channel decision
 - **Goal:** Shippable installers per OS.
 - **Done when:** CI produces installers for each OS; an ADR records the update channel approach.
+- **Status:** Partial. Linux AppImage v0.2.4 has been released (`v0.2.4` tag; desktop/Tauri package version `0.2.4`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P2
 
@@ -344,23 +346,26 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** EXEC-001
 - **Size:** L · **Priority:** P0
 
-### EXEC-003 — Multiple result sets
+### EXEC-003 — Multiple result sets ✅ (desktop UI + SQLite core done)
 - **Goal:** Show all result sets from one run.
 - **Done when:** multi-statement runs surface each result set in its own tab/section; counts and timings shown.
+- **Done:** `QueryResult`/stream events carry result-set indexes and summaries; SQLite multi-statement runs return/stream tagged result sets; the desktop UI renders multiple streamed result sets as `Result N` tabs, shows the active set's row count/timing, switches grids between sets, and resets grid scroll/selection on tab switch. Browser E2E coverage in `apps/desktop/e2e/multi-results.spec.ts` mocks a streamed multi-statement run and verifies tabs, summaries, switching, scroll reset, and selection reset.
+- **Remaining:** driver-specific multi-result-set behavior beyond SQLite/default single-set streams can be expanded per adapter as needed.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P0
 
-### EXEC-004 — Virtualized result grid 🚧 (row virtualization done)
+### EXEC-004 — Virtualized result grid 🚧 (row virtualization done; column window wired)
 - **Goal:** Smooth scrolling over huge results.
 - **Done when:** the grid renders only visible rows/cols; 1M-row synthetic result scrolls without jank in a benchmark.
-- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely.
-- **Remaining:** wide-column hardening and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
+- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely. **Column windowing is wired in the app** with fixed column width, horizontal overscan, and left/right spacer columns.
+- **Remaining:** wide-column app-level hardening/DOM-budget evidence and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
 - **Depends on:** EXEC-002
 - **Size:** L · **Priority:** P0
 
-### EXEC-004A — Wide-column virtualization hardening
+### EXEC-004A — Wide-column virtualization hardening 🚧 (column window wired; hardening open)
 - **Goal:** Keep the grid smooth when a result has hundreds or thousands of columns.
 - **Done when:** a synthetic `1,000 rows x 2,000 columns` result renders only the visible column window plus overscan; DOM cell count stays bounded by viewport rows * viewport columns; horizontal scroll, sort, selected row, staged edit cells, paste, and edit-mode gutter keep correct column indexes; sticky headers and left/right spacer widths remain stable at desktop and narrow widths.
+- **Status:** Partial. `App.tsx` computes a horizontal column window with `GRID_COLUMN_WIDTH`, `GRID_COLUMN_OVERSCAN`, and spacer columns, so the app no longer renders every column for wide results. The ticket stays open until Playwright/DOM-budget coverage proves horizontal scroll, sort, selected row, staged edit cells, paste, and the edit-mode gutter across a 2k-column fixture.
 - **Test plan:** pure window-calculation tests, Playwright smoke for a 2k-column fixture, and a DOM-node budget assertion after horizontal and diagonal scroll.
 - **Depends on:** EXEC-004
 - **Size:** M · **Priority:** P0
@@ -372,17 +377,17 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** EXEC-004A
 - **Size:** M · **Priority:** P0
 
-### EXEC-005 — Copy + client-side single-column sort (current page)
+### EXEC-005 — Copy + client-side sort/filter basics (current page)
 - **Goal:** Basic in-grid data handling.
 - **Done when:** copy cell/row/selection works; single-column client-side sort applies to the current page; safe read-only defaults.
-- **Status:** Partial. Column-header single-column sort is wired in the desktop grid; advanced filters are tracked separately and are not implemented.
+- **Status:** Partial. Column-header sort is wired for current-page rows, including shift-click additive multi-column sort. Desktop also has quick filtering and a rule panel over displayed cells. Grid copy cell/row/selection remains open unless a dedicated copy path lands.
 - **Depends on:** EXEC-004
 - **Size:** M · **Priority:** P0
 
-### EXEC-005A — Advanced result filters
+### EXEC-005A — Advanced result filters 🚧 (client-side filters landed; saved/server-side open)
 - **Goal:** Snowsight-style result exploration without forcing users to rewrite SQL for every slice.
 - **Done when:** users can build multi-column filters with typed predicates, ranges, value lists, null/empty checks, search, and saved filter state; generated server-side/filter-plan SQL is previewable where it incurs database work; the filter expression model is serializable so desktop can use it now and the local API/future hosts can reuse it when those surfaces land.
-- **Status:** Open. Current product behavior should be described as single-column sort only, not advanced filtering.
+- **Status:** Partial. The desktop grid has a quick filter plus client-side rules for any/specific columns, AND/OR joins, text predicates, comparisons, null/empty checks, and regex over displayed cell values; `result-grid` / `result-view-model` tests cover the model. Remaining: saved filters, a typed/serializable shared filter expression model, server-side/filter-plan SQL preview for database work, and reuse through the local API/future hosts.
 - **Depends on:** EXEC-005
 - **Size:** M · **Priority:** P1
 
@@ -501,7 +506,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### EDIT-005 — Vim mode: core
 - **Goal:** Daily-driver modal editing.
 - **Done when:** normal/insert/visual modes, counts, operators, motions, and basic registers work; covered by a behavior test suite.
-- **Landed:** `@replit/codemirror-vim` is wired into the CM6 editor behind a persisted header toggle; Playwright smoke confirms the mode can be enabled/disabled and CM renders the Vim mode panel. Remaining: focused behavior tests for motions/operators/registers and any app-specific keybinding conflicts.
+- **Landed:** `@replit/codemirror-vim` is wired into the CM6 editor behind a persisted header toggle; Playwright coverage confirms the mode can be enabled/disabled, CM renders the Vim mode panel, insert mode edits text, and a normal-mode `dd` flow works. Remaining: deeper behavior tests for motions/operators/registers/counts/visual mode and any app-specific keybinding conflicts.
 - **Depends on:** EDIT-001, EDIT-003
 - **Size:** L · **Priority:** P1
 
@@ -540,6 +545,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### THEME-002 — VS Code theme import
 - **Goal:** Reuse VS Code color themes where license permits.
 - **Done when:** a VS Code theme JSON imports into the internal model (workbench + TextMate + semantic colors), with a license note on import; unsupported keys degrade gracefully.
+- **Landed:** Core importer only. `apps/desktop/src/theme.ts` exposes a pure `importVsCodeTheme(...)` path that normalizes common VS Code `colors`, TextMate `tokenColors`, and `semanticTokenColors` into `IrodoriTheme`, returning warnings, unsupported-key details, and a license note. No UI/file-import flow is wired yet.
 - **Depends on:** THEME-001
 - **Size:** M · **Priority:** P1
 
@@ -782,21 +788,24 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ## IO — Export/Import + Dump/Restore
 
-**Beekeeper import/export parity status:** open/partial. The export encoder and CSV/TSV import are the P0/P1 foundations; JSON/NDJSON, Avro, Parquet, and dialect dump/restore remain open. Do not describe full import/export parity as implemented until the grid/browser flows are wired across these formats.
+**Beekeeper import/export parity status:** open/partial. Desktop current-result export supports CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook (`.xls`), and Markdown. That is not the shared streaming `irodori-io` encoder/run-to-file path, not native `.xlsx`, and not full import/dump/restore parity. Do not describe full import/export parity as implemented until large-result export, import previews/mapping, native XLSX, Avro/Parquet, and dialect dump/restore are wired and tested.
 
 ### IO-001 — Export encoder layer
 - **Goal:** Shared, streaming encoders in `irodori-io`.
 - **Done when:** a streaming encoder interface exists; CSV/TSV implemented with header on/off and delimiter/quote control; used by the grid and run-to-file.
+- **Status:** Partial. `apps/desktop/src/result-export.ts` has a client-side current-result serializer for CSV/TSV/JSON/JSONL/SQL/Excel-compatible HTML workbook/Markdown, but the shared streaming encoder interface and run-to-file integration remain open.
 - **Depends on:** EXEC-002
 - **Size:** M · **Priority:** P0
 
 ### IO-002 — SQL INSERT/UPSERT script export
 - **Done when:** results export as INSERT/UPSERT scripts, with or without schema/DDL, dialect-correct quoting, and batch sizing.
+- **Status:** Partial. Desktop current-result export can emit simple SQL `INSERT` statements. UPSERT, DDL/schema options, dialect-specific quoting/batching, and streaming/shared encoder integration remain open.
 - **Depends on:** IO-001
 - **Size:** M · **Priority:** P1
 
 ### IO-003 — JSON / NDJSON export+import
 - **Done when:** results export to JSON and NDJSON; import maps NDJSON/JSON into a target table with type mapping and a preview.
+- **Status:** Partial for desktop export only. Current-result JSON and JSONL are implemented; JSON/NDJSON import with table mapping and preview remains open.
 - **Depends on:** IO-001
 - **Size:** M · **Priority:** P2
 
@@ -820,6 +829,13 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Done when:** schema and/or data dump and restore work per dialect where permitted, with progress, cancellation, and a clear summary.
 - **Depends on:** IO-002
 - **Size:** L · **Priority:** P2
+
+### IO-008 — Native XLSX result export
+- **Goal:** Produce real `.xlsx` workbooks instead of only Excel-compatible HTML.
+- **Done when:** result export writes a native XLSX workbook with worksheet names, basic cell types, safe large-value handling, and tests that open/inspect the package structure; large exports use the streaming/run-to-file path rather than buffering the whole result in memory.
+- **Status:** Open. The current "Excel" export is an HTML workbook served as `.xls`, which opens in Excel but is not a native `.xlsx` file.
+- **Depends on:** IO-001
+- **Size:** M · **Priority:** P2
 
 ---
 
@@ -927,7 +943,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ### ADV-004 — ERD baseline + graph-view umbrella 🚧 (schema ERD implemented; graph views open)
 - **Done when:** schema ERD renders from metadata; image export, multi-schema representation, and layout quality are tracked in `ADV-004A`-`ADV-004C`; query-result graph views are tracked in `ADV-004D`.
-- **Done (schema ERD SVG renderer):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders a deterministic SVG ERD from the active connection's metadata. `src/erd.ts` builds the pure metadata->model->layout path and still generates copyable Mermaid source for interoperability. The modal groups tables into schema bands, disambiguates duplicate table names with `schema.table`, resolves cross-schema FKs, and provides schema chips, schema/table/column search, zoom/fit controls, SVG/PNG downloads, SVG text copy, and PNG clipboard copy where the platform supports it.
+- **Done (schema ERD SVG renderer):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders a deterministic SVG ERD from the active connection's metadata. `apps/desktop/src/erd.ts` builds the pure metadata->model->layout path and still generates copyable Mermaid source for interoperability; `apps/desktop/src/erd-export.ts` handles SVG serialization, PNG rendering, downloads, and clipboard helpers. The modal groups tables into schema bands, disambiguates duplicate table names with `schema.table`, resolves cross-schema FKs, and provides schema chips, schema/table/column search, zoom/fit controls, SVG/PNG downloads, SVG text copy, and PNG clipboard copy where the platform supports it.
 - **Status:** Partial. Schema ERD baseline is implemented; graph views and ERD QA hardening are open in the `ADV-004` subitems.
 - **Remaining:** query-result graph views (`ADV-004D`); FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done); visual regression screenshots, PNG pixel/non-empty export smoke, edge-overlap/label-visibility smoke, and a recorded/manual large-schema benchmark.
 - **Depends on:** BROWSE-001

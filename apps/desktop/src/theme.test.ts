@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cssVariables, darkTheme, lightTheme, themes } from "./theme";
+import {
+  cssVariables,
+  darkTheme,
+  importVsCodeTheme,
+  lightTheme,
+  themes,
+} from "./theme";
 
 describe("theme model", () => {
   it("exposes distinct light and dark themes", () => {
@@ -18,5 +24,192 @@ describe("theme model", () => {
     expect(vars["--border"]).toBe(darkTheme.ui.border);
     expect(vars["--editor-bg"]).toBe(darkTheme.ui.editorBg);
     expect(Object.keys(vars).every((key) => key.startsWith("--"))).toBe(true);
+  });
+
+  it("imports common VS Code workbench colors", () => {
+    const result = importVsCodeTheme(
+      {
+        name: "Nebula SQL",
+        type: "dark",
+        colors: {
+          "editor.background": "#10141a",
+          "editor.foreground": "#d6deeb",
+          "editor.selectionBackground": "#314f78",
+          "editor.lineHighlightBackground": "#1b2430",
+          "editorCursor.foreground": "#ffcc66",
+          "editorGutter.background": "#10141a",
+          "editorLineNumber.foreground": "#63788a",
+          "sideBar.background": "#151922",
+          "sideBar.border": "#2c3340",
+          "sideBarSectionHeader.background": "#1a2030",
+          "panel.background": "#181d27",
+          "titleBar.activeBackground": "#0c1016",
+          "focusBorder": "#82aaff",
+          "input.background": "#1b2230",
+          "list.hoverBackground": "#202a38",
+          "list.activeSelectionBackground": "#263b54",
+          "charts.green": "#addb67",
+          "charts.red": "#ff5370",
+          "charts.yellow": "#ffcb6b",
+          "charts.blue": "#82aaff",
+          "charts.purple": "#c792ea",
+          "notebook.cellBorderColor": "#ff00ff",
+        },
+      },
+      { licenseNote: "Sample theme is available under a compatible license." },
+    );
+
+    expect(result.theme.name).toBe("Nebula SQL");
+    expect(result.theme.kind).toBe("dark");
+    expect(result.licenseNote).toContain("compatible license");
+    expect(result.theme.ui.editorBg).toBe("#10141a");
+    expect(result.theme.ui.text).toBe("#d6deeb");
+    expect(result.theme.syntax.name).toBe("#d6deeb");
+    expect(result.theme.ui.selection).toBe("#314f78");
+    expect(result.theme.ui.activeLine).toBe("#1b2430");
+    expect(result.theme.ui.caret).toBe("#ffcc66");
+    expect(result.theme.ui.gutterBg).toBe("#10141a");
+    expect(result.theme.ui.gutterText).toBe("#63788a");
+    expect(result.theme.ui.surface).toBe("#151922");
+    expect(result.theme.ui.border).toBe("#2c3340");
+    expect(result.theme.ui.surfaceMuted).toBe("#1a2030");
+    expect(result.theme.ui.surfaceRaised).toBe("#181d27");
+    expect(result.theme.ui.chrome).toBe("#0c1016");
+    expect(result.theme.ui.focus).toBe("#82aaff");
+    expect(result.theme.ui.inputBg).toBe("#1b2230");
+    expect(result.theme.ui.hover).toBe("#202a38");
+    expect(result.theme.ui.selectedStrong).toBe("#263b54");
+    expect(result.theme.ui.green).toBe("#addb67");
+    expect(result.theme.ui.red).toBe("#ff5370");
+    expect(result.theme.ui.amber).toBe("#ffcb6b");
+    expect(result.theme.ui.blue).toBe("#82aaff");
+    expect(result.theme.ui.purple).toBe("#c792ea");
+    expect(result.unsupported.colors).toContain("notebook.cellBorderColor");
+    expect(result.warnings.some((warning) => warning.includes("unsupported workbench"))).toBe(true);
+  });
+
+  it("imports VS Code TextMate and semantic token colors", () => {
+    const result = importVsCodeTheme({
+      name: "Token Sample",
+      type: "dark",
+      tokenColors: [
+        {
+          name: "Comments",
+          scope: ["comment", "punctuation.definition.comment"],
+          settings: { foreground: "#637777", fontStyle: "italic" },
+        },
+        {
+          name: "Strings",
+          scope: "string, constant.other.symbol",
+          settings: { foreground: "#c3e88d" },
+        },
+        {
+          name: "Numbers",
+          scope: "constant.numeric",
+          settings: { foreground: "#f78c6c" },
+        },
+        {
+          name: "Keywords",
+          scope: ["keyword", "storage.modifier"],
+          settings: { foreground: "#c792ea" },
+        },
+        {
+          name: "Types",
+          scope: ["entity.name.type", "support.type", "storage.type"],
+          settings: { foreground: "#ffcb6b" },
+        },
+        {
+          name: "Functions",
+          scope: ["entity.name.function", "support.function"],
+          settings: { foreground: "#82aaff" },
+        },
+        {
+          name: "Properties",
+          scope: ["variable.other.property", "support.variable.property"],
+          settings: { foreground: "#addb67" },
+        },
+        {
+          name: "Operators",
+          scope: "keyword.operator",
+          settings: { foreground: "#89ddff" },
+        },
+        {
+          name: "Punctuation",
+          scope: ["punctuation.separator", "punctuation.terminator"],
+          settings: { foreground: "#89ddff" },
+        },
+        {
+          name: "Brackets",
+          scope: "punctuation.section.braces",
+          settings: { foreground: "#ffcc66" },
+        },
+        {
+          name: "Unsupported",
+          scope: "markup.heading",
+          settings: { foreground: "#ffffff" },
+        },
+        {
+          name: "Broken",
+          scope: "string.regexp",
+          settings: { foreground: "blue" },
+        },
+      ],
+      semanticTokenColors: {
+        "variable.readonly": "#eeffff",
+        method: { foreground: "#80cbc4" },
+        "type.defaultLibrary": "#ffcb6b",
+        boolean: "#ff5370",
+        unknownTokenType: "#ffffff",
+      },
+    });
+
+    expect(result.theme.syntax.comment).toBe("#637777");
+    expect(result.theme.syntax.string).toBe("#c3e88d");
+    expect(result.theme.syntax.number).toBe("#f78c6c");
+    expect(result.theme.syntax.keyword).toBe("#c792ea");
+    expect(result.theme.syntax.type).toBe("#ffcb6b");
+    expect(result.theme.syntax.function).toBe("#80cbc4");
+    expect(result.theme.syntax.property).toBe("#addb67");
+    expect(result.theme.syntax.operator).toBe("#89ddff");
+    expect(result.theme.syntax.punctuation).toBe("#89ddff");
+    expect(result.theme.syntax.bracket).toBe("#ffcc66");
+    expect(result.theme.syntax.name).toBe("#eeffff");
+    expect(result.theme.syntax.bool).toBe("#ff5370");
+    expect(result.unsupported.tokenScopes).toContain("markup.heading");
+    expect(result.unsupported.semanticTokenColors).toContain("unknownTokenType");
+    expect(result.warnings.some((warning) => warning.includes("Broken foreground"))).toBe(true);
+  });
+
+  it("degrades gracefully for partial or malformed VS Code theme input", () => {
+    const invalid = importVsCodeTheme(null, {
+      fallbackTheme: lightTheme,
+      name: "Fallback Import",
+    });
+    expect(invalid.theme.name).toBe("Fallback Import");
+    expect(invalid.theme.kind).toBe("light");
+    expect(invalid.theme.ui.editorBg).toBe(lightTheme.ui.editorBg);
+    expect(invalid.warnings).toContain(
+      "Theme import expected a JSON object; using fallback theme.",
+    );
+
+    const partial = importVsCodeTheme({
+      name: "Partial Light",
+      type: "light",
+      license: "Apache-2.0",
+      colors: { "editor.background": "#ffffff", "editor.foreground": "black" },
+      tokenColors: { scope: "keyword" },
+      semanticTokenColors: { keyword: { foreground: "#005cc5" } },
+    });
+    expect(partial.theme.kind).toBe("light");
+    expect(partial.theme.ui.editorBg).toBe("#ffffff");
+    expect(partial.theme.ui.text).toBe(lightTheme.ui.text);
+    expect(partial.theme.syntax.keyword).toBe("#005cc5");
+    expect(partial.licenseNote).toContain("Apache-2.0");
+    expect(partial.warnings).toEqual(
+      expect.arrayContaining([
+        "Ignored VS Code workbench color \"editor.foreground\" because it is not a supported hex color.",
+        "Ignored VS Code tokenColors because it is not an array.",
+      ]),
+    );
   });
 });

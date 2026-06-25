@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   applyResultFilters,
   applyResultSort,
+  calculateResultGridVirtualColumnWindow,
   calculateResultGridVirtualRowWindow,
   compareGridCells,
   cycleResultSortRules,
+  escapeResultGridTsvCell,
+  formatResultGridTsv,
+  formatResultGridTsvRow,
   type ResultGridRowLike,
 } from "./result-grid";
 
@@ -199,5 +203,192 @@ describe("result grid model", () => {
         overscan: 1,
       }),
     ).toThrow("rowHeight must be a positive finite number");
+  });
+
+  it("calculates virtual column windows at horizontal start, middle, and end", () => {
+    const input = {
+      columnCount: 10,
+      viewportWidth: 300,
+      columnWidth: 100,
+      overscan: 0,
+    };
+
+    expect(
+      calculateResultGridVirtualColumnWindow({ ...input, scrollLeft: 0 }),
+    ).toEqual({
+      firstColumnIndex: 0,
+      lastColumnIndex: 3,
+      renderedColumnCount: 3,
+      maxRenderedColumnCount: 3,
+      leftPadPx: 0,
+      rightPadPx: 700,
+    });
+
+    expect(
+      calculateResultGridVirtualColumnWindow({ ...input, scrollLeft: 400 }),
+    ).toEqual({
+      firstColumnIndex: 4,
+      lastColumnIndex: 7,
+      renderedColumnCount: 3,
+      maxRenderedColumnCount: 3,
+      leftPadPx: 400,
+      rightPadPx: 300,
+    });
+
+    expect(
+      calculateResultGridVirtualColumnWindow({ ...input, scrollLeft: 700 }),
+    ).toEqual({
+      firstColumnIndex: 7,
+      lastColumnIndex: 10,
+      renderedColumnCount: 3,
+      maxRenderedColumnCount: 3,
+      leftPadPx: 700,
+      rightPadPx: 0,
+    });
+  });
+
+  it("applies virtual column overscan with stable spacer widths", () => {
+    expect(
+      calculateResultGridVirtualColumnWindow({
+        columnCount: 20,
+        scrollLeft: 500,
+        viewportWidth: 300,
+        columnWidth: 100,
+        overscan: 2,
+      }),
+    ).toEqual({
+      firstColumnIndex: 3,
+      lastColumnIndex: 10,
+      renderedColumnCount: 7,
+      maxRenderedColumnCount: 7,
+      leftPadPx: 300,
+      rightPadPx: 1_000,
+    });
+  });
+
+  it("bounds virtual column windows at empty and sub-column-width results", () => {
+    expect(
+      calculateResultGridVirtualColumnWindow({
+        columnCount: 0,
+        scrollLeft: 1_000,
+        viewportWidth: 300,
+        columnWidth: 100,
+        overscan: 2,
+      }),
+    ).toMatchObject({
+      firstColumnIndex: 0,
+      lastColumnIndex: 0,
+      renderedColumnCount: 0,
+      leftPadPx: 0,
+      rightPadPx: 0,
+    });
+
+    expect(
+      calculateResultGridVirtualColumnWindow({
+        columnCount: 10,
+        scrollLeft: 0,
+        viewportWidth: 50,
+        columnWidth: 100,
+        overscan: 0,
+      }),
+    ).toEqual({
+      firstColumnIndex: 0,
+      lastColumnIndex: 1,
+      renderedColumnCount: 1,
+      maxRenderedColumnCount: 1,
+      leftPadPx: 0,
+      rightPadPx: 900,
+    });
+  });
+
+  it("handles invalid virtual column width inputs", () => {
+    expect(() =>
+      calculateResultGridVirtualColumnWindow({
+        columnCount: 10,
+        scrollLeft: 0,
+        viewportWidth: 100,
+        columnWidth: 0,
+        overscan: 1,
+      }),
+    ).toThrow("columnWidth must be a positive finite number");
+
+    expect(() =>
+      calculateResultGridVirtualColumnWindow({
+        columnCount: 10,
+        scrollLeft: 0,
+        viewportWidth: 100,
+        columnWidth: Number.POSITIVE_INFINITY,
+        overscan: 1,
+      }),
+    ).toThrow("columnWidth must be a positive finite number");
+
+    expect(
+      calculateResultGridVirtualColumnWindow({
+        columnCount: 10,
+        scrollLeft: 0,
+        viewportWidth: Number.NaN,
+        columnWidth: 100,
+        overscan: 0,
+      }),
+    ).toEqual({
+      firstColumnIndex: 0,
+      lastColumnIndex: 0,
+      renderedColumnCount: 0,
+      maxRenderedColumnCount: 0,
+      leftPadPx: 0,
+      rightPadPx: 1_000,
+    });
+  });
+
+  it("keeps rendered columns bounded for huge column counts", () => {
+    const window = calculateResultGridVirtualColumnWindow({
+      columnCount: 2_000,
+      scrollLeft: 108_000,
+      viewportWidth: 800,
+      columnWidth: 120,
+      overscan: 3,
+    });
+
+    expect(window).toEqual({
+      firstColumnIndex: 897,
+      lastColumnIndex: 910,
+      renderedColumnCount: 13,
+      maxRenderedColumnCount: 13,
+      leftPadPx: 107_640,
+      rightPadPx: 130_800,
+    });
+    expect(window.renderedColumnCount).toBeLessThan(20);
+    expect(
+      window.leftPadPx + window.renderedColumnCount * 120 + window.rightPadPx,
+    ).toBe(240_000);
+  });
+
+  it("escapes cells for spreadsheet-safe TSV copy", () => {
+    expect(escapeResultGridTsvCell("plain")).toBe("plain");
+    expect(escapeResultGridTsvCell("with\ttab")).toBe("\"with\ttab\"");
+    expect(escapeResultGridTsvCell("line\r\nbreak")).toBe("\"line\nbreak\"");
+    expect(escapeResultGridTsvCell('say "hi"')).toBe('"say ""hi"""');
+  });
+
+  it("formats selected rows as tab-delimited text", () => {
+    expect(formatResultGridTsvRow(["1029", "Kawase Foods", "9841200"])).toBe(
+      "1029\tKawase Foods\t9841200",
+    );
+    expect(formatResultGridTsvRow(["1", "multi\nline", 'quoted "cell"'])).toBe(
+      '1\t"multi\nline"\t"quoted ""cell"""',
+    );
+  });
+
+  it("formats headers and displayed rows as TSV", () => {
+    expect(
+      formatResultGridTsv(
+        ["id", "name", "note"],
+        [
+          { cells: ["1", "Aster", "plain", "ignored"] },
+          { cells: ["2", "Kawase"] },
+          { cells: ["3", "Minato", "has\ttab"] },
+        ],
+      ),
+    ).toBe('id\tname\tnote\n1\tAster\tplain\n2\tKawase\t\n3\tMinato\t"has\ttab"');
   });
 });

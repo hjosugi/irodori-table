@@ -33,7 +33,8 @@
     "src/generated"
   ],
   "scripts": {
-    "typegen": "cargo test -p irodori-extension export_typescript_bindings",
+    "typegen": "node ../../apps/desktop/tools/typegen.mjs",
+    "typegen:check": "node ../../apps/desktop/tools/typegen.mjs --check",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

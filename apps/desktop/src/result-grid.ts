@@ -53,6 +53,23 @@ export type ResultGridVirtualRowWindow = {
   bottomPadPx: number;
 };
 
+export type ResultGridVirtualColumnWindowInput = {
+  columnCount: number;
+  scrollLeft: number;
+  viewportWidth: number;
+  columnWidth: number;
+  overscan: number;
+};
+
+export type ResultGridVirtualColumnWindow = {
+  firstColumnIndex: number;
+  lastColumnIndex: number;
+  renderedColumnCount: number;
+  maxRenderedColumnCount: number;
+  leftPadPx: number;
+  rightPadPx: number;
+};
+
 export const resultFilterOperators: Array<{
   value: ResultFilterOperator;
   label: string;
@@ -134,12 +151,77 @@ export function calculateResultGridVirtualRowWindow({
   };
 }
 
+export function calculateResultGridVirtualColumnWindow({
+  columnCount,
+  scrollLeft,
+  viewportWidth,
+  columnWidth,
+  overscan,
+}: ResultGridVirtualColumnWindowInput): ResultGridVirtualColumnWindow {
+  if (!Number.isFinite(columnWidth) || columnWidth <= 0) {
+    throw new Error("columnWidth must be a positive finite number");
+  }
+  const boundedColumnCount = floorAtZero(columnCount);
+  const boundedScrollLeft = atLeastZero(scrollLeft);
+  const boundedViewportWidth = atLeastZero(viewportWidth);
+  const boundedOverscan = floorAtZero(overscan);
+  const firstColumnIndex = firstVisibleColumnIndex(
+    boundedColumnCount,
+    boundedScrollLeft,
+    columnWidth,
+    boundedOverscan,
+  );
+  const maxRenderedColumnCount =
+    Math.ceil(boundedViewportWidth / columnWidth) + boundedOverscan * 2;
+  const lastColumnIndex = Math.min(
+    boundedColumnCount,
+    firstColumnIndex + maxRenderedColumnCount,
+  );
+  const renderedColumnCount = Math.max(0, lastColumnIndex - firstColumnIndex);
+
+  return {
+    firstColumnIndex,
+    lastColumnIndex,
+    renderedColumnCount,
+    maxRenderedColumnCount,
+    leftPadPx: firstColumnIndex * columnWidth,
+    rightPadPx: Math.max(0, (boundedColumnCount - lastColumnIndex) * columnWidth),
+  };
+}
+
+export function escapeResultGridTsvCell(value: string): string {
+  const text = value.replace(/\r\n?/g, "\n");
+  if (/["\t\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+export function formatResultGridTsvRow(cells: readonly string[]): string {
+  return cells.map(escapeResultGridTsvCell).join("\t");
+}
+
+export function formatResultGridTsv(
+  columns: readonly string[],
+  rows: readonly ResultGridRowLike[],
+): string {
+  if (columns.length === 0) {
+    return "";
+  }
+  return [
+    formatResultGridTsvRow(columns),
+    ...rows.map((row) =>
+      formatResultGridTsvRow(columns.map((_, index) => row.cells[index] ?? "")),
+    ),
+  ].join("\n");
+}
+
 function floorAtZero(value: number): number {
-  return Math.max(0, Math.floor(value));
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 }
 
 function atLeastZero(value: number): number {
-  return Math.max(0, value);
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
 function firstVisibleRowIndex(
@@ -149,6 +231,18 @@ function firstVisibleRowIndex(
   overscan: number,
 ): number {
   return Math.min(rowCount, Math.max(0, Math.floor(scrollTop / rowHeight) - overscan));
+}
+
+function firstVisibleColumnIndex(
+  columnCount: number,
+  scrollLeft: number,
+  columnWidth: number,
+  overscan: number,
+): number {
+  return Math.min(
+    columnCount,
+    Math.max(0, Math.floor(scrollLeft / columnWidth) - overscan),
+  );
 }
 
 // Sort comparator for grid cells: numeric when both sides parse as finite

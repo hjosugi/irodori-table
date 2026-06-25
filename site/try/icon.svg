@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Irodori Table Web">
+  <rect width="64" height="64" rx="14" fill="#17201b"/>
+  <path d="M14 19c0-3 8-6 18-6s18 3 18 6v26c0 3-8 6-18 6s-18-3-18-6V19z" fill="#f7f8f3"/>
+  <path d="M14 19c0 3 8 6 18 6s18-3 18-6" fill="none" stroke="#2f7d57" stroke-width="4"/>
+  <path d="M14 32c0 3 8 6 18 6s18-3 18-6" fill="none" stroke="#d79a30" stroke-width="4"/>
+  <path d="M14 45c0 3 8 6 18 6s18-3 18-6" fill="none" stroke="#4b75b9" stroke-width="4"/>
+</svg>

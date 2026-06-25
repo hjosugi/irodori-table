@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "icons": "node tools/generate-icons.mjs",
-    "typegen": "cargo test --manifest-path src-tauri/Cargo.toml export_typescript_bindings",
+    "typegen": "node tools/typegen.mjs",
+    "typegen:check": "node tools/typegen.mjs --check",
     "build": "npm run typegen && tsc && vite build",
     "release:appimage": "node tools/build-linux-release.mjs appimage",
     "release:linux": "node tools/build-linux-release.mjs linux",

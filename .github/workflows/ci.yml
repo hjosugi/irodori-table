@@ -57,6 +57,9 @@ jobs:
       - name: Build Rust workspace scaffold
         run: cargo build
 
+      - name: Check generated TypeScript bindings
+        run: node apps/desktop/tools/typegen.mjs --check
+
   desktop-frontend:
     name: Desktop frontend
     runs-on: ubuntu-latest
@@ -77,4 +80,3 @@ jobs:
       - name: Run frontend tests
         working-directory: apps/desktop
         run: npm test
-

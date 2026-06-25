@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-06-24 JST. A status snapshot of what is built and verified —
+Last updated: 2026-06-26 JST. A status snapshot of what is built and verified —
 focused on the database engine layer. Pairs with `ROADMAP.md` (themes) and
 `docs/implementation-backlog.md` (tickets). Production release gates are tracked
 in `docs/production-readiness.md`.
@@ -132,17 +132,33 @@ Highlights:
 - Query history is now persisted locally per connection and records success/error,
   elapsed time, row counts, truncated status, and the SQL that ran. Clicking an
   item restores it into the editor.
-- Result grids can be exported to CSV from the desktop UI, with object/JSON values
-  serialized and CSV quoting handled client-side.
+- Result grids can be exported from the desktop UI as CSV, TSV, JSON, JSONL, SQL
+  INSERT text, an Excel-compatible HTML workbook (`.xls`), and Markdown. These
+  are current-result client-side serializers; native XLSX and streaming
+  run-to-file export for huge results remain backlog work.
+- The result grid now supports current-page multi-column sort, a quick row filter,
+  and a client-side rule panel with AND/OR joins, text/comparison/null/empty/regex
+  predicates over displayed cell values. Saved filters, a shared serializable
+  filter model, and server-side/filter-plan SQL remain open.
 - The browser build still falls back to the mock shell when Tauri APIs are absent;
   real connect/query runs inside the Tauri shell.
 - The object browser now calls generated `dbListObjects` and renders live
   schema → table/view/collection → columns/indexes metadata for PostgreSQL-wire,
   MySQL-wire, SQLite, SQL Server, Oracle, DuckDB, and MongoDB connections.
+- The schema ERD modal renders deterministic SVG from live metadata with schema
+  grouping, table/search filters, zoom/fit controls, Mermaid source, SVG/PNG
+  downloads, SVG copy, and PNG clipboard copy where supported. Query-result graph
+  views plus ERD export/UI smoke and visual-regression evidence remain open.
 - The sidebar connection UI is now a real profile editor: saved profiles live in
   localStorage, password fields are session-only and are not persisted, profiles
   can be created/selected/saved/deleted, URL/DSN and structured host/port/user
   modes are both available, and Test/Connect/Disconnect are wired to the backend.
+- Vim mode is wired through `@replit/codemirror-vim` behind a persisted header
+  toggle; Playwright covers toggling, insert-mode editing, and a normal-mode delete
+  flow. Deeper Vim behavior parity remains open.
+- Linux AppImage v0.2.4 has been released; the desktop package/Tauri version and
+  local Git tag are `0.2.4`/`v0.2.4`. Cross-platform installer/signing/update
+  channel hardening remains tracked in the backlog.
 - In-memory databases are first-class for local work: SQLite `:memory:` is wired
   through structured profiles and verified by a unit test; DuckDB `:memory:` is
   available when the `duckdb` feature is built.

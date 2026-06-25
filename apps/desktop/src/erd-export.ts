@@ -1,4 +1,5 @@
 const ERD_EXPORT_MAX_CANVAS_SIDE = 16_384;
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
@@ -30,7 +31,11 @@ function sanitizeFileNamePart(value: string, fallback: string) {
 
 export function serializeSvgElement(svg: SVGSVGElement) {
   const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  if (clone.namespaceURI === SVG_NAMESPACE) {
+    clone.removeAttribute("xmlns");
+  } else if (!clone.hasAttribute("xmlns")) {
+    clone.setAttribute("xmlns", SVG_NAMESPACE);
+  }
   clone.setAttribute("version", "1.1");
   clone.querySelectorAll("style").forEach((style) => {
     style.setAttribute("type", "text/css");

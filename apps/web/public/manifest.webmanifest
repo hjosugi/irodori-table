@@ -1,0 +1,16 @@
+{
+  "name": "Irodori Table Web",
+  "short_name": "Irodori Web",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f8f3",
+  "theme_color": "#17201b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

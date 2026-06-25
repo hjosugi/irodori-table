@@ -290,7 +290,19 @@ describe("ERD model", () => {
       ],
     };
 
-    const layout = layoutErdModel(buildErdModel(metadata));
+    const model = buildErdModel(metadata);
+    expect(model.schemas.map((schema) => [schema.name, schema.tables.length])).toEqual([
+      ["alpha", 6],
+      ["beta", 5],
+      ["gamma", 7],
+    ]);
+
+    const layout = layoutErdModel(model);
+    expect(layout.schemas.map((schema) => [schema.name, schema.tableCount])).toEqual([
+      ["alpha", 6],
+      ["beta", 5],
+      ["gamma", 7],
+    ]);
 
     for (let i = 0; i < layout.schemas.length; i += 1) {
       for (let j = i + 1; j < layout.schemas.length; j += 1) {
