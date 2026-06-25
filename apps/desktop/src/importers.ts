@@ -168,12 +168,12 @@ function rowsFromJsonValues(values: unknown[], maxRows: number): ParsedImport {
   );
 }
 
-function columnsFromJsonValues(values: unknown[]) {
+function columnsFromJsonValues(values: unknown[]): string[] {
   const recordColumns = unique(values.flatMap(recordKeys));
   if (recordColumns.length > 0) {
     return recordColumns;
   }
-  const maxArrayLength = values.reduce(
+  const maxArrayLength = values.reduce<number>(
     (maxLength, value) => (Array.isArray(value) ? Math.max(maxLength, value.length) : maxLength),
     0,
   );
@@ -183,7 +183,7 @@ function columnsFromJsonValues(values: unknown[]) {
   return ["value"];
 }
 
-function valueToRow(value: unknown, columns: string[]) {
+function valueToRow(value: unknown, columns: string[]): unknown[] {
   if (isRecord(value)) {
     return columns.map((column) => value[column] ?? null);
   }
@@ -273,7 +273,7 @@ function firstJsonArrayProperty(
   );
 }
 
-function recordKeys(value: unknown) {
+function recordKeys(value: unknown): string[] {
   return isRecord(value) ? Object.keys(value) : [];
 }
 
@@ -286,6 +286,10 @@ function nextUniqueName(base: string, counts: Map<string, number>) {
   const count = counts.get(key) ?? 0;
   counts.set(key, count + 1);
   return count === 0 ? base : `${base}_${count + 1}`;
+}
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
 }
 
 const sqlTypeChecks = [
