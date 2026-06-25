@@ -12,8 +12,9 @@ only the supported set.
 - Supported engines in the connection UI: PostgreSQL, MySQL, SQLite, MariaDB,
   CockroachDB, TimescaleDB, SQL Server, DuckDB, MongoDB, Oracle, YugabyteDB,
   TiDB, Redshift.
-- Deferred: H2. Do not expose it in UI or generated product docs until it has a
-  verified connector path and integration test.
+- Experimental: H2 is routed through the PostgreSQL wire path for local
+  compatibility testing, but it is not a first-class supported engine until it
+  has dedicated verification and documented quirks.
 - Recognized future adapters such as ClickHouse, graph, time-series, and vector
   databases must fail with an explicit "no production connector yet" error until
   their drivers, metadata, and tests exist.
@@ -39,7 +40,8 @@ only the supported set.
 
 ## Done In Current Slice
 
-- H2 remains deferred and is not exposed in the connection UI.
+- H2 remains experimental through the PostgreSQL-wire path and needs dedicated
+  verification before it is promoted to first-class support.
 - Backend command boundary validates connection IDs, empty SQL, SQL text size,
   and result-window bounds.
 - Connection errors redact URL passwords plus ADO `Password=` and `PWD=` values.
@@ -48,9 +50,14 @@ only the supported set.
   formats (CSV/TSV/JSON/JSONL/SQL/Excel-compatible HTML workbook/Markdown),
   client-side quick/rule filters, and multi-column sort are wired in the desktop
   UI.
+- Desktop schema-aware completion is wired from live metadata and covered by
+  browser E2E for table and alias-column suggestions. Shared completion service
+  coverage across local API/future hosts remains open.
+- Wide-column result virtualization is wired and browser-tested against a
+  2,000-column synthetic result; the 1M-row scroll benchmark remains open.
 - Schema ERD UI and SVG/PNG export helpers are wired, but visual/export smoke
   evidence and query-result graph views remain open.
 - Vim mode is wired with Playwright smoke coverage for toggle, insert, and a
   normal-mode delete flow; deeper Vim parity remains open.
-- Linux AppImage v0.2.4 has been released. Cross-platform installer/signing and
+- Linux AppImage v0.2.5 has been released. Cross-platform installer/signing and
   update-channel decisions are still release-readiness work.

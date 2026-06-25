@@ -100,7 +100,7 @@ These are valuable, but they should not delay the editor, completion, result han
 
 ### Relational And Distributed SQL
 
-- SQL editor with dialect-aware completion. Current product status is keyword autocomplete only; schema/table/column completion remains a P0 cross-platform gap.
+- SQL editor with dialect-aware completion. Desktop schema/table/column completion is wired from live metadata; shared completion service/API parity and broader per-engine fixtures remain a P0 cross-platform gap.
 - Object browser for databases, schemas, tables, views, indexes, constraints, routines, triggers, packages, extensions, and jobs.
 - Result grid with streaming, cancellation, copy/export, safe editing, advanced filters, and explain/profile. Inline editing is partial/skeleton today, advanced filters are not implemented, and explain/query profile is open P1 work.
 - Distributed SQL add-ons: regions, replicas, shards/tablets/ranges, session/lock insight, follower reads, consistency notes, and topology-aware warnings.

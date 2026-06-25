@@ -259,13 +259,6 @@ const resultRows = [
   ["1104", "Iris Trading", "3824000", "2026-06-17 21:06"],
 ];
 
-const completions = [
-  { label: "orders.customer_id", detail: "fk -> customers.id" },
-  { label: "customers.name", detail: "text, indexed" },
-  { label: "recent_revenue", detail: "view, refreshed 2m ago" },
-  { label: "date_trunc('day', ...)", detail: "PostgreSQL function" },
-];
-
 const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "postgres", label: "PostgreSQL" },
   { value: "mysql", label: "MySQL" },
@@ -509,7 +502,61 @@ function toCount(value: bigint | number) {
 }
 
 function objectKindLabel(object: DbObjectMetadata) {
-  return object.kind === "view" ? "view" : "table";
+  switch (object.kind) {
+    case "view":
+      return "view";
+    case "function":
+      return "function";
+    case "procedure":
+      return "procedure";
+    case "index":
+      return "index";
+    default:
+      return "table";
+  }
+}
+
+type CompletionHint = {
+  label: string;
+  detail: string;
+  insertText: string;
+};
+
+function completionHintsFromMetadata(
+  metadata: DatabaseMetadata | undefined,
+): CompletionHint[] {
+  if (!metadata) {
+    return [];
+  }
+  const relationHints = metadata.schemas.flatMap((schema) =>
+    schema.objects
+      .filter((object) => object.kind !== "index")
+      .map((object) => {
+        const qualifiedName = schema.name
+          ? `${schema.name}.${object.name}`
+          : object.name;
+        return {
+          label: object.name,
+          detail: `${schema.name || "default"} ${objectKindLabel(object)}`,
+          insertText:
+            object.kind === "function" || object.kind === "procedure"
+              ? `${qualifiedName}()`
+              : qualifiedName,
+        };
+      }),
+  );
+  const columnHints = metadata.schemas.flatMap((schema) =>
+    schema.objects
+      .filter((object) => object.kind === "table" || object.kind === "view")
+      .flatMap((object) =>
+        object.columns.slice(0, 4).map((column) => ({
+          label: `${object.name}.${column.name}`,
+          detail: `${column.dataType}${column.nullable ? "" : " not null"}`,
+          insertText: `${object.name}.${column.name}`,
+        })),
+      ),
+  );
+  return [...relationHints, ...columnHints].slice(0, 8);
 }
 
 function defaultPort(engine: DbEngine) {
@@ -1058,6 +1105,10 @@ function App() {
   const activeMetadata = metadataByConnection[activeConnectionId];
   const activeMetadataLoading = metadataLoading.has(activeConnectionId);
   const activeMetadataError = metadataErrors[activeConnectionId];
+  const completionHints = useMemo(
+    () => completionHintsFromMetadata(activeMetadata),
+    [activeMetadata],
+  );
   const scopedHistory = useMemo(
     () =>
       history
@@ -2478,6 +2529,11 @@ function App() {
     setSchemaDesignerOpen(false);
   }
 
+  function insertCompletionHint(hint: CompletionHint) {
+    editorApiRef.current?.insertText(hint.insertText);
+    editorApiRef.current?.focus();
+  }
+
   function updateSchemaColumn(
     id: string,
     patch: Partial<SchemaColumnDraft>,
@@ -3306,12 +3362,27 @@ function App() {
                   <Columns3 size={14} />
                 </div>
                 <div className="completion-list">
-                  {completions.map((item) => (
-                    <button className="completion-item" key={item.label}>
-                      <strong>{item.label}</strong>
-                      <small>{item.detail}</small>
-                    </button>
-                  ))}
+                  {activeMetadataLoading ? (
+                    <div className="empty-browser loading">Loading metadata</div>
+                  ) : activeMetadataError ? (
+                    <div className="empty-browser">
+                      <AlertTriangle size={14} />
+                      <span>{activeMetadataError}</span>
+                    </div>
+                  ) : completionHints.length > 0 ? (
+                    completionHints.map((item) => (
+                      <button
+                        className="completion-item"
+                        key={`${item.detail}:${item.label}`}
+                        onClick={() => insertCompletionHint(item)}
+                      >
+                        <strong>{item.label}</strong>
+                        <small>{item.detail}</small>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="empty-browser">Connect to load completion metadata</div>
+                  )}
                 </div>
               </section>
               <section>

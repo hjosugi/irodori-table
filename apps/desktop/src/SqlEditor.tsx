@@ -31,6 +31,8 @@ export interface SqlEditorHandle {
   format: () => string | null;
   /** Toggle SQL line/block comments around the current selection. */
   toggleComment: () => boolean;
+  /** Insert text at the current selection/caret without remounting the editor. */
+  insertText: (text: string) => void;
   focus: () => void;
 }
 
@@ -185,6 +187,15 @@ function formatEditorDocument(
   }
 }
 
+function insertEditorText(view: EditorView, text: string) {
+  const selection = view.state.selection.main;
+  view.dispatch({
+    changes: { from: selection.from, to: selection.to, insert: text },
+    selection: { anchor: selection.from + text.length },
+    scrollIntoView: true,
+  });
+}
+
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
   { value, onChange, engine, metadata, theme, vimMode, formatter },
   ref,
@@ -263,6 +274,11 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         const view = viewRef.current;
         if (!view) return false;
         return toggleComment(view);
+      },
+      insertText(text) {
+        const view = viewRef.current;
+        if (!view || !text) return;
+        insertEditorText(view, text);
       },
       focus() {
         viewRef.current?.focus();

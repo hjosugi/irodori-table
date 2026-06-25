@@ -73,12 +73,15 @@ Highlights:
   tiberius). Oracle/Mongo/DuckDB fall back to the default `stream_query`
   (buffer → one batch). Verified with in-memory SQLite unit tests; the desktop UI
   consumes it via `runQueryStream` (`src/db-stream.ts`).
-- **Virtualized result grid (rows)**: the grid renders only the rows in (and
-  `GRID_OVERSCAN` around) the viewport with top/bottom spacer pads, so a capped
-  10k-row page is ~30 DOM rows instead of 10k and streamed results stay smooth
-  (fixed 27px row height, viewport via `ResizeObserver`, scroll coalesced with
-  `requestAnimationFrame`, scroll resets to top per run). EXEC-004; column
-  virtualization is the remaining piece.
+- **Virtualized result grid (rows + wide columns)**: the grid renders only the rows
+  in (and `GRID_OVERSCAN` around) the viewport with top/bottom spacer pads, so a
+  capped 10k-row page is ~30 DOM rows instead of 10k and streamed results stay
+  smooth (fixed 27px row height, viewport via `ResizeObserver`, scroll coalesced
+  with `requestAnimationFrame`, scroll resets to top per run). Wide results also
+  render only the visible column window plus horizontal overscan, with left/right
+  spacer columns preserving scroll width. Playwright covers a 1,000-row x
+  2,000-column synthetic result and asserts the DOM cell budget during horizontal
+  scroll. The remaining PERF gate is the 1M-row synthetic scroll benchmark.
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,
@@ -140,6 +143,11 @@ Highlights:
   and a client-side rule panel with AND/OR joins, text/comparison/null/empty/regex
   predicates over displayed cell values. Saved filters, a shared serializable
   filter model, and server-side/filter-plan SQL remain open.
+- The CodeMirror editor now uses live object metadata for deterministic
+  schema-aware completion. Unit tests cover schema/table/column/alias/join
+  suggestions, and Playwright verifies that the editor popup receives table and
+  alias-column suggestions after metadata is loaded from `dbListObjects`. Shared
+  completion service/API parity for future hosts remains open.
 - The browser build still falls back to the mock shell when Tauri APIs are absent;
   real connect/query runs inside the Tauri shell.
 - The object browser now calls generated `dbListObjects` and renders live
@@ -156,8 +164,8 @@ Highlights:
 - Vim mode is wired through `@replit/codemirror-vim` behind a persisted header
   toggle; Playwright covers toggling, insert-mode editing, and a normal-mode delete
   flow. Deeper Vim behavior parity remains open.
-- Linux AppImage v0.2.4 has been released; the desktop package/Tauri version and
-  local Git tag are `0.2.4`/`v0.2.4`. Cross-platform installer/signing/update
+- Linux AppImage v0.2.5 has been released; the desktop package/Tauri version and
+  local Git tag are `0.2.5`/`v0.2.5`. Cross-platform installer/signing/update
   channel hardening remains tracked in the backlog.
 - In-memory databases are first-class for local work: SQLite `:memory:` is wired
   through structured profiles and verified by a unit test; DuckDB `:memory:` is
@@ -208,6 +216,7 @@ Highlights:
 - **Refinements**: Oracle NUMBER → integer representation, date/timestamp formatting,
   and `fetch_more` pagination; rich array decoding. (SQL Server precision-safe
   decimals/temporals/binary is now done — see below.)
-- **Beyond the engine layer** (per ROADMAP): export/import (CSV/TSV/INSERT/JSON/Avro/
-  Parquet), driver-level SSH/proxy dialer integration, schema-aware completion,
-  optional AI/MCP, the extension SDK, and the editor.
+- **Beyond the engine layer** (per ROADMAP): shared/streaming export-import
+  paths, driver-level SSH/proxy dialer integration, cross-platform completion
+  service/API parity, optional AI/MCP, the extension SDK, and editor/workbench
+  hardening.

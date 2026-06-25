@@ -54,6 +54,9 @@ jobs:
         shell: bash
         run: scripts/check-licenses.sh
 
+      - name: Check data-source support inventory
+        run: node tools/docs/support-status.mjs --check
+
       - name: Build Rust workspace scaffold
         run: cargo build
 
@@ -66,6 +69,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # The desktop npm build runs typegen, which depends on the Rust workspace
+      # and the sibling typebridge checkout just like the Rust foundation job.
+      - name: Checkout typebridge
+        uses: actions/checkout@v4
+        with:
+          repository: hjosugi/typebridge
+          path: _typebridge
+      - name: Position typebridge as a sibling
+        shell: bash
+        run: mv "$GITHUB_WORKSPACE/_typebridge" "$GITHUB_WORKSPACE/../typebridge"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install mold
+        run: sudo apt-get update && sudo apt-get install -y mold
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          key: desktop-frontend-${{ runner.os }}
 
       - uses: actions/setup-node@v4
         with:
@@ -80,3 +105,40 @@ jobs:
       - name: Run frontend tests
         working-directory: apps/desktop
         run: npm test
+
+      - name: Build desktop frontend
+        working-directory: apps/desktop
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        working-directory: apps/desktop
+        run: npx playwright install --with-deps chromium
+
+      - name: Run desktop e2e tests
+        working-directory: apps/desktop
+        run: npm run test:e2e
+
+  web-frontend:
+    name: Web frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Run web tests
+        working-directory: apps/web
+        run: npm test
+
+      - name: Build web frontend
+        working-directory: apps/web
+        run: npm run build

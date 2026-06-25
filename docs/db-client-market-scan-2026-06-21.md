@@ -122,7 +122,7 @@ Sources:
 - Support Windows, macOS, and Linux with the same core behavior.
 - Provide a compact workbench: connection list, object browser, editor, result grid, history, and command palette.
 - Offer excellent keyboard control, remappable keymaps, and real Vim mode.
-- Provide deterministic schema-aware completion before any AI feature exists; current user-facing status remains keyword autocomplete only until schema/table/column suggestions are wired and tested through the shared completion contract.
+- Provide deterministic schema-aware completion before any AI feature exists; desktop schema/table/column suggestions are now wired and browser-tested, while the shared completion contract for local API/future hosts remains open.
 - Browse and edit data safely, with transactions, generated DML, row diff, copy/export, and undo/preview where possible.
 - Handle query execution well: current statement, selection, whole script, cancellation, multiple result sets, parameters, history, saved scripts, and run configurations.
 - Support introspection beyond tables: schemas, views, indexes, constraints, functions, procedures, triggers, packages, sequences, materialized views, and dialect-specific objects.

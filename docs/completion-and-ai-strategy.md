@@ -1,10 +1,10 @@
 # Completion And AI Strategy
 
-Last checked: 2026-06-25 JST.
+Last checked: 2026-06-26 JST.
 
 AI can make Irodori nicer, but it must not be required for a great query editor. The base product should feel nearly perfect with no network, no model, and no external account.
 
-Current product status: the user-facing editor should be treated as keyword autocomplete only. Metadata cache and completion-engine pieces exist in the codebase, but schema/table/column autocomplete is still an open cross-platform product requirement until it is wired and tested through a shared contract for desktop, local API, and future hosts.
+Current product status: the desktop editor now has deterministic schema/table/column autocomplete from live metadata, with unit coverage for the local completion engine and browser E2E coverage for CodeMirror popup suggestions. The remaining cross-platform product requirement is the shared serializable completion request/response contract for local API and future hosts, plus broader engine fixtures beyond the desktop smoke.
 
 Layering rule:
 

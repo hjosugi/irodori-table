@@ -56,7 +56,7 @@ Last checked: 2026-06-21 JST.
 - Completion should be split into deterministic local intelligence first, optional AI second.
 - Snowsight-style parity gaps are product-wide contracts, not desktop-only screens: schema-aware completion, optional Copilot-style inline help, explain/query profile, advanced filters, inline editing, and dashboards must be shared across desktop, local API, and future hosts.
 - The metadata cache should model relationships, aliases, recent query context, CTEs, subqueries, functions/procedures, and dialect-specific object kinds.
-- Deterministic schema-aware completion is a P0 product requirement, but the current user-facing product should still be treated as keyword autocomplete only until schema/table/column suggestions are wired and tested through the shared completion contract.
+- Deterministic schema-aware completion is a P0 product requirement. The desktop editor now consumes live metadata for table/column suggestions, but local API/future-host completion still needs the shared request/response contract and broader engine fixtures before the cross-platform requirement is closed.
 - Copilot-style inline autocomplete is a P1 parity gap, while broader AI assistance can remain later; every AI path must be optional, auditable, redacted, and permission-scoped.
 - Query Magics and AI Shell are open work. Query Magics should stay deterministic/local command expansions, while AI Shell should remain an opt-in assistant that proposes text or calls explicitly scoped read-only tools.
 - Theme import should treat VS Code compatibility as an adapter, not as the internal source of truth.

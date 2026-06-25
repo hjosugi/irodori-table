@@ -48,7 +48,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Editor | Serious Vim mode | P1 | User requirement |
 | Keybindings | Fully remappable shortcuts with scopes and conflict UI | P0 | User requirement |
 | Keybindings | Presets for TablePlus-like, VS Code-like, JetBrains-like, Vim-heavy | P1 | Power-user adoption |
-| Completion | Product-wired schema-aware autocomplete: tables, columns, schemas, keywords | P0 | CMPL-002A open; current user-facing status is keyword autocomplete only until shared schema wiring is tested |
+| Completion | Product-wired schema-aware autocomplete: tables, columns, schemas, keywords | P0 | Desktop editor wired and smoke-tested from live metadata; CMPL-002A remains open for shared service/API parity and broader SQLite/PostgreSQL/MySQL fixtures |
 | Completion | Aliases, CTEs, subqueries, functions, procedures | P1 | A5:SQL signal, user requirement |
 | Completion | Dialect-aware ranking and insert behavior | P1 | Daily-driver quality |
 | Completion | Join suggestions, signatures, generated column lists | P1 | DataGrip-level baseline |
@@ -67,8 +67,8 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Type Bridge | Extension SDK type/schema generation | P1 | Easy extension development |
 | Browser | Schemas, tables, views, columns, indexes | P0 | Baseline |
 | Browser | Functions, procedures, triggers, packages | P1 | Oracle/enterprise needs |
-| Results | Virtualized result grid, including wide columns and 1M-row benchmark | P0 | Performance requirement |
-| Results | Copy, CSV export, single-column sort | P0 | Baseline; advanced filter UI is not implemented |
+| Results | Virtualized result grid, including wide columns and 1M-row benchmark | P0 | Row and wide-column virtualization wired/tested; 1M-row synthetic benchmark remains open |
+| Results | Copy, CSV export, multi-column sort, quick/rule filters | P0 | Desktop current-result paths wired; saved/shared/server-side filters remain open under EXEC-005A |
 | Results | Advanced filters: multi-column typed predicates, ranges/value lists, saved filter state | P1 | EXEC-005A open; shared filter expression model for desktop, local API, and future hosts |
 | Results | Editable result rows with safe transaction flow | P1 | EXEC-007 partial/skeleton; complete inline editing still needs shared permission/capability contracts |
 | Results | Run-to-file for huge result sets | P1 | Large data workflow |

@@ -5,6 +5,12 @@ driver/dialect quirks. This doubles as the basis for the per-engine `SqlDialect`
 (SRC-001a) and as a reference for extension authors. All engines go through the
 same `Connection` trait (`apps/desktop/src-tauri/src/db/`).
 
+Related docs: `docs/data-source-support-status.md` is the coverage inventory (what
+connects today vs. what is declared/planned); `docs/cheatsheets/` holds the
+task-oriented, copy-pasteable per-engine pages; `docs/cheatsheet-autodoc-plan.md`
+covers how both get auto-generated. This file stays the deep driver/decoding
+reference.
+
 ## Coverage at a glance
 
 | Engine | Wire / driver | Default port | Query model | Test (`tests/integration_db.rs` / unit) | Container |
@@ -20,7 +26,7 @@ same `Connection` trait (`apps/desktop/src-tauri/src/db/`).
 | DuckDB | embedded libduckdb | — | SQL | `duckdb_in_memory` | none (embedded) |
 | MongoDB | document / mongodb | 27017 | documents | `mongo_samples` | `samples/mongodb` |
 | SQLite | file / sqlx | — | SQL | `sqlite_connect_and_query_round_trip` (unit) | none (file) |
-| Oracle | thin TNS (pending) | 1521 | SQL | `oracle_reports_thin_driver_plan` (unit, pending) | `samples/oracle` |
+| Oracle | thin TNS / `oracle-rs` | 1521 | SQL | `oracle_samples` | `samples/oracle` |
 | Redshift | postgres wire / sqlx | 5439 | SQL | — (AWS-only, no local container) | — |
 
 Run them with `scripts/verify-db.sh <engine>` (or `all`). Env-gated tests skip
@@ -111,11 +117,15 @@ Irodori accepts either structured fields (`host`/`port`/`user`/`password`/
 - **Quirks:** no SQL. Aggregation pipelines, nested-field projection, and sort are
   follow-ups (SRC-012). Auth usually needs `?authSource=admin` for the root user.
 
-### Oracle (pending)
-- **Plan:** a pure-Rust **thin TNS** driver (no Instant Client), inheriting the
-  permissive `oracle-rs`, the way A5:SQL Mk-2's "direct connection" works.
-- **Connection:** descriptor `//host:1521/service`. Today the adapter returns a
-  clear "pending the SRC-004a spike" message rather than pretending to connect.
+### Oracle
+- **Driver:** pure-Rust **thin TNS** through `oracle-rs`; no Oracle Instant Client
+  is required for the default path.
+- **Connection:** descriptor `//host:1521/service`, or structured host/port/user/
+  password/database fields. `database` can be a service name, `service:<name>`, or
+  `sid:<name>`. Wallet paths can be supplied on the URL query as `wallet` and
+  `wallet_password`.
+- **Explain:** `EXPLAIN PLAN FOR ...` returns `DBMS_XPLAN.DISPLAY` output as a
+  one-column result set.
 
 ## Bounded results (all engines)
 

@@ -1,0 +1,53 @@
+{
+  "_meta": {
+    "description": "Machine-readable mirror of the DbEngine registry in apps/desktop/src-tauri/src/db/engine.rs, plus a curated 'not registered' roadmap list. Checked by tools/docs/support-status.mjs; future cheatsheet/doc generators should consume this same file. The engine.rs enum is the source of truth; tools/docs/support-status.mjs --check parses engine.rs and fails if this file's id set or the recognized-no-connector set drifts, or if the curated docs/data-source-support-status.md fails to mention an engine. The prose/order of that doc is human-curated; the check guards membership, not wording.",
+    "registrySource": "apps/desktop/src-tauri/src/db/engine.rs",
+    "generatedDoc": "docs/data-source-support-status.md"
+  },
+  "engines": [
+    { "id": "postgres", "label": "PostgreSQL", "family": "relational", "wire": "postgres", "defaultPort": 5432, "adapter": "db/postgres.rs", "status": "verified" },
+    { "id": "mysql", "label": "MySQL", "family": "relational", "wire": "mysql", "defaultPort": 3306, "adapter": "db/mysql.rs", "status": "verified" },
+    { "id": "sqlite", "label": "SQLite", "family": "relational", "wire": "sqlite", "defaultPort": 0, "adapter": "db/sqlite.rs", "status": "verified", "notes": "file / :memory:; unit-tested" },
+    { "id": "sqlserver", "label": "SQL Server", "family": "relational", "wire": "sqlserver", "defaultPort": 1433, "adapter": "db/mssql.rs", "status": "verified" },
+    { "id": "duckdb", "label": "DuckDB", "family": "analytical", "wire": "duckdb", "defaultPort": 0, "adapter": "db/duck.rs", "status": "verified", "notes": "embedded libduckdb" },
+    { "id": "cockroachdb", "label": "CockroachDB", "family": "distributed-sql", "wire": "postgres", "defaultPort": 26257, "routesThrough": "db/postgres.rs", "status": "verified" },
+    { "id": "yugabytedb", "label": "YugabyteDB (YSQL)", "family": "distributed-sql", "wire": "postgres", "defaultPort": 5433, "routesThrough": "db/postgres.rs", "status": "wired" },
+    { "id": "redshift", "label": "Redshift", "family": "warehouse", "wire": "postgres", "defaultPort": 5439, "routesThrough": "db/postgres.rs", "status": "wired", "notes": "AWS-only, no local container" },
+    { "id": "timescaledb", "label": "TimescaleDB", "family": "time-series", "wire": "postgres", "defaultPort": 5432, "routesThrough": "db/postgres.rs", "status": "verified" },
+    { "id": "neon", "label": "Neon", "family": "relational", "wire": "postgres", "defaultPort": 5432, "routesThrough": "db/postgres.rs", "status": "wired" },
+    { "id": "h2", "label": "H2", "family": "relational", "wire": "postgres", "defaultPort": 5435, "routesThrough": "db/postgres.rs", "status": "wired", "notes": "experimental (Postgres wire)" },
+    { "id": "mariadb", "label": "MariaDB", "family": "relational", "wire": "mysql", "defaultPort": 3306, "routesThrough": "db/mysql.rs", "status": "verified" },
+    { "id": "tidb", "label": "TiDB", "family": "distributed-sql", "wire": "mysql", "defaultPort": 4000, "routesThrough": "db/mysql.rs", "status": "wired" },
+    { "id": "mongodb", "label": "MongoDB", "family": "document", "wire": "mongodb", "defaultPort": 27017, "adapter": "db/mongo.rs", "status": "verified" },
+    { "id": "neo4j", "label": "Neo4j", "family": "graph", "wire": "neo4j", "defaultPort": 7687, "adapter": "db/neo4j.rs", "status": "wired", "cheatsheet": "docs/cheatsheets/neo4j.md" },
+    { "id": "redis", "label": "Redis", "family": "key-value", "wire": "redis", "defaultPort": 6379, "adapter": "db/redis.rs", "status": "wired" },
+    { "id": "cassandra", "label": "Cassandra", "family": "wide-column", "wire": "cassandra", "defaultPort": 9042, "adapter": "db/cassandra.rs", "status": "wired" },
+    { "id": "clickhouse", "label": "ClickHouse", "family": "analytical", "wire": "clickhouse", "defaultPort": 8123, "adapter": "db/clickhouse.rs", "status": "wired", "notes": "HTTP client" },
+    { "id": "snowflake", "label": "Snowflake", "family": "warehouse", "wire": "snowflake", "defaultPort": 443, "adapter": "db/snowflake.rs", "status": "wired", "notes": "password/JWT subset" },
+    { "id": "bigquery", "label": "BigQuery", "family": "warehouse", "wire": "bigquery", "defaultPort": 443, "adapter": "db/bigquery.rs", "status": "wired", "notes": "HTTP client" },
+    { "id": "bigtable", "label": "Bigtable", "family": "wide-column", "wire": "bigtable", "defaultPort": 443, "adapter": "db/bigtable.rs", "status": "wired" },
+    { "id": "influxdb", "label": "InfluxDB", "family": "time-series", "wire": "influxdb", "defaultPort": 8086, "adapter": "db/influx.rs", "status": "wired" },
+    { "id": "oracle", "label": "Oracle", "family": "relational", "wire": "oracle", "defaultPort": 1521, "adapter": "db/oracle.rs", "driver": "Thin TNS / oracle-rs", "status": "verified" },
+    { "id": "memgraph", "label": "Memgraph", "family": "graph", "wire": "memgraph", "defaultPort": 7687, "status": "recognized_no_connector", "notes": "Bolt/Cypher; should reuse the Neo4j path" },
+    { "id": "qdrant", "label": "Qdrant", "family": "vector", "wire": "qdrant", "defaultPort": 6333, "status": "recognized_no_connector" },
+    { "id": "milvus", "label": "Milvus", "family": "vector", "wire": "milvus", "defaultPort": 19530, "status": "recognized_no_connector" },
+    { "id": "pinecone", "label": "Pinecone", "family": "vector", "wire": "pinecone", "defaultPort": 0, "status": "recognized_no_connector", "notes": "HTTP API" }
+  ],
+  "notRegistered": [
+    { "label": "Trino / Presto", "family": "federated-sql", "notes": "federated SQL" },
+    { "label": "Firebird", "family": "relational" },
+    { "label": "Databricks / Spark SQL", "family": "warehouse" },
+    { "label": "Elasticsearch / OpenSearch", "family": "search" },
+    { "label": "Couchbase", "family": "document" },
+    { "label": "DynamoDB", "family": "key-value" },
+    { "label": "ScyllaDB", "family": "wide-column", "notes": "could route through the existing CQL/db/cassandra.rs path" },
+    { "label": "ArangoDB", "family": "graph / multi-model" },
+    { "label": "QuestDB", "family": "time-series" },
+    { "label": "Apache IoTDB", "family": "time-series" },
+    { "label": "Apache Hive", "family": "lakehouse / catalog", "notes": "as catalog/metastore" },
+    { "label": "Apache Iceberg (Hive Metastore, AWS Glue, REST, JDBC catalogs)", "family": "lakehouse", "notes": "priority lakehouse target" },
+    { "label": "AWS S3 Tables (managed Iceberg)", "family": "lakehouse" },
+    { "label": "Object stores: S3 / GCS / Azure Blob", "family": "object-store" },
+    { "label": "Delta Lake, Apache Hudi", "family": "lakehouse", "notes": "after Iceberg" }
+  ]
+}

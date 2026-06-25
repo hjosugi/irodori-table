@@ -53,8 +53,8 @@ top to bottom within an epic unless a dependency says otherwise.
 
 These are explicit competitive gaps, not closed by nearby core-library work alone.
 
-- **Snowsight:** schema-aware autocomplete is open (`CMPL-002A`); Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); desktop result exploration now has client-side quick filtering, multi-rule predicate filters, and multi-column sort, but saved filters plus server-side/filter-plan SQL remain open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
-- **Beekeeper:** no-code schema editor is open (`ADV-003`); current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; Query Magics and AI Shell are open (`AI-005`, `AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization hardening and the 1M-row scroll benchmark remain open (`EXEC-004A`, `EXEC-004B`).
+- **Snowsight:** desktop schema/table/column autocomplete is wired and smoke-tested from live metadata (`CMPL-002A`), but the shared completion service/API contract remains open; Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); desktop result exploration now has client-side quick filtering, multi-rule predicate filters, and multi-column sort, but saved filters plus server-side/filter-plan SQL remain open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
+- **Beekeeper:** no-code schema editor is partially wired as a reviewable DDL designer (`ADV-003`), but direct apply/alter coverage and DB-specific DDL safety remain open; current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; Query Magics and AI Shell are open (`AI-005`, `AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization is app-wired and browser-tested, while the 1M-row scroll benchmark remains open (`EXEC-004B`).
 
 ---
 
@@ -233,7 +233,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### SHELL-005 — Packaging + auto-update channel decision
 - **Goal:** Shippable installers per OS.
 - **Done when:** CI produces installers for each OS; an ADR records the update channel approach.
-- **Status:** Partial. Linux AppImage v0.2.4 has been released (`v0.2.4` tag; desktop/Tauri package version `0.2.4`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
+- **Status:** Partial. Linux AppImage v0.2.5 has been released (`v0.2.5` tag; desktop/Tauri package version `0.2.5`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P2
 
@@ -354,19 +354,19 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P0
 
-### EXEC-004 — Virtualized result grid 🚧 (row virtualization done; column window wired)
+### EXEC-004 — Virtualized result grid 🚧 (row + wide-column virtualization done; 1M benchmark open)
 - **Goal:** Smooth scrolling over huge results.
 - **Done when:** the grid renders only visible rows/cols; 1M-row synthetic result scrolls without jank in a benchmark.
-- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely. **Column windowing is wired in the app** with fixed column width, horizontal overscan, and left/right spacer columns.
-- **Remaining:** wide-column app-level hardening/DOM-budget evidence and a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
+- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely. **Column virtualization** is wired with fixed column width, horizontal overscan, left/right spacer columns, and browser E2E coverage for a 1,000-row x 2,000-column fixture proving bounded DOM cells during horizontal scroll.
+- **Remaining:** a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
 - **Depends on:** EXEC-002
 - **Size:** L · **Priority:** P0
 
-### EXEC-004A — Wide-column virtualization hardening 🚧 (column window wired; hardening open)
+### EXEC-004A — Wide-column virtualization hardening ✅
 - **Goal:** Keep the grid smooth when a result has hundreds or thousands of columns.
 - **Done when:** a synthetic `1,000 rows x 2,000 columns` result renders only the visible column window plus overscan; DOM cell count stays bounded by viewport rows * viewport columns; horizontal scroll, sort, selected row, staged edit cells, paste, and edit-mode gutter keep correct column indexes; sticky headers and left/right spacer widths remain stable at desktop and narrow widths.
-- **Status:** Partial. `App.tsx` computes a horizontal column window with `GRID_COLUMN_WIDTH`, `GRID_COLUMN_OVERSCAN`, and spacer columns, so the app no longer renders every column for wide results. The ticket stays open until Playwright/DOM-budget coverage proves horizontal scroll, sort, selected row, staged edit cells, paste, and the edit-mode gutter across a 2k-column fixture.
-- **Test plan:** pure window-calculation tests, Playwright smoke for a 2k-column fixture, and a DOM-node budget assertion after horizontal and diagonal scroll.
+- **Done:** `App.tsx` computes a horizontal column window with `GRID_COLUMN_WIDTH`, `GRID_COLUMN_OVERSCAN`, and spacer columns, so the app no longer renders every column for wide results. `result-grid.test.ts` covers the pure window math, and `apps/desktop/e2e/virtualization.spec.ts` injects a 1,000-row x 2,000-column streamed fixture with DOM-node budget assertions after horizontal scroll.
+- **Remaining:** edit-mode/paste edge cases can keep hardening under `EXEC-007`; the standalone wide-column rendering blocker is closed.
 - **Depends on:** EXEC-004
 - **Size:** M · **Priority:** P0
 
@@ -587,7 +587,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ## CMPL — Completion + Metadata Intelligence
 
-**Cross-platform parity status (2026-06-25):** user-facing autocomplete should be treated as keyword-only until schema/table/column suggestions are wired and tested through a shared completion contract across desktop, the local API, and any future host. Core metadata/completion library pieces can be reused, but they do not close the Snowsight-style schema-aware autocomplete gap by themselves.
+**Cross-platform parity status (2026-06-26):** desktop autocomplete is no longer keyword-only: the CodeMirror editor consumes live `DatabaseMetadata` and Playwright verifies schema-driven table and alias-column suggestions. The remaining cross-platform gap is the shared serializable completion request/response service for the local API and future hosts, plus broader dialect fixtures beyond the current desktop smoke.
 
 ### CMPL-001 — Metadata cache with invalidation
 - **Goal:** Fast, permissions-aware introspection.
@@ -596,18 +596,18 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P0
 
-### CMPL-002 — Baseline completion engine (tables, columns, schemas, keywords) 🚧 (core landed; product wiring open)
+### CMPL-002 — Baseline completion engine (tables, columns, schemas, keywords) ✅ (desktop)
 - **Goal:** Deterministic offline completion.
 - **Done when:** completion suggests tables, columns, schemas, and keywords with no AI; ranking is sensible; works offline.
-- **Landed (core):** `CompletionEngine` produces permission-aware schema/table/view/column/keyword items from `MetadataCache`, with deterministic ranking, prefix filtering, limits, and keyword casing. Dialect keyword seeding can use `irodori-sql` dialect metadata.
-- **Remaining product work:** wire schema/table/column suggestions into the editor and any headless/future host completion endpoint; add fixtures that prove the current user-facing experience goes beyond keyword completion.
+- **Landed:** `CompletionEngine` produces permission-aware schema/table/view/column/keyword items from `MetadataCache`, with deterministic ranking, prefix filtering, limits, and keyword casing. The desktop CodeMirror path also builds a metadata completion index from live `DatabaseMetadata`; unit tests cover schema/table/column/alias/join/keyword suggestions, and `apps/desktop/e2e/completion.spec.ts` verifies the popup receives table and alias-column suggestions in the editor.
+- **Remaining product work:** expose the same completion request/response model through the local API/future host boundary and broaden cross-engine fixtures.
 - **Depends on:** CMPL-001, EDIT-002
 - **Size:** L · **Priority:** P0
 
-### CMPL-002A — Cross-platform schema-aware autocomplete
+### CMPL-002A — Cross-platform schema-aware autocomplete 🚧 (desktop wired; shared service open)
 - **Goal:** Close the Snowsight/TablePlus parity gap without making completion desktop-only.
 - **Done when:** the desktop editor and shared completion service suggest schemas, tables, columns, and qualified `table.column` paths from live metadata; behavior is tested for SQLite/PostgreSQL/MySQL at minimum; the request/response model is serializable so the local API and future web/native hosts can reuse it when those surfaces land.
-- **Status:** Open. Current product behavior should be documented as keyword autocomplete only until this wiring is verified.
+- **Status:** Partial. Desktop schema-aware completion is wired and browser-smoke-tested with live metadata. The shared serializable completion endpoint/model for local API and future hosts is still open, and SQLite/PostgreSQL/MySQL engine fixtures should become release-gate coverage before calling the cross-platform ticket done.
 - **Depends on:** CMPL-001, CMPL-002, EDIT-002
 - **Size:** M · **Priority:** P0
 
