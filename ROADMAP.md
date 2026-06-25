@@ -90,88 +90,88 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 
 ### Phase 1: Thin Vertical Slice
 
-- Tauri app boots on Windows, macOS, and Linux.
-- Connection manager supports SQLite and PostgreSQL.
-- Rust command payloads generate TypeScript bindings for the desktop UI.
-- SQL editor opens, executes current statement/selection/file, streams results, cancels queries, and shows errors.
-- Object browser lists schemas, tables, columns, indexes, views, functions, and procedures where available.
-- Result grid supports virtualization, copy, CSV/TSV export with header on/off, sorting/filtering client-side for current page, and safe read-only defaults.
-- Command palette and keybinding resolver exist from day one.
+- [x] Tauri app boots on Windows, macOS, and Linux.
+- [x] Connection manager supports SQLite and PostgreSQL.
+- [x] Rust command payloads generate TypeScript bindings for the desktop UI.
+- [x] SQL editor opens, executes current statement/selection/file, streams results, cancels queries, and shows errors.
+- [x] Object browser lists schemas, tables, columns, indexes, views, functions, and procedures where available.
+- [x] Result grid supports virtualization, copy, CSV/TSV export with header on/off, sorting/filtering client-side for current page, and safe read-only defaults.
+- [x] Command palette and keybinding resolver exist from day one.
 
 ### Phase 1A: Beat Beekeeper Fast
 
-- Match the daily OSS baseline: connections, object browser, query tabs, current/selection/all execution, multiple result sets, query history, query parameters, editable result path, CSV export, and session restore.
-- Surpass it immediately where Irodori must be different: faster startup, lower idle memory, tighter keyboard flow, fully remappable shortcuts, serious Vim mode, nested proxy chains, and first-class Oracle planning.
-- Keep Beekeeper code review license-aware: Community Edition is GPLv3-or-later in the local reference copy, while commercial directories are off-limits unless rights are explicit.
-- Prefer Rust-native core paths for connection, metadata cache, query execution, cancellation, history, and proxy composition instead of cloning Electron-era architecture.
+- [x] Match the daily OSS baseline: connections, object browser, query tabs, current/selection/all execution, multiple result sets, query history, query parameters, editable result path, CSV export, and session restore.
+- [x] Surpass it immediately where Irodori must be different: faster startup, lower idle memory, tighter keyboard flow, fully remappable shortcuts, serious Vim mode, nested proxy chains, and first-class Oracle planning.
+- [x] Keep Beekeeper code review license-aware: Community Edition is GPLv3-or-later in the local reference copy, while commercial directories are off-limits unless rights are explicit.
+- [x] Prefer Rust-native core paths for connection, metadata cache, query execution, cancellation, history, and proxy composition instead of cloning Electron-era architecture.
 
 ### Phase 2: Power-User Editor
 
-- Remappable keybindings with conflict detection and per-context scopes.
-- Vim mode reaches daily-driver quality.
-- Multiple cursors, snippets, bracket matching, SQL-aware selection expansion, comment toggles, format hooks.
-- Workspace tabs, tab folders/groups, split panes, saved sessions, per-tab connection binding.
-- Query history, saved queries, scratch buffers, connection-local notes.
-- Connection/datasource organization: folders/groups, quick inline edit, duplicate, and import/export of connection definitions (secrets excluded) — datasources should feel as easy to manage as files.
-- i18n scaffolding (ja/en) across editor, menus, command palette, and messages, with a normalized catalog the extension SDK can extend.
+- [x] Remappable keybindings with conflict detection and per-context scopes.
+- [x] Vim mode reaches daily-driver quality.
+- [x] Multiple cursors, snippets, bracket matching, SQL-aware selection expansion, comment toggles, format hooks.
+- [x] Workspace tabs, tab folders/groups, split panes, saved sessions, per-tab connection binding.
+- [x] Query history, saved queries, scratch buffers, connection-local notes.
+- [x] Connection/datasource organization: folders/groups, quick inline edit, duplicate, and import/export of connection definitions (secrets excluded) — datasources should feel as easy to manage as files.
+- [x] i18n scaffolding (ja/en) across editor, menus, command palette, and messages, with a normalized catalog the extension SDK can extend.
 
 ### Phase 2A: Extension SDK
 
-- Draft and stabilize `irodori.extension.json`.
-- Ship a TypeScript extension SDK with typed command, keybinding, result-grid, theme, and SQL dialect APIs.
-- Generate extension SDK types from Rust/schema definitions through the same type bridge used by the desktop UI.
-- Provide `MIT OR 0BSD` extension templates and examples.
-- Add local extension development mode with watch reload, logs, fake database fixtures, and permission inspection.
-- Keep Rust/Wasm extension paths available for high-performance drivers, renderers, and parsers.
+- [x] Draft and stabilize `irodori.extension.json`.
+- [x] Ship a TypeScript extension SDK with typed command, keybinding, result-grid, theme, and SQL dialect APIs.
+- [x] Generate extension SDK types from Rust/schema definitions through the same type bridge used by the desktop UI.
+- [x] Provide `MIT OR 0BSD` extension templates and examples.
+- [x] Add local extension development mode with watch reload, logs, fake database fixtures, and permission inspection.
+- [x] Keep Rust/Wasm extension paths available for high-performance drivers, renderers, and parsers.
 
 ### Phase 3: Completion And Intelligence
 
-- Metadata cache with invalidation, background refresh, and permissions-aware introspection.
-- Use the local knowledge base to track dialect features, syntax changes, driver behavior, deprecations, and bug-fix references.
-- Completion for tables, columns, aliases, CTEs, subquery columns, functions, procedures, schemas, keywords, variables, file paths, and connection names.
-- Dialect-aware ranking and insert behavior, including optional keyword casing.
-- Signature help, join suggestions, generated column lists, overload-aware function/procedure completion, and explain/analyze command helpers.
-- Hover inspection: schema/object/column hovers show type, nullability, keys, indexes, DDL, comments, and a row-count estimate plus quick sample, driven by the metadata cache.
-- AI provider API remains optional: local model, OpenAI-compatible, Anthropic/Gemini/Azure/Bedrock-style providers, and Copilot-compatible MCP bridge.
-- Explain-plan entry points and plan-aware hints.
-- Optional local/remote AI assistance only after privacy, auditability, and opt-in controls are solid.
+- [x] Metadata cache with invalidation, background refresh, and permissions-aware introspection.
+- [x] Use the local knowledge base to track dialect features, syntax changes, driver behavior, deprecations, and bug-fix references.
+- [x] Completion for tables, columns, aliases, CTEs, subquery columns, functions, procedures, schemas, keywords, variables, file paths, and connection names.
+- [x] Dialect-aware ranking and insert behavior, including optional keyword casing.
+- [x] Signature help, join suggestions, generated column lists, overload-aware function/procedure completion, and explain/analyze command helpers.
+- [x] Hover inspection: schema/object/column hovers show type, nullability, keys, indexes, DDL, comments, and a row-count estimate plus quick sample, driven by the metadata cache.
+- [ ] AI provider API remains optional: local model, OpenAI-compatible, Anthropic/Gemini/Azure/Bedrock-style providers, and Copilot-compatible MCP bridge.
+- [x] Explain-plan entry points and plan-aware hints.
+- [ ] Optional local/remote AI assistance only after privacy, auditability, and opt-in controls are solid.
 
 ### Phase 4: Database Coverage
 
-- MySQL/MariaDB and SQL Server reach parity with PostgreSQL/SQLite basics.
-- Oracle Database becomes first-class: connection profiles, service/SID handling, wallets where feasible, explain plans, packages/procedures, PL/SQL execution ergonomics.
-- Add YugabyteDB, CockroachDB, DuckDB, BigQuery, ClickHouse, Redshift, Firebird, Trino/Presto, Redis, MongoDB, Snowflake, InfluxDB, Neo4j, Cassandra/ScyllaDB, Couchbase, DynamoDB, Elasticsearch/OpenSearch, TiDB, Databricks/Spark SQL, Apache IoTDB, QuestDB, TimescaleDB, ArangoDB, and Memgraph by adapter maturity.
-- Treat YugabyteDB first through PostgreSQL-compatible YSQL, then add distributed-database affordances such as regions, tablets, follower reads, diagnostics, and topology awareness.
-- Treat InfluxDB as a time-series source with SQL/native-query helpers, time range ergonomics, retention/bucket metadata, and downsampling.
-- Treat Neo4j as the first graph source with Cypher completion, label/relationship/property introspection, tabular results, and query-result graph rendering.
-- Lakehouse and table formats, with Apache Iceberg prioritized: query Iceberg tables through Hive Metastore, AWS Glue, REST, and JDBC catalogs and via AWS S3 Tables; treat object stores (S3/GCS/Azure) as first-class; add Delta Lake and Apache Hudi later. Use embeddable engines (DuckDB, Apache DataFusion) or Trino/Presto as execution options.
-- Snowflake with full authentication coverage: password, key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens, plus warehouse/role/database context switching.
-- Format-rich export/import: CSV/TSV (header on/off, delimiter/quote control), SQL INSERT/UPSERT scripts (with or without schema/DDL), JSON/NDJSON, Avro, and Parquet; clipboard-friendly subsets; dialect-aware dump/restore.
-- Editable results, table designer, indexes/constraints UI, and backup/restore hooks where each dialect permits.
+- [x] MySQL/MariaDB and SQL Server reach parity with PostgreSQL/SQLite basics.
+- [x] Oracle Database becomes first-class: connection profiles, service/SID handling, wallets where feasible, explain plans, packages/procedures, PL/SQL execution ergonomics.
+- [/] Add YugabyteDB, CockroachDB, DuckDB, BigQuery, ClickHouse, Redshift, Firebird, Trino/Presto, Redis, MongoDB, Snowflake, InfluxDB, Neo4j, Cassandra/ScyllaDB, Couchbase, DynamoDB, Elasticsearch/OpenSearch, TiDB, Databricks/Spark SQL, Apache IoTDB, QuestDB, TimescaleDB, ArangoDB, and Memgraph by adapter maturity.
+- [ ] Treat YugabyteDB first through PostgreSQL-compatible YSQL, then add distributed-database affordances such as regions, tablets, follower reads, diagnostics, and topology awareness.
+- [ ] Treat InfluxDB as a time-series source with SQL/native-query helpers, time range ergonomics, retention/bucket metadata, and downsampling.
+- [ ] Treat Neo4j as the first graph source with Cypher completion, label/relationship/property introspection, tabular results, and query-result graph rendering.
+- [ ] Lakehouse and table formats, with Apache Iceberg prioritized: query Iceberg tables through Hive Metastore, AWS Glue, REST, and JDBC catalogs and via AWS S3 Tables; treat object stores (S3/GCS/Azure) as first-class; add Delta Lake and Apache Hudi later. Use embeddable engines (DuckDB, Apache DataFusion) or Trino/Presto as execution options.
+- [ ] Snowflake with full authentication coverage: password, key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens, plus warehouse/role/database context switching.
+- [x] Format-rich export/import: CSV/TSV (header on/off, delimiter/quote control), SQL INSERT/UPSERT scripts (with or without schema/DDL), JSON/NDJSON, Avro, and Parquet; clipboard-friendly subsets; dialect-aware dump/restore.
+- [ ] Editable results, table designer, indexes/constraints UI, and backup/restore hooks where each dialect permits.
 
 ### Phase 5: Network And Security
 
-- SSH tunnel support with key/password/agent flows.
-- SOCKS5 and HTTP CONNECT proxy support.
-- Multi-hop proxy chains with named reusable hops.
-- Per-connection secret storage through OS keychain.
-- Connection diagnostics, audit log, privacy mode, and redaction-safe screenshots/log export.
+- [x] SSH tunnel support with key/password/agent flows.
+- [x] SOCKS5 and HTTP CONNECT proxy support.
+- [x] Multi-hop proxy chains with named reusable hops.
+- [x] Per-connection secret storage through OS keychain.
+- [x] Connection diagnostics, audit log, privacy mode, and redaction-safe screenshots/log export.
 
 ### Phase 6: Advanced Workflows
 
-- Schema compare and migration preview.
-- Data compare and safe bulk edit workflow.
-- ERD and graph views after core editor/query/browser workflows are excellent.
-- Plugin API for drivers, themes, formatters, and result visualizers.
-- Extension registry support after the local SDK is solid.
-- Team/workspace sync only after local-first UX is strong.
+- [ ] Schema compare and migration preview.
+- [ ] Data compare and safe bulk edit workflow.
+- [/] ERD and graph views after core editor/query/browser workflows are excellent.
+- [ ] Plugin API for drivers, themes, formatters, and result visualizers.
+- [ ] Extension registry support after the local SDK is solid.
+- [ ] Team/workspace sync only after local-first UX is strong.
 
 ### Phase 6A: Local Data API And Headless Mode
 
-- Optional local HTTP API to list sources, run parameterized queries, read tables with pagination/filter/sort, and perform safe, permissioned writes.
-- Headless mode for scripts, CI, and external tools: same adapter, proxy, and security model, no UI required.
-- Read-only by default with explicit opt-in for writes, token-scoped access, per-source permission scopes, and an audit log on by default.
-- Generated client types through the type bridge so external tools get typed access. Study PostgREST and DuckDB httpserver patterns; implement independently.
+- [ ] Optional local HTTP API to list sources, run parameterized queries, read tables with pagination/filter/sort, and perform safe, permissioned writes.
+- [ ] Headless mode for scripts, CI, and external tools: same adapter, proxy, and security model, no UI required.
+- [ ] Read-only by default with explicit opt-in for writes, token-scoped access, per-source permission scopes, and an audit log on by default.
+- [ ] Generated client types through the type bridge so external tools get typed access. Study PostgREST and DuckDB httpserver patterns; implement independently.
 
 ## Research Watchlist
 
