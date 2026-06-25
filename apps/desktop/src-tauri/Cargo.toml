@@ -1,6 +1,6 @@
 [package]
 name = "irodori-table-desktop"
-version = "0.2.0"
+version = "0.2.1"
 description = "Fast SQL workbench for Irodori Table"
 authors = ["you"]
 edition = "2021"
