@@ -15,6 +15,7 @@ import type {
   ForeignKey,
   SchemaMetadata,
 } from "../generated/irodori-api";
+import { statementDelimiters } from "./statements";
 
 const MAX_SCAN_CHARS = 6_000;
 const DEFAULT_LIMIT = 50;
@@ -202,6 +203,23 @@ type CompletionMode =
   | { kind: "columns" }
   | { kind: "general" };
 
+interface CompletionWord {
+  from: number;
+  text: string;
+}
+
+interface StatementRange {
+  start: number;
+  end: number;
+}
+
+interface ParsedCompletionContext {
+  word: CompletionWord;
+  prefix: string;
+  aliases: RelationRef[];
+  mode: CompletionMode;
+}
+
 interface ColumnCandidateOptions {
   afterQualifier?: boolean;
   detailPrefix?: string;
@@ -315,79 +333,107 @@ export function completeSqlLightweight(
   input: LightweightCompletionInput,
 ): CompletionResult | null {
   const pos = input.pos ?? input.doc.length;
-  const docBeforeCursor = input.doc.slice(0, pos);
-  const statementStart = currentStatementStart(docBeforeCursor);
-  const statementEnd = currentStatementEnd(input.doc, pos);
-  const statement = input.doc.slice(statementStart, statementEnd);
-  const statementBeforeCursor = input.doc.slice(statementStart, pos);
-  if (isInsideBlockedRegion(statementBeforeCursor)) return null;
+  const context = parseCompletionContext(input.doc, pos, input.index);
+  if (!context) return null;
 
-  const word = wordBefore(docBeforeCursor, pos);
-  const qualification = qualificationBefore(docBeforeCursor, word.from);
-  const prefix = word.text;
-  const beforePrefix = input.doc.slice(statementStart, word.from);
-  const tokensBeforePrefix = tokenizeSql(beforePrefix);
-  const statementTokens = tokenizeSql(statement);
-  const aliases = resolveRelationRefs(statementTokens, input.index);
-  const mode = classifyCompletion(tokensBeforePrefix, qualification, aliases);
-
-  if (!input.explicit && !shouldAutoComplete(mode, prefix)) {
+  if (!input.explicit && !shouldAutoComplete(context.mode, context.prefix)) {
     return null;
   }
 
-  const candidates: Candidate[] = [];
-  switch (mode.kind) {
-    case "qualified":
-      addQualifiedCandidates(
-        candidates,
-        input.index,
-        aliases,
-        mode.qualification,
-        prefix,
-      );
-      break;
-    case "relations":
-      if (mode.relationKeyword === "join") {
-        addJoinCandidates(candidates, input.index, aliases, prefix);
-      }
-      addRelationCandidates(candidates, input.index, prefix);
-      addSchemaCandidates(candidates, input.index, prefix);
-      break;
-    case "columns":
-      addScopedColumnCandidates(
-        candidates,
-        input.index,
-        aliases,
-        prefix,
-        input.explicit ?? false,
-      );
-      addRoutineCandidates(candidates, input.index, prefix);
-      if (prefix.length > 0 || input.explicit) {
-        addRelationCandidates(candidates, input.index, prefix, {
-          lowPriority: true,
-        });
-        addKeywordCandidates(candidates, input.engine, prefix);
-      }
-      break;
-    case "general":
-      if (input.explicit) {
-        addScopedColumnCandidates(candidates, input.index, aliases, prefix, true);
-      }
-      addRelationCandidates(candidates, input.index, prefix);
-      addSchemaCandidates(candidates, input.index, prefix);
-      addRoutineCandidates(candidates, input.index, prefix);
-      addKeywordCandidates(candidates, input.engine, prefix);
-      break;
-  }
-
-  const options = uniqueSortedOptions(candidates, input.limit ?? DEFAULT_LIMIT);
+  const candidates = collectCompletionCandidates(
+    input.engine,
+    input.index,
+    context,
+    input.explicit ?? false,
+  );
+  const options = rankedCompletionOptions(candidates, input.limit ?? DEFAULT_LIMIT);
   if (options.length === 0) return null;
   return {
-    from: word.from,
+    from: context.word.from,
     to: pos,
     options,
     filter: false,
   };
+}
+
+function parseCompletionContext(
+  doc: string,
+  pos: number,
+  index: SqlCompletionIndex,
+): ParsedCompletionContext | null {
+  const statementRange = currentStatementRange(doc, pos);
+  const statement = doc.slice(statementRange.start, statementRange.end);
+  const statementBeforeCursor = doc.slice(statementRange.start, pos);
+  if (isInsideBlockedRegion(statementBeforeCursor)) return null;
+
+  const docBeforeCursor = doc.slice(0, pos);
+  const word = wordBefore(docBeforeCursor, pos);
+  const qualification = qualificationBefore(docBeforeCursor, word.from);
+  const prefix = word.text;
+  const tokensBeforePrefix = tokenizeSql(doc.slice(statementRange.start, word.from));
+  const statementTokens = tokenizeSql(statement);
+  const aliases = resolveRelationRefs(statementTokens, index);
+  const mode = classifyCompletion(tokensBeforePrefix, qualification, aliases);
+
+  return {
+    word,
+    prefix,
+    aliases,
+    mode,
+  };
+}
+
+function collectCompletionCandidates(
+  engine: DbEngine,
+  index: SqlCompletionIndex,
+  context: ParsedCompletionContext,
+  explicit: boolean,
+): Candidate[] {
+  const candidates: Candidate[] = [];
+  switch (context.mode.kind) {
+    case "qualified":
+      addQualifiedCandidates(
+        candidates,
+        index,
+        context.aliases,
+        context.mode.qualification,
+        context.prefix,
+      );
+      break;
+    case "relations":
+      if (context.mode.relationKeyword === "join") {
+        addJoinCandidates(candidates, index, context.aliases, context.prefix);
+      }
+      addRelationCandidates(candidates, index, context.prefix);
+      addSchemaCandidates(candidates, index, context.prefix);
+      break;
+    case "columns":
+      addScopedColumnCandidates(
+        candidates,
+        index,
+        context.aliases,
+        context.prefix,
+        explicit,
+      );
+      addRoutineCandidates(candidates, index, context.prefix);
+      if (context.prefix.length > 0 || explicit) {
+        addRelationCandidates(candidates, index, context.prefix, {
+          lowPriority: true,
+        });
+        addKeywordCandidates(candidates, engine, context.prefix);
+      }
+      break;
+    case "general":
+      if (explicit) {
+        addScopedColumnCandidates(candidates, index, context.aliases, context.prefix, true);
+      }
+      addRelationCandidates(candidates, index, context.prefix);
+      addSchemaCandidates(candidates, index, context.prefix);
+      addRoutineCandidates(candidates, index, context.prefix);
+      addKeywordCandidates(candidates, engine, context.prefix);
+      break;
+  }
+  return candidates;
 }
 
 function addQualifiedCandidates(
@@ -1054,14 +1100,21 @@ function isInsideBlockedRegion(sql: string): boolean {
   return single || double || backtick || bracket || lineComment || blockComment;
 }
 
-function currentStatementStart(doc: string): number {
-  const semicolon = doc.lastIndexOf(";");
-  return semicolon >= 0 ? semicolon + 1 : 0;
-}
+function currentStatementRange(doc: string, pos: number): StatementRange {
+  const cursor = Math.max(0, Math.min(pos, doc.length));
+  let start = 0;
+  let end = doc.length;
 
-function currentStatementEnd(doc: string, pos: number): number {
-  const semicolon = doc.indexOf(";", pos);
-  return semicolon >= 0 ? semicolon : doc.length;
+  for (const delimiter of statementDelimiters(doc)) {
+    if (delimiter < cursor) {
+      start = delimiter + 1;
+    } else {
+      end = delimiter;
+      break;
+    }
+  }
+
+  return { start, end };
 }
 
 function nearestClauseKeyword(tokens: SqlToken[]): string | null {
@@ -1105,24 +1158,34 @@ function uniqueRelationRefs(refs: RelationRef[]): RelationRef[] {
   return unique;
 }
 
-function uniqueSortedOptions(candidates: Candidate[], limit: number): Completion[] {
+function rankedCompletionOptions(candidates: Candidate[], limit: number): Completion[] {
+  return uniqueCandidates(candidates)
+    .sort(compareCandidateRank)
+    .slice(0, limit)
+    .map((candidate) => candidate.option);
+}
+
+function uniqueCandidates(candidates: Candidate[]): Candidate[] {
   const seen = new Set<string>();
   return candidates
     .filter((candidate) => {
-      const key = `${candidate.key}:${candidate.option.label}:${candidate.option.apply ?? ""}`;
+      const key = candidateDedupKey(candidate);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .sort((left, right) => {
-      return (
-        right.rank - left.rank ||
-        sectionRank(left.option.section) - sectionRank(right.option.section) ||
-        left.option.label.localeCompare(right.option.label)
-      );
-    })
-    .slice(0, limit)
-    .map((candidate) => candidate.option);
+    });
+}
+
+function candidateDedupKey(candidate: Candidate): string {
+  return `${candidate.key}:${candidate.option.label}:${candidate.option.apply ?? ""}`;
+}
+
+function compareCandidateRank(left: Candidate, right: Candidate): number {
+  return (
+    right.rank - left.rank ||
+    sectionRank(left.option.section) - sectionRank(right.option.section) ||
+    left.option.label.localeCompare(right.option.label)
+  );
 }
 
 function sectionRank(section: Completion["section"]): number {

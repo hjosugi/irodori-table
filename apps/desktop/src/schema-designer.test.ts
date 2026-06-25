@@ -100,6 +100,45 @@ describe("schema designer SQL", () => {
     expect(sql).not.toContain('ADD COLUMN "id"');
   });
 
+  it("builds alter SQL for a new foreign key and escapes names", () => {
+    const object: DbObjectMetadata = {
+      schema: "public",
+      name: "orders",
+      kind: "table",
+      columns: [
+        {
+          name: "id",
+          dataType: "INTEGER",
+          nullable: false,
+          ordinal: 1,
+        },
+        {
+          name: "customer_id",
+          dataType: "INTEGER",
+          nullable: false,
+          ordinal: 2,
+        },
+      ],
+      indexes: [],
+      primaryKey: ["id"],
+      foreignKeys: [],
+    };
+    const draft = schemaDraftFromObject(object);
+    draft.foreignKeys.push({
+      id: "fk-customer",
+      name: 'fk "customer"',
+      columns: "customer_id",
+      referencesSchema: "public",
+      referencesTable: "customers",
+      referencesColumns: "id",
+      onDelete: "SET NULL",
+    });
+
+    expect(buildSchemaSql(draft)).toBe(
+      'ALTER TABLE "public"."orders" ADD CONSTRAINT "fk ""customer""" FOREIGN KEY ("customer_id") REFERENCES "public"."customers" ("id") ON DELETE SET NULL;\n',
+    );
+  });
+
   it("returns a placeholder when alter mode has no additions", () => {
     const draft = blankSchemaDraft();
     draft.mode = "alter";

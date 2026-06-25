@@ -344,20 +344,7 @@ fn is_json_question_operator(bytes: &[u8], index: usize) -> bool {
 }
 
 fn skip_single_quoted(sql: &str, start: usize) -> usize {
-    let bytes = sql.as_bytes();
-    let mut i = start + 1;
-    while i < bytes.len() {
-        if bytes[i] == b'\'' {
-            if bytes.get(i + 1) == Some(&b'\'') {
-                i += 2;
-            } else {
-                return i + 1;
-            }
-        } else {
-            i += 1;
-        }
-    }
-    bytes.len()
+    skip_repeated_quote(sql.as_bytes(), start, b'\'')
 }
 
 fn skip_double_quoted(sql: &str, start: usize) -> usize {
@@ -446,7 +433,7 @@ mod tests {
     #[test]
     fn ignores_literals_comments_and_quoted_identifiers() {
         let params = detect_parameters(
-            "select ':not_param', \"@col\", `?col`, [:$col]\n\
+            "select ':not_param', 'it''s :not_param', \"@col\", `?col`, [:$col]\n\
              -- :comment\n\
              /* @comment */\n\
              from t where id = :id",

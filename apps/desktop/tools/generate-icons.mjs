@@ -69,20 +69,28 @@ function writeIcns(entries, out) {
   writeFileSync(out, Buffer.concat([header, ...chunks], totalLength));
 }
 
-mkdirSync(tempDir, { recursive: true });
-
-for (const [name, size] of pngTargets) {
-  renderPng(join(iconDir, name), size);
+function collectIconRenderSizes(icoSizes, icnsEntries) {
+  return new Set([...icoSizes, ...icnsEntries.map(([, size]) => size)]);
 }
 
-for (const size of new Set([...icoSizes, ...icnsEntries.map(([, size]) => size)])) {
-  renderPng(join(tempDir, `icns-${size}.png`), size);
+function main() {
+  mkdirSync(tempDir, { recursive: true });
+
+  for (const [name, size] of pngTargets) {
+    renderPng(join(iconDir, name), size);
+  }
+
+  for (const size of collectIconRenderSizes(icoSizes, icnsEntries)) {
+    renderPng(join(tempDir, `icns-${size}.png`), size);
+  }
+
+  run("magick", [
+    ...icoSizes.map((size) => join(tempDir, `icns-${size}.png`)),
+    join(iconDir, "icon.ico"),
+  ]);
+
+  writeIcns(icnsEntries, join(iconDir, "icon.icns"));
+  rmSync(tempDir, { recursive: true, force: true });
 }
 
-run("magick", [
-  ...icoSizes.map((size) => join(tempDir, `icns-${size}.png`)),
-  join(iconDir, "icon.ico"),
-]);
-
-writeIcns(icnsEntries, join(iconDir, "icon.icns"));
-rmSync(tempDir, { recursive: true, force: true });
+main();

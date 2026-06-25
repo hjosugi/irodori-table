@@ -35,9 +35,34 @@ describe("result exports", () => {
     expect(buildResultExport(result, "jsonl").content.trim().split("\n")).toHaveLength(3);
   });
 
+  it("exports JSON with date-safe nested values", () => {
+    const exported = buildResultExport(
+      {
+        columns: ["created_at", "payload"],
+        rows: [
+          [
+            new Date("2026-06-25T00:00:00.000Z"),
+            { sentAt: new Date("2026-06-25T01:02:03.000Z"), count: 2n },
+          ],
+        ],
+      },
+      "json",
+    );
+
+    expect(exported.content).toContain('"created_at": "2026-06-25T00:00:00.000Z"');
+    expect(exported.content).toContain('"sentAt": "2026-06-25T01:02:03.000Z"');
+    expect(exported.content).toContain('"count": "2"');
+  });
+
   it("exports SQL insert statements", () => {
     expect(buildResultExport(result, "sql", "people").content).toContain(
       `INSERT INTO "people" ("id", "name", "note") VALUES (3, 'O''Hara', '{"active":true}');`,
+    );
+  });
+
+  it("exports empty SQL results as a comment", () => {
+    expect(buildResultExport({ columns: ["id"], rows: [] }, "sql", "empty table").content).toBe(
+      '-- No rows to export for "empty table".\n',
     );
   });
 

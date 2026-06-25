@@ -45,6 +45,146 @@ interface SqlEditorProps {
   formatter: SqlFormatterId;
 }
 
+interface SqlEditorCompartments {
+  vim: Compartment;
+  sql: Compartment;
+  theme: Compartment;
+  highlight: Compartment;
+}
+
+interface CreateSqlEditorViewOptions {
+  host: HTMLDivElement;
+  value: string;
+  onChangeRef: { current: (next: string) => void };
+  engine: DbEngine;
+  metadata: DatabaseMetadata | undefined;
+  theme: IrodoriTheme;
+  vimMode: boolean;
+  compartments: SqlEditorCompartments;
+}
+
+interface FormatEditorResult {
+  error: string | null;
+  formatted?: string;
+}
+
+function createSqlEditorCompartments(): SqlEditorCompartments {
+  return {
+    vim: new Compartment(),
+    sql: new Compartment(),
+    theme: new Compartment(),
+    highlight: new Compartment(),
+  };
+}
+
+function createSqlEditorView(options: CreateSqlEditorViewOptions): EditorView {
+  return new EditorView({
+    parent: options.host,
+    state: createSqlEditorState(options),
+  });
+}
+
+function createSqlEditorState({
+  value,
+  onChangeRef,
+  engine,
+  metadata,
+  theme,
+  vimMode,
+  compartments,
+}: Omit<CreateSqlEditorViewOptions, "host">): EditorState {
+  return EditorState.create({
+    doc: value,
+    extensions: [
+      compartments.vim.of(vimMode ? vim() : []),
+      basicSetup,
+      keymap.of([indentWithTab]),
+      compartments.sql.of(buildSqlExtensions(engine, metadata)),
+      compartments.theme.of(editorThemeExtensions(theme)),
+      compartments.highlight.of(sqlHighlightingExtensions(engine, theme.syntax)),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChangeRef.current(update.state.doc.toString());
+        }
+      }),
+    ],
+  });
+}
+
+function reconfigureVimMode(
+  view: EditorView | null,
+  compartments: SqlEditorCompartments,
+  vimMode: boolean,
+) {
+  view?.dispatch({
+    effects: compartments.vim.reconfigure(vimMode ? vim() : []),
+  });
+}
+
+function syncEditorDocument(view: EditorView | null, value: string) {
+  if (!view) return;
+  const current = view.state.doc.toString();
+  if (value !== current) {
+    replaceEditorDocument(view, current, value);
+  }
+}
+
+function replaceEditorDocument(
+  view: EditorView,
+  current: string,
+  next: string,
+) {
+  view.dispatch({ changes: { from: 0, to: current.length, insert: next } });
+}
+
+function reconfigureSqlExtensions(
+  view: EditorView | null,
+  compartments: SqlEditorCompartments,
+  engine: DbEngine,
+  metadata: DatabaseMetadata | undefined,
+) {
+  view?.dispatch({
+    effects: compartments.sql.reconfigure(buildSqlExtensions(engine, metadata)),
+  });
+}
+
+function reconfigureThemeExtensions(
+  view: EditorView | null,
+  compartments: SqlEditorCompartments,
+  engine: DbEngine,
+  theme: IrodoriTheme,
+) {
+  view?.dispatch({
+    effects: [
+      compartments.theme.reconfigure(editorThemeExtensions(theme)),
+      compartments.highlight.reconfigure(
+        sqlHighlightingExtensions(engine, theme.syntax),
+      ),
+    ],
+  });
+}
+
+function formatEditorDocument(
+  view: EditorView,
+  engine: DbEngine,
+  formatter: SqlFormatterId,
+): FormatEditorResult {
+  const doc = view.state.doc.toString();
+  if (!doc.trim()) return { error: null };
+  try {
+    const formatted = formatSqlDocument(doc, engine, formatter);
+    if (formatted !== doc) {
+      replaceEditorDocument(view, doc, formatted);
+      return { error: null, formatted };
+    }
+    return { error: null };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
   { value, onChange, engine, metadata, theme, vimMode, formatter },
   ref,
@@ -53,34 +193,26 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  const vimConf = useRef(new Compartment()).current;
-  const sqlConf = useRef(new Compartment()).current;
-  const themeConf = useRef(new Compartment()).current;
-  const highlightConf = useRef(new Compartment()).current;
+  const compartmentsRef = useRef<SqlEditorCompartments | null>(null);
+  if (!compartmentsRef.current) {
+    compartmentsRef.current = createSqlEditorCompartments();
+  }
+  const compartments = compartmentsRef.current;
 
   // Create the editor once. `value`/`engine`/`metadata` seed the initial state;
   // later changes flow through the controlled-sync and reconfigure effects below.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const view = new EditorView({
-      parent: host,
-      state: EditorState.create({
-        doc: value,
-        extensions: [
-          vimConf.of(vimMode ? vim() : []),
-          basicSetup,
-          keymap.of([indentWithTab]),
-          sqlConf.of(buildSqlExtensions(engine, metadata)),
-          themeConf.of(editorThemeExtensions(theme)),
-          highlightConf.of(sqlHighlightingExtensions(engine, theme.syntax)),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              onChangeRef.current(update.state.doc.toString());
-            }
-          }),
-        ],
-      }),
+    const view = createSqlEditorView({
+      host,
+      value,
+      onChangeRef,
+      engine,
+      metadata,
+      theme,
+      vimMode,
+      compartments,
     });
     viewRef.current = view;
     return () => {
@@ -93,43 +225,23 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
 
   // Toggle Vim emulation without recreating the editor or losing undo history.
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: vimConf.reconfigure(vimMode ? vim() : []),
-    });
-  }, [vimMode, vimConf]);
+    reconfigureVimMode(viewRef.current, compartments, vimMode);
+  }, [vimMode, compartments]);
 
   // Controlled sync: push external value changes (history click, etc.) into the doc.
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    const current = view.state.doc.toString();
-    if (value !== current) {
-      view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
-    }
+    syncEditorDocument(viewRef.current, value);
   }, [value]);
 
   // Reconfigure dialect + metadata completion when the engine or metadata changes.
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: sqlConf.reconfigure(buildSqlExtensions(engine, metadata)),
-    });
-  }, [engine, metadata, sqlConf]);
+    reconfigureSqlExtensions(viewRef.current, compartments, engine, metadata);
+  }, [engine, metadata, compartments]);
 
   // Reconfigure editor chrome + syntax highlight when the theme or engine changes.
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: [
-        themeConf.reconfigure(editorThemeExtensions(theme)),
-        highlightConf.reconfigure(sqlHighlightingExtensions(engine, theme.syntax)),
-      ],
-    });
-  }, [engine, highlightConf, theme, themeConf]);
+    reconfigureThemeExtensions(viewRef.current, compartments, engine, theme);
+  }, [engine, theme, compartments]);
 
   useImperativeHandle(
     ref,
@@ -141,20 +253,11 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       format() {
         const view = viewRef.current;
         if (!view) return null;
-        const doc = view.state.doc.toString();
-        if (!doc.trim()) return null;
-        try {
-          const formatted = formatSqlDocument(doc, engine, formatter);
-          if (formatted !== doc) {
-            view.dispatch({
-              changes: { from: 0, to: doc.length, insert: formatted },
-            });
-            onChangeRef.current(formatted);
-          }
-          return null;
-        } catch (error) {
-          return error instanceof Error ? error.message : String(error);
+        const result = formatEditorDocument(view, engine, formatter);
+        if (result.formatted !== undefined) {
+          onChangeRef.current(result.formatted);
         }
+        return result.error;
       },
       toggleComment() {
         const view = viewRef.current;

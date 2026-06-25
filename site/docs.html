@@ -71,24 +71,33 @@
             <p class="eyebrow">Full-text search</p>
             <h2>探す場所から始める。</h2>
             <p>
-              この検索は `search-data.js` にある公開ドキュメント全文をブラウザ内で照合します。
+              この検索は <code>search-data.js</code> にある公開ドキュメント全文をブラウザ内で照合します。
               クエリや接続情報は外部に送信されません。
             </p>
           </div>
-          <div class="search-panel" data-search>
+          <div class="search-panel" role="search" aria-label="ドキュメント検索" data-search>
             <label class="search-label" for="docs-search">検索語</label>
             <div class="search-control">
               <input
                 id="docs-search"
                 name="q"
                 type="search"
+                aria-describedby="docs-search-status"
                 autocomplete="off"
                 placeholder="例: run current, MongoDB, keybinding, extension"
                 data-search-input
               />
               <a class="button secondary" href="#overview">先頭へ</a>
             </div>
-            <p class="search-status" data-search-status>キーワードを入力してください。</p>
+            <p
+              id="docs-search-status"
+              class="search-status"
+              role="status"
+              aria-live="polite"
+              data-search-status
+            >
+              キーワードを入力してください。
+            </p>
             <div class="search-results" data-search-results></div>
           </div>
         </div>
@@ -130,7 +139,7 @@
               <p class="eyebrow">Quick start</p>
               <h2>ローカルで起動する</h2>
               <p>
-                デスクトップアプリは `apps/desktop` にあります。ブラウザ preview は Tauri API がない場合に
+                デスクトップアプリは <code>apps/desktop</code> にあります。ブラウザ preview は Tauri API がない場合に
                 mock shell として動きます。実接続やローカル OS 機能は Tauri shell で確認します。
               </p>
               <pre class="code-block"><code>cd apps/desktop
@@ -194,8 +203,9 @@ group by c.id, c.name;</code></pre>
               <div class="callout">
                 <strong>現在できること</strong>
                 <p>
-                  `schema.` から relation、`alias.` から column、`JOIN` の relation 位置で外部キーに基づく
-                  `table alias on left.col = right.col` 形式の候補を出します。
+                  <code>schema.</code> から relation、<code>alias.</code> から column、<code>JOIN</code>
+                  の relation 位置で外部キーに基づく
+                  <code>table alias on left.col = right.col</code> 形式の候補を出します。
                 </p>
               </div>
             </section>
@@ -224,8 +234,8 @@ group by c.id, c.name;</code></pre>
               <p class="eyebrow">Extensions</p>
               <h2>拡張 SDK</h2>
               <p>
-                `irodori.extension.json`、TypeScript SDK、typed API、dev fixture、テーマ、結果ビュー、driver、
-                dialect API を段階的に公開する方針です。公式テンプレートは `MIT OR 0BSD` に揃えます。
+                <code>irodori.extension.json</code>、TypeScript SDK、typed API、dev fixture、テーマ、結果ビュー、driver、
+                dialect API を段階的に公開する方針です。公式テンプレートは <code>MIT OR 0BSD</code> に揃えます。
               </p>
             </section>
 

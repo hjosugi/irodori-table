@@ -83,6 +83,10 @@ describe("parseSourceTable", () => {
       table: "Orders",
     });
     expect(parseSourceTable("select * from `orders`")).toEqual({ table: "orders" });
+    expect(parseSourceTable("select * from [Sales].[Orders]")).toEqual({
+      schema: "Sales",
+      table: "Orders",
+    });
   });
 
   it("returns null when there is no FROM", () => {
@@ -154,6 +158,12 @@ describe("foreignKeyColumns", () => {
     expect(map.get(1)?.fk.referencesTable).toBe("customers");
     expect(map.get(1)?.columnIndexes).toEqual([1]);
     expect(map.has(0)).toBe(false);
+  });
+
+  it("maps FK columns case-insensitively", () => {
+    const map = foreignKeyColumns(orders, ["ID", "CUSTOMER_ID", "TOTAL"]);
+    expect(map.get(1)?.fk.referencesTable).toBe("customers");
+    expect(map.get(1)?.columnIndexes).toEqual([1]);
   });
 
   it("skips FKs whose columns are not all present in the result", () => {

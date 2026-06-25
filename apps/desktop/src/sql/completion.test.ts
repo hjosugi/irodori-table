@@ -135,6 +135,26 @@ describe("completeSqlLightweight", () => {
     ]);
   });
 
+  it("sorts equally ranked relation candidates by label", () => {
+    const unorderedMetadata: DatabaseMetadata = {
+      schemas: [
+        {
+          name: "public",
+          objects: [
+            table("public", "orders", ["id"]),
+            table("public", "customers", ["id"]),
+          ],
+        },
+      ],
+    };
+
+    expect(appliesWithMetadata("select * from |", unorderedMetadata)).toEqual([
+      "customers",
+      "orders",
+      "public.",
+    ]);
+  });
+
   it("qualifies duplicate relation insert text deterministically", () => {
     const duplicateMetadata: DatabaseMetadata = {
       schemas: [
@@ -176,6 +196,12 @@ describe("completeSqlLightweight", () => {
   it("falls back to cheap keyword completion without metadata matches", () => {
     expect(labels("sel")).toContain("select");
     expect(labels("select * from customers c where ema")).toContain("c.email");
+  });
+
+  it("ignores semicolons inside strings when resolving the current statement", () => {
+    expect(labels("select ';' as marker from customers c where em")).toEqual([
+      "c.email",
+    ]);
   });
 
   it("suppresses completions inside strings and comments", () => {

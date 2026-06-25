@@ -3,6 +3,7 @@ import {
   applyResultFilters,
   applyResultSort,
   calculateResultGridVirtualRowWindow,
+  compareGridCells,
   cycleResultSortRules,
   type ResultGridRowLike,
 } from "./result-grid";
@@ -22,6 +23,13 @@ describe("result grid model", () => {
     ]);
 
     expect(sorted.map((row) => row.cells[0])).toEqual(["4", "2", "1", "3"]);
+    expect(rows.map((row) => row.cells[0])).toEqual(["2", "1", "3", "4"]);
+  });
+
+  it("compares numeric cells only when both sides are finite numbers", () => {
+    expect(compareGridCells("10", "2")).toBe(8);
+    expect(compareGridCells("10", "abc")).toBeLessThan(0);
+    expect(compareGridCells("NULL", "")).toBe(-1);
   });
 
   it("cycles additive and replacement sort rules", () => {
@@ -108,6 +116,32 @@ describe("result grid model", () => {
     ).toHaveLength(0);
   });
 
+  it("ignores disabled filters and value filters with blank values", () => {
+    expect(
+      applyResultFilters(
+        rows,
+        [
+          {
+            id: "blank",
+            columnIndex: "any",
+            operator: "contains",
+            value: " ",
+            enabled: true,
+          },
+          {
+            id: "disabled",
+            columnIndex: 2,
+            operator: "equals",
+            value: "missing",
+            enabled: false,
+          },
+        ],
+        "",
+        "and",
+      ),
+    ).toEqual(rows);
+  });
+
   it("calculates the virtual row window and spacer heights", () => {
     expect(
       calculateResultGridVirtualRowWindow({
@@ -153,5 +187,17 @@ describe("result grid model", () => {
         overscan: 8,
       }).renderedRowCount,
     ).toBe(4);
+  });
+
+  it("rejects invalid virtual row heights", () => {
+    expect(() =>
+      calculateResultGridVirtualRowWindow({
+        rowCount: 10,
+        scrollTop: 0,
+        viewportHeight: 100,
+        rowHeight: 0,
+        overscan: 1,
+      }),
+    ).toThrow("rowHeight must be a positive finite number");
   });
 });

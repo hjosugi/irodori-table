@@ -3,7 +3,7 @@
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 use std::time::SystemTime;
 
 use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
@@ -34,22 +34,14 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<BigtableConn, String
             let token = fetch_oauth2_token(&client, &key.client_email, &key.private_key).await?;
             (key.project_id, token)
         } else {
-            let project = profile
-                .host
-                .clone()
-                .unwrap_or_default();
+            let project = profile.host.clone().unwrap_or_default();
             if project.is_empty() {
-                return Err(
-                    "GCP Project ID must be specified in the Host field".into(),
-                );
+                return Err("GCP Project ID must be specified in the Host field".into());
             }
             (project, password)
         };
 
-    let instance_id = profile
-        .database
-        .clone()
-        .unwrap_or_default();
+    let instance_id = profile.database.clone().unwrap_or_default();
     if instance_id.is_empty() {
         return Err("Bigtable Instance ID must be specified in the Database field".into());
     }
@@ -117,7 +109,9 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
         let lower = sql_trimmed.to_lowercase();
         if let Some(from_pos) = lower.find("from ") {
             let after_from = sql_trimmed[from_pos + 5..].trim();
-            let table_end = after_from.find(|c: char| c.is_whitespace() || c == ';').unwrap_or(after_from.len());
+            let table_end = after_from
+                .find(|c: char| c.is_whitespace() || c == ';')
+                .unwrap_or(after_from.len());
             table_id = after_from[..table_end].to_string();
         }
     }
@@ -202,13 +196,13 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
                     let cell_str = String::from_utf8(current_value.clone())
                         .unwrap_or_else(|_| format!("0x{}", hex_encode(&current_value)));
                     current_value.clear();
-                    
+
                     if let Some(ref mut row) = temp_row {
                         row.cells.insert(cell_key.clone(), cell_str);
                         all_columns_set.insert(cell_key);
                     }
                 }
-                
+
                 if chunk.commit_row.unwrap_or(false) {
                     if let Some(row) = temp_row.take() {
                         committed_rows.push(row);
@@ -238,7 +232,12 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
         row_values.push(Value::String(row.row_key));
         // Other cells match the columns union list
         for col in &columns[1..] {
-            let cell_val = row.cells.get(col).cloned().map(Value::String).unwrap_or(Value::Null);
+            let cell_val = row
+                .cells
+                .get(col)
+                .cloned()
+                .map(Value::String)
+                .unwrap_or(Value::Null);
             row_values.push(cell_val);
         }
         rows.push(row_values);
@@ -297,9 +296,13 @@ pub async fn metadata(conn: &BigtableConn) -> Result<DatabaseMetadata, String> {
                 .last()
                 .unwrap_or(&table.name)
                 .to_string();
-            
-            builder.add_object(schema_name.clone(), table_id.clone(), DbObjectMetadataKind::Table);
-            
+
+            builder.add_object(
+                schema_name.clone(),
+                table_id.clone(),
+                DbObjectMetadataKind::Table,
+            );
+
             if let Some(obj) = builder.object_mut(&schema_name, &table_id) {
                 // Add row_key as the primary column descriptor
                 obj.columns.push(ColumnMetadata {

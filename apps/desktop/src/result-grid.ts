@@ -106,16 +106,15 @@ export function calculateResultGridVirtualRowWindow({
   if (!Number.isFinite(rowHeight) || rowHeight <= 0) {
     throw new Error("rowHeight must be a positive finite number");
   }
-  const boundedRowCount = Math.max(0, Math.floor(rowCount));
-  const boundedScrollTop = Math.max(0, scrollTop);
-  const boundedViewportHeight = Math.max(0, viewportHeight);
-  const boundedOverscan = Math.max(0, Math.floor(overscan));
-  const firstRowIndex = Math.min(
+  const boundedRowCount = floorAtZero(rowCount);
+  const boundedScrollTop = atLeastZero(scrollTop);
+  const boundedViewportHeight = atLeastZero(viewportHeight);
+  const boundedOverscan = floorAtZero(overscan);
+  const firstRowIndex = firstVisibleRowIndex(
     boundedRowCount,
-    Math.max(
-      0,
-      Math.floor(boundedScrollTop / rowHeight) - boundedOverscan,
-    ),
+    boundedScrollTop,
+    rowHeight,
+    boundedOverscan,
   );
   const maxRenderedRowCount =
     Math.ceil(boundedViewportHeight / rowHeight) + boundedOverscan * 2;
@@ -135,9 +134,26 @@ export function calculateResultGridVirtualRowWindow({
   };
 }
 
+function floorAtZero(value: number): number {
+  return Math.max(0, Math.floor(value));
+}
+
+function atLeastZero(value: number): number {
+  return Math.max(0, value);
+}
+
+function firstVisibleRowIndex(
+  rowCount: number,
+  scrollTop: number,
+  rowHeight: number,
+  overscan: number,
+): number {
+  return Math.min(rowCount, Math.max(0, Math.floor(scrollTop / rowHeight) - overscan));
+}
+
 // Sort comparator for grid cells: numeric when both sides parse as finite
 // numbers, otherwise a locale-aware string compare. "NULL" sorts first.
-export function compareGridCells(a: string, b: string) {
+export function compareGridCells(a: string, b: string): number {
   if (a === b) {
     return 0;
   }
@@ -147,49 +163,65 @@ export function compareGridCells(a: string, b: string) {
   if (b === "NULL") {
     return 1;
   }
-  const left = Number(a);
-  const right = Number(b);
-  if (
-    a.trim() !== "" &&
-    b.trim() !== "" &&
-    Number.isFinite(left) &&
-    Number.isFinite(right)
-  ) {
+  const left = numericCellValue(a);
+  const right = numericCellValue(b);
+  if (left !== null && right !== null) {
     return left - right;
   }
   return a.localeCompare(b);
 }
 
+function numericCellValue(value: string): number | null {
+  const numeric = Number(value);
+  return value.trim() !== "" && Number.isFinite(numeric) ? numeric : null;
+}
+
 export function applyResultSort<T extends ResultGridRowLike>(
   rows: readonly T[],
   sortRules: readonly ResultSortRule[],
-) {
+): T[] {
   if (sortRules.length === 0) {
     return [...rows];
   }
-  return [...rows].sort((left, right) => {
-    for (const rule of sortRules) {
-      const comparison =
-        compareGridCells(
-          left.cells[rule.columnIndex] ?? "",
-          right.cells[rule.columnIndex] ?? "",
-        ) * (rule.direction === "asc" ? 1 : -1);
-      if (comparison !== 0) {
-        return comparison;
-      }
-    }
-    return 0;
-  });
+  return [...rows].sort((left, right) => compareGridRows(left, right, sortRules));
+}
+
+function compareGridRows(
+  left: ResultGridRowLike,
+  right: ResultGridRowLike,
+  sortRules: readonly ResultSortRule[],
+): number {
+  return (
+    sortRules
+      .map((rule) => compareGridRowsByRule(left, right, rule))
+      .find((comparison) => comparison !== 0) ?? 0
+  );
+}
+
+function compareGridRowsByRule(
+  left: ResultGridRowLike,
+  right: ResultGridRowLike,
+  rule: ResultSortRule,
+): number {
+  return (
+    compareGridCells(
+      left.cells[rule.columnIndex] ?? "",
+      right.cells[rule.columnIndex] ?? "",
+    ) * sortDirectionMultiplier(rule.direction)
+  );
+}
+
+function sortDirectionMultiplier(direction: ResultSortDirection): 1 | -1 {
+  return direction === "asc" ? 1 : -1;
 }
 
 export function cycleResultSortRules(
   current: readonly ResultSortRule[],
   columnIndex: number,
   additive: boolean,
-) {
+): ResultSortRule[] {
   const existing = current.find((rule) => rule.columnIndex === columnIndex);
-  const nextDirection: ResultSortDirection | null =
-    existing?.direction === "asc" ? "desc" : existing?.direction === "desc" ? null : "asc";
+  const nextDirection = nextResultSortDirection(existing?.direction);
 
   if (!additive) {
     return nextDirection ? [{ columnIndex, direction: nextDirection }] : [];
@@ -208,47 +240,72 @@ export function cycleResultSortRules(
   );
 }
 
+function nextResultSortDirection(
+  current: ResultSortDirection | undefined,
+): ResultSortDirection | null {
+  if (current === "asc") {
+    return "desc";
+  }
+  if (current === "desc") {
+    return null;
+  }
+  return "asc";
+}
+
 export function applyResultFilters<T extends ResultGridRowLike>(
   rows: readonly T[],
   filters: readonly ResultFilterRule[],
   quickFilter: string,
   join: ResultFilterJoin,
-) {
+): T[] {
   const quick = normalize(quickFilter);
   const activeFilters = activeResultFilters(filters);
   if (!quick && activeFilters.length === 0) {
     return [...rows];
   }
-  return rows.filter((row) => {
-    if (quick && !row.cells.some((cell) => normalize(cell).includes(quick))) {
-      return false;
-    }
-    if (activeFilters.length === 0) {
-      return true;
-    }
-    const matches = activeFilters.map((rule) => resultFilterMatches(row, rule));
-    return join === "and"
-      ? matches.every(Boolean)
-      : matches.some(Boolean);
-  });
+  return rows.filter(
+    (row) =>
+      rowMatchesQuickFilter(row, quick) &&
+      rowMatchesActiveFilters(row, activeFilters, join),
+  );
 }
 
 export function resultFilterMatches(
   row: ResultGridRowLike,
   rule: ResultFilterRule,
-) {
-  const cells =
-    rule.columnIndex === "any"
-      ? row.cells
-      : [row.cells[rule.columnIndex] ?? ""];
-  return cells.some((cell) => cellMatches(cell, rule.operator, rule.value));
+): boolean {
+  return filterCells(row, rule).some((cell) =>
+    cellMatches(cell, rule.operator, rule.value),
+  );
+}
+
+function rowMatchesQuickFilter(row: ResultGridRowLike, quick: string): boolean {
+  return !quick || row.cells.some((cell) => normalize(cell).includes(quick));
+}
+
+function rowMatchesActiveFilters(
+  row: ResultGridRowLike,
+  filters: readonly ResultFilterRule[],
+  join: ResultFilterJoin,
+): boolean {
+  if (filters.length === 0) {
+    return true;
+  }
+  const matches = (rule: ResultFilterRule) => resultFilterMatches(row, rule);
+  return join === "and" ? filters.every(matches) : filters.some(matches);
+}
+
+function filterCells(row: ResultGridRowLike, rule: ResultFilterRule): readonly string[] {
+  return rule.columnIndex === "any"
+    ? row.cells
+    : [row.cells[rule.columnIndex] ?? ""];
 }
 
 function cellMatches(
   cell: string,
   operator: ResultFilterOperator,
   filterValue: string,
-) {
+): boolean {
   const text = normalize(cell);
   const value = normalize(filterValue);
   const isNull = cell === "NULL";
@@ -284,14 +341,18 @@ function cellMatches(
     case "is_not_empty":
       return !isEmpty;
     case "regex":
-      try {
-        return new RegExp(filterValue, "i").test(cell);
-      } catch {
-        return false;
-      }
+      return regexMatches(cell, filterValue);
   }
 }
 
-function normalize(value: string) {
+function regexMatches(cell: string, filterValue: string): boolean {
+  try {
+    return new RegExp(filterValue, "i").test(cell);
+  } catch {
+    return false;
+  }
+}
+
+function normalize(value: string): string {
   return value.trim().toLocaleLowerCase();
 }

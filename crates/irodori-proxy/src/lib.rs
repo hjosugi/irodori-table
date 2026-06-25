@@ -698,10 +698,14 @@ where
         greeting.push(1);
         greeting.push(0x00);
     }
-    stream.write_all(&greeting).map_err(|e| format!("socks5 greeting write failed: {e}"))?;
+    stream
+        .write_all(&greeting)
+        .map_err(|e| format!("socks5 greeting write failed: {e}"))?;
 
     let mut resp = [0u8; 2];
-    stream.read_exact(&mut resp).map_err(|e| format!("socks5 greeting read failed: {e}"))?;
+    stream
+        .read_exact(&mut resp)
+        .map_err(|e| format!("socks5 greeting read failed: {e}"))?;
     if resp[0] != 0x05 {
         return Err(format!("invalid socks5 version: {}", resp[0]));
     }
@@ -717,10 +721,14 @@ where
             auth_req.extend_from_slice(user.as_bytes());
             auth_req.push(pass.len() as u8);
             auth_req.extend_from_slice(pass.as_bytes());
-            stream.write_all(&auth_req).map_err(|e| format!("socks5 auth write failed: {e}"))?;
+            stream
+                .write_all(&auth_req)
+                .map_err(|e| format!("socks5 auth write failed: {e}"))?;
 
             let mut auth_resp = [0u8; 2];
-            stream.read_exact(&mut auth_resp).map_err(|e| format!("socks5 auth read failed: {e}"))?;
+            stream
+                .read_exact(&mut auth_resp)
+                .map_err(|e| format!("socks5 auth read failed: {e}"))?;
             if auth_resp[0] != 0x01 {
                 return Err(format!("invalid socks5 auth subversion: {}", auth_resp[0]));
             }
@@ -754,33 +762,51 @@ where
         conn_req.extend_from_slice(host.as_bytes());
     }
     conn_req.extend_from_slice(&port.to_be_bytes());
-    stream.write_all(&conn_req).map_err(|e| format!("socks5 connect write failed: {e}"))?;
+    stream
+        .write_all(&conn_req)
+        .map_err(|e| format!("socks5 connect write failed: {e}"))?;
 
     // 3. Response
     let mut conn_resp_header = [0u8; 4];
-    stream.read_exact(&mut conn_resp_header).map_err(|e| format!("socks5 connect response read failed: {e}"))?;
+    stream
+        .read_exact(&mut conn_resp_header)
+        .map_err(|e| format!("socks5 connect response read failed: {e}"))?;
     if conn_resp_header[0] != 0x05 {
-        return Err(format!("invalid socks5 reply version: {}", conn_resp_header[0]));
+        return Err(format!(
+            "invalid socks5 reply version: {}",
+            conn_resp_header[0]
+        ));
     }
     if conn_resp_header[1] != 0x00 {
-        return Err(format!("socks5 connect failed: status {}", conn_resp_header[1]));
+        return Err(format!(
+            "socks5 connect failed: status {}",
+            conn_resp_header[1]
+        ));
     }
 
     match conn_resp_header[3] {
         0x01 => {
             let mut buf = [0u8; 6];
-            stream.read_exact(&mut buf).map_err(|e| format!("socks5 bind read failed: {e}"))?;
+            stream
+                .read_exact(&mut buf)
+                .map_err(|e| format!("socks5 bind read failed: {e}"))?;
         }
         0x04 => {
             let mut buf = [0u8; 18];
-            stream.read_exact(&mut buf).map_err(|e| format!("socks5 bind read failed: {e}"))?;
+            stream
+                .read_exact(&mut buf)
+                .map_err(|e| format!("socks5 bind read failed: {e}"))?;
         }
         0x03 => {
             let mut len_buf = [0u8; 1];
-            stream.read_exact(&mut len_buf).map_err(|e| format!("socks5 bind read failed: {e}"))?;
+            stream
+                .read_exact(&mut len_buf)
+                .map_err(|e| format!("socks5 bind read failed: {e}"))?;
             let domain_len = len_buf[0] as usize;
             let mut domain_buf = vec![0u8; domain_len + 2];
-            stream.read_exact(&mut domain_buf).map_err(|e| format!("socks5 bind read failed: {e}"))?;
+            stream
+                .read_exact(&mut domain_buf)
+                .map_err(|e| format!("socks5 bind read failed: {e}"))?;
         }
         other => return Err(format!("socks5: invalid reply address type: {other}")),
     }
@@ -808,12 +834,16 @@ where
     }
     req_str.push_str("\r\n");
 
-    stream.write_all(req_str.as_bytes()).map_err(|e| format!("HTTP CONNECT write failed: {e}"))?;
+    stream
+        .write_all(req_str.as_bytes())
+        .map_err(|e| format!("HTTP CONNECT write failed: {e}"))?;
 
     let mut header_buf = Vec::new();
     let mut byte = [0u8; 1];
     loop {
-        stream.read_exact(&mut byte).map_err(|e| format!("HTTP CONNECT response read failed: {e}"))?;
+        stream
+            .read_exact(&mut byte)
+            .map_err(|e| format!("HTTP CONNECT response read failed: {e}"))?;
         header_buf.push(byte[0]);
         if header_buf.len() > 4096 {
             return Err("HTTP CONNECT response header too large (> 4096 bytes)".into());
@@ -825,8 +855,10 @@ where
 
     let resp_str = String::from_utf8_lossy(&header_buf);
     let mut lines = resp_str.lines();
-    let status_line = lines.next().ok_or_else(|| "empty HTTP CONNECT response".to_string())?;
-    
+    let status_line = lines
+        .next()
+        .ok_or_else(|| "empty HTTP CONNECT response".to_string())?;
+
     let parts: Vec<&str> = status_line.split_whitespace().collect();
     if parts.len() < 2 {
         return Err(format!("invalid HTTP status line: {status_line}"));
@@ -878,10 +910,13 @@ fn establish_ssh_session(
 ) -> std::result::Result<ssh2::Session, String> {
     let mut sess = ssh2::Session::new().map_err(|e| e.to_string())?;
     sess.set_tcp_stream(stream);
-    sess.handshake().map_err(|e| format!("SSH handshake failed: {e}"))?;
+    sess.handshake()
+        .map_err(|e| format!("SSH handshake failed: {e}"))?;
 
     if strict_host_key {
-        let (actual_key, _key_type) = sess.host_key().ok_or_else(|| "failed to get SSH host key".to_string())?;
+        let (actual_key, _key_type) = sess
+            .host_key()
+            .ok_or_else(|| "failed to get SSH host key".to_string())?;
         if let Some(expected) = expected_host_key {
             let actual_hex = hex_encode(actual_key);
             let actual_b64 = base64_encode(actual_key);
@@ -897,11 +932,20 @@ fn establish_ssh_session(
 
     match auth {
         ResolvedSshAuth::Agent => {
-            let mut agent = sess.agent().map_err(|e| format!("failed to connect to SSH agent: {e}"))?;
-            agent.connect().map_err(|e| format!("failed to connect to SSH agent: {e}"))?;
-            agent.list_identities().map_err(|e| format!("failed to list SSH agent identities: {e}"))?;
+            let mut agent = sess
+                .agent()
+                .map_err(|e| format!("failed to connect to SSH agent: {e}"))?;
+            agent
+                .connect()
+                .map_err(|e| format!("failed to connect to SSH agent: {e}"))?;
+            agent
+                .list_identities()
+                .map_err(|e| format!("failed to list SSH agent identities: {e}"))?;
             let mut authenticated = false;
-            for identity in agent.identities().map_err(|e| format!("failed to get SSH agent identities: {e}"))? {
+            for identity in agent
+                .identities()
+                .map_err(|e| format!("failed to get SSH agent identities: {e}"))?
+            {
                 if agent.userauth(username, &identity).is_ok() {
                     authenticated = true;
                     break;
@@ -915,7 +959,10 @@ fn establish_ssh_session(
             sess.userauth_password(username, password)
                 .map_err(|e| format!("SSH password authentication failed: {e}"))?;
         }
-        ResolvedSshAuth::PrivateKey { private_key, passphrase } => {
+        ResolvedSshAuth::PrivateKey {
+            private_key,
+            passphrase,
+        } => {
             sess.userauth_pubkey_memory(username, None, private_key, passphrase.as_deref())
                 .map_err(|e| format!("SSH private key authentication failed: {e}"))?;
         }
@@ -954,8 +1001,12 @@ pub fn dial_resolved_transport(
         ResolvedTransport::Socks5Proxy(proxy) => {
             let stream = std::net::TcpStream::connect((proxy.host.as_str(), proxy.port))
                 .map_err(|e| format!("failed to connect to SOCKS5 proxy: {e}"))?;
-            let auth = proxy.auth.as_ref().map(|a| (a.username.as_str(), a.password.as_str()));
-            let stream = socks5_handshake_sync(stream, &proxy.target_host, proxy.target_port, auth)?;
+            let auth = proxy
+                .auth
+                .as_ref()
+                .map(|a| (a.username.as_str(), a.password.as_str()));
+            let stream =
+                socks5_handshake_sync(stream, &proxy.target_host, proxy.target_port, auth)?;
             Ok(TunneledStream {
                 stream: HopStream::Tcp(stream),
                 session: None,
@@ -964,8 +1015,12 @@ pub fn dial_resolved_transport(
         ResolvedTransport::HttpConnectProxy(proxy) => {
             let stream = std::net::TcpStream::connect((proxy.host.as_str(), proxy.port))
                 .map_err(|e| format!("failed to connect to HTTP proxy: {e}"))?;
-            let auth = proxy.auth.as_ref().map(|a| (a.username.as_str(), a.password.as_str()));
-            let stream = http_connect_handshake_sync(stream, &proxy.target_host, proxy.target_port, auth)?;
+            let auth = proxy
+                .auth
+                .as_ref()
+                .map(|a| (a.username.as_str(), a.password.as_str()));
+            let stream =
+                http_connect_handshake_sync(stream, &proxy.target_host, proxy.target_port, auth)?;
             Ok(TunneledStream {
                 stream: HopStream::Tcp(stream),
                 session: None,
@@ -1001,12 +1056,21 @@ pub fn dial_resolved_transport(
                 ResolvedProxyHopConfig::Socks5 { host, port, auth } => {
                     let stream = std::net::TcpStream::connect((host.as_str(), *port))
                         .map_err(|e| format!("chain hop 0 (SOCKS5) connection failed: {e}"))?;
-                    let auth_creds = auth.as_ref().map(|a| (a.username.as_str(), a.password.as_str()));
-                    let next_hop = chain.hops.get(1).ok_or_else(|| "chain hop 0 needs subsequent hop".to_string())?;
+                    let auth_creds = auth
+                        .as_ref()
+                        .map(|a| (a.username.as_str(), a.password.as_str()));
+                    let next_hop = chain
+                        .hops
+                        .get(1)
+                        .ok_or_else(|| "chain hop 0 needs subsequent hop".to_string())?;
                     let (next_host, next_port) = match &next_hop.config {
                         ResolvedProxyHopConfig::Socks5 { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::Ssh { ssh_host, ssh_port, .. } => (ssh_host.as_str(), *ssh_port),
+                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => {
+                            (host.as_str(), *port)
+                        }
+                        ResolvedProxyHopConfig::Ssh {
+                            ssh_host, ssh_port, ..
+                        } => (ssh_host.as_str(), *ssh_port),
                     };
                     let stream = socks5_handshake_sync(stream, next_host, next_port, auth_creds)
                         .map_err(|e| format!("chain hop 0 (SOCKS5) handshake failed: {e}"))?;
@@ -1015,18 +1079,35 @@ pub fn dial_resolved_transport(
                 ResolvedProxyHopConfig::HttpConnect { host, port, auth } => {
                     let stream = std::net::TcpStream::connect((host.as_str(), *port))
                         .map_err(|e| format!("chain hop 0 (HTTP) connection failed: {e}"))?;
-                    let auth_creds = auth.as_ref().map(|a| (a.username.as_str(), a.password.as_str()));
-                    let next_hop = chain.hops.get(1).ok_or_else(|| "chain hop 0 needs subsequent hop".to_string())?;
+                    let auth_creds = auth
+                        .as_ref()
+                        .map(|a| (a.username.as_str(), a.password.as_str()));
+                    let next_hop = chain
+                        .hops
+                        .get(1)
+                        .ok_or_else(|| "chain hop 0 needs subsequent hop".to_string())?;
                     let (next_host, next_port) = match &next_hop.config {
                         ResolvedProxyHopConfig::Socks5 { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::Ssh { ssh_host, ssh_port, .. } => (ssh_host.as_str(), *ssh_port),
+                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => {
+                            (host.as_str(), *port)
+                        }
+                        ResolvedProxyHopConfig::Ssh {
+                            ssh_host, ssh_port, ..
+                        } => (ssh_host.as_str(), *ssh_port),
                     };
-                    let stream = http_connect_handshake_sync(stream, next_host, next_port, auth_creds)
-                        .map_err(|e| format!("chain hop 0 (HTTP) CONNECT failed: {e}"))?;
+                    let stream =
+                        http_connect_handshake_sync(stream, next_host, next_port, auth_creds)
+                            .map_err(|e| format!("chain hop 0 (HTTP) CONNECT failed: {e}"))?;
                     HopStream::Tcp(stream)
                 }
-                ResolvedProxyHopConfig::Ssh { ssh_host, ssh_port, username, auth, strict_host_key, host_key } => {
+                ResolvedProxyHopConfig::Ssh {
+                    ssh_host,
+                    ssh_port,
+                    username,
+                    auth,
+                    strict_host_key,
+                    host_key,
+                } => {
                     let stream = std::net::TcpStream::connect((ssh_host.as_str(), *ssh_port))
                         .map_err(|e| format!("chain hop 0 (SSH) connection failed: {e}"))?;
                     let sess = establish_ssh_session(
@@ -1036,11 +1117,18 @@ pub fn dial_resolved_transport(
                         *strict_host_key,
                         host_key.as_deref(),
                     )?;
-                    let next_hop = chain.hops.get(1).ok_or_else(|| "chain hop 0 needs subsequent hop".to_string())?;
+                    let next_hop = chain
+                        .hops
+                        .get(1)
+                        .ok_or_else(|| "chain hop 0 needs subsequent hop".to_string())?;
                     let (next_host, next_port) = match &next_hop.config {
                         ResolvedProxyHopConfig::Socks5 { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::Ssh { ssh_host, ssh_port, .. } => (ssh_host.as_str(), *ssh_port),
+                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => {
+                            (host.as_str(), *port)
+                        }
+                        ResolvedProxyHopConfig::Ssh {
+                            ssh_host, ssh_port, ..
+                        } => (ssh_host.as_str(), *ssh_port),
                     };
                     let channel = sess
                         .channel_direct_tcpip(next_host, next_port, None)
@@ -1060,23 +1148,47 @@ pub fn dial_resolved_transport(
                 } else {
                     match &chain.hops[i + 1].config {
                         ResolvedProxyHopConfig::Socks5 { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => (host.as_str(), *port),
-                        ResolvedProxyHopConfig::Ssh { ssh_host, ssh_port, .. } => (ssh_host.as_str(), *ssh_port),
+                        ResolvedProxyHopConfig::HttpConnect { host, port, .. } => {
+                            (host.as_str(), *port)
+                        }
+                        ResolvedProxyHopConfig::Ssh {
+                            ssh_host, ssh_port, ..
+                        } => (ssh_host.as_str(), *ssh_port),
                     }
                 };
 
                 match &hop.config {
                     ResolvedProxyHopConfig::Socks5 { auth, .. } => {
-                        let auth_creds = auth.as_ref().map(|a| (a.username.as_str(), a.password.as_str()));
-                        current_stream = socks5_handshake_sync(current_stream, target_host, target_port, auth_creds)
-                            .map_err(|e| format!("chain hop {i} (SOCKS5) handshake failed: {e}"))?;
+                        let auth_creds = auth
+                            .as_ref()
+                            .map(|a| (a.username.as_str(), a.password.as_str()));
+                        current_stream = socks5_handshake_sync(
+                            current_stream,
+                            target_host,
+                            target_port,
+                            auth_creds,
+                        )
+                        .map_err(|e| format!("chain hop {i} (SOCKS5) handshake failed: {e}"))?;
                     }
                     ResolvedProxyHopConfig::HttpConnect { auth, .. } => {
-                        let auth_creds = auth.as_ref().map(|a| (a.username.as_str(), a.password.as_str()));
-                        current_stream = http_connect_handshake_sync(current_stream, target_host, target_port, auth_creds)
-                            .map_err(|e| format!("chain hop {i} (HTTP) CONNECT failed: {e}"))?;
+                        let auth_creds = auth
+                            .as_ref()
+                            .map(|a| (a.username.as_str(), a.password.as_str()));
+                        current_stream = http_connect_handshake_sync(
+                            current_stream,
+                            target_host,
+                            target_port,
+                            auth_creds,
+                        )
+                        .map_err(|e| format!("chain hop {i} (HTTP) CONNECT failed: {e}"))?;
                     }
-                    ResolvedProxyHopConfig::Ssh { username, auth, strict_host_key, host_key, .. } => {
+                    ResolvedProxyHopConfig::Ssh {
+                        username,
+                        auth,
+                        strict_host_key,
+                        host_key,
+                        ..
+                    } => {
                         let tcp_stream = match current_stream {
                             HopStream::Tcp(s) => s,
                             HopStream::Ssh(_) => {
@@ -1330,10 +1442,9 @@ pub async fn start_forwarder(
 mod tests {
     use super::*;
     use irodori_core::{ProxyAuthConfig, SecretRef, SshAuthConfig, SshProxyHop};
-    use std::net::TcpListener;
     use std::io::{Read, Write};
+    use std::net::TcpListener;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
 
     #[test]
     fn transport_plan_includes_ssh_auth_and_forwarding_steps() {
@@ -1459,20 +1570,20 @@ mod tests {
     async fn test_socks5_handshake_success_no_auth() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        
+
         let handle = std::thread::spawn(move || {
             let (mut conn, _) = listener.accept().unwrap();
-            
+
             // Read greeting: [0x05, 1, 0x00]
             let mut greeting = [0u8; 3];
             conn.read_exact(&mut greeting).unwrap();
             assert_eq!(greeting[0], 0x05);
             assert_eq!(greeting[1], 1);
             assert_eq!(greeting[2], 0x00);
-            
+
             // Write greeting response: [0x05, 0x00]
             conn.write_all(&[0x05, 0x00]).unwrap();
-            
+
             // Read connect request
             let mut req_header = [0u8; 4];
             conn.read_exact(&mut req_header).unwrap();
@@ -1480,16 +1591,17 @@ mod tests {
             assert_eq!(req_header[1], 0x01); // CONNECT
             assert_eq!(req_header[2], 0x00);
             assert_eq!(req_header[3], 0x03); // Domain type
-            
+
             let mut len_buf = [0u8; 1];
             conn.read_exact(&mut len_buf).unwrap();
             let domain_len = len_buf[0] as usize;
             let mut domain = vec![0u8; domain_len + 2]; // domain + port
             conn.read_exact(&mut domain).unwrap();
-            
+
             // Write connect response
-            conn.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).unwrap();
-            
+            conn.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+                .unwrap();
+
             // Verify data passing
             let mut data = [0u8; 4];
             conn.read_exact(&mut data).unwrap();
@@ -1499,12 +1611,12 @@ mod tests {
 
         let client = std::net::TcpStream::connect(addr).unwrap();
         let mut client = socks5_handshake_sync(client, "example.com", 80, None).unwrap();
-        
+
         client.write_all(b"ping").unwrap();
         let mut resp = [0u8; 4];
         client.read_exact(&mut resp).unwrap();
         assert_eq!(&resp, b"pong");
-        
+
         handle.join().unwrap();
     }
 
@@ -1512,19 +1624,19 @@ mod tests {
     async fn test_socks5_handshake_success_auth() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        
+
         let handle = std::thread::spawn(move || {
             let (mut conn, _) = listener.accept().unwrap();
-            
+
             // Read greeting: [0x05, 2, 0x00, 0x02]
             let mut greeting = [0u8; 4];
             conn.read_exact(&mut greeting).unwrap();
             assert_eq!(greeting[0], 0x05);
             assert_eq!(greeting[1], 2);
-            
+
             // Write greeting response: [0x05, 0x02]
             conn.write_all(&[0x05, 0x02]).unwrap();
-            
+
             // Read auth request
             let mut auth_head = [0u8; 2];
             conn.read_exact(&mut auth_head).unwrap();
@@ -1533,35 +1645,37 @@ mod tests {
             let mut user = vec![0u8; user_len];
             conn.read_exact(&mut user).unwrap();
             assert_eq!(&user, b"admin");
-            
+
             let mut pass_len_buf = [0u8; 1];
             conn.read_exact(&mut pass_len_buf).unwrap();
             let pass_len = pass_len_buf[0] as usize;
             let mut pass = vec![0u8; pass_len];
             conn.read_exact(&mut pass).unwrap();
             assert_eq!(&pass, b"secret");
-            
+
             // Write auth response: [0x01, 0x00]
             conn.write_all(&[0x01, 0x00]).unwrap();
-            
+
             // Read connect request
             let mut req_header = [0u8; 4];
             conn.read_exact(&mut req_header).unwrap();
             assert_eq!(req_header[3], 0x03);
-            
+
             let mut len_buf = [0u8; 1];
             conn.read_exact(&mut len_buf).unwrap();
             let domain_len = len_buf[0] as usize;
             let mut domain = vec![0u8; domain_len + 2];
             conn.read_exact(&mut domain).unwrap();
-            
+
             // Write connect response
-            conn.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).unwrap();
+            conn.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+                .unwrap();
         });
 
         let client = std::net::TcpStream::connect(addr).unwrap();
-        let _client = socks5_handshake_sync(client, "example.com", 80, Some(("admin", "secret"))).unwrap();
-        
+        let _client =
+            socks5_handshake_sync(client, "example.com", 80, Some(("admin", "secret"))).unwrap();
+
         handle.join().unwrap();
     }
 
@@ -1569,10 +1683,10 @@ mod tests {
     async fn test_http_connect_handshake_success() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        
+
         let handle = std::thread::spawn(move || {
             let (mut conn, _) = listener.accept().unwrap();
-            
+
             // Read request up to \r\n\r\n
             let mut req = Vec::new();
             let mut byte = [0u8; 1];
@@ -1586,14 +1700,17 @@ mod tests {
             let req_str = String::from_utf8_lossy(&req);
             assert!(req_str.starts_with("CONNECT example.com:80 HTTP/1.1"));
             assert!(req_str.contains("Proxy-Authorization: Basic YWRtaW46c2VjcmV0"));
-            
+
             // Write 200 response
-            conn.write_all(b"HTTP/1.1 200 Connection Established\r\n\r\n").unwrap();
+            conn.write_all(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                .unwrap();
         });
 
         let client = std::net::TcpStream::connect(addr).unwrap();
-        let _client = http_connect_handshake_sync(client, "example.com", 80, Some(("admin", "secret"))).unwrap();
-        
+        let _client =
+            http_connect_handshake_sync(client, "example.com", 80, Some(("admin", "secret")))
+                .unwrap();
+
         handle.join().unwrap();
     }
 
@@ -1601,7 +1718,7 @@ mod tests {
     async fn test_local_tcp_forwarder_loop() {
         let target_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let target_port = target_listener.local_addr().unwrap().port();
-        
+
         let target_handle = std::thread::spawn(move || {
             let (mut conn, _) = target_listener.accept().unwrap();
             let mut data = [0u8; 4];
@@ -1612,14 +1729,14 @@ mod tests {
 
         let proxy_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let proxy_port = proxy_listener.local_addr().unwrap().port();
-        
+
         let proxy_handle = std::thread::spawn(move || {
             let (mut conn, _) = proxy_listener.accept().unwrap();
             // Read greeting
             let mut greeting = [0u8; 3];
             conn.read_exact(&mut greeting).unwrap();
             conn.write_all(&[0x05, 0x00]).unwrap();
-            
+
             // Read CONNECT
             let mut req = [0u8; 4];
             conn.read_exact(&mut req).unwrap();
@@ -1628,10 +1745,11 @@ mod tests {
             let domain_len = len[0] as usize;
             let mut domain = vec![0u8; domain_len + 2];
             conn.read_exact(&mut domain).unwrap();
-            
+
             // Response
-            conn.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).unwrap();
-            
+            conn.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+                .unwrap();
+
             let mut target = std::net::TcpStream::connect(("127.0.0.1", target_port)).unwrap();
             let mut conn_clone = conn.try_clone().unwrap();
             let mut target_clone = target.try_clone().unwrap();
@@ -1652,9 +1770,11 @@ mod tests {
 
         let (local_port, cancel_token) = start_forwarder(resolved).await.unwrap();
 
-        let mut client = tokio::net::TcpStream::connect(("127.0.0.1", local_port)).await.unwrap();
+        let mut client = tokio::net::TcpStream::connect(("127.0.0.1", local_port))
+            .await
+            .unwrap();
         client.write_all(b"ping").await.unwrap();
-        
+
         let mut resp = [0u8; 4];
         client.read_exact(&mut resp).await.unwrap();
         assert_eq!(&resp, b"pong");
@@ -1664,4 +1784,3 @@ mod tests {
         proxy_handle.join().unwrap();
     }
 }
-

@@ -26,6 +26,11 @@ html {
   scroll-behavior: smooth;
 }
 
+main[id],
+section[id] {
+  scroll-margin-top: 88px;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -54,6 +59,17 @@ img {
 code,
 pre {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+p code,
+li code {
+  padding: 0.1em 0.28em;
+  border: 1px solid #d2ddd8;
+  border-radius: 5px;
+  color: #26312f;
+  background: #f4f7f4;
+  font-size: 0.92em;
+  white-space: nowrap;
 }
 
 .container {
@@ -208,6 +224,7 @@ h3 {
   border: 1px solid var(--line-strong);
   border-radius: 7px;
   font-weight: 800;
+  text-align: center;
 }
 
 .button.primary {
@@ -540,6 +557,7 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--page);
+  overflow-wrap: anywhere;
 }
 
 .search-label {
@@ -579,10 +597,16 @@ h3 {
   font-weight: 800;
 }
 
+.search-results {
+  min-height: 0;
+}
+
 .search-result-list {
   display: grid;
   gap: 10px;
-  margin-top: 14px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 .search-result {
@@ -897,6 +921,11 @@ h3 {
 }
 
 @media (max-width: 940px) {
+  main[id],
+  section[id] {
+    scroll-margin-top: 138px;
+  }
+
   .header-inner {
     align-items: flex-start;
     flex-direction: column;
@@ -905,6 +934,7 @@ h3 {
   }
 
   .site-nav {
+    width: 100%;
     flex-wrap: wrap;
     justify-content: flex-start;
   }
@@ -946,6 +976,11 @@ h3 {
 
   .site-nav a {
     padding-inline: 8px;
+  }
+
+  p code,
+  li code {
+    white-space: normal;
   }
 
   .hero-grid {
@@ -1017,5 +1052,16 @@ h3 {
     align-items: flex-start;
     flex-direction: column;
     padding: 22px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .button:hover,
+  .button:focus-visible {
+    transform: none;
   }
 }

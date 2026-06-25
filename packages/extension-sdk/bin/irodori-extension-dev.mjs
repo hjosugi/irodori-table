@@ -3,11 +3,8 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, watch, w
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const args = process.argv.slice(2);
-const once = args.includes("--once");
-const targetArg = args.find((arg) => !arg.startsWith("--"));
-const extensionDir = resolve(process.cwd(), targetArg ?? ".");
-const manifestPath = join(extensionDir, "irodori.extension.json");
+const cliOptions = parseCliOptions(process.argv.slice(2), process.cwd());
+const manifestPath = join(cliOptions.extensionDir, "irodori.extension.json");
 
 const sensitivePermissions = new Set([
   "connections:write",
@@ -19,6 +16,20 @@ const sensitivePermissions = new Set([
   "wasm",
 ]);
 
+const contributionPermissionRules = [
+  ["commands", "commands", "contributes.commands requires permissions: commands"],
+  ["keybindings", "keybindings", "contributes.keybindings requires permissions: keybindings"],
+  ["resultGridActions", "resultRenderers", "contributes.resultGridActions requires permissions: resultRenderers"],
+  ["resultGridRenderers", "resultRenderers", "contributes.resultGridRenderers requires permissions: resultRenderers"],
+  ["themes", "themes", "contributes.themes requires permissions: themes"],
+  ["sqlDialects", "sqlDialects", "contributes.sqlDialects requires permissions: sqlDialects"],
+];
+
+const capabilityPermissionRules = [
+  ["wasmModules", "wasm", "capabilities.wasmModules requires permissions: wasm"],
+  ["nativeModules", "native", "capabilities.nativeModules requires permissions: native"],
+];
+
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
@@ -26,24 +37,24 @@ main().catch((error) => {
 
 async function main() {
   const manifest = readManifest(manifestPath);
-  const logFile = resolve(extensionDir, manifest.dev?.logFile ?? ".irodori-dev/extension.log");
+  const logFile = resolve(cliOptions.extensionDir, manifest.dev?.logFile ?? ".irodori-dev/extension.log");
   mkdirSync(dirname(logFile), { recursive: true });
   appendLog(logFile, "info", `loaded ${manifest.id}@${manifest.version}`);
 
   const inspection = inspectPermissions(manifest);
   printSummary(manifest, inspection, logFile);
 
-  const fixtures = loadFixtures(extensionDir, manifest);
+  const fixtures = loadFixtures(cliOptions.extensionDir, manifest);
   if (fixtures.length > 0) {
     appendLog(logFile, "info", `loaded ${fixtures.length} fake database fixture(s)`);
     console.log(`fixtures: ${fixtures.map((fixture) => fixture.id).join(", ")}`);
   }
 
-  if (once) {
+  if (cliOptions.once) {
     return;
   }
 
-  const watchPaths = collectWatchPaths(extensionDir, manifest);
+  const watchPaths = collectWatchPaths(cliOptions.extensionDir, manifest);
   console.log("watching:");
   for (const watchPath of watchPaths) {
     console.log(`  ${watchPath}`);
@@ -52,6 +63,14 @@ async function main() {
   for (const watchPath of watchPaths) {
     watchPathForReload(watchPath, logFile);
   }
+}
+
+function parseCliOptions(argv, cwd) {
+  const targetArg = argv.find((arg) => !arg.startsWith("--"));
+  return {
+    once: argv.includes("--once"),
+    extensionDir: resolve(cwd, targetArg ?? "."),
+  };
 }
 
 function readManifest(path) {
@@ -76,39 +95,25 @@ function readManifest(path) {
 
 function inspectPermissions(manifest) {
   const declared = new Set(manifest.permissions);
-  const missing = [];
-  const contributes = manifest.contributes ?? {};
-
-  if ((contributes.commands?.length ?? 0) > 0 && !declared.has("commands")) {
-    missing.push("contributes.commands requires permissions: commands");
-  }
-  if ((contributes.keybindings?.length ?? 0) > 0 && !declared.has("keybindings")) {
-    missing.push("contributes.keybindings requires permissions: keybindings");
-  }
-  if ((contributes.resultGridActions?.length ?? 0) > 0 && !declared.has("resultRenderers")) {
-    missing.push("contributes.resultGridActions requires permissions: resultRenderers");
-  }
-  if ((contributes.resultGridRenderers?.length ?? 0) > 0 && !declared.has("resultRenderers")) {
-    missing.push("contributes.resultGridRenderers requires permissions: resultRenderers");
-  }
-  if ((contributes.themes?.length ?? 0) > 0 && !declared.has("themes")) {
-    missing.push("contributes.themes requires permissions: themes");
-  }
-  if ((contributes.sqlDialects?.length ?? 0) > 0 && !declared.has("sqlDialects")) {
-    missing.push("contributes.sqlDialects requires permissions: sqlDialects");
-  }
-  if ((manifest.capabilities?.wasmModules?.length ?? 0) > 0 && !declared.has("wasm")) {
-    missing.push("capabilities.wasmModules requires permissions: wasm");
-  }
-  if ((manifest.capabilities?.nativeModules?.length ?? 0) > 0 && !declared.has("native")) {
-    missing.push("capabilities.nativeModules requires permissions: native");
-  }
 
   return {
     declared: [...declared],
     sensitive: [...declared].filter((scope) => sensitivePermissions.has(scope)),
-    missingForContributions: missing,
+    missingForContributions: missingPermissionMessages(manifest, declared),
   };
+}
+
+function missingPermissionMessages(manifest, declared) {
+  const contributes = manifest.contributes ?? {};
+  const capabilities = manifest.capabilities ?? {};
+  const contributionMessages = contributionPermissionRules.flatMap(([key, permission, message]) =>
+    (contributes[key]?.length ?? 0) > 0 && !declared.has(permission) ? [message] : [],
+  );
+  const capabilityMessages = capabilityPermissionRules.flatMap(([key, permission, message]) =>
+    (capabilities[key]?.length ?? 0) > 0 && !declared.has(permission) ? [message] : [],
+  );
+
+  return [...contributionMessages, ...capabilityMessages];
 }
 
 function loadFixtures(extensionDir, manifest) {
@@ -122,14 +127,14 @@ function loadFixtures(extensionDir, manifest) {
   const fixturePath = join(extensionDir, "fixtures", "fake-db.json");
   if (existsSync(fixturePath)) {
     const parsed = JSON.parse(readFileSync(fixturePath, "utf8"));
-    if (Array.isArray(parsed)) {
-      loaded.push(...parsed);
-    } else {
-      loaded.push(parsed);
-    }
+    loaded.push(...normalizeFixtureList(parsed));
   }
 
   return loaded;
+}
+
+function normalizeFixtureList(parsed) {
+  return Array.isArray(parsed) ? parsed : [parsed];
 }
 
 function collectWatchPaths(extensionDir, manifest) {
@@ -156,29 +161,41 @@ function watchPathForReload(path, logFile) {
 }
 
 function appendLog(logFile, level, message) {
-  const entry = {
+  const timestamp = new Date().toISOString();
+  appendFileSync(logFile, `${JSON.stringify(formatLogEntry(level, message, timestamp))}\n`);
+}
+
+function formatLogEntry(level, message, timestamp) {
+  return {
     level,
     message,
     target: "extension-dev",
-    timestamp: new Date().toISOString(),
+    timestamp,
   };
-  appendFileSync(logFile, `${JSON.stringify(entry)}\n`);
 }
 
 function printSummary(manifest, inspection, logFile) {
-  console.log(`${manifest.name} (${manifest.id})`);
-  console.log(`runtime: ${manifest.runtime}`);
-  console.log(`entry: ${manifest.entry}`);
-  console.log(`log: ${logFile}`);
-  console.log(`permissions: ${inspection.declared.join(", ") || "(none)"}`);
-  if (inspection.sensitive.length > 0) {
-    console.log(`sensitive: ${inspection.sensitive.join(", ")}`);
+  for (const line of formatSummaryLines(manifest, inspection, logFile)) {
+    console.log(line);
   }
-  if (inspection.missingForContributions.length > 0) {
-    for (const missing of inspection.missingForContributions) {
-      console.warn(`permission warning: ${missing}`);
-    }
+  for (const warning of formatPermissionWarnings(inspection)) {
+    console.warn(warning);
   }
+}
+
+function formatSummaryLines(manifest, inspection, logFile) {
+  return [
+    `${manifest.name} (${manifest.id})`,
+    `runtime: ${manifest.runtime}`,
+    `entry: ${manifest.entry}`,
+    `log: ${logFile}`,
+    `permissions: ${inspection.declared.join(", ") || "(none)"}`,
+    inspection.sensitive.length > 0 ? `sensitive: ${inspection.sensitive.join(", ")}` : null,
+  ].filter(Boolean);
+}
+
+function formatPermissionWarnings(inspection) {
+  return inspection.missingForContributions.map((missing) => `permission warning: ${missing}`);
 }
 
 export const __filename = fileURLToPath(import.meta.url);

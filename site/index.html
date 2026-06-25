@@ -71,8 +71,8 @@
             </dl>
           </div>
 
-          <div class="product-visual" aria-label="Irodori Table の作業画面イメージ">
-            <div class="workbench">
+          <div class="product-visual" role="img" aria-label="Irodori Table の作業画面イメージ">
+            <div class="workbench" aria-hidden="true">
               <div class="workbench-titlebar">
                 <div class="window-dots" aria-hidden="true">
                   <span class="dot red"></span>
@@ -167,20 +167,29 @@ order by value desc;</code></pre>
               ブラウザ内で検索できます。外部サービスには送信しません。
             </p>
           </div>
-          <div class="search-panel" data-search>
+          <div class="search-panel" role="search" aria-label="サイト内検索" data-search>
             <label class="search-label" for="site-search">検索語</label>
             <div class="search-control">
               <input
                 id="site-search"
                 name="q"
                 type="search"
+                aria-describedby="site-search-status"
                 autocomplete="off"
                 placeholder="例: completion, Oracle, CSV, proxy"
                 data-search-input
               />
               <a class="button secondary" href="docs.html">Docs</a>
             </div>
-            <p class="search-status" data-search-status>キーワードを入力してください。</p>
+            <p
+              id="site-search-status"
+              class="search-status"
+              role="status"
+              aria-live="polite"
+              data-search-status
+            >
+              キーワードを入力してください。
+            </p>
             <div class="search-results" data-search-results></div>
           </div>
         </div>

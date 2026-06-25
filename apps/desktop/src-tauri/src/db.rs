@@ -281,8 +281,8 @@ pub(crate) fn split_sql_statements(sql: &str) -> Vec<String> {
 
     while index < bytes.len() {
         match bytes[index] {
-            b'\'' => skip_single_quoted(bytes, &mut index),
-            b'"' => skip_double_quoted(bytes, &mut index),
+            b'\'' => skip_repeated_quote(bytes, &mut index, b'\''),
+            b'"' => skip_repeated_quote(bytes, &mut index, b'"'),
             b'-' if bytes.get(index + 1) == Some(&b'-') => skip_line_comment(bytes, &mut index),
             b'/' if bytes.get(index + 1) == Some(&b'*') => skip_block_comment(bytes, &mut index),
             b'$' => {
@@ -309,25 +309,11 @@ pub(crate) fn split_sql_statements(sql: &str) -> Vec<String> {
     statements
 }
 
-fn skip_single_quoted(bytes: &[u8], index: &mut usize) {
+fn skip_repeated_quote(bytes: &[u8], index: &mut usize, quote: u8) {
     *index += 1;
     while *index < bytes.len() {
-        if bytes[*index] == b'\'' {
-            if bytes.get(*index + 1) == Some(&b'\'') {
-                *index += 2;
-                continue;
-            }
-            break;
-        }
-        *index += 1;
-    }
-}
-
-fn skip_double_quoted(bytes: &[u8], index: &mut usize) {
-    *index += 1;
-    while *index < bytes.len() {
-        if bytes[*index] == b'"' {
-            if bytes.get(*index + 1) == Some(&b'"') {
+        if bytes[*index] == quote {
+            if bytes.get(*index + 1) == Some(&quote) {
                 *index += 2;
                 continue;
             }
@@ -2925,6 +2911,10 @@ mod tests {
         assert_eq!(
             split_sql_statements("select ';'; -- ignored ;\n select 2"),
             vec!["select ';'", "-- ignored ;\n select 2"]
+        );
+        assert_eq!(
+            split_sql_statements(r#"select "semi;colon"; select 2"#),
+            vec![r#"select "semi;colon""#, "select 2"]
         );
         assert_eq!(
             split_sql_statements("select /* ; */ 1; select $$;$$"),

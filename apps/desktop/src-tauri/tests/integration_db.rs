@@ -29,9 +29,13 @@ fn url_profile(id: &str, engine: DbEngine, url: String) -> ConnectionProfile {
 
 async fn exercise(engine: DbEngine, url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", engine, url))
-        .await
-        .expect("connect to sample db");
+    let info = connect_impl(
+        &state,
+        &SecurityState::default(),
+        url_profile("it", engine, url),
+    )
+    .await
+    .expect("connect to sample db");
     assert_eq!(info.engine, engine);
     assert!(!info.server_version.is_empty(), "server version present");
     eprintln!("connected: {engine:?} {}", info.server_version);
@@ -174,9 +178,13 @@ fn mysql_samples() {
 /// through the existing postgres/mysql drivers, no seed required.
 async fn connect_only(engine: DbEngine, url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", engine, url))
-        .await
-        .expect("connect");
+    let info = connect_impl(
+        &state,
+        &SecurityState::default(),
+        url_profile("it", engine, url),
+    )
+    .await
+    .expect("connect");
     assert_eq!(info.engine, engine);
     assert!(!info.server_version.is_empty());
     eprintln!("connected: {engine:?} {}", info.server_version);
@@ -212,9 +220,13 @@ fn mariadb_connect() {
 /// string, e.g. `server=tcp:localhost,11433;User Id=sa;Password=...;TrustServerCertificate=true`.
 async fn exercise_mssql(url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", DbEngine::SqlServer, url))
-        .await
-        .expect("connect");
+    let info = connect_impl(
+        &state,
+        &SecurityState::default(),
+        url_profile("it", DbEngine::SqlServer, url),
+    )
+    .await
+    .expect("connect");
     assert_eq!(info.engine, DbEngine::SqlServer);
     assert!(!info.server_version.is_empty());
     eprintln!("connected: SqlServer {}", info.server_version);
@@ -432,9 +444,13 @@ fn duckdb_in_memory() {
 /// collection "query" projected to a table.
 async fn exercise_mongo(url: String) {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), url_profile("it", DbEngine::Mongo, url))
-        .await
-        .expect("connect");
+    let info = connect_impl(
+        &state,
+        &SecurityState::default(),
+        url_profile("it", DbEngine::Mongo, url),
+    )
+    .await
+    .expect("connect");
     assert_eq!(info.engine, DbEngine::Mongo);
     assert!(!info.server_version.is_empty());
     eprintln!("connected: {}", info.server_version);
@@ -481,7 +497,9 @@ fn mongo_samples() {
 /// — Oracle's `database` field is the service name.
 async fn exercise_oracle(profile: ConnectionProfile) {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), profile).await.expect("connect");
+    let info = connect_impl(&state, &SecurityState::default(), profile)
+        .await
+        .expect("connect");
     assert_eq!(info.engine, DbEngine::Oracle);
     assert!(!info.server_version.is_empty());
     eprintln!("connected: Oracle {}", info.server_version);

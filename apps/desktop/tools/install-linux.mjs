@@ -21,8 +21,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
 const repoRoot = resolve(desktopRoot, "../..");
 
-const release = process.env.RELEASE === "1" || process.argv.includes("--release");
-const noLaunch = process.env.NO_LAUNCH === "1" || process.argv.includes("--no-launch");
+const options = parseInstallOptions(process.argv.slice(2), process.env);
 
 const home = homedir();
 const appsDir = join(home, "Applications");
@@ -39,13 +38,12 @@ if (process.platform !== "linux") {
 // 1. Build the AppImage. Debug by default — functional verification doesn't
 //    need release optimization, and the debug build is dramatically faster.
 //    Go through `npm run` so the Tauri CLI (node_modules/.bin) is on PATH.
-const npmArgs = ["run", "release:appimage"];
-if (!release) npmArgs.push("--", "--debug");
-console.log(`Building ${release ? "release" : "debug"} AppImage...`);
+const npmArgs = buildNpmArgs(options.release);
+console.log(`Building ${options.release ? "release" : "debug"} AppImage...`);
 await run("npm", npmArgs, { cwd: desktopRoot });
 
 // 2. Locate the freshly built AppImage.
-const profileDir = release ? "release" : "debug";
+const profileDir = profileDirName(options.release);
 const bundleDir = resolve(repoRoot, "target", profileDir, "bundle/appimage");
 const builtImage = await newestAppImage(bundleDir);
 if (!builtImage) {
@@ -81,7 +79,7 @@ console.log(`Desktop entry: ${desktopEntryPath}`);
 
 // 5. Launch it (detached) unless asked not to. APPIMAGE_EXTRACT_AND_RUN avoids
 //    a hard dependency on FUSE.
-if (noLaunch) {
+if (options.noLaunch) {
   console.log("Skipping launch (NO_LAUNCH).");
 } else {
   console.log("Launching...");
@@ -91,6 +89,23 @@ if (noLaunch) {
     env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: "1" },
   });
   child.unref();
+}
+
+function parseInstallOptions(argv, env) {
+  return {
+    release: env.RELEASE === "1" || argv.includes("--release"),
+    noLaunch: env.NO_LAUNCH === "1" || argv.includes("--no-launch"),
+  };
+}
+
+function buildNpmArgs(release) {
+  const args = ["run", "release:appimage"];
+  if (!release) args.push("--", "--debug");
+  return args;
+}
+
+function profileDirName(release) {
+  return release ? "release" : "debug";
 }
 
 function run(cmd, cmdArgs, opts) {

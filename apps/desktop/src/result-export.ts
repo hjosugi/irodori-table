@@ -99,27 +99,27 @@ export function resultExportFileName(
   connectionId: string,
   format: ResultExportFormat,
   now = new Date(),
-) {
+): string {
   const extension = resultExportDefinitions[format].extension;
   const timestamp = now.toISOString().replace(/[:.]/g, "-");
   return `irodori-${connectionId}-${timestamp}.${extension}`;
 }
 
-function jsonFromResult(result: ResultLike) {
+function jsonFromResult(result: ResultLike): string {
   return `${JSON.stringify(recordsFromResult(result), null, 2)}\n`;
 }
 
-function jsonLinesFromResult(result: ResultLike) {
+function jsonLinesFromResult(result: ResultLike): string {
   return `${recordsFromResult(result)
     .map((record) => JSON.stringify(record))
     .join("\n")}\n`;
 }
 
-function recordsFromResult(result: ResultLike) {
+function recordsFromResult(result: ResultLike): Array<Record<string, unknown>> {
   return result.rows.map((row) => rowToRecord(result.columns, row));
 }
 
-function rowToRecord(columns: string[], row: unknown[]) {
+function rowToRecord(columns: readonly string[], row: readonly unknown[]): Record<string, unknown> {
   return Object.fromEntries(
     columns.map((column, index) => [column, jsonSafeValue(row[index] ?? null)]),
   );
@@ -143,7 +143,7 @@ function jsonSafeValue(value: unknown): unknown {
   return value;
 }
 
-function cellText(value: unknown) {
+function cellText(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
@@ -156,7 +156,7 @@ function cellText(value: unknown) {
   return String(value);
 }
 
-function delimitedCell(value: unknown, delimiter: string) {
+function delimitedCell(value: unknown, delimiter: string): string {
   const text = cellText(value);
   if (text.includes(delimiter) || /["\r\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
@@ -164,18 +164,18 @@ function delimitedCell(value: unknown, delimiter: string) {
   return text;
 }
 
-function delimitedFromResult(result: ResultLike, delimiter: string) {
+function delimitedFromResult(result: ResultLike, delimiter: string): string {
   return [
     delimitedValues(result.columns, delimiter),
-    ...result.rows.map((row) => delimitedValues(rowValues(result.columns, row), delimiter)),
+    ...resultRows(result).map((row) => delimitedValues(row, delimiter)),
   ].join("\r\n");
 }
 
-function delimitedValues(values: unknown[], delimiter: string) {
+function delimitedValues(values: readonly unknown[], delimiter: string): string {
   return values.map((value) => delimitedCell(value, delimiter)).join(delimiter);
 }
 
-function quoteIdentifier(name: string) {
+function quoteIdentifier(name: string): string {
   const cleaned = name.trim() || "query_result";
   return `"${cleaned.replace(/"/g, '""')}"`;
 }
@@ -197,40 +197,40 @@ function sqlLiteral(value: unknown): string {
   return `'${text.replace(/'/g, "''")}'`;
 }
 
-function sqlInsertsFromResult(result: ResultLike, tableName: string) {
+function sqlInsertsFromResult(result: ResultLike, tableName: string): string {
   const table = quoteIdentifier(tableName);
   const columns = result.columns.map(quoteIdentifier).join(", ");
   if (result.rows.length === 0) {
     return `-- No rows to export for ${table}.\n`;
   }
-  return `${result.rows
-    .map((row) => sqlInsertStatement(table, columns, rowValues(result.columns, row)))
+  return `${resultRows(result)
+    .map((row) => sqlInsertStatement(table, columns, row))
     .join("\n")}\n`;
 }
 
-function sqlInsertStatement(table: string, columns: string, values: unknown[]) {
+function sqlInsertStatement(table: string, columns: string, values: readonly unknown[]): string {
   return `INSERT INTO ${table} (${columns}) VALUES (${values.map(sqlLiteral).join(", ")});`;
 }
 
-function escapeMarkdownCell(value: unknown) {
+function escapeMarkdownCell(value: unknown): string {
   return cellText(value)
     .replace(/\\/g, "\\\\")
     .replace(/\|/g, "\\|")
     .replace(/\r?\n/g, "<br>");
 }
 
-function markdownFromResult(result: ResultLike) {
+function markdownFromResult(result: ResultLike): string {
   const header = markdownRow(result.columns);
   const divider = markdownRow(result.columns.map(() => "---"));
-  const rows = result.rows.map((row) => markdownRow(rowValues(result.columns, row)));
+  const rows = resultRows(result).map(markdownRow);
   return [header, divider, ...rows].join("\n") + "\n";
 }
 
-function markdownRow(values: unknown[]) {
+function markdownRow(values: readonly unknown[]): string {
   return `| ${values.map(escapeMarkdownCell).join(" | ")} |`;
 }
 
-function escapeHtml(value: unknown) {
+function escapeHtml(value: unknown): string {
   return cellText(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -238,9 +238,9 @@ function escapeHtml(value: unknown) {
     .replace(/"/g, "&quot;");
 }
 
-function excelWorkbookFromResult(result: ResultLike) {
+function excelWorkbookFromResult(result: ResultLike): string {
   const header = result.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
-  const rows = result.rows.map((row) => htmlRow(rowValues(result.columns, row))).join("");
+  const rows = resultRows(result).map(htmlRow).join("");
   return [
     "<!doctype html>",
     '<html><head><meta charset="utf-8"></head><body>',
@@ -249,10 +249,14 @@ function excelWorkbookFromResult(result: ResultLike) {
   ].join("");
 }
 
-function htmlRow(values: unknown[]) {
+function htmlRow(values: readonly unknown[]): string {
   return `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
 }
 
-function rowValues(columns: string[], row: unknown[]) {
+function resultRows(result: ResultLike): unknown[][] {
+  return result.rows.map((row) => rowValues(result.columns, row));
+}
+
+function rowValues(columns: readonly string[], row: readonly unknown[]): unknown[] {
   return columns.map((_, index) => row[index]);
 }

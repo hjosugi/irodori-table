@@ -18,6 +18,21 @@ export type DetailValue = {
 
 export type SourceTableRef = { schema?: string; table: string };
 
+type IdentifierQuoteStyle = {
+  open: string;
+  close: string;
+  escapedClose: RegExp;
+};
+
+const identifierQuoteStyles: readonly IdentifierQuoteStyle[] = [
+  { open: '"', close: '"', escapedClose: /""/g },
+  { open: "`", close: "`", escapedClose: /``/g },
+  { open: "[", close: "]", escapedClose: /\]\]/g },
+];
+
+const sourceTablePattern =
+  /\bfrom\s+([`"[]?[\w$]+[`"\]]?)\s*(?:\.\s*([`"[]?[\w$]+[`"\]]?))?/i;
+
 /** Format a raw cell value for the detail panel, pretty-printing JSON containers. */
 export function formatDetailValue(value: unknown): DetailValue {
   if (value === null || value === undefined) {
@@ -43,18 +58,12 @@ function stripIdentQuotes(raw: string): string {
   if (value.length < 2) {
     return value;
   }
-  const first = value[0];
-  const last = value[value.length - 1];
-  if (first === '"' && last === '"') {
-    return value.slice(1, -1).replace(/""/g, '"');
-  }
-  if (first === "`" && last === "`") {
-    return value.slice(1, -1).replace(/``/g, "`");
-  }
-  if (first === "[" && last === "]") {
-    return value.slice(1, -1).replace(/]]/g, "]");
-  }
-  return value;
+  const quoteStyle = identifierQuoteStyles.find(
+    ({ open, close }) => value.startsWith(open) && value.endsWith(close),
+  );
+  return quoteStyle
+    ? value.slice(1, -1).replace(quoteStyle.escapedClose, quoteStyle.close)
+    : value;
 }
 
 /**
@@ -66,7 +75,7 @@ function stripIdentQuotes(raw: string): string {
  * fall back to column matching, so a wrong guess degrades gracefully.
  */
 export function parseSourceTable(sql: string): SourceTableRef | null {
-  const match = /\bfrom\s+([`"[]?[\w$]+[`"\]]?)\s*(?:\.\s*([`"[]?[\w$]+[`"\]]?))?/i.exec(sql);
+  const match = sourceTablePattern.exec(sql);
   if (!match) {
     return null;
   }
@@ -84,7 +93,7 @@ function allTables(metadata: DatabaseMetadata): DbObjectMetadata[] {
 }
 
 /** Whether every result column is present in the table (table is a superset). */
-function columnsSuperset(table: DbObjectMetadata, resultColumns: string[]): boolean {
+function columnsSuperset(table: DbObjectMetadata, resultColumns: readonly string[]): boolean {
   if (resultColumns.length === 0) {
     return false;
   }
@@ -109,7 +118,7 @@ function tableMatchesSource(table: DbObjectMetadata, source: SourceTableRef | nu
 function scoreTableCandidate(
   table: DbObjectMetadata,
   source: SourceTableRef | null,
-  resultColumns: string[],
+  resultColumns: readonly string[],
 ): TableCandidateScore {
   return {
     table,
@@ -146,7 +155,7 @@ function pickUniqueResultColumnCandidate(
 export function findTableMetadata(
   metadata: DatabaseMetadata | undefined,
   source: SourceTableRef | null,
-  resultColumns: string[],
+  resultColumns: readonly string[],
 ): DbObjectMetadata | null {
   if (!metadata) {
     return null;
@@ -186,23 +195,38 @@ export type ColumnForeignKey = {
  */
 export function foreignKeyColumns(
   table: DbObjectMetadata | null,
-  resultColumns: string[],
+  resultColumns: readonly string[],
 ): Map<number, ColumnForeignKey> {
   if (!table) {
     return new Map();
   }
   const lowerResultColumns = resultColumns.map(normalizeId);
-  const entries = table.foreignKeys.flatMap((fk): Array<[number, ColumnForeignKey]> => {
-    const columnIndexes = fk.columns.map((column) =>
-      lowerResultColumns.indexOf(normalizeId(column)),
-    );
-    if (columnIndexes.some((index) => index < 0)) {
-      return [];
-    }
-    const binding: ColumnForeignKey = { fk, columnIndexes };
-    return columnIndexes.map((index) => [index, binding]);
-  });
+  const entries = table.foreignKeys.flatMap((fk) =>
+    foreignKeyColumnEntries(fk, lowerResultColumns),
+  );
   return new Map(entries);
+}
+
+function foreignKeyColumnEntries(
+  fk: ForeignKey,
+  lowerResultColumns: readonly string[],
+): Array<[number, ColumnForeignKey]> {
+  const columnIndexes = foreignKeyResultColumnIndexes(fk, lowerResultColumns);
+  if (!columnIndexes) {
+    return [];
+  }
+  const binding: ColumnForeignKey = { fk, columnIndexes };
+  return columnIndexes.map((index) => [index, binding]);
+}
+
+function foreignKeyResultColumnIndexes(
+  fk: ForeignKey,
+  lowerResultColumns: readonly string[],
+): number[] | null {
+  const columnIndexes = fk.columns.map((column) =>
+    lowerResultColumns.indexOf(normalizeId(column)),
+  );
+  return columnIndexes.some((index) => index < 0) ? null : columnIndexes;
 }
 
 /** Quote a SQL identifier for the given engine. */
@@ -230,16 +254,28 @@ export function buildForeignKeyLookup(
   values: unknown[],
   engine: DbEngine,
 ): { sql: string; params: QueryParameterInput[] } {
-  const target = fk.referencesSchema
-    ? `${quoteIdent(fk.referencesSchema, engine)}.${quoteIdent(fk.referencesTable, engine)}`
-    : quoteIdent(fk.referencesTable, engine);
-  const conditions = fk.referencesColumns.map(
-    (column, index) => `${quoteIdent(column, engine)} = :fk${index}`,
+  const target = foreignKeyTarget(fk, engine);
+  const conditions = fk.referencesColumns.map((column, index) =>
+    foreignKeyCondition(column, index, engine),
   );
   const sql = `SELECT * FROM ${target} WHERE ${conditions.join(" AND ")}`;
-  const params: QueryParameterInput[] = values.map((value, index) => ({
+  const params = values.map(foreignKeyLookupParam);
+  return { sql, params };
+}
+
+function foreignKeyTarget(fk: ForeignKey, engine: DbEngine): string {
+  return fk.referencesSchema
+    ? `${quoteIdent(fk.referencesSchema, engine)}.${quoteIdent(fk.referencesTable, engine)}`
+    : quoteIdent(fk.referencesTable, engine);
+}
+
+function foreignKeyCondition(column: string, index: number, engine: DbEngine): string {
+  return `${quoteIdent(column, engine)} = :fk${index}`;
+}
+
+function foreignKeyLookupParam(value: unknown, index: number): QueryParameterInput {
+  return {
     key: { kind: "name", name: `fk${index}` },
     value: value as never,
-  }));
-  return { sql, params };
+  };
 }

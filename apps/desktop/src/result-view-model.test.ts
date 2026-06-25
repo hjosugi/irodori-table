@@ -77,6 +77,29 @@ describe("result grid view model", () => {
     });
   });
 
+  it("counts off-grid staged edits without marking visible cells edited", () => {
+    const model = buildResultGridViewModel({
+      rows: [[1]],
+      cellEdits: new Map([["o0:3", "ignored"]]),
+      newRows: [],
+      deletedRows: new Set(),
+      filterRules: [],
+      quickFilter: "",
+      filterJoin: "and",
+      sortRules: [],
+    });
+
+    expect(model.unfilteredRows).toEqual([
+      {
+        key: "o0",
+        origin: { kind: "orig", index: 0 },
+        cells: ["1"],
+        state: "clean",
+      },
+    ]);
+    expect(model.pendingCount).toBe(1);
+  });
+
   it("formats object cells and row keys consistently", () => {
     expect(formatResultGridCell({ status: "ok" })).toBe('{"status":"ok"}');
     expect(resultGridRowKey({ kind: "new", index: 2 })).toBe("n2");

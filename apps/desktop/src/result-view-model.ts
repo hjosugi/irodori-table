@@ -44,6 +44,11 @@ export type ResultGridViewModel = {
   sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
 };
 
+type DisplayCell = {
+  text: string;
+  edited: boolean;
+};
+
 export function formatResultGridCell(value: unknown): string {
   if (value === null) {
     return "NULL";
@@ -54,11 +59,11 @@ export function formatResultGridCell(value: unknown): string {
   return String(value);
 }
 
-export function formatResultGridDraftCell(value: ResultGridDraftCell) {
+export function formatResultGridDraftCell(value: ResultGridDraftCell): string {
   return value === null ? "NULL" : value;
 }
 
-export function resultGridRowKey(origin: ResultGridRowOrigin) {
+export function resultGridRowKey(origin: ResultGridRowOrigin): string {
   return `${origin.kind === "orig" ? "o" : "n"}${origin.index}`;
 }
 
@@ -70,48 +75,78 @@ export function buildResultGridRows({
 }: Pick<
   ResultGridViewModelInput,
   "rows" | "cellEdits" | "newRows" | "deletedRows"
->) {
-  const displayRows: ResultGridDisplayRow[] = [];
-
-  rows.forEach((row, index) => {
-    if (deletedRows.has(index)) {
-      return;
-    }
-    let state: "clean" | "edited" = "clean";
-    const cells = row.map((cell, col) => {
-      const edit = cellEdits.get(`o${index}:${col}`);
-      if (edit !== undefined) {
-        state = "edited";
-        return formatResultGridDraftCell(edit);
-      }
-      return formatResultGridCell(cell);
-    });
-    displayRows.push({
-      key: resultGridRowKey({ kind: "orig", index }),
-      origin: { kind: "orig", index },
-      cells,
-      state,
-    });
-  });
-
-  newRows.forEach((cells, index) => {
-    displayRows.push({
-      key: resultGridRowKey({ kind: "new", index }),
-      origin: { kind: "new", index },
-      cells: cells.map(formatResultGridDraftCell),
-      state: "new",
-    });
-  });
-
-  return displayRows;
+>): ResultGridDisplayRow[] {
+  return [
+    ...buildOriginalDisplayRows(rows, cellEdits, deletedRows),
+    ...newRows.map(buildNewDisplayRow),
+  ];
 }
 
-export function buildSortRulePriorityMap(sortRules: readonly ResultSortRule[]) {
-  const sortRuleByColumn = new Map<number, ResultGridSortRuleView>();
-  sortRules.forEach((rule, index) => {
-    sortRuleByColumn.set(rule.columnIndex, { ...rule, priority: index + 1 });
-  });
-  return sortRuleByColumn;
+function buildOriginalDisplayRows(
+  rows: readonly (readonly unknown[])[],
+  cellEdits: ReadonlyMap<string, ResultGridDraftCell>,
+  deletedRows: ReadonlySet<number>,
+): ResultGridDisplayRow[] {
+  return rows.flatMap((row, index) =>
+    deletedRows.has(index) ? [] : [buildOriginalDisplayRow(row, index, cellEdits)],
+  );
+}
+
+function buildOriginalDisplayRow(
+  row: readonly unknown[],
+  index: number,
+  cellEdits: ReadonlyMap<string, ResultGridDraftCell>,
+): ResultGridDisplayRow {
+  const origin: ResultGridRowOrigin = { kind: "orig", index };
+  const displayCells = row.map((cell, columnIndex) =>
+    displayOriginalCell(cell, index, columnIndex, cellEdits),
+  );
+  return {
+    key: resultGridRowKey(origin),
+    origin,
+    cells: displayCells.map((cell) => cell.text),
+    state: displayCells.some((cell) => cell.edited) ? "edited" : "clean",
+  };
+}
+
+function displayOriginalCell(
+  cell: unknown,
+  rowIndex: number,
+  columnIndex: number,
+  cellEdits: ReadonlyMap<string, ResultGridDraftCell>,
+): DisplayCell {
+  const edit = cellEdits.get(originalCellEditKey(rowIndex, columnIndex));
+  return edit === undefined
+    ? { text: formatResultGridCell(cell), edited: false }
+    : { text: formatResultGridDraftCell(edit), edited: true };
+}
+
+function buildNewDisplayRow(
+  cells: readonly ResultGridDraftCell[],
+  index: number,
+): ResultGridDisplayRow {
+  const origin: ResultGridRowOrigin = { kind: "new", index };
+  return {
+    key: resultGridRowKey(origin),
+    origin,
+    cells: cells.map(formatResultGridDraftCell),
+    state: "new",
+  };
+}
+
+function originalCellEditKey(rowIndex: number, columnIndex: number): string {
+  return `o${rowIndex}:${columnIndex}`;
+}
+
+export function buildSortRulePriorityMap(
+  sortRules: readonly ResultSortRule[],
+): ReadonlyMap<number, ResultGridSortRuleView> {
+  return new Map<number, ResultGridSortRuleView>(
+    sortRules.map((rule, index): [number, ResultGridSortRuleView] => [
+      rule.columnIndex,
+      { ...rule, priority: index + 1 },
+    ]),
+  );
 }
 
 export function buildResultGridViewModel(

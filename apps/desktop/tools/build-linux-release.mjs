@@ -11,13 +11,9 @@ const cacheRoot = resolve(repoRoot, ".cache");
 const configRoot = resolve(repoRoot, ".config");
 const tauriCache = resolve(cacheRoot, "tauri");
 
-const arch = runtimeArch(process.arch);
-const runtimeFile = resolve(tauriCache, `runtime-${arch}`);
-const runtimeUrl = `https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-${arch}`;
-
-const mode = process.argv[2] ?? "appimage";
-const bundles = mode === "linux" ? "deb,rpm,appimage" : mode;
-const passthroughArgs = process.argv.slice(3);
+const options = buildLinuxReleaseOptions(process.argv.slice(2), process.arch);
+const runtimeFile = resolve(tauriCache, `runtime-${options.arch}`);
+const runtimeUrl = appImageRuntimeUrl(options.arch);
 
 if (process.platform !== "linux") {
   console.error("Linux release bundles must be built on Linux.");
@@ -27,16 +23,10 @@ if (process.platform !== "linux") {
 await mkdir(tauriCache, { recursive: true });
 await ensureRuntime(runtimeUrl, runtimeFile);
 
-const child = spawn("tauri", ["build", "--bundles", bundles, ...passthroughArgs], {
+const child = spawn("tauri", buildTauriArgs(options), {
   cwd: resolve(repoRoot, "apps/desktop"),
   stdio: "inherit",
-  env: {
-    ...process.env,
-    NO_STRIP: process.env.NO_STRIP ?? "1",
-    XDG_CACHE_HOME: process.env.XDG_CACHE_HOME ?? cacheRoot,
-    XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME ?? configRoot,
-    LDAI_RUNTIME_FILE: process.env.LDAI_RUNTIME_FILE ?? runtimeFile,
-  },
+  env: buildTauriEnv(process.env, { cacheRoot, configRoot, runtimeFile }),
 });
 
 child.on("exit", (code, signal) => {
@@ -46,6 +36,37 @@ child.on("exit", (code, signal) => {
   }
   process.exit(code ?? 1);
 });
+
+function buildLinuxReleaseOptions(argv, nodeArch) {
+  const mode = argv[0] ?? "appimage";
+  return {
+    arch: runtimeArch(nodeArch),
+    bundles: bundleMode(mode),
+    passthroughArgs: argv.slice(1),
+  };
+}
+
+function bundleMode(mode) {
+  return mode === "linux" ? "deb,rpm,appimage" : mode;
+}
+
+function appImageRuntimeUrl(arch) {
+  return `https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-${arch}`;
+}
+
+function buildTauriArgs(options) {
+  return ["build", "--bundles", options.bundles, ...options.passthroughArgs];
+}
+
+function buildTauriEnv(env, paths) {
+  return {
+    ...env,
+    NO_STRIP: env.NO_STRIP ?? "1",
+    XDG_CACHE_HOME: env.XDG_CACHE_HOME ?? paths.cacheRoot,
+    XDG_CONFIG_HOME: env.XDG_CONFIG_HOME ?? paths.configRoot,
+    LDAI_RUNTIME_FILE: env.LDAI_RUNTIME_FILE ?? paths.runtimeFile,
+  };
+}
 
 function runtimeArch(nodeArch) {
   switch (nodeArch) {

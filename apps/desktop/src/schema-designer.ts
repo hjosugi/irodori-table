@@ -122,51 +122,81 @@ export function splitIdentifierList(value: string) {
 }
 
 function buildCreateSql(draft: SchemaDesignerDraft, table: string) {
-  const columnDefinitions = draft.columns
-    .filter(hasColumnName)
-    .map((column) => `  ${columnDefinition(column)}`);
-  const tableConstraints = [
-    primaryKeyConstraint(draft.columns),
-    ...draft.foreignKeys
-      .filter(hasForeignKeyShape)
-      .map((foreignKey) => foreignKeyConstraint(draft.table, foreignKey)),
-  ]
-    .filter((constraint): constraint is string => constraint !== "")
-    .map((constraint) => `  ${constraint}`);
-  const createTableStatement = `CREATE TABLE ${table} (\n${[
-    ...columnDefinitions,
-    ...tableConstraints,
-  ].join(",\n")}\n);`;
+  const createTableStatement = createTableStatementFor(table, createTableItems(draft));
   const statements = [
     createTableStatement,
-    ...draft.indexes
-      .filter(hasIndexShape)
-      .map((index) => createIndexStatement(table, draft.table, index)),
+    ...draft.indexes.filter(hasIndexShape).map((index) =>
+      createIndexStatement(table, draft.table, index),
+    ),
   ];
-  return `${statements.join("\n\n")}\n`;
+  return joinSqlStatements(statements);
 }
 
 function buildAlterSql(draft: SchemaDesignerDraft, table: string) {
-  const statements = [
-    ...draft.columns
-      .filter((column) => !column.existing && hasColumnName(column))
-      .map((column) => addColumnStatement(table, column)),
-    ...draft.indexes
-      .filter((index) => !index.existing && hasIndexShape(index))
-      .map((index) => createIndexStatement(table, draft.table, index)),
-    ...draft.foreignKeys
-      .filter((foreignKey) => !foreignKey.existing && hasForeignKeyShape(foreignKey))
-      .map((foreignKey) => addForeignKeyStatement(table, draft.table, foreignKey)),
-  ];
+  const statements = alterStatements(draft, table);
 
   if (statements.length === 0) {
     return "-- Add a new column, index, or foreign key to generate ALTER SQL.\n";
   }
+  return joinSqlStatements(statements);
+}
+
+function createTableItems(draft: SchemaDesignerDraft): string[] {
+  return [
+    ...draft.columns.filter(hasColumnName).map(columnDefinition),
+    ...tableConstraints(draft),
+  ].map(indentSqlItem);
+}
+
+function tableConstraints(draft: SchemaDesignerDraft): string[] {
+  return [
+    primaryKeyConstraint(draft.columns),
+    ...draft.foreignKeys
+      .filter(hasForeignKeyShape)
+      .map((foreignKey) => foreignKeyConstraint(draft.table, foreignKey)),
+  ].filter(isPresent);
+}
+
+function createTableStatementFor(table: string, items: readonly string[]): string {
+  return `CREATE TABLE ${table} (\n${items.join(",\n")}\n);`;
+}
+
+function alterStatements(draft: SchemaDesignerDraft, table: string): string[] {
+  return [
+    ...draft.columns.filter(isNewColumnWithName).map((column) =>
+      addColumnStatement(table, column),
+    ),
+    ...draft.indexes.filter(isNewIndexWithShape).map((index) =>
+      createIndexStatement(table, draft.table, index),
+    ),
+    ...draft.foreignKeys.filter(isNewForeignKeyWithShape).map((foreignKey) =>
+      addForeignKeyStatement(table, draft.table, foreignKey),
+    ),
+  ];
+}
+
+function joinSqlStatements(statements: readonly string[]): string {
   return `${statements.join("\n\n")}\n`;
+}
+
+function indentSqlItem(value: string): string {
+  return `  ${value}`;
 }
 
 function hasColumnName(column: SchemaColumnDraft) {
   return column.name.trim() !== "";
+}
+
+function isNewColumnWithName(column: SchemaColumnDraft): boolean {
+  return !column.existing && hasColumnName(column);
+}
+
+function isNewIndexWithShape(index: SchemaIndexDraft): boolean {
+  return !index.existing && hasIndexShape(index);
+}
+
+function isNewForeignKeyWithShape(foreignKey: SchemaForeignKeyDraft): boolean {
+  return !foreignKey.existing && hasForeignKeyShape(foreignKey);
 }
 
 function addColumnStatement(table: string, column: SchemaColumnDraft) {
@@ -183,13 +213,13 @@ function addForeignKeyStatement(
   )} ${foreignKeyReference(foreignKey)};`;
 }
 
-function primaryKeyConstraint(columns: SchemaColumnDraft[]) {
+function primaryKeyConstraint(columns: readonly SchemaColumnDraft[]): string | null {
   const primaryKeyColumns = columns
     .filter((column) => column.primaryKey && hasColumnName(column))
     .map((column) => column.name);
   return primaryKeyColumns.length > 0
-    ? `PRIMARY KEY (${primaryKeyColumns.map(quoteIdentifier).join(", ")})`
-    : "";
+    ? `PRIMARY KEY (${quoteIdentifierList(primaryKeyColumns)})`
+    : null;
 }
 
 function columnDefinition(column: SchemaColumnDraft) {
@@ -219,15 +249,11 @@ function createIndexStatement(
   tableName: string,
   index: SchemaIndexDraft,
 ) {
-  const columns = splitIdentifierList(index.columns).map(quoteIdentifier).join(", ");
-  const indexName =
-    index.name.trim() ||
-    `${index.unique ? "uidx" : "idx"}_${sanitizeIdentifier(tableName)}_${splitIdentifierList(index.columns)
-      .map(sanitizeIdentifier)
-      .join("_")}`;
+  const columns = splitIdentifierList(index.columns);
+  const indexName = index.name.trim() || defaultIndexName(tableName, columns, index.unique);
   return `CREATE ${index.unique ? "UNIQUE " : ""}INDEX ${quoteIdentifier(
     indexName,
-  )} ON ${table} (${columns});`;
+  )} ON ${table} (${quoteIdentifierList(columns)});`;
 }
 
 function foreignKeyConstraint(tableName: string, foreignKey: SchemaForeignKeyDraft) {
@@ -238,10 +264,10 @@ function foreignKeyConstraint(tableName: string, foreignKey: SchemaForeignKeyDra
 }
 
 function foreignKeyReference(foreignKey: SchemaForeignKeyDraft) {
-  const columns = splitIdentifierList(foreignKey.columns).map(quoteIdentifier).join(", ");
-  const referencesColumns = splitIdentifierList(foreignKey.referencesColumns)
-    .map(quoteIdentifier)
-    .join(", ");
+  const columns = quoteIdentifierList(splitIdentifierList(foreignKey.columns));
+  const referencesColumns = quoteIdentifierList(
+    splitIdentifierList(foreignKey.referencesColumns),
+  );
   const references = qualifiedIdentifier(
     foreignKey.referencesSchema,
     foreignKey.referencesTable,
@@ -252,13 +278,27 @@ function foreignKeyReference(foreignKey: SchemaForeignKeyDraft) {
   return `FOREIGN KEY (${columns}) REFERENCES ${references} (${referencesColumns})${onDelete}`;
 }
 
-function defaultForeignKeyName(tableName: string, columns: string[]) {
+function defaultIndexName(
+  tableName: string,
+  columns: readonly string[],
+  unique: boolean,
+): string {
+  const prefix = unique ? "uidx" : "idx";
+  const suffix = columns.map(sanitizeIdentifier).join("_");
+  return `${prefix}_${sanitizeIdentifier(tableName)}_${suffix}`;
+}
+
+function defaultForeignKeyName(tableName: string, columns: readonly string[]) {
   const suffix = columns.map(sanitizeIdentifier).join("_") || "ref";
   return `fk_${sanitizeIdentifier(tableName)}_${suffix}`;
 }
 
 function qualifiedIdentifier(schema: string, table: string) {
   return [schema, table].filter((part) => part.trim() !== "").map(quoteIdentifier).join(".");
+}
+
+function quoteIdentifierList(names: readonly string[]): string {
+  return names.map(quoteIdentifier).join(", ");
 }
 
 function quoteIdentifier(name: string) {
@@ -271,4 +311,8 @@ function sanitizeIdentifier(value: string) {
     .replace(/[^A-Za-z0-9_]+/g, "_")
     .replace(/^_+|_+$/g, "");
   return cleaned || "unnamed";
+}
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
 }

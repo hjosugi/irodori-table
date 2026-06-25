@@ -4,39 +4,50 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-const args = parseArgs(process.argv.slice(2));
-const root = resolve(new URL("../..", import.meta.url).pathname);
-const dbPath = resolve(root, args.db ?? "knowledge/irodori-knowledge.sqlite");
-const schemaPath = resolve(root, "knowledge/schema.sql");
-const sourcesPath = resolve(root, args.sources ?? "knowledge/sources.json");
+await main(process.argv.slice(2));
 
-mkdirSync(dirname(dbPath), { recursive: true });
+async function main(argv) {
+  const args = parseArgs(argv);
+  const paths = resolveKnowledgePaths(args);
 
-const db = new DatabaseSync(dbPath);
-db.exec(readFileSync(schemaPath, "utf8"));
+  mkdirSync(dirname(paths.dbPath), { recursive: true });
 
-const sources = JSON.parse(readFileSync(sourcesPath, "utf8"));
-upsertSources(db, sources);
+  const db = new DatabaseSync(paths.dbPath);
+  db.exec(readFileSync(paths.schemaPath, "utf8"));
 
-if (args["no-fetch"]) {
-  printSummary(db, dbPath);
-  process.exit(0);
+  const sources = JSON.parse(readFileSync(paths.sourcesPath, "utf8"));
+  upsertSources(db, sources);
+
+  if (args["no-fetch"]) {
+    printSummary(db, paths.dbPath);
+    process.exit(0);
+  }
+
+  for (const source of selectSourcesForRefresh(sources, args)) {
+    await refreshSource(db, source, Boolean(args.force));
+  }
+
+  printSummary(db, paths.dbPath);
 }
 
-const selectedSources = sources.filter((source) => {
-  if (source.enabled === false) return false;
-  if (args.source && source.id !== args.source) return false;
-  return true;
-});
-
-const limit = Number.parseInt(args.limit ?? `${selectedSources.length}`, 10);
-const work = selectedSources.slice(0, Number.isFinite(limit) ? limit : selectedSources.length);
-
-for (const source of work) {
-  await refreshSource(db, source, Boolean(args.force));
+function resolveKnowledgePaths(args) {
+  const root = resolve(new URL("../..", import.meta.url).pathname);
+  return {
+    dbPath: resolve(root, args.db ?? "knowledge/irodori-knowledge.sqlite"),
+    schemaPath: resolve(root, "knowledge/schema.sql"),
+    sourcesPath: resolve(root, args.sources ?? "knowledge/sources.json")
+  };
 }
 
-printSummary(db, dbPath);
+function selectSourcesForRefresh(sources, args) {
+  const selectedSources = sources.filter((source) => {
+    if (source.enabled === false) return false;
+    if (args.source && source.id !== args.source) return false;
+    return true;
+  });
+  const limit = parseIntegerOption(args.limit, selectedSources.length);
+  return selectedSources.slice(0, limit);
+}
 
 async function refreshSource(database, source, force) {
   const checkedAt = new Date().toISOString();
@@ -185,6 +196,11 @@ function extractTitle(input) {
 
 function hash(input) {
   return createHash("sha256").update(input).digest("hex");
+}
+
+function parseIntegerOption(value, fallback) {
+  const parsed = Number.parseInt(value ?? `${fallback}`, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function parseArgs(values) {

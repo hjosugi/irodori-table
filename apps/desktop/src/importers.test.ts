@@ -69,6 +69,20 @@ describe("import helpers", () => {
     expect(sql).toBe('INSERT INTO "people" ("name") VALUES\n  (\'O\'\'Hara\');\n');
   });
 
+  it("normalizes duplicate and blank import column names", () => {
+    const sql = generateImportSql(
+      "people",
+      ["Name", "name", "", ""],
+      [["Alice", "A.", "1", "2"]],
+    );
+
+    expect(sql).toContain('"Name" TEXT');
+    expect(sql).toContain('"name_2" TEXT');
+    expect(sql).toContain('"column_3" INTEGER');
+    expect(sql).toContain('"column_4" INTEGER');
+    expect(sql).toContain('INSERT INTO "people" ("Name", "name_2", "column_3", "column_4")');
+  });
+
   it("infers safe table names from files", () => {
     expect(inferImportTableName("/tmp/customer-orders.csv")).toBe("customer_orders");
     expect(sanitizeSqlName("123 bad name")).toBe("_123_bad_name");

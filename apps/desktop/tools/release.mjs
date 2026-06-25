@@ -23,36 +23,15 @@ const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
 const currentVersion = pkg.version;
 
 // 3. Compute new version
-const parts = currentVersion.split(".").map(Number);
-if (parts.length !== 3 || parts.some(isNaN)) {
-  console.error(`Invalid current version: ${currentVersion}`);
+const versionResult = resolveNextVersion(currentVersion, bumpType);
+if (!versionResult.ok) {
+  console.error(versionResult.message);
+  if (versionResult.usage) {
+    console.error(versionResult.usage);
+  }
   process.exit(1);
 }
-
-let [major, minor, patch] = parts;
-if (bumpType === "major") {
-  major += 1;
-  minor = 0;
-  patch = 0;
-} else if (bumpType === "minor") {
-  minor += 1;
-  patch = 0;
-} else if (bumpType === "patch") {
-  patch += 1;
-} else {
-  // Assume direct version string
-  if (!/^\d+\.\d+\.\d+$/.test(bumpType)) {
-    console.error(`Unknown bump type or invalid version: ${bumpType}`);
-    console.error(`Usage: npm run release [patch|minor|major|x.y.z]`);
-    process.exit(1);
-  }
-  const customParts = bumpType.split(".");
-  major = Number(customParts[0]);
-  minor = Number(customParts[1]);
-  patch = Number(customParts[2]);
-}
-
-const newVersion = `${major}.${minor}.${patch}`;
+const newVersion = versionResult.version;
 console.log(`Bumping version from ${currentVersion} to ${newVersion}...`);
 
 // 4. Update files
@@ -117,4 +96,48 @@ try {
 } catch (error) {
   console.error("Git operation failed:", error.message);
   process.exit(1);
+}
+
+function resolveNextVersion(currentVersion, bumpType) {
+  const current = parseSemver(currentVersion);
+  if (!current) {
+    return {
+      ok: false,
+      message: `Invalid current version: ${currentVersion}`
+    };
+  }
+
+  if (bumpType === "major") {
+    return { ok: true, version: formatSemver(current.major + 1, 0, 0) };
+  }
+  if (bumpType === "minor") {
+    return { ok: true, version: formatSemver(current.major, current.minor + 1, 0) };
+  }
+  if (bumpType === "patch") {
+    return { ok: true, version: formatSemver(current.major, current.minor, current.patch + 1) };
+  }
+
+  if (!/^\d+\.\d+\.\d+$/.test(bumpType)) {
+    return {
+      ok: false,
+      message: `Unknown bump type or invalid version: ${bumpType}`,
+      usage: "Usage: npm run release [patch|minor|major|x.y.z]"
+    };
+  }
+
+  const custom = parseSemver(bumpType);
+  return { ok: true, version: formatSemver(custom.major, custom.minor, custom.patch) };
+}
+
+function parseSemver(value) {
+  const parts = value.split(".").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    return null;
+  }
+  const [major, minor, patch] = parts;
+  return { major, minor, patch };
+}
+
+function formatSemver(major, minor, patch) {
+  return `${major}.${minor}.${patch}`;
 }

@@ -8,17 +8,17 @@ export type ParsedImport = {
   truncated: boolean;
 };
 
-const importFileKindByExtension: Array<{
-  kind: ImportFileKind;
-  extensions: string[];
-}> = [
+const importFileKindByExtension = [
   { kind: "csv", extensions: [".csv"] },
   { kind: "tsv", extensions: [".tsv", ".tab"] },
   { kind: "json", extensions: [".json"] },
   { kind: "jsonl", extensions: [".jsonl", ".ndjson"] },
   { kind: "sql", extensions: [".sql"] },
   { kind: "excel", extensions: [".xls", ".xlsx"] },
-];
+] as const satisfies ReadonlyArray<{
+  kind: ImportFileKind;
+  extensions: readonly string[];
+}>;
 
 export function detectImportFileKind(fileName: string): ImportFileKind | null {
   const lower = fileName.toLowerCase();
@@ -29,7 +29,7 @@ export function detectImportFileKind(fileName: string): ImportFileKind | null {
   );
 }
 
-export function inferImportTableName(fileName: string) {
+export function inferImportTableName(fileName: string): string {
   const base = fileName
     .replace(/\\/g, "/")
     .split("/")
@@ -57,10 +57,10 @@ const importTextParsers: Record<ImportTextFormat, ImportTextParser> = {
 
 export function generateImportSql(
   tableName: string,
-  columns: string[],
-  rows: unknown[][],
+  columns: readonly string[],
+  rows: readonly (readonly unknown[])[],
   includeCreate = true,
-) {
+): string {
   const table = quoteIdentifier(sanitizeSqlName(tableName || "imported_rows"));
   const cleanedColumns = normalizeColumns(columns);
   const statements = [
@@ -70,7 +70,7 @@ export function generateImportSql(
   return `${statements.join("\n\n")}\n`;
 }
 
-export function sanitizeSqlName(name: string) {
+export function sanitizeSqlName(name: string): string {
   const cleaned = name
     .trim()
     .replace(/[^A-Za-z0-9_]+/g, "_")
@@ -95,7 +95,7 @@ function parseDelimitedImport(
   );
 }
 
-function parseDelimitedRows(text: string, delimiter: string) {
+function parseDelimitedRows(text: string, delimiter: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
@@ -159,7 +159,7 @@ function extractJsonRows(value: unknown): unknown[] {
   return firstJsonArrayProperty(value, ["rows", "data"]) ?? [value];
 }
 
-function rowsFromJsonValues(values: unknown[], maxRows: number): ParsedImport {
+function rowsFromJsonValues(values: readonly unknown[], maxRows: number): ParsedImport {
   const columns = columnsFromJsonValues(values);
   return parsedImport(
     columns,
@@ -168,22 +168,26 @@ function rowsFromJsonValues(values: unknown[], maxRows: number): ParsedImport {
   );
 }
 
-function columnsFromJsonValues(values: unknown[]): string[] {
+function columnsFromJsonValues(values: readonly unknown[]): string[] {
   const recordColumns = unique(values.flatMap(recordKeys));
   if (recordColumns.length > 0) {
     return recordColumns;
   }
-  const maxArrayLength = values.reduce<number>(
-    (maxLength, value) => (Array.isArray(value) ? Math.max(maxLength, value.length) : maxLength),
-    0,
-  );
+  const maxArrayLength = maxJsonArrayLength(values);
   if (maxArrayLength > 0) {
     return Array.from({ length: maxArrayLength }, (_, index) => `column_${index + 1}`);
   }
   return ["value"];
 }
 
-function valueToRow(value: unknown, columns: string[]): unknown[] {
+function maxJsonArrayLength(values: readonly unknown[]): number {
+  return values.reduce<number>(
+    (maxLength, value) => (Array.isArray(value) ? Math.max(maxLength, value.length) : maxLength),
+    0,
+  );
+}
+
+function valueToRow(value: unknown, columns: readonly string[]): unknown[] {
   if (isRecord(value)) {
     return columns.map((column) => value[column] ?? null);
   }
@@ -193,18 +197,15 @@ function valueToRow(value: unknown, columns: string[]): unknown[] {
   return [value];
 }
 
-function normalizeColumns(columns: string[]) {
-  return columns.reduce(
-    (state, column, index) => {
-      const base = sanitizeSqlName(String(column || `column_${index + 1}`));
-      state.names.push(nextUniqueName(base, state.counts));
-      return state;
-    },
-    { counts: new Map<string, number>(), names: [] as string[] },
-  ).names;
+function normalizeColumns(columns: readonly string[]): string[] {
+  const counts = new Map<string, number>();
+  return columns.map((column, index) => {
+    const base = sanitizeSqlName(String(column || `column_${index + 1}`));
+    return nextUniqueName(base, counts);
+  });
 }
 
-function inferSqlType(values: unknown[]) {
+function inferSqlType(values: readonly unknown[]): string {
   const present = values.filter((value) => value !== null && value !== undefined && value !== "");
   if (present.length === 0) {
     return "TEXT";
@@ -212,7 +213,11 @@ function inferSqlType(values: unknown[]) {
   return sqlTypeChecks.find(({ matches }) => present.every(matches))?.type ?? "TEXT";
 }
 
-function createImportTableStatement(table: string, columns: string[], rows: unknown[][]) {
+function createImportTableStatement(
+  table: string,
+  columns: readonly string[],
+  rows: readonly (readonly unknown[])[],
+): string {
   const types = columns.map((_, index) => inferSqlType(rows.map((row) => row[index])));
   const definitions = columns
     .map((column, index) => `  ${quoteIdentifier(column)} ${types[index]}`)
@@ -220,13 +225,17 @@ function createImportTableStatement(table: string, columns: string[], rows: unkn
   return `CREATE TABLE IF NOT EXISTS ${table} (\n${definitions}\n);`;
 }
 
-function insertImportRowsStatement(table: string, columns: string[], rows: unknown[][]) {
+function insertImportRowsStatement(
+  table: string,
+  columns: readonly string[],
+  rows: readonly (readonly unknown[])[],
+): string {
   const quotedColumns = columns.map(quoteIdentifier).join(", ");
   const values = rows.map((row) => `  (${importRowSqlValues(columns, row)})`).join(",\n");
   return `INSERT INTO ${table} (${quotedColumns}) VALUES\n${values};`;
 }
 
-function importRowSqlValues(columns: string[], row: unknown[]) {
+function importRowSqlValues(columns: readonly string[], row: readonly unknown[]): string {
   return columns.map((_, index) => sqlLiteral(row[index] ?? null)).join(", ");
 }
 
@@ -267,10 +276,7 @@ function firstJsonArrayProperty(
   value: Record<string, unknown>,
   keys: readonly string[],
 ): unknown[] | null {
-  return keys.reduce<unknown[] | null>(
-    (found, key) => found ?? (Array.isArray(value[key]) ? value[key] : null),
-    null,
-  );
+  return keys.map((key) => value[key]).find(Array.isArray) ?? null;
 }
 
 function recordKeys(value: unknown): string[] {
