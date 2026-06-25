@@ -165,6 +165,7 @@ import {
 } from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
+import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
 import "./App.css";
 
 const resultCopyCommands: CommandMeta[] = [
@@ -895,6 +896,7 @@ function App() {
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const diagramSvgRef = useRef<SVGSVGElement | null>(null);
   const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
+  const pendingDiagramSearchRef = useRef<string | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const pendingGridScroll = useRef({ top: 0, left: 0 });
   const [gridScrollTop, setGridScrollTop] = useState(0);
@@ -1100,6 +1102,8 @@ function App() {
       connections[0],
     [activeConnectionId, connections],
   );
+  const activeProfile = profiles.find((profile) => profile.id === activeConnectionId);
+  const activeEngine = activeProfile?.engine ?? draft.engine;
 
   const activeConnectionOpen = connectedIds.has(activeConnectionId);
   const activeMetadata = metadataByConnection[activeConnectionId];
@@ -2168,7 +2172,8 @@ function App() {
           .filter((schema) => schema.objects.some((object) => object.kind === "table"))
           .map((schema) => schema.name),
       );
-      setDiagramSearch("");
+      setDiagramSearch(pendingDiagramSearchRef.current ?? "");
+      pendingDiagramSearchRef.current = null;
       setDiagramZoom(1);
       diagramInitializedFor.current = initKey;
     }
@@ -2586,6 +2591,60 @@ function App() {
       setQueryError("query is empty");
       return;
     }
+    const magic = parseQueryMagic(sqlToRun, activeEngine);
+    if (magic) {
+      await runQueryMagic(magic);
+      return;
+    }
+    await runSqlWithParameterPrompt(sqlToRun);
+  }
+
+  async function runQueryMagic(magic: QueryMagicAction) {
+    switch (magic.kind) {
+      case "error":
+        setQueryError(magic.message);
+        return;
+      case "sql":
+        setQuery(magic.sql);
+        await runSqlWithParameterPrompt(magic.sql);
+        return;
+      case "erd":
+        if (!activeConnectionOpen) {
+          setQueryError(`not connected: ${activeConnectionId}`);
+          return;
+        }
+        if (!activeMetadata && !activeMetadataLoading) {
+          await refreshObjects(activeConnectionId, true);
+        }
+        pendingDiagramSearchRef.current = magic.search;
+        setDiagramSearch(magic.search);
+        setDiagramOpen(true);
+        setQueryError(null);
+        return;
+      case "export":
+        if (!activeResult) {
+          setQueryError("No result to export yet.");
+          return;
+        }
+        exportActiveResult(magic.format);
+        setQueryError(null);
+        return;
+      case "params":
+        setQuery(magic.sql);
+        await openQueryParameterPrompt(magic.sql, true);
+        return;
+    }
+  }
+
+  async function runSqlWithParameterPrompt(sqlToRun: string) {
+    const openedPrompt = await openQueryParameterPrompt(sqlToRun, false);
+    if (openedPrompt) {
+      return;
+    }
+    await executeQuery(sqlToRun);
+  }
+
+  async function openQueryParameterPrompt(sqlToRun: string, requirePrompt: boolean) {
     try {
       const promptSet = await dbQueryParameters(sqlToRun);
       if (promptSet.prompts.length > 0) {
@@ -2597,13 +2656,17 @@ function App() {
         );
         setPendingQueryParameters({ sql: sqlToRun, promptSet });
         setQueryError(null);
-        return;
+        return true;
+      }
+      if (requirePrompt) {
+        setQueryError("No query parameters found in this SQL.");
+        return true;
       }
     } catch (error) {
       setQueryError(errorMessage(error));
-      return;
+      return true;
     }
-    await executeQuery(sqlToRun);
+    return false;
   }
 
   async function executeQuery(sqlToRun: string, params?: QueryParameterInput[]) {

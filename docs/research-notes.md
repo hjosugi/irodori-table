@@ -58,7 +58,7 @@ Last checked: 2026-06-21 JST.
 - The metadata cache should model relationships, aliases, recent query context, CTEs, subqueries, functions/procedures, and dialect-specific object kinds.
 - Deterministic schema-aware completion is a P0 product requirement. The desktop editor now consumes live metadata for table/column suggestions, but local API/future-host completion still needs the shared request/response contract and broader engine fixtures before the cross-platform requirement is closed.
 - Copilot-style inline autocomplete is a P1 parity gap, while broader AI assistance can remain later; every AI path must be optional, auditable, redacted, and permission-scoped.
-- Query Magics and AI Shell are open work. Query Magics should stay deterministic/local command expansions, while AI Shell should remain an opt-in assistant that proposes text or calls explicitly scoped read-only tools.
+- Query Magics now have a deterministic/local desktop baseline; keep expanding that path without AI dependency. AI Shell remains open work and should stay an opt-in assistant that proposes text or calls explicitly scoped read-only tools.
 - Theme import should treat VS Code compatibility as an adapter, not as the internal source of truth.
 - Tree-sitter should be evaluated per dialect; SQL grammar quality varies, and Oracle/PLSQL may need separate parsing strategy.
 - GPU acceleration is most likely to matter for editor text, result-grid scrolling, selection painting, minimap/overview widgets, and very large query output; the app still needs a stable software path for remote desktops, older GPUs, and driver quirks.

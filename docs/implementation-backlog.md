@@ -54,7 +54,7 @@ top to bottom within an epic unless a dependency says otherwise.
 These are explicit competitive gaps, not closed by nearby core-library work alone.
 
 - **Snowsight:** desktop schema/table/column autocomplete is wired and smoke-tested from live metadata (`CMPL-002A`), but the shared completion service/API contract remains open; Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); desktop result exploration now has client-side quick filtering, multi-rule predicate filters, and multi-column sort, but saved filters plus server-side/filter-plan SQL remain open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
-- **Beekeeper:** no-code schema editor is partially wired as a reviewable DDL designer (`ADV-003`), but direct apply/alter coverage and DB-specific DDL safety remain open; current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; Query Magics and AI Shell are open (`AI-005`, `AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization is app-wired and browser-tested, while the 1M-row scroll benchmark remains open (`EXEC-004B`).
+- **Beekeeper:** no-code schema editor is partially wired as a reviewable DDL designer (`ADV-003`), but direct apply/alter coverage and DB-specific DDL safety remain open; current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; deterministic Query Magics have a desktop baseline while command-palette/result-to-file parity remains open (`AI-005`), and AI Shell is open (`AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization is app-wired and browser-tested, while the 1M-row scroll benchmark remains open (`EXEC-004B`).
 
 ---
 
@@ -900,13 +900,13 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** AI-001, AI-002, AI-003, CMPL-002A
 - **Size:** L · **Priority:** P1
 
-### AI-005 — Query Magics command layer
+### AI-005 — Query Magics command layer 🚧 (desktop baseline landed)
 - **Goal:** Add Beekeeper-style command shortcuts without making SQL execution ambiguous.
 - **Done when:** the editor recognizes explicit magic commands before execution, shows a preview of the expanded SQL/action, and supports at least schema inspect, explain, export, ERD open, result-to-file, and parameter prompt flows; normal SQL with similar text is never intercepted.
 - **Syntax:** line-leading commands only (`\\describe table`, `\\explain`, `\\export csv`, `\\erd schema.table`, `\\params`) plus a command-palette equivalent for every magic.
 - **Safety:** every magic is parsed locally, audited as a structured action, and either expands to visible SQL or calls an existing scoped command; destructive commands require the same confirmation path as hand-written SQL.
-- **Status:** Open. No Query Magics command layer is implemented.
-- **Test plan:** parser fixtures, command expansion tests per dialect, and editor/command-palette smoke tests.
+- **Landed:** desktop parses line-leading magic commands locally before execution. `\\describe` expands to dialect-aware column-inspection SQL, `\\explain` expands to visible explain SQL, `\\erd` opens the ERD modal with an optional filter, `\\export <format>` exports the current result through the existing export path, and `\\params <sql>` opens the parameter prompt flow. Parser/unit tests cover expansion and errors; Playwright verifies `\\explain` execution and `\\erd` modal opening.
+- **Remaining:** command-palette equivalents for every magic, structured audit/history entries for magic actions, result-to-file/run-to-file magic, and broader per-dialect describe/explain fixtures.
 - **Depends on:** EXEC-006, IO-001, ADV-004A
 - **Size:** M · **Priority:** P1
 

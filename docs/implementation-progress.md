@@ -148,6 +148,11 @@ Highlights:
   suggestions, and Playwright verifies that the editor popup receives table and
   alias-column suggestions after metadata is loaded from `dbListObjects`. Shared
   completion service/API parity for future hosts remains open.
+- Deterministic Query Magics are wired in the desktop run path: `\describe`
+  expands to dialect-aware column-inspection SQL, `\explain` expands to visible
+  explain SQL, `\erd` opens a filtered ERD, `\export <format>` exports the current
+  result, and `\params <sql>` opens the parameter prompt flow. Unit tests cover
+  parser/expansion, and Playwright covers `\explain` and `\erd`.
 - The browser build still falls back to the mock shell when Tauri APIs are absent;
   real connect/query runs inside the Tauri shell.
 - The object browser now calls generated `dbListObjects` and renders live

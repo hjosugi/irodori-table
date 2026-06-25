@@ -140,4 +140,4 @@ Sources:
 - Treat YugabyteDB, InfluxDB, and Neo4j as required architecture inputs, not late plugins glued onto a SQL-only core.
 - Support nested proxy chains as a core model.
 - Make the extension SDK simple enough that drivers, result renderers, themes, AI providers, and proxy transports are easy to build.
-- Make AI optional and private by default; deterministic completion must remain excellent offline. Query Magics and AI Shell are open work, not shipped differentiators: Query Magics should be deterministic local commands, while AI Shell should only propose text or use explicitly scoped read-only tools.
+- Make AI optional and private by default; deterministic completion must remain excellent offline. Query Magics now have a deterministic desktop baseline and should keep expanding as local commands, while AI Shell remains open work and should only propose text or use explicitly scoped read-only tools.

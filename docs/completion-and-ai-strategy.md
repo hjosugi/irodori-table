@@ -88,7 +88,7 @@ Execution boundary:
 
 - AI suggestions are text until the user inserts them into the editor.
 - The AI Shell cannot run SQL directly; it can only populate the editor or call explicitly scoped read-only tools.
-- Query Magics are open work and are not AI. They should be local, explicit, line-leading commands such as `\describe`, `\explain`, `\export`, `\erd`, and `\params`, with command-palette equivalents and previewable expansion/action plans.
+- Query Magics are not AI. The desktop baseline is local, explicit, line-leading commands such as `\describe`, `\explain`, `\export`, `\erd`, and `\params`; command-palette equivalents, structured action audit/history, and run-to-file magic remain open.
 
 ## Copilot Compatibility Direction
 

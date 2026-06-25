@@ -53,6 +53,9 @@ only the supported set.
 - Desktop schema-aware completion is wired from live metadata and covered by
   browser E2E for table and alias-column suggestions. Shared completion service
   coverage across local API/future hosts remains open.
+- Desktop Query Magics have a deterministic baseline for describe/explain/ERD/
+  export/parameter prompts, with parser tests and browser smoke. Command-palette
+  parity, audit/history structure, and run-to-file magic remain open.
 - Wide-column result virtualization is wired and browser-tested against a
   2,000-column synthetic result; the 1M-row scroll benchmark remains open.
 - Schema ERD UI and SVG/PNG export helpers are wired, but visual/export smoke

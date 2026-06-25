@@ -55,7 +55,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Completion | Offline deterministic completion without AI | P0 | User requirement |
 | Completion | Optional AI assistance | P1 | DataGrip, DBeaver, DbVisualizer, research watchlist; off by default |
 | Completion | Copilot-style inline autocomplete and patch suggestions | P1 | AI-004 open; optional/off by default; shared provider/context contract across desktop, MCP-compatible clients, and future hosts |
-| AI | Query Magics command layer | P1 | Beekeeper parity, power-user query workflow |
+| AI | Query Magics command layer | P1 | Desktop deterministic baseline landed; command-palette equivalents, audit/history structure, and run-to-file magic remain open |
 | AI | AI Shell with local/OpenAI-compatible providers | P1 | Optional privacy-preserving assistance |
 | AI | MCP bridge for Copilot-compatible workflows | P1 | AI-003; expose scoped schema/search/explain/query tools instead of desktop-only Copilot coupling |
 | AI/ML | ML dataset, evaluation, ranking, and provider/model benchmark pipeline | P1 | JOB-003; ML is required infrastructure, while user-facing AI remains optional/off by default |
