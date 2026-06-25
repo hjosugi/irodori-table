@@ -70,13 +70,46 @@ npx tauri dev
 ```
 
 ### Direct Binary Execution
-To inspect the Rust output/logs directly without dev server wrapping, build the debug binary and run it from the shell:
+> **Heads up:** a *debug* binary loads its UI from the Vite dev server
+> (`devUrl http://localhost:1420` in `tauri.conf.json`). Launching the debug
+> binary **on its own** shows a blank window with *"Could not connect to
+> localhost: Connection refused"* because nothing is serving port 1420. See the
+> troubleshooting entry below.
+
+To inspect Rust stdout/logs while still pointing the webview at a running UI,
+start the dev server first, then launch the binary in a second terminal:
 ```bash
-# Build
-cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml
-# Run
-./target/debug/irodori-table-desktop
+# Terminal 1 - serve the frontend on :1420
+cd apps/desktop && npm run dev
+# Terminal 2 - run the already-built debug binary
+./apps/desktop/src-tauri/target/debug/irodori-table-desktop
 ```
+
+To run a **standalone** binary that needs no dev server, build one with the
+frontend embedded from `frontendDist` (`../dist`):
+```bash
+cd apps/desktop
+npm run build            # populate apps/desktop/dist
+npx tauri build --debug  # debug binary with embedded assets (keeps logs/symbols)
+# Or a full AppImage with embedded assets:
+make run-linux
+```
+
+### Error: "Could not connect to localhost: Connection refused"
+A blank window with this message is **not** a database error - the webview could
+not reach the dev server URL baked into a debug build (`http://localhost:1420`).
+
+Checklist:
+- Use `npx tauri dev` instead of launching the debug binary directly - it starts
+  Vite (`beforeDevCommand`) and the app together.
+- If you must run the binary directly, confirm Vite is up:
+  `ss -ltnp | grep 1420` should show a listener. If not, run `npm run dev` from
+  `apps/desktop` first.
+- The dev port is fixed and `strictPort: true`, so if `:1420` is already taken,
+  Vite exits and the app has nothing to connect to. Free the port
+  (`fuser -k 1420/tcp`) or stop the other process, then retry.
+- For a no-dev-server run, use an embedded-assets build (`npx tauri build --debug`
+  or `make run-linux`); a debug binary alone always expects `:1420`.
 
 ### Reading Console and Rust Logs
 - **Developer Tools**: Right-click anywhere in the app window during debug/dev runs and click **Inspect Element** to open the Web Inspector.
