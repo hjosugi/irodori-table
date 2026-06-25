@@ -40,6 +40,7 @@ use irodori_completion::metadata::{
 };
 
 mod bigquery;
+mod bigtable;
 mod cassandra;
 mod clickhouse;
 #[cfg(feature = "duckdb")]
@@ -200,6 +201,7 @@ fn normalize_profile(mut profile: ConnectionProfile) -> Result<ConnectionProfile
         | Wire::ClickHouse
         | Wire::Snowflake
         | Wire::BigQuery
+        | Wire::Bigtable
         | Wire::Redis
         | Wire::Cassandra
         | Wire::Neo4j
@@ -730,6 +732,7 @@ fn bind_placeholder(wire: Wire, index: usize) -> String {
         | Wire::ClickHouse
         | Wire::Snowflake
         | Wire::BigQuery
+        | Wire::Bigtable
         | Wire::Redis
         | Wire::Cassandra
         | Wire::Neo4j
@@ -1222,6 +1225,24 @@ impl Connection for BigQueryConnection {
     async fn close(&self) {}
 }
 
+struct BigtableConnection(bigtable::BigtableConn);
+#[async_trait]
+impl Connection for BigtableConnection {
+    fn wire(&self) -> Wire {
+        Wire::Bigtable
+    }
+    async fn version(&self) -> Option<String> {
+        bigtable::version(&self.0).await
+    }
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        bigtable::run_query(&self.0, sql, cap).await
+    }
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        bigtable::metadata(&self.0).await
+    }
+    async fn close(&self) {}
+}
+
 struct RedisConnection(redis::RedisConn);
 #[async_trait]
 impl Connection for RedisConnection {
@@ -1296,6 +1317,7 @@ async fn connect_engine(profile: &ConnectionProfile) -> Result<Arc<dyn Connectio
         Wire::ClickHouse => Arc::new(ClickHouseConnection(clickhouse::connect(profile).await?)),
         Wire::Snowflake => Arc::new(SnowflakeConnection(snowflake::connect(profile).await?)),
         Wire::BigQuery => Arc::new(BigQueryConnection(bigquery::connect(profile).await?)),
+        Wire::Bigtable => Arc::new(BigtableConnection(bigtable::connect(profile).await?)),
         Wire::Redis => Arc::new(RedisConnection(redis::connect(profile).await?)),
         Wire::Cassandra => Arc::new(CassandraConnection(cassandra::connect(profile).await?)),
         Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {

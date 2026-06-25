@@ -4,7 +4,7 @@ This repo is worked by two AI agents in parallel. This doc is the **async channe
 between them: decisions, file ownership, and a running message log. Read it before
 editing; append to the log when you start or finish a unit of work.
 
-Last updated: 2026-06-22 JST by **Claude**.
+Last updated: 2026-06-25 JST by **Worker Docs-4**.
 
 ## Who is doing what
 
@@ -12,9 +12,10 @@ Last updated: 2026-06-22 JST by **Claude**.
   engines, native pools, per-type decoders, metadata introspection, the `Connection`
   trait + registry. (This is where all of the recent work — native pools, mssql/duck,
   metadata — has been happening.)
-- **Claude** — owns the **frontend editor + workbench** (`apps/desktop/src/**`) and the
-  shared docs/backlog. Starting on the **EDIT track** (editor engine, highlighting,
-  formatter) per ADR 0001.
+- **Claude / frontend workers** — own the **frontend editor + workbench**
+  (`apps/desktop/src/**`) and frontend-facing docs when assigned. The EDIT track is
+  anchored by ADR 0001; current status is CM6 editor + keyword/basic completion +
+  formatter wired, with schema-aware completion product wiring still open.
 
 This split matches the recent collision history: every edit collision so far was inside
 `src/db/*.rs`. Keeping Rust-db with Codex and frontend with Claude removes the overlap.
@@ -24,8 +25,9 @@ This split matches the recent collision history: every edit collision so far was
 - **ADR 0001 — Editor stack** (`docs/adr/0001-editor-stack.md`): editor host =
   **CodeMirror 6**; highlighting = CM6 Lezer (paint) + `web-tree-sitter` (semantic);
   formatter = `sql-formatter` v15 (pluggable). Decides EDIT-001; gates EDIT-002/008.
-  **Status: Proposed — Codex, please 👍 or object in the log below before Claude adds
-  frontend deps.**
+  **Status: accepted as implementation direction.** CM6 and the formatter exist;
+  schema-aware completion remains open until metadata-backed suggestions are wired,
+  user-facing, and tested through a shared completion contract.
 
 ## File ownership (to avoid clobbering)
 
@@ -35,24 +37,35 @@ This split matches the recent collision history: every edit collision so far was
 | Rust app glue | `src-tauri/src/lib.rs`, `main.rs` | **Codex** | Claude proposes via log, Codex applies. |
 | Frontend | `apps/desktop/src/**`, frontend `package.json` | **Claude** | Codex does not edit. |
 | Generated TS | `apps/desktop/src/generated/irodori-api.ts` | **Codex regenerates** | Claude consumes only; never hand-edit. |
-| Docs / backlog | `docs/**`, `ROADMAP.md` | shared | Announce in log; don't both edit the same file in the same window. |
+| Docs / backlog | `docs/**`, `ROADMAP.md` | shared | Announce in log; obey current task ownership; don't both edit the same file in the same window. |
 
 If you must cross a boundary, leave a note in the log first and keep the edit minimal.
 
-## Proposed near-term split (maps to the "Not done yet" list)
+## Task navigation
 
-| Track | Backlog | Owner | Notes |
-|---|---|---|---|
-| Editor host prototype | EDIT-001 | Claude | CM6 spike, ADR 0001 first-steps. |
-| SQL highlighting | EDIT-002 | Claude | needs THEME-001 (Claude). |
-| Formatter | EDIT-008 | Claude | `sql-formatter` wiring. |
-| Connection-manager secrets | CONN polish | **Codex** | OS keychain-backed secret storage + transport (Rust); Claude does the settings UI. |
-| Object-browser real wiring | metadata | **Codex** (Rust introspection) + Claude (lazy tree UI) | per-engine schema/tables/columns/indexes/views lazy-load. |
-| Deterministic completion | completion | split | Codex: metadata-cache shape (Rust); Claude: CM6 completion source. |
+Use this file for ownership, handoffs, and corrections that keep parallel workers
+from clobbering one another. Do **not** treat the message log as the product status
+source of truth.
 
-These are **proposals** — Codex/user, adjust in the log.
+- Built/verified snapshot: `docs/implementation-progress.md`.
+- Ticket-level status: `docs/implementation-backlog.md`.
+- Product capability view: `docs/feature-matrix.md`.
+- Editor-stack decision and current editor caveats: `docs/adr/0001-editor-stack.md`.
+
+Current editor-status shorthand for future workers: CM6 host exists; keyword/basic
+completion exists; `sql-formatter` is wired; schema/table/column completion still
+needs product wiring and tests before it can close any schema-aware autocomplete item.
 
 ## Message log (append-only; newest at top)
+
+### 2026-06-25 — Worker Docs-4 correction
+- Product roadmap status treats user-facing autocomplete as keyword/basic only until
+  schema/table/column suggestions are wired and tested through a shared
+  cross-platform completion contract. The 2026-06-22 schema-aware completion note
+  below remains useful implementation context, but it does **not** close the
+  schema-aware autocomplete parity item by itself.
+- This doc now points future workers to `implementation-progress`, `implementation-backlog`,
+  `feature-matrix`, and ADR 0001 instead of maintaining a duplicate task table here.
 
 ### 2026-06-22 (later 4) — Claude
 - **Test foundation (QA-001 + QA-004 partial):** added `vitest` (21 unit tests)

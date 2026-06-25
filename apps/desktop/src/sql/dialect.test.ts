@@ -48,6 +48,7 @@ describe("cmDialect", () => {
     bigquery: { dialect: StandardSQL, formatter: "bigquery" },
     redis: { dialect: StandardSQL, formatter: "sql" },
     cassandra: { dialect: StandardSQL, formatter: "sql" },
+    bigtable: { dialect: StandardSQL, formatter: "sql" },
   };
 
   it("maps every engine to the expected CodeMirror SQL dialect", () => {

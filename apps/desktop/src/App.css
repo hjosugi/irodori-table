@@ -1986,8 +1986,8 @@ body.panel-resizing .result-grid {
 .diagram {
   display: flex;
   flex-direction: column;
-  width: min(1100px, 94vw);
-  height: min(80vh, 820px);
+  width: min(1240px, 96vw);
+  height: min(86vh, 900px);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1997,9 +1997,10 @@ body.panel-resizing .result-grid {
 
 .diagram-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 7px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2007,24 +2008,122 @@ body.panel-resizing .result-grid {
   font-size: 14px;
 }
 
-.diagram-header span {
+.diagram-header > span:not(.diagram-zoom) {
   flex: 1;
+  min-width: 170px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagram-zoom {
+  flex: 0 0 auto;
+  min-width: 44px;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-align: center;
+}
+
+.diagram-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.diagram-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--muted);
+}
+
+.diagram-search input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  outline: none;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+}
+
+.diagram-schema-actions,
+.diagram-schema-list {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.diagram-schema-list {
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.schema-chip {
+  flex: 0 0 auto;
+  height: 26px;
+  max-width: 180px;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-raised);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.schema-chip:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.schema-chip.active {
+  color: var(--focus);
+  border-color: color-mix(in srgb, var(--focus) 55%, var(--border));
+  background: var(--selected);
 }
 
 .diagram-canvas {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: 0;
   background:
     radial-gradient(circle, var(--cell-border) 1px, transparent 1px) 0 0 / 18px 18px;
 }
 
-.diagram-canvas svg {
+.diagram-stage {
+  position: relative;
+  margin: 16px;
+}
+
+.diagram-scale {
+  transform-origin: 0 0;
+}
+
+.erd-svg {
+  display: block;
   max-width: none;
   height: auto;
+  color: var(--border-strong);
+  user-select: none;
 }
 
 /* Edit-mode per-row delete gutter. */
@@ -2033,7 +2132,16 @@ body.panel-resizing .result-grid {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border-right: 1px solid var(--cell-border);
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: inherit;
+  border-right: 2px solid var(--cell-border);
+}
+
+.grid-row.header .grid-gutter {
+  z-index: 4;
+  background: var(--grid-header);
 }
 
 .delete-row {
@@ -2083,6 +2191,8 @@ body.panel-resizing .result-grid {
 .app-shell[data-theme="dark"] .designer-row input,
 .app-shell[data-theme="dark"] .designer-row select,
 .app-shell[data-theme="dark"] .check-cell,
+.app-shell[data-theme="dark"] .diagram-search,
+.app-shell[data-theme="dark"] .schema-chip,
 .app-shell[data-theme="dark"] .mode-toggle {
   border-color: #3c3c3c;
   color: #cccccc;
@@ -2095,7 +2205,8 @@ body.panel-resizing .result-grid {
 .app-shell[data-theme="dark"] .dialog-form-row input,
 .app-shell[data-theme="dark"] .dialog-form-row select,
 .app-shell[data-theme="dark"] .designer-row input,
-.app-shell[data-theme="dark"] .designer-row select {
+.app-shell[data-theme="dark"] .designer-row select,
+.app-shell[data-theme="dark"] .diagram-search input {
   color: #d4d4d4;
 }
 
@@ -2128,6 +2239,7 @@ body.panel-resizing .result-grid {
 
 .app-shell[data-theme="dark"] .connection-item.active,
 .app-shell[data-theme="dark"] .profile-pill.active,
+.app-shell[data-theme="dark"] .schema-chip.active,
 .app-shell[data-theme="dark"] .object-row:hover,
 .app-shell[data-theme="dark"] .schema-tree summary:hover,
 .app-shell[data-theme="dark"] .object-tree summary:hover,
@@ -2141,6 +2253,17 @@ body.panel-resizing .result-grid {
   background: var(--selected);
 }
 
+.app-shell[data-theme="dark"] .schema-chip:hover:not(.active) {
+  border-color: #4a4a4a;
+  color: #ffffff;
+  background: var(--hover);
+}
+
+.app-shell[data-theme="dark"] .schema-chip.active {
+  border-color: color-mix(in srgb, var(--focus) 55%, #3c3c3c);
+  color: #9cdcfe;
+}
+
 .app-shell[data-theme="dark"] .main-pane,
 .app-shell[data-theme="dark"] .tab-strip,
 .app-shell[data-theme="dark"] .editor-pane,
@@ -2148,6 +2271,9 @@ body.panel-resizing .result-grid {
 .app-shell[data-theme="dark"] .results-pane,
 .app-shell[data-theme="dark"] .results-header,
 .app-shell[data-theme="dark"] .data-dialog,
+.app-shell[data-theme="dark"] .diagram,
+.app-shell[data-theme="dark"] .diagram-header,
+.app-shell[data-theme="dark"] .diagram-controls,
 .app-shell[data-theme="dark"] .dialog-header,
 .app-shell[data-theme="dark"] .dialog-footer,
 .app-shell[data-theme="dark"] .action-menu,

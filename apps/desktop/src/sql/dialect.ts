@@ -1,4 +1,4 @@
-// Engine → SQL dialect / formatter-language / completion-schema mapping.
+// Engine → SQL dialect / formatter-language / lightweight completion mapping.
 //
 // Pure (no DOM, no React) so it can be unit-tested. `@codemirror/lang-sql` is
 // safe to import here — it pulls in the parser/highlight packages, not the
@@ -12,12 +12,21 @@ import {
   PostgreSQL,
   SQLite,
   StandardSQL,
+  sql,
   type SQLConfig,
   type SQLDialect,
-  type SQLNamespace,
 } from "@codemirror/lang-sql";
-import type { Completion } from "@codemirror/autocomplete";
-import type { DatabaseMetadata, DbEngine } from "../generated/irodori-api";
+import type { Completion, CompletionResult } from "@codemirror/autocomplete";
+import type { Extension } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
+import type {
+  ColumnMetadata,
+  DatabaseMetadata,
+  DbEngine,
+  DbObjectMetadata,
+  SchemaMetadata,
+} from "../generated/irodori-api";
+import { statementDelimiters } from "./statements";
 
 /** Map an Irodori engine onto a CodeMirror SQL dialect (Postgres-wire siblings share one). */
 export function cmDialect(engine: DbEngine): SQLDialect {
@@ -84,36 +93,147 @@ export function formatterLanguage(engine: DbEngine): string {
   }
 }
 
-/**
- * Convert Irodori introspection metadata into a CodeMirror SQL completion schema:
- * `{ schema: { table: { self, children: columns } } }`. Indexes are skipped — only
- * relations (tables/views) and their columns are completable.
- */
-export function metadataToNamespace(
+const MAX_METADATA_COMPLETIONS = 50;
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_$]*$/;
+const IDENTIFIER_CHAR = /[A-Za-z0-9_$]/;
+const RELATION_KINDS = new Set(["table", "view"]);
+const ROUTINE_KINDS = new Set(["function", "procedure"]);
+const RELATION_STARTERS = new Set([
+  "from",
+  "join",
+  "update",
+  "into",
+  "describe",
+  "desc",
+  "truncate",
+  "table",
+]);
+const RELATION_BLOCKERS = new Set([
+  "where",
+  "on",
+  "using",
+  "group",
+  "order",
+  "having",
+  "limit",
+  "offset",
+  "union",
+  "except",
+  "intersect",
+  "returning",
+  "values",
+  "set",
+]);
+const RESERVED_ALIAS_WORDS = new Set([
+  ...RELATION_STARTERS,
+  ...RELATION_BLOCKERS,
+  "as",
+  "by",
+  "cross",
+  "full",
+  "inner",
+  "left",
+  "natural",
+  "right",
+  "select",
+  "with",
+]);
+
+interface CompletionPrefix {
+  from: number;
+  text: string;
+}
+
+interface StatementSlice {
+  from: number;
+  to: number;
+  text: string;
+  cursor: number;
+}
+
+interface RelationBinding {
+  schema: SchemaMetadata;
+  object: DbObjectMetadata;
+  qualifier: string;
+}
+
+interface ShallowToken {
+  text: string;
+  lower: string;
+}
+
+interface ResolvedObject {
+  schema: SchemaMetadata;
+  object: DbObjectMetadata;
+}
+
+export function buildSqlConfig(
+  engine: DbEngine,
+  _metadata: DatabaseMetadata | undefined,
+): SQLConfig {
+  return {
+    dialect: cmDialect(engine),
+    upperCaseKeywords: false,
+  };
+}
+
+export function buildSqlExtensions(
+  engine: DbEngine,
   metadata: DatabaseMetadata | undefined,
-): SQLNamespace | undefined {
-  if (!metadata || metadata.schemas.length === 0) return undefined;
-  const namespace: Record<string, SQLNamespace> = {};
-  for (const schema of metadata.schemas) {
-    const tables: Record<string, SQLNamespace> = {};
-    for (const object of schema.objects) {
-      if (object.kind === "index") continue;
-      const columns: Completion[] = object.columns
-        .slice()
-        .sort((a, b) => a.ordinal - b.ordinal)
-        .map((column) => ({
-          label: column.name,
-          type: "property",
-          detail: column.nullable ? column.dataType : `${column.dataType} not null`,
-        }));
-      tables[object.name] = {
-        self: { label: object.name, type: object.kind === "view" ? "type" : "class" },
-        children: columns,
-      };
-    }
-    namespace[schema.name] = tables;
+): Extension {
+  const config = buildSqlConfig(engine, metadata);
+  const dialect = config.dialect ?? StandardSQL;
+  return [
+    sql(config),
+    dialect.language.data.of({
+      autocomplete: metadataCompletionSource(metadata),
+    }),
+  ];
+}
+
+export function metadataCompletionsForSql(
+  sqlText: string,
+  cursor: number,
+  metadata: DatabaseMetadata | undefined,
+  explicit = false,
+): CompletionResult | null {
+  if (!metadata || metadata.schemas.length === 0) return null;
+
+  const statement = currentStatementSlice(sqlText, cursor);
+  const masked = maskSqlLiterals(statement.text);
+  if (isMaskedAt(masked, statement.cursor)) return null;
+
+  const prefix = identifierPrefix(masked, statement.cursor);
+  const dot = qualifiedPartsBefore(masked, prefix.from);
+  if (!explicit && prefix.text === "" && !dot) return null;
+
+  const defaultSchema = metadata.schemas[0];
+  const aliases = relationBindings(masked, metadata);
+
+  if (dot) {
+    const qualified = completeQualified(dot.parts, prefix, metadata, aliases);
+    return result(statement.from + prefix.from, qualified);
   }
-  return namespace;
+
+  if (isRelationContext(masked, prefix.from)) {
+    return result(
+      statement.from + prefix.from,
+      relationCompletions(metadata, defaultSchema, prefix.text),
+    );
+  }
+
+  const bindings = aliasesFromCurrentStatement(aliases);
+  if (bindings.length > 0) {
+    return result(
+      statement.from + prefix.from,
+      columnCompletions(bindings, prefix.text, bindings.length > 1),
+    );
+  }
+
+  return result(
+    statement.from + prefix.from,
+    routineCompletions(metadata, defaultSchema, prefix.text),
+  );
 }
 
 export function buildSqlConfig(

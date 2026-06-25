@@ -1,6 +1,6 @@
 # Feature Matrix
 
-This is a seed matrix for roadmap planning. It captures capability goals in our own words and keeps implementation independent.
+This is a seed matrix for roadmap planning. It captures capability goals in our own words and keeps implementation independent. Backlog/status notes mirror `docs/implementation-backlog.md`; "landed" or "implemented" means the scoped backlog item says so, not that every related product workflow is complete.
 
 Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/polish, Later = defer.
 
@@ -11,11 +11,12 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Local API | Headless local data API: list sources, query, read tables, safe permissioned write | P2 | User requirement |
 | Quality | Automated tests: unit, ephemeral-DB integration, golden bindings, headless UI | P0 | User requirement |
 | Core DBs | SQLite, PostgreSQL | P0 | Minimum vertical slice |
-| Core DBs | MySQL/MariaDB, SQL Server | P1 | Modern client baseline |
+| Core DBs | MySQL/MariaDB, SQL Server | P1 | Backlog P1 daily-driver adapters; keep per-engine parity/status in SRC tickets |
 | Core DBs | Oracle Database | P1 | User requirement, A5:SQL, Beekeeper paid support |
-| Core DBs | YugabyteDB YSQL | P1 | User requirement, PostgreSQL-compatible distributed SQL |
-| Core DBs | CockroachDB, DuckDB, ClickHouse, BigQuery, Redshift, Firebird, Trino/Presto, Snowflake, TiDB, Databricks/Spark SQL | P2 | Current distributed SQL, warehouse, and analytics landscape |
-| Engines (implemented) | PostgreSQL, MySQL, MariaDB, CockroachDB verified against real Docker instances; YugabyteDB/Redshift/TimescaleDB/TiDB routed through the same wire drivers; SQLite | P0 | `apps/desktop/src-tauri/src/db.rs` + `tests/integration_db.rs` |
+| Core DBs | DuckDB | P1 | Backlog SRC-006; embedded analytics and lakehouse execution option |
+| Core DBs | YugabyteDB YSQL | P2 | Backlog SRC-005; PostgreSQL-compatible path first, distributed affordances later |
+| Core DBs | CockroachDB, ClickHouse, BigQuery, Redshift, Firebird, Trino/Presto, Snowflake, TiDB, Databricks/Spark SQL | P2 | Backlog SRC-007/SRC-011; current distributed SQL, warehouse, and analytics landscape |
+| Engines (landed/verified pieces) | PostgreSQL, MySQL, MariaDB, CockroachDB verified against real Docker instances; ClickHouse/BigQuery/Snowflake HTTP clients; MongoDB/Redis/Cassandra adapters; YugabyteDB/Redshift/TimescaleDB/TiDB routed through existing wire drivers; SQLite and DuckDB local paths | P0-P2 | Implementation-progress snapshot only; first-class UX, metadata, auth, and cross-platform contracts remain tracked by SRC tickets |
 | Source Families | InfluxDB and time-series sources | P2 | User requirement, InfluxDB 3 SQL/time-series workflows |
 | Source Families | Neo4j and graph sources | P2 | User requirement, Neo4j Browser graph workflow |
 | Source Families | MongoDB, Redis, Cassandra/ScyllaDB, Couchbase, DynamoDB, Elasticsearch/OpenSearch, ArangoDB, Memgraph | P2 | Modern non-relational client landscape |
@@ -32,6 +33,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Performance | GPU-aware rendering path with software fallback | P1 | WezTerm-style performance reference |
 | Performance | Compare Tauri WebView vs native Rust GUI/GPU surfaces | P0 | Avoid painting ourselves into a slow UI corner |
 | Baseline | Quickly beat Beekeeper Studio OSS daily-driver workflow | P0 | First competitive checkpoint |
+| Baseline | Track Snowsight-style generic database client parity gaps across desktop, local API, and future hosts | P1 | Cross-platform product requirements, not desktop-only widgets; statuses below follow backlog |
 | Editor | Run current statement, selection, all statements | P0 | TablePlus, Beekeeper, SQLTools |
 | Editor | Cancel running query | P0 | TablePlus-like core workflow |
 | Editor | Multiple result sets | P0 | TablePlus/Beekeeper baseline |
@@ -44,15 +46,16 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Editor | Serious Vim mode | P1 | User requirement |
 | Keybindings | Fully remappable shortcuts with scopes and conflict UI | P0 | User requirement |
 | Keybindings | Presets for TablePlus-like, VS Code-like, JetBrains-like, Vim-heavy | P1 | Power-user adoption |
-| Completion | Tables, columns, schemas, keywords | P0 | TablePlus docs |
+| Completion | Product-wired schema-aware autocomplete: tables, columns, schemas, keywords | P0 | CMPL-002A open; current user-facing status is keyword autocomplete only until shared schema wiring is tested |
 | Completion | Aliases, CTEs, subqueries, functions, procedures | P1 | A5:SQL signal, user requirement |
 | Completion | Dialect-aware ranking and insert behavior | P1 | Daily-driver quality |
 | Completion | Join suggestions, signatures, generated column lists | P1 | DataGrip-level baseline |
 | Completion | Offline deterministic completion without AI | P0 | User requirement |
 | Completion | Optional AI assistance | P1 | DataGrip, DBeaver, DbVisualizer, research watchlist; off by default |
+| Completion | Copilot-style inline autocomplete and patch suggestions | P1 | AI-004 open; optional/off by default; shared provider/context contract across desktop, MCP-compatible clients, and future hosts |
 | AI | Query Magics command layer | P1 | Beekeeper parity, power-user query workflow |
 | AI | AI Shell with local/OpenAI-compatible providers | P1 | Optional privacy-preserving assistance |
-| AI | MCP bridge for Copilot-compatible workflows | P2 | GitHub Copilot MCP docs |
+| AI | MCP bridge for Copilot-compatible workflows | P1 | AI-003; expose scoped schema/search/explain/query tools instead of desktop-only Copilot coupling |
 | Knowledge | Local SQLite source/fact store | P0 | Implementation and bug-fix memory |
 | Knowledge | Automated official-doc/release-note refresh | P1 | Keep DB dialect knowledge current |
 | Knowledge | Per-dialect feature extraction | P1 | Completion and compatibility planning |
@@ -62,8 +65,9 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Browser | Schemas, tables, views, columns, indexes | P0 | Baseline |
 | Browser | Functions, procedures, triggers, packages | P1 | Oracle/enterprise needs |
 | Results | Virtualized result grid, including wide columns and 1M-row benchmark | P0 | Performance requirement |
-| Results | Copy, CSV export, basic filtering/sorting | P0 | Baseline |
-| Results | Editable result rows with safe transaction flow | P1 | Current client baseline |
+| Results | Copy, CSV export, single-column sort | P0 | Baseline; advanced filter UI is not implemented |
+| Results | Advanced filters: multi-column typed predicates, ranges/value lists, saved filter state | P1 | EXEC-005A open; shared filter expression model for desktop, local API, and future hosts |
+| Results | Editable result rows with safe transaction flow | P1 | EXEC-007 partial/skeleton; complete inline editing still needs shared permission/capability contracts |
 | Results | Run-to-file for huge result sets | P1 | Large data workflow |
 | Export | CSV/TSV with header on/off and delimiter/quote control | P0 | User requirement |
 | Export | SQL INSERT/UPSERT script export (with/without schema) | P1 | User requirement |
@@ -73,7 +77,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Backup | Dialect-aware dump/restore flows | P2 | Current client baseline |
 | Connections | Datasource folders/groups and easy inline edit | P1 | User requirement |
 | Schema | Table designer for columns/indexes/constraints | P1 | Current client baseline |
-| Schema | Explain plan viewer | P1 | A5:SQL, enterprise workflow |
+| Schema | Explain plan and query profile viewer | P1 | CMPL-007 open; shared explain/profile model for desktop and future hosts |
 | Schema | Schema/data compare and migration script generation | P2 | DataGrip/DBeaver/DbVisualizer benchmark |
 | Schema | SQL project and DDL-file data source support | P2 | VS Code MSSQL/DataGrip benchmark |
 | Themes | Internal theme model | P0 | Consistent UI |
@@ -83,7 +87,9 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Extensibility | Driver/theme/plugin API | P1 | Long-term ecosystem |
 | Extensibility | Rust/Wasm extension path | P2 | High-performance add-ons |
 | Extensibility | Data-source adapter API for SQL, time-series, graph, document, KV, search, and warehouse sources | P1 | Avoid core-only support bottleneck |
-| Visualization | ERD image export, multi-schema ERD, layout-quality pass, graph views | P1 | Beekeeper parity and schema comprehension |
+| Visualization | Schema ERD baseline: SVG/PNG image export, multi-schema bands, search/filter, deterministic layout pass | P1 | Implemented baseline; Beekeeper parity and schema comprehension, with visual QA/benchmark coverage still open |
+| Visualization | Query-result graph views | P1 | ADV-004D open; graph-view spec must be serializable across desktop, local API, and future hosts |
+| Visualization | Charts, worksheet visualizations, and dashboards from query results | P1 | ADV-004E open; shared visualization model/API planned early, richer dashboard polish later |
 
 ## Reference Projects In Workspace
 

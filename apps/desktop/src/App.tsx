@@ -3,6 +3,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
   type UIEvent,
   useEffect,
   useMemo,
@@ -16,12 +17,16 @@ import {
   ChevronDown,
   Clock3,
   Columns3,
+  Copy,
   Database,
   Download,
+  ImageDown,
   KeyRound,
   Folder,
   Keyboard,
   Layers3,
+  ListFilter,
+  Maximize2,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -38,9 +43,19 @@ import {
   Table2,
   TerminalSquare,
   Upload,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { runQueryStream } from "./db-stream";
-import { hasDiagram, toMermaidErd } from "./erd";
+import {
+  buildErdModel,
+  hasDiagram,
+  layoutErdModel,
+  toMermaidErd,
+  type ErdLayout,
+  type ErdLayoutTable,
+} from "./erd";
 import { errorMessage } from "./errors";
 import {
   detectImportFileKind,
@@ -70,6 +85,18 @@ import {
   resultExportFormats,
   type ResultExportFormat,
 } from "./result-export";
+import {
+  activeResultFilters,
+  applyResultFilters,
+  applyResultSort,
+  cycleResultSortRules,
+  resultFilterNeedsValue,
+  resultFilterOperators,
+  type ResultFilterJoin,
+  type ResultFilterOperator,
+  type ResultFilterRule,
+  type ResultSortRule,
+} from "./result-grid";
 import {
   blankSchemaDraft,
   buildSchemaSql,
@@ -112,7 +139,13 @@ import {
   type SqlFormatterId,
 } from "./sql/formatter";
 import { selectedOrCurrentStatement } from "./sql/statements";
-import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
+import {
+  cssVariables,
+  darkTheme,
+  lightTheme,
+  type IrodoriTheme,
+  type ThemeKind,
+} from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import "./App.css";
@@ -213,6 +246,7 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "bigquery", label: "Google BigQuery" },
   { value: "redis", label: "Redis" },
   { value: "cassandra", label: "Cassandra/ScyllaDB" },
+  { value: "bigtable", label: "Google Cloud Bigtable" },
 ];
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
@@ -767,10 +801,348 @@ const INSPECTOR_WIDTH_MIN = 220;
 const INSPECTOR_WIDTH_MAX = 420;
 const RESULTS_HEIGHT_MIN = 150;
 const RESULTS_HEIGHT_MAX = 520;
+const ERD_EXPORT_MAX_CANVAS_SIDE = 16_384;
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function erdFileName(connectionId: string, extension: string) {
+  const safeConnectionId = sanitizeFileNamePart(connectionId, "connection");
+  const safeExtension =
+    sanitizeFileNamePart(extension, "dat").replace(/\./g, "").toLowerCase() || "dat";
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `irodori-erd-${safeConnectionId}-${timestamp}.${safeExtension}`;
+}
+
+function sanitizeFileNamePart(value: string, fallback: string) {
+  const sanitized = value
+    .trim()
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return sanitized || fallback;
+}
+
+function serializeSvgElement(svg: SVGSVGElement) {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("version", "1.1");
+  clone.querySelectorAll("style").forEach((style) => {
+    style.setAttribute("type", "text/css");
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(clone)}`;
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  const [metadata, data] = dataUrl.split(",", 2);
+  const mime = metadata.match(/^data:([^;,]+)/)?.[1] ?? "image/png";
+  const binary = window.atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    if (typeof canvas.toBlob === "function") {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Could not encode PNG"));
+        }
+      }, "image/png");
+      return;
+    }
+    try {
+      resolve(dataUrlToBlob(canvas.toDataURL("image/png")));
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function erdPngScale(width: number, height: number) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    throw new Error("ERD has invalid dimensions");
+  }
+  const maxSafeScale = Math.min(
+    ERD_EXPORT_MAX_CANVAS_SIDE / width,
+    ERD_EXPORT_MAX_CANVAS_SIDE / height,
+  );
+  if (maxSafeScale < 1) {
+    throw new Error("ERD is too large to export as PNG; export SVG instead");
+  }
+  const deviceScale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  return Math.min(deviceScale, maxSafeScale);
+}
+
+function svgMarkupToPngBlob(
+  svgMarkup: string,
+  width: number,
+  height: number,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const scale = erdPngScale(width, height);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(width * scale);
+        canvas.height = Math.ceil(height * scale);
+        const context = canvas.getContext("2d");
+        if (!context) {
+          throw new Error("Canvas is not available");
+        }
+        context.setTransform(scale, 0, 0, scale, 0, 0);
+        context.drawImage(image, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        void canvasToPngBlob(canvas).then(resolve, reject);
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        reject(error);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not render SVG"));
+    };
+    image.src = url;
+  });
+}
+
+function legacyCopyTextToClipboard(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.append(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    return document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
+}
+
+async function writeTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (error) {
+      if (legacyCopyTextToClipboard(text)) {
+        return;
+      }
+      throw error;
+    }
+  }
+  if (!legacyCopyTextToClipboard(text)) {
+    throw new Error("Text clipboard is not available in this environment");
+  }
+}
+
+async function writePngBlobToClipboard(blob: Blob) {
+  const clipboard = navigator.clipboard;
+  const ClipboardItemCtor = window.ClipboardItem;
+  if (
+    !clipboard ||
+    typeof clipboard.write !== "function" ||
+    typeof ClipboardItemCtor !== "function"
+  ) {
+    throw new Error("PNG clipboard is not available in this environment");
+  }
+  if (
+    typeof ClipboardItemCtor.supports === "function" &&
+    !ClipboardItemCtor.supports("image/png")
+  ) {
+    throw new Error("PNG clipboard is not supported in this environment");
+  }
+  const pngBlob = blob.type === "image/png" ? blob : new Blob([blob], { type: "image/png" });
+  await clipboard.write([new ClipboardItemCtor({ "image/png": pngBlob })]);
+}
+
+function erdSvgStyle(theme: IrodoriTheme) {
+  const { ui, syntax } = theme;
+  return `
+    .erd-bg { fill: ${ui.editorBg}; }
+    .erd-schema { fill: ${ui.surfaceMuted}; stroke: ${ui.border}; stroke-width: 1; }
+    .erd-schema-title { fill: ${ui.muted}; font: 700 13px Inter, ui-sans-serif, system-ui; }
+    .erd-table { fill: ${ui.surfaceRaised}; stroke: ${ui.borderStrong}; stroke-width: 1; }
+    .erd-table-header { fill: ${ui.gridHeader}; stroke: ${ui.border}; stroke-width: 1; }
+    .erd-table-title { fill: ${ui.text}; font: 700 12px SFMono-Regular, Consolas, monospace; }
+    .erd-column { fill: ${ui.text}; font: 11px SFMono-Regular, Consolas, monospace; }
+    .erd-column-type { fill: ${ui.muted}; font: 10px SFMono-Regular, Consolas, monospace; }
+    .erd-badge { fill: ${ui.selectedStrong}; stroke: ${ui.focus}; stroke-width: 1; }
+    .erd-badge-text { fill: ${ui.focus}; font: 700 9px Inter, ui-sans-serif, system-ui; }
+    .erd-edge { fill: none; stroke: ${ui.borderStrong}; stroke-width: 1.3; }
+    .erd-edge.cross { stroke: ${syntax.property}; stroke-dasharray: 5 4; }
+    .erd-svg marker path { fill: ${ui.borderStrong}; }
+    .erd-edge-label-bg { fill: ${ui.editorBg}; opacity: 0.92; }
+    .erd-edge-label { fill: ${ui.muted}; font: 10px SFMono-Regular, Consolas, monospace; }
+    .erd-muted { fill: ${ui.muted}; font: 10px SFMono-Regular, Consolas, monospace; }
+  `;
+}
+
+function truncateErdText(value: string, maxLength: number) {
+  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
+}
+
+function ErdSvg({
+  layout,
+  svgRef,
+  svgStyle,
+}: {
+  layout: ErdLayout;
+  svgRef: RefObject<SVGSVGElement | null>;
+  svgStyle: string;
+}) {
+  return (
+    <svg
+      ref={svgRef}
+      className="erd-svg"
+      xmlns="http://www.w3.org/2000/svg"
+      width={layout.width}
+      height={layout.height}
+      viewBox={`0 0 ${layout.width} ${layout.height}`}
+      role="img"
+      aria-label="Entity relationship diagram"
+    >
+      <style>{svgStyle}</style>
+      <defs>
+        <marker
+          id="erd-arrow-one"
+          markerHeight="8"
+          markerWidth="10"
+          orient="auto"
+          refX="8"
+          refY="4"
+          viewBox="0 0 10 8"
+        >
+          <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
+        </marker>
+      </defs>
+      <rect className="erd-bg" x="0" y="0" width={layout.width} height={layout.height} />
+      {layout.schemas.map((schema) => (
+        <g key={schema.name}>
+          <rect
+            className="erd-schema"
+            x={schema.x}
+            y={schema.y}
+            width={schema.width}
+            height={schema.height}
+            rx="7"
+          />
+          <text className="erd-schema-title" x={schema.x + 16} y={schema.y + 22}>
+            {schema.name}
+          </text>
+          <text
+            className="erd-muted"
+            x={schema.x + schema.width - 72}
+            y={schema.y + 22}
+          >
+            {schema.tableCount} tables
+          </text>
+        </g>
+      ))}
+      {layout.edges.map((edge) => (
+        <g key={edge.id}>
+          <path
+            className={`erd-edge${edge.crossSchema ? " cross" : ""}`}
+            d={edge.path}
+            markerEnd="url(#erd-arrow-one)"
+          />
+          <rect
+            className="erd-edge-label-bg"
+            x={edge.labelX - 42}
+            y={edge.labelY - 12}
+            width="84"
+            height="17"
+            rx="3"
+          />
+          <text className="erd-edge-label" x={edge.labelX} y={edge.labelY} textAnchor="middle">
+            {truncateErdText(edge.label, 16)}
+          </text>
+        </g>
+      ))}
+      {layout.tables.map((node) => (
+        <ErdTableNode key={node.table.id} node={node} />
+      ))}
+    </svg>
+  );
+}
+
+function ErdTableNode({ node }: { node: ErdLayoutTable }) {
+  return (
+    <g transform={`translate(${node.x} ${node.y})`}>
+      <title>{node.table.id}</title>
+      <rect className="erd-table" x="0" y="0" width={node.width} height={node.height} rx="5" />
+      <rect
+        className="erd-table-header"
+        x="0"
+        y="0"
+        width={node.width}
+        height="30"
+        rx="5"
+      />
+      <text className="erd-table-title" x="10" y="20">
+        {truncateErdText(node.table.label, 30)}
+      </text>
+      {node.table.columns.map((column, index) => {
+        const y = 49 + index * 20;
+        return (
+          <g key={`${column.name}-${index}`}>
+            {column.primaryKey ? <ErdBadge x={9} y={y - 13} label="PK" /> : null}
+            {column.foreignKey ? <ErdBadge x={column.primaryKey ? 37 : 9} y={y - 13} label="FK" /> : null}
+            <text className="erd-column" x={column.primaryKey || column.foreignKey ? 68 : 12} y={y}>
+              {truncateErdText(column.name, 22)}
+            </text>
+            <text className="erd-column-type" x={node.width - 10} y={y} textAnchor="end">
+              {truncateErdText(column.dataType, 18)}
+            </text>
+          </g>
+        );
+      })}
+      {node.table.hiddenColumnCount > 0 ? (
+        <text className="erd-muted" x="12" y={node.height - 8}>
+          + {node.table.hiddenColumnCount} more columns
+        </text>
+      ) : null}
+    </g>
+  );
+}
+
+function ErdBadge({ x, y, label }: { x: number; y: number; label: string }) {
+  return (
+    <g>
+      <rect className="erd-badge" x={x} y={y} width="22" height="13" rx="3" />
+      <text className="erd-badge-text" x={x + 11} y={y + 10} textAnchor="middle">
+        {label}
+      </text>
+    </g>
+  );
+}
 
 function App() {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
+  const diagramSvgRef = useRef<SVGSVGElement | null>(null);
+  const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const pendingGridScroll = useRef({ top: 0, left: 0 });
   const [gridScrollTop, setGridScrollTop] = useState(0);
@@ -859,10 +1231,12 @@ function App() {
   // Command palette (Ctrl/Cmd+Shift+P).
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
-  // ER diagram modal (rendered from metadata via Mermaid).
+  // ER diagram modal (rendered from metadata through our SVG layout).
   const [diagramOpen, setDiagramOpen] = useState(false);
-  const [diagramSvg, setDiagramSvg] = useState("");
   const [diagramError, setDiagramError] = useState<string | null>(null);
+  const [diagramSearch, setDiagramSearch] = useState("");
+  const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
+  const [diagramZoom, setDiagramZoom] = useState(1);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -870,7 +1244,7 @@ function App() {
   const [schemaDraft, setSchemaDraft] = useState<SchemaDesignerDraft>(
     blankSchemaDraft,
   );
-  const mermaidReady = useRef(false);
+  const diagramInitializedFor = useRef<string | null>(null);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
   const [queryParameterMemory, setQueryParameterMemory] = useState<QueryParameterMemory>(
     loadQueryParameterMemory,
@@ -977,6 +1351,32 @@ function App() {
         .slice(0, 10),
     [activeConnectionId, history],
   );
+  const availableDiagramSchemas = useMemo(
+    () =>
+      activeMetadata?.schemas
+        .filter((schema) => schema.objects.some((object) => object.kind === "table"))
+        .map((schema) => schema.name) ?? [],
+    [activeMetadata],
+  );
+  const diagramModel = useMemo(
+    () =>
+      activeMetadata
+        ? buildErdModel(activeMetadata, {
+            schemaNames: diagramSchemaNames,
+            search: diagramSearch,
+          })
+        : null,
+    [activeMetadata, diagramSchemaNames, diagramSearch],
+  );
+  const diagramLayout = useMemo<ErdLayout | null>(
+    () => (diagramModel ? layoutErdModel(diagramModel) : null),
+    [diagramModel],
+  );
+  const diagramSvgStyle = useMemo(() => erdSvgStyle(theme), [theme]);
+  const diagramMermaid = useMemo(
+    () => (activeMetadata ? toMermaidErd(activeMetadata) : ""),
+    [activeMetadata],
+  );
 
   useEffect(() => {
     if (
@@ -1009,7 +1409,7 @@ function App() {
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [result]);
 
   // Dialect for the editor: prefer the active connection's profile engine,
   // then the connection-form draft, then Postgres.
@@ -1058,7 +1458,7 @@ function App() {
     setGridScrollTop(0);
     setGridScrollLeft(0);
     setSelectedRowKey(null);
-  }, [activeResultIndex]);
+  }, [activeResultIndex, result]);
 
   const resultColumns = activeResult?.columns ?? [
     "id",
@@ -1706,49 +2106,31 @@ function App() {
     };
   }, []);
 
-  // Render the ER diagram with Mermaid whenever the modal opens (or the active
-  // connection's metadata changes while open).
+  // Initialize diagram filters per connection when the ERD modal opens.
   useEffect(() => {
     if (!diagramOpen) {
+      diagramInitializedFor.current = null;
       return;
     }
     if (!activeMetadata || !hasDiagram(activeMetadata)) {
-      setDiagramSvg("");
       setDiagramError("No tables to diagram yet — connect and load metadata first.");
       return;
     }
-    let cancelled = false;
     setDiagramError(null);
-    // Lazy-load Mermaid (it is large) only when the diagram is actually opened.
-    void (async () => {
-      try {
-        const mermaid = (await import("mermaid")).default;
-        if (!mermaidReady.current) {
-          mermaid.initialize({
-            startOnLoad: false,
-            theme: "neutral",
-            securityLevel: "loose",
-          });
-          mermaidReady.current = true;
-        }
-        const { svg } = await mermaid.render(
-          `erd-${Date.now()}`,
-          toMermaidErd(activeMetadata),
-        );
-        if (!cancelled) {
-          setDiagramSvg(svg);
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          setDiagramSvg("");
-          setDiagramError(errorMessage(error));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [diagramOpen, activeMetadata]);
+    const initKey = `${activeConnectionId}:${activeMetadata.schemas
+      .map((schema) => schema.name)
+      .join("|")}`;
+    if (diagramInitializedFor.current !== initKey) {
+      setDiagramSchemaNames(
+        activeMetadata.schemas
+          .filter((schema) => schema.objects.some((object) => object.kind === "table"))
+          .map((schema) => schema.name),
+      );
+      setDiagramSearch("");
+      setDiagramZoom(1);
+      diagramInitializedFor.current = initKey;
+    }
+  }, [activeConnectionId, activeMetadata, diagramOpen]);
 
   function resetKeybinding(commandId: string) {
     if (recordingCommand === commandId) {
@@ -1963,6 +2345,82 @@ function App() {
     link.remove();
     setExportMenuOpen(false);
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function currentDiagramSvgMarkup() {
+    const svg = diagramSvgRef.current;
+    if (!svg || !diagramLayout) {
+      throw new Error("No ERD is rendered");
+    }
+    return {
+      markup: serializeSvgElement(svg),
+      width: diagramLayout.width,
+      height: diagramLayout.height,
+    };
+  }
+
+  function downloadDiagramSvg() {
+    try {
+      const { markup } = currentDiagramSvgMarkup();
+      downloadBlob(
+        new Blob([markup], { type: "image/svg+xml;charset=utf-8" }),
+        erdFileName(activeConnectionId, "svg"),
+      );
+      setDiagramError(null);
+    } catch (error) {
+      setDiagramError(errorMessage(error));
+    }
+  }
+
+  async function downloadDiagramPng() {
+    try {
+      const { markup, width, height } = currentDiagramSvgMarkup();
+      const blob = await svgMarkupToPngBlob(markup, width, height);
+      downloadBlob(blob, erdFileName(activeConnectionId, "png"));
+      setDiagramError(null);
+    } catch (error) {
+      setDiagramError(errorMessage(error));
+    }
+  }
+
+  async function copyDiagramSvg() {
+    try {
+      const { markup } = currentDiagramSvgMarkup();
+      await writeTextToClipboard(markup);
+      setDiagramError(null);
+    } catch (error) {
+      setDiagramError(errorMessage(error));
+    }
+  }
+
+  async function copyDiagramPng() {
+    try {
+      const { markup, width, height } = currentDiagramSvgMarkup();
+      const blob = await svgMarkupToPngBlob(markup, width, height);
+      await writePngBlobToClipboard(blob);
+      setDiagramError(null);
+    } catch (error) {
+      setDiagramError(errorMessage(error));
+    }
+  }
+
+  function fitDiagramToViewport() {
+    if (!diagramLayout || !diagramCanvasRef.current) {
+      return;
+    }
+    const bounds = diagramCanvasRef.current.getBoundingClientRect();
+    const nextZoom = clampNumber(
+      Math.min(bounds.width / diagramLayout.width, bounds.height / diagramLayout.height),
+      0.25,
+      1.25,
+    );
+    setDiagramZoom(nextZoom);
+    window.requestAnimationFrame(() => {
+      if (diagramCanvasRef.current) {
+        diagramCanvasRef.current.scrollTop = 0;
+        diagramCanvasRef.current.scrollLeft = 0;
+      }
+    });
   }
 
   async function handleImportFile(file: File) {
@@ -3968,13 +4426,85 @@ function App() {
           >
             <div className="diagram-header">
               <strong>ER Diagram</strong>
-              <span>{activeConnection.name}</span>
+              <span>
+                {activeConnection.name}
+                {diagramModel
+                  ? ` · ${diagramModel.tables.length}/${diagramModel.totalTables} tables · ${diagramModel.edges.length} edges`
+                  : ""}
+              </span>
+              <button
+                className="text-button"
+                type="button"
+                title="Fit diagram"
+                onClick={fitDiagramToViewport}
+                disabled={!diagramLayout}
+              >
+                <Maximize2 size={13} />
+                <span>Fit</span>
+              </button>
+              <button
+                className="mini-button"
+                type="button"
+                title="Zoom out"
+                aria-label="Zoom out"
+                disabled={!diagramLayout}
+                onClick={() => setDiagramZoom((zoom) => clampNumber(zoom - 0.1, 0.25, 2))}
+              >
+                <ZoomOut size={13} />
+              </button>
+              <span className="diagram-zoom">{Math.round(diagramZoom * 100)}%</span>
+              <button
+                className="mini-button"
+                type="button"
+                title="Zoom in"
+                aria-label="Zoom in"
+                disabled={!diagramLayout}
+                onClick={() => setDiagramZoom((zoom) => clampNumber(zoom + 0.1, 0.25, 2))}
+              >
+                <ZoomIn size={13} />
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={copyDiagramSvg}
+                disabled={!diagramLayout}
+              >
+                <Copy size={13} />
+                <span>SVG</span>
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => void copyDiagramPng()}
+                disabled={!diagramLayout}
+              >
+                <Copy size={13} />
+                <span>PNG</span>
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={downloadDiagramSvg}
+                disabled={!diagramLayout}
+              >
+                <Download size={13} />
+                <span>SVG</span>
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => void downloadDiagramPng()}
+                disabled={!diagramLayout}
+              >
+                <ImageDown size={13} />
+                <span>PNG</span>
+              </button>
               <button
                 className="text-button"
                 type="button"
                 onClick={() => {
                   if (activeMetadata) {
-                    void navigator.clipboard?.writeText(toMermaidErd(activeMetadata));
+                    void navigator.clipboard?.writeText(diagramMermaid);
                   }
                 }}
                 disabled={!activeMetadata}
@@ -3989,15 +4519,89 @@ function App() {
                 Close
               </button>
             </div>
-            <div className="diagram-canvas">
+            <div className="diagram-controls">
+              <label className="diagram-search">
+                <Search size={14} />
+                <input
+                  value={diagramSearch}
+                  placeholder="Filter schemas, tables, columns"
+                  onChange={(event) => setDiagramSearch(event.currentTarget.value)}
+                />
+              </label>
+              <div className="diagram-schema-actions">
+                <button
+                  className="mini-button"
+                  type="button"
+                  onClick={() => setDiagramSchemaNames(availableDiagramSchemas)}
+                >
+                  All
+                </button>
+                <button
+                  className="mini-button"
+                  type="button"
+                  onClick={() => setDiagramSchemaNames([])}
+                >
+                  None
+                </button>
+              </div>
+              <div className="diagram-schema-list" role="group" aria-label="Schemas">
+                {availableDiagramSchemas.map((schema) => {
+                  const active = diagramSchemaNames.includes(schema);
+                  return (
+                    <button
+                      key={schema}
+                      className={active ? "schema-chip active" : "schema-chip"}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setDiagramSchemaNames((current) =>
+                          current.includes(schema)
+                            ? current.filter((item) => item !== schema)
+                            : [...current, schema],
+                        )
+                      }
+                    >
+                      {schema}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="diagram-canvas" ref={diagramCanvasRef}>
               {diagramError ? (
                 <div className="result-error" role="alert">
                   <AlertTriangle size={16} />
                   <span>{diagramError}</span>
                 </div>
+              ) : null}
+              {!diagramError && (!diagramLayout || diagramLayout.tables.length === 0) ? (
+                <div className="grid-state">No tables match the current diagram filters</div>
+              ) : null}
+              {!diagramError && diagramLayout && diagramLayout.tables.length > 0 ? (
+                <div
+                  className="diagram-stage"
+                  style={{
+                    width: diagramLayout.width * diagramZoom,
+                    height: diagramLayout.height * diagramZoom,
+                  }}
+                >
+                  <div
+                    className="diagram-scale"
+                    style={{
+                      transform: `scale(${diagramZoom})`,
+                      width: diagramLayout.width,
+                      height: diagramLayout.height,
+                    }}
+                  >
+                    <ErdSvg
+                      layout={diagramLayout}
+                      svgRef={diagramSvgRef}
+                      svgStyle={diagramSvgStyle}
+                    />
+                  </div>
+                </div>
               ) : (
-                // Mermaid output is generated from our own metadata.
-                <div dangerouslySetInnerHTML={{ __html: diagramSvg }} />
+                null
               )}
             </div>
           </div>

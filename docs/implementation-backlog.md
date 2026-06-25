@@ -330,11 +330,19 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-004A
 - **Size:** M · **Priority:** P0
 
-### EXEC-005 — Copy + client-side sort/filter (current page)
+### EXEC-005 — Copy + client-side single-column sort (current page)
 - **Goal:** Basic in-grid data handling.
-- **Done when:** copy cell/row/selection works; client-side sort and filter apply to the current page; safe read-only defaults.
+- **Done when:** copy cell/row/selection works; single-column client-side sort applies to the current page; safe read-only defaults.
+- **Status:** Partial. Column-header single-column sort is wired in the desktop grid; advanced filters are tracked separately and are not implemented.
 - **Depends on:** EXEC-004
 - **Size:** M · **Priority:** P0
+
+### EXEC-005A — Advanced result filters
+- **Goal:** Snowsight-style result exploration without forcing users to rewrite SQL for every slice.
+- **Done when:** users can build multi-column filters with typed predicates, ranges, value lists, null/empty checks, search, and saved filter state; generated server-side/filter-plan SQL is previewable where it incurs database work; the same filter expression model is usable by desktop, local API, and future hosts.
+- **Status:** Open. Current product behavior should be described as single-column sort only, not advanced filtering.
+- **Depends on:** EXEC-005, API-002
+- **Size:** M · **Priority:** P1
 
 ### EXEC-006 — Query parameters
 - **Goal:** Parameterized execution.
@@ -342,14 +350,15 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P1
 
-### EXEC-007 — Editable result rows with safe transaction flow 🚧 (backend done)
+### EXEC-007 — Editable result rows with safe transaction flow 🚧 (partial desktop skeleton)
 - **Goal:** Edit data with an explicit commit path.
 - **Done when:** edits stage as a reviewable change set, generate parameterized DML, and commit/rollback in a transaction; primary-key-less tables are handled safely.
 - **Done (backend, staged/non-immediate model):** `db/edit.rs` turns a `TableEdits` batch (updates/inserts/deletes, each a `CellValue` set keyed by the row's key columns) into parameterized statements with **per-dialect identifier quoting** (`"x"` / `` `x` `` / `[x]`) and placeholder style (`$n` for pg, `?` otherwise); a `NULL` key becomes `IS NULL`; empty-table / keyless-update / keyless-delete are rejected (no accidental full-table writes). `db_apply_edits` commits the batch in one transaction per the `Connection::apply_edits` trait method (sqlx engines override; others refuse). Verified by `edit.rs` generation unit tests **and an end-to-end in-memory SQLite test** (`apply_edits_commits_update_insert_delete`). Types + command flow through typebridge (`TableEdits`/`AppliedEdits`/`dbApplyEdits`, drift-check green).
 - **Done (desktop editable grid, staged model):** an "Edit Data" mode adds a staged change set on top of the result grid — double-click a cell to edit (changed cells/rows highlighted), "+ Row" to stage inserts, **column-header click to sort** (asc/desc/none, client-side), and **paste** TSV/CSV from the clipboard into cells (spilling across columns and into new rows). "Commit (N)" infers the target table from the last query's `from <table>` and key columns from the table's unique index (else all result columns), builds a `TableEdits` batch, and calls `dbApplyEdits`; "Discard" drops the staged changes. Edits reset on each new run; the change set survives sorting (display rows key back to their origin). Sorting/editing compose with row virtualization. Frontend type-checks and the production bundle builds.
 - **Done (PK detection):** metadata now carries the real primary key (`DbObjectMetadata.primary_key`) — SQLite via `pragma table_xinfo.pk`, Postgres/MySQL via `pg_constraint`/`information_schema`; the editable grid keys updates/deletes on the PK (then a unique index, then all columns). Verified by a SQLite metadata unit test.
 - **Done (row delete):** Edit Data mode shows a per-row delete gutter; deleting an original row stages a `RowDelete` (keyed on the PK), deleting a staged new row drops it. Deletes count toward the pending total and commit in the same transaction.
-- **Remaining:** precise value binding for pg/mysql precision-typed columns / typed `NULL` (needs column-type metadata threaded through).
+- **Parity status:** Partial/skeleton. The desktop flow proves the staged-edit shape, but it is not yet a complete cross-platform inline editing feature.
+- **Remaining:** precise value binding for pg/mysql precision-typed columns / typed `NULL` (needs column-type metadata threaded through); shared edit capability/permission contracts for desktop, local API, and future hosts; conflict detection/refresh handling; richer validation and preview before commit.
 - **Depends on:** EXEC-005
 - **Size:** L · **Priority:** P1
 
@@ -530,6 +539,8 @@ top to bottom within an epic unless a dependency says otherwise.
 
 ## CMPL — Completion + Metadata Intelligence
 
+**Cross-platform parity status (2026-06-25):** user-facing autocomplete should be treated as keyword-only until schema/table/column suggestions are wired and tested through a shared completion contract across desktop, the local API, and any future host. Core metadata/completion library pieces can be reused, but they do not close the Snowsight-style schema-aware autocomplete gap by themselves.
+
 ### CMPL-001 — Metadata cache with invalidation
 - **Goal:** Fast, permissions-aware introspection.
 - **Done when:** schema/object metadata caches with background refresh and invalidation; respects permissions; shared by completion and hover.
@@ -537,12 +548,20 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P0
 
-### CMPL-002 — Baseline completion (tables, columns, schemas, keywords)
+### CMPL-002 — Baseline completion engine (tables, columns, schemas, keywords) 🚧 (core landed; product wiring open)
 - **Goal:** Deterministic offline completion.
 - **Done when:** completion suggests tables, columns, schemas, and keywords with no AI; ranking is sensible; works offline.
-- **Landed:** `CompletionEngine` produces permission-aware schema/table/view/column/keyword items from `MetadataCache`, with deterministic ranking, prefix filtering, limits, and keyword casing. Dialect keyword seeding can use `irodori-sql` dialect metadata.
+- **Landed (core):** `CompletionEngine` produces permission-aware schema/table/view/column/keyword items from `MetadataCache`, with deterministic ranking, prefix filtering, limits, and keyword casing. Dialect keyword seeding can use `irodori-sql` dialect metadata.
+- **Remaining product work:** wire schema/table/column suggestions into the editor and any headless/future host completion endpoint; add fixtures that prove the current user-facing experience goes beyond keyword completion.
 - **Depends on:** CMPL-001, EDIT-002
 - **Size:** L · **Priority:** P0
+
+### CMPL-002A — Cross-platform schema-aware autocomplete
+- **Goal:** Close the Snowsight/TablePlus parity gap without making completion desktop-only.
+- **Done when:** the desktop editor and shared completion service suggest schemas, tables, columns, and qualified `table.column` paths from live metadata; behavior is tested for SQLite/PostgreSQL/MySQL at minimum; the same request/response model can be reused by the local API and future web/native hosts.
+- **Status:** Open. Current product behavior should be documented as keyword autocomplete only until this wiring is verified.
+- **Depends on:** CMPL-001, CMPL-002, EDIT-002, API-001
+- **Size:** M · **Priority:** P0
 
 ### CMPL-003 — Context-aware completion (aliases, CTEs, subqueries)
 - **Goal:** Understand query structure.
@@ -571,9 +590,10 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** CMPL-002, KNOW-004
 - **Size:** M · **Priority:** P1
 
-### CMPL-007 — Explain/analyze entry points + plan view
-- **Goal:** Plan-aware help.
-- **Done when:** explain/analyze commands run and render a readable plan; plan-based hints surface where available.
+### CMPL-007 — Explain/analyze entry points + query profile view
+- **Goal:** Plan-aware help and Snowsight-style query-profile inspection.
+- **Done when:** explain/analyze commands run where supported; query history can open a readable profile with operator tree/timeline/cost or engine-native details; profile data is exposed through shared contracts so desktop and future hosts render the same model.
+- **Status:** Open; no explain/query-profile UI is implemented.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P1
 
@@ -791,21 +811,28 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Goal:** Pluggable, optional AI.
 - **Done when:** `irodori-ai` defines a provider trait; local model and OpenAI-compatible providers stub in; AI is off by default and never required by the editor.
 - **Depends on:** CMPL-002
-- **Size:** M · **Priority:** P2
+- **Size:** M · **Priority:** P1
 
 ### AI-002 — Audit log + redaction for AI payloads
 - **Goal:** Privacy-safe AI.
 - **Done when:** query text, schema, and result samples are separately permissioned; every AI call is audited; redaction applies before send; verified by a test.
 - **Depends on:** AI-001, NET-006
-- **Size:** M · **Priority:** P2
+- **Size:** M · **Priority:** P1
 
 ### AI-003 — MCP bridge (Copilot-compatible)
 - **Goal:** Expose safe tools instead of embedding Copilot.
-- **Done when:** an MCP server exposes read-only schema/search/explain/query tools with scopes; a Copilot-compatible client can call them.
+- **Done when:** an MCP server exposes read-only schema/search/explain/query tools with scopes; a Copilot-compatible client can call them; the same schema/search payloads are reusable by desktop inline completion and future hosts instead of duplicating provider-specific logic.
 - **Depends on:** AI-002
-- **Size:** L · **Priority:** P2
+- **Size:** L · **Priority:** P1
 
-### AI-004 — Query Magics command layer
+### AI-004 — Copilot-style inline autocomplete and patch suggestions
+- **Goal:** Close the Snowsight/Cortex Code-style inline assistance gap without making AI mandatory.
+- **Done when:** the editor can request opt-in inline SQL suggestions or patch-style edits from local/OpenAI-compatible providers using selected SQL, cursor context, and separately permissioned schema metadata; suggestions are previewed as text/diffs and never execute automatically; the provider/context contract is shared across desktop, MCP/Copilot-compatible clients, and future hosts.
+- **Status:** Open; no Copilot-style autocomplete or inline patch UI is implemented.
+- **Depends on:** AI-001, AI-002, AI-003, CMPL-002A
+- **Size:** L · **Priority:** P1
+
+### AI-005 — Query Magics command layer
 - **Goal:** Add Beekeeper-style command shortcuts without making SQL execution ambiguous.
 - **Done when:** the editor recognizes explicit magic commands before execution, shows a preview of the expanded SQL/action, and supports at least schema inspect, explain, export, ERD open, result-to-file, and parameter prompt flows; normal SQL with similar text is never intercepted.
 - **Syntax:** line-leading commands only (`\\describe table`, `\\explain`, `\\export csv`, `\\erd schema.table`, `\\params`) plus a command-palette equivalent for every magic.
@@ -814,7 +841,7 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** EXEC-006, IO-001, ADV-004A
 - **Size:** M · **Priority:** P1
 
-### AI-005 — AI Shell
+### AI-006 — AI Shell
 - **Goal:** Optional, privacy-controlled assistant for query drafting, explanation, and repair.
 - **Done when:** a dockable shell can answer with context from selected SQL, active schema metadata, query errors, and opt-in result samples; it can propose SQL patches but cannot run them without putting SQL in the editor first; local/OpenAI-compatible providers work behind the same provider interface.
 - **Safety:** off by default; workspace policy controls provider, schema sharing, SQL text sharing, and result sample sharing; every payload is visible in an audit panel and redacted before send.
@@ -842,32 +869,49 @@ top to bottom within an epic unless a dependency says otherwise.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P2
 
-### ADV-004 — ERD + graph views 🚧 (schema ERD done)
+### ADV-004 — ERD + graph views 🚧 (schema ERD/export/layout implemented; graph views open)
 - **Done when:** ERD renders from schema and query-result graph views render; explicitly after core editor/query/browser are excellent.
-- **Done (schema ERD via Mermaid):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders an `erDiagram` from the active connection's metadata — base tables with their columns, `PK`/`FK` markers, and many-to-one FK edges. `src/erd.ts` is the pure metadata→Mermaid generator (sanitized identifiers, only edges whose target table is present, so the graph stays clean); the modal can copy the Mermaid source. Mermaid is dynamically imported so it stays out of the main bundle (~240 kB) in its own ~610 kB chunk loaded on first open. Needs the new FK/PK metadata (below).
-- **Remaining:** image export, multi-schema representation, layout-quality pass, query-result graph views, and FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done).
+- **Done (schema ERD SVG renderer):** the object browser's diagram button (or `Mod+Shift+D` / "Show ER diagram" in the palette) renders a deterministic SVG ERD from the active connection's metadata. `src/erd.ts` builds the pure metadata->model->layout path and still generates copyable Mermaid source for interoperability. The modal groups tables into schema bands, disambiguates duplicate table names with `schema.table`, resolves cross-schema FKs, and provides schema chips, schema/table/column search, zoom/fit controls, SVG/PNG downloads, SVG text copy, and PNG clipboard copy where the platform supports it.
+- **Remaining:** query-result graph views; FK metadata for SQL Server/Oracle (SQLite/Postgres/MySQL done); visual regression screenshots, PNG pixel/non-empty export smoke, edge-overlap/label-visibility smoke, and a recorded/manual large-schema benchmark.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P1
 
-### ADV-004A — ERD image export
+### ADV-004A — ERD image export ✅
 - **Goal:** Make diagrams shareable outside the app.
 - **Done when:** the ERD modal exports SVG and PNG from the currently rendered diagram; exported files include the current theme, schema/table labels, PK/FK markers, and viewport-independent dimensions; copy-to-clipboard supports SVG text and PNG image where the platform allows.
-- **Test plan:** pure SVG serialization test, Playwright export smoke, and pixel/non-empty checks for PNG output.
+- **Done:** the ERD modal serializes the rendered SVG with embedded theme styles, downloads SVG, renders PNG through canvas for download, copies SVG text, and copies PNG through the ClipboardItem path where the WebView/browser supports it.
+- **Remaining QA:** focused SVG serialization unit coverage, Playwright export smoke, and pixel/non-empty checks for PNG output.
 - **Depends on:** ADV-004
 - **Size:** S · **Priority:** P1
 
-### ADV-004B — Multi-schema ERD representation
+### ADV-004B — Multi-schema ERD representation ✅
 - **Goal:** Make cross-schema databases readable instead of turning every schema into one flat graph.
 - **Done when:** diagrams can group tables by schema using visible bands/clusters; same-table-name collisions are disambiguated; cross-schema FK edges remain legible; users can filter schemas/tables before rendering; the Mermaid/source export preserves schema qualification.
-- **Test plan:** metadata fixtures with duplicate table names, cross-schema FKs, missing target schemas, and large schema counts.
+- **Done:** schema bands/clusters are generated by the SVG layout; same-name tables are labelled with schema qualification; cross-schema edges are dashed; schema chips and text search filter the diagram before layout; Mermaid export uses schema-qualified safe IDs. Unit coverage exercises duplicate names, cross-schema FKs, schema/search filtering, missing FK targets, and Mermaid qualification.
+- **Remaining QA:** screenshot/visual checks for many-schema databases and dense cross-schema edge sets.
 - **Depends on:** BROWSE-001, ADV-004
 - **Size:** M · **Priority:** P1
 
-### ADV-004C — ERD layout quality pass
+### ADV-004C — ERD layout quality pass ✅
 - **Goal:** Make ERD useful on real schemas, not just demos.
-- **Done when:** a 100-table / 250-edge fixture renders with bounded overlap, readable labels, zoom/pan/fit controls, schema/table search, and stable relayout after filtering; the layout strategy is documented (Mermaid ELK if sufficient, otherwise a custom layout path behind the same metadata model).
-- **Test plan:** visual regression screenshots for small, medium, and wide schemas; edge-overlap/label-visibility smoke checks; manual benchmark against the 100-table seed.
+- **Done when:** a large-schema fixture renders with bounded table overlap, readable labels, zoom/pan/fit controls, schema/table search, and stable relayout after filtering; the layout strategy is documented behind the metadata model.
+- **Done:** the layout strategy moved from Mermaid-rendered output to deterministic schema-stacked SVG cards. Unit tests cover duplicate names, cross-schema FKs, filtering, Mermaid qualification, and a 100-table fixture with table-overlap assertions. The modal has zoom in/out, fit, scroll-based pan, schema filters, and search.
+- **Remaining QA:** visual regression screenshots for small, medium, and wide schemas; edge-overlap/label-visibility smoke checks; and a recorded/manual benchmark against a 100-table / 250-edge seed. Current automated coverage proves 100-table table placement and 99 FK edges, not the full dense-edge visual target.
 - **Depends on:** ADV-004B
+- **Size:** L · **Priority:** P1
+
+### ADV-004D — Query-result graph views
+- **Goal:** Visualize graph-shaped query results without requiring a separate graph workspace first.
+- **Done when:** query results with node/edge-like columns can render as an interactive graph; mappings are explicit and saveable; the graph-view spec is serializable so desktop, local API, and future hosts render the same definition.
+- **Status:** Open. The schema ERD baseline does not close query-result graph visualization.
+- **Depends on:** EXEC-002, ADV-004
+- **Size:** L · **Priority:** P1
+
+### ADV-004E — Charts, worksheet visualizations, and dashboards
+- **Goal:** Cover Snowsight-style visual analysis from query results across platforms.
+- **Done when:** result sets can become charts with explicit x/y/series/type mappings; dashboards can save multiple visual tiles against queries; the visualization spec is serializable so desktop, local API, and future hosts render the same definition; exports include image and data paths.
+- **Status:** Open. No charts, dashboards, or worksheet-style visualizations are implemented; the shared visualization model/API is P1 and must be cross-platform even if richer dashboard polish lands later.
+- **Depends on:** EXEC-002, EXEC-005A, API-002, EXT-004, IO-001
 - **Size:** L · **Priority:** P1
 
 ### ADV-005 — Plugin API for drivers/themes/formatters/visualizers + registry

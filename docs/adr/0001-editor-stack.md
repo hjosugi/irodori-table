@@ -1,11 +1,17 @@
 # ADR 0001 — SQL Editor Stack (engine · highlighting · formatter)
 
-- **Status:** Proposed by Claude, 2026-06-22 JST — pending Codex review (see `docs/agent-coordination.md`).
+- **Status:** Accepted implementation direction; last reconciled 2026-06-25 JST.
 - **Backlog:** decides **EDIT-001**; gates **EDIT-002** (highlighting) and **EDIT-008** (formatter). Related: THEME-001, EDIT-005 (Vim), EDIT-007 (SQL-aware selection), completion-and-ai-strategy.md.
+- **Current implementation snapshot:** CM6 editor exists; keyword/basic completion exists; `sql-formatter` is wired. Schema-aware completion is still open until metadata-backed suggestions are product-wired and tested through a shared completion contract.
 
 ## Context
 
-The query editor today is a plain `<textarea>` in `apps/desktop/src/App.tsx` with hand-rolled SQL helpers (`statementDelimiters`, `dollarTagAt`, `compactSql`). We need — quickly and to production quality — dialect-aware **syntax highlighting** and a **SQL formatter**, on a path that also supports deterministic completion, Vim, multi-cursor, and large-file performance.
+At the time this ADR was opened, the query editor was a plain `<textarea>` in
+`apps/desktop/src/App.tsx` with hand-rolled SQL helpers (`statementDelimiters`,
+`dollarTagAt`, `compactSql`). The first CM6 implementation now exists. The
+remaining goal is production-quality dialect-aware **syntax highlighting** and a
+**SQL formatter**, on a path that also supports deterministic completion, Vim,
+multi-cursor, and large-file performance.
 
 Constraints from existing docs:
 
@@ -61,7 +67,7 @@ Net: CM6 is the fastest route to a production-quality editor now, and the semant
 
 ## Consequences / risks
 
-- New frontend deps: CM6 packages, `web-tree-sitter` + per-dialect grammar `.wasm`, `sql-formatter`. Benchmark bundle size and large-file responsiveness (EDIT-001 done-when).
+- Frontend deps: CM6 packages and `sql-formatter` are part of the current editor path; `web-tree-sitter` + per-dialect grammar `.wasm` remain pending for the semantic layer. Benchmark bundle size and large-file responsiveness (EDIT-001 done-when).
 - **THEME-001 is the real prerequisite** for EDIT-002: map Lezer highlight tags (and, later, tree-sitter captures) into one normalized theme model — do **not** assume TextMate-only scopes.
 - Verify each per-dialect tree-sitter grammar's license individually before bundling (keep the core `MIT OR 0BSD`-clean).
 
@@ -78,6 +84,6 @@ Net: CM6 is the fastest route to a production-quality editor now, and the semant
 3. ⏳ **Partial** — Vim mode smoke is covered in browser Playwright (`@replit/codemirror-vim` toggle + CM Vim panel). Remaining: large-file responsiveness (5–20k lines) and a focused Vim behavior suite for motions/operators/registers; full Tauri runtime smoke still needs a Tauri runner.
 4. ⏳ **Pending** — `web-tree-sitter` + one grammar (Postgres) as a non-painting outline/selection spike to de-risk the semantic layer.
 
-5. ✅ **Done (bonus)** — schema-aware completion: the active connection's introspection `DatabaseMetadata` is converted to a CM6 `SQLNamespace` and fed to `sql({ schema, defaultSchema })`, so tables and `table.`→columns complete (qualified and, for the default schema, unqualified). Improves automatically as Codex enriches per-engine metadata. This is the deterministic-first completion baseline (completion-and-ai-strategy.md); tree-sitter scope resolution layers on later.
+5. ⏳ **Open / revalidate** — schema-aware completion: product status should be treated as keyword/basic autocomplete only until active `DatabaseMetadata` produces user-facing schema/table/column suggestions through a tested shared completion contract. That contract should feed CM6 now and future hosts later; tree-sitter scope resolution layers on after the schema/table/column baseline is proven.
 
 > Bundle note: CM6 adds ~ to the client bundle (961 kB raw / 293 kB gzip total with React + lucide). Acceptable for a desktop shell; revisit code-splitting if it grows.

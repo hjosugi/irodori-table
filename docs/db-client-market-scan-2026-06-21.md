@@ -42,6 +42,17 @@ Sources:
 - https://www.dbvis.com/features/
 - https://www.dbvis.com/features/sql-editor/
 
+### Snowsight / Snowflake Workspaces
+
+Use Snowsight and Workspaces as the cloud-warehouse analysis benchmark, not as a claim that Irodori matches Snowflake feature-for-feature. Strong reference signals: workspace-based SQL editing, interactive result statistics and filters, query profile inspection, dashboards/charts from query results, and Snowflake Copilot inline assistance. Irodori gaps to track across platforms: user-facing schema/table/column autocomplete is not product-wired beyond keyword completion, optional Copilot-style inline suggestions are not implemented, charts/dashboards are Phase 6/open, explain/query profile is open P1 work, inline result editing is partial/skeleton, and advanced filters are not implemented beyond current single-column sort.
+
+Sources:
+
+- https://docs.snowflake.com/en/user-guide/ui-snowsight/workspaces-working
+- https://docs.snowflake.com/en/user-guide/ui-snowsight-dashboards
+- https://docs.snowflake.com/en/user-guide/ui-snowsight-activity
+- https://docs.snowflake.com/en/user-guide/snowflake-copilot-inline
+
 ### VS Code MSSQL Extension
 
 Azure Data Studio is retired as of 2026-02-28, and Microsoft points users to VS Code with the MSSQL extension. This makes VS Code-style workflows important: source control, CI/CD, schema compare/designer, query execution, database projects, notebooks, and GitHub Copilot integration.
@@ -111,7 +122,7 @@ Sources:
 - Support Windows, macOS, and Linux with the same core behavior.
 - Provide a compact workbench: connection list, object browser, editor, result grid, history, and command palette.
 - Offer excellent keyboard control, remappable keymaps, and real Vim mode.
-- Provide deterministic schema-aware completion before any AI feature exists.
+- Provide deterministic schema-aware completion before any AI feature exists; current user-facing status remains keyword autocomplete only until schema/table/column suggestions are wired and tested through the shared completion contract.
 - Browse and edit data safely, with transactions, generated DML, row diff, copy/export, and undo/preview where possible.
 - Handle query execution well: current statement, selection, whole script, cancellation, multiple result sets, parameters, history, saved scripts, and run configurations.
 - Support introspection beyond tables: schemas, views, indexes, constraints, functions, procedures, triggers, packages, sequences, materialized views, and dialect-specific objects.
@@ -129,4 +140,4 @@ Sources:
 - Treat YugabyteDB, InfluxDB, and Neo4j as required architecture inputs, not late plugins glued onto a SQL-only core.
 - Support nested proxy chains as a core model.
 - Make the extension SDK simple enough that drivers, result renderers, themes, AI providers, and proxy transports are easy to build.
-- Make AI optional and private by default; deterministic completion must remain excellent offline.
+- Make AI optional and private by default; deterministic completion must remain excellent offline. Query Magics and AI Shell are open work, not shipped differentiators: Query Magics should be deterministic local commands, while AI Shell should only propose text or use explicitly scoped read-only tools.

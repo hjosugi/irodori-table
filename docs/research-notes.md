@@ -22,6 +22,7 @@ Last checked: 2026-06-21 JST.
 - Zequel (`zequel-labs/zequel`, **Elastic License 2.0** — source-available, behavior-only) is an Electron/Vue desktop client across PostgreSQL/MySQL/MariaDB/SQLite/DuckDB/MongoDB/Redis/ClickHouse/SQL Server; reference for a Monaco editor, a virtual-scrolled grid with in-cell editing and bulk ops, ER diagrams, CSV/JSON/SQL/Excel import-export, SSH tunneling, and OS credential storage: https://github.com/zequel-labs/zequel
 - Apache Iceberg is the priority lakehouse target; model catalogs (Hive Metastore, AWS Glue, REST, JDBC) and AWS S3 Tables in the adapter, not as ad-hoc forms: https://iceberg.apache.org/spec/
 - Snowflake needs full auth coverage (password, key-pair/JWT, OAuth, external browser/SSO, MFA, programmatic access tokens), modeled in the connection profile: https://docs.snowflake.com/en/user-guide/key-pair-auth
+- Snowsight/Workspaces should be tracked as a cross-platform analysis UX benchmark, not a one-for-one parity claim: interactive result filters/statistics, query profile, dashboards/charts, and Snowflake Copilot inline assistance are useful reference points. Current Irodori gaps are user-facing schema/table/column autocomplete beyond keywords, optional Copilot-style inline suggestions, charts/dashboards, explain/query profile, full inline editing, and advanced filters: https://docs.snowflake.com/en/user-guide/ui-snowsight/workspaces-working and https://docs.snowflake.com/en/user-guide/snowflake-copilot-inline
 
 ## Platform And Editor References
 
@@ -36,7 +37,7 @@ Last checked: 2026-06-21 JST.
 - Internationalization should use an ICU MessageFormat / Project Fluent style catalog shared by Rust and the web UI, with ja/en as the first locales: https://projectfluent.org/
 - Local data API patterns to study before building `irodori-server`: PostgREST (declarative REST over Postgres) and DuckDB's httpserver extension: https://postgrest.org/ and https://duckdb.org/community_extensions/extensions/httpserver.html
 - Oracle thin-driver path (no Instant Client), the client-free route A5 uses: `oracle-rs` is a pure-Rust Oracle TNS driver (MIT/Apache-2.0, Tokio, TLS/Wallet) but early-stage (v0.1; many enterprise features still planned). JDBC Thin and python-oracledb/node-oracledb thin modes are the mature precedents. Irodori should inherit/harden `oracle-rs` rather than require the Instant Client: https://github.com/stiang/oracle-rs
-- GitHub Copilot can be extended with MCP in supported environments, so Irodori should expose safe MCP tools before trying any direct Copilot embedding: https://docs.github.com/en/copilot/concepts/context/mcp
+- GitHub Copilot can be extended with MCP in supported environments, so Irodori should expose privacy-safe, scoped MCP tools before trying any direct Copilot embedding. The tool contracts should be reusable by desktop, the local API, and future hosts, and should separately gate selected SQL, schema metadata, history, execution plans, and result samples: https://docs.github.com/en/copilot/concepts/context/mcp
 - `ts-rs` generates TypeScript declarations from Rust types and supports Serde compatibility, making it a strong MVP candidate for desktop command payloads: https://github.com/Aleph-Alpha/ts-rs
 - `specta` exports Rust types to other languages and has TypeScript, JSON Schema, Zod, and Tauri-adjacent ecosystem pieces, making it a strong candidate if command metadata and validators become central: https://github.com/specta-rs/specta
 - `typeshare` is useful as a CLI-oriented multi-language type sharing reference: https://github.com/1Password/typeshare
@@ -53,8 +54,11 @@ Last checked: 2026-06-21 JST.
 ## Design Implications
 
 - Completion should be split into deterministic local intelligence first, optional AI second.
+- Snowsight-style parity gaps are product-wide contracts, not desktop-only screens: schema-aware completion, optional Copilot-style inline help, explain/query profile, advanced filters, inline editing, and dashboards must be shared across desktop, local API, and future hosts.
 - The metadata cache should model relationships, aliases, recent query context, CTEs, subqueries, functions/procedures, and dialect-specific object kinds.
-- Deterministic completion is a P0 product requirement. AI completion is a P2 provider layer and must be optional, auditable, redacted, and permission-scoped.
+- Deterministic schema-aware completion is a P0 product requirement, but the current user-facing product should still be treated as keyword autocomplete only until schema/table/column suggestions are wired and tested through the shared completion contract.
+- Copilot-style inline autocomplete is a P1 parity gap, while broader AI assistance can remain later; every AI path must be optional, auditable, redacted, and permission-scoped.
+- Query Magics and AI Shell are open work. Query Magics should stay deterministic/local command expansions, while AI Shell should remain an opt-in assistant that proposes text or calls explicitly scoped read-only tools.
 - Theme import should treat VS Code compatibility as an adapter, not as the internal source of truth.
 - Tree-sitter should be evaluated per dialect; SQL grammar quality varies, and Oracle/PLSQL may need separate parsing strategy.
 - GPU acceleration is most likely to matter for editor text, result-grid scrolling, selection painting, minimap/overview widgets, and very large query output; the app still needs a stable software path for remote desktops, older GPUs, and driver quirks.

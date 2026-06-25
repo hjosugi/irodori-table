@@ -20,7 +20,7 @@ Each adapter declares:
 - explain/profile support;
 - import/export capabilities.
 
-The UI should keep one familiar workbench while changing the specialized panes per source type.
+The UI should keep one familiar workbench while changing the specialized panes per source type. Snowsight-style parity gaps must be designed as shared product capabilities, not as desktop-only widgets: schema-aware autocomplete, optional Copilot-style inline help, explain/query profile, advanced filters, inline editing, and charts/dashboards need reusable contracts that desktop, local API, and future hosts can share.
 
 ## Coverage Tiers
 
@@ -83,20 +83,22 @@ Oracle is a roadmap non-negotiable, so its connection story must be as easy as t
 
 ### Later: Specialized/Managed And Visual Heavy Features
 
-- BI-style dashboards
-- ERD and graph exploration beyond query-result visualization
+- Cross-platform chart/visualization definition model and BI-style dashboards
+  (P2 / Phase 6; not implemented)
+- Advanced ERD analysis/authoring beyond the current schema ERD baseline, plus
+  graph exploration beyond query-result visualization
 - long-running monitoring consoles
 - admin dashboards for every distributed engine
 
-These are valuable, but they should not delay the editor, completion, result handling, connection, proxy, and extension foundations.
+These are valuable, but they should not delay the editor, completion, result handling, connection, proxy, and extension foundations. The dashboard/chart data model should still be planned early enough that filters, result frames, saved queries, and extension visualizers do not become desktop-only.
 
 ## Source-Type UI Requirements
 
 ### Relational And Distributed SQL
 
-- SQL editor with dialect-aware completion.
+- SQL editor with dialect-aware completion. Current product status is keyword autocomplete only; schema/table/column completion remains a P0 cross-platform gap.
 - Object browser for databases, schemas, tables, views, indexes, constraints, routines, triggers, packages, extensions, and jobs.
-- Result grid with streaming, cancellation, copy/export, safe editing, and explain/profile.
+- Result grid with streaming, cancellation, copy/export, safe editing, advanced filters, and explain/profile. Inline editing is partial/skeleton today, advanced filters are not implemented, and explain/query profile is open P1 work.
 - Distributed SQL add-ons: regions, replicas, shards/tablets/ranges, session/lock insight, follower reads, consistency notes, and topology-aware warnings.
 
 ### Time-Series

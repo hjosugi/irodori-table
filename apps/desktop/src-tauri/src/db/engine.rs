@@ -99,6 +99,9 @@ pub enum DbEngine {
     #[serde(rename = "cassandra")]
     #[ts(rename = "cassandra")]
     Cassandra,
+    #[serde(rename = "bigtable")]
+    #[ts(rename = "bigtable")]
+    Bigtable,
 }
 
 /// The wire protocol an engine speaks — i.e. which connector handles it.
@@ -122,6 +125,7 @@ pub(crate) enum Wire {
     BigQuery,
     Redis,
     Cassandra,
+    Bigtable,
 }
 
 impl DbEngine {
@@ -151,6 +155,7 @@ impl DbEngine {
             DbEngine::BigQuery => Wire::BigQuery,
             DbEngine::Redis => Wire::Redis,
             DbEngine::Cassandra => Wire::Cassandra,
+            DbEngine::Bigtable => Wire::Bigtable,
         }
     }
 
@@ -174,6 +179,7 @@ impl DbEngine {
             DbEngine::Snowflake | DbEngine::BigQuery => 443,
             DbEngine::Redis => 6379,
             DbEngine::Cassandra => 9042,
+            DbEngine::Bigtable => 443,
             DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
         }
     }
@@ -196,6 +202,7 @@ impl DbEngine {
             | Wire::InfluxDb
             | Wire::Qdrant
             | Wire::Milvus
+            | Wire::Bigtable
             | Wire::Pinecone => Box::new(PostgresDialect),
             Wire::Snowflake => Box::new(SnowflakeDialect),
         }
@@ -220,6 +227,7 @@ impl DbEngine {
             | Wire::InfluxDb
             | Wire::Qdrant
             | Wire::Milvus
+            | Wire::Bigtable
             | Wire::Pinecone => Box::new(StandardInformationSchema),
         }
     }
@@ -273,6 +281,7 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         | Wire::InfluxDb
         | Wire::Qdrant
         | Wire::Milvus
+        | Wire::Bigtable
         | Wire::Pinecone => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
     }
 }
