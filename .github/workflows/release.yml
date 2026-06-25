@@ -55,6 +55,19 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # Cache the Cargo registry + ./target so external deps (tauri, sqlx, the
+      # cloud DB drivers) don't recompile from scratch every run. A version bump
+      # changes Cargo.lock, but rust-cache restores the nearest previous cache as
+      # a base, so only our own workspace crates recompile while the heavy
+      # third-party deps stay warm.
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Workspace target dir lives at the repo root, not under apps/desktop.
+          workspaces: '. -> target'
+          # Keep separate caches per OS in the build matrix.
+          key: ${{ matrix.platform }}
+
       - name: Install frontend dependencies
         working-directory: apps/desktop
         run: npm ci
@@ -75,3 +88,25 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           projectPath: apps/desktop
+
+      # Ship the raw single-file binary as an "install-free" download. Tauri
+      # embeds the frontend into the exe, so it launches by double-click with no
+      # installer; it only needs the WebView2 runtime, which ships with Windows
+      # 10 (1803+) and 11. tauri-action created the draft release above, so we
+      # just attach one more asset to the same tag.
+      - name: Upload portable Windows exe
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          exe="target/release/irodori-table-desktop.exe"
+          if [ ! -f "$exe" ]; then
+            echo "Expected portable binary not found: $exe" >&2
+            ls -la target/release || true
+            exit 1
+          fi
+          dest="Irodori.Table_${GITHUB_REF_NAME#v}_x64_portable.exe"
+          cp "$exe" "$dest"
+          echo "Uploading $dest (from $exe)"
+          gh release upload "$GITHUB_REF_NAME" "$dest" --clobber

@@ -36,6 +36,14 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # Reuse compiled dependencies across runs instead of rebuilding the whole
+      # tree every time. Workspace target dir lives at the repo root.
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          key: ${{ matrix.os }}
+
       - name: Check Rust crate licenses
         shell: bash
         run: scripts/check-licenses.sh
