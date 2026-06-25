@@ -18,9 +18,28 @@ pub enum SqlClass {
 }
 
 const WRITE_KEYWORDS: &[&str] = &[
-    "INSERT", "UPDATE", "DELETE", "REPLACE", "CREATE", "DROP", "ALTER", "TRUNCATE", "ATTACH",
-    "DETACH", "REINDEX", "VACUUM", "PRAGMA", "MERGE", "GRANT", "REVOKE", "BEGIN", "COMMIT",
-    "ROLLBACK", "SAVEPOINT", "RELEASE", "UPSERT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "REPLACE",
+    "CREATE",
+    "DROP",
+    "ALTER",
+    "TRUNCATE",
+    "ATTACH",
+    "DETACH",
+    "REINDEX",
+    "VACUUM",
+    "PRAGMA",
+    "MERGE",
+    "GRANT",
+    "REVOKE",
+    "BEGIN",
+    "COMMIT",
+    "ROLLBACK",
+    "SAVEPOINT",
+    "RELEASE",
+    "UPSERT",
 ];
 
 /// Classify a single SQL statement.
@@ -181,7 +200,10 @@ mod tests {
     #[test]
     fn plain_selects_are_read_only() {
         assert_eq!(classify("SELECT 1"), SqlClass::ReadOnly);
-        assert_eq!(classify("  select * from t where a = 'x'"), SqlClass::ReadOnly);
+        assert_eq!(
+            classify("  select * from t where a = 'x'"),
+            SqlClass::ReadOnly
+        );
         assert_eq!(classify("VALUES (1,2)"), SqlClass::ReadOnly);
     }
 
@@ -221,7 +243,10 @@ mod tests {
 
     #[test]
     fn keywords_inside_strings_and_comments_do_not_count() {
-        assert_eq!(classify("SELECT 'delete from t' AS note"), SqlClass::ReadOnly);
+        assert_eq!(
+            classify("SELECT 'delete from t' AS note"),
+            SqlClass::ReadOnly
+        );
         assert_eq!(classify("SELECT 1 -- drop table t"), SqlClass::ReadOnly);
         assert_eq!(classify("SELECT 1 /* insert */ + 1"), SqlClass::ReadOnly);
         // a semicolon inside a string is not a statement separator

@@ -22,7 +22,11 @@ pub struct AuditEntry {
 }
 
 impl AuditEntry {
-    pub fn new(token_id: impl Into<String>, method: impl Into<String>, path: impl Into<String>) -> AuditEntry {
+    pub fn new(
+        token_id: impl Into<String>,
+        method: impl Into<String>,
+        path: impl Into<String>,
+    ) -> AuditEntry {
         AuditEntry {
             at_unix_ms: now_unix_ms(),
             token_id: token_id.into(),

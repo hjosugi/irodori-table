@@ -31,7 +31,11 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(id: impl Into<String>, secret: impl Into<String>, scopes: impl IntoIterator<Item = Scope>) -> Token {
+    pub fn new(
+        id: impl Into<String>,
+        secret: impl Into<String>,
+        scopes: impl IntoIterator<Item = Scope>,
+    ) -> Token {
         Token {
             id: id.into(),
             secret: secret.into(),
@@ -53,7 +57,7 @@ pub enum AuthError {
 }
 
 /// The authenticated identity for a request.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Identity {
     pub token_id: String,
     scopes: BTreeSet<Scope>,
@@ -93,7 +97,10 @@ impl Authenticator {
             return Ok(Identity::open());
         }
         let header = authorization.ok_or(AuthError::Missing)?;
-        let presented = header.strip_prefix("Bearer ").ok_or(AuthError::Missing)?.trim();
+        let presented = header
+            .strip_prefix("Bearer ")
+            .ok_or(AuthError::Missing)?
+            .trim();
         if presented.is_empty() {
             return Err(AuthError::Missing);
         }
@@ -132,7 +139,11 @@ mod tests {
 
     #[test]
     fn valid_token_resolves_scopes() {
-        let auth = Authenticator::new(vec![Token::new("ci", "s3cret", [Scope::Read, Scope::Write])]);
+        let auth = Authenticator::new(vec![Token::new(
+            "ci",
+            "s3cret",
+            [Scope::Read, Scope::Write],
+        )]);
         let id = auth.authenticate(Some("Bearer s3cret")).expect("ok");
         assert_eq!(id.token_id, "ci");
         assert!(id.has_scope(Scope::Write));
@@ -142,8 +153,14 @@ mod tests {
     fn missing_and_invalid_tokens_are_rejected() {
         let auth = Authenticator::new(vec![Token::new("ci", "s3cret", [Scope::Read])]);
         assert_eq!(auth.authenticate(None), Err(AuthError::Missing));
-        assert_eq!(auth.authenticate(Some("Token s3cret")), Err(AuthError::Missing));
-        assert_eq!(auth.authenticate(Some("Bearer nope")), Err(AuthError::Invalid));
+        assert_eq!(
+            auth.authenticate(Some("Token s3cret")),
+            Err(AuthError::Missing)
+        );
+        assert_eq!(
+            auth.authenticate(Some("Bearer nope")),
+            Err(AuthError::Invalid)
+        );
     }
 
     #[test]
