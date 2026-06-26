@@ -2057,6 +2057,7 @@ function App() {
         customThemes,
         editor: {
           vimMode,
+          autoCommit,
           formatter,
           linter: sqlLinter,
         },
@@ -2205,6 +2206,9 @@ function App() {
       if (isRecord(parsed.editor)) {
         if (typeof parsed.editor.vimMode === "boolean") {
           setVimMode(parsed.editor.vimMode);
+        }
+        if (typeof parsed.editor.autoCommit === "boolean") {
+          setAutoCommit(parsed.editor.autoCommit);
         }
         if (
           typeof parsed.editor.formatter === "string" &&
@@ -3741,7 +3745,6 @@ function App() {
               activeTabLabel={activeTabLabel}
               activeConnectionOpen={activeConnectionOpen}
               running={running}
-              autoCommit={autoCommit}
               formatter={formatter}
               query={query}
               onQueryChange={setQuery}
@@ -3767,7 +3770,6 @@ function App() {
               runMenuOpen={runMenuOpen}
               hasSelectedEditorSql={hasSelectedEditorSql}
               runCommand={runCommand}
-              setAutoCommit={setAutoCommit}
               saveCurrentQuery={saveCurrentQuery}
               runQuery={runQuery}
               runSelectionQuery={runSelectionQuery}
@@ -3947,6 +3949,8 @@ function App() {
           onClose={() => setSettingsOpen(false)}
           vimMode={vimMode}
           setVimMode={setVimMode}
+          autoCommit={autoCommit}
+          setAutoCommit={setAutoCommit}
           themeKind={themeKind}
           setThemeKind={activateBuiltInTheme}
           customThemes={customThemes}

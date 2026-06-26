@@ -37,6 +37,8 @@ export interface SettingsDialogProps {
   onClose: () => void;
   vimMode: boolean;
   setVimMode: (value: boolean) => void;
+  autoCommit: boolean;
+  setAutoCommit: (value: BooleanUpdater) => void;
   themeKind: ThemeKind;
   setThemeKind: (value: ThemeKind) => void;
   customThemes: CustomThemeEntry[];
@@ -142,6 +144,8 @@ export function SettingsDialog({
   onClose,
   vimMode,
   setVimMode,
+  autoCommit,
+  setAutoCommit,
   themeKind,
   setThemeKind,
   customThemes,
@@ -264,6 +268,28 @@ export function SettingsDialog({
                       onClick={() => setVimMode(true)}
                     >
                       Vim
+                    </button>
+                  </div>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>Auto Commit</strong>
+                    <small>Commit each statement automatically after it runs.</small>
+                  </span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={autoCommit ? "active" : undefined}
+                      onClick={() => setAutoCommit(true)}
+                    >
+                      On
+                    </button>
+                    <button
+                      type="button"
+                      className={!autoCommit ? "active" : undefined}
+                      onClick={() => setAutoCommit(false)}
+                    >
+                      Off
                     </button>
                   </div>
                 </label>
