@@ -43,6 +43,11 @@ Verify the local `LICENSE` before any code-level use; this table records the cur
 - `outerbase/studio` (GitHub, not vendored) — AGPL-3.0 (copyleft). Study the data-editor/schema-editor/large-table UX and architecture; do not copy code into the `MIT OR 0BSD` core.
 - `ref/dbeaver-ce` (DBeaver Community) — **Apache-2.0** (permissive). Code may be read and selectively adapted with attribution and NOTICE retention; avoid the 2 EPL-2.0 files (`HippieCompletionEngine.java`, `SQLMatchingCharacterPainter.java`) unless accepting EPL terms.
 - `zequel-labs/zequel` (GitHub, not vendored) — **Elastic License 2.0** (source-available, restrictive). Behavior-only; no code into the core.
+- `rust-dd/rsql` (GitHub, not vendored) — README says open source and links a
+  `LICENSE`, but that path returned 404 during review. Treat as public
+  README/behavior reference only until compatible license terms are verified.
+  Capture performance and UX observations in `docs/reference-rsql.md`; do not
+  copy code into the `MIT OR 0BSD` core.
 
 ## Reference Workflow
 

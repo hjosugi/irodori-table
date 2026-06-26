@@ -41,6 +41,7 @@ near-duplicate status page.
 | Need | Read |
 | --- | --- |
 | Current DB-client market scan | [db-client-market-scan-2026-06-21.md](db-client-market-scan-2026-06-21.md) |
+| RSQL performance and UX reference notes | [reference-rsql.md](reference-rsql.md) |
 | Generated-doc automation plan | [cheatsheet-autodoc-plan.md](cheatsheet-autodoc-plan.md) |
 | Multi-agent handoff notes | [agent-coordination.md](agent-coordination.md) |
 

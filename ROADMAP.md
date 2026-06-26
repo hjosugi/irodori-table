@@ -47,11 +47,12 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - VS Code SQLTools and vscode-mssql: session-to-connection binding, command-driven workflows, result handling, driver boundaries, and editor integration patterns.
 - Current DB clients broadly: DBeaver, DataGrip, VS Code MSSQL, SSMS, Oracle SQL Developer, pgAdmin, MySQL Workbench, HeidiSQL, DB Browser for SQLite.
 - RSQL (`rust-dd/rsql`, public README / behavior reference until license terms
-  are explicit): high-performance PostgreSQL client reference for Tauri v2 +
-  React + Rust, canvas/WebGL result grids, server-side cursor pagination,
-  packed IPC, dual query/metadata pools, query history, record view, result
-  diffing, PostGIS maps, EXPLAIN visualization, and database performance
-  dashboards. Do not copy code unless a compatible license is verified.
+  are explicit; see `docs/reference-rsql.md`): high-performance PostgreSQL
+  client reference for Tauri v2 + React + Rust, canvas/WebGL result grids,
+  server-side cursor pagination, packed IPC, dual query/metadata pools, query
+  history, record view, result diffing, PostGIS maps, EXPLAIN visualization, and
+  database performance dashboards. Do not copy code unless a compatible license
+  is verified.
 - DuckDB and DuckDB UI (`ref/duckdb-ui-main`, MIT): embedded analytical SQL, local-first exploration, Parquet/Iceberg reads, and a lightweight in-process UI; MIT lets us adapt code with attribution and license tracking.
 - Kibana (`ref/kibana-main`, Elastic License 2.0 / SSPL / AGPL-3.0 — source-available): Discover data exploration and Dev Tools console as a search/observability query-and-browse reference; behavior-only, no code adaptation into the permissive core.
 - Zed (`zed-industries/zed`, GPL-3.0/AGPL-3.0 with some Apache-2.0 crates — copyleft): a fast Rust-native desktop editor; reference for GPUI rendering, input latency, multibuffer/pane models, and Rust app structure. Study architecture; do not copy copyleft code into the core.
