@@ -203,6 +203,18 @@ export type DbColumnInspection = { schema: string, object: string, name: string,
 
 export type DbColumnReference = { schema: string, object: string, column: string, };
 
+export type GitChangeKind = "modified" | "added" | "deleted" | "renamed" | "copied" | "untracked" | "unmerged" | "typeChanged" | "unknown";
+
+export type GitFileStatus = { path: string, originalPath?: string, indexStatus: string, worktreeStatus: string, kind: GitChangeKind, };
+
+export type GitCommitSummary = { hash: string, shortHash: string, author: string, timestampSeconds: bigint, subject: string, };
+
+export type GitStatusSummary = { repoRoot: string, branch: string, upstream?: string, ahead: number, behind: number, clean: boolean, files: Array<GitFileStatus>, recentCommits: Array<GitCommitSummary>, };
+
+export type GitDiffResult = { repoRoot: string, filePath?: string, staged: string, unstaged: string, truncated: boolean, };
+
+export type GitCommandOutput = { repoRoot: string, stdout: string, stderr: string, statusCode: number, };
+
 export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
 }
@@ -269,6 +281,26 @@ export function dbInspectColumn(connectionId: string, schema: string, object: st
 
 export function dbInvalidateCache(connectionId: string, schema?: string, object?: string): Promise<boolean> {
   return invoke<boolean>("db_invalidate_cache", { connectionId, schema, object });
+}
+
+export function gitStatus(repoPath?: string): Promise<GitStatusSummary> {
+  return invoke<GitStatusSummary>("git_status", { repoPath });
+}
+
+export function gitLog(repoPath?: string, limit?: number): Promise<Array<GitCommitSummary>> {
+  return invoke<Array<GitCommitSummary>>("git_log", { repoPath, limit });
+}
+
+export function gitDiff(repoPath?: string, filePath?: string): Promise<GitDiffResult> {
+  return invoke<GitDiffResult>("git_diff", { repoPath, filePath });
+}
+
+export function gitCommitAll(message: string, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_commit_all", { message, repoPath });
+}
+
+export function gitPush(repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_push", { repoPath });
 }
 
 export function securityGetPrivacyMode(): Promise<PrivacyMode> {

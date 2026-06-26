@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub mod db;
+pub mod git;
 pub mod jobs;
 pub mod security;
 
@@ -166,6 +167,11 @@ pub fn run() {
             db::db_inspect_object,
             db::db_inspect_column,
             db::db_invalidate_cache,
+            git::git_status,
+            git::git_log,
+            git::git_diff,
+            git::git_commit_all,
+            git::git_push,
             security::security_get_privacy_mode,
             security::security_set_privacy_mode,
             security::security_redact_text,
@@ -277,6 +283,12 @@ mod typegen {
             .decl(&decl::<db::DbObjectInspection>())
             .decl(&decl::<db::DbColumnInspection>())
             .decl(&decl::<db::DbColumnReference>())
+            .decl(&decl::<git::GitChangeKind>())
+            .decl(&decl::<git::GitFileStatus>())
+            .decl(&decl::<git::GitCommitSummary>())
+            .decl(&decl::<git::GitStatusSummary>())
+            .decl(&decl::<git::GitDiffResult>())
+            .decl(&decl::<git::GitCommandOutput>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
             .command(Command::new("jobs_list", "JobList"))
             .command(
@@ -363,6 +375,29 @@ mod typegen {
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::rust("schema", TsType::string()).optional())
                     .arg(Arg::rust("object", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_status", "GitStatusSummary")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_log", "Array<GitCommitSummary>")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional())
+                    .arg(Arg::new("limit", TsType::number()).optional()),
+            )
+            .command(
+                Command::new("git_diff", "GitDiffResult")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional())
+                    .arg(Arg::rust("file_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_commit_all", "GitCommandOutput")
+                    .arg(Arg::new("message", TsType::string()))
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_push", "GitCommandOutput")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
             )
             .command(Command::new("security_get_privacy_mode", "PrivacyMode"))
             .command(

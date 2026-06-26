@@ -17,6 +17,7 @@ import {
   Copy,
   Database,
   Download,
+  GitBranch,
   HelpCircle,
   ImageDown,
   Info,
@@ -52,6 +53,7 @@ import {
   useQueryHistoryStore,
   type QueryHistoryItem,
 } from "./features/query-history";
+import { GitDrawer, useGitStore } from "./features/git";
 import {
   QueryEditorPane,
   type EditorGroup,
@@ -225,6 +227,12 @@ const shellCommands: CommandMeta[] = [
   {
     id: "history.open",
     title: "Open Query History",
+    category: "Workspace",
+    scope: "global",
+  },
+  {
+    id: "git.open",
+    title: "Open Git Panel",
     category: "Workspace",
     scope: "global",
   },
@@ -1223,6 +1231,7 @@ function App() {
   const closeQueryHistoryDialog = useQueryHistoryStore(
     (state) => state.closeDialog,
   );
+  const openGitDrawer = useGitStore((state) => state.openDrawer);
   const [queryParameterMemory, setQueryParameterMemory] =
     useState<QueryParameterMemory>(loadQueryParameterMemory);
   const [pendingQueryParameters, setPendingQueryParameters] =
@@ -2340,6 +2349,9 @@ function App() {
         break;
       case "history.open":
         openQueryHistoryDialog();
+        break;
+      case "git.open":
+        openGitDrawer();
         break;
       case "help.open":
       case "about.open":
@@ -3946,6 +3958,16 @@ function App() {
                 role="menuitem"
                 onClick={() => {
                   setWorkspaceMenuOpen(false);
+                  openGitDrawer();
+                }}
+              >
+                Git Panel
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
                   openSettingsSection("general");
                 }}
               >
@@ -4018,6 +4040,15 @@ function App() {
           <ChevronDown size={15} />
         </button>
         <div className="toolbar-spacer" />
+        <button
+          className="icon-button"
+          type="button"
+          title="Git panel"
+          aria-label="Git panel"
+          onClick={openGitDrawer}
+        >
+          <GitBranch size={15} />
+        </button>
       </section>
 
       <div
@@ -5630,6 +5661,8 @@ function App() {
           </div>
         </div>
       ) : null}
+
+      <GitDrawer />
 
       <QueryHistoryDialog
         activeConnectionId={activeConnectionId}
