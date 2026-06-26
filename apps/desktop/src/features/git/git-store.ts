@@ -2,25 +2,37 @@ import { create } from "zustand";
 import {
   gitCommitAll,
   gitDiff,
+  gitLog,
   gitPush,
   gitStatus,
   type GitCommandOutput,
+  type GitCommitSummary,
   type GitDiffResult,
   type GitStatusSummary,
 } from "../../generated/irodori-api";
 
+export type GitDrawerView = "graph" | "changes";
+
 type GitState = {
   open: boolean;
+  view: GitDrawerView;
   status: GitStatusSummary | null;
+  graphCommits: GitCommitSummary[];
+  selectedCommitHash: string | null;
+  graphQuery: string;
   diff: GitDiffResult | null;
   selectedPath: string | null;
   loading: boolean;
+  logLoading: boolean;
   diffLoading: boolean;
   error: string | null;
   commandOutput: GitCommandOutput | null;
   commitMessage: string;
   openDrawer: () => void;
   closeDrawer: () => void;
+  setView: (view: GitDrawerView) => void;
+  setGraphQuery: (query: string) => void;
+  selectCommit: (hash: string) => void;
   setCommitMessage: (message: string) => void;
   refresh: () => Promise<void>;
   selectFile: (path: string | null) => Promise<void>;
@@ -45,10 +57,15 @@ function errorMessage(error: unknown) {
 
 export const useGitStore = create<GitState>((set, get) => ({
   open: false,
+  view: "graph",
   status: null,
+  graphCommits: [],
+  selectedCommitHash: null,
+  graphQuery: "",
   diff: null,
   selectedPath: null,
   loading: false,
+  logLoading: false,
   diffLoading: false,
   error: null,
   commandOutput: null,
@@ -58,19 +75,37 @@ export const useGitStore = create<GitState>((set, get) => ({
     void get().refresh();
   },
   closeDrawer: () => set({ open: false }),
+  setView: (view) => set({ view }),
+  setGraphQuery: (graphQuery) => set({ graphQuery }),
+  selectCommit: (selectedCommitHash) => set({ selectedCommitHash }),
   setCommitMessage: (commitMessage) => set({ commitMessage }),
   refresh: async () => {
-    set({ loading: true, error: null });
+    set({ loading: true, logLoading: true, error: null });
     try {
-      const status = await gitStatus();
+      const [status, graphCommits] = await Promise.all([
+        gitStatus(),
+        gitLog(undefined, 80),
+      ]);
       const selectedPath =
         get().selectedPath && status.files.some((file) => file.path === get().selectedPath)
           ? get().selectedPath
           : status.files[0]?.path ?? null;
-      set({ status, selectedPath, loading: false });
+      const selectedCommitHash =
+        get().selectedCommitHash &&
+        graphCommits.some((commit) => commit.hash === get().selectedCommitHash)
+          ? get().selectedCommitHash
+          : graphCommits[0]?.hash ?? null;
+      set({
+        status,
+        graphCommits,
+        selectedCommitHash,
+        selectedPath,
+        loading: false,
+        logLoading: false,
+      });
       await get().selectFile(selectedPath);
     } catch (error) {
-      set({ error: errorMessage(error), loading: false });
+      set({ error: errorMessage(error), loading: false, logLoading: false });
     }
   },
   selectFile: async (selectedPath) => {

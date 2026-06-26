@@ -207,7 +207,7 @@ export type GitChangeKind = "modified" | "added" | "deleted" | "renamed" | "copi
 
 export type GitFileStatus = { path: string, originalPath?: string, indexStatus: string, worktreeStatus: string, kind: GitChangeKind, };
 
-export type GitCommitSummary = { hash: string, shortHash: string, author: string, timestampSeconds: bigint, subject: string, };
+export type GitCommitSummary = { hash: string, shortHash: string, author: string, timestampSeconds: bigint, subject: string, parents: Array<string>, refs: Array<string>, };
 
 export type GitStatusSummary = { repoRoot: string, branch: string, upstream?: string, ahead: number, behind: number, clean: boolean, files: Array<GitFileStatus>, recentCommits: Array<GitCommitSummary>, };
 

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 const DIFF_TEXT_LIMIT: usize = 240_000;
-const LOG_LIMIT_MAX: u32 = 50;
+const LOG_LIMIT_MAX: u32 = 120;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -45,6 +45,10 @@ pub struct GitCommitSummary {
     pub author: String,
     pub timestamp_seconds: i64,
     pub subject: String,
+    #[serde(default)]
+    pub parents: Vec<String>,
+    #[serde(default)]
+    pub refs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -169,10 +173,16 @@ pub fn git_push(repo_path: Option<String>) -> IrodoriResult<GitCommandOutput> {
 
 fn git_log_impl(repo_root: &Path, limit: u32) -> IrodoriResult<Vec<GitCommitSummary>> {
     let count = limit.clamp(1, LOG_LIMIT_MAX).to_string();
-    let format = "%H%x1f%h%x1f%an%x1f%at%x1f%s";
+    let format = "%H%x1f%h%x1f%an%x1f%at%x1f%s%x1f%P%x1f%D";
     let output = run_git(
         repo_root,
-        &["log", "--date-order", &format!("--max-count={count}"), &format!("--format={format}")],
+        &[
+            "log",
+            "--date-order",
+            "--decorate=short",
+            &format!("--max-count={count}"),
+            &format!("--format={format}"),
+        ],
         &[0, 128],
     )?;
     let stdout = output_stdout(output);
@@ -340,18 +350,34 @@ fn change_kind(index: char, worktree: char) -> GitChangeKind {
 }
 
 fn parse_commit_line(line: &str) -> Option<GitCommitSummary> {
-    let mut parts = line.splitn(5, '\x1f');
+    let mut parts = line.splitn(7, '\x1f');
     let hash = parts.next()?.to_string();
     let short_hash = parts.next()?.to_string();
     let author = parts.next()?.to_string();
     let timestamp_seconds = parts.next()?.parse().ok()?;
     let subject = parts.next()?.to_string();
+    let parents = parts
+        .next()
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(str::to_string)
+        .collect();
+    let refs = parts
+        .next()
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect();
     Some(GitCommitSummary {
         hash,
         short_hash,
         author,
         timestamp_seconds,
         subject,
+        parents,
+        refs,
     })
 }
 
@@ -437,5 +463,20 @@ mod tests {
         assert_eq!(rename.path, "new.sql");
         assert_eq!(rename.original_path.as_deref(), Some("old.sql"));
         assert!(matches!(rename.kind, GitChangeKind::Renamed));
+    }
+
+    #[test]
+    fn parses_commit_line_with_parents_and_refs() {
+        let commit = parse_commit_line(
+            "abcd1234\x1fabcd123\x1fHiro\x1f1761300000\x1fMerge branch feature\x1fparent1 parent2\x1fHEAD -> main, tag: v1.0.0, origin/main",
+        )
+        .unwrap();
+        assert_eq!(commit.hash, "abcd1234");
+        assert_eq!(commit.short_hash, "abcd123");
+        assert_eq!(commit.parents, vec!["parent1", "parent2"]);
+        assert_eq!(
+            commit.refs,
+            vec!["HEAD -> main", "tag: v1.0.0", "origin/main"]
+        );
     }
 }
