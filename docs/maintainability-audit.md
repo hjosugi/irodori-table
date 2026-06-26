@@ -13,17 +13,17 @@ complexity tool.
 
 | Rank | File | Lines | Main risk | Suggested next move |
 | ---: | --- | ---: | --- | --- |
-| 1 | `apps/desktop/src/App.tsx` | 4,320 | React shell owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `App()` is about 3,789 lines with approximate complexity 456. | Continue extracting feature controllers/hooks until `App.tsx` is mostly composition. |
+| 1 | `apps/desktop/src/App.tsx` | 4,489 | React shell owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `App()` is about 3,950 lines with approximate complexity still above 450. | Continue extracting feature controllers/hooks until `App.tsx` is mostly composition. |
 | 2 | `apps/desktop/src-tauri/src/db.rs` | 4,149 | Backend DB facade mixes DTOs, state, dispatch, stream/spill handling, metadata conversion, command wrappers, and tests. | Split by command surface and shared runtime state after current DB work stabilizes. |
 | 3 | `crates/irodori-io/src/lib.rs` | 1,896 | Export encoders, import preview, schema inference, and tests share one module. | Move format-specific encoders/importers into submodules. |
 | 4 | `crates/irodori-proxy/src/lib.rs` | 1,786 | Transport planning, auth resolution, handshakes, stream forwarding, and tests are tightly packed. | Separate planning/diagnostics from IO handshakes and forwarder runtime. |
 | 5 | `apps/desktop/src/sql/completion.ts` | 1,567 | Completion scanning, parsing helpers, and suggestion ranking are hard to review as one file. | Keep parser/scanner, metadata ranking, and UI-facing conversion in separate modules. |
 | 6 | `crates/irodori-core/src/connection.rs` | 1,364 | Connection profile schemas and validation cover many transport/auth variants. | Split transport/auth/portable model sections once external shape is stable. |
 | 7 | `apps/desktop/src/styles/results.css` | 1,318 | Result-grid, editing, detail, and mode-specific styles are coupled. | Split by results subcomponent after component extraction lands. |
-| 8 | `apps/desktop/src/theme.ts` | 1,123 | Theme conversion and TextMate scope mapping are broad; `syntaxRolesForTextMateScope` is a complexity hotspot. | Isolate VS Code import normalization and syntax-role mapping. |
-| 9 | `apps/desktop/src/styles/workbench.css` | 1,089 | Workbench layout, chrome, panes, and responsive rules share one stylesheet. | Split along `WorkbenchShell`, sidebar, inspector, and layout concerns. |
+| 8 | `apps/desktop/src/styles/workbench.css` | 1,130 | Workbench layout, chrome, panes, inspectors, and responsive rules share one stylesheet. | Split along `WorkbenchShell`, sidebar, inspector, and layout concerns. |
+| 9 | `apps/desktop/src/theme.ts` | 1,123 | Theme conversion and TextMate scope mapping are broad; `syntaxRolesForTextMateScope` is a complexity hotspot. | Isolate VS Code import normalization and syntax-role mapping. |
 | 10 | `crates/irodori-core/src/jobs.rs` | 1,088 | Job DTOs, runtime state, retry/cancellation, artifacts, and tests sit together. | Separate public job model from executor/runtime internals. |
-| 11 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 989 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
+| 11 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 1,086 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
 | 12 | `crates/irodori-completion/src/completion.rs` | 934 | Completion logic is dense and algorithmic. | Keep unit coverage high before module splitting. |
 
 ## App.tsx Split Plan

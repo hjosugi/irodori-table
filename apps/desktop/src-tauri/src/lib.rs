@@ -175,7 +175,15 @@ pub fn run() {
             git::git_log,
             git::git_diff,
             git::git_commit_all,
+            git::git_commit_staged,
             git::git_push,
+            git::git_fetch,
+            git::git_pull,
+            git::git_stage_files,
+            git::git_unstage_files,
+            git::git_discard_files,
+            git::git_checkout_branch,
+            git::git_delete_branch,
             security::security_get_privacy_mode,
             security::security_set_privacy_mode,
             security::security_redact_text,
@@ -289,8 +297,11 @@ mod typegen {
             .decl(&decl::<db::DbColumnReference>())
             .decl(&decl::<indexing::SchemaSearchHit>())
             .decl(&decl::<git::GitChangeKind>())
+            .decl(&decl::<git::GitRemoteProvider>())
             .decl(&decl::<git::GitFileStatus>())
             .decl(&decl::<git::GitCommitSummary>())
+            .decl(&decl::<git::GitRemoteSummary>())
+            .decl(&decl::<git::GitBranchSummary>())
             .decl(&decl::<git::GitStatusSummary>())
             .decl(&decl::<git::GitDiffResult>())
             .decl(&decl::<git::GitCommandOutput>())
@@ -412,7 +423,47 @@ mod typegen {
                     .arg(Arg::rust("repo_path", TsType::string()).optional()),
             )
             .command(
+                Command::new("git_commit_staged", "GitCommandOutput")
+                    .arg(Arg::new("message", TsType::string()))
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
                 Command::new("git_push", "GitCommandOutput")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_fetch", "GitCommandOutput")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_pull", "GitCommandOutput")
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_stage_files", "GitCommandOutput")
+                    .arg(Arg::new("paths", TsType::named("Array<string>")))
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_unstage_files", "GitCommandOutput")
+                    .arg(Arg::new("paths", TsType::named("Array<string>")))
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_discard_files", "GitCommandOutput")
+                    .arg(Arg::new("paths", TsType::named("Array<string>")))
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_checkout_branch", "GitCommandOutput")
+                    .arg(Arg::new("branch", TsType::string()))
+                    .arg(Arg::new("create", TsType::boolean()).optional())
+                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+            )
+            .command(
+                Command::new("git_delete_branch", "GitCommandOutput")
+                    .arg(Arg::new("branch", TsType::string()))
+                    .arg(Arg::new("force", TsType::boolean()).optional())
                     .arg(Arg::rust("repo_path", TsType::string()).optional()),
             )
             .command(Command::new("security_get_privacy_mode", "PrivacyMode"))

@@ -1,3 +1,7 @@
+.app-root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
 .app-shell[data-theme="dark"] {
   color-scheme: dark;
   background: var(--editor-bg);
@@ -141,6 +145,15 @@
 .app-shell[data-theme="dark"] .editor-meta,
 .app-shell[data-theme="dark"] .results-pane,
 .app-shell[data-theme="dark"] .results-header,
+.app-root[data-theme="dark"] .data-dialog,
+.app-root[data-theme="dark"] .diagram,
+.app-root[data-theme="dark"] .diagram-header,
+.app-root[data-theme="dark"] .diagram-controls,
+.app-root[data-theme="dark"] .dialog-header,
+.app-root[data-theme="dark"] .dialog-footer,
+.app-root[data-theme="dark"] .action-menu,
+.app-root[data-theme="dark"] .preview-table-wrap,
+.app-root[data-theme="dark"] .sql-preview,
 .app-shell[data-theme="dark"] .data-dialog,
 .app-shell[data-theme="dark"] .diagram,
 .app-shell[data-theme="dark"] .diagram-header,
@@ -183,8 +196,13 @@
   box-shadow: none;
 }
 
-.app-shell[data-theme="dark"] .inspector {
+.app-shell[data-theme="dark"] .inspector-right {
   border-left: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.app-shell[data-theme="dark"] .inspector-left {
+  border-right: 1px solid var(--border);
   background: var(--surface-muted);
 }
 

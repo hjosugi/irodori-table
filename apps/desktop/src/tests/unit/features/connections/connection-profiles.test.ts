@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizeConnectionColor,
   profileFromDraft,
   repairBuiltinSampleProfile,
   settingsProfileFromJson,
@@ -26,6 +27,12 @@ function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
 }
 
 describe("connection profiles", () => {
+  it("normalizes custom color tags", () => {
+    expect(normalizeConnectionColor("#ABCDEF")).toBe("#abcdef");
+    expect(normalizeConnectionColor("#0f8")).toBe("#00ff88");
+    expect(normalizeConnectionColor("bad")).toBe("#6b7280");
+  });
+
   it("normalizes settings JSON and strips stored passwords", () => {
     const profile = settingsProfileFromJson(
       {

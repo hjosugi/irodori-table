@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { GitCommitSummary } from "@/generated/irodori-api";
 import { buildGitGraphRows, filterGraphCommits } from "@/features/git/git-graph";
+import {
+  gitAccentColor,
+  normalizeHexColor,
+  providerDefaultColor,
+  providerLabel,
+} from "@/features/git/git-format";
 
 function commit(
   hash: string,
@@ -52,5 +58,19 @@ describe("git graph lane layout", () => {
     expect(filterGraphCommits(commits, "graph")).toHaveLength(1);
     expect(filterGraphCommits(commits, "v1.0.0")[0].hash).toBe("def4567");
     expect(filterGraphCommits(commits, "hiro")).toHaveLength(2);
+  });
+});
+
+describe("git provider formatting", () => {
+  it("labels known providers and uses provider colors as defaults", () => {
+    expect(providerLabel("github")).toBe("GitHub");
+    expect(providerLabel("codeCommit")).toBe("AWS CodeCommit");
+    expect(providerDefaultColor("gitlab")).toBe("#fc6d26");
+  });
+
+  it("lets custom repo colors override provider defaults", () => {
+    expect(gitAccentColor("github", "#0F8")).toBe("#00ff88");
+    expect(gitAccentColor("github", "bad")).toBe("#24292f");
+    expect(normalizeHexColor("#ABCDEF")).toBe("#abcdef");
   });
 });

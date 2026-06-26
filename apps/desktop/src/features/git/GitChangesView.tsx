@@ -1,4 +1,11 @@
-import { GitCommitHorizontal, Upload } from "lucide-react";
+import {
+  Download,
+  GitCommitHorizontal,
+  Plus,
+  RotateCcw,
+  Undo2,
+  Upload,
+} from "lucide-react";
 import type {
   GitDiffResult,
   GitFileStatus,
@@ -49,10 +56,18 @@ export function GitChangesView({
   diffLoading,
   commitMessage,
   commandOutput,
+  selectedFile,
   onSelectFile,
   onCommitMessageChange,
   onCommit,
+  onCommitStaged,
+  onFetch,
+  onPull,
   onPush,
+  onStageSelected,
+  onStageAll,
+  onUnstageSelected,
+  onDiscardSelected,
 }: {
   files: GitFileStatus[];
   selectedPath: string | null;
@@ -61,12 +76,28 @@ export function GitChangesView({
   diffLoading: boolean;
   commitMessage: string;
   commandOutput: GitCommandOutput | null;
+  selectedFile: GitFileStatus | null;
   onSelectFile: (path: string) => void;
   onCommitMessageChange: (message: string) => void;
   onCommit: () => void;
+  onCommitStaged: () => void;
+  onFetch: () => void;
+  onPull: () => void;
   onPush: () => void;
+  onStageSelected: () => void;
+  onStageAll: () => void;
+  onUnstageSelected: () => void;
+  onDiscardSelected: () => void;
 }) {
   const hasChanges = files.length > 0;
+  const hasStagedChanges = files.some(
+    (file) => file.indexStatus.trim() && file.indexStatus !== "?",
+  );
+  const canStageSelected = selectedFile !== null;
+  const canUnstageSelected =
+    selectedFile !== null &&
+    selectedFile.indexStatus.trim().length > 0 &&
+    selectedFile.indexStatus !== "?";
   const diffText = [
     diff?.staged ? `# Staged\n${diff.staged}` : "",
     diff?.unstaged ? `# Unstaged\n${diff.unstaged}` : "",
@@ -80,6 +111,44 @@ export function GitChangesView({
         <div className="git-section-title">
           <strong>Changes</strong>
           <span>{files.length}</span>
+        </div>
+        <div className="git-file-actions">
+          <button
+            className="text-button"
+            type="button"
+            disabled={!canStageSelected || loading}
+            onClick={onStageSelected}
+          >
+            <Plus size={13} />
+            Stage
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={!hasChanges || loading}
+            onClick={onStageAll}
+          >
+            <Plus size={13} />
+            Stage all
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={!canUnstageSelected || loading}
+            onClick={onUnstageSelected}
+          >
+            <Undo2 size={13} />
+            Unstage
+          </button>
+          <button
+            className="text-button danger"
+            type="button"
+            disabled={!selectedFile || loading}
+            onClick={onDiscardSelected}
+          >
+            <RotateCcw size={13} />
+            Discard
+          </button>
         </div>
         <div className="git-file-list">
           {files.length ? (
@@ -119,6 +188,24 @@ export function GitChangesView({
         />
         <div className="git-action-row">
           <button
+            className="text-button"
+            type="button"
+            disabled={loading}
+            onClick={onFetch}
+          >
+            <Download size={14} />
+            Fetch
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={loading}
+            onClick={onPull}
+          >
+            <Download size={14} />
+            Pull
+          </button>
+          <button
             className="primary-button"
             type="button"
             disabled={!hasChanges || loading || !commitMessage.trim()}
@@ -126,6 +213,15 @@ export function GitChangesView({
           >
             <GitCommitHorizontal size={14} />
             Commit all
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={!hasStagedChanges || loading || !commitMessage.trim()}
+            onClick={onCommitStaged}
+          >
+            <GitCommitHorizontal size={14} />
+            Commit staged
           </button>
           <button
             className="text-button"

@@ -897,6 +897,46 @@ mod tests {
     }
 
     #[test]
+    fn parses_branch_lines_with_tracking_counts() {
+        let branch = parse_branch_line("feature\x1f*\x1forigin/feature\x1f[ahead 3]").unwrap();
+        assert_eq!(branch.name, "feature");
+        assert!(branch.current);
+        assert_eq!(branch.upstream.as_deref(), Some("origin/feature"));
+        assert_eq!(branch.ahead, 3);
+        assert_eq!(branch.behind, 0);
+    }
+
+    #[test]
+    fn detects_remote_providers_and_web_urls() {
+        let remotes = parse_remotes(
+            "\
+origin\tgit@github.com:hjosugi/irodori-table.git (fetch)
+origin\tgit@github.com:hjosugi/irodori-table.git (push)
+gitlab\thttps://gitlab.com/group/project.git (fetch)
+bb\tgit@bitbucket.org:team/repo.git (fetch)
+azure\tgit@ssh.dev.azure.com:v3/org/project/repo (fetch)
+aws\tssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/my-repo (fetch)",
+        );
+        assert_eq!(remotes[0].provider, GitRemoteProvider::Github);
+        assert_eq!(
+            remotes[0].web_url.as_deref(),
+            Some("https://github.com/hjosugi/irodori-table")
+        );
+        assert_eq!(remotes[1].provider, GitRemoteProvider::Gitlab);
+        assert_eq!(remotes[2].provider, GitRemoteProvider::Bitbucket);
+        assert_eq!(remotes[3].provider, GitRemoteProvider::AzureRepos);
+        assert_eq!(
+            remotes[3].web_url.as_deref(),
+            Some("https://dev.azure.com/org/project/_git/repo")
+        );
+        assert_eq!(remotes[4].provider, GitRemoteProvider::CodeCommit);
+        assert_eq!(
+            remotes[4].web_url.as_deref(),
+            Some("https://us-east-1.console.aws.amazon.com/codesuite/codecommit/repositories/my-repo/browse?region=us-east-1")
+        );
+    }
+
+    #[test]
     fn parses_porcelain_status_lines() {
         let file = parse_status_line(" M apps/desktop/src/App.tsx").unwrap();
         assert_eq!(file.path, "apps/desktop/src/App.tsx");

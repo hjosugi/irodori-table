@@ -202,8 +202,12 @@ export function WorkbenchShell({
                   onToggleSidebarSide();
                 }}
               >
-                <PanelRight size={14} />
-                {sidebarSide === "left" ? "Move Sidebar Right" : "Move Sidebar Left"}
+                <span className="app-menu-label">
+                  <PanelRight size={14} />
+                  {sidebarSide === "left"
+                    ? "Move Sidebar Right"
+                    : "Move Sidebar Left"}
+                </span>
               </button>
               <button
                 type="button"

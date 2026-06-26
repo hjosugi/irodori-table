@@ -1,7 +1,9 @@
 import type {
   ClipboardEvent as ReactClipboardEvent,
   CSSProperties,
+  FocusEvent as ReactFocusEvent,
   KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   RefObject,
   UIEvent,
 } from "react";
@@ -30,6 +32,12 @@ import type {
 import { ChartResultView } from "./ChartResultView";
 import { GraphResultView } from "./GraphResultView";
 import { WebGlResultGrid } from "./WebGlResultGrid";
+
+function isGridCellTarget(event: ReactFocusEvent | ReactMouseEvent) {
+  return (
+    event.target instanceof Element && event.target.closest("[role='cell']")
+  );
+}
 
 export function ResultBody({
   structureObject,
@@ -289,8 +297,16 @@ export function ResultBody({
             key={row.key}
             tabIndex={0}
             style={gridRowStyle}
-            onClick={() => onSelectGridRow(row.key, true)}
-            onFocus={() => onSelectGridRow(row.key)}
+            onClick={(event) => {
+              if (!isGridCellTarget(event)) {
+                onSelectGridRow(row.key, true);
+              }
+            }}
+            onFocus={(event) => {
+              if (event.currentTarget.matches(":focus-visible")) {
+                onSelectGridRow(row.key);
+              }
+            }}
           >
             {editMode ? (
               <button

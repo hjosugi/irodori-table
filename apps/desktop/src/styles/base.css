@@ -59,6 +59,34 @@ textarea:disabled {
   opacity: 0.58;
 }
 
+.app-root {
+  --font-ui-xs: 11px;
+  --font-ui-sm: 12px;
+  --font-ui-md: 13px;
+  --font-ui-lg: 14px;
+  --font-code: 13px;
+  --line-ui: 1.35;
+  --line-compact: 1;
+  --control-xxs: 22px;
+  --control-xs: 24px;
+  --control-sm: 25px;
+  --control-md: 27px;
+  --bar-sm: 31px;
+  --bar-md: 33px;
+  --status-height: 22px;
+  --neutral-dot: color-mix(in srgb, var(--muted) 62%, var(--surface-raised));
+  --shadow-color: color-mix(in srgb, var(--text) 20%, transparent);
+  --shadow-color-strong: color-mix(in srgb, var(--text) 28%, transparent);
+  --scrim: color-mix(in srgb, var(--text) 32%, transparent);
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--focus) 24%, transparent);
+  width: 100vw;
+  height: 100vh;
+  color: var(--text);
+  background: var(--surface);
+  font-size: var(--font-ui-md);
+  line-height: var(--line-ui);
+}
+
 .app-shell {
   --font-ui-xs: 11px;
   --font-ui-sm: 12px;
@@ -224,6 +252,13 @@ textarea:disabled {
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.app-menu-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .app-menu-popover button:disabled,

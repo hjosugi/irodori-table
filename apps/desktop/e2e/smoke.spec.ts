@@ -15,7 +15,7 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await page.goto("/");
 
   // The shell mounts.
-  await expect(page.getByText("Irodori Table")).toBeVisible();
+  await expect(page.getByLabel("Irodori Table")).toBeVisible();
 
   // CodeMirror is mounted with seeded SQL and produces highlight token spans.
   const content = page.locator(".cm-content");
@@ -31,17 +31,20 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(page.locator(".sidebar")).toBeVisible();
 
   // Vim mode can be toggled on/off without remounting the editor.
-  const keymapToggle = page.getByRole("button", { name: "Keymap" });
-  await expect(keymapToggle).toHaveAttribute("aria-pressed", "false");
-  await keymapToggle.click();
-  const vimToggle = page.getByRole("button", { name: "Vim" });
-  await expect(vimToggle).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const settingsDialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(settingsDialog).toBeVisible();
+  const editorModeRow = settingsDialog
+    .locator(".settings-row")
+    .filter({ hasText: "Editor mode" });
+  await editorModeRow.locator("button").filter({ hasText: /^Vim$/ }).click();
   await expect(page.locator(".cm-vimMode")).toBeVisible();
-  await vimToggle.click();
-  await expect(page.getByRole("button", { name: "Keymap" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  await settingsDialog
+    .locator("button")
+    .filter({ hasText: /^Default$/ })
+    .click();
+  await settingsDialog.getByRole("button", { name: "Close" }).click();
+  await expect(page.locator(".cm-vimMode")).toHaveCount(0);
 
   // Theme toggle flips the shell's data-theme.
   const shell = page.locator(".app-shell");
@@ -54,7 +57,10 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type("select a, b from t where a = 1");
   await expect(page.locator(".cm-line")).toHaveCount(1);
-  await page.locator(".toolbar").getByRole("button", { name: "Format SQL" }).click();
+  await page
+    .getByRole("toolbar", { name: "Editor actions" })
+    .getByRole("button", { name: "Format SQL" })
+    .click();
   expect(await page.locator(".cm-line").count()).toBeGreaterThan(1);
 
   // No unexpected (non-Tauri) uncaught errors.

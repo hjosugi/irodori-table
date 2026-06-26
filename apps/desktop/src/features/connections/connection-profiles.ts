@@ -35,6 +35,24 @@ export const connectionColorOptions = [
   "#ea580c",
 ];
 
+export function normalizeConnectionColor(
+  value: unknown,
+  fallback = defaultConnectionColor,
+) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
+    return raw.toLowerCase();
+  }
+  const short = /^#([0-9a-fA-F]{3})$/.exec(raw);
+  if (short) {
+    return `#${short[1]
+      .split("")
+      .map((char) => char + char)
+      .join("")}`.toLowerCase();
+  }
+  return fallback;
+}
+
 export const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "postgres", label: "PostgreSQL" },
   { value: "mysql", label: "MySQL" },
@@ -258,7 +276,7 @@ export function loadProfiles() {
       parsed.map((profile) => ({
         ...newDraft(1),
         ...profile,
-        color: profile.color || defaultConnectionColor,
+        color: normalizeConnectionColor(profile.color),
         password: "",
         port: profile.port ?? defaultPort(profile.engine),
       })),
@@ -271,7 +289,7 @@ export function loadProfiles() {
 export function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
   return {
     ...profile,
-    color: profile.color || defaultConnectionColor,
+    color: normalizeConnectionColor(profile.color),
     password: "",
   };
 }
@@ -298,7 +316,7 @@ export function repairBuiltinSampleProfile(profile: ConnectionDraft): Connection
       profile.name === "Local Warehouse" || !profile.name.trim()
         ? "Local Postgres"
         : profile.name,
-    color: profile.color || "#16a34a",
+    color: normalizeConnectionColor(profile.color, "#16a34a"),
     engine: "postgres",
     mode: "url",
     url: localPostgresSampleUrl,
@@ -354,7 +372,7 @@ export function settingsProfileFromJson(
       ...defaults,
       id: nonEmptyJsonString(value.id, defaults.id),
       name: nonEmptyJsonString(value.name, defaults.name),
-      color: nonEmptyJsonString(value.color, defaultConnectionColor),
+      color: normalizeConnectionColor(value.color),
       engine,
       mode,
       url: jsonString(value.url, defaults.url),

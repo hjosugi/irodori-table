@@ -208,6 +208,10 @@ async function installMultiResultMock(page: Page) {
 }
 
 async function connectMockDatabase(page: Page) {
+  await page
+    .getByRole("button", { name: "Connection manager", exact: true })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.locator(".editor-meta")).toContainText("ready");
 }

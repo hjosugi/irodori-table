@@ -641,15 +641,29 @@
 
 .editor-and-inspector {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4px var(--inspector-width, 285px);
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
+}
+
+.editor-and-inspector.has-right-inspector {
+  grid-template-columns: minmax(0, 1fr) 4px var(--inspector-width, 285px);
+}
+
+.editor-and-inspector.has-left-inspector {
+  grid-template-columns: var(--inspector-width, 285px) 4px minmax(0, 1fr);
+}
+
+.editor-and-inspector.has-left-inspector.has-right-inspector {
+  grid-template-columns:
+    var(--inspector-width, 285px) 4px minmax(0, 1fr) 4px
+    var(--inspector-width, 285px);
 }
 
 .editor-pane {
   position: relative;
   display: grid;
-  grid-template-rows: var(--bar-md) minmax(0, 1fr);
+  grid-template-rows: var(--bar-md) minmax(0, 1fr) var(--bar-md);
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
@@ -662,11 +676,16 @@
 }
 
 .editor-pane.sql-file-drag-over::after {
-  content: "";
+  content: attr(data-drop-label);
   position: absolute;
   inset: var(--bar-md) 0 0;
-  z-index: 8;
-  background: color-mix(in srgb, var(--editor-bg) 80%, var(--focus) 20%);
+  z-index: 16;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font-size: var(--font-ui-lg);
+  font-weight: 800;
+  background: color-mix(in srgb, var(--editor-bg) 72%, var(--focus) 28%);
   pointer-events: none;
 }
 
@@ -741,14 +760,16 @@
 }
 
 .editor-floating-actions {
-  position: absolute;
-  right: 14px;
-  bottom: 12px;
-  z-index: 12;
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: flex-end;
-  max-width: calc(100% - 28px);
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 14px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--editor-bg) 92%, var(--surface-muted));
   pointer-events: none;
 }
 
@@ -758,7 +779,7 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
-  max-width: min(720px, calc(100vw - 260px));
+  max-width: 100%;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -827,10 +848,11 @@
 }
 
 .editor-split {
+  grid-row: 2;
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
   overflow: hidden;
 }
 
@@ -1003,6 +1025,14 @@ body.panel-resizing .result-grid {
   overflow: auto;
   padding-bottom: 8px;
   background: var(--surface-muted);
+}
+
+.inspector-left {
+  border-right: 1px solid var(--border);
+}
+
+.inspector-right {
+  border-left: 1px solid var(--border);
 }
 
 .inspector > section {

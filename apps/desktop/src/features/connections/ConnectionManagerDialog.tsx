@@ -12,6 +12,7 @@ import {
   connectionColorOptions,
   engineLabel,
   engineOptions,
+  normalizeConnectionColor,
   type ConnectionDraft,
 } from "./connection-profiles";
 
@@ -160,6 +161,29 @@ export function ConnectionManagerDialog({
                     onClick={() => onUpdateDraft({ color })}
                   />
                 ))}
+                <label className="connection-custom-color">
+                  <input
+                    type="color"
+                    value={normalizeConnectionColor(draft.color)}
+                    onChange={(event) =>
+                      onUpdateDraft({ color: event.currentTarget.value })
+                    }
+                    aria-label="Use custom connection color"
+                  />
+                  <input
+                    value={draft.color}
+                    spellCheck={false}
+                    aria-label="Connection color hex"
+                    onBlur={() =>
+                      onUpdateDraft({
+                        color: normalizeConnectionColor(draft.color),
+                      })
+                    }
+                    onChange={(event) =>
+                      onUpdateDraft({ color: event.currentTarget.value })
+                    }
+                  />
+                </label>
               </div>
             </div>
             <div className="connection-form-grid">

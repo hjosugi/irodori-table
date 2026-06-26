@@ -215,11 +215,17 @@ frequency: number, };
 
 export type GitChangeKind = "modified" | "added" | "deleted" | "renamed" | "copied" | "untracked" | "unmerged" | "typeChanged" | "unknown";
 
+export type GitRemoteProvider = "github" | "gitlab" | "bitbucket" | "azureRepos" | "codeCommit" | "gitea" | "generic";
+
 export type GitFileStatus = { path: string, originalPath?: string, indexStatus: string, worktreeStatus: string, kind: GitChangeKind, };
 
 export type GitCommitSummary = { hash: string, shortHash: string, author: string, timestampSeconds: bigint, subject: string, parents: Array<string>, refs: Array<string>, };
 
-export type GitStatusSummary = { repoRoot: string, branch: string, upstream?: string, ahead: number, behind: number, clean: boolean, files: Array<GitFileStatus>, recentCommits: Array<GitCommitSummary>, };
+export type GitRemoteSummary = { name: string, fetchUrl: string, pushUrl?: string, provider: GitRemoteProvider, webUrl?: string, };
+
+export type GitBranchSummary = { name: string, current: boolean, upstream?: string, ahead: number, behind: number, };
+
+export type GitStatusSummary = { repoRoot: string, branch: string, upstream?: string, ahead: number, behind: number, clean: boolean, files: Array<GitFileStatus>, recentCommits: Array<GitCommitSummary>, remotes: Array<GitRemoteSummary>, branches: Array<GitBranchSummary>, };
 
 export type GitDiffResult = { repoRoot: string, filePath?: string, staged: string, unstaged: string, truncated: boolean, };
 
@@ -317,8 +323,40 @@ export function gitCommitAll(message: string, repoPath?: string): Promise<GitCom
   return invoke<GitCommandOutput>("git_commit_all", { message, repoPath });
 }
 
+export function gitCommitStaged(message: string, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_commit_staged", { message, repoPath });
+}
+
 export function gitPush(repoPath?: string): Promise<GitCommandOutput> {
   return invoke<GitCommandOutput>("git_push", { repoPath });
+}
+
+export function gitFetch(repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_fetch", { repoPath });
+}
+
+export function gitPull(repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_pull", { repoPath });
+}
+
+export function gitStageFiles(paths: Array<string>, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_stage_files", { paths, repoPath });
+}
+
+export function gitUnstageFiles(paths: Array<string>, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_unstage_files", { paths, repoPath });
+}
+
+export function gitDiscardFiles(paths: Array<string>, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_discard_files", { paths, repoPath });
+}
+
+export function gitCheckoutBranch(branch: string, create?: boolean, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_checkout_branch", { branch, create, repoPath });
+}
+
+export function gitDeleteBranch(branch: string, force?: boolean, repoPath?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_delete_branch", { branch, force, repoPath });
 }
 
 export function securityGetPrivacyMode(): Promise<PrivacyMode> {

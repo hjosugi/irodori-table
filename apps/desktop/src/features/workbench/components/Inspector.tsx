@@ -7,6 +7,7 @@ import {
   vectorHelperTemplates,
 } from "../vector-helpers";
 import type { CompletionHint } from "../types";
+import type { WorkbenchSide } from "../types";
 
 type InspectorProps = {
   activeConnectionId: string;
@@ -18,6 +19,9 @@ type InspectorProps = {
   onInsertCompletionHint: (hint: CompletionHint) => void;
   onInsertSql: (sql: string) => void;
   onLoadHistorySql: (sql: string) => void;
+  side?: WorkbenchSide;
+  showCompletion?: boolean;
+  showHistory?: boolean;
 };
 
 export function Inspector({
@@ -30,11 +34,14 @@ export function Inspector({
   onInsertCompletionHint,
   onInsertSql,
   onLoadHistorySql,
+  side = "right",
+  showCompletion = true,
+  showHistory = true,
 }: InspectorProps) {
   const vectorTemplates = vectorHelperTemplates(editorEngine);
   return (
-    <aside className="inspector">
-      {isVectorEngine(editorEngine) ? (
+    <aside className={`inspector inspector-${side}`}>
+      {showCompletion && isVectorEngine(editorEngine) ? (
         <section>
           <div className="section-heading">
             <span>Vector Tools</span>
@@ -54,42 +61,46 @@ export function Inspector({
           </div>
         </section>
       ) : null}
-      <section>
-        <div className="section-heading">
-          <span>Completion</span>
-          <Columns3 size={14} />
-        </div>
-        <div className="completion-list">
-          {activeMetadataLoading ? (
-            <div className="empty-browser loading">Loading metadata</div>
-          ) : activeMetadataError ? (
-            <div className="empty-browser">
-              <AlertTriangle size={14} />
-              <span>{activeMetadataError}</span>
-            </div>
-          ) : completionHints.length > 0 ? (
-            completionHints.map((item) => (
-              <button
-                className="completion-item"
-                key={`${item.detail}:${item.label}`}
-                onClick={() => onInsertCompletionHint(item)}
-              >
-                <strong>{item.label}</strong>
-                <small>{item.detail}</small>
-              </button>
-            ))
-          ) : (
-            <div className="empty-browser">
-              Connect to load completion metadata
-            </div>
-          )}
-        </div>
-      </section>
-      <QueryHistorySidebar
-        activeConnectionId={activeConnectionId}
-        connectionById={connectionById}
-        onLoad={(item) => onLoadHistorySql(item.sql)}
-      />
+      {showCompletion ? (
+        <section>
+          <div className="section-heading">
+            <span>Completion</span>
+            <Columns3 size={14} />
+          </div>
+          <div className="completion-list">
+            {activeMetadataLoading ? (
+              <div className="empty-browser loading">Loading metadata</div>
+            ) : activeMetadataError ? (
+              <div className="empty-browser">
+                <AlertTriangle size={14} />
+                <span>{activeMetadataError}</span>
+              </div>
+            ) : completionHints.length > 0 ? (
+              completionHints.map((item) => (
+                <button
+                  className="completion-item"
+                  key={`${item.detail}:${item.label}`}
+                  onClick={() => onInsertCompletionHint(item)}
+                >
+                  <strong>{item.label}</strong>
+                  <small>{item.detail}</small>
+                </button>
+              ))
+            ) : (
+              <div className="empty-browser">
+                Connect to load completion metadata
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+      {showHistory ? (
+        <QueryHistorySidebar
+          activeConnectionId={activeConnectionId}
+          connectionById={connectionById}
+          onLoad={(item) => onLoadHistorySql(item.sql)}
+        />
+      ) : null}
     </aside>
   );
 }

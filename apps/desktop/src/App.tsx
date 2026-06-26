@@ -80,7 +80,7 @@ import { ErdDialog } from "./features/erd/ErdDialog";
 import { SchemaDesignerDialog } from "./features/schema-designer/SchemaDesignerDialog";
 import { SettingsDialog, type SettingsTab } from "./features/settings";
 import { usePreferencesStore } from "./features/preferences";
-import { normalizeLocale } from "./i18n";
+import { createTranslator, normalizeLocale } from "./i18n";
 import {
   createWorkbenchCommandHandler,
   Inspector,
@@ -581,6 +581,7 @@ function App() {
   const [query, setQuery] = useState(loadSavedQuery);
   const locale = usePreferencesStore((state) => state.locale);
   const setLocale = usePreferencesStore((state) => state.setLocale);
+  const { t } = useMemo(() => createTranslator(locale), [locale]);
   const themeKind = usePreferencesStore((state) => state.themeKind);
   const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
   const activeCustomThemeId = usePreferencesStore(
@@ -1223,8 +1224,15 @@ function App() {
     ? formatResultSelectionStatus(selectionSummary)
     : null;
 
+  const chartCandidateAvailable =
+    Boolean(activeResult) &&
+    !spillInfo &&
+    resultColumns.length > 0;
   const chartResultModel = useMemo(() => {
-    if (!activeResult || spillInfo || resultColumns.length === 0) {
+    if (!chartCandidateAvailable || !activeResult || spillInfo) {
+      return null;
+    }
+    if (resultGridView.windowed && resultMode !== "chart") {
       return null;
     }
     const rows = resultGridView
@@ -1235,8 +1243,17 @@ function App() {
     }
     const model = buildChartResultModel(resultColumns, rows);
     return model.defaultSelection ? model : null;
-  }, [activeResult, resultColumns, resultGridView, spillInfo]);
-  const chartAvailable = Boolean(chartResultModel);
+  }, [
+    activeResult,
+    chartCandidateAvailable,
+    resultColumns,
+    resultGridView,
+    resultMode,
+    spillInfo,
+  ]);
+  const chartAvailable = resultGridView.windowed
+    ? chartCandidateAvailable
+    : Boolean(chartResultModel);
 
   // Virtualize the result grid: render only the rows in (and just around) the
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
@@ -1258,7 +1275,7 @@ function App() {
   const showingStructure = Boolean(structureObject);
 
   useEffect(() => {
-    if (resultMode === "chart" && (!chartAvailable || editMode)) {
+    if (resultMode === "chart" && (!chartResultModel || editMode)) {
       setResultMode("data");
     }
     if (resultMode === "graph" && !graphAvailable) {
@@ -1268,7 +1285,7 @@ function App() {
       setResultMode("data");
     }
   }, [
-    chartAvailable,
+    chartResultModel,
     editMode,
     graphAvailable,
     resultMode,
@@ -1364,7 +1381,12 @@ function App() {
     resetGridScrollPosition(true);
   }
 
-  type PanelResizeKind = "sidebar" | "inspector" | "results" | "editorSplit";
+  type PanelResizeKind =
+    | "sidebar"
+    | "leftInspector"
+    | "inspector"
+    | "results"
+    | "editorSplit";
 
   function resizePanel(kind: PanelResizeKind, delta: number) {
     switch (kind) {
@@ -1373,6 +1395,7 @@ function App() {
           clampNumber(current + delta, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX),
         );
         break;
+      case "leftInspector":
       case "inspector":
         setInspectorWidth((current) =>
           clampNumber(
@@ -1449,6 +1472,16 @@ function App() {
         );
         return;
       }
+      if (kind === "leftInspector") {
+        setInspectorWidth(
+          clampNumber(
+            startInspectorWidth + (moveEvent.clientX - startX),
+            INSPECTOR_WIDTH_MIN,
+            INSPECTOR_WIDTH_MAX,
+          ),
+        );
+        return;
+      }
       setResultsHeight(
         clampNumber(
           startResultsHeight - (moveEvent.clientY - startY),
@@ -1496,8 +1529,16 @@ function App() {
       resizePanel(kind, event.key === "ArrowUp" ? step : -step);
       return;
     }
-    const direction = kind === "sidebar" ? 1 : -1;
-    resizePanel(kind, (event.key === "ArrowRight" ? step : -step) * direction);
+    if (kind === "sidebar") {
+      const direction = sidebarSide === "right" ? -1 : 1;
+      resizePanel(kind, (event.key === "ArrowRight" ? step : -step) * direction);
+      return;
+    }
+    if (kind === "leftInspector") {
+      resizePanel(kind, event.key === "ArrowRight" ? step : -step);
+      return;
+    }
+    resizePanel(kind, event.key === "ArrowLeft" ? step : -step);
   }
 
   // Drop every staged edit (called on a new run and after a successful commit).
@@ -2216,6 +2257,10 @@ function App() {
           maxItems: queryHistoryMaxItems,
           resultRows: queryHistoryResultRows,
         },
+        results: {
+          offloadEnabled: resultOffloadEnabled,
+          memoryBudget: resultMemoryBudget,
+        },
         layout: {
           sidebarOpen,
           sidebarSide,
@@ -2403,6 +2448,17 @@ function App() {
           );
         }
       }
+      if (isRecord(parsed.results)) {
+        if (typeof parsed.results.offloadEnabled === "boolean") {
+          setResultOffloadEnabled(parsed.results.offloadEnabled);
+        }
+        const nextMemoryBudget = Number(parsed.results.memoryBudget);
+        if (Number.isFinite(nextMemoryBudget)) {
+          setResultMemoryBudget(
+            clampNumber(nextMemoryBudget, 1_000, 100_000),
+          );
+        }
+      }
       if (isRecord(parsed.layout)) {
         if (typeof parsed.layout.sidebarOpen === "boolean") {
           setSidebarOpen(parsed.layout.sidebarOpen);
@@ -2413,17 +2469,21 @@ function App() {
         ) {
           setPrimarySidebarSide(parsed.layout.sidebarSide);
         }
-        if (isRecord(parsed.layout.viewPlacements)) {
-          setViewPlacements((current) => {
-            const next: WorkbenchViewPlacements = { ...current };
-            for (const viewId of workbenchViewIds) {
-              const side = parsed.layout.viewPlacements[viewId];
-              if (side === "left" || side === "right") {
-                next[viewId] = side;
-              }
+        const viewPlacements = parsed.layout.viewPlacements;
+        if (isRecord(viewPlacements)) {
+          const importedPlacements: Partial<WorkbenchViewPlacements> = {};
+          for (const viewId of workbenchViewIds) {
+            const side = viewPlacements[viewId];
+            if (side === "left" || side === "right") {
+              importedPlacements[viewId] = side;
             }
-            return next;
+          }
+          setViewPlacements((current) => {
+            return { ...current, ...importedPlacements };
           });
+          if (importedPlacements.objectBrowser) {
+            setPrimarySidebarSide(importedPlacements.objectBrowser);
+          }
         }
         const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
         if (Number.isFinite(nextSidebarWidth)) {
@@ -3862,8 +3922,19 @@ function App() {
     }
   }
 
+  const completionSide = viewPlacements.completion;
+  const queryHistorySide = viewPlacements.queryHistory;
+  const showLeftInspector =
+    completionSide === "left" || queryHistorySide === "left";
+  const showRightInspector =
+    completionSide === "right" || queryHistorySide === "right";
+
   return (
-    <>
+    <div
+      className="app-root"
+      data-theme={theme.kind}
+      style={cssVariables(theme)}
+    >
       <WorkbenchShell
         appName={APP_NAME}
         appVersion={APP_VERSION}
@@ -3973,7 +4044,44 @@ function App() {
             </button>
           </div>
 
-          <div className="editor-and-inspector">
+          <div
+            className={[
+              "editor-and-inspector",
+              showLeftInspector ? "has-left-inspector" : null,
+              showRightInspector ? "has-right-inspector" : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {showLeftInspector ? (
+              <>
+                <Inspector
+                  activeConnectionId={activeConnectionId}
+                  editorEngine={editorEngine}
+                  connectionById={connectionById}
+                  activeMetadataLoading={activeMetadataLoading}
+                  activeMetadataError={activeMetadataError}
+                  completionHints={completionHints}
+                  onInsertCompletionHint={insertCompletionHint}
+                  onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+                  onLoadHistorySql={setQuery}
+                  side="left"
+                  showCompletion={completionSide === "left"}
+                  showHistory={queryHistorySide === "left"}
+                />
+                <div
+                  className="panel-resizer inspector-resizer left-inspector-resizer"
+                  role="separator"
+                  aria-label="Resize left inspector"
+                  aria-orientation="vertical"
+                  tabIndex={0}
+                  onPointerDown={(event) =>
+                    beginPanelResize("leftInspector", event)
+                  }
+                  onKeyDown={(event) => onPanelResizeKey("leftInspector", event)}
+                />
+              </>
+            ) : null}
             <QueryEditorPane
               activeTabLabel={activeTabLabel}
               activeConnectionOpen={activeConnectionOpen}
@@ -4020,28 +4128,43 @@ function App() {
                 onPanelResizeKey("editorSplit", event)
               }
               onSqlFileDrop={(file) => void handleImportFile(file)}
+              onUnsupportedFileDrop={() =>
+                showActionNotice(
+                  "error",
+                  t("editor.dropFailed"),
+                  t("editor.dropUnsupportedFile"),
+                )
+              }
+              sqlFileDropLabel={t("editor.dropSqlFile")}
             />
 
-            <div
-              className="panel-resizer inspector-resizer"
-              role="separator"
-              aria-label="Resize inspector"
-              aria-orientation="vertical"
-              tabIndex={0}
-              onPointerDown={(event) => beginPanelResize("inspector", event)}
-              onKeyDown={(event) => onPanelResizeKey("inspector", event)}
-            />
-            <Inspector
-              activeConnectionId={activeConnectionId}
-              editorEngine={editorEngine}
-              connectionById={connectionById}
-              activeMetadataLoading={activeMetadataLoading}
-              activeMetadataError={activeMetadataError}
-              completionHints={completionHints}
-              onInsertCompletionHint={insertCompletionHint}
-              onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-              onLoadHistorySql={setQuery}
-            />
+            {showRightInspector ? (
+              <>
+                <div
+                  className="panel-resizer inspector-resizer right-inspector-resizer"
+                  role="separator"
+                  aria-label="Resize right inspector"
+                  aria-orientation="vertical"
+                  tabIndex={0}
+                  onPointerDown={(event) => beginPanelResize("inspector", event)}
+                  onKeyDown={(event) => onPanelResizeKey("inspector", event)}
+                />
+                <Inspector
+                  activeConnectionId={activeConnectionId}
+                  editorEngine={editorEngine}
+                  connectionById={connectionById}
+                  activeMetadataLoading={activeMetadataLoading}
+                  activeMetadataError={activeMetadataError}
+                  completionHints={completionHints}
+                  onInsertCompletionHint={insertCompletionHint}
+                  onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+                  onLoadHistorySql={setQuery}
+                  side="right"
+                  showCompletion={completionSide === "right"}
+                  showHistory={queryHistorySide === "right"}
+                />
+              </>
+            ) : null}
           </div>
 
           <div
@@ -4219,6 +4342,8 @@ function App() {
           setSidebarOpen={setSidebarOpen}
           sidebarSide={sidebarSide}
           setSidebarSide={setPrimarySidebarSide}
+          viewPlacements={viewPlacements}
+          setViewPlacement={setViewPlacement}
           commandCatalog={appCommandCatalog}
           keymap={keymap}
           keymapOverrides={keymapOverrides}
@@ -4357,7 +4482,7 @@ function App() {
           onDismiss={() => setActionNotice(null)}
         />
       ) : null}
-    </>
+    </div>
   );
 }
 

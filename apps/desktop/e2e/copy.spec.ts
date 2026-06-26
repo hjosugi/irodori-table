@@ -183,6 +183,10 @@ async function installCopyMock(page: Page) {
 
 async function connectAndRun(page: Page) {
   await page.goto("/");
+  await page
+    .getByRole("button", { name: "Connection manager", exact: true })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.locator(".editor-meta")).toContainText("ready");
   await page.getByRole("button", { name: "Run Current", exact: true }).click();
@@ -213,11 +217,13 @@ test.describe("result grid copy", () => {
     await installCopyMock(page);
     await connectAndRun(page);
 
-    await page.getByRole("cell", { name: "Kawase Foods" }).click();
-    await runPaletteCommand(page, "Copy selected cell");
+    const targetCell = page.getByRole("cell", { name: "Kawase Foods" });
+    await targetCell.click();
+    await expect(targetCell).toHaveAttribute("aria-selected", "true");
+    await runPaletteCommand(page, "Copy selected cell or row");
     await expectCopiedText(page, "Kawase Foods");
 
-    await runPaletteCommand(page, "Copy selected row");
+    await runPaletteCommand(page, "Copy selected row as TSV");
     await expectCopiedText(page, "2\tKawase Foods\tOsaka");
   });
 

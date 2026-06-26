@@ -29,17 +29,19 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
   await page.goto("/");
 
   const content = page.locator(".cm-content");
-  await expect(page.getByText("Irodori Table")).toBeVisible();
+  await expect(page.getByLabel("Irodori Table")).toBeVisible();
   await expect(page.locator(".cm-editor")).toBeVisible();
 
   await replaceEditorText(page, "select alpha;\nselect beta;\nselect gamma;");
 
-  const keymapToggle = page.getByRole("button", { name: "Keymap" });
-  await expect(keymapToggle).toHaveAttribute("aria-pressed", "false");
-  await keymapToggle.click();
-
-  const vimToggle = page.getByRole("button", { name: "Vim" });
-  await expect(vimToggle).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const settingsDialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(settingsDialog).toBeVisible();
+  const editorModeRow = settingsDialog
+    .locator(".settings-row")
+    .filter({ hasText: "Editor mode" });
+  await editorModeRow.locator("button").filter({ hasText: /^Vim$/ }).click();
+  await settingsDialog.getByRole("button", { name: "Close" }).click();
   await expect(page.locator(".cm-vimMode")).toBeVisible();
 
   await content.locator(".cm-line").first().click({ position: { x: 1, y: 8 } });
@@ -58,11 +60,13 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
     "-- inserted in vim\nselect alpha;\nselect gamma;",
   );
 
-  await vimToggle.click();
-  await expect(page.getByRole("button", { name: "Keymap" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(settingsDialog).toBeVisible();
+  await settingsDialog
+    .locator("button")
+    .filter({ hasText: /^Default$/ })
+    .click();
+  await settingsDialog.getByRole("button", { name: "Close" }).click();
   await expect(page.locator(".cm-vimMode")).toHaveCount(0);
 
   await replaceEditorText(page, "select 42 as answer;");

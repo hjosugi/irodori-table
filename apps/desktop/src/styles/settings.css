@@ -1,11 +1,14 @@
-.settings-dialog {
+.data-dialog.settings-dialog {
   width: min(920px, 94vw);
+  height: min(720px, 82vh);
+  max-height: min(720px, 82vh);
 }
 
 .settings-body {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
-  min-height: 480px;
+  flex: 1;
+  min-height: 0;
 }
 
 .settings-nav {
@@ -75,7 +78,8 @@
   font-size: 12px;
 }
 
-.settings-row input {
+.settings-row input,
+.settings-row select {
   width: 120px;
   height: var(--control-sm);
   padding: 0 8px;
@@ -84,7 +88,18 @@
   color: var(--text);
   background: var(--input-bg);
   font: inherit;
+}
+
+.settings-row input {
   text-align: right;
+}
+
+.settings-row select {
+  width: auto;
+  min-width: 150px;
+  max-width: min(260px, 42vw);
+  justify-self: end;
+  text-overflow: ellipsis;
 }
 
 .settings-command-list {
@@ -219,6 +234,36 @@
   gap: 12px;
 }
 
+@media (max-width: 980px) {
+  .snippet-editor-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .settings-row input,
+  .settings-row select {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+}
+
 .jobs-section {
   display: grid;
   gap: 8px;
@@ -286,7 +331,7 @@
 }
 
 .job-error {
-  color: var(--danger) !important;
+  color: var(--red) !important;
 }
 
 .job-progress {

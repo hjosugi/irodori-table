@@ -85,6 +85,8 @@ export interface QueryEditorPaneProps {
     event: ReactKeyboardEvent<HTMLDivElement>,
   ) => void;
   onSqlFileDrop?: (file: File) => void;
+  onUnsupportedFileDrop?: () => void;
+  sqlFileDropLabel?: string;
 }
 
 export function QueryEditorPane({
@@ -129,6 +131,8 @@ export function QueryEditorPane({
   beginEditorSplitResize,
   onEditorSplitResizeKey,
   onSqlFileDrop,
+  onUnsupportedFileDrop,
+  sqlFileDropLabel = "Drop .sql file to load",
 }: QueryEditorPaneProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -231,6 +235,7 @@ export function QueryEditorPane({
 
     const sqlFile = findSqlFile(event.dataTransfer.files);
     if (!sqlFile) {
+      onUnsupportedFileDrop?.();
       return;
     }
 
@@ -240,6 +245,7 @@ export function QueryEditorPane({
   return (
     <section
       className={`editor-pane${sqlFileDragOver ? " sql-file-drag-over" : ""}`}
+      data-drop-label={sqlFileDropLabel}
       aria-label={activeTabLabel}
       onDragEnter={handleSqlFileDragEnter}
       onDragOver={handleSqlFileDragOver}

@@ -39,7 +39,11 @@ import {
   type Locale,
 } from "../../i18n";
 import type { ThemeKind } from "../../theme";
-import type { WorkbenchSide } from "../workbench";
+import type {
+  WorkbenchSide,
+  WorkbenchViewId,
+  WorkbenchViewPlacements,
+} from "../workbench";
 
 export type SettingsTab =
   | "general"
@@ -87,6 +91,8 @@ export interface SettingsDialogProps {
   setSidebarOpen: (value: BooleanUpdater) => void;
   sidebarSide: WorkbenchSide;
   setSidebarSide: (value: WorkbenchSide) => void;
+  viewPlacements: WorkbenchViewPlacements;
+  setViewPlacement: (viewId: WorkbenchViewId, side: WorkbenchSide) => void;
   commandCatalog: CommandMeta[];
   keymap: Keymap;
   keymapOverrides: Keymap;
@@ -218,6 +224,8 @@ export function SettingsDialog({
   setSidebarOpen,
   sidebarSide,
   setSidebarSide,
+  viewPlacements,
+  setViewPlacement,
   commandCatalog,
   keymap,
   keymapOverrides,
@@ -564,6 +572,68 @@ export function SettingsDialog({
                       type="button"
                       className={sidebarSide === "right" ? "active" : undefined}
                       onClick={() => setSidebarSide("right")}
+                    >
+                      {t("settings.general.sidebarSide.right")}
+                    </button>
+                  </div>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>{t("settings.general.completionSide.title")}</strong>
+                    <small>
+                      {t("settings.general.completionSide.description")}
+                    </small>
+                  </span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={
+                        viewPlacements.completion === "left"
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setViewPlacement("completion", "left")}
+                    >
+                      {t("settings.general.sidebarSide.left")}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        viewPlacements.completion === "right"
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setViewPlacement("completion", "right")}
+                    >
+                      {t("settings.general.sidebarSide.right")}
+                    </button>
+                  </div>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>{t("settings.general.historySide.title")}</strong>
+                    <small>{t("settings.general.historySide.description")}</small>
+                  </span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={
+                        viewPlacements.queryHistory === "left"
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setViewPlacement("queryHistory", "left")}
+                    >
+                      {t("settings.general.sidebarSide.left")}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        viewPlacements.queryHistory === "right"
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setViewPlacement("queryHistory", "right")}
                     >
                       {t("settings.general.sidebarSide.right")}
                     </button>
