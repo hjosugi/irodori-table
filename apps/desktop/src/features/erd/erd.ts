@@ -4,7 +4,7 @@
 // multi-schema grouping, and zoom/search controls are deterministic and testable.
 // Mermaid source is still generated for copy/paste interoperability.
 
-import type { DatabaseMetadata, DbObjectMetadata } from "./generated/irodori-api";
+import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
 
 export type ErdColumn = {
   name: string;

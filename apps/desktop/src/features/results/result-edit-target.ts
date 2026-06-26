@@ -1,7 +1,7 @@
 import type {
   DatabaseMetadata,
   DbObjectMetadata,
-} from "./generated/irodori-api";
+} from "@/generated/irodori-api";
 
 export type ResultEditTarget = {
   schema?: string;

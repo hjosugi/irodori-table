@@ -1,4 +1,4 @@
-import type { DbObjectMetadata } from "./generated/irodori-api";
+import type { DbObjectMetadata } from "@/generated/irodori-api";
 
 export type SchemaDesignerMode = "create" | "alter";
 

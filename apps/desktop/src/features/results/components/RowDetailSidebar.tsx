@@ -7,7 +7,7 @@ import {
   type DbEngine,
   type DbObjectMetadata,
   type ForeignKey,
-} from "./generated/irodori-api";
+} from "@/generated/irodori-api";
 import {
   buildJsonTree,
   buildForeignKeyLookup,
@@ -17,7 +17,7 @@ import {
   formatDetailValue,
   rowToJsonObject,
   type JsonTreeNode,
-} from "./row-detail";
+} from "../row-detail";
 
 const MAX_FK_DEPTH = 6;
 

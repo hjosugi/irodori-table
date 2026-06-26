@@ -25,7 +25,7 @@ import {
   type CommandMeta,
   type Keymap,
   type KeymapConflicts,
-} from "../../keybindings";
+} from "@/core/keybindings";
 import {
   cloneDefaultSqlSnippets,
   isSqlSnippetScope,
@@ -48,7 +48,7 @@ import {
   supportedLocales,
   type Locale,
 } from "../../i18n";
-import type { ThemeKind } from "../../theme";
+import type { ThemeKind } from "@/theme";
 import type {
   WorkbenchSide,
   WorkbenchViewId,

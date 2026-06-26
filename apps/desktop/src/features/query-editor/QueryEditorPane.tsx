@@ -20,7 +20,7 @@ import {
   Square,
   TerminalSquare,
 } from "lucide-react";
-import SqlEditor, { type SqlEditorHandle } from "../../SqlEditor";
+import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
 import type {
   DatabaseMetadata,
   DbEngine,
@@ -28,7 +28,7 @@ import type {
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
 import type { SqlLinterId } from "../../sql/linter";
-import type { IrodoriTheme } from "../../theme";
+import type { IrodoriTheme } from "@/theme";
 import type { EditorSplitMode } from "../workbench";
 import { findSqlFile, hasDraggedFiles } from "./drag-drop";
 

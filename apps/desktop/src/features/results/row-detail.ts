@@ -7,7 +7,7 @@ import type {
   DbObjectMetadata,
   ForeignKey,
   QueryParameterInput,
-} from "./generated/irodori-api";
+} from "@/generated/irodori-api";
 
 export type DetailValue = {
   /** Display text for the value (JSON pretty-printed when applicable). */

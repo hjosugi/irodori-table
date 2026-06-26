@@ -22,17 +22,17 @@ import {
 import { indentWithTab, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
-import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
-import type { SqlSnippetDefinition } from "./sql/completion";
-import { buildSqlExtensions } from "./sql/dialect";
-import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
-import { sqlHighlightingExtensions } from "./sql/highlighting";
-import { lintSqlDocument, type SqlLinterId } from "./sql/linter";
+import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
+import type { SqlSnippetDefinition } from "@/sql/completion";
+import { buildSqlExtensions } from "@/sql/dialect";
+import { formatSqlDocument, type SqlFormatterId } from "@/sql/formatter";
+import { sqlHighlightingExtensions } from "@/sql/highlighting";
+import { lintSqlDocument, type SqlLinterId } from "@/sql/linter";
 import {
   transformSqlEditorText,
   type SqlEditorTransformAction,
-} from "./sql/editor-transforms";
-import { editorThemeExtensions, type IrodoriTheme } from "./theme";
+} from "@/sql/editor-transforms";
+import { editorThemeExtensions, type IrodoriTheme } from "@/theme";
 
 export interface SqlEditorHandle {
   /** Document offsets of the current selection (collapsed range = caret). */

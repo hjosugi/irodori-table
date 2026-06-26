@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import type { ErdLayout, ErdLayoutTable } from "./erd";
-import type { IrodoriTheme } from "./theme";
+import type { IrodoriTheme } from "@/theme";
 
 export function erdSvgStyle(theme: IrodoriTheme) {
   const { ui, syntax } = theme;

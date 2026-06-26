@@ -1,4 +1,4 @@
-import type { IrodoriError } from "./generated/irodori-api";
+import type { IrodoriError } from "@/generated/irodori-api";
 
 export function isIrodoriError(value: unknown): value is IrodoriError {
   if (!value || typeof value !== "object") {

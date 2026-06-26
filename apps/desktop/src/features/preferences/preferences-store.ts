@@ -10,9 +10,9 @@ import {
 } from "../../sql/formatter";
 import { detectBrowserLocale, normalizeLocale, type Locale } from "../../i18n";
 import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
-import type { CustomThemeEntry, IrodoriTheme, ThemeKind } from "../../theme";
+import type { CustomThemeEntry, IrodoriTheme, ThemeKind } from "@/theme";
 
-export type { CustomThemeEntry } from "../../theme";
+export type { CustomThemeEntry } from "@/theme";
 type ValueUpdater<T> = T | ((current: T) => T);
 
 const themeStorageKey = "irodori.theme.v1";
