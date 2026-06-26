@@ -12,15 +12,15 @@ jobs:
       - name: Checkout irodori-table
         uses: actions/checkout@v4
 
-      - name: Checkout typebridge
+      - name: Checkout typeship
         uses: actions/checkout@v4
         with:
-          repository: hjosugi/typebridge
-          path: _typebridge
+          repository: hjosugi/typeship
+          path: _typeship
 
-      - name: Position typebridge as a sibling
+      - name: Position typeship as a sibling
         shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typebridge" "$GITHUB_WORKSPACE/../typebridge"
+        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
 
       - name: Install Linux build dependencies
         run: |

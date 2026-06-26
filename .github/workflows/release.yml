@@ -26,18 +26,18 @@ jobs:
       - name: Checkout irodori-table
         uses: actions/checkout@v4
 
-      # typebridge is a sibling path dependency (see ../../../../typebridge in the
+      # typeship is a sibling path dependency (see ../../../../typeship in the
       # desktop crate's Cargo.toml). actions/checkout refuses paths outside
       # $GITHUB_WORKSPACE, so check it out inside the workspace and move it
       # alongside the repo where Cargo expects it.
-      - name: Checkout typebridge
+      - name: Checkout typeship
         uses: actions/checkout@v4
         with:
-          repository: hjosugi/typebridge
-          path: _typebridge
-      - name: Position typebridge as a sibling
+          repository: hjosugi/typeship
+          path: _typeship
+      - name: Position typeship as a sibling
         shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typebridge" "$GITHUB_WORKSPACE/../typebridge"
+        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-latest'

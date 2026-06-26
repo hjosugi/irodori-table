@@ -87,6 +87,15 @@ Highlights:
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,
   full scan returns the 10k page in ~77 ms.
+- **Optional disk offload (EXEC-010)**: with offload on, a result larger than the
+  in-memory budget is no longer capped — it is retained behind a temp-SQLite
+  `ResultStore` (`db/spill.rs`) that keeps only the budget resident in RAM and spills
+  the rest to disk, so resident memory stays flat regardless of total size. The
+  desktop grid pages rows back through `db_result_window` behind an LRU-bounded
+  windowed source (`result-window.ts`), so both the Rust heap and the JS heap stay
+  flat while scrolling a result far larger than RAM. A settings toggle controls
+  on/off and the resident-row budget. Verified by `db::spill` unit + `db_run_query_spill`
+  integration tests, `result-window` vitest, and a Playwright spill-paging e2e.
 - **Command-boundary hardening**: backend commands now reject empty connection IDs,
   empty SQL, oversized SQL text, `maxRows=0`, and result windows above the hard
   safety cap. Reconnecting the same profile ID replaces and closes the previous
@@ -205,8 +214,8 @@ Highlights:
 - **Claude ⇄ Codex split** is tracked in `docs/agent-coordination.md` (file ownership +
   message log). Editor-stack decision is `docs/adr/0001-editor-stack.md` (CodeMirror 6 +
   tree-sitter semantic layer + `sql-formatter`).
-- **typebridge** (Rust→TypeScript type bridge) is a sibling project at
-  `/mnt/data/workspace/typebridge`, wired as a dev-dependency; the
+- **typeship** (Rust→TypeScript type bridge) is a sibling project at
+  `/mnt/data/workspace/typeship`, wired as a dev-dependency; the
   `export_typescript_bindings` test renders the desktop TS boundary through it. See
   `docs/type-bridge-handoff.md`.
 

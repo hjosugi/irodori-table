@@ -189,15 +189,15 @@ pub fn run() {
 mod typegen {
     use super::*;
     use std::path::Path;
-    use typebridge::ir::{Decl, TsType};
-    use typebridge::{Arg, Bridge, Command};
-    use typebridge_ts_rs::decl;
+    use typeship::ir::{Decl, TsType};
+    use typeship::{Arg, Bridge, Command};
+    use typeship_ts_rs::decl;
 
     const GENERATED: &str = "../src/generated/irodori-api.ts";
 
     /// The single source of truth for the desktop TypeScript boundary.
     ///
-    /// Each Rust type is rendered by ts-rs via [`decl`]; `typebridge` assembles the
+    /// Each Rust type is rendered by ts-rs via [`decl`]; `typeship` assembles the
     /// module header, the typed Tauri command wrappers, and (in CI) the drift
     /// check. `JsonValue` is a hand-declared alias because `serde_json::Value`
     /// renders to a bare `JsonValue` reference under ts-rs's `serde-json-impl`.

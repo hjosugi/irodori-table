@@ -2,7 +2,7 @@
 
 Last checked: 2026-06-21 JST.
 
-The standalone generator lives in the sibling repo `/mnt/data/workspace/typebridge`
+The standalone generator lives in the sibling repo `/mnt/data/workspace/typeship`
 (developed in its own session). This document is the Irodori-side contract: how
 Irodori consumes the bridge and keeps `apps/desktop/src/generated/` in sync.
 
@@ -19,7 +19,7 @@ The first spike now uses `ts-rs` in the Tauri crate and a Rust test named `expor
 
 ## Objective
 
-Create an `irodori-typebridge` path that makes Rust the source of truth for internal command payloads and generates the TypeScript surface automatically.
+Create an `irodori-typeship` path that makes Rust the source of truth for internal command payloads and generates the TypeScript surface automatically.
 
 The first version can live inside this repository. If it grows into a general tool, split it into a separate permissively licensed project.
 
@@ -106,7 +106,7 @@ export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
 Use three layers:
 
 - `irodori-api`: Rust command, event, extension, and shared payload types.
-- `irodori-typebridge`: generator facade, initially a thin wrapper around the selected library.
+- `irodori-typeship`: generator facade, initially a thin wrapper around the selected library.
 - `generated/irodori-api.ts`: committed TypeScript API consumed by the desktop UI and extension SDK.
 
 The generator should know about command metadata, not only plain types:

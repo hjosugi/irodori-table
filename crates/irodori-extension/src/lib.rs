@@ -589,9 +589,9 @@ mod tests {
 mod typegen {
     use super::*;
     use std::path::Path;
-    use typebridge::ir::{Decl, TsType};
-    use typebridge::Bridge;
-    use typebridge_ts_rs::decl;
+    use typeship::ir::{Decl, TsType};
+    use typeship::Bridge;
+    use typeship_ts_rs::decl;
 
     const GENERATED: &str = "../../packages/extension-sdk/src/generated/irodori-extension-api.ts";
 

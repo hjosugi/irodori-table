@@ -21,18 +21,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # typebridge is a sibling path dependency (see ../../../../typebridge in the
+      # typeship is a sibling path dependency (see ../../../../typeship in the
       # desktop crate's Cargo.toml). actions/checkout refuses paths outside
       # $GITHUB_WORKSPACE, so check it out inside the workspace and move it
       # alongside the repo where Cargo expects it.
-      - name: Checkout typebridge
+      - name: Checkout typeship
         uses: actions/checkout@v4
         with:
-          repository: hjosugi/typebridge
-          path: _typebridge
-      - name: Position typebridge as a sibling
+          repository: hjosugi/typeship
+          path: _typeship
+      - name: Position typeship as a sibling
         shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typebridge" "$GITHUB_WORKSPACE/../typebridge"
+        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -86,15 +86,15 @@ jobs:
       - uses: actions/checkout@v4
 
       # The desktop npm build runs typegen, which depends on the Rust workspace
-      # and the sibling typebridge checkout just like the Rust foundation job.
-      - name: Checkout typebridge
+      # and the sibling typeship checkout just like the Rust foundation job.
+      - name: Checkout typeship
         uses: actions/checkout@v4
         with:
-          repository: hjosugi/typebridge
-          path: _typebridge
-      - name: Position typebridge as a sibling
+          repository: hjosugi/typeship
+          path: _typeship
+      - name: Position typeship as a sibling
         shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typebridge" "$GITHUB_WORKSPACE/../typebridge"
+        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
 
       - uses: dtolnay/rust-toolchain@stable
 

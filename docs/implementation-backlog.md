@@ -97,7 +97,7 @@ These are explicit competitive gaps, not closed by nearby core-library work alon
 ### FND-006 — Error model + result envelope ✅
 - **Goal:** One typed error/result shape across commands and adapters.
 - **Done when:** `irodori-core` defines an error enum and a `Result` envelope; serde camelCase verified; surfaced through the type bridge.
-- **Done:** `irodori-core` now defines `IrodoriErrorKind`, `IrodoriError`, `Result<T>`, and `CommandResult<T>`; serde tests verify camelCase error and success/failure envelope JSON; desktop Tauri command rejects now carry structured `IrodoriError` values while adapter strings are classified at the boundary; `generated/irodori-api.ts` exports `IrodoriErrorKind`, `IrodoriError`, and `CommandResult<T>` through typebridge; the UI reads structured errors via `errorMessage`.
+- **Done:** `irodori-core` now defines `IrodoriErrorKind`, `IrodoriError`, `Result<T>`, and `CommandResult<T>`; serde tests verify camelCase error and success/failure envelope JSON; desktop Tauri command rejects now carry structured `IrodoriError` values while adapter strings are classified at the boundary; `generated/irodori-api.ts` exports `IrodoriErrorKind`, `IrodoriError`, and `CommandResult<T>` through typeship; the UI reads structured errors via `errorMessage`.
 - **Depends on:** FND-002, TB-001
 - **Size:** M · **Priority:** P0
 
@@ -185,7 +185,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ## TB — Type Bridge Integration (Irodori Side)
 
-> The standalone `typebridge` generator is a separate project. These tickets cover
+> The standalone `typeship` generator is a separate project. These tickets cover
 > only how Irodori *consumes* it; keep `docs/type-bridge-handoff.md` current.
 
 ### TB-001 — Generate TypeScript bindings for current commands ✅
@@ -198,7 +198,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### TB-002 — `typegen` command + CI drift check ✅
 - **Goal:** Make stale bindings a CI failure.
 - **Done when:** a friendly `typegen` command regenerates bindings; `typegen --check` fails CI on drift with a readable diff.
-- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typebridge tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI runs that check in the Rust job after `typebridge` is available.
+- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typeship tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI runs that check in the Rust job after `typeship` is available.
 - **Depends on:** TB-001
 - **Size:** M · **Priority:** P0
 
@@ -413,7 +413,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### EXEC-007 — Editable result rows with safe transaction flow 🚧 (partial desktop skeleton)
 - **Goal:** Edit data with an explicit commit path.
 - **Done when:** edits stage as a reviewable change set, generate parameterized DML, and commit/rollback in a transaction; primary-key-less tables are handled safely.
-- **Done (backend, staged/non-immediate model):** `db/edit.rs` turns a `TableEdits` batch (updates/inserts/deletes, each a `CellValue` set keyed by the row's key columns) into parameterized statements with **per-dialect identifier quoting** (`"x"` / `` `x` `` / `[x]`) and placeholder style (`$n` for pg, `?` otherwise); a `NULL` key becomes `IS NULL`; empty-table / keyless-update / keyless-delete are rejected (no accidental full-table writes). `db_apply_edits` commits the batch in one transaction per the `Connection::apply_edits` trait method (sqlx engines override; others refuse). Verified by `edit.rs` generation unit tests **and an end-to-end in-memory SQLite test** (`apply_edits_commits_update_insert_delete`). Types + command flow through typebridge (`TableEdits`/`AppliedEdits`/`dbApplyEdits`, drift-check green).
+- **Done (backend, staged/non-immediate model):** `db/edit.rs` turns a `TableEdits` batch (updates/inserts/deletes, each a `CellValue` set keyed by the row's key columns) into parameterized statements with **per-dialect identifier quoting** (`"x"` / `` `x` `` / `[x]`) and placeholder style (`$n` for pg, `?` otherwise); a `NULL` key becomes `IS NULL`; empty-table / keyless-update / keyless-delete are rejected (no accidental full-table writes). `db_apply_edits` commits the batch in one transaction per the `Connection::apply_edits` trait method (sqlx engines override; others refuse). Verified by `edit.rs` generation unit tests **and an end-to-end in-memory SQLite test** (`apply_edits_commits_update_insert_delete`). Types + command flow through typeship (`TableEdits`/`AppliedEdits`/`dbApplyEdits`, drift-check green).
 - **Done (desktop editable grid, staged model):** an "Edit Data" mode adds a staged change set on top of the result grid — double-click a cell to edit (changed cells/rows highlighted), "+ Row" to stage inserts, **column-header click to sort** (asc/desc/none, client-side), and **paste** TSV/CSV from the clipboard into cells (spilling across columns and into new rows). "Commit (N)" infers the target table from the last query's `from <table>` and key columns from the table's unique index (else all result columns), builds a `TableEdits` batch, and calls `dbApplyEdits`; "Discard" drops the staged changes. Edits reset on each new run; the change set survives sorting (display rows key back to their origin). Sorting/editing compose with row virtualization. Frontend type-checks and the production bundle builds.
 - **Done (PK detection):** metadata now carries the real primary key (`DbObjectMetadata.primary_key`) — SQLite via `pragma table_xinfo.pk`, Postgres/MySQL via `pg_constraint`/`information_schema`; the editable grid keys updates/deletes on the PK (then a unique index, then all columns). Verified by a SQLite metadata unit test.
 - **Done (row delete):** Edit Data mode shows a per-row delete gutter; deleting an original row stages a `RowDelete` (keyed on the PK), deleting a staged new row drops it. Deletes count toward the pending total and commit in the same transaction.
@@ -442,9 +442,12 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** EXEC-009
 - **Size:** L · **Priority:** P1
 
-### EXEC-010 — Bounded memory with optional disk offload (anti-TablePlus)
+### EXEC-010 — Bounded memory with optional disk offload (anti-TablePlus) ✅
 - **Goal:** Browse results far larger than RAM without exhausting memory the way TablePlus does.
 - **Done when:** result windows beyond a configurable in-memory budget spill to an on-disk backing store (temp SQLite/Arrow), the grid pages from disk, and a setting controls the threshold and on/off; memory stays flat while scrolling a 10M-row result.
+- **Done:** `db/spill.rs` adds a `ResultStore` that keeps the first `memory_budget` rows resident in RAM and spills the rest to a throwaway temp **SQLite** file keyed on `idx INTEGER PRIMARY KEY` (journal/sync off; flushed in batches), so resident RAM is bounded by the budget regardless of total size; `window(offset, limit)` reads resident rows from RAM and spilled rows from disk transparently, and the file is removed on `close`/drop. The streaming `db_run_query_spill` command forwards only the resident first page to the UI (immediate paint) while retaining the full result behind a handle in a bounded (`MAX_RETAINED_RESULTS`) `DbState` registry; `db_result_window` pages rows, `db_release_result` frees a store, and disconnect releases a connection's stores. A `SpillConfig` (budget + on/off, clamped, hard `MAX_SPILL_ROWS` ceiling) honors the UI setting. Frontend: `result-window.ts` is an LRU-bounded windowed row source (`maxResidentPages * pageSize` flat-memory ceiling) behind an array-like `Proxy` the result-grid view model indexes by absolute row — resident rows return real cells, off-screen rows a cheap placeholder; the grid fetches missing pages for the visible range via `dbResultWindow` and repaints as they arrive. A **Result offload** on/off toggle + **Resident rows** budget input live in the settings dialog, persisted in the preferences store. Client-side sort/filter/edit/export over a spilled result are intentionally disabled (browse-only) pending server-side EXEC-005A / run-to-file EXEC-008.
+- **Verified:** Rust `db::spill` unit tests (memory bounded by budget while total grows to 60k, RAM/disk window stitching, offload-off cap, hard-ceiling truncation, temp-file cleanup) **and** an end-to-end `db_run_query_spill` integration test over a 50k-row SQLite CTE (resident page == budget, store retains all rows, deep windows page correctly from disk, release frees the store); `result-window` vitest (LRU eviction keeps a 10M-row source at ≤ `maxResidentPages` resident, proxy placeholder→real after ingest); a Playwright `e2e/spill.spec.ts` that pages `row_60000`/`row_119999` from disk on deep scroll with bounded DOM, ≤ a handful of `db_result_window` fetches (never a full load), and store release on a replacing run; typegen drift check green.
+- **Remaining:** Arrow-backed spill option and a 10M-row scrolling memory benchmark gate (pairs with `EXEC-004B`); reuse the spill/window contract through the local API (`API-002`) when that surface lands.
 - **Depends on:** EXEC-009, EXEC-004
 - **Size:** L · **Priority:** P1
 

@@ -82,7 +82,7 @@ duckdb = ["dep:duckdb"]
 # Integration tests (tests/integration_db.rs) drive a real DB through a runtime.
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # TypeScript boundary generation. The Rust types stay the single source of truth;
-# ts-rs renders them and typebridge assembles + drift-checks the module. Sibling
-# project at /mnt/data/workspace/typebridge (path dep, dev-only).
-typebridge = { path = "../../../../typebridge/crates/typebridge" }
-typebridge-ts-rs = { path = "../../../../typebridge/crates/typebridge-ts-rs" }
+# ts-rs renders them and typeship assembles + drift-checks the module. Sibling
+# project at /mnt/data/workspace/typeship (path dep, dev-only).
+typeship = { path = "../../../../typeship/crates/typeship" }
+typeship-ts-rs = { path = "../../../../typeship/crates/typeship-ts-rs" }

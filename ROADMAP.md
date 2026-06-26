@@ -59,7 +59,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   - `irodori-proxy`: direct, SSH, SOCKS/HTTP, and multi-hop transport composition.
   - `irodori-secure-store`: OS keychain integration and encrypted local config.
 - Supporting crates:
-  - `irodori-typebridge`: Rust-to-TypeScript command/API generation so Serde `camelCase` JSON and frontend types never drift.
+  - `irodori-typeship`: Rust-to-TypeScript command/API generation so Serde `camelCase` JSON and frontend types never drift.
   - `irodori-sql`: dialect metadata, parser hooks, introspection cache, formatter/linter adapters.
   - `irodori-graph`: Cypher/graph metadata, result graph model, and graph-completion hooks.
   - `irodori-timeseries`: time range model, frame/downsampling model, and time-series query helper hooks.

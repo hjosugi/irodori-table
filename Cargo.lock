@@ -3006,8 +3006,8 @@ dependencies = [
  "serde",
  "serde_json",
  "ts-rs",
- "typebridge",
- "typebridge-ts-rs",
+ "typeship",
+ "typeship-ts-rs",
 ]
 
 [[package]]
@@ -3103,8 +3103,8 @@ dependencies = [
  "tokio",
  "tokio-util",
  "ts-rs",
- "typebridge",
- "typebridge-ts-rs",
+ "typeship",
+ "typeship-ts-rs",
 ]
 
 [[package]]
@@ -7384,18 +7384,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
-name = "typebridge"
-version = "0.0.0"
-
-[[package]]
-name = "typebridge-ts-rs"
-version = "0.0.0"
-dependencies = [
- "ts-rs",
- "typebridge",
-]
-
-[[package]]
 name = "typed-builder"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7446,6 +7434,18 @@ name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
+
+[[package]]
+name = "typeship"
+version = "0.1.0"
+
+[[package]]
+name = "typeship-ts-rs"
+version = "0.1.0"
+dependencies = [
+ "ts-rs",
+ "typeship",
+]
 
 [[package]]
 name = "uds_windows"

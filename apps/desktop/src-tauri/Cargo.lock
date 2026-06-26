@@ -2648,8 +2648,8 @@ dependencies = [
  "tokio",
  "tokio-util",
  "ts-rs",
- "typebridge",
- "typebridge-ts-rs",
+ "typeship",
+ "typeship-ts-rs",
 ]
 
 [[package]]
@@ -6316,15 +6316,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "typebridge"
+name = "typeship"
 version = "0.0.0"
 
 [[package]]
-name = "typebridge-ts-rs"
+name = "typeship-ts-rs"
 version = "0.0.0"
 dependencies = [
  "ts-rs",
- "typebridge",
+ "typeship",
 ]
 
 [[package]]

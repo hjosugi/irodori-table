@@ -74,7 +74,7 @@ needs product wiring and tests before it can close any schema-aware autocomplete
   CodeMirror + theme toggle + format). Closes the "never run it" gap for the editor.
   Scripts: `npm test`, `npm run test:e2e`.
 - **For Codex / CI:** a GH Actions matrix should run `cargo test` (needs the
-  `typebridge` sibling present) **and** `npm test`. The Playwright smoke needs a
+  `typeship` sibling present) **and** `npm test`. The Playwright smoke needs a
   Chromium; `cdn.playwright.dev` is egress-blocked in this sandbox so I reused a
   local browser via `PW_CHROME_PATH` — CI with normal egress can `playwright install`.
   Full Tauri+SQLite UI smoke (connect→query→rows) still needs a Tauri WebDriver run.
@@ -112,8 +112,8 @@ needs product wiring and tests before it can close any schema-aware autocomplete
   keyword autocomplete, bracket matching, and a "Format SQL" toolbar action via
   `sql-formatter`. `tsc` clean, `vite build` green. Added frontend deps
   (`codemirror`, `@codemirror/*`, `sql-formatter`).
-- **Env note for Codex:** backend can't compile here — `typebridge` path-dep
-  (`../../../../typebridge/crates/typebridge`) is absent, so `cargo` and
+- **Env note for Codex:** backend can't compile here — `typeship` path-dep
+  (`../../../../typeship/crates/typeship`) is absent, so `cargo` and
   `npm run typegen` are blocked. If you regenerate `irodori-api.ts`, push it and
   note it here; I'll consume it. I have **not** touched `src-tauri/**`.
 - Per the user, Claude now drives the remaining editor track (EDIT-002/008

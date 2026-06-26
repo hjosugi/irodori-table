@@ -76,7 +76,7 @@ Core manifest fields:
 
 ## Type Generation
 
-The extension SDK uses the same `typebridge` pattern as the desktop app.
+The extension SDK uses the same `typeship` pattern as the desktop app.
 
 ```sh
 cargo test -p irodori-extension export_typescript_bindings

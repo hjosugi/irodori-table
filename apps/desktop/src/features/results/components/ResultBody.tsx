@@ -18,17 +18,7 @@ import {
   type ResultGridSortRuleView,
 } from "@/result-view-model";
 import { RowDetailSidebar } from "@/RowDetailSidebar";
-
-type EditingCell = {
-  key: string;
-  col: number;
-  seed?: string;
-} | null;
-
-type SelectedCell = {
-  key: string;
-  col: number;
-} | null;
+import type { EditingCell, SelectedCell } from "../types";
 
 export function ResultBody({
   structureObject,
