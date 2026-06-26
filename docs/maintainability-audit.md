@@ -14,7 +14,7 @@ complexity tool.
 | Rank | File | Lines | Main risk | Suggested next move |
 | ---: | --- | ---: | --- | --- |
 | 1 | `apps/desktop/src/app/AppWorkbench.tsx` | 4,090 | The former `App.tsx` controller still owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `apps/desktop/src/App.tsx` is now a 4-line entrypoint. | Split this controller into feature hooks; start with query execution and result-grid control. |
-| 2 | `apps/desktop/src-tauri/src/db.rs` | 4,149 | Backend DB facade mixes DTOs, state, dispatch, stream/spill handling, metadata conversion, command wrappers, and tests. | Split by command surface and shared runtime state after current DB work stabilizes. |
+| 2 | `apps/desktop/src-tauri/src/db/mod.rs` | 3,248 | Backend DB facade still mixes connection registry, state, command wrappers, stream/spill handling, and tests. Profile validation and metadata/cache conversion are now split out. | Split command surface and shared runtime state next. |
 | 3 | `crates/irodori-io/src/lib.rs` | 1,896 | Export encoders, import preview, schema inference, and tests share one module. | Move format-specific encoders/importers into submodules. |
 | 4 | `crates/irodori-proxy/src/lib.rs` | 1,786 | Transport planning, auth resolution, handshakes, stream forwarding, and tests are tightly packed. | Separate planning/diagnostics from IO handshakes and forwarder runtime. |
 | 5 | `apps/desktop/src/sql/completion.ts` | 1,567 | Completion scanning, parsing helpers, and suggestion ranking are hard to review as one file. | Keep parser/scanner, metadata ranking, and UI-facing conversion in separate modules. |
@@ -63,6 +63,25 @@ controller, not the final architecture. The goal is to reduce it below roughly
 6. Add size guards after the split.
    Once extraction is underway, add a lightweight line-count budget for new
    frontend components and large Rust modules so `App.tsx` does not grow back.
+
+## Backend DB Facade Split Progress
+
+Current status: the old single `apps/desktop/src-tauri/src/db.rs` has been
+modularized under `apps/desktop/src-tauri/src/db/`. The facade is still large,
+but it no longer owns every support concern directly.
+
+- `db/profile.rs` owns `ConnectionProfile`, profile normalization, unsupported
+  wire rejection, and secret redaction.
+- `db/meta.rs` owns relational metadata accumulation plus the bridge between
+  desktop `DatabaseMetadata`, the completion `MetadataSnapshot`, and inspection
+  DTOs used by autocomplete/hover commands.
+- `db/query.rs`, `db/spill.rs`, `db/edit.rs`, and engine modules already hold
+  query shaping, retained-result paging, edit payloads, and per-driver logic.
+
+Next backend split: move Tauri command wrappers and command DTOs into a command
+surface module, then move `DbState` runtime bookkeeping into a state/runtime
+module. Keep each step behavior-preserving and gated by `cargo check`,
+`typegen:check`, and focused metadata/query tests.
 
 ## Current Tooling Gaps
 
