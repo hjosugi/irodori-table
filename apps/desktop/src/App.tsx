@@ -12,9 +12,7 @@ import {
 } from "react";
 import {
   AlertTriangle,
-  AlignLeft,
   ChevronDown,
-  Clock3,
   Columns3,
   Copy,
   Database,
@@ -24,7 +22,6 @@ import {
   Info,
   KeyRound,
   Folder,
-  Keyboard,
   ListFilter,
   Menu,
   Maximize2,
@@ -37,12 +34,9 @@ import {
   Power,
   RefreshCw,
   Share2,
-  Save,
   Search,
   Settings,
   ShieldCheck,
-  SplitSquareHorizontal,
-  Square,
   Sun,
   Table2,
   TerminalSquare,
@@ -58,6 +52,12 @@ import {
   useQueryHistoryStore,
   type QueryHistoryItem,
 } from "./features/query-history";
+import {
+  QueryEditorPane,
+  type EditorGroup,
+  type EditorSelection,
+} from "./features/query-editor";
+import { SettingsDialog, type SettingsTab } from "./features/settings";
 import { usePreferencesStore } from "./features/preferences";
 import {
   WindowedRows,
@@ -90,7 +90,6 @@ import {
 } from "./importers";
 import {
   KEY_SEQUENCE_TIMEOUT_MS,
-  commandHasConflict,
   commandCatalog,
   effectiveKeymap,
   eventToChord,
@@ -163,7 +162,6 @@ import {
   type DbEngine,
   type DbObjectMetadata,
   type JobList,
-  type JobSummary,
   type QueryResult,
   type QueryResultSet,
   type QueryParameterInput,
@@ -176,15 +174,9 @@ import {
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
-import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
-import {
-  formatterOptions,
-  isSqlFormatterId,
-} from "./sql/formatter";
-import {
-  isSqlLinterId,
-  linterOptions,
-} from "./sql/linter";
+import { type SqlEditorHandle } from "./SqlEditor";
+import { isSqlFormatterId } from "./sql/formatter";
+import { isSqlLinterId } from "./sql/linter";
 import { selectedOrCurrentStatement } from "./sql/statements";
 import { cssVariables, darkTheme, lightTheme } from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
@@ -193,7 +185,7 @@ import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
 import "./App.css";
 
 const APP_NAME = "Irodori Table";
-const APP_VERSION = "0.2.5";
+const APP_VERSION = "0.2.7";
 const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
@@ -442,7 +434,6 @@ type PendingQueryParameters = {
   promptSet: QueryParameterPromptSet;
 };
 
-type SettingsTab = "general" | "keymap" | "jobs" | "json";
 type ResultMode = "data" | "structure";
 type ActionNotice = {
   id: number;
@@ -548,54 +539,6 @@ function toCount(value: bigint | number) {
 }
 
 const emptyJobList: JobList = { active: [], history: [] };
-
-function formatJobKind(kind: JobSummary["kind"]) {
-  switch (kind) {
-    case "knowledgeRefresh":
-      return "Knowledge refresh";
-    case "indexBuild":
-      return "Index build";
-    case "mlEvaluation":
-      return "ML evaluation";
-    case "bulkEdit":
-      return "Bulk edit";
-    case "sourceScan":
-      return "Source scan";
-    default:
-      return kind.charAt(0).toUpperCase() + kind.slice(1);
-  }
-}
-
-function formatJobTime(value?: bigint) {
-  if (value === undefined) {
-    return "-";
-  }
-  const date = new Date(Number(value));
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-  return date.toLocaleString([], {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatJobProgress(job: JobSummary) {
-  const progress = job.progress;
-  if (progress.total !== undefined) {
-    return `${toCount(progress.completed)} / ${toCount(progress.total)} ${progress.unit}`;
-  }
-  if (progress.completed > 0n) {
-    return `${toCount(progress.completed)} ${progress.unit}`;
-  }
-  return progress.message ?? "Waiting";
-}
-
-function isCancellableJob(job: JobSummary) {
-  return job.status === "queued" || job.status === "running";
-}
 
 function objectKindLabel(object: DbObjectMetadata) {
   switch (object.kind) {
@@ -1112,7 +1055,10 @@ function App() {
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
-  const [editorSelection, setEditorSelection] = useState({ from: 0, to: 0 });
+  const [editorSelection, setEditorSelection] = useState<EditorSelection>({
+    from: 0,
+    to: 0,
+  });
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
@@ -1152,9 +1098,8 @@ function App() {
   const setEditorSplitPercent = usePreferencesStore(
     (state) => state.setEditorSplitPercent,
   );
-  const [activeEditorGroup, setActiveEditorGroup] = useState<
-    "primary" | "secondary"
-  >("primary");
+  const [activeEditorGroup, setActiveEditorGroup] =
+    useState<EditorGroup>("primary");
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -1478,7 +1423,8 @@ function App() {
     return profile?.engine ?? draft.engine ?? "postgres";
   }, [profiles, activeConnectionId, draft.engine]);
 
-  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
+  const activeTabLabel =
+    tabs.find((tab) => tab.id === activeTab)?.label ?? "Scratch";
   const selectedEditorSql = query
     .slice(editorSelection.from, editorSelection.to)
     .trim();
@@ -4437,251 +4383,50 @@ function App() {
           </div>
 
           <div className="editor-and-inspector">
-            <section className="editor-pane" aria-label={activeTabLabel}>
-              <div className="editor-meta">
-                <div className="editor-title">
-                  <span>{activeTabLabel}</span>
-                  <small>
-                    {running
-                      ? "running..."
-                      : activeConnectionOpen
-                        ? "ready"
-                        : "closed"}
-                  </small>
-                </div>
-                <div className="editor-command-bar">
-                  <button
-                    className="text-button toolbar-command"
-                    type="button"
-                    title={`Format SQL (${formatter})`}
-                    aria-label="Format SQL"
-                    onClick={() => runCommand("editor.format")}
-                  >
-                    <AlignLeft size={15} />
-                    <span>Format</span>
-                  </button>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    title="Toggle SQL comment"
-                    aria-label="Toggle SQL comment"
-                    onClick={() => runCommand("editor.comment.toggle")}
-                  >
-                    <TerminalSquare size={15} />
-                  </button>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    title="Save query"
-                    aria-label="Save query"
-                    onClick={saveCurrentQuery}
-                  >
-                    <Save size={15} />
-                  </button>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    title={editorSplitOpen ? "Close editor split" : "Split editor"}
-                    aria-label="Split editor"
-                    aria-pressed={editorSplitOpen}
-                    onClick={() => {
-                      setEditorSplitMode((mode) =>
-                        mode === "single" ? "right" : "single",
-                      );
-                    }}
-                  >
-                    <SplitSquareHorizontal size={15} />
-                  </button>
-                  {editorSplitOpen ? (
-                    <div
-                      className="segmented-control editor-split-mode"
-                      role="group"
-                      aria-label="Editor split direction"
-                    >
-                      <button
-                        type="button"
-                        className={
-                          editorSplitMode === "right" ? "active" : undefined
-                        }
-                        onClick={() => setEditorSplitMode("right")}
-                      >
-                        Right
-                      </button>
-                      <button
-                        type="button"
-                        className={
-                          editorSplitMode === "down" ? "active" : undefined
-                        }
-                        onClick={() => setEditorSplitMode("down")}
-                      >
-                        Down
-                      </button>
-                    </div>
-                  ) : null}
-                  <div className="run-control">
-                    <button
-                      className="primary-action run-main-button"
-                      type="button"
-                      title={
-                        runShortcutLabel
-                          ? `${runPrimaryLabel} (${runShortcutLabel})`
-                          : runPrimaryLabel
-                      }
-                      disabled={running}
-                      onClick={runQuery}
-                    >
-                      <Play size={15} fill="currentColor" />
-                      <span>{runPrimaryLabel}</span>
-                    </button>
-                    <button
-                      className="primary-action run-menu-toggle"
-                      type="button"
-                      title="Run options"
-                      aria-label="Run options"
-                      aria-haspopup="menu"
-                      aria-expanded={runMenuOpen}
-                      disabled={running}
-                      onClick={() => setRunMenuOpen((open) => !open)}
-                    >
-                      <ChevronDown size={14} />
-                    </button>
-                    {runMenuOpen ? (
-                      <div
-                        className="app-menu-popover run-menu-popover"
-                        role="menu"
-                      >
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => void runQuery()}
-                        >
-                          <span>{runPrimaryLabel}</span>
-                          {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          disabled={!hasSelectedEditorSql}
-                          onClick={() => void runSelectionQuery()}
-                        >
-                          <span>Run Selection</span>
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => void runCurrentQuery()}
-                        >
-                          <span>Run Current</span>
-                          {runCurrentShortcutLabel ? (
-                            <kbd>{runCurrentShortcutLabel}</kbd>
-                          ) : null}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => void runFromStartQuery()}
-                        >
-                          <span>Run From Top</span>
-                          {runFromStartShortcutLabel ? (
-                            <kbd>{runFromStartShortcutLabel}</kbd>
-                          ) : null}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => void runAllQuery()}
-                        >
-                          <span>Run All</span>
-                          {runAllShortcutLabel ? (
-                            <kbd>{runAllShortcutLabel}</kbd>
-                          ) : null}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    title="Cancel query"
-                    aria-label="Cancel query"
-                    disabled={!running}
-                    onClick={cancelQuery}
-                  >
-                    <Square size={15} />
-                  </button>
-                </div>
-              </div>
-              <div
-                ref={editorSplitRef}
-                className={`editor-split editor-split-${editorSplitMode}`}
-              >
-                <div
-                  className={`editor-shell editor-group${
-                    activeEditorGroup === "primary" ? " active" : ""
-                  }`}
-                  onFocusCapture={() => setActiveEditorGroup("primary")}
-                  onPointerDown={() => setActiveEditorGroup("primary")}
-                >
-                  <SqlEditor
-                    ref={editorApiRef}
-                    value={query}
-                    onChange={setQuery}
-                    onSelectionChange={(selection) => {
-                      setActiveEditorGroup("primary");
-                      setEditorSelection(selection);
-                    }}
-                    engine={editorEngine}
-                    metadata={activeMetadata}
-                    theme={theme}
-                    vimMode={vimMode}
-                    formatter={formatter}
-                    linter={sqlLinter}
-                  />
-                </div>
-                {editorSplitOpen ? (
-                  <>
-                    <div
-                      className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
-                      role="separator"
-                      aria-label="Resize editor split"
-                      aria-orientation={
-                        editorSplitMode === "down" ? "horizontal" : "vertical"
-                      }
-                      tabIndex={0}
-                      onPointerDown={(event) =>
-                        beginPanelResize("editorSplit", event)
-                      }
-                      onKeyDown={(event) =>
-                        onPanelResizeKey("editorSplit", event)
-                      }
-                    />
-                    <div
-                      className={`editor-shell editor-group${
-                        activeEditorGroup === "secondary" ? " active" : ""
-                      }`}
-                      onFocusCapture={() => setActiveEditorGroup("secondary")}
-                      onPointerDown={() => setActiveEditorGroup("secondary")}
-                    >
-                      <SqlEditor
-                        ref={secondaryEditorApiRef}
-                        value={query}
-                        onChange={setQuery}
-                        onSelectionChange={(selection) => {
-                          setActiveEditorGroup("secondary");
-                          setEditorSelection(selection);
-                        }}
-                        engine={editorEngine}
-                        metadata={activeMetadata}
-                        theme={theme}
-                        vimMode={vimMode}
-                        formatter={formatter}
-                        linter={sqlLinter}
-                      />
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            </section>
+            <QueryEditorPane
+              activeTabLabel={activeTabLabel}
+              activeConnectionOpen={activeConnectionOpen}
+              running={running}
+              formatter={formatter}
+              query={query}
+              onQueryChange={setQuery}
+              editorEngine={editorEngine}
+              activeMetadata={activeMetadata}
+              theme={theme}
+              vimMode={vimMode}
+              sqlLinter={sqlLinter}
+              editorApiRef={editorApiRef}
+              secondaryEditorApiRef={secondaryEditorApiRef}
+              editorSplitRef={editorSplitRef}
+              editorSplitOpen={editorSplitOpen}
+              editorSplitMode={editorSplitMode}
+              setEditorSplitMode={setEditorSplitMode}
+              activeEditorGroup={activeEditorGroup}
+              setActiveEditorGroup={setActiveEditorGroup}
+              setEditorSelection={setEditorSelection}
+              runPrimaryLabel={runPrimaryLabel}
+              runShortcutLabel={runShortcutLabel}
+              runCurrentShortcutLabel={runCurrentShortcutLabel}
+              runFromStartShortcutLabel={runFromStartShortcutLabel}
+              runAllShortcutLabel={runAllShortcutLabel}
+              runMenuOpen={runMenuOpen}
+              hasSelectedEditorSql={hasSelectedEditorSql}
+              runCommand={runCommand}
+              saveCurrentQuery={saveCurrentQuery}
+              runQuery={runQuery}
+              runSelectionQuery={runSelectionQuery}
+              runCurrentQuery={runCurrentQuery}
+              runFromStartQuery={runFromStartQuery}
+              runAllQuery={runAllQuery}
+              cancelQuery={cancelQuery}
+              setRunMenuOpen={setRunMenuOpen}
+              beginEditorSplitResize={(event) =>
+                beginPanelResize("editorSplit", event)
+              }
+              onEditorSplitResizeKey={(event) =>
+                onPanelResizeKey("editorSplit", event)
+              }
+            />
 
             <div
               className="panel-resizer inspector-resizer"
@@ -5759,419 +5504,45 @@ function App() {
       ) : null}
 
       {settingsOpen ? (
-        <div
-          className="palette-overlay"
-          onClick={() => setSettingsOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="data-dialog settings-dialog"
-            role="dialog"
-            aria-label="Settings"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="dialog-header">
-              <strong>Settings</strong>
-              <span>Editor, theme, shortcuts</span>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="settings-body">
-              <nav className="settings-nav" aria-label="Settings sections">
-                <button
-                  type="button"
-                  className={settingsTab === "general" ? "active" : undefined}
-                  onClick={() => openSettingsSection("general")}
-                >
-                  <Settings size={15} />
-                  General
-                </button>
-                <button
-                  type="button"
-                  className={settingsTab === "keymap" ? "active" : undefined}
-                  onClick={() => openSettingsSection("keymap")}
-                >
-                  <Keyboard size={15} />
-                  Keymap
-                </button>
-                <button
-                  type="button"
-                  className={settingsTab === "jobs" ? "active" : undefined}
-                  onClick={() => openSettingsSection("jobs")}
-                >
-                  <Clock3 size={15} />
-                  Jobs
-                </button>
-                <button
-                  type="button"
-                  className={settingsTab === "json" ? "active" : undefined}
-                  onClick={() => openSettingsSection("json")}
-                >
-                  <TerminalSquare size={15} />
-                  JSON
-                </button>
-              </nav>
-              <section className="settings-panel">
-                {settingsTab === "general" ? (
-                  <div className="settings-stack">
-                    <label className="settings-row">
-                      <span>
-                        <strong>Editor mode</strong>
-                        <small>Default editor or Vim bindings.</small>
-                      </span>
-                      <div className="segmented-control">
-                        <button
-                          type="button"
-                          className={!vimMode ? "active" : undefined}
-                          onClick={() => setVimMode(false)}
-                        >
-                          Default
-                        </button>
-                        <button
-                          type="button"
-                          className={vimMode ? "active" : undefined}
-                          onClick={() => setVimMode(true)}
-                        >
-                          Vim
-                        </button>
-                      </div>
-                    </label>
-                    <label className="settings-row">
-                      <span>
-                        <strong>Theme</strong>
-                        <small>Workbench color mode.</small>
-                      </span>
-                      <div className="segmented-control">
-                        <button
-                          type="button"
-                          className={themeKind === "dark" ? "active" : undefined}
-                          onClick={() => setThemeKind("dark")}
-                        >
-                          Dark
-                        </button>
-                        <button
-                          type="button"
-                          className={themeKind === "light" ? "active" : undefined}
-                          onClick={() => setThemeKind("light")}
-                        >
-                          Light
-                        </button>
-                      </div>
-                    </label>
-                    <label className="settings-row">
-                      <span>
-                        <strong>SQL formatter</strong>
-                        <small>Formatter used by the toolbar and keybinding.</small>
-                      </span>
-                      <select
-                        value={formatter}
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          if (isSqlFormatterId(next)) {
-                            setFormatter(next);
-                          }
-                        }}
-                      >
-                        {formatterOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="settings-row">
-                      <span>
-                        <strong>SQL linter</strong>
-                        <small>Gentle syntax and high-risk statement checks.</small>
-                      </span>
-                      <select
-                        value={sqlLinter}
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          if (isSqlLinterId(next)) {
-                            setSqlLinter(next);
-                          }
-                        }}
-                      >
-                        {linterOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="settings-row">
-                      <span>
-                        <strong>Result offload</strong>
-                        <small>Page large result sets from disk instead of capping in RAM.</small>
-                      </span>
-                      <div className="segmented-control">
-                        <button
-                          type="button"
-                          className={resultOffloadEnabled ? "active" : undefined}
-                          onClick={() => setResultOffloadEnabled(true)}
-                        >
-                          On
-                        </button>
-                        <button
-                          type="button"
-                          className={!resultOffloadEnabled ? "active" : undefined}
-                          onClick={() => setResultOffloadEnabled(false)}
-                        >
-                          Off
-                        </button>
-                      </div>
-                    </label>
-                    <label className="settings-row">
-                      <span>
-                        <strong>Resident rows</strong>
-                        <small>Rows kept in memory before the disk-backed result takes over.</small>
-                      </span>
-                      <input
-                        type="number"
-                        min={1_000}
-                        max={100_000}
-                        step={1_000}
-                        value={resultMemoryBudget}
-                        onChange={(event) =>
-                          setResultMemoryBudget(
-                            clampNumber(
-                              Number(event.currentTarget.value),
-                              1_000,
-                              100_000,
-                            ),
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="settings-row">
-                      <span>
-                        <strong>Sidebar</strong>
-                        <small>Object browser and connection switcher.</small>
-                      </span>
-                      <button
-                        className="text-button"
-                        type="button"
-                        onClick={() => setSidebarOpen((open) => !open)}
-                      >
-                        {sidebarOpen ? "Hide" : "Show"}
-                      </button>
-                    </label>
-                  </div>
-                ) : settingsTab === "keymap" ? (
-                  <div className="command-list settings-command-list">
-                    {appCommandCatalog.map((command) => {
-                      const chord = keymap[command.id];
-                      const conflicted = commandHasConflict(
-                        keymapConflicts,
-                        command.id,
-                      );
-                      const recording = recordingCommand === command.id;
-                      const recordingLabel =
-                        recordingSequence.length > 0
-                          ? `${formatKeySequence(recordingSequence.join(" "))} ...`
-                          : "Press keys...";
-                      return (
-                        <div className="command-item" key={command.id}>
-                          <button
-                            className="command-run"
-                            type="button"
-                            onClick={() => runCommand(command.id)}
-                            title={`Run: ${command.title}`}
-                          >
-                            {command.title}
-                          </button>
-                          <small className={`command-scope ${command.scope}`}>
-                            {command.scope}
-                          </small>
-                          <button
-                            className={`command-chord${conflicted ? " conflict" : ""}`}
-                            type="button"
-                            title={
-                              recording
-                                ? "Press one or two chords for the new shortcut"
-                                : conflicted
-                                  ? "Shortcut conflict - click to rebind"
-                                  : "Click to rebind"
-                            }
-                            onClick={() => beginRecording(command.id)}
-                          >
-                            {recording
-                              ? recordingLabel
-                              : chord
-                                ? formatKeySequence(chord)
-                                : "unset"}
-                          </button>
-                          {keymapOverrides[command.id] ? (
-                            <button
-                              className="command-reset"
-                              type="button"
-                              title="Reset to default"
-                              onClick={() => resetKeybinding(command.id)}
-                            >
-                              Reset
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : settingsTab === "jobs" ? (
-                  <div className="settings-jobs">
-                    <div className="settings-json-toolbar">
-                      <span>
-                        <strong>Background Jobs</strong>
-                        <small>
-                          Active and recent local work tracked by the shared job runtime.
-                        </small>
-                      </span>
-                      <button
-                        className="text-button"
-                        type="button"
-                        onClick={() => void refreshJobs()}
-                        disabled={jobsLoading}
-                      >
-                        {jobsLoading ? "Refreshing" : "Refresh"}
-                      </button>
-                    </div>
-                    {jobsError ? (
-                      <div className="inline-error settings-json-error">
-                        <AlertTriangle size={13} />
-                        <span>{jobsError}</span>
-                      </div>
-                    ) : null}
-                    <section className="jobs-section">
-                      <div className="jobs-section-title">
-                        <strong>Active</strong>
-                        <span>{jobs.active.length}</span>
-                      </div>
-                      {jobs.active.length > 0 ? (
-                        <div className="jobs-list">
-                          {jobs.active.map((job) => (
-                            <div className="job-row" key={job.id}>
-                              <div className="job-main">
-                                <strong>{job.title}</strong>
-                                <small>
-                                  {formatJobKind(job.kind)} · {job.status} ·{" "}
-                                  {formatJobProgress(job)}
-                                </small>
-                                {job.progress.percent !== undefined ? (
-                                  <div className="job-progress">
-                                    <span
-                                      style={{
-                                        width: `${job.progress.percent}%`,
-                                      }}
-                                    />
-                                  </div>
-                                ) : null}
-                              </div>
-                              <div className="job-meta">
-                                <small>Attempt {job.attempt}</small>
-                                {isCancellableJob(job) ? (
-                                  <button
-                                    className="text-button"
-                                    type="button"
-                                    onClick={() => void cancelJob(job.id)}
-                                  >
-                                    Cancel
-                                  </button>
-                                ) : null}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="empty-browser">No active jobs</div>
-                      )}
-                    </section>
-                    <section className="jobs-section">
-                      <div className="jobs-section-title">
-                        <strong>History</strong>
-                        <span>{jobs.history.length}</span>
-                      </div>
-                      {jobs.history.length > 0 ? (
-                        <div className="jobs-list">
-                          {jobs.history.map((job) => (
-                            <div className={`job-row ${job.status}`} key={job.id}>
-                              <div className="job-main">
-                                <strong>{job.title}</strong>
-                                <small>
-                                  {formatJobKind(job.kind)} · {job.status} ·{" "}
-                                  {formatJobTime(job.finishedAtMs ?? job.updatedAtMs)}
-                                </small>
-                                {job.error ? (
-                                  <small className="job-error">
-                                    {job.error.message}
-                                  </small>
-                                ) : job.latestLogMessage ? (
-                                  <small>{job.latestLogMessage}</small>
-                                ) : null}
-                              </div>
-                              <div className="job-meta">
-                                <small>
-                                  {job.artifactCount
-                                    ? `${job.artifactCount} artifacts`
-                                    : "No artifacts"}
-                                </small>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="empty-browser">No finished jobs</div>
-                      )}
-                    </section>
-                  </div>
-                ) : (
-                  <div className="settings-json">
-                    <div className="settings-json-toolbar">
-                      <span>
-                        <strong>Settings JSON</strong>
-                        <small>
-                          Edits apply to theme, editor, layout, keymap, and
-                          saved connections.
-                        </small>
-                      </span>
-                      <button
-                        className="text-button"
-                        type="button"
-                        onClick={resetSettingsJsonDraft}
-                      >
-                        Reset from current
-                      </button>
-                      <button
-                        className="primary-button"
-                        type="button"
-                        onClick={applySettingsJson}
-                      >
-                        Apply JSON
-                      </button>
-                    </div>
-                    <textarea
-                      value={settingsJsonDraft}
-                      spellCheck={false}
-                      onChange={(event) => {
-                        setSettingsJsonDraft(event.currentTarget.value);
-                        setSettingsJsonError(null);
-                      }}
-                    />
-                    {settingsJsonError ? (
-                      <div className="inline-error settings-json-error">
-                        <AlertTriangle size={13} />
-                        <span>{settingsJsonError}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </section>
-            </div>
-          </div>
-        </div>
+        <SettingsDialog
+          settingsTab={settingsTab}
+          onOpenSection={openSettingsSection}
+          onClose={() => setSettingsOpen(false)}
+          vimMode={vimMode}
+          setVimMode={setVimMode}
+          themeKind={themeKind}
+          setThemeKind={setThemeKind}
+          formatter={formatter}
+          setFormatter={setFormatter}
+          sqlLinter={sqlLinter}
+          setSqlLinter={setSqlLinter}
+          resultOffloadEnabled={resultOffloadEnabled}
+          setResultOffloadEnabled={setResultOffloadEnabled}
+          resultMemoryBudget={resultMemoryBudget}
+          setResultMemoryBudget={setResultMemoryBudget}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          commandCatalog={appCommandCatalog}
+          keymap={keymap}
+          keymapOverrides={keymapOverrides}
+          keymapConflicts={keymapConflicts}
+          recordingCommand={recordingCommand}
+          recordingSequence={recordingSequence}
+          runCommand={runCommand}
+          beginRecording={beginRecording}
+          resetKeybinding={resetKeybinding}
+          jobs={jobs}
+          jobsLoading={jobsLoading}
+          jobsError={jobsError}
+          refreshJobs={refreshJobs}
+          cancelJob={cancelJob}
+          settingsJsonDraft={settingsJsonDraft}
+          setSettingsJsonDraft={setSettingsJsonDraft}
+          settingsJsonError={settingsJsonError}
+          setSettingsJsonError={setSettingsJsonError}
+          resetSettingsJsonDraft={resetSettingsJsonDraft}
+          applySettingsJson={applySettingsJson}
+        />
       ) : null}
 
       {aboutOpen ? (
