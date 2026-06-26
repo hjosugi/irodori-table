@@ -137,13 +137,4 @@ window.IRODORI_SEARCH_INDEX = [
     body:
       "Completion and AI strategy: deterministic completion first, optional AI, metadata cache, parser context, privacy, MCP.",
   },
-  {
-    title: "Online execution (Web preview)",
-    category: "Getting started",
-    url: "try/",
-    summary: "Try Irodori Table directly in your web browser with local DuckDB, SQLite (IndexedDB persistence), and mock database connections.",
-    tags: ["online", "web", "try", "browser", "duckdb", "sqlite", "indexeddb"],
-    body:
-      "Try Irodori Table directly in your browser. Web build using DuckDB WASM, local SQLite worker, IndexedDB storage, and online query stream interfaces.",
-  },
 ];

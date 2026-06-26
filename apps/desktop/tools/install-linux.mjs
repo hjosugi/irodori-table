@@ -44,7 +44,7 @@ await run("npm", npmArgs, { cwd: desktopRoot });
 
 // 2. Locate the freshly built AppImage.
 const profileDir = profileDirName(options.release);
-const bundleDir = resolve(repoRoot, "target", profileDir, "bundle/appimage");
+const bundleDir = resolve(repoRoot, ".irodori-local/target", profileDir, "bundle/appimage");
 const builtImage = await newestAppImage(bundleDir);
 if (!builtImage) {
   console.error(`No .AppImage found under ${bundleDir}`);

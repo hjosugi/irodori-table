@@ -1,10 +1,10 @@
 # Rust/TypeScript Type Bridge Handoff
 
-Last checked: 2026-06-21 JST.
+Last checked: 2026-06-27 JST.
 
-The standalone generator lives in the sibling repo `/mnt/data/workspace/typeship`
-(developed in its own session). This document is the Irodori-side contract: how
-Irodori consumes the bridge and keeps `apps/desktop/src/generated/` in sync.
+The standalone generator is published as the `typeship` and `typeship-ts-rs`
+crates. This document is the Irodori-side contract: how Irodori consumes the
+bridge and keeps `apps/desktop/src/generated/` in sync.
 
 Irodori should keep Rust structs idiomatic in Rust, keep JSON payloads idiomatic in TypeScript, and avoid hand-written duplicate types.
 

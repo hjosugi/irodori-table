@@ -34,18 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # typeship is a sibling path dependency used by the desktop and extension
-      # typegen crates. Keep this in sync with the main CI workflow.
-      - name: Checkout typeship
-        uses: actions/checkout@v4
-        with:
-          repository: hjosugi/typeship
-          path: _typeship
-
-      - name: Position typeship as a sibling
-        shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24

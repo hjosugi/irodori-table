@@ -6,10 +6,9 @@ LIMIT ?= 16
 JS_PM ?= npm
 ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo docker)
 
-.PHONY: help setup setup-desktop setup-web setup-web-endpoint setup-fast \
+.PHONY: help setup setup-desktop setup-fast \
         dev test build typegen e2e doctor \
         desktop-dev desktop-vite desktop-typegen desktop-test desktop-test-watch desktop-build desktop-e2e \
-        web-dev web-test web-build web-preview web-endpoint web-endpoint-host web-endpoint-down \
         check security security-strict db db-verify db-all db-up db-down \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
@@ -25,15 +24,14 @@ endef
 help:
 	@printf "Irodori root commands\n\n"
 	@printf "Setup\n"
-	@printf "  make setup             npm ci for desktop, web, and endpoint apps\n"
+	@printf "  make setup             npm ci for the desktop app\n"
 	@printf "  make setup-desktop     npm ci for apps/desktop\n"
-	@printf "  make setup-web         npm ci for apps/web\n"
 	@printf "  make setup-fast        Bun install without lockfile writes (local only)\n"
 	@printf "  make doctor            check local tools and common missing setup\n\n"
 	@printf "Shortcuts\n"
 	@printf "  make dev               desktop-dev\n"
-	@printf "  make test              desktop-test + web-test\n"
-	@printf "  make build             desktop-build + web-build\n"
+	@printf "  make test              desktop-test\n"
+	@printf "  make build             desktop-build\n"
 	@printf "  make typegen           desktop-typegen\n"
 	@printf "  make e2e               desktop-e2e\n"
 	@printf "  JS_PM=bun make test    run JS scripts through Bun where useful\n\n"
@@ -46,13 +44,6 @@ help:
 	@printf "  make desktop-build     typegen + TypeScript + Vite production build\n"
 	@printf "  make desktop-e2e       Playwright\n"
 	@printf "  make run-linux         build, install, and launch a local Linux AppImage\n\n"
-	@printf "Web app\n"
-	@printf "  make web-dev           Vite web app (:1422)\n"
-	@printf "  make web-endpoint      Postgres-backed local API endpoint (:1423)\n"
-	@printf "  make web-endpoint-host host-network endpoint variant\n"
-	@printf "  make web-endpoint-down stop endpoint containers and volumes\n"
-	@printf "  make web-test          Vitest\n"
-	@printf "  make web-build         TypeScript + Vite production build\n\n"
 	@printf "Sample databases\n"
 	@printf "  make db-up DB=postgres     start one sample DB and print its env export\n"
 	@printf "  make db-verify DB=postgres start, integration-test, then stop one DB\n"
@@ -60,33 +51,25 @@ help:
 	@printf "  make db-down DB=postgres   stop and remove one sample DB\n"
 	@printf "  DB options: postgres mysql mariadb timescaledb cockroachdb yugabytedb tidb sqlserver mongodb oracle\n\n"
 	@printf "Checks and docs\n"
-	@printf "  make check             cargo test + desktop/web test/build\n"
+	@printf "  make check             cargo test + desktop test/build\n"
 	@printf "  make security          license, lockfile, npm audit/signature, RustSec checks\n"
 	@printf "  make security-strict   same as security, but requires cargo-audit locally\n"
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
 
-setup: setup-desktop setup-web setup-web-endpoint
+setup: setup-desktop
 
 setup-desktop:
 	npm --prefix apps/desktop ci
 
-setup-web:
-	npm --prefix apps/web ci
-
-setup-web-endpoint:
-	npm --prefix apps/web/endpoint ci
-
 setup-fast:
 	bun --cwd=apps/desktop install --no-save
-	bun --cwd=apps/web install --no-save
-	bun --cwd=apps/web/endpoint install --no-save
 
 dev: desktop-dev
 
-test: desktop-test web-test
+test: desktop-test
 
-build: desktop-build web-build
+build: desktop-build
 
 typegen: desktop-typegen
 
@@ -116,30 +99,8 @@ desktop-build:
 desktop-e2e:
 	$(call js-run,apps/desktop,test:e2e)
 
-web-dev:
-	$(call js-run,apps/web,dev)
-
-web-test:
-	$(call js-run,apps/web,test)
-
-web-build:
-	$(call js-run,apps/web,build)
-
-web-preview:
-	$(call js-run,apps/web,preview)
-
-web-endpoint:
-	$(ENGINE_BIN) compose -f apps/web/compose.endpoint.yaml up --build
-
-web-endpoint-host:
-	$(ENGINE_BIN) compose -f apps/web/compose.endpoint.host.yaml up --build
-
-web-endpoint-down:
-	$(ENGINE_BIN) compose -f apps/web/compose.endpoint.yaml down -v || true
-	$(ENGINE_BIN) compose -f apps/web/compose.endpoint.host.yaml down -v || true
-
 check:
-	cargo test
+	cargo test --workspace
 	$(MAKE) test
 	$(MAKE) build
 

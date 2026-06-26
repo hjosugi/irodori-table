@@ -26,19 +26,6 @@ jobs:
       - name: Checkout irodori-table
         uses: actions/checkout@v4
 
-      # typeship is a sibling path dependency (see ../../../../typeship in the
-      # desktop crate's Cargo.toml). actions/checkout refuses paths outside
-      # $GITHUB_WORKSPACE, so check it out inside the workspace and move it
-      # alongside the repo where Cargo expects it.
-      - name: Checkout typeship
-        uses: actions/checkout@v4
-        with:
-          repository: hjosugi/typeship
-          path: _typeship
-      - name: Position typeship as a sibling
-        shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
-
       - name: Install dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-latest'
         run: |
@@ -55,16 +42,13 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # Cache the Cargo registry + ./target so external deps (tauri, sqlx, the
-      # cloud DB drivers) don't recompile from scratch every run. A version bump
-      # changes Cargo.lock, but rust-cache restores the nearest previous cache as
-      # a base, so only our own workspace crates recompile while the heavy
-      # third-party deps stay warm.
+      # Cache the Cargo registry and workspace target dir so external deps
+      # don't recompile from scratch every run. Keep this aligned with
+      # .cargo/config.toml.
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          # Workspace target dir lives at the repo root, not under apps/desktop.
-          workspaces: '. -> target'
+          workspaces: '. -> .irodori-local/target'
           # Keep separate caches per OS in the build matrix.
           key: ${{ matrix.platform }}
 

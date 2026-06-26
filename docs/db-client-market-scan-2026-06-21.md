@@ -134,7 +134,7 @@ These are implementation inputs rather than product parity targets.
   Irodori's server remains read-only by default and reuses the adapter/security
   model.
 - `ts-rs`, `specta`, `typeshare`, and `schemars` are type-generation references.
-  Irodori currently consumes the local typeship path documented in
+  Irodori consumes the published `typeship` crates documented in
   `type-bridge-handoff.md`.
 - `oracle-rs`, JDBC Thin, and python/node-oracledb thin modes are the Oracle
   no-Instant-Client precedents. Irodori keeps Oracle thin-first and records

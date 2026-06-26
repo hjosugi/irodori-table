@@ -5,8 +5,6 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 npm_audit_level="${NPM_AUDIT_LEVEL:-high}"
 npm_dirs=(
   "apps/desktop"
-  "apps/web"
-  "apps/web/endpoint"
 )
 
 step() {

@@ -25,18 +25,6 @@ checkPath("apps/desktop/node_modules", {
   required: true,
   hint: "run: make setup-desktop",
 });
-checkPath("apps/web/node_modules", {
-  required: true,
-  hint: "run: make setup-web",
-});
-checkPath("apps/web/endpoint/node_modules", {
-  required: true,
-  hint: "run: make setup-web-endpoint",
-});
-checkPath("../typeship", {
-  required: true,
-  hint: "needed by desktop typegen/build; clone hjosugi/typeship next to this repo",
-});
 
 if (process.platform === "linux") {
   section("Linux desktop dependencies");
@@ -97,7 +85,7 @@ function checkContainerEngine() {
   }
   report("container engine", false, {
     required: false,
-    hint: "needed only for sample databases and web endpoint containers",
+    hint: "needed only for sample database containers",
   });
 }
 

@@ -21,19 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # typeship is a sibling path dependency (see ../../../../typeship in the
-      # desktop crate's Cargo.toml). actions/checkout refuses paths outside
-      # $GITHUB_WORKSPACE, so check it out inside the workspace and move it
-      # alongside the repo where Cargo expects it.
-      - name: Checkout typeship
-        uses: actions/checkout@v4
-        with:
-          repository: hjosugi/typeship
-          path: _typeship
-      - name: Position typeship as a sibling
-        shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
-
       - uses: dtolnay/rust-toolchain@stable
 
       # The committed .cargo/config.toml links Linux builds with mold, and the
@@ -55,11 +42,11 @@ jobs:
             wget
 
       # Reuse compiled dependencies across runs instead of rebuilding the whole
-      # tree every time. Workspace target dir lives at the repo root.
+      # tree every time. Keep this aligned with .cargo/config.toml.
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: '. -> target'
+          workspaces: '. -> .irodori-local/target'
           key: ${{ matrix.os }}
 
       - name: Check Rust crate licenses
@@ -85,17 +72,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The desktop npm build runs typegen, which depends on the Rust workspace
-      # and the sibling typeship checkout just like the Rust foundation job.
-      - name: Checkout typeship
-        uses: actions/checkout@v4
-        with:
-          repository: hjosugi/typeship
-          path: _typeship
-      - name: Position typeship as a sibling
-        shell: bash
-        run: mv "$GITHUB_WORKSPACE/_typeship" "$GITHUB_WORKSPACE/../typeship"
-
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install Rust/Linux build dependencies
@@ -116,7 +92,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: '. -> target'
+          workspaces: '. -> .irodori-local/target'
           key: desktop-frontend-${{ runner.os }}
 
       - uses: actions/setup-node@v4
@@ -144,28 +120,3 @@ jobs:
       - name: Run desktop e2e tests
         working-directory: apps/desktop
         run: npm run test:e2e
-
-  web-frontend:
-    name: Web frontend
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-
-      - name: Install dependencies
-        working-directory: apps/web
-        run: npm ci
-
-      - name: Run web tests
-        working-directory: apps/web
-        run: npm test
-
-      - name: Build web frontend
-        working-directory: apps/web
-        run: npm run build

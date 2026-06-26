@@ -5,10 +5,9 @@ import { defineConfig, devices } from "@playwright/test";
 // unset, Playwright uses its own managed browser (the CI default).
 const executablePath = process.env.PW_CHROME_PATH || undefined;
 
-// Headless-browser smoke (QA-004, browser portion). This drives the real web
-// frontend — not the full Tauri shell — so Tauri `invoke` calls reject and the
-// app falls back to its mock snapshot; the editor/theme/format paths are pure
-// frontend and exercised for real. A full Tauri+SQLite smoke needs a Tauri runner.
+// Headless desktop-frontend smoke (QA-004). This drives the Vite frontend, not
+// the full Tauri shell, so Tauri `invoke` calls reject and the app falls back to
+// its mock snapshot. A full Tauri+SQLite smoke needs a Tauri runner.
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,

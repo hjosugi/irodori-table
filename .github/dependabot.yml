@@ -29,34 +29,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: npm
-    directory: /apps/web
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:30"
-      timezone: Asia/Tokyo
-    commit-message:
-      prefix: deps
-    groups:
-      web-npm:
-        patterns:
-          - "*"
-
-  - package-ecosystem: npm
-    directory: /apps/web/endpoint
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:45"
-      timezone: Asia/Tokyo
-    commit-message:
-      prefix: deps
-    groups:
-      endpoint-npm:
-        patterns:
-          - "*"
-
   - package-ecosystem: cargo
     directory: /
     schedule:
@@ -84,13 +56,3 @@ updates:
       desktop-tauri-rust:
         patterns:
           - "*"
-
-  - package-ecosystem: docker
-    directory: /apps/web/endpoint
-    schedule:
-      interval: weekly
-      day: monday
-      time: "10:30"
-      timezone: Asia/Tokyo
-    commit-message:
-      prefix: deps

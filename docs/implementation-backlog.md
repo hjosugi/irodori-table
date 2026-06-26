@@ -204,7 +204,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### TB-002 — `typegen` command + CI drift check ✅
 - **Goal:** Make stale bindings a CI failure.
 - **Done when:** a friendly `typegen` command regenerates bindings; `typegen --check` fails CI on drift with a readable diff.
-- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typeship tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI runs that check in the Rust job after `typeship` is available.
+- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typeship tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI runs that check in the Rust job using the published `typeship` crates.
 - **Depends on:** TB-001
 - **Size:** M · **Priority:** P0
 
@@ -1074,10 +1074,10 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** TB-002
 - **Size:** S · **Priority:** P0
 
-### QA-004 — Headless UI smoke tests  🟡 browser smoke landed
+### QA-004 — Headless UI smoke tests  🟡 desktop frontend smoke landed
 - **Goal:** Confidence the app actually runs.
 - **Done when:** a headless driver launches the Tauri shell, connects to SQLite, runs a query, and asserts result rows; runs in CI.
-- **Landed (browser portion):** Playwright smoke (`e2e/smoke.spec.ts`, `npm run test:e2e`) drives the real web frontend headless — shell renders, CodeMirror mounts with highlighting, theme toggles, Format SQL reflows. Tauri `invoke` is absent in a plain browser (app falls back to mock snapshot), so connect/query is **not** covered here. Remaining: full Tauri+SQLite smoke via a Tauri runner (e.g. tauri-driver/WebDriver) for the connect→query→assert-rows path. Note: sandbox uses `PW_CHROME_PATH` to reuse a local Chromium (cdn.playwright.dev is egress-blocked).
+- **Landed (desktop frontend portion):** Playwright smoke (`e2e/smoke.spec.ts`, `npm run test:e2e`) drives the desktop Vite frontend headless — shell renders, CodeMirror mounts with highlighting, theme toggles, Format SQL reflows. Tauri `invoke` is absent in a plain browser (app falls back to mock snapshot), so connect/query is **not** covered here. Remaining: full Tauri+SQLite smoke via a Tauri runner (e.g. tauri-driver/WebDriver) for the connect→query→assert-rows path. Note: set `PW_CHROME_PATH` to reuse a local Chromium when Playwright browser downloads are blocked.
 - **Depends on:** SHELL-001, EXEC-001
 - **Size:** L · **Priority:** P1
 

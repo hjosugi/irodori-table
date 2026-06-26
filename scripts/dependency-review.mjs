@@ -7,11 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const allowlistPath = resolve(root, "tools/security/dependency-review-allowlist.json");
 const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
-const npmLockfiles = [
-  "apps/desktop/package-lock.json",
-  "apps/web/package-lock.json",
-  "apps/web/endpoint/package-lock.json",
-];
+const npmLockfiles = ["apps/desktop/package-lock.json"];
 const errors = [];
 
 for (const lockfile of npmLockfiles) {
@@ -19,7 +15,6 @@ for (const lockfile of npmLockfiles) {
 }
 checkCargoMetadata();
 checkCargoLockGitSources("Cargo.lock");
-checkCargoLockGitSources("apps/desktop/src-tauri/Cargo.lock");
 
 if (errors.length > 0) {
   for (const error of errors) {

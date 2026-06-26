@@ -976,33 +976,11 @@ h3 {
   font-weight: 900;
 }
 
-.sandbox-layout,
 .download-panel {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
   align-items: center;
   gap: 28px;
-}
-
-.sandbox-card {
-  display: grid;
-  gap: 8px;
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  box-shadow: 0 12px 32px rgb(31 48 43 / 10%);
-}
-
-.sandbox-card span {
-  color: var(--green);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.sandbox-card p {
-  margin: 0;
-  color: var(--ink-soft);
 }
 
 .download-actions {
@@ -1155,7 +1133,6 @@ h3 {
   .search-layout,
   .docs-layout,
   .blog-layout,
-  .sandbox-layout,
   .download-panel {
     grid-template-columns: 1fr;
   }

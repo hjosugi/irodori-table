@@ -2,8 +2,8 @@
 
 Irodori Table is a permissively licensed database client project. The main app is
 a Tauri desktop client built with Rust, React, TypeScript, and Vite. The repo
-also contains a browser-only web app, shared Rust crates, extension SDK work,
-database sample containers, and planning docs.
+also contains shared Rust crates, extension SDK work, database sample
+containers, and planning docs.
 
 This root README is the starting point when you do not know which document to
 read first.
@@ -41,7 +41,7 @@ sudo pacman -S --needed fuse2
 ```
 
 Use the root `Makefile` for day-to-day commands. There is still no root npm
-workspace; the root targets run against each app directly.
+workspace; the root targets run against the desktop app directly.
 
 ```sh
 make help
@@ -101,35 +101,6 @@ To build and install a local Linux AppImage from the repo root:
 make run-linux
 ```
 
-## Quick Start: Web App
-
-The web app is separate from the Tauri desktop shell.
-
-```sh
-make setup-web
-make web-dev
-```
-
-The Vite server defaults to `http://localhost:1422`. It proxies `/api/*` to
-`http://localhost:1423` for online database endpoint testing.
-
-To run the local Postgres-backed endpoint for the web app, use a second
-terminal:
-
-```sh
-make web-endpoint
-```
-
-If your environment cannot create a compose bridge network, try:
-
-```sh
-make web-endpoint-host
-```
-
-Stop the endpoint stack with `make web-endpoint-down`.
-
-More detail: [docs/web-app-architecture.md](docs/web-app-architecture.md).
-
 ## Sample Databases
 
 Sample databases live under `samples/<engine>/compose.yaml`. They are for the
@@ -184,7 +155,6 @@ make check
 | --- | --- |
 | `apps/desktop/` | Main Tauri + React desktop application. |
 | `apps/desktop/src-tauri/` | Rust backend for the desktop app, including DB adapters and Tauri commands. |
-| `apps/web/` | Browser-only Vite/React app with local SQLite/DuckDB and HTTP endpoint support. |
 | `crates/` | Shared Rust crates for core models, SQL/completion, proxy/secret handling, extension APIs, IO, server, and knowledge tooling. |
 | `packages/extension-sdk/` | TypeScript extension SDK package. |
 | `packages/extension-sdk/templates/` | Starter templates for extension authors. |
@@ -205,7 +175,6 @@ make check
 | Linux setup, WebKit crashes, blank Tauri window | [docs/linux-development.md](docs/linux-development.md) |
 | Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
 | Connection syntax and engine quirks | [docs/engine-syntax-reference.md](docs/engine-syntax-reference.md) |
-| Web app runtime and endpoint contract | [docs/web-app-architecture.md](docs/web-app-architecture.md) |
 | Sample database containers | [samples/README.md](samples/README.md) |
 | Product capability matrix | [docs/feature-matrix.md](docs/feature-matrix.md) |
 | Current implementation snapshot | [docs/implementation-progress.md](docs/implementation-progress.md) |

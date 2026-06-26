@@ -10,7 +10,7 @@ const repoRoot = resolve(desktopRoot, "../..");
 
 const options = parseArgs(process.argv.slice(2));
 const profile = options.debug ? "debug" : "release";
-const bundleDir = resolve(repoRoot, "target", profile, "bundle/appimage");
+const bundleDir = resolve(repoRoot, ".irodori-local/target", profile, "bundle/appimage");
 const appImage = await newestAppImage(bundleDir);
 
 if (!appImage) {
