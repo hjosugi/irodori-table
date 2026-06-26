@@ -16,6 +16,17 @@ export type DetailValue = {
   json: boolean;
 };
 
+export type RowJsonObject = Record<string, unknown>;
+
+export type JsonTreeNode = {
+  key: string;
+  path: string;
+  type: string;
+  preview: string;
+  value: unknown;
+  children: JsonTreeNode[];
+};
+
 export type SourceTableRef = { schema?: string; table: string };
 
 type IdentifierQuoteStyle = {
@@ -38,10 +49,149 @@ export function formatDetailValue(value: unknown): DetailValue {
   if (value === null || value === undefined) {
     return { text: "NULL", json: false };
   }
+  if (typeof value === "bigint") {
+    return { text: value.toString(), json: false };
+  }
   if (typeof value === "object") {
-    return { text: JSON.stringify(value, null, 2), json: true };
+    return { text: JSON.stringify(toJsonSafeValue(value), null, 2), json: true };
   }
   return { text: String(value), json: false };
+}
+
+/** Convert result columns + values into a full-row JSON object without losing duplicates. */
+export function rowToJsonObject(
+  columns: readonly string[],
+  values: readonly unknown[],
+): RowJsonObject {
+  const counts = new Map<string, number>();
+  const used = new Set<string>();
+  const row: RowJsonObject = {};
+  columns.forEach((column, index) => {
+    const base = column.length > 0 ? column : `column_${index + 1}`;
+    const count = (counts.get(base) ?? 0) + 1;
+    counts.set(base, count);
+    let key = count === 1 ? base : `${base}_${count}`;
+    while (used.has(key)) {
+      const next = (counts.get(base) ?? count) + 1;
+      counts.set(base, next);
+      key = `${base}_${next}`;
+    }
+    used.add(key);
+    row[key] = toJsonSafeValue(values[index]);
+  });
+  return row;
+}
+
+/** Pretty-print a complete selected row as JSON. */
+export function formatRowAsJson(
+  columns: readonly string[],
+  values: readonly unknown[],
+): string {
+  return JSON.stringify(rowToJsonObject(columns, values), null, 2);
+}
+
+/** Make unknown DB values safe for JSON.stringify and the tree viewer. */
+export function toJsonSafeValue(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (value === undefined) {
+    return null;
+  }
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  if (typeof value === "symbol" || typeof value === "function") {
+    return String(value);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (seen.has(value)) {
+    return "[Circular]";
+  }
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const array = value.map((item) => toJsonSafeValue(item, seen));
+    seen.delete(value);
+    return array;
+  }
+  if (value instanceof Map) {
+    const object: RowJsonObject = {};
+    for (const [key, mapValue] of value) {
+      object[String(key)] = toJsonSafeValue(mapValue, seen);
+    }
+    seen.delete(value);
+    return object;
+  }
+  if (value instanceof Set) {
+    const array = [...value].map((item) => toJsonSafeValue(item, seen));
+    seen.delete(value);
+    return array;
+  }
+  const object: RowJsonObject = {};
+  for (const [key, objectValue] of Object.entries(value as Record<string, unknown>)) {
+    object[key] = toJsonSafeValue(objectValue, seen);
+  }
+  seen.delete(value);
+  return object;
+}
+
+/** Build a browsable JSON tree from a row JSON value. */
+export function buildJsonTree(value: unknown, key = "$", path = "$"): JsonTreeNode {
+  const safeValue = toJsonSafeValue(value);
+  return {
+    key,
+    path,
+    type: jsonValueType(safeValue),
+    preview: jsonPreview(safeValue),
+    value: safeValue,
+    children: jsonChildren(safeValue, path),
+  };
+}
+
+function jsonChildren(value: unknown, path: string): JsonTreeNode[] {
+  if (Array.isArray(value)) {
+    return value.map((child, index) => buildJsonTree(child, String(index), `${path}[${index}]`));
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).map(([key, child]) =>
+      buildJsonTree(child, key, `${path}${jsonPathSegment(key)}`),
+    );
+  }
+  return [];
+}
+
+function jsonPathSegment(key: string): string {
+  return /^[A-Za-z_$][\w$]*$/.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
+}
+
+function jsonValueType(value: unknown): string {
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (value === null) {
+    return "null";
+  }
+  return typeof value;
+}
+
+function jsonPreview(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `${value.length} items`;
+  }
+  if (value !== null && typeof value === "object") {
+    const count = Object.keys(value as Record<string, unknown>).length;
+    return `${count} keys`;
+  }
+  if (typeof value === "string") {
+    return truncate(JSON.stringify(value));
+  }
+  return String(value);
+}
+
+function truncate(value: string, max = 120): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
 function normalizeId(value: string): string {

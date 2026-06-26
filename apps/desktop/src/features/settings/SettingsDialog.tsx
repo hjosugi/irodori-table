@@ -32,6 +32,12 @@ import {
   linterOptions,
   type SqlLinterId,
 } from "../../sql/linter";
+import {
+  createTranslator,
+  localeLabels,
+  supportedLocales,
+  type Locale,
+} from "../../i18n";
 import type { ThemeKind } from "../../theme";
 
 export type SettingsTab =
@@ -49,6 +55,8 @@ export interface SettingsDialogProps {
   settingsTab: SettingsTab;
   onOpenSection: (tab: SettingsTab) => void;
   onClose: () => void;
+  locale: Locale;
+  setLocale: (value: Locale) => void;
   vimMode: boolean;
   setVimMode: (value: boolean) => void;
   autoCommit: boolean;
@@ -176,6 +184,8 @@ export function SettingsDialog({
   settingsTab,
   onOpenSection,
   onClose,
+  locale,
+  setLocale,
   vimMode,
   setVimMode,
   autoCommit,
@@ -224,6 +234,8 @@ export function SettingsDialog({
   resetSettingsJsonDraft,
   applySettingsJson,
 }: SettingsDialogProps) {
+  const t = createTranslator(locale);
+
   function updateSnippet(
     index: number,
     patch: Partial<SqlSnippetDefinition>,
@@ -259,25 +271,25 @@ export function SettingsDialog({
       <div
         className="data-dialog settings-dialog"
         role="dialog"
-        aria-label="Settings"
+        aria-label={t("settings.title")}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dialog-header">
-          <strong>Settings</strong>
-          <span>Editor, theme, shortcuts</span>
+          <strong>{t("settings.title")}</strong>
+          <span>{t("settings.subtitle")}</span>
           <button className="text-button" type="button" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
         </div>
         <div className="settings-body">
-          <nav className="settings-nav" aria-label="Settings sections">
+          <nav className="settings-nav" aria-label={t("settings.sections")}>
             <button
               type="button"
               className={settingsTab === "general" ? "active" : undefined}
               onClick={() => onOpenSection("general")}
             >
               <Settings size={15} />
-              General
+              {t("settings.nav.general")}
             </button>
             <button
               type="button"
@@ -285,7 +297,7 @@ export function SettingsDialog({
               onClick={() => onOpenSection("theme")}
             >
               <Palette size={15} />
-              Theme
+              {t("settings.nav.theme")}
             </button>
             <button
               type="button"
@@ -293,7 +305,7 @@ export function SettingsDialog({
               onClick={() => onOpenSection("keymap")}
             >
               <Keyboard size={15} />
-              Keymap
+              {t("settings.nav.keymap")}
             </button>
             <button
               type="button"
@@ -301,7 +313,7 @@ export function SettingsDialog({
               onClick={() => onOpenSection("snippets")}
             >
               <Code2 size={15} />
-              Snippets
+              {t("settings.nav.snippets")}
             </button>
             <button
               type="button"
@@ -309,7 +321,7 @@ export function SettingsDialog({
               onClick={() => onOpenSection("jobs")}
             >
               <Clock3 size={15} />
-              Jobs
+              {t("settings.nav.jobs")}
             </button>
             <button
               type="button"
@@ -317,7 +329,7 @@ export function SettingsDialog({
               onClick={() => onOpenSection("json")}
             >
               <TerminalSquare size={15} />
-              JSON
+              {t("settings.nav.json")}
             </button>
           </nav>
           <section className="settings-panel">
@@ -325,8 +337,28 @@ export function SettingsDialog({
               <div className="settings-stack">
                 <label className="settings-row">
                   <span>
-                    <strong>Editor mode</strong>
-                    <small>Default editor or Vim bindings.</small>
+                    <strong>{t("settings.general.language.title")}</strong>
+                    <small>{t("settings.general.language.description")}</small>
+                  </span>
+                  <select
+                    value={locale}
+                    onChange={(event) =>
+                      setLocale(event.currentTarget.value as Locale)
+                    }
+                  >
+                    {supportedLocales.map((supportedLocale) => (
+                      <option key={supportedLocale} value={supportedLocale}>
+                        {localeLabels[supportedLocale]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>{t("settings.general.editorMode.title")}</strong>
+                    <small>
+                      {t("settings.general.editorMode.description")}
+                    </small>
                   </span>
                   <div className="segmented-control">
                     <button
@@ -334,21 +366,21 @@ export function SettingsDialog({
                       className={!vimMode ? "active" : undefined}
                       onClick={() => setVimMode(false)}
                     >
-                      Default
+                      {t("settings.general.editorMode.default")}
                     </button>
                     <button
                       type="button"
                       className={vimMode ? "active" : undefined}
                       onClick={() => setVimMode(true)}
                     >
-                      Vim
+                      {t("settings.general.editorMode.vim")}
                     </button>
                   </div>
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>Auto Commit</strong>
-                    <small>Commit each statement automatically after it runs.</small>
+                    <strong>{t("settings.general.autoCommit.title")}</strong>
+                    <small>{t("settings.general.autoCommit.description")}</small>
                   </span>
                   <div className="segmented-control">
                     <button
@@ -356,21 +388,21 @@ export function SettingsDialog({
                       className={autoCommit ? "active" : undefined}
                       onClick={() => setAutoCommit(true)}
                     >
-                      On
+                      {t("common.on")}
                     </button>
                     <button
                       type="button"
                       className={!autoCommit ? "active" : undefined}
                       onClick={() => setAutoCommit(false)}
                     >
-                      Off
+                      {t("common.off")}
                     </button>
                   </div>
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>SQL formatter</strong>
-                    <small>Formatter used by the toolbar and keybinding.</small>
+                    <strong>{t("settings.general.formatter.title")}</strong>
+                    <small>{t("settings.general.formatter.description")}</small>
                   </span>
                   <select
                     value={formatter}
@@ -390,8 +422,8 @@ export function SettingsDialog({
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>SQL linter</strong>
-                    <small>Gentle syntax and high-risk statement checks.</small>
+                    <strong>{t("settings.general.linter.title")}</strong>
+                    <small>{t("settings.general.linter.description")}</small>
                   </span>
                   <select
                     value={sqlLinter}
@@ -411,9 +443,9 @@ export function SettingsDialog({
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>Result offload</strong>
+                    <strong>{t("settings.general.resultOffload.title")}</strong>
                     <small>
-                      Page large result sets from disk instead of capping in RAM.
+                      {t("settings.general.resultOffload.description")}
                     </small>
                   </span>
                   <div className="segmented-control">
@@ -422,23 +454,22 @@ export function SettingsDialog({
                       className={resultOffloadEnabled ? "active" : undefined}
                       onClick={() => setResultOffloadEnabled(true)}
                     >
-                      On
+                      {t("common.on")}
                     </button>
                     <button
                       type="button"
                       className={!resultOffloadEnabled ? "active" : undefined}
                       onClick={() => setResultOffloadEnabled(false)}
                     >
-                      Off
+                      {t("common.off")}
                     </button>
                   </div>
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>Resident rows</strong>
+                    <strong>{t("settings.general.residentRows.title")}</strong>
                     <small>
-                      Rows kept in memory before the disk-backed result takes
-                      over.
+                      {t("settings.general.residentRows.description")}
                     </small>
                   </span>
                   <input
@@ -460,10 +491,9 @@ export function SettingsDialog({
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>Query history</strong>
+                    <strong>{t("settings.general.queryHistory.title")}</strong>
                     <small>
-                      Number of query runs retained locally. Set to 0 to disable
-                      history.
+                      {t("settings.general.queryHistory.description")}
                     </small>
                   </span>
                   <input
@@ -481,10 +511,9 @@ export function SettingsDialog({
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>History result rows</strong>
+                    <strong>{t("settings.general.historyRows.title")}</strong>
                     <small>
-                      Rows saved with each successful query. Set to 0 to keep SQL
-                      only.
+                      {t("settings.general.historyRows.description")}
                     </small>
                   </span>
                   <input
@@ -502,15 +531,15 @@ export function SettingsDialog({
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>Sidebar</strong>
-                    <small>Object browser and connection switcher.</small>
+                    <strong>{t("settings.general.sidebar.title")}</strong>
+                    <small>{t("settings.general.sidebar.description")}</small>
                   </span>
                   <button
                     className="text-button"
                     type="button"
                     onClick={() => setSidebarOpen((open) => !open)}
                   >
-                    {sidebarOpen ? "Hide" : "Show"}
+                    {sidebarOpen ? t("common.hide") : t("common.show")}
                   </button>
                 </label>
               </div>
@@ -518,11 +547,13 @@ export function SettingsDialog({
               <div className="settings-stack">
                 <label className="settings-row">
                   <span>
-                    <strong>Color mode</strong>
+                    <strong>{t("settings.theme.colorMode.title")}</strong>
                     <small>
                       {activeCustomThemeName
-                        ? `Using custom: ${activeCustomThemeName}`
-                        : "Built-in workbench theme."}
+                        ? t("settings.theme.colorMode.customDescription", {
+                            name: activeCustomThemeName,
+                          })
+                        : t("settings.theme.colorMode.builtinDescription")}
                     </small>
                   </span>
                   <div className="segmented-control">
@@ -535,7 +566,7 @@ export function SettingsDialog({
                       }
                       onClick={() => setThemeKind("dark")}
                     >
-                      Dark
+                      {t("common.dark")}
                     </button>
                     <button
                       type="button"
@@ -546,15 +577,15 @@ export function SettingsDialog({
                       }
                       onClick={() => setThemeKind("light")}
                     >
-                      Light
+                      {t("common.light")}
                     </button>
                   </div>
                 </label>
                 <label className="settings-row">
                   <span>
-                    <strong>Saved themes</strong>
+                    <strong>{t("settings.theme.savedThemes.title")}</strong>
                     <small>
-                      Choose a custom theme imported through Settings JSON.
+                      {t("settings.theme.savedThemes.description")}
                     </small>
                   </span>
                   <select
@@ -563,7 +594,9 @@ export function SettingsDialog({
                       setActiveCustomThemeId(event.currentTarget.value || null)
                     }
                   >
-                    <option value="">Built-in theme</option>
+                    <option value="">
+                      {t("settings.theme.savedThemes.builtin")}
+                    </option>
                     {customThemes.map((theme) => (
                       <option key={theme.id} value={theme.id}>
                         {theme.name}
@@ -573,11 +606,15 @@ export function SettingsDialog({
                 </label>
                 <div className="settings-row settings-row-alert">
                   <span>
-                    <strong>Active theme</strong>
+                    <strong>{t("settings.theme.activeTheme.title")}</strong>
                     <small>
                       {activeCustomThemeName
-                        ? `Custom theme: ${activeCustomThemeName}`
-                        : `Built-in ${themeKind} theme`}
+                        ? t("settings.theme.activeTheme.customDescription", {
+                            name: activeCustomThemeName,
+                          })
+                        : t("settings.theme.activeTheme.builtinDescription", {
+                            kind: themeKind,
+                          })}
                     </small>
                   </span>
                   {activeCustomThemeName ? (
@@ -586,16 +623,15 @@ export function SettingsDialog({
                       type="button"
                       onClick={clearCustomTheme}
                     >
-                      Use Built-in
+                      {t("settings.theme.activeTheme.useBuiltin")}
                     </button>
                   ) : null}
                 </div>
                 <div className="settings-row">
                   <span>
-                    <strong>Import themes</strong>
+                    <strong>{t("settings.theme.importThemes.title")}</strong>
                     <small>
-                      Paste an Irodori or VS Code theme in the JSON section to
-                      save it here.
+                      {t("settings.theme.importThemes.description")}
                     </small>
                   </span>
                   <button
@@ -603,7 +639,7 @@ export function SettingsDialog({
                     type="button"
                     onClick={() => onOpenSection("json")}
                   >
-                    Open JSON
+                    {t("settings.theme.importThemes.openJson")}
                   </button>
                 </div>
               </div>

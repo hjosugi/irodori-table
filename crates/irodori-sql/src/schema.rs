@@ -259,12 +259,16 @@ fn diff_table(old: &Table, new: &Table) -> AlteredTable {
         }
     }
     for new_index in &new.indexes {
-        if old.index(&new_index.name) != Some(new_index) {
-            // New index, or a changed definition (treated as drop + recreate).
-            if old.index(&new_index.name).is_some() {
+        match old.index(&new_index.name) {
+            // Unchanged: nothing to do.
+            Some(existing) if existing == new_index => {}
+            // Changed definition: drop and recreate.
+            Some(_) => {
                 altered.dropped_indexes.push(new_index.name.clone());
+                altered.added_indexes.push(new_index.clone());
             }
-            altered.added_indexes.push(new_index.clone());
+            // Brand new index.
+            None => altered.added_indexes.push(new_index.clone()),
         }
     }
     for old_index in &old.indexes {

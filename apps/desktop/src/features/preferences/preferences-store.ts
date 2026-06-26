@@ -8,6 +8,7 @@ import {
   isSqlFormatterId,
   type SqlFormatterId,
 } from "../../sql/formatter";
+import { detectBrowserLocale, normalizeLocale, type Locale } from "../../i18n";
 import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
 import type { CustomThemeEntry, IrodoriTheme, ThemeKind } from "../../theme";
 
@@ -23,8 +24,10 @@ const formatterStorageKey = "irodori.editor.formatter.v1";
 const linterStorageKey = "irodori.editor.linter.v1";
 const snippetsStorageKey = "irodori.editor.snippets.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
+const localeStorageKey = "irodori.locale.v1";
 
 type PreferencesState = {
+  locale: Locale;
   themeKind: ThemeKind;
   activeCustomThemeId: string | null;
   customThemes: CustomThemeEntry[];
@@ -33,6 +36,7 @@ type PreferencesState = {
   sqlLinter: SqlLinterId;
   sqlSnippets: SqlSnippetDefinition[];
   autoCommit: boolean;
+  setLocale: (value: ValueUpdater<Locale>) => void;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
   setActiveCustomThemeId: (value: ValueUpdater<string | null>) => void;
   setCustomThemes: (value: ValueUpdater<CustomThemeEntry[]>) => void;
@@ -53,6 +57,11 @@ function loadThemeKind(): ThemeKind {
   return window.localStorage.getItem(themeStorageKey) === "light"
     ? "light"
     : "dark";
+}
+
+function loadLocale(): Locale {
+  const stored = window.localStorage.getItem(localeStorageKey);
+  return stored ? normalizeLocale(stored) : detectBrowserLocale();
 }
 
 function isCustomThemeEntry(value: unknown): value is CustomThemeEntry {
@@ -147,6 +156,7 @@ function loadAutoCommit() {
 const initialCustomThemes = loadCustomThemes();
 
 export const usePreferencesStore = create<PreferencesState>((set) => ({
+  locale: loadLocale(),
   themeKind: loadThemeKind(),
   activeCustomThemeId: loadActiveCustomThemeId(initialCustomThemes),
   customThemes: initialCustomThemes,
@@ -155,6 +165,8 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   sqlLinter: loadLinter(),
   sqlSnippets: loadSqlSnippets(),
   autoCommit: loadAutoCommit(),
+  setLocale: (value) =>
+    set((state) => ({ locale: normalizeLocale(resolveValue(state.locale, value)) })),
   setThemeKind: (value) =>
     set((state) => ({ themeKind: resolveValue(state.themeKind, value) })),
   setActiveCustomThemeId: (value) =>
@@ -184,6 +196,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
 }));
 
 usePreferencesStore.subscribe((state) => {
+  window.localStorage.setItem(localeStorageKey, state.locale);
   window.localStorage.setItem(themeStorageKey, state.themeKind);
   if (state.activeCustomThemeId) {
     window.localStorage.setItem(

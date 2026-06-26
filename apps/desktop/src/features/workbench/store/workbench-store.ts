@@ -1,17 +1,21 @@
 import { create } from "zustand";
 
 export type EditorSplitMode = "single" | "right" | "down";
+/** Which side the primary sidebar (object browser) sits on — VS Code-style. */
+export type SidebarSide = "left" | "right";
 
 type ValueUpdater<T> = T | ((current: T) => T);
 
 type WorkbenchState = {
   sidebarOpen: boolean;
+  sidebarSide: SidebarSide;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
   editorSplitMode: EditorSplitMode;
   editorSplitPercent: number;
   setSidebarOpen: (value: ValueUpdater<boolean>) => void;
+  setSidebarSide: (value: ValueUpdater<SidebarSide>) => void;
   setSidebarWidth: (value: ValueUpdater<number>) => void;
   setInspectorWidth: (value: ValueUpdater<number>) => void;
   setResultsHeight: (value: ValueUpdater<number>) => void;
@@ -20,6 +24,7 @@ type WorkbenchState = {
 };
 
 const sidebarStorageKey = "irodori.sidebar.open.v1";
+const sidebarSideStorageKey = "irodori.sidebar.side.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
 const resultsHeightStorageKey = "irodori.results.height.v1";
@@ -63,6 +68,12 @@ function loadSidebarOpen() {
   return window.localStorage.getItem(sidebarStorageKey) !== "false";
 }
 
+function loadSidebarSide(): SidebarSide {
+  return window.localStorage.getItem(sidebarSideStorageKey) === "right"
+    ? "right"
+    : "left";
+}
+
 function loadEditorSplitMode(): EditorSplitMode {
   const stored = window.localStorage.getItem(editorSplitModeStorageKey);
   return stored === "right" || stored === "down" ? stored : "single";
@@ -70,6 +81,7 @@ function loadEditorSplitMode(): EditorSplitMode {
 
 export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   sidebarOpen: loadSidebarOpen(),
+  sidebarSide: loadSidebarSide(),
   sidebarWidth: loadStoredNumber(
     sidebarWidthStorageKey,
     sidebarWidthDefault,
