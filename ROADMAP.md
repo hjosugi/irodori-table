@@ -56,6 +56,11 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   history, record view, result diffing, PostGIS maps, EXPLAIN visualization, and
   database performance dashboards. Do not copy code unless a compatible license
   is verified.
+- Apache Superset (Apache-2.0) and `awesome-business-intelligence`: BI reference
+  surfaces for SQL Lab-to-chart workflows, no-code x/y/metric mappings, dashboards,
+  local/materialized analytical datasets, and chart usage patterns. Use them for
+  product requirements and clean-room implementation planning; keep Irodori's
+  desktop-first result workflow compact instead of cloning a web BI suite.
 - DuckDB and DuckDB UI (`ref/duckdb-ui-main`, MIT): embedded analytical SQL, local-first exploration, Parquet/Iceberg reads, and a lightweight in-process UI; MIT lets us adapt code with attribution and license tracking.
 - Kibana (`ref/kibana-main`, Elastic License 2.0 / SSPL / AGPL-3.0 — source-available): Discover data exploration and Dev Tools console as a search/observability query-and-browse reference; behavior-only, no code adaptation into the permissive core.
 - Zed (`zed-industries/zed`, GPL-3.0/AGPL-3.0 with some Apache-2.0 crates — copyleft): a fast Rust-native desktop editor; reference for GPUI rendering, input latency, multibuffer/pane models, and Rust app structure. Study architecture; do not copy copyleft code into the core.

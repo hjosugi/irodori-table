@@ -198,188 +198,211 @@ export function QueryEditorPane({
         ) : null}
       </div>
       <div className="editor-floating-actions">
-        <div className="editor-command-bar">
-          <button
-            className="text-button toolbar-command"
-            type="button"
-            title={`Format SQL (${formatter})`}
-            aria-label="Format SQL"
-            onClick={() => runCommand("editor.format")}
-          >
-            <AlignLeft size={15} />
-            <span>Format</span>
-          </button>
-          <button
-            className={
-              autoCommit
-                ? "text-button toolbar-command active"
-                : "text-button toolbar-command"
-            }
-            type="button"
-            title={
-              autoCommit
-                ? "Auto Commit is on"
-                : "Manual transaction mode is selected"
-            }
-            aria-label="Toggle Auto Commit"
-            aria-pressed={autoCommit}
-            onClick={() => setAutoCommit((current) => !current)}
-          >
-            <span>{autoCommit ? "Auto Commit" : "Manual Tx"}</span>
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            title="Toggle SQL comment"
-            aria-label="Toggle SQL comment"
-            onClick={() => runCommand("editor.comment.toggle")}
-          >
-            <TerminalSquare size={15} />
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            title="Save query"
-            aria-label="Save query"
-            onClick={saveCurrentQuery}
-          >
-            <Save size={15} />
-          </button>
-          <div
-            className="editor-split-controls"
-            role="group"
-            aria-label="Editor layout"
-          >
+        <div
+          className="editor-action-dock"
+          role="toolbar"
+          aria-label="Editor actions"
+        >
+          <div className="editor-command-bar">
             <button
-              className={
-                editorSplitMode === "right"
-                  ? "icon-button active"
-                  : "icon-button"
-              }
+              className="text-button toolbar-command"
               type="button"
-              title="Split editor right"
-              aria-label="Split editor right"
-              aria-pressed={editorSplitMode === "right"}
-              onClick={() => setEditorSplitMode("right")}
+              title={`Format SQL (${formatter})`}
+              aria-label="Format SQL"
+              onClick={() => runCommand("editor.format")}
             >
-              <SplitSquareHorizontal size={15} />
+              <AlignLeft size={15} />
+              <span>Format</span>
             </button>
             <button
               className={
-                editorSplitMode === "down"
-                  ? "icon-button active"
-                  : "icon-button"
+                autoCommit
+                  ? "text-button toolbar-command active"
+                  : "text-button toolbar-command"
               }
               type="button"
-              title="Split editor down"
-              aria-label="Split editor down"
-              aria-pressed={editorSplitMode === "down"}
-              onClick={() => setEditorSplitMode("down")}
+              title={
+                autoCommit
+                  ? "Auto Commit is on"
+                  : "Manual transaction mode is selected"
+              }
+              aria-label="Toggle Auto Commit"
+              aria-pressed={autoCommit}
+              onClick={() => setAutoCommit((current) => !current)}
             >
-              <SplitSquareVertical size={15} />
+              <span>{autoCommit ? "Auto Commit" : "Manual Tx"}</span>
             </button>
-            {editorSplitOpen ? (
+            <button
+              className="icon-button"
+              type="button"
+              title="Toggle SQL comment"
+              aria-label="Toggle SQL comment"
+              onClick={() => runCommand("editor.comment.toggle")}
+            >
+              <TerminalSquare size={15} />
+            </button>
+            <div
+              className="editor-split-controls"
+              role="group"
+              aria-label="Editor layout"
+            >
               <button
-                className="icon-button"
+                className={
+                  editorSplitMode === "right"
+                    ? "icon-button active"
+                    : "icon-button"
+                }
                 type="button"
-                title="Close editor split"
-                aria-label="Close editor split"
-                onClick={() => setEditorSplitMode("single")}
+                title="Split editor right"
+                aria-label="Split editor right"
+                aria-pressed={editorSplitMode === "right"}
+                onClick={() => setEditorSplitMode("right")}
               >
-                {editorSplitMode === "down" ? (
-                  <PanelBottomClose size={15} />
-                ) : (
-                  <PanelRightClose size={15} />
-                )}
+                <SplitSquareHorizontal size={15} />
               </button>
-            ) : null}
-          </div>
-          <button
-            className="icon-button"
-            type="button"
-            title="Cancel query"
-            aria-label="Cancel query"
-            disabled={!running}
-            onClick={() => void cancelQuery()}
-          >
-            <Square size={15} />
-          </button>
-        </div>
-        <div className="run-control editor-floating-run">
-          <button
-            className="primary-action run-main-button"
-            type="button"
-            title={
-              runShortcutLabel
-                ? `${runPrimaryLabel} (${runShortcutLabel})`
-                : runPrimaryLabel
-            }
-            disabled={running}
-            onClick={() => void runQuery()}
-          >
-            <Play size={15} fill="currentColor" />
-            <span>{runPrimaryLabel}</span>
-          </button>
-          <button
-            className="primary-action run-menu-toggle"
-            type="button"
-            title="Run options"
-            aria-label="Run options"
-            aria-haspopup="menu"
-            aria-expanded={runMenuOpen}
-            disabled={running}
-            onClick={() => setRunMenuOpen((open) => !open)}
-          >
-            <ChevronDown size={14} />
-          </button>
-          {runMenuOpen ? (
-            <div className="app-menu-popover run-menu-popover" role="menu">
               <button
+                className={
+                  editorSplitMode === "down"
+                    ? "icon-button active"
+                    : "icon-button"
+                }
                 type="button"
-                role="menuitem"
+                title="Split editor down"
+                aria-label="Split editor down"
+                aria-pressed={editorSplitMode === "down"}
+                onClick={() => setEditorSplitMode("down")}
+              >
+                <SplitSquareVertical size={15} />
+              </button>
+              {editorSplitOpen ? (
+                <button
+                  className="icon-button"
+                  type="button"
+                  title="Close editor split"
+                  aria-label="Close editor split"
+                  onClick={() => setEditorSplitMode("single")}
+                >
+                  {editorSplitMode === "down" ? (
+                    <PanelBottomClose size={15} />
+                  ) : (
+                    <PanelRightClose size={15} />
+                  )}
+                </button>
+              ) : null}
+            </div>
+            <button
+              className="icon-button"
+              type="button"
+              title="Cancel query"
+              aria-label="Cancel query"
+              disabled={!running}
+              onClick={() => void cancelQuery()}
+            >
+              <Square size={15} />
+            </button>
+          </div>
+          <div className="editor-primary-actions">
+            <button
+              className="text-button toolbar-command"
+              type="button"
+              title="Save query"
+              aria-label="Save query"
+              onClick={saveCurrentQuery}
+            >
+              <Save size={15} />
+              <span>Save</span>
+            </button>
+            <button
+              className="text-button toolbar-command"
+              type="button"
+              title={
+                runAllShortcutLabel
+                  ? `Run All (${runAllShortcutLabel})`
+                  : "Run All"
+              }
+              disabled={running}
+              onClick={() => void runAllQuery()}
+            >
+              <Play size={15} />
+              <span>Run All</span>
+            </button>
+            <div className="run-control editor-floating-run">
+              <button
+                className="primary-action run-main-button"
+                type="button"
+                title={
+                  runShortcutLabel
+                    ? `${runPrimaryLabel} (${runShortcutLabel})`
+                    : runPrimaryLabel
+                }
+                disabled={running}
                 onClick={() => void runQuery()}
               >
+                <Play size={15} fill="currentColor" />
                 <span>{runPrimaryLabel}</span>
-                {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
               </button>
               <button
+                className="primary-action run-menu-toggle"
                 type="button"
-                role="menuitem"
-                disabled={!hasSelectedEditorSql}
-                onClick={() => void runSelectionQuery()}
+                title="Run options"
+                aria-label="Run options"
+                aria-haspopup="menu"
+                aria-expanded={runMenuOpen}
+                disabled={running}
+                onClick={() => setRunMenuOpen((open) => !open)}
               >
-                <span>Run Selection</span>
+                <ChevronDown size={14} />
               </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => void runCurrentQuery()}
-              >
-                <span>Run Current</span>
-                {runCurrentShortcutLabel ? (
-                  <kbd>{runCurrentShortcutLabel}</kbd>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => void runFromStartQuery()}
-              >
-                <span>Run From Top</span>
-                {runFromStartShortcutLabel ? (
-                  <kbd>{runFromStartShortcutLabel}</kbd>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => void runAllQuery()}
-              >
-                <span>Run All</span>
-                {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
-              </button>
+              {runMenuOpen ? (
+                <div className="app-menu-popover run-menu-popover" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void runQuery()}
+                  >
+                    <span>{runPrimaryLabel}</span>
+                    {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!hasSelectedEditorSql}
+                    onClick={() => void runSelectionQuery()}
+                  >
+                    <span>Run Selection</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void runCurrentQuery()}
+                  >
+                    <span>Run Current</span>
+                    {runCurrentShortcutLabel ? (
+                      <kbd>{runCurrentShortcutLabel}</kbd>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void runFromStartQuery()}
+                  >
+                    <span>Run From Top</span>
+                    {runFromStartShortcutLabel ? (
+                      <kbd>{runFromStartShortcutLabel}</kbd>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void runAllQuery()}
+                  >
+                    <span>Run All</span>
+                    {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
+                  </button>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
     </section>

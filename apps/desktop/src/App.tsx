@@ -157,6 +157,7 @@ import {
   dbCancel,
   dbConnect,
   dbDisconnect,
+  dbIndexSchema,
   dbListObjects,
   dbQueryParameters,
   dbReleaseResult,
@@ -1963,6 +1964,30 @@ function App() {
   }
 
   // Run a command by id (the keybinding handler and the Commands list share this).
+  // JOB-002/004: start a background schema-index job; it streams into the jobs
+  // dashboard (progress / cancel / artifact) which we open so the user can watch it.
+  async function buildSchemaIndexJob() {
+    if (!activeConnectionOpen) {
+      showActionNotice(
+        "error",
+        "Index failed",
+        `not connected: ${activeConnectionId}`,
+      );
+      return;
+    }
+    try {
+      const jobId = await dbIndexSchema(activeConnectionId);
+      showActionNotice(
+        "success",
+        "Indexing schema",
+        `Job ${jobId} started — track it in Jobs`,
+      );
+      openSettingsSection("jobs");
+    } catch (error) {
+      showActionNotice("error", "Index failed", errorMessage(error));
+    }
+  }
+
   const runCommand = createWorkbenchCommandHandler({
     editMode,
     openPalette: () => {
@@ -1975,6 +2000,7 @@ function App() {
     openHelp: () => setAboutOpen(true),
     openConnectionManager: () => setConnectionManagerOpen(true),
     openDiagram: () => setDiagramOpen(true),
+    buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
     runCurrentQuery,
     runFromStartQuery,

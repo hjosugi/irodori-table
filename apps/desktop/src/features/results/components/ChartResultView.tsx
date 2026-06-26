@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { Maximize2 } from "lucide-react";
 import {
   buildChartResultSeries,
   chartSelectionIsValid,
+  type ChartResultColumn,
   type ChartKind,
   type ChartResultModel,
   type ChartResultPoint,
@@ -19,6 +21,7 @@ export function ChartResultView({ model }: { model: ChartResultModel }) {
   const [selection, setSelection] = useState<ChartResultSelection | null>(
     model.defaultSelection,
   );
+  const [windowOpen, setWindowOpen] = useState(false);
 
   useEffect(() => {
     setSelection(model.defaultSelection);
@@ -59,75 +62,162 @@ export function ChartResultView({ model }: { model: ChartResultModel }) {
 
   return (
     <div className="chart-result-view">
-      <div className="chart-result-toolbar">
-        <strong>Chart</strong>
-        <div className="segmented-control chart-kind-toggle" aria-label="Chart type">
-          {(["bar", "line", "scatter"] as const).map((kind) => (
-            <button
-              type="button"
-              key={kind}
-              className={effectiveSelection.kind === kind ? "active" : undefined}
-              onClick={() => updateSelection({ kind })}
-            >
-              {chartKindLabel(kind)}
-            </button>
-          ))}
-        </div>
-        <label>
-          <span>X</span>
-          <select
-            value={effectiveSelection.xColumnIndex ?? "row"}
-            onChange={(event) =>
-              updateSelection({
-                xColumnIndex:
-                  event.currentTarget.value === "row"
-                    ? null
-                    : Number(event.currentTarget.value),
-              })
-            }
-          >
-            <option value="row">Row</option>
-            {xColumns.map((column) => (
-              <option key={column.index} value={column.index}>
-                {column.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Y</span>
-          <select
-            value={effectiveSelection.yColumnIndex}
-            onChange={(event) =>
-              updateSelection({ yColumnIndex: Number(event.currentTarget.value) })
-            }
-          >
-            {numericColumns.map((column) => (
-              <option key={column.index} value={column.index}>
-                {column.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span>
-          {model.sampledRows.toLocaleString()} rows
-          {model.truncated ? ` sampled of ${model.sourceRows.toLocaleString()}` : ""}
-          {series.truncated ? " · series limited" : ""}
-        </span>
-      </div>
-      <div className="chart-result-canvas">
-        <svg
-          className="chart-result-svg"
-          role="img"
-          aria-label={`${chartKindLabel(series.kind)} chart of ${series.yLabel} by ${series.xLabel}`}
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      <ChartToolbar
+        model={model}
+        series={series}
+        selection={effectiveSelection}
+        numericColumns={numericColumns}
+        xColumns={xColumns}
+        onUpdateSelection={updateSelection}
+        onOpenWindow={() => setWindowOpen(true)}
+      />
+      <ChartCanvas series={series} />
+      {windowOpen ? (
+        <div
+          className="palette-overlay chart-window-overlay"
+          onClick={() => setWindowOpen(false)}
+          role="presentation"
         >
-          <ChartAxes series={series} />
-          {series.kind === "bar" ? <BarSeries series={series} /> : null}
-          {series.kind === "line" ? <LineSeries series={series} /> : null}
-          {series.kind === "scatter" ? <ScatterSeries series={series} /> : null}
-        </svg>
+          <div
+            className="chart-window"
+            role="dialog"
+            aria-label="Chart window"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <ChartToolbar
+              model={model}
+              series={series}
+              selection={effectiveSelection}
+              numericColumns={numericColumns}
+              xColumns={xColumns}
+              onUpdateSelection={updateSelection}
+              onCloseWindow={() => setWindowOpen(false)}
+              windowed
+            />
+            <ChartCanvas series={series} windowed />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ChartToolbar({
+  model,
+  series,
+  selection,
+  numericColumns,
+  xColumns,
+  windowed = false,
+  onUpdateSelection,
+  onOpenWindow,
+  onCloseWindow,
+}: {
+  model: ChartResultModel;
+  series: ChartResultSeries;
+  selection: ChartResultSelection;
+  numericColumns: ChartResultColumn[];
+  xColumns: ChartResultColumn[];
+  windowed?: boolean;
+  onUpdateSelection: (patch: Partial<ChartResultSelection>) => void;
+  onOpenWindow?: () => void;
+  onCloseWindow?: () => void;
+}) {
+  return (
+    <div className={windowed ? "chart-result-toolbar chart-window-toolbar" : "chart-result-toolbar"}>
+      <strong>{windowed ? "Chart Window" : "Chart"}</strong>
+      <div className="segmented-control chart-kind-toggle" aria-label="Chart type">
+        {(["bar", "line", "scatter"] as const).map((kind) => (
+          <button
+            type="button"
+            key={kind}
+            className={selection.kind === kind ? "active" : undefined}
+            onClick={() => onUpdateSelection({ kind })}
+          >
+            {chartKindLabel(kind)}
+          </button>
+        ))}
       </div>
+      <label>
+        <span>X</span>
+        <select
+          value={selection.xColumnIndex ?? "row"}
+          onChange={(event) =>
+            onUpdateSelection({
+              xColumnIndex:
+                event.currentTarget.value === "row"
+                  ? null
+                  : Number(event.currentTarget.value),
+            })
+          }
+        >
+          <option value="row">Row</option>
+          {xColumns.map((column) => (
+            <option key={column.index} value={column.index}>
+              {column.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>Y</span>
+        <select
+          value={selection.yColumnIndex}
+          onChange={(event) =>
+            onUpdateSelection({ yColumnIndex: Number(event.currentTarget.value) })
+          }
+        >
+          {numericColumns.map((column) => (
+            <option key={column.index} value={column.index}>
+              {column.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <span>
+        {model.sampledRows.toLocaleString()} rows
+        {model.truncated ? ` sampled of ${model.sourceRows.toLocaleString()}` : ""}
+        {series.truncated ? " · series limited" : ""}
+      </span>
+      {windowed ? (
+        <button className="text-button" type="button" onClick={onCloseWindow}>
+          Close
+        </button>
+      ) : (
+        <button
+          className="text-button"
+          type="button"
+          onClick={onOpenWindow}
+          title="Open chart window"
+        >
+          <Maximize2 size={13} />
+          <span>Open</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ChartCanvas({
+  series,
+  windowed = false,
+}: {
+  series: ChartResultSeries;
+  windowed?: boolean;
+}) {
+  return (
+    <div className={windowed ? "chart-result-canvas chart-window-canvas" : "chart-result-canvas"}>
+      <svg
+        className="chart-result-svg"
+        role="img"
+        aria-label={`${chartKindLabel(series.kind)} chart of ${series.yLabel} by ${series.xLabel}`}
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      >
+        <ChartAxes series={series} />
+        {series.kind === "bar" ? <BarSeries series={series} /> : null}
+        {series.kind === "line" ? <LineSeries series={series} /> : null}
+        {series.kind === "scatter" ? <ScatterSeries series={series} /> : null}
+      </svg>
     </div>
   );
 }

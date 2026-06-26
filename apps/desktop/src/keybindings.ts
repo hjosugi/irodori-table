@@ -44,6 +44,12 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "schema.indexBuild",
+    title: "Build schema search index",
+    category: "General",
+    scope: "global",
+  },
+  {
     id: "query.run",
     title: "Run selection or current statement",
     category: "Query",

@@ -1,9 +1,10 @@
-import type {
-  Completion,
-  CompletionContext,
-  CompletionResult,
-  CompletionSection,
-  CompletionSource,
+import {
+  snippetCompletion,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+  type CompletionSection,
+  type CompletionSource,
 } from "@codemirror/autocomplete";
 import type { SQLDialect } from "@codemirror/lang-sql";
 import type { Extension } from "@codemirror/state";
@@ -25,6 +26,7 @@ const JOIN_SECTION: CompletionSection = { name: "joins", rank: 2 };
 const RELATION_SECTION: CompletionSection = { name: "tables", rank: 3 };
 const SCHEMA_SECTION: CompletionSection = { name: "schemas", rank: 4 };
 const ROUTINE_SECTION: CompletionSection = { name: "routines", rank: 5 };
+const SNIPPET_SECTION: CompletionSection = { name: "snippets", rank: 6 };
 const KEYWORD_SECTION: CompletionSection = { name: "keywords", rank: 9 };
 
 const COMMON_KEYWORDS = [
@@ -85,6 +87,109 @@ const ENGINE_KEYWORDS: Partial<Record<DbEngine, string[]>> = {
   bigquery: ["qualify", "unnest", "safe_cast"],
   redshift: ["distkey", "sortkey", "encode"],
 };
+
+interface SqlSnippetDefinition {
+  label: string;
+  detail: string;
+  template: string;
+  rank: number;
+  scope: "statement" | "expression";
+}
+
+const SQL_SNIPPETS: readonly SqlSnippetDefinition[] = [
+  {
+    label: "sel",
+    detail: "select statement",
+    template: "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
+    rank: 540,
+    scope: "statement",
+  },
+  {
+    label: "selw",
+    detail: "select with where/order/limit",
+    template:
+      "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition}\norder by ${4:column}\nlimit ${5:100};\n${0}",
+    rank: 535,
+    scope: "statement",
+  },
+  {
+    label: "cte",
+    detail: "with common table expression",
+    template:
+      "with ${1:cte_name} as (\n  select ${2:*}\n  from ${3:table}\n)\nselect ${4:*}\nfrom ${1:cte_name};\n${0}",
+    rank: 530,
+    scope: "statement",
+  },
+  {
+    label: "ins",
+    detail: "insert statement",
+    template:
+      "insert into ${1:table} (${2:columns})\nvalues (${3:values});\n${0}",
+    rank: 525,
+    scope: "statement",
+  },
+  {
+    label: "upd",
+    detail: "update statement",
+    template:
+      "update ${1:table}\nset ${2:column} = ${3:value}\nwhere ${4:condition};\n${0}",
+    rank: 525,
+    scope: "statement",
+  },
+  {
+    label: "del",
+    detail: "delete statement",
+    template: "delete from ${1:table}\nwhere ${2:condition};\n${0}",
+    rank: 525,
+    scope: "statement",
+  },
+  {
+    label: "join",
+    detail: "join clause",
+    template: "join ${1:table} on ${2:condition}${0}",
+    rank: 520,
+    scope: "statement",
+  },
+  {
+    label: "case",
+    detail: "case expression",
+    template:
+      "case\n  when ${1:condition} then ${2:value}\n  else ${3:fallback}\nend${0}",
+    rank: 515,
+    scope: "expression",
+  },
+  {
+    label: "ct",
+    detail: "create table",
+    template:
+      "create table ${1:table} (\n  ${2:id} ${3:integer} primary key,\n  ${4:created_at} ${5:timestamp}\n);\n${0}",
+    rank: 510,
+    scope: "statement",
+  },
+  {
+    label: "idx",
+    detail: "create index",
+    template:
+      "create index ${1:index_name}\non ${2:table} (${3:column});\n${0}",
+    rank: 505,
+    scope: "statement",
+  },
+  {
+    label: "win",
+    detail: "window expression",
+    template:
+      "${1:sum}(${2:amount}) over (partition by ${3:group_column} order by ${4:sort_column})${0}",
+    rank: 500,
+    scope: "expression",
+  },
+  {
+    label: "tx",
+    detail: "transaction block",
+    template: "begin;\n${1:statement}\ncommit;\n${0}",
+    rank: 495,
+    scope: "statement",
+  },
+];
 
 const RELATION_START_KEYWORDS = new Set([
   "from",
@@ -416,6 +521,7 @@ function collectCompletionCandidates(
         explicit,
       );
       addRoutineCandidates(candidates, index, context.prefix);
+      addSnippetCandidates(candidates, context.prefix, explicit, "expression");
       if (context.prefix.length > 0 || explicit) {
         addRelationCandidates(candidates, index, context.prefix, {
           lowPriority: true,
@@ -430,6 +536,7 @@ function collectCompletionCandidates(
       addRelationCandidates(candidates, index, context.prefix);
       addSchemaCandidates(candidates, index, context.prefix);
       addRoutineCandidates(candidates, index, context.prefix);
+      addSnippetCandidates(candidates, context.prefix, explicit);
       addKeywordCandidates(candidates, engine, context.prefix);
       break;
   }
@@ -650,6 +757,31 @@ function addRoutineCandidates(
         section: ROUTINE_SECTION,
         boost: clampBoost(rank - 220),
       },
+    });
+  }
+}
+
+function addSnippetCandidates(
+  candidates: Candidate[],
+  prefix: string,
+  explicit: boolean,
+  scope?: SqlSnippetDefinition["scope"],
+) {
+  if (!explicit && prefix.length === 0) return;
+  for (const definition of SQL_SNIPPETS) {
+    if (scope && definition.scope !== scope) continue;
+    if (!matchesAny(prefix, [definition.label, definition.detail])) continue;
+    const rank = definition.rank + matchBonus(prefix, definition.label, definition.detail);
+    candidates.push({
+      key: `snippet:${definition.label}`,
+      rank,
+      option: snippetCompletion(definition.template, {
+        label: definition.label,
+        detail: definition.detail,
+        type: "keyword",
+        section: SNIPPET_SECTION,
+        boost: clampBoost(rank - 500),
+      }),
     });
   }
 }

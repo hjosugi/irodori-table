@@ -1001,15 +1001,22 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### ADV-004D — Query-result graph views
 - **Goal:** Visualize graph-shaped query results without requiring a separate graph workspace first.
 - **Done when:** query results with node/edge-like columns can render as an interactive graph; mappings are explicit and saveable; the graph-view spec is serializable so desktop, local API, and future hosts render the same definition.
-- **Status:** Open. The schema ERD baseline does not close query-result graph visualization.
+- **Status:** Partial. The desktop can detect Neo4j-style node/relationship values and generic source/target edge rows and render a basic graph result view, but this remains a specialized graph-source affordance. It is not a general BI visualization surface; explicit mappings, saved definitions, interaction polish, and usage-oriented presets remain open.
 - **Depends on:** EXEC-002, ADV-004
 - **Size:** L · **Priority:** P1
 
 ### ADV-004E — Charts, worksheet visualizations, and dashboards
 - **Goal:** Cover Snowsight-style visual analysis from query results across platforms.
 - **Done when:** result sets can become charts with explicit x/y/series/type mappings; dashboards can save multiple visual tiles against queries; the visualization spec is serializable so desktop can render it now and the local API/future hosts can reuse it when those surfaces land; exports include image and data paths.
-- **Status:** Open. No charts, dashboards, or worksheet-style visualizations are implemented; the shared visualization model is P1 and must be cross-platform even if richer dashboard polish lands later.
+- **Status:** Partial. Desktop current-result charting now has a first vertical slice: the result pane detects numeric/date/category columns, offers a `Chart` mode beside `Data`, supports bar/line/scatter x/y mappings, reflects current grid filters/sort, limits sampled/series rows defensively, and can open the chart in a larger in-app chart window. Remaining: saved visualization specs, series/color encodings, richer aggregations, dashboard tiles, image export, cross-platform API shape, and charting over spilled/local cached datasets.
 - **Depends on:** EXEC-002, EXEC-005A, EXT-004, IO-001
+- **Size:** L · **Priority:** P1
+
+### ADV-004F — Local visualization dataset cache (SPICE-like)
+- **Goal:** Let users materialize a query result into a local temporary analytical dataset so charts, pivots, and dashboard tiles can be re-aggregated quickly without re-running the source query.
+- **Done when:** a result can be promoted to a named local dataset backed by DuckDB/SQLite/Arrow/Parquet with TTL/manual release; charts query that dataset for group-by/filter/order/limit operations; refresh and lineage back to source SQL are visible; large datasets stay bounded by disk/memory settings; the same dataset can feed the local API and future dashboards.
+- **Status:** Open. `EXEC-010` already has a browse-oriented temp SQLite spill store, but that store is intentionally not an analytical cache. This ticket should reuse the window/offload lessons while adding an explicit BI dataset contract similar in spirit to Amazon QuickSight SPICE.
+- **Depends on:** EXEC-010, ADV-004E, IO-001
 - **Size:** L · **Priority:** P1
 
 ### ADV-005 — Plugin API for drivers/themes/formatters/visualizers + registry

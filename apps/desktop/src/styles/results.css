@@ -347,6 +347,10 @@
   font-size: var(--font-ui-sm);
 }
 
+.chart-result-toolbar > span {
+  margin-left: auto;
+}
+
 .chart-result-canvas {
   min-width: 0;
   min-height: 0;
@@ -423,6 +427,33 @@
   min-height: 100%;
   padding: 24px;
   background: var(--surface);
+}
+
+.chart-window-overlay {
+  align-items: center;
+  padding: 18px;
+  padding-top: 18px;
+}
+
+.chart-window {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(1180px, 96vw);
+  height: min(760px, 88vh);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 18px 50px var(--shadow-color-strong);
+}
+
+.chart-window-toolbar {
+  min-height: 42px;
+}
+
+.chart-window-canvas .chart-result-svg {
+  height: 100%;
+  min-width: 860px;
 }
 
 .result-filter-toolbar > span {

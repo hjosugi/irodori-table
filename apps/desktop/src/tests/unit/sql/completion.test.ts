@@ -318,6 +318,23 @@ describe("completeSqlLightweight", () => {
     expect(join?.apply).toBe("orders o on o.customer_id = c.id");
   });
 
+  it("adds Emmet-style SQL snippet completions", () => {
+    const options = complete("sel");
+    const snippet = options.find((option) => option.label === "sel");
+
+    expect(options.slice(0, 2).map((option) => option.label)).toEqual([
+      "sel",
+      "selw",
+    ]);
+    expect(snippet?.detail).toBe("select statement");
+    expect(typeof snippet?.apply).toBe("function");
+  });
+
+  it("keeps SQL snippets out of relation and qualified contexts", () => {
+    expect(labels("select * from sel")).not.toContain("sel");
+    expect(labels("select c.sel from customers c")).not.toContain("sel");
+  });
+
   it("falls back to cheap keyword completion without metadata matches", () => {
     expect(labels("sel")).toContain("select");
     expect(labels("select * from customers c where ema")).toContain("c.email");

@@ -68,6 +68,10 @@
     align-content: center;
   }
 
+  .chart-result-toolbar > span {
+    margin-left: 0;
+  }
+
   .chart-result-toolbar select {
     max-width: 140px;
   }

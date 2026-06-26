@@ -7,6 +7,7 @@ type WorkbenchCommandHandlerDeps = {
   openHelp: () => void;
   openConnectionManager: () => void;
   openDiagram: () => void;
+  buildSchemaIndex: () => void;
   runQuery: () => Promise<void>;
   runCurrentQuery: () => Promise<void>;
   runFromStartQuery: () => Promise<void>;
@@ -36,6 +37,7 @@ export function createWorkbenchCommandHandler({
   openHelp,
   openConnectionManager,
   openDiagram,
+  buildSchemaIndex,
   runQuery,
   runCurrentQuery,
   runFromStartQuery,
@@ -78,6 +80,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "diagram.show":
         openDiagram();
+        break;
+      case "schema.indexBuild":
+        buildSchemaIndex();
         break;
       case "query.run":
         void runQuery();

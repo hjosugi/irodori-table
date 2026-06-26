@@ -690,34 +690,58 @@
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  gap: 7px;
   max-width: calc(100% - 28px);
   pointer-events: none;
 }
 
-.editor-floating-actions .editor-command-bar,
-.editor-floating-actions .run-control {
+.editor-action-dock {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: min(720px, calc(100vw - 260px));
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--editor-bg) 90%, var(--surface-raised));
+  box-shadow: 0 8px 24px var(--shadow-color);
   pointer-events: auto;
 }
 
 .editor-floating-actions .editor-command-bar {
   flex-wrap: wrap;
   width: fit-content;
-  max-width: min(520px, calc(100vw - 260px));
-  padding: 3px;
-  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--editor-bg) 90%, var(--surface-raised));
-  box-shadow: 0 8px 24px var(--shadow-color);
+  max-width: 100%;
 }
 
 .editor-floating-actions .editor-command-bar .text-button span {
   max-width: 112px;
 }
 
+.editor-primary-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: 5px;
+  padding-left: 7px;
+  border-left: 1px solid var(--border);
+}
+
+.editor-primary-actions > .text-button {
+  height: var(--control-sm);
+  border-radius: 3px;
+}
+
+.editor-primary-actions > .text-button span {
+  max-width: 82px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .editor-floating-run {
   border-radius: 4px;
-  box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .editor-floating-run .primary-action {
