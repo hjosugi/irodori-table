@@ -25,6 +25,12 @@ const linterStorageKey = "irodori.editor.linter.v1";
 const snippetsStorageKey = "irodori.editor.snippets.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const localeStorageKey = "irodori.locale.v1";
+const uiZoomStorageKey = "irodori.ui.zoom.v1";
+
+export const UI_ZOOM_DEFAULT = 1;
+export const UI_ZOOM_MIN = 0.75;
+export const UI_ZOOM_MAX = 1.5;
+export const UI_ZOOM_STEP = 0.1;
 
 type PreferencesState = {
   locale: Locale;
@@ -36,6 +42,7 @@ type PreferencesState = {
   sqlLinter: SqlLinterId;
   sqlSnippets: SqlSnippetDefinition[];
   autoCommit: boolean;
+  uiZoom: number;
   setLocale: (value: ValueUpdater<Locale>) => void;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
   setActiveCustomThemeId: (value: ValueUpdater<string | null>) => void;
@@ -45,6 +52,7 @@ type PreferencesState = {
   setSqlLinter: (value: ValueUpdater<SqlLinterId>) => void;
   setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
+  setUiZoom: (value: ValueUpdater<number>) => void;
 };
 
 function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
@@ -53,14 +61,35 @@ function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
     : value;
 }
 
+function localStorageOrNull(): Storage | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return window.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readStorage(key: string) {
+  return localStorageOrNull()?.getItem(key) ?? null;
+}
+
+function writeStorage(key: string, value: string) {
+  localStorageOrNull()?.setItem(key, value);
+}
+
+function removeStorage(key: string) {
+  localStorageOrNull()?.removeItem(key);
+}
+
 function loadThemeKind(): ThemeKind {
-  return window.localStorage.getItem(themeStorageKey) === "light"
-    ? "light"
-    : "dark";
+  return readStorage(themeStorageKey) === "light" ? "light" : "dark";
 }
 
 function loadLocale(): Locale {
-  const stored = window.localStorage.getItem(localeStorageKey);
+  const stored = readStorage(localeStorageKey);
   return stored ? normalizeLocale(stored) : detectBrowserLocale();
 }
 
@@ -79,7 +108,7 @@ function isCustomThemeEntry(value: unknown): value is CustomThemeEntry {
 }
 
 function loadCustomThemes(): CustomThemeEntry[] {
-  const stored = window.localStorage.getItem(customThemesStorageKey);
+  const stored = readStorage(customThemesStorageKey);
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as unknown;
@@ -91,7 +120,7 @@ function loadCustomThemes(): CustomThemeEntry[] {
     }
   }
 
-  const legacy = window.localStorage.getItem(legacyCustomThemeStorageKey);
+  const legacy = readStorage(legacyCustomThemeStorageKey);
   if (!legacy) {
     return [];
   }
@@ -113,32 +142,32 @@ function loadCustomThemes(): CustomThemeEntry[] {
 }
 
 function loadActiveCustomThemeId(customThemes: CustomThemeEntry[]) {
-  const stored = window.localStorage.getItem(activeCustomThemeStorageKey);
+  const stored = readStorage(activeCustomThemeStorageKey);
   if (stored && customThemes.some((theme) => theme.id === stored)) {
     return stored;
   }
   return customThemes.length === 1 &&
-    window.localStorage.getItem(legacyCustomThemeStorageKey)
+    readStorage(legacyCustomThemeStorageKey)
     ? customThemes[0].id
     : null;
 }
 
 function loadVimMode() {
-  return window.localStorage.getItem(vimModeStorageKey) === "true";
+  return readStorage(vimModeStorageKey) === "true";
 }
 
 function loadFormatter(): SqlFormatterId {
-  const stored = window.localStorage.getItem(formatterStorageKey);
+  const stored = readStorage(formatterStorageKey);
   return isSqlFormatterId(stored) ? stored : "sql-formatter";
 }
 
 function loadLinter(): SqlLinterId {
-  const stored = window.localStorage.getItem(linterStorageKey);
+  const stored = readStorage(linterStorageKey);
   return isSqlLinterId(stored) ? stored : "gentle";
 }
 
 function loadSqlSnippets(): SqlSnippetDefinition[] {
-  const stored = window.localStorage.getItem(snippetsStorageKey);
+  const stored = readStorage(snippetsStorageKey);
   if (!stored) {
     return cloneDefaultSqlSnippets();
   }
@@ -150,7 +179,23 @@ function loadSqlSnippets(): SqlSnippetDefinition[] {
 }
 
 function loadAutoCommit() {
-  return window.localStorage.getItem(autoCommitStorageKey) !== "false";
+  return readStorage(autoCommitStorageKey) !== "false";
+}
+
+export function normalizeUiZoom(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return UI_ZOOM_DEFAULT;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return UI_ZOOM_DEFAULT;
+  }
+  const clamped = Math.min(UI_ZOOM_MAX, Math.max(UI_ZOOM_MIN, parsed));
+  return Math.round(clamped * 100) / 100;
+}
+
+function loadUiZoom() {
+  return normalizeUiZoom(readStorage(uiZoomStorageKey));
 }
 
 const initialCustomThemes = loadCustomThemes();
@@ -165,6 +210,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   sqlLinter: loadLinter(),
   sqlSnippets: loadSqlSnippets(),
   autoCommit: loadAutoCommit(),
+  uiZoom: loadUiZoom(),
   setLocale: (value) =>
     set((state) => ({ locale: normalizeLocale(resolveValue(state.locale, value)) })),
   setThemeKind: (value) =>
@@ -193,30 +239,33 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({ sqlSnippets: resolveValue(state.sqlSnippets, value) })),
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
+  setUiZoom: (value) =>
+    set((state) => ({ uiZoom: normalizeUiZoom(resolveValue(state.uiZoom, value)) })),
 }));
 
 usePreferencesStore.subscribe((state) => {
-  window.localStorage.setItem(localeStorageKey, state.locale);
-  window.localStorage.setItem(themeStorageKey, state.themeKind);
+  writeStorage(localeStorageKey, state.locale);
+  writeStorage(themeStorageKey, state.themeKind);
   if (state.activeCustomThemeId) {
-    window.localStorage.setItem(
+    writeStorage(
       activeCustomThemeStorageKey,
       state.activeCustomThemeId,
     );
   } else {
-    window.localStorage.removeItem(activeCustomThemeStorageKey);
+    removeStorage(activeCustomThemeStorageKey);
   }
-  window.localStorage.setItem(
+  writeStorage(
     customThemesStorageKey,
     JSON.stringify(state.customThemes),
   );
-  window.localStorage.removeItem(legacyCustomThemeStorageKey);
-  window.localStorage.setItem(vimModeStorageKey, String(state.vimMode));
-  window.localStorage.setItem(formatterStorageKey, state.formatter);
-  window.localStorage.setItem(linterStorageKey, state.sqlLinter);
-  window.localStorage.setItem(
+  removeStorage(legacyCustomThemeStorageKey);
+  writeStorage(vimModeStorageKey, String(state.vimMode));
+  writeStorage(formatterStorageKey, state.formatter);
+  writeStorage(linterStorageKey, state.sqlLinter);
+  writeStorage(
     snippetsStorageKey,
     JSON.stringify(state.sqlSnippets),
   );
-  window.localStorage.setItem(autoCommitStorageKey, String(state.autoCommit));
+  writeStorage(autoCommitStorageKey, String(state.autoCommit));
+  writeStorage(uiZoomStorageKey, String(state.uiZoom));
 });

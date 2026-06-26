@@ -102,6 +102,28 @@
   text-overflow: ellipsis;
 }
 
+.ui-zoom-control {
+  display: grid;
+  grid-template-columns: var(--control-md) minmax(120px, 180px) 48px var(--control-md) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ui-zoom-control input[type="range"] {
+  width: 100%;
+  height: var(--control-sm);
+  padding: 0;
+  accent-color: var(--blue);
+}
+
+.ui-zoom-control output {
+  color: var(--text);
+  font-size: var(--font-ui-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .settings-command-list {
   padding: 0;
 }
@@ -260,6 +282,15 @@
   .settings-row select {
     width: 100%;
     max-width: none;
+    justify-self: stretch;
+  }
+
+  .ui-zoom-control {
+    grid-template-columns: var(--control-md) minmax(0, 1fr) 48px var(--control-md);
+  }
+
+  .ui-zoom-control .text-button {
+    grid-column: 1 / -1;
     justify-self: stretch;
   }
 }

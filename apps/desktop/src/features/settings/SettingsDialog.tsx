@@ -4,11 +4,21 @@ import {
   Code2,
   Keyboard,
   Palette,
+  RotateCcw,
   Settings,
   TerminalSquare,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import type { JobList, JobSummary } from "../../generated/irodori-api";
-import type { CustomThemeEntry } from "../preferences";
+import {
+  UI_ZOOM_DEFAULT,
+  UI_ZOOM_MAX,
+  UI_ZOOM_MIN,
+  UI_ZOOM_STEP,
+  normalizeUiZoom,
+  type CustomThemeEntry,
+} from "../preferences";
 import {
   commandHasConflict,
   formatKeySequence,
@@ -66,6 +76,8 @@ export interface SettingsDialogProps {
   setVimMode: (value: boolean) => void;
   autoCommit: boolean;
   setAutoCommit: (value: BooleanUpdater) => void;
+  uiZoom: number;
+  setUiZoom: (value: ValueUpdater<number>) => void;
   themeKind: ThemeKind;
   setThemeKind: (value: ThemeKind) => void;
   customThemes: CustomThemeEntry[];
@@ -199,6 +211,8 @@ export function SettingsDialog({
   setVimMode,
   autoCommit,
   setAutoCommit,
+  uiZoom,
+  setUiZoom,
   themeKind,
   setThemeKind,
   customThemes,
@@ -248,6 +262,7 @@ export function SettingsDialog({
   applySettingsJson,
 }: SettingsDialogProps) {
   const { t } = createTranslator(locale);
+  const uiZoomPercent = `${Math.round(uiZoom * 100)}%`;
 
   function updateSnippet(
     index: number,
@@ -365,6 +380,55 @@ export function SettingsDialog({
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>{t("settings.general.uiZoom.title")}</strong>
+                    <small>{t("settings.general.uiZoom.description")}</small>
+                  </span>
+                  <div className="ui-zoom-control">
+                    <button
+                      className="icon-button"
+                      type="button"
+                      title={t("settings.general.uiZoom.zoomOut")}
+                      aria-label={t("settings.general.uiZoom.zoomOut")}
+                      disabled={uiZoom <= UI_ZOOM_MIN}
+                      onClick={() => setUiZoom(uiZoom - UI_ZOOM_STEP)}
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <input
+                      type="range"
+                      min={UI_ZOOM_MIN}
+                      max={UI_ZOOM_MAX}
+                      step={UI_ZOOM_STEP}
+                      value={uiZoom}
+                      aria-label={t("settings.general.uiZoom.title")}
+                      onChange={(event) =>
+                        setUiZoom(normalizeUiZoom(event.currentTarget.value))
+                      }
+                    />
+                    <output>{uiZoomPercent}</output>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      title={t("settings.general.uiZoom.zoomIn")}
+                      aria-label={t("settings.general.uiZoom.zoomIn")}
+                      disabled={uiZoom >= UI_ZOOM_MAX}
+                      onClick={() => setUiZoom(uiZoom + UI_ZOOM_STEP)}
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                    <button
+                      className="text-button"
+                      type="button"
+                      title={t("settings.general.uiZoom.reset")}
+                      onClick={() => setUiZoom(UI_ZOOM_DEFAULT)}
+                    >
+                      <RotateCcw size={14} />
+                      <span>{t("common.reset")}</span>
+                    </button>
+                  </div>
                 </label>
                 <label className="settings-row">
                   <span>

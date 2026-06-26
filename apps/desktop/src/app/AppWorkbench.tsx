@@ -84,7 +84,12 @@ import { ImportDialog, type ImportPreview } from "@/features/import/ImportDialog
 import { ErdDialog } from "@/features/erd/ErdDialog";
 import { SchemaDesignerDialog } from "@/features/schema-designer/SchemaDesignerDialog";
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
-import { usePreferencesStore } from "@/features/preferences";
+import {
+  UI_ZOOM_DEFAULT,
+  UI_ZOOM_STEP,
+  normalizeUiZoom,
+  usePreferencesStore,
+} from "@/features/preferences";
 import { createTranslator, normalizeLocale } from "@/i18n";
 import {
   createWorkbenchCommandHandler,
@@ -246,6 +251,38 @@ import {
   tauriRuntimeError,
 } from "./app-workbench-utils";
 
+function scaledUiPixels(value: number, zoom: number) {
+  return Math.max(1, Math.round(value * zoom));
+}
+
+function scaledUiFont(value: number, zoom: number) {
+  return `${Math.round(value * zoom * 100) / 100}px`;
+}
+
+function uiZoomStyleVariables(zoom: number): Record<string, string> {
+  const normalized = normalizeUiZoom(zoom);
+  return {
+    "--ui-zoom": normalized.toFixed(2),
+    "--font-ui-xs": scaledUiFont(11, normalized),
+    "--font-ui-sm": scaledUiFont(12, normalized),
+    "--font-ui-md": scaledUiFont(13, normalized),
+    "--font-ui-lg": scaledUiFont(14, normalized),
+    "--font-code": scaledUiFont(13, normalized),
+    "--editor-line-height": `${scaledUiPixels(20, normalized)}px`,
+    "--control-xxs": `${scaledUiPixels(22, normalized)}px`,
+    "--control-xs": `${scaledUiPixels(24, normalized)}px`,
+    "--control-sm": `${scaledUiPixels(25, normalized)}px`,
+    "--control-md": `${scaledUiPixels(27, normalized)}px`,
+    "--bar-sm": `${scaledUiPixels(31, normalized)}px`,
+    "--bar-md": `${scaledUiPixels(33, normalized)}px`,
+    "--status-height": `${scaledUiPixels(22, normalized)}px`,
+  };
+}
+
+function formatUiZoom(zoom: number) {
+  return `${Math.round(normalizeUiZoom(zoom) * 100)}%`;
+}
+
 export function AppWorkbench() {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
@@ -321,6 +358,8 @@ export function AppWorkbench() {
   const setSqlSnippets = usePreferencesStore((state) => state.setSqlSnippets);
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
+  const uiZoom = usePreferencesStore((state) => state.uiZoom);
+  const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
   const sidebarSide = useWorkbenchStore((state) => state.sidebarSide);
@@ -858,16 +897,19 @@ export function AppWorkbench() {
     activeResult && selectedRowKey && selectedRowKey.startsWith("o")
       ? (activeResult.rows[Number(selectedRowKey.slice(1))] ?? null)
       : null;
-  const gridGutterWidth = editMode ? GRID_GUTTER_WIDTH : 0;
+  const gridRowHeight = scaledUiPixels(GRID_ROW_HEIGHT, uiZoom);
+  const gridColumnWidth = scaledUiPixels(GRID_COLUMN_WIDTH, uiZoom);
+  const gridGutterColumnWidth = scaledUiPixels(GRID_GUTTER_WIDTH, uiZoom);
+  const gridGutterWidth = editMode ? gridGutterColumnWidth : 0;
   const gridTotalWidth = Math.max(
     1,
-    gridGutterWidth + resultColumns.length * GRID_COLUMN_WIDTH,
+    gridGutterWidth + resultColumns.length * gridColumnWidth,
   );
   const columnWindow = calculateResultGridVirtualColumnWindow({
     columnCount: resultColumns.length,
     scrollLeft: Math.max(0, gridScrollLeft - gridGutterWidth),
     viewportWidth: Math.max(0, gridViewportWidth - gridGutterWidth),
-    columnWidth: GRID_COLUMN_WIDTH,
+    columnWidth: gridColumnWidth,
     overscan: GRID_COLUMN_OVERSCAN,
   });
   const firstVisibleColumn = columnWindow.firstColumnIndex;
@@ -880,9 +922,9 @@ export function AppWorkbench() {
   const rightColumnPad = columnWindow.rightPadPx;
   // In Edit Data mode a leading gutter column holds the per-row delete control.
   const gridTemplateColumns = [
-    editMode ? `${GRID_GUTTER_WIDTH}px` : null,
+    editMode ? `${gridGutterColumnWidth}px` : null,
     leftColumnPad > 0 ? `${leftColumnPad}px` : null,
-    ...visibleColumnIndexes.map(() => `${GRID_COLUMN_WIDTH}px`),
+    ...visibleColumnIndexes.map(() => `${gridColumnWidth}px`),
     rightColumnPad > 0 ? `${rightColumnPad}px` : null,
   ]
     .filter(Boolean)
@@ -991,7 +1033,7 @@ export function AppWorkbench() {
     rowCount: totalRows,
     scrollTop: gridScrollTop,
     viewportHeight: gridViewportHeight,
-    rowHeight: GRID_ROW_HEIGHT,
+    rowHeight: gridRowHeight,
     overscan: GRID_OVERSCAN,
   });
   const firstVisible = rowWindow.firstRowIndex;
@@ -1350,8 +1392,8 @@ export function AppWorkbench() {
     if (!element) {
       return;
     }
-    const targetTop = rowIndex * GRID_ROW_HEIGHT;
-    const targetBottom = targetTop + GRID_ROW_HEIGHT;
+    const targetTop = rowIndex * gridRowHeight;
+    const targetBottom = targetTop + gridRowHeight;
     let nextTop = element.scrollTop;
     if (targetTop < element.scrollTop) {
       nextTop = targetTop;
@@ -1359,8 +1401,8 @@ export function AppWorkbench() {
       nextTop = targetBottom - element.clientHeight;
     }
 
-    const targetLeft = gridGutterWidth + col * GRID_COLUMN_WIDTH;
-    const targetRight = targetLeft + GRID_COLUMN_WIDTH;
+    const targetLeft = gridGutterWidth + col * gridColumnWidth;
+    const targetRight = targetLeft + gridColumnWidth;
     let nextLeft = element.scrollLeft;
     if (targetLeft < element.scrollLeft) {
       nextLeft = targetLeft;
@@ -1742,6 +1784,12 @@ export function AppWorkbench() {
     showActionNotice("success", "Tab restored", closedTab.label);
   }
 
+  function updateUiZoom(nextZoom: number) {
+    const normalized = normalizeUiZoom(nextZoom);
+    setUiZoom(normalized);
+    showActionNotice("info", "UI zoom", formatUiZoom(normalized));
+  }
+
   const runCommand = createWorkbenchCommandHandler({
     editMode,
     openPalette: () => {
@@ -1762,6 +1810,9 @@ export function AppWorkbench() {
     toggleHistory: () => setViewOpen("queryHistory", (open) => !open),
     toggleSidebarSide: () =>
       setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left"),
+    zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
+    zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
+    zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
     closeActiveTab: closeActiveSqlTab,
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
@@ -1838,6 +1889,7 @@ export function AppWorkbench() {
           memoryBudget: resultMemoryBudget,
         },
         layout: {
+          uiZoom,
           sidebarOpen,
           sidebarSide,
           viewPlacements,
@@ -2037,6 +2089,11 @@ export function AppWorkbench() {
         }
       }
       if (isRecord(parsed.layout)) {
+        const nextUiZoom = Number(parsed.layout.uiZoom);
+        if (Number.isFinite(nextUiZoom)) {
+          setUiZoom(nextUiZoom);
+          parsed.layout.uiZoom = normalizeUiZoom(nextUiZoom);
+        }
         if (typeof parsed.layout.sidebarOpen === "boolean") {
           setSidebarOpen(parsed.layout.sidebarOpen);
         }
@@ -3522,12 +3579,20 @@ export function AppWorkbench() {
   const showRightInspector =
     (completionOpen && completionSide === "right") ||
     (historyOpen && queryHistorySide === "right");
+  const appStyle = useMemo(
+    () =>
+      ({
+        ...cssVariables(theme),
+        ...uiZoomStyleVariables(uiZoom),
+      }) as CSSProperties,
+    [theme, uiZoom],
+  );
 
   return (
     <div
       className="app-root"
       data-theme={theme.kind}
-      style={cssVariables(theme)}
+      style={appStyle}
     >
       <WorkbenchShell
         appName={APP_NAME}
@@ -3556,7 +3621,7 @@ export function AppWorkbench() {
         sqlLintEnabled={sqlLinter === "gentle"}
         running={running}
         selectionStatus={selectionStatus}
-        shellStyle={cssVariables(theme)}
+        shellStyle={appStyle}
         onScopeFocus={(event) => {
           const scope = keyScopeFromTarget(event.target, "global");
           activeKeyScopeRef.current = scope;
@@ -3816,8 +3881,8 @@ export function AppWorkbench() {
             importFileRef={importFileRef}
             gridRowStyle={gridRowStyle}
             gridTotalWidth={gridTotalWidth}
-            gridRowHeight={GRID_ROW_HEIGHT}
-            gridColumnWidth={GRID_COLUMN_WIDTH}
+            gridRowHeight={gridRowHeight}
+            gridColumnWidth={gridColumnWidth}
             leftColumnPad={leftColumnPad}
             rightColumnPad={rightColumnPad}
             topPad={topPad}
@@ -3920,6 +3985,8 @@ export function AppWorkbench() {
           setVimMode={setVimMode}
           autoCommit={autoCommit}
           setAutoCommit={setAutoCommit}
+          uiZoom={uiZoom}
+          setUiZoom={setUiZoom}
           themeKind={themeKind}
           setThemeKind={activateBuiltInTheme}
           customThemes={customThemes}

@@ -80,6 +80,24 @@ const shellCommands: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "view.zoomIn",
+    title: "Zoom In",
+    category: "View",
+    scope: "global",
+  },
+  {
+    id: "view.zoomOut",
+    title: "Zoom Out",
+    category: "View",
+    scope: "global",
+  },
+  {
+    id: "view.zoomReset",
+    title: "Reset Zoom",
+    category: "View",
+    scope: "global",
+  },
+  {
     id: "history.open",
     title: "Open Query History",
     category: "View",
@@ -136,6 +154,9 @@ export const workspaceMenuSections: AppMenuSection[] = [
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
       { commandId: "view.sidebar.swap" },
+      { commandId: "view.zoomIn" },
+      { commandId: "view.zoomOut" },
+      { commandId: "view.zoomReset" },
     ],
   },
   {

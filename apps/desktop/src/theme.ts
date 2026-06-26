@@ -616,8 +616,8 @@ export function editorThemeExtensions(theme: IrodoriTheme): Extension {
       "&": { color: ui.text, backgroundColor: ui.editorBg, height: "100%" },
       ".cm-scroller": {
         fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-        fontSize: "13px",
-        lineHeight: "20px",
+        fontSize: "var(--font-code, 13px)",
+        lineHeight: "var(--editor-line-height, 20px)",
       },
       "&.cm-focused": { outline: "none" },
       ".cm-content": { caretColor: ui.caret },

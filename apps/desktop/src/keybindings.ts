@@ -171,6 +171,9 @@ export const defaultKeymap: Keymap = {
   "palette.open": "Mod+Shift+P",
   "settings.open": "Mod+,",
   "tab.close": "Mod+W",
+  "view.zoomIn": "Mod+=",
+  "view.zoomOut": "Mod+-",
+  "view.zoomReset": "Mod+0",
   "diagram.show": "Mod+Shift+D",
   "query.run": "Mod+Enter",
   "query.runCurrent": "Mod+Shift+Enter",
@@ -283,13 +286,15 @@ export function canonicalKeySequence(sequence: string): string {
 }
 
 function eventToParsed(event: KeyboardEvent): Parsed {
+  const key = normalizeKey(event.key);
+  const zoomPlusKey = key === "+";
   const parsed: Parsed = {
     mod: false,
     ctrl: false,
     meta: false,
     alt: false,
     shift: false,
-    key: normalizeKey(event.key),
+    key: zoomPlusKey ? "=" : key,
   };
   if (isMac) {
     parsed.mod = event.metaKey;
@@ -299,7 +304,7 @@ function eventToParsed(event: KeyboardEvent): Parsed {
     parsed.meta = event.metaKey;
   }
   parsed.alt = event.altKey;
-  parsed.shift = event.shiftKey;
+  parsed.shift = zoomPlusKey ? false : event.shiftKey;
   return parsed;
 }
 
