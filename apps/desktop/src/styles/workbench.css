@@ -656,6 +656,20 @@
   background: var(--editor-bg);
 }
 
+.editor-pane.sql-file-drag-over {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.editor-pane.sql-file-drag-over::after {
+  content: "";
+  position: absolute;
+  inset: var(--bar-md) 0 0;
+  z-index: 8;
+  background: color-mix(in srgb, var(--editor-bg) 80%, var(--focus) 20%);
+  pointer-events: none;
+}
+
 .editor-meta {
   display: flex;
   align-items: center;

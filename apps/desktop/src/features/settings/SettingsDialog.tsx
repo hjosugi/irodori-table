@@ -39,6 +39,7 @@ import {
   type Locale,
 } from "../../i18n";
 import type { ThemeKind } from "../../theme";
+import type { WorkbenchSide } from "../workbench";
 
 export type SettingsTab =
   | "general"
@@ -84,6 +85,8 @@ export interface SettingsDialogProps {
   setQueryHistoryResultRows: (value: number) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (value: BooleanUpdater) => void;
+  sidebarSide: WorkbenchSide;
+  setSidebarSide: (value: WorkbenchSide) => void;
   commandCatalog: CommandMeta[];
   keymap: Keymap;
   keymapOverrides: Keymap;
@@ -213,6 +216,8 @@ export function SettingsDialog({
   setQueryHistoryResultRows,
   sidebarOpen,
   setSidebarOpen,
+  sidebarSide,
+  setSidebarSide,
   commandCatalog,
   keymap,
   keymapOverrides,
@@ -541,6 +546,28 @@ export function SettingsDialog({
                   >
                     {sidebarOpen ? t("common.hide") : t("common.show")}
                   </button>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>{t("settings.general.sidebarSide.title")}</strong>
+                    <small>{t("settings.general.sidebarSide.description")}</small>
+                  </span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={sidebarSide === "left" ? "active" : undefined}
+                      onClick={() => setSidebarSide("left")}
+                    >
+                      {t("settings.general.sidebarSide.left")}
+                    </button>
+                    <button
+                      type="button"
+                      className={sidebarSide === "right" ? "active" : undefined}
+                      onClick={() => setSidebarSide("right")}
+                    >
+                      {t("settings.general.sidebarSide.right")}
+                    </button>
+                  </div>
                 </label>
               </div>
             ) : settingsTab === "theme" ? (

@@ -87,6 +87,8 @@ import {
   Sidebar,
   WorkbenchShell,
   useWorkbenchStore,
+  workbenchViewIds,
+  type WorkbenchViewPlacements,
 } from "./features/workbench";
 import {
   WindowedRows,
@@ -611,6 +613,11 @@ function App() {
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
   const sidebarSide = useWorkbenchStore((state) => state.sidebarSide);
   const setSidebarSide = useWorkbenchStore((state) => state.setSidebarSide);
+  const viewPlacements = useWorkbenchStore((state) => state.viewPlacements);
+  const setViewPlacement = useWorkbenchStore((state) => state.setViewPlacement);
+  const setViewPlacements = useWorkbenchStore(
+    (state) => state.setViewPlacements,
+  );
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
   const inspectorWidth = useWorkbenchStore((state) => state.inspectorWidth);
@@ -638,6 +645,11 @@ function App() {
   const activeEditorGroup: EditorGroup =
     editorSplitMode === "single" ? "primary" : preferredEditorGroup;
   const [running, setRunning] = useState(false);
+
+  function setPrimarySidebarSide(side: "left" | "right") {
+    setSidebarSide(side);
+    setViewPlacement("objectBrowser", side);
+  }
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
   const profiles = useConnectionStore((state) => state.profiles);
@@ -2207,6 +2219,7 @@ function App() {
         layout: {
           sidebarOpen,
           sidebarSide,
+          viewPlacements,
           sidebarWidth,
           inspectorWidth,
           resultsHeight,
@@ -2398,7 +2411,19 @@ function App() {
           parsed.layout.sidebarSide === "left" ||
           parsed.layout.sidebarSide === "right"
         ) {
-          setSidebarSide(parsed.layout.sidebarSide);
+          setPrimarySidebarSide(parsed.layout.sidebarSide);
+        }
+        if (isRecord(parsed.layout.viewPlacements)) {
+          setViewPlacements((current) => {
+            const next: WorkbenchViewPlacements = { ...current };
+            for (const viewId of workbenchViewIds) {
+              const side = parsed.layout.viewPlacements[viewId];
+              if (side === "left" || side === "right") {
+                next[viewId] = side;
+              }
+            }
+            return next;
+          });
         }
         const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
         if (Number.isFinite(nextSidebarWidth)) {
@@ -3877,7 +3902,7 @@ function App() {
         }
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
         onToggleSidebarSide={() =>
-          setSidebarSide((side) => (side === "left" ? "right" : "left"))
+          setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
         }
         onOpenSettings={() => openSettingsSection("general")}
         onOpenKeymap={() => openSettingsSection("keymap")}
@@ -3994,6 +4019,7 @@ function App() {
               onEditorSplitResizeKey={(event) =>
                 onPanelResizeKey("editorSplit", event)
               }
+              onSqlFileDrop={(file) => void handleImportFile(file)}
             />
 
             <div
@@ -4191,6 +4217,8 @@ function App() {
           setQueryHistoryResultRows={setQueryHistoryResultRows}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
+          sidebarSide={sidebarSide}
+          setSidebarSide={setPrimarySidebarSide}
           commandCatalog={appCommandCatalog}
           keymap={keymap}
           keymapOverrides={keymapOverrides}

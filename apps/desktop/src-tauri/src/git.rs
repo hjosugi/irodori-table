@@ -23,6 +23,19 @@ pub enum GitChangeKind {
     Unknown,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum GitRemoteProvider {
+    Github,
+    Gitlab,
+    Bitbucket,
+    AzureRepos,
+    CodeCommit,
+    Gitea,
+    Generic,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
@@ -54,6 +67,34 @@ pub struct GitCommitSummary {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
+pub struct GitRemoteSummary {
+    pub name: String,
+    pub fetch_url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub push_url: Option<String>,
+    pub provider: GitRemoteProvider,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub web_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct GitBranchSummary {
+    pub name: String,
+    pub current: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub upstream: Option<String>,
+    pub ahead: u32,
+    pub behind: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
 pub struct GitStatusSummary {
     pub repo_root: String,
     pub branch: String,
@@ -65,6 +106,8 @@ pub struct GitStatusSummary {
     pub clean: bool,
     pub files: Vec<GitFileStatus>,
     pub recent_commits: Vec<GitCommitSummary>,
+    pub remotes: Vec<GitRemoteSummary>,
+    pub branches: Vec<GitBranchSummary>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -97,6 +140,8 @@ pub fn git_status(repo_path: Option<String>) -> IrodoriResult<GitStatusSummary> 
     let text = output_stdout(output);
     let (branch, upstream, ahead, behind, files) = parse_status(&text);
     let recent_commits = git_log_impl(&repo_root, 5).unwrap_or_default();
+    let remotes = git_remotes_impl(&repo_root).unwrap_or_default();
+    let branches = git_branches_impl(&repo_root).unwrap_or_default();
 
     Ok(GitStatusSummary {
         repo_root: path_to_string(&repo_root),
@@ -107,6 +152,8 @@ pub fn git_status(repo_path: Option<String>) -> IrodoriResult<GitStatusSummary> 
         clean: files.is_empty(),
         files,
         recent_commits,
+        remotes,
+        branches,
     })
 }
 
@@ -136,11 +183,18 @@ pub fn git_diff(
         unstaged_args.push(&file_string);
     }
 
+    let untracked_diff = match &file {
+        Some(path) if file_is_untracked(&repo_root, path)? => {
+            Some(build_untracked_diff(&repo_root, path)?)
+        }
+        _ => None,
+    };
+
     let staged_output = run_git(&repo_root, &staged_args, &[0])?;
     let unstaged_output = run_git(&repo_root, &unstaged_args, &[0])?;
     let (staged, staged_truncated) = truncate_text(output_stdout(staged_output), DIFF_TEXT_LIMIT);
-    let (unstaged, unstaged_truncated) =
-        truncate_text(output_stdout(unstaged_output), DIFF_TEXT_LIMIT);
+    let unstaged_text = untracked_diff.unwrap_or_else(|| output_stdout(unstaged_output));
+    let (unstaged, unstaged_truncated) = truncate_text(unstaged_text, DIFF_TEXT_LIMIT);
 
     Ok(GitDiffResult {
         repo_root: path_to_string(&repo_root),
@@ -165,9 +219,131 @@ pub fn git_commit_all(repo_path: Option<String>, message: String) -> IrodoriResu
 }
 
 #[tauri::command]
+pub fn git_commit_staged(
+    repo_path: Option<String>,
+    message: String,
+) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let message = message.trim();
+    if message.is_empty() {
+        return Err(IrodoriError::validation("commit message is required"));
+    }
+
+    let output = run_git(&repo_root, &["commit", "-m", message], &[0])?;
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
 pub fn git_push(repo_path: Option<String>) -> IrodoriResult<GitCommandOutput> {
     let repo_root = resolve_repo_root(repo_path.as_deref())?;
     let output = run_git(&repo_root, &["push"], &[0])?;
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
+pub fn git_fetch(repo_path: Option<String>) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let output = run_git(&repo_root, &["fetch", "--all", "--prune"], &[0])?;
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
+pub fn git_pull(repo_path: Option<String>) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let output = run_git(&repo_root, &["pull", "--ff-only"], &[0])?;
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
+pub fn git_stage_files(
+    repo_path: Option<String>,
+    paths: Vec<String>,
+) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let paths = validate_relative_file_paths(paths)?;
+    let output = run_git_with_paths(&repo_root, &["add"], &paths, &[0])?;
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
+pub fn git_unstage_files(
+    repo_path: Option<String>,
+    paths: Vec<String>,
+) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let paths = validate_relative_file_paths(paths)?;
+    let output = run_git_with_paths(&repo_root, &["restore", "--staged"], &paths, &[0])?;
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
+pub fn git_discard_files(
+    repo_path: Option<String>,
+    paths: Vec<String>,
+) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let paths = validate_relative_file_paths(paths)?;
+    let mut tracked = Vec::new();
+    let mut untracked = Vec::new();
+    for path in paths {
+        if file_is_untracked(&repo_root, Path::new(&path))? {
+            untracked.push(path);
+        } else {
+            tracked.push(path);
+        }
+    }
+
+    let mut stdout = String::new();
+    let mut stderr = String::new();
+    let mut status_code = 0;
+    if !tracked.is_empty() {
+        let output =
+            run_git_with_paths(&repo_root, &["restore", "--staged", "--worktree"], &tracked, &[0])?;
+        stdout.push_str(&String::from_utf8_lossy(&output.stdout));
+        stderr.push_str(&String::from_utf8_lossy(&output.stderr));
+        status_code = output.status.code().unwrap_or(status_code);
+    }
+    if !untracked.is_empty() {
+        let output = run_git_with_paths(&repo_root, &["clean", "-f"], &untracked, &[0])?;
+        stdout.push_str(&String::from_utf8_lossy(&output.stdout));
+        stderr.push_str(&String::from_utf8_lossy(&output.stderr));
+        status_code = output.status.code().unwrap_or(status_code);
+    }
+
+    Ok(GitCommandOutput {
+        repo_root: path_to_string(&repo_root),
+        stdout,
+        stderr,
+        status_code,
+    })
+}
+
+#[tauri::command]
+pub fn git_checkout_branch(
+    repo_path: Option<String>,
+    branch: String,
+    create: Option<bool>,
+) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let branch = validate_branch_name(&repo_root, branch)?;
+    let output = if create.unwrap_or(false) {
+        run_git_owned(&repo_root, vec!["switch".into(), "-c".into(), branch], &[0])?
+    } else {
+        run_git_owned(&repo_root, vec!["switch".into(), branch], &[0])?
+    };
+    Ok(command_output(repo_root, output))
+}
+
+#[tauri::command]
+pub fn git_delete_branch(
+    repo_path: Option<String>,
+    branch: String,
+    force: Option<bool>,
+) -> IrodoriResult<GitCommandOutput> {
+    let repo_root = resolve_repo_root(repo_path.as_deref())?;
+    let branch = validate_branch_name(&repo_root, branch)?;
+    let flag = if force.unwrap_or(false) { "-D" } else { "-d" };
+    let output = run_git_owned(&repo_root, vec!["branch".into(), flag.into(), branch], &[0])?;
     Ok(command_output(repo_root, output))
 }
 
@@ -187,6 +363,26 @@ fn git_log_impl(repo_root: &Path, limit: u32) -> IrodoriResult<Vec<GitCommitSumm
     )?;
     let stdout = output_stdout(output);
     Ok(stdout.lines().filter_map(parse_commit_line).collect())
+}
+
+fn git_remotes_impl(repo_root: &Path) -> IrodoriResult<Vec<GitRemoteSummary>> {
+    let output = run_git(repo_root, &["remote", "-v"], &[0])?;
+    Ok(parse_remotes(&output_stdout(output)))
+}
+
+fn git_branches_impl(repo_root: &Path) -> IrodoriResult<Vec<GitBranchSummary>> {
+    let output = run_git(
+        repo_root,
+        &[
+            "branch",
+            "--format=%(refname:short)%x1f%(HEAD)%x1f%(upstream:short)%x1f%(upstream:track)",
+        ],
+        &[0],
+    )?;
+    Ok(output_stdout(output)
+        .lines()
+        .filter_map(parse_branch_line)
+        .collect())
 }
 
 fn resolve_repo_root(repo_path: Option<&str>) -> IrodoriResult<PathBuf> {
@@ -254,6 +450,30 @@ fn run_git(repo_root: &Path, args: &[&str], success_codes: &[i32]) -> IrodoriRes
     .with_code(format!("git.exit.{code}")))
 }
 
+fn run_git_owned(
+    repo_root: &Path,
+    args: Vec<String>,
+    success_codes: &[i32],
+) -> IrodoriResult<Output> {
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    run_git(repo_root, &refs, success_codes)
+}
+
+fn run_git_with_paths(
+    repo_root: &Path,
+    base_args: &[&str],
+    paths: &[String],
+    success_codes: &[i32],
+) -> IrodoriResult<Output> {
+    if paths.is_empty() {
+        return Err(IrodoriError::validation("at least one git file path is required"));
+    }
+    let mut args: Vec<String> = base_args.iter().map(|arg| (*arg).to_string()).collect();
+    args.push("--".into());
+    args.extend(paths.iter().cloned());
+    run_git_owned(repo_root, args, success_codes)
+}
+
 fn parse_status(text: &str) -> (String, Option<String>, u32, u32, Vec<GitFileStatus>) {
     let mut branch = "unknown".to_string();
     let mut upstream = None;
@@ -279,6 +499,167 @@ fn parse_status(text: &str) -> (String, Option<String>, u32, u32, Vec<GitFileSta
     (branch, upstream, ahead, behind, files)
 }
 
+fn parse_remotes(text: &str) -> Vec<GitRemoteSummary> {
+    let mut remotes: Vec<GitRemoteSummary> = Vec::new();
+    for line in text.lines() {
+        let mut parts = line.split_whitespace();
+        let Some(name) = parts.next() else {
+            continue;
+        };
+        let Some(url) = parts.next() else {
+            continue;
+        };
+        let kind = parts.next().unwrap_or_default();
+        let existing = remotes.iter_mut().find(|remote| remote.name == name);
+        match existing {
+            Some(remote) => {
+                if kind == "(fetch)" {
+                    remote.fetch_url = url.to_string();
+                    remote.provider = remote_provider(url);
+                    remote.web_url = remote_web_url(url);
+                } else if kind == "(push)" {
+                    remote.push_url = Some(url.to_string());
+                }
+            }
+            None => {
+                remotes.push(GitRemoteSummary {
+                    name: name.to_string(),
+                    fetch_url: url.to_string(),
+                    push_url: (kind == "(push)").then(|| url.to_string()),
+                    provider: remote_provider(url),
+                    web_url: remote_web_url(url),
+                });
+            }
+        }
+    }
+    remotes
+}
+
+fn remote_provider(url: &str) -> GitRemoteProvider {
+    let normalized = url.to_lowercase();
+    if normalized.contains("github.com") {
+        GitRemoteProvider::Github
+    } else if normalized.contains("gitlab.") || normalized.contains("gitlab.com") {
+        GitRemoteProvider::Gitlab
+    } else if normalized.contains("bitbucket.") || normalized.contains("bitbucket.org") {
+        GitRemoteProvider::Bitbucket
+    } else if normalized.contains("dev.azure.com") || normalized.contains("visualstudio.com") {
+        GitRemoteProvider::AzureRepos
+    } else if normalized.contains("codecommit") || normalized.contains("git-codecommit") {
+        GitRemoteProvider::CodeCommit
+    } else if normalized.contains("gitea") {
+        GitRemoteProvider::Gitea
+    } else {
+        GitRemoteProvider::Generic
+    }
+}
+
+fn remote_web_url(url: &str) -> Option<String> {
+    let provider = remote_provider(url);
+    match provider {
+        GitRemoteProvider::CodeCommit => codecommit_web_url(url),
+        GitRemoteProvider::AzureRepos => azure_repos_web_url(url),
+        _ => generic_git_web_url(url),
+    }
+}
+
+fn generic_git_web_url(url: &str) -> Option<String> {
+    let normalized = strip_git_suffix(&strip_credentials(url.trim()));
+    if normalized.starts_with("http://") || normalized.starts_with("https://") {
+        return Some(normalized);
+    }
+
+    if let Some((user_host, path)) = normalized.split_once(':') {
+        if user_host.contains('@') && !path.starts_with('/') {
+            let host = user_host.rsplit('@').next()?.trim();
+            if !host.is_empty() && !path.is_empty() {
+                return Some(format!("https://{host}/{}", path.trim_start_matches('/')));
+            }
+        }
+    }
+
+    if let Some(rest) = normalized.strip_prefix("ssh://") {
+        let rest = rest.split('@').next_back().unwrap_or(rest);
+        let rest = rest.trim_start_matches('/');
+        if !rest.is_empty() {
+            return Some(format!("https://{rest}"));
+        }
+    }
+
+    None
+}
+
+fn azure_repos_web_url(url: &str) -> Option<String> {
+    let normalized = strip_git_suffix(&strip_credentials(url.trim()));
+    if normalized.starts_with("http://") || normalized.starts_with("https://") {
+        return Some(normalized);
+    }
+    if let Some(path) = normalized.strip_prefix("git@ssh.dev.azure.com:v3/") {
+        let mut parts = path.split('/');
+        let org = parts.next()?;
+        let project = parts.next()?;
+        let repo = parts.next()?;
+        return Some(format!("https://dev.azure.com/{org}/{project}/_git/{repo}"));
+    }
+    None
+}
+
+fn codecommit_web_url(url: &str) -> Option<String> {
+    let normalized = strip_git_suffix(&strip_credentials(url.trim()));
+    let region = normalized
+        .split("git-codecommit.")
+        .nth(1)
+        .and_then(|tail| tail.split('.').next())
+        .or_else(|| {
+            normalized
+                .split("codecommit.")
+                .nth(1)
+                .and_then(|tail| tail.split('.').next())
+        })?;
+    let repo = normalized
+        .rsplit("/v1/repos/")
+        .next()
+        .filter(|value| !value.is_empty())?;
+    Some(format!(
+        "https://{region}.console.aws.amazon.com/codesuite/codecommit/repositories/{repo}/browse?region={region}"
+    ))
+}
+
+fn strip_credentials(url: &str) -> String {
+    if let Some((scheme, rest)) = url.split_once("://") {
+        if let Some((_, after_at)) = rest.split_once('@') {
+            return format!("{scheme}://{after_at}");
+        }
+    }
+    url.to_string()
+}
+
+fn strip_git_suffix(url: &str) -> String {
+    url.strip_suffix(".git").unwrap_or(url).to_string()
+}
+
+fn parse_branch_line(line: &str) -> Option<GitBranchSummary> {
+    let mut parts = line.splitn(4, '\x1f');
+    let name = parts.next()?.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let current = parts.next().unwrap_or_default().trim() == "*";
+    let upstream = parts
+        .next()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    let (ahead, behind) = parse_track_counts(parts.next().unwrap_or_default());
+    Some(GitBranchSummary {
+        name: name.to_string(),
+        current,
+        upstream,
+        ahead,
+        behind,
+    })
+}
+
 fn parse_branch_header(header: &str) -> (String, Option<String>, u32, u32) {
     let (name_part, marker_part) = header
         .split_once(" [")
@@ -290,19 +671,23 @@ fn parse_branch_header(header: &str) -> (String, Option<String>, u32, u32) {
         .map(|(left, right)| (left.to_string(), Some(right.to_string())))
         .unwrap_or_else(|| (name_part.to_string(), None));
 
-    let mut ahead = 0;
-    let mut behind = 0;
-    if let Some(marker) = marker_part {
-        for part in marker.split(',').map(str::trim) {
-            if let Some(value) = part.strip_prefix("ahead ") {
-                ahead = value.parse().unwrap_or(0);
-            } else if let Some(value) = part.strip_prefix("behind ") {
-                behind = value.parse().unwrap_or(0);
-            }
-        }
-    }
+    let (ahead, behind) = marker_part.map(parse_track_counts).unwrap_or((0, 0));
 
     (branch, upstream, ahead, behind)
+}
+
+fn parse_track_counts(marker: &str) -> (u32, u32) {
+    let marker = marker.trim().trim_start_matches('[').trim_end_matches(']');
+    let mut ahead = 0;
+    let mut behind = 0;
+    for part in marker.split(',').map(str::trim) {
+        if let Some(value) = part.strip_prefix("ahead ") {
+            ahead = value.parse().unwrap_or(0);
+        } else if let Some(value) = part.strip_prefix("behind ") {
+            behind = value.parse().unwrap_or(0);
+        }
+    }
+    (ahead, behind)
 }
 
 fn parse_status_line(line: &str) -> Option<GitFileStatus> {
@@ -382,6 +767,10 @@ fn parse_commit_line(line: &str) -> Option<GitCommitSummary> {
 }
 
 fn validate_relative_file_path(path: &str) -> IrodoriResult<PathBuf> {
+    let path = path.trim();
+    if path.is_empty() {
+        return Err(IrodoriError::validation("git file path cannot be empty"));
+    }
     let path = Path::new(path);
     if path.is_absolute() {
         return Err(IrodoriError::validation("git file path must be relative"));
@@ -397,6 +786,60 @@ fn validate_relative_file_path(path: &str) -> IrodoriResult<PathBuf> {
         }
     }
     Ok(path.to_path_buf())
+}
+
+fn validate_relative_file_paths(paths: Vec<String>) -> IrodoriResult<Vec<String>> {
+    if paths.is_empty() {
+        return Err(IrodoriError::validation("at least one git file path is required"));
+    }
+    paths
+        .iter()
+        .map(|path| {
+            validate_relative_file_path(path)
+                .map(|path| path.to_string_lossy().to_string())
+        })
+        .collect()
+}
+
+fn validate_branch_name(repo_root: &Path, branch: String) -> IrodoriResult<String> {
+    let branch = branch.trim();
+    if branch.is_empty() {
+        return Err(IrodoriError::validation("git branch name is required"));
+    }
+    if branch.starts_with('-') {
+        return Err(IrodoriError::validation("git branch name cannot start with '-'"));
+    }
+    run_git(repo_root, &["check-ref-format", "--branch", branch], &[0])?;
+    Ok(branch.to_string())
+}
+
+fn file_is_untracked(repo_root: &Path, path: &Path) -> IrodoriResult<bool> {
+    let path_string = path.to_string_lossy().to_string();
+    let output = run_git(
+        repo_root,
+        &["status", "--porcelain=v1", "--", &path_string],
+        &[0],
+    )?;
+    Ok(output_stdout(output)
+        .lines()
+        .any(|line| line.starts_with("?? ")))
+}
+
+fn build_untracked_diff(repo_root: &Path, path: &Path) -> IrodoriResult<String> {
+    let absolute = repo_root.join(path);
+    if absolute.is_dir() {
+        return Ok(format!(
+            "Untracked directory: {}\nStage it to include its contents in a commit.",
+            path.to_string_lossy()
+        ));
+    }
+    let path_string = absolute.to_string_lossy().to_string();
+    let output = run_git(
+        repo_root,
+        &["diff", "--no-ext-diff", "--no-index", "--", "/dev/null", &path_string],
+        &[0, 1],
+    )?;
+    Ok(output_stdout(output))
 }
 
 fn truncate_text(text: String, limit: usize) -> (String, bool) {
