@@ -266,11 +266,33 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .connection-form {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .connection-form .dialog-footer {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    min-height: auto;
+    padding: 8px 10px;
+  }
+
+  .connection-form .dialog-footer .primary-action {
+    flex: 1 1 112px;
+  }
+
   .connection-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .form-toggle {
     width: min(180px, 100%);
+  }
+
+  .connection-transport strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
