@@ -1,7 +1,9 @@
 import type {
   KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Columns3,
@@ -28,6 +30,7 @@ import {
 } from "@/features/connections";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
+type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
 
 type SidebarProps = {
   sidebarOpen: boolean;
@@ -91,6 +94,41 @@ export function Sidebar({
   onBeginResize,
   onResizeKey,
 }: SidebarProps) {
+  const [objectActionMenuPosition, setObjectActionMenuPosition] =
+    useState<ObjectActionMenuPosition>(null);
+
+  useEffect(() => {
+    if (!objectActionMenu) {
+      setObjectActionMenuPosition(null);
+    }
+  }, [objectActionMenu]);
+
+  useEffect(() => {
+    if (!objectActionMenu) {
+      return;
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onSetObjectActionMenu(null);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [objectActionMenu, onSetObjectActionMenu]);
+
+  function openObjectContextMenu(
+    event: ReactMouseEvent<HTMLElement>,
+    objectKey: string,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    onSetObjectActionMenu(objectKey);
+    setObjectActionMenuPosition({
+      key: objectKey,
+      ...clampObjectMenuPosition(event.clientX, event.clientY),
+    });
+  }
+
   return (
     <>
       <nav className="connection-rail" aria-label="Connections">
@@ -210,12 +248,12 @@ export function Sidebar({
                           <details
                             className="object-tree"
                             key={objectKey}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              onSetObjectActionMenu(objectKey);
-                            }}
                           >
-                            <summary>
+                            <summary
+                              onContextMenu={(event) =>
+                                openObjectContextMenu(event, objectKey)
+                              }
+                            >
                               {object.kind === "procedure" ||
                               object.kind === "function" ? (
                                 <TerminalSquare size={15} />
@@ -253,12 +291,28 @@ export function Sidebar({
                                   onSetObjectActionMenu((current) =>
                                     current === objectKey ? null : objectKey,
                                   );
+                                  setObjectActionMenuPosition(null);
                                 }}
                               >
                                 <MoreHorizontal size={14} />
                               </button>
                               {objectActionMenu === objectKey ? (
-                                <div className="object-action-menu" role="menu">
+                                <div
+                                  className={
+                                    objectActionMenuPosition?.key === objectKey
+                                      ? "object-action-menu object-action-menu-context"
+                                      : "object-action-menu"
+                                  }
+                                  role="menu"
+                                  style={
+                                    objectActionMenuPosition?.key === objectKey
+                                      ? {
+                                          left: objectActionMenuPosition.x,
+                                          top: objectActionMenuPosition.y,
+                                        }
+                                      : undefined
+                                  }
+                                >
                                   <button
                                     type="button"
                                     role="menuitem"
@@ -402,4 +456,16 @@ export function Sidebar({
       ) : null}
     </>
   );
+}
+
+function clampObjectMenuPosition(x: number, y: number) {
+  if (typeof window === "undefined") {
+    return { x, y };
+  }
+  const menuWidth = 218;
+  const menuHeight = 150;
+  return {
+    x: Math.max(8, Math.min(x, window.innerWidth - menuWidth - 8)),
+    y: Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8)),
+  };
 }
