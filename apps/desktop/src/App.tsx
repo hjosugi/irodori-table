@@ -42,9 +42,13 @@ import { CommandPalette } from "./app/CommandPalette";
 import { GitDrawer, useGitStore } from "./features/git";
 import {
   ResultsPane,
+  normalizeResultCellRange,
+  readResultCellRangeRows,
+  summarizeResultCellRange,
   useResultGridStore,
   useResultsStore,
   type ResultGridEditDraft,
+  type ResultSelectionSummary,
 } from "./features/results";
 import {
   defaultConnectionColor,
@@ -256,6 +260,35 @@ function parseClipboardTable(text: string): string[][] {
 
 function toCount(value: bigint | number) {
   return Number(value).toLocaleString();
+}
+
+function formatSelectionNumber(value: number) {
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: Number.isInteger(value) ? 0 : 6,
+  });
+}
+
+function formatResultSelectionStatus(summary: ResultSelectionSummary) {
+  const parts = [
+    `${toCount(summary.cellCount)} cells`,
+    `${toCount(summary.rowCount)}x${toCount(summary.columnCount)}`,
+  ];
+  if (summary.numericCount > 0) {
+    parts.push(`sum ${formatSelectionNumber(summary.sum ?? 0)}`);
+    parts.push(`avg ${formatSelectionNumber(summary.average ?? 0)}`);
+    parts.push(`min ${formatSelectionNumber(summary.min ?? 0)}`);
+    parts.push(`max ${formatSelectionNumber(summary.max ?? 0)}`);
+  }
+  if (summary.nullCount > 0) {
+    parts.push(`null ${toCount(summary.nullCount)}`);
+  }
+  if (summary.textCount > 0 && summary.numericCount === 0) {
+    parts.push(`text ${toCount(summary.textCount)}`);
+  }
+  if (summary.truncated) {
+    parts.push(`sampled ${toCount(summary.sampledCellCount)}`);
+  }
+  return parts.join(" · ");
 }
 
 const emptyJobList: JobList = { active: [], history: [] };
@@ -709,6 +742,10 @@ function App() {
   const setEditingCell = useResultGridStore((state) => state.setEditingCell);
   const selectedCell = useResultGridStore((state) => state.selectedCell);
   const setSelectedCell = useResultGridStore((state) => state.setSelectedCell);
+  const selectedRange = useResultGridStore((state) => state.selectedRange);
+  const setSelectedRange = useResultGridStore(
+    (state) => state.setSelectedRange,
+  );
   const sortRules = useResultGridStore((state) => state.sortRules);
   const setSortRules = useResultGridStore((state) => state.setSortRules);
   const filtersOpen = useResultGridStore((state) => state.filtersOpen);
@@ -1023,6 +1060,7 @@ function App() {
     setGridScrollLeft(0);
     setSelectedRowKey(null);
     setSelectedCell(null);
+    setSelectedRange(null);
   }, [activeResultIndexView, result]);
 
   const resultColumns = activeResult?.columns ?? [
@@ -1146,6 +1184,17 @@ function App() {
     totalRowCount,
     unfilteredRowCount,
   } = resultGridView;
+  const selectedRangeBounds = useMemo(
+    () => normalizeResultCellRange(resultGridView, selectedRange),
+    [resultGridView, selectedRange],
+  );
+  const selectionSummary = useMemo(
+    () => summarizeResultCellRange(resultGridView, selectedRangeBounds),
+    [resultGridView, selectedRangeBounds],
+  );
+  const selectionStatus = selectionSummary
+    ? formatResultSelectionStatus(selectionSummary)
+    : null;
 
   const chartResultModel = useMemo(() => {
     if (!activeResult || spillInfo || resultColumns.length === 0) {
@@ -1267,6 +1316,7 @@ function App() {
     if (clearSelection) {
       setSelectedRowKey(null);
       setSelectedCell(null);
+      setSelectedRange(null);
     }
   }
 
@@ -1481,15 +1531,27 @@ function App() {
     resetGridScrollPosition(true);
   }
 
-  function selectGridCell(rowKey: string, col: number) {
+  function selectGridCell(rowKey: string, col: number, extendRange = false) {
+    const nextCell = { key: rowKey, col };
+    const anchor =
+      selectedRange?.anchor ??
+      selectedCell ??
+      (selectedRowKey ? { key: selectedRowKey, col } : nextCell);
     setSelectedRowKey(rowKey);
-    setSelectedCell({ key: rowKey, col });
+    setSelectedCell(nextCell);
+    setSelectedRange(
+      extendRange &&
+        (anchor.key !== nextCell.key || anchor.col !== nextCell.col)
+        ? { anchor, focus: nextCell }
+        : null,
+    );
     gridRef.current?.focus({ preventScroll: true });
   }
 
   function selectGridRow(rowKey: string, focusGrid = false) {
     setSelectedRowKey(rowKey);
     setSelectedCell(null);
+    setSelectedRange(null);
     if (focusGrid) {
       gridRef.current?.focus({ preventScroll: true });
     }
@@ -1583,6 +1645,7 @@ function App() {
     });
     setEditingCell(null);
     setSelectedRowKey((current) => (current === rowKey ? null : current));
+    setSelectedRange(null);
   }
 
   // Paste a TSV/CSV block starting at `origin`/`startCol`, spilling across columns
@@ -1672,7 +1735,11 @@ function App() {
     setGridScrollLeft(element.scrollLeft);
   }
 
-  function moveSelectedCell(rowDelta: number, colDelta: number) {
+  function moveSelectedCell(
+    rowDelta: number,
+    colDelta: number,
+    extendRange = false,
+  ) {
     if (totalRows === 0 || resultColumns.length === 0) {
       return;
     }
@@ -1696,7 +1763,20 @@ function App() {
     if (!nextRow) {
       return;
     }
-    selectGridCell(nextRow.key, nextCol);
+    const nextCell = { key: nextRow.key, col: nextCol };
+    const anchor =
+      selectedRange?.anchor ??
+      selectedCell ??
+      (currentKey ? { key: currentKey, col: currentCol } : nextCell);
+    setSelectedRowKey(nextCell.key);
+    setSelectedCell(nextCell);
+    setSelectedRange(
+      extendRange &&
+        (anchor.key !== nextCell.key || anchor.col !== nextCell.col)
+        ? { anchor, focus: nextCell }
+        : null,
+    );
+    gridRef.current?.focus({ preventScroll: true });
     scrollGridCellIntoView(nextRowIndex, nextCol);
   }
 
@@ -1726,6 +1806,11 @@ function App() {
   }
 
   function selectedGridCopyText(): string | null {
+    if (selectedRangeBounds) {
+      return readResultCellRangeRows(resultGridView, selectedRangeBounds)
+        .map(formatResultGridTsvRow)
+        .join("\n");
+    }
     if (selectedCell) {
       const row = selectedDisplayRow();
       if (row) {
@@ -1803,22 +1888,22 @@ function App() {
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      moveSelectedCell(-1, 0);
+      moveSelectedCell(-1, 0, event.shiftKey);
       return;
     }
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      moveSelectedCell(1, 0);
+      moveSelectedCell(1, 0, event.shiftKey);
       return;
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      moveSelectedCell(0, -1);
+      moveSelectedCell(0, -1, event.shiftKey);
       return;
     }
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      moveSelectedCell(0, 1);
+      moveSelectedCell(0, 1, event.shiftKey);
       return;
     }
     if (event.key === "Tab") {
@@ -2849,6 +2934,8 @@ function App() {
     resetEdits();
     resetGridView();
     setSelectedRowKey(null);
+    setSelectedCell(null);
+    setSelectedRange(null);
     closeQueryHistoryDialog();
     showActionNotice(
       "success",
@@ -3365,6 +3452,8 @@ function App() {
     setGridScrollTop(0);
     setGridScrollLeft(0);
     setSelectedRowKey(null);
+    setSelectedCell(null);
+    setSelectedRange(null);
     const started = performance.now();
     const ranAt = new Date().toISOString();
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -3700,6 +3789,7 @@ function App() {
         queryLineCount={query.split("\n").length}
         sqlLintEnabled={sqlLinter === "gentle"}
         running={running}
+        selectionStatus={selectionStatus}
         shellStyle={cssVariables(theme)}
         onScopeFocus={(event) => {
           const scope = keyScopeFromTarget(event.target, "global");
@@ -3910,6 +4000,7 @@ function App() {
             sortRules={sortRules}
             selectedRowKey={selectedRowKey}
             selectedCell={selectedCell}
+            selectedRangeBounds={selectedRangeBounds}
             editingCell={editingCell}
             cellEdits={cellEdits}
             selectedRowValues={selectedRowValues}
@@ -3956,7 +4047,11 @@ function App() {
             onDeleteRow={deleteRow}
             onPasteTableAt={pasteTableAt}
             onEndCellEdit={() => setEditingCell(null)}
-            onCloseRowDetail={() => setSelectedRowKey(null)}
+            onCloseRowDetail={() => {
+              setSelectedRowKey(null);
+              setSelectedCell(null);
+              setSelectedRange(null);
+            }}
           />
         </section>
       </WorkbenchShell>

@@ -42,7 +42,12 @@ import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { ResultBody } from "./ResultBody";
 import { ResultFilterPanel } from "./ResultFilterPanel";
-import type { EditingCell, ResultMode, SelectedCell } from "../types";
+import type {
+  EditingCell,
+  ResultCellRangeBounds,
+  ResultMode,
+  SelectedCell,
+} from "../types";
 
 type ResultsPaneProps = {
   running: boolean;
@@ -94,6 +99,7 @@ type ResultsPaneProps = {
   sortRules: readonly ResultSortRule[];
   selectedRowKey: string | null;
   selectedCell: SelectedCell;
+  selectedRangeBounds: ResultCellRangeBounds;
   editingCell: EditingCell;
   cellEdits: ReadonlyMap<string, GridCellDraft>;
   selectedRowValues: unknown[] | null;
@@ -128,7 +134,7 @@ type ResultsPaneProps = {
   onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
   onToggleSort: (col: number, additive?: boolean) => void;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number) => void;
+  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
   onBeginCellEdit: (key: string, col: number, seed?: string) => void;
   onSetCellValue: (
     origin: ResultGridRowOrigin,
@@ -195,6 +201,7 @@ export function ResultsPane({
   sortRules,
   selectedRowKey,
   selectedCell,
+  selectedRangeBounds,
   editingCell,
   cellEdits,
   selectedRowValues,
@@ -535,6 +542,7 @@ export function ResultsPane({
         sortRules={sortRules}
         selectedRowKey={selectedRowKey}
         selectedCell={selectedCell}
+        selectedRangeBounds={selectedRangeBounds}
         editingCell={editingCell}
         cellEdits={cellEdits}
         selectedRowValues={selectedRowValues}

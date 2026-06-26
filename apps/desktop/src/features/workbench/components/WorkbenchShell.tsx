@@ -38,6 +38,7 @@ type WorkbenchShellProps = {
   queryLineCount: number;
   sqlLintEnabled: boolean;
   running: boolean;
+  selectionStatus: string | null;
   shellStyle: CSSProperties;
   sidebar: ReactNode;
   children: ReactNode;
@@ -74,6 +75,7 @@ export function WorkbenchShell({
   queryLineCount,
   sqlLintEnabled,
   running,
+  selectionStatus,
   shellStyle,
   sidebar,
   children,
@@ -289,6 +291,9 @@ export function WorkbenchShell({
           {activeConnectionStatus}
         </span>
         <span>{activeTransportLabel}</span>
+        {selectionStatus ? (
+          <span className="statusbar-selection">{selectionStatus}</span>
+        ) : null}
         <span>
           {vimMode ? "Vim" : "Default"} · {queryLineCount} lines ·{" "}
           {sqlLintEnabled ? "lint on" : "lint off"} ·{" "}

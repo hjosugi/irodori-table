@@ -14,7 +14,8 @@ import type {
   ResultGridDisplayRow,
   ResultGridSortRuleView,
 } from "@/result-view-model";
-import type { SelectedCell } from "../types";
+import { resultCellInRange } from "../result-selection";
+import type { ResultCellRangeBounds, SelectedCell } from "../types";
 import {
   hitTestWebGlResultGrid,
   parseWebGlColor,
@@ -33,6 +34,7 @@ type WebGlResultGridProps = {
   gridRef: RefObject<HTMLDivElement | null>;
   selectedRowKey: string | null;
   selectedCell: SelectedCell;
+  selectedRangeBounds: ResultCellRangeBounds;
   sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
   sortRules: readonly ResultSortRule[];
   running: boolean;
@@ -44,7 +46,7 @@ type WebGlResultGridProps = {
   onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
   onToggleSort: (col: number, additive?: boolean) => void;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number) => void;
+  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
 };
 
 type Rect = {
@@ -88,6 +90,7 @@ export function WebGlResultGrid({
   gridRef,
   selectedRowKey,
   selectedCell,
+  selectedRangeBounds,
   sortRuleByColumn,
   sortRules,
   running,
@@ -169,6 +172,7 @@ export function WebGlResultGrid({
       scrollLeft,
       scrollTop,
       selectedCell,
+      selectedRangeBounds,
       selectedRowKey,
       totalRows,
       viewport,
@@ -186,6 +190,7 @@ export function WebGlResultGrid({
       scrollLeft,
       scrollTop,
       selectedCell,
+      selectedRangeBounds,
       sortRuleByColumn,
       sortRules,
       viewport,
@@ -201,6 +206,7 @@ export function WebGlResultGrid({
     scrollLeft,
     scrollTop,
     selectedCell,
+    selectedRangeBounds,
     selectedRowKey,
     sortRuleByColumn,
     sortRules,
@@ -303,7 +309,7 @@ export function WebGlResultGrid({
             return;
           }
           onSelectGridRow(row.key, true);
-          onSelectGridCell(row.key, hit.columnIndex);
+          onSelectGridCell(row.key, hit.columnIndex, event.shiftKey);
         }}
       >
         <canvas ref={glCanvasRef} aria-hidden="true" />
@@ -410,6 +416,7 @@ function drawWebGlLayer({
   scrollLeft,
   scrollTop,
   selectedCell,
+  selectedRangeBounds,
   selectedRowKey,
   totalRows,
   viewport,
@@ -425,6 +432,7 @@ function drawWebGlLayer({
   scrollLeft: number;
   scrollTop: number;
   selectedCell: SelectedCell;
+  selectedRangeBounds: ResultCellRangeBounds;
   selectedRowKey: string | null;
   totalRows: number;
   viewport: { width: number; height: number };
@@ -440,6 +448,7 @@ function drawWebGlLayer({
 
   const altRects: Rect[] = [];
   const selectedRects: Rect[] = [];
+  const rangeRects: Rect[] = [];
   const editedRects: Rect[] = [];
   const newRects: Rect[] = [];
   for (const [visibleIndex, row] of visibleRows.entries()) {
@@ -458,10 +467,31 @@ function drawWebGlLayer({
     } else if (rowIndex % 2 === 1) {
       altRects.push(rect);
     }
+    if (
+      selectedRangeBounds &&
+      rowIndex >= selectedRangeBounds.rowStart &&
+      rowIndex <= selectedRangeBounds.rowEnd
+    ) {
+      for (const columnIndex of visibleColumnIndexes) {
+        if (
+          columnIndex < selectedRangeBounds.colStart ||
+          columnIndex > selectedRangeBounds.colEnd
+        ) {
+          continue;
+        }
+        rangeRects.push({
+          x: columnIndex * columnWidth - scrollLeft,
+          y,
+          width: columnWidth,
+          height: rowHeight,
+        });
+      }
+    }
   }
   painter.rects(altRects, parseWebGlColor(colors.gridRowAlt, editorBg));
   painter.rects(editedRects, parseWebGlColor(colors.warningBg, editorBg));
   painter.rects(newRects, parseWebGlColor(colors.green, editorBg));
+  painter.rects(rangeRects, parseWebGlColor(colors.selectedStrong, editorBg));
   painter.rects(
     selectedRects,
     parseWebGlColor(colors.selectedStrong, editorBg),
@@ -525,6 +555,7 @@ function drawTextLayer({
   scrollLeft,
   scrollTop,
   selectedCell,
+  selectedRangeBounds,
   sortRuleByColumn,
   sortRules,
   viewport,
@@ -541,6 +572,7 @@ function drawTextLayer({
   scrollLeft: number;
   scrollTop: number;
   selectedCell: SelectedCell;
+  selectedRangeBounds: ResultCellRangeBounds;
   sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
   sortRules: readonly ResultSortRule[];
   viewport: { width: number; height: number };
@@ -584,11 +616,16 @@ function drawTextLayer({
       const cell = row.cells[columnIndex] ?? "";
       const isSelected =
         selectedCell?.key === row.key && selectedCell.col === columnIndex;
+      const isRangeSelected = resultCellInRange(
+        rowIndex,
+        columnIndex,
+        selectedRangeBounds,
+      );
       const isNullish = cell === "NULL" || cell === "";
       drawClippedText(ctx, cell === "" ? "EMPTY" : cell, {
         color: isSelected
           ? colors.activeText
-          : isNullish
+          : isNullish && !isRangeSelected
             ? colors.muted
             : row.state === "edited"
               ? colors.amber

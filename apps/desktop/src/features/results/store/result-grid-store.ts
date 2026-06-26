@@ -6,7 +6,12 @@ import type {
   ResultSortRule,
 } from "@/result-grid";
 import type { ResultGridDraftCell as GridCellDraft } from "@/result-view-model";
-import type { EditingCell, ResultMode, SelectedCell } from "../types";
+import type {
+  EditingCell,
+  ResultCellRange,
+  ResultMode,
+  SelectedCell,
+} from "../types";
 
 type ValueUpdater<T> = T | ((current: T) => T);
 
@@ -39,6 +44,7 @@ type ResultGridState = {
   deletedRows: Set<number>;
   editingCell: EditingCell;
   selectedCell: SelectedCell;
+  selectedRange: ResultCellRange;
   sortRules: ResultSortRule[];
   filtersOpen: boolean;
   quickFilter: string;
@@ -61,6 +67,7 @@ type ResultGridState = {
   setEditMode: (value: ValueUpdater<boolean>) => void;
   setEditingCell: (value: ValueUpdater<EditingCell>) => void;
   setSelectedCell: (value: ValueUpdater<SelectedCell>) => void;
+  setSelectedRange: (value: ValueUpdater<ResultCellRange>) => void;
   setSortRules: (value: ValueUpdater<ResultSortRule[]>) => void;
   setFiltersOpen: (value: ValueUpdater<boolean>) => void;
   setQuickFilter: (value: ValueUpdater<string>) => void;
@@ -149,6 +156,7 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
   deletedRows: new Set(),
   editingCell: null,
   selectedCell: null,
+  selectedRange: null,
   sortRules: [],
   filtersOpen: false,
   quickFilter: "",
@@ -199,6 +207,10 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
   setSelectedCell: (value) =>
     set((state) => ({
       selectedCell: resolveValue(state.selectedCell, value),
+    })),
+  setSelectedRange: (value) =>
+    set((state) => ({
+      selectedRange: resolveValue(state.selectedRange, value),
     })),
   setSortRules: (value) =>
     set((state) => ({ sortRules: resolveValue(state.sortRules, value) })),
@@ -261,6 +273,7 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
       deletedRows: new Set(),
       editingCell: null,
       selectedCell: null,
+      selectedRange: null,
       commitError: null,
       editUndoStack: [],
     }),
@@ -271,5 +284,6 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
       filterRules: [],
       filterJoin: "and",
       filtersOpen: false,
+      selectedRange: null,
     }),
 }));

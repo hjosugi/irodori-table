@@ -20,7 +20,13 @@ import {
 import { RowDetailSidebar } from "@/RowDetailSidebar";
 import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
-import type { EditingCell, ResultMode, SelectedCell } from "../types";
+import { resultCellInRange } from "../result-selection";
+import type {
+  EditingCell,
+  ResultCellRangeBounds,
+  ResultMode,
+  SelectedCell,
+} from "../types";
 import { ChartResultView } from "./ChartResultView";
 import { GraphResultView } from "./GraphResultView";
 import { WebGlResultGrid } from "./WebGlResultGrid";
@@ -55,6 +61,7 @@ export function ResultBody({
   sortRules,
   selectedRowKey,
   selectedCell,
+  selectedRangeBounds,
   editingCell,
   cellEdits,
   selectedRowValues,
@@ -104,6 +111,7 @@ export function ResultBody({
   sortRules: readonly ResultSortRule[];
   selectedRowKey: string | null;
   selectedCell: SelectedCell;
+  selectedRangeBounds: ResultCellRangeBounds;
   editingCell: EditingCell;
   cellEdits: ReadonlyMap<string, GridCellDraft>;
   selectedRowValues: unknown[] | null;
@@ -116,7 +124,7 @@ export function ResultBody({
   onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
   onToggleSort: (col: number, additive?: boolean) => void;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number) => void;
+  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
   onBeginCellEdit: (key: string, col: number, seed?: string) => void;
   onSetCellValue: (
     origin: ResultGridRowOrigin,
@@ -164,6 +172,7 @@ export function ResultBody({
           gridRef={gridRef}
           selectedRowKey={selectedRowKey}
           selectedCell={selectedCell}
+          selectedRangeBounds={selectedRangeBounds}
           sortRuleByColumn={sortRuleByColumn}
           sortRules={sortRules}
           running={running}
@@ -306,10 +315,16 @@ export function ResultBody({
                 cellEdits.has(`o${row.origin.index}:${cellIndex}`);
               const isSelected =
                 selectedCell?.key === row.key && selectedCell.col === cellIndex;
+              const isRangeSelected = resultCellInRange(
+                firstVisible + visibleRowIndex,
+                cellIndex,
+                selectedRangeBounds,
+              );
               const isNullCell = cell === "NULL";
               const isEmptyCell = cell === "";
               const cellClass = [
                 isEdited ? "cell-edited" : "",
+                isRangeSelected ? "cell-range-selected" : "",
                 isSelected ? "cell-selected" : "",
                 isNullCell ? "cell-null" : "",
                 isEmptyCell ? "cell-empty" : "",
@@ -321,12 +336,12 @@ export function ResultBody({
                   role="cell"
                   key={cellIndex}
                   aria-colindex={editMode ? cellIndex + 2 : cellIndex + 1}
-                  aria-selected={isSelected}
+                  aria-selected={isSelected || isRangeSelected}
                   className={cellClass || undefined}
                   title={isEmptyCell ? "EMPTY string" : cell}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onSelectGridCell(row.key, cellIndex);
+                    onSelectGridCell(row.key, cellIndex, event.shiftKey);
                   }}
                   onDoubleClick={() => {
                     onBeginCellEdit(row.key, cellIndex);
