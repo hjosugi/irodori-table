@@ -1,3 +1,5 @@
+import type { SqlEditorTransformAction } from "@/sql/editor-transforms";
+
 type WorkbenchCommandHandlerDeps = {
   editMode: boolean;
   openPalette: () => void;
@@ -16,7 +18,10 @@ type WorkbenchCommandHandlerDeps = {
   focusEditor: () => void;
   formatQuery: () => void;
   toggleEditorComment: () => void;
+  transformEditorSelection: (action: SqlEditorTransformAction) => void;
   exportCsv: () => void;
+  exportSqlInserts: () => void;
+  copySqlInserts: () => Promise<void>;
   copySelectedGridCellOrRow: () => Promise<void>;
   copySelectedGridRow: () => Promise<void>;
   copyVisibleResult: () => Promise<void>;
@@ -46,7 +51,10 @@ export function createWorkbenchCommandHandler({
   focusEditor,
   formatQuery,
   toggleEditorComment,
+  transformEditorSelection,
   exportCsv,
+  exportSqlInserts,
+  copySqlInserts,
   copySelectedGridCellOrRow,
   copySelectedGridRow,
   copyVisibleResult,
@@ -108,8 +116,26 @@ export function createWorkbenchCommandHandler({
       case "editor.comment.toggle":
         toggleEditorComment();
         break;
+      case "editor.transform.uppercase":
+        transformEditorSelection("uppercase");
+        break;
+      case "editor.transform.lowercase":
+        transformEditorSelection("lowercase");
+        break;
+      case "editor.transform.addCommas":
+        transformEditorSelection("appendCommas");
+        break;
+      case "editor.transform.doubleToSingleQuotes":
+        transformEditorSelection("doubleToSingleQuotes");
+        break;
       case "result.export":
         exportCsv();
+        break;
+      case "result.exportSqlInserts":
+        exportSqlInserts();
+        break;
+      case "result.copySqlInserts":
+        void copySqlInserts();
         break;
       case "result.copySelection":
         void copySelectedGridCellOrRow();

@@ -27,6 +27,10 @@ import { buildSqlExtensions } from "./sql/dialect";
 import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
 import { sqlHighlightingExtensions } from "./sql/highlighting";
 import { lintSqlDocument, type SqlLinterId } from "./sql/linter";
+import {
+  transformSqlEditorText,
+  type SqlEditorTransformAction,
+} from "./sql/editor-transforms";
 import { editorThemeExtensions, type IrodoriTheme } from "./theme";
 
 export interface SqlEditorHandle {
@@ -39,6 +43,8 @@ export interface SqlEditorHandle {
   format: () => string | null;
   /** Toggle SQL line/block comments around the current selection. */
   toggleComment: () => boolean;
+  /** Transform the current selection, or the current line when nothing is selected. */
+  transformSelection: (action: SqlEditorTransformAction) => boolean;
   /** Insert text at the current selection/caret without remounting the editor. */
   insertText: (text: string) => void;
   focus: () => void;
@@ -267,6 +273,27 @@ function insertEditorText(view: EditorView, text: string) {
   });
 }
 
+function transformEditorSelection(
+  view: EditorView,
+  action: SqlEditorTransformAction,
+) {
+  const selection = view.state.selection.main;
+  const range = selection.empty
+    ? view.state.doc.lineAt(selection.from)
+    : selection;
+  const current = view.state.doc.sliceString(range.from, range.to);
+  const next = transformSqlEditorText(current, action);
+  if (next === current) {
+    return false;
+  }
+  view.dispatch({
+    changes: { from: range.from, to: range.to, insert: next },
+    selection: { anchor: range.from, head: range.from + next.length },
+    scrollIntoView: true,
+  });
+  return true;
+}
+
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
   {
     value,
@@ -364,6 +391,10 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         const view = viewRef.current;
         if (!view) return false;
         return toggleComment(view);
+      },
+      transformSelection(action) {
+        const view = viewRef.current;
+        return view ? transformEditorSelection(view, action) : false;
       },
       insertText(text) {
         const view = viewRef.current;

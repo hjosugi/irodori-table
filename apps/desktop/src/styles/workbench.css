@@ -761,6 +761,13 @@
   left: auto;
 }
 
+.editor-context-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  min-width: 250px;
+}
+
 .editor-split {
   display: grid;
   min-width: 0;

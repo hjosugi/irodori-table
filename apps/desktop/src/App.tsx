@@ -184,6 +184,7 @@ import {
 import { type SqlEditorHandle } from "./SqlEditor";
 import { isSqlFormatterId } from "./sql/formatter";
 import { isSqlLinterId } from "./sql/linter";
+import type { SqlEditorTransformAction } from "./sql/editor-transforms";
 import { selectedOrCurrentStatement } from "./sql/statements";
 import {
   cssVariables,
@@ -2009,7 +2010,10 @@ function App() {
     focusEditor: () => activeEditorApi()?.focus(),
     formatQuery,
     toggleEditorComment: () => activeEditorApi()?.toggleComment(),
+    transformEditorSelection,
     exportCsv: () => exportActiveResult("csv"),
+    exportSqlInserts: () => exportActiveResult("sql"),
+    copySqlInserts: copyActiveResultSqlInserts,
     copySelectedGridCellOrRow,
     copySelectedGridRow,
     copyVisibleResult,
@@ -2883,6 +2887,29 @@ function App() {
     );
   }
 
+  async function copyActiveResultSqlInserts() {
+    if (!activeResult) {
+      showActionNotice("info", "No result to copy");
+      return;
+    }
+    const target = inferEditTarget();
+    const exported = buildResultExport(
+      activeResult,
+      "sql",
+      target?.table ?? "query_result",
+    );
+    try {
+      await writeTextToClipboard(exported.content);
+      showActionNotice(
+        "success",
+        "INSERT SQL copied",
+        `${toCount(activeResult.rows.length)} rows`,
+      );
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
+  }
+
   function currentDiagramSvgMarkup() {
     const svg = diagramSvgRef.current;
     if (!svg || !diagramLayout) {
@@ -3123,6 +3150,21 @@ function App() {
     } else {
       showActionNotice("success", "SQL formatted", formatter);
     }
+  }
+
+  function transformEditorSelection(action: SqlEditorTransformAction) {
+    const changed = activeEditorApi()?.transformSelection(action) ?? false;
+    if (!changed) {
+      showActionNotice("info", "Nothing changed");
+      return;
+    }
+    const label: Record<SqlEditorTransformAction, string> = {
+      uppercase: "Uppercase",
+      lowercase: "Lowercase",
+      appendCommas: "Commas added",
+      doubleToSingleQuotes: "Quotes converted",
+    };
+    showActionNotice("success", label[action]);
   }
 
   async function runQuery() {
@@ -3769,6 +3811,7 @@ function App() {
               runAllShortcutLabel={runAllShortcutLabel}
               runMenuOpen={runMenuOpen}
               hasSelectedEditorSql={hasSelectedEditorSql}
+              resultActionsAvailable={Boolean(activeResult)}
               runCommand={runCommand}
               saveCurrentQuery={saveCurrentQuery}
               runQuery={runQuery}

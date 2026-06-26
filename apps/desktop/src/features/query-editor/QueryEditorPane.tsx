@@ -1,5 +1,8 @@
 import {
+  useEffect,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
@@ -60,6 +63,7 @@ export interface QueryEditorPaneProps {
   runAllShortcutLabel: string;
   runMenuOpen: boolean;
   hasSelectedEditorSql: boolean;
+  resultActionsAvailable: boolean;
   runCommand: (commandId: string) => void;
   saveCurrentQuery: () => void;
   runQuery: () => Promise<void>;
@@ -105,6 +109,7 @@ export function QueryEditorPane({
   runAllShortcutLabel,
   runMenuOpen,
   hasSelectedEditorSql,
+  resultActionsAvailable,
   runCommand,
   saveCurrentQuery,
   runQuery,
@@ -117,6 +122,39 @@ export function QueryEditorPane({
   beginEditorSplitResize,
   onEditorSplitResizeKey,
 }: QueryEditorPaneProps) {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+    const close = () => setContextMenu(null);
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("blur", close);
+    };
+  }, [contextMenu]);
+
+  const openEditorContextMenu = (
+    event: ReactMouseEvent<HTMLDivElement>,
+    group: EditorGroup,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveEditorGroup(group);
+    setContextMenu({ x: event.clientX, y: event.clientY });
+  };
+
+  const runContextCommand = (commandId: string) => {
+    setContextMenu(null);
+    runCommand(commandId);
+  };
+
   return (
     <section className="editor-pane" aria-label={activeTabLabel}>
       <div className="editor-meta">
@@ -137,6 +175,7 @@ export function QueryEditorPane({
           }`}
           onFocusCapture={() => setActiveEditorGroup("primary")}
           onPointerDown={() => setActiveEditorGroup("primary")}
+          onContextMenu={(event) => openEditorContextMenu(event, "primary")}
         >
           <SqlEditor
             ref={editorApiRef}
@@ -173,6 +212,7 @@ export function QueryEditorPane({
               }`}
               onFocusCapture={() => setActiveEditorGroup("secondary")}
               onPointerDown={() => setActiveEditorGroup("secondary")}
+              onContextMenu={(event) => openEditorContextMenu(event, "secondary")}
             >
               <SqlEditor
                 ref={secondaryEditorApiRef}
@@ -382,6 +422,86 @@ export function QueryEditorPane({
           </div>
         </div>
       </div>
+      {contextMenu ? (
+        <div
+          className="app-menu-popover editor-context-menu"
+          role="menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onContextMenu={(event) => event.preventDefault()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("query.run")}
+          >
+            <span>{runPrimaryLabel}</span>
+            {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.format")}
+          >
+            <span>Format SQL</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.comment.toggle")}
+          >
+            <span>Toggle Comment</span>
+          </button>
+          <span className="menu-separator" aria-hidden="true" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.transform.uppercase")}
+          >
+            <span>Uppercase selection</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.transform.lowercase")}
+          >
+            <span>Lowercase selection</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.transform.addCommas")}
+          >
+            <span>Add commas to lines</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() =>
+              runContextCommand("editor.transform.doubleToSingleQuotes")
+            }
+          >
+            <span>Double quotes to single quotes</span>
+          </button>
+          <span className="menu-separator" aria-hidden="true" />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!resultActionsAvailable}
+            onClick={() => runContextCommand("result.copySqlInserts")}
+          >
+            <span>Copy result as INSERT SQL</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!resultActionsAvailable}
+            onClick={() => runContextCommand("result.exportSqlInserts")}
+          >
+            <span>Download result as INSERT SQL</span>
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
