@@ -93,7 +93,7 @@ interface SqlSnippetDefinition {
   detail: string;
   template: string;
   rank: number;
-  scope: "statement" | "expression";
+  scope: "statement" | "expression" | "clause";
 }
 
 const SQL_SNIPPETS: readonly SqlSnippetDefinition[] = [
@@ -148,7 +148,7 @@ const SQL_SNIPPETS: readonly SqlSnippetDefinition[] = [
     detail: "join clause",
     template: "join ${1:table} on ${2:condition}${0}",
     rank: 520,
-    scope: "statement",
+    scope: "clause",
   },
   {
     label: "case",
@@ -521,7 +521,10 @@ function collectCompletionCandidates(
         explicit,
       );
       addRoutineCandidates(candidates, index, context.prefix);
-      addSnippetCandidates(candidates, context.prefix, explicit, "expression");
+      addSnippetCandidates(candidates, context.prefix, explicit, [
+        "expression",
+        "clause",
+      ]);
       if (context.prefix.length > 0 || explicit) {
         addRelationCandidates(candidates, index, context.prefix, {
           lowPriority: true,
@@ -765,13 +768,14 @@ function addSnippetCandidates(
   candidates: Candidate[],
   prefix: string,
   explicit: boolean,
-  scope?: SqlSnippetDefinition["scope"],
+  scopes?: readonly SqlSnippetDefinition["scope"][],
 ) {
   if (!explicit && prefix.length === 0) return;
   for (const definition of SQL_SNIPPETS) {
-    if (scope && definition.scope !== scope) continue;
+    if (scopes && !scopes.includes(definition.scope)) continue;
     if (!matchesAny(prefix, [definition.label, definition.detail])) continue;
-    const rank = definition.rank + matchBonus(prefix, definition.label, definition.detail);
+    const rank =
+      definition.rank + matchBonus(prefix, definition.label, definition.detail);
     candidates.push({
       key: `snippet:${definition.label}`,
       rank,

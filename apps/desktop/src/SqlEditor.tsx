@@ -12,6 +12,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
+import { acceptCompletion, completionStatus } from "@codemirror/autocomplete";
 import {
   linter,
   lintGutter,
@@ -117,7 +118,7 @@ function createSqlEditorState({
     extensions: [
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
-      keymap.of([indentWithTab]),
+      keymap.of([{ key: "Tab", run: acceptCompletionWithTab }, indentWithTab]),
       compartments.sql.of(buildSqlExtensions(engine, metadata)),
       compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
       compartments.theme.of(editorThemeExtensions(theme)),
@@ -136,6 +137,10 @@ function createSqlEditorState({
       }),
     ],
   });
+}
+
+function acceptCompletionWithTab(view: EditorView): boolean {
+  return completionStatus(view.state) === "active" && acceptCompletion(view);
 }
 
 function visibleDiagnosticMarkers(diagnostics: readonly Diagnostic[]): Diagnostic[] {

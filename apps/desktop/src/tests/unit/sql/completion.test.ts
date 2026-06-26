@@ -330,6 +330,14 @@ describe("completeSqlLightweight", () => {
     expect(typeof snippet?.apply).toBe("function");
   });
 
+  it("adds clause snippets in column-capable contexts", () => {
+    const joinSnippet = complete("select * from customers c jo").find(
+      (option) => option.label === "join" && option.detail === "join clause",
+    );
+
+    expect(typeof joinSnippet?.apply).toBe("function");
+  });
+
   it("keeps SQL snippets out of relation and qualified contexts", () => {
     expect(labels("select * from sel")).not.toContain("sel");
     expect(labels("select c.sel from customers c")).not.toContain("sel");
