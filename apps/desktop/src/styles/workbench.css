@@ -568,7 +568,9 @@
 
 .main-pane {
   display: grid;
-  grid-template-rows: var(--bar-md) minmax(240px, 1fr) var(--results-height, 238px);
+  grid-template-rows:
+    var(--bar-md) minmax(240px, 1fr) 5px
+    var(--results-height, 238px);
   min-width: 0;
   min-height: 0;
 }
@@ -663,7 +665,7 @@
 .editor-pane {
   position: relative;
   display: grid;
-  grid-template-rows: var(--bar-md) minmax(0, 1fr) var(--bar-md);
+  grid-template-rows: var(--bar-md) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
@@ -760,16 +762,15 @@
 }
 
 .editor-floating-actions {
-  position: relative;
-  z-index: 2;
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  z-index: 12;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: flex-end;
   min-width: 0;
-  max-width: 100%;
-  padding: 3px 14px;
-  border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--editor-bg) 92%, var(--surface-muted));
+  max-width: calc(100% - 28px);
   pointer-events: none;
 }
 
@@ -848,11 +849,10 @@
 }
 
 .editor-split {
-  grid-row: 2;
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: auto;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -984,6 +984,10 @@ body.panel-resizing .result-grid {
    by the theme model (src/theme.ts → editorThemeExtensions), not by CSS. */
 .cm-host .cm-editor {
   height: 100%;
+}
+
+.cm-host .cm-content {
+  padding-bottom: 48px;
 }
 
 .line-numbers,
