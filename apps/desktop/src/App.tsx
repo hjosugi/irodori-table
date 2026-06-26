@@ -19,32 +19,24 @@ import {
   Download,
   GitBranch,
   HelpCircle,
-  ImageDown,
-  Info,
   KeyRound,
   Folder,
   ListFilter,
   Menu,
-  Maximize2,
   Moon,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
-  Play,
   Plus,
-  Power,
   RefreshCw,
   Share2,
   Search,
   Settings,
-  ShieldCheck,
   Sun,
   Table2,
   TerminalSquare,
   Upload,
   X,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { runQuerySpill, runQueryStream } from "./lib/tauri/db-stream";
 import {
@@ -65,13 +57,14 @@ import {
   savedQueryStorageKey,
   tabs,
 } from "./app/app-config";
+import { AboutDialog } from "./app/AboutDialog";
+import { ActionToast, type ActionNotice } from "./app/ActionToast";
+import { CommandPalette } from "./app/CommandPalette";
 import { GitDrawer, useGitStore } from "./features/git";
 import {
-  connectionColorOptions,
   defaultConnectionColor,
   describeConnection,
   engineLabel,
-  engineOptions,
   loadProfiles,
   memoryDefaults,
   newDraft,
@@ -87,11 +80,17 @@ import {
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "./features/connections";
+import { ConnectionManagerDialog } from "./features/connections/ConnectionManagerDialog";
 import {
   QueryEditorPane,
+  QueryParameterDialog,
+  type PendingQueryParameters,
   type EditorGroup,
   type EditorSelection,
 } from "./features/query-editor";
+import { ImportDialog, type ImportPreview } from "./features/import/ImportDialog";
+import { ErdDialog } from "./features/erd/ErdDialog";
+import { SchemaDesignerDialog } from "./features/schema-designer/SchemaDesignerDialog";
 import { SettingsDialog, type SettingsTab } from "./features/settings";
 import { usePreferencesStore } from "./features/preferences";
 import {
@@ -113,15 +112,13 @@ import {
   writePngBlobToClipboard,
   writeTextToClipboard,
 } from "./erd-export";
-import { ErdSvg, erdSvgStyle } from "./erd-svg";
+import { erdSvgStyle } from "./erd-svg";
 import { errorMessage } from "./errors";
 import {
   detectImportFileKind,
   generateImportSql,
   inferImportTableName,
   parseImportText,
-  type ImportTextFormat,
-  type ParsedImport,
 } from "./importers";
 import {
   KEY_SEQUENCE_TIMEOUT_MS,
@@ -170,12 +167,7 @@ import {
   blankSchemaDraft,
   buildSchemaSql,
   schemaDraftFromObject,
-  schemaDraftId,
-  type SchemaColumnDraft,
   type SchemaDesignerDraft,
-  type SchemaDesignerMode,
-  type SchemaForeignKeyDraft,
-  type SchemaIndexDraft,
 } from "./schema-designer";
 import {
   dbApplyEdits,
@@ -271,24 +263,7 @@ function isCellEditorClipboardShortcut(
 
 type QueryParameterMemory = Record<string, Record<string, string>>;
 
-type PendingQueryParameters = {
-  sql: string;
-  promptSet: QueryParameterPromptSet;
-};
-
 type ResultMode = "data" | "structure";
-type ActionNotice = {
-  id: number;
-  kind: "success" | "error" | "info";
-  title: string;
-  detail?: string;
-};
-
-type ImportPreview = ParsedImport & {
-  fileName: string;
-  format: ImportTextFormat;
-  tableName: string;
-};
 
 // Parse pasted clipboard text (TSV, or CSV as a fallback) into a grid of strings.
 function parseClipboardTable(text: string): string[][] {
@@ -460,14 +435,6 @@ function buildParameterInputs(
     key: prompt.key,
     value: parseParameterValue(values[prompt.id] ?? ""),
   }));
-}
-
-function compactSql(sql: string, maxLength = 92) {
-  const compact = sql.replace(/\s+/g, " ").trim();
-  if (compact.length <= maxLength) {
-    return compact;
-  }
-  return `${compact.slice(0, maxLength - 3)}...`;
 }
 
 function tauriRuntimeError() {
@@ -2895,36 +2862,6 @@ function App() {
     activeEditorApi()?.focus();
   }
 
-  function updateSchemaColumn(id: string, patch: Partial<SchemaColumnDraft>) {
-    setSchemaDraft((current) => ({
-      ...current,
-      columns: current.columns.map((column) =>
-        column.id === id ? { ...column, ...patch } : column,
-      ),
-    }));
-  }
-
-  function updateSchemaIndex(id: string, patch: Partial<SchemaIndexDraft>) {
-    setSchemaDraft((current) => ({
-      ...current,
-      indexes: current.indexes.map((index) =>
-        index.id === id ? { ...index, ...patch } : index,
-      ),
-    }));
-  }
-
-  function updateSchemaForeignKey(
-    id: string,
-    patch: Partial<SchemaForeignKeyDraft>,
-  ) {
-    setSchemaDraft((current) => ({
-      ...current,
-      foreignKeys: current.foreignKeys.map((foreignKey) =>
-        foreignKey.id === id ? { ...foreignKey, ...patch } : foreignKey,
-      ),
-    }));
-  }
-
   function saveCurrentQuery() {
     try {
       window.localStorage.setItem(savedQueryStorageKey, query);
@@ -4841,277 +4778,27 @@ function App() {
       </footer>
 
       {connectionManagerOpen ? (
-        <div
-          className="palette-overlay connection-overlay"
-          onClick={() => setConnectionManagerOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="connection-dialog"
-            role="dialog"
-            aria-label="Connection manager"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <aside className="connection-picker">
-              <div className="connection-picker-header">
-                <button
-                  className="icon-button"
-                  type="button"
-                  title="New connection"
-                  aria-label="New connection"
-                  onClick={addProfile}
-                >
-                  <Plus size={16} />
-                </button>
-                <label className="connection-search">
-                  <Search size={15} />
-                  <input
-                    autoFocus
-                    value={connectionSearch}
-                    placeholder="Search connections"
-                    onChange={(event) =>
-                      setConnectionSearch(event.currentTarget.value)
-                    }
-                  />
-                </label>
-              </div>
-              <div className="connection-profile-list">
-                {filteredProfiles.map((profile) => {
-                  const connected = connectedIds.has(profile.id);
-                  return (
-                    <button
-                      key={profile.id}
-                      className={
-                        profile.id === selectedProfileId
-                          ? "connection-profile active"
-                          : "connection-profile"
-                      }
-                      type="button"
-                      onClick={() => selectProfile(profile)}
-                    >
-                      <span
-                        className="connection-color-dot"
-                        style={{ background: profile.color }}
-                        aria-hidden="true"
-                      />
-                      <span>
-                        <strong>{profile.name}</strong>
-                        <small>
-                          {engineLabel(profile.engine)}
-                          {profile.database ? ` · ${profile.database}` : ""}
-                        </small>
-                      </span>
-                      <i className={connected ? "connected" : ""} />
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="connection-picker-empty">
-                {filteredProfiles.length === 0 ? "No matching connections" : null}
-              </div>
-            </aside>
-            <form className="connection-form" onSubmit={connectActiveProfile}>
-              <div className="dialog-header">
-                <strong>{draft.name.trim() || "New Connection"}</strong>
-                <span>{engineLabel(draft.engine)}</span>
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={() => setConnectionManagerOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-              <div className="dialog-body connection-form-body">
-                <label className="full-row">
-                  <span>Connection name</span>
-                  <input
-                    value={draft.name}
-                    placeholder="Connection's name"
-                    onChange={(event) =>
-                      updateDraft({ name: event.currentTarget.value })
-                    }
-                  />
-                </label>
-                <div className="connection-color-row full-row">
-                  <span>Color tag</span>
-                  <div className="connection-color-options">
-                    {connectionColorOptions.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={
-                          draft.color === color
-                            ? "connection-color-swatch active"
-                            : "connection-color-swatch"
-                        }
-                        style={{ background: color }}
-                        aria-label={`Use color ${color}`}
-                        onClick={() => updateDraft({ color })}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="connection-form-grid">
-                  <label>
-                    <span>Engine</span>
-                    <select
-                      value={draft.engine}
-                      onChange={(event) =>
-                        updateDraft({
-                          engine: event.currentTarget.value as DbEngine,
-                        })
-                      }
-                    >
-                      {engineOptions.map((engine) => (
-                        <option key={engine.value} value={engine.value}>
-                          {engine.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Profile ID</span>
-                    <input
-                      value={draft.id}
-                      onChange={(event) =>
-                        updateDraft({ id: event.currentTarget.value })
-                      }
-                    />
-                  </label>
-                  <div className="mode-toggle form-toggle" aria-label="Connection input mode">
-                    <button
-                      className={draft.mode === "url" ? "active" : ""}
-                      type="button"
-                      onClick={() => updateDraft({ mode: "url" })}
-                    >
-                      URL
-                    </button>
-                    <button
-                      className={draft.mode === "fields" ? "active" : ""}
-                      type="button"
-                      onClick={() => updateDraft({ mode: "fields" })}
-                    >
-                      Fields
-                    </button>
-                  </div>
-                </div>
-                {draft.mode === "url" ? (
-                  <label className="full-row">
-                    <span>URL / DSN</span>
-                    <input
-                      value={draft.url}
-                      placeholder="postgres://user:password@host:5432/database"
-                      onChange={(event) =>
-                        updateDraft({ url: event.currentTarget.value })
-                      }
-                    />
-                  </label>
-                ) : (
-                  <div className="connection-form-grid">
-                    <label>
-                      <span>Host / socket</span>
-                      <input
-                        value={draft.host}
-                        placeholder="localhost"
-                        onChange={(event) =>
-                          updateDraft({ host: event.currentTarget.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Port</span>
-                      <input
-                        inputMode="numeric"
-                        value={draft.port}
-                        onChange={(event) =>
-                          updateDraft({ port: event.currentTarget.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>User</span>
-                      <input
-                        value={draft.user}
-                        onChange={(event) =>
-                          updateDraft({ user: event.currentTarget.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Password</span>
-                      <input
-                        type="password"
-                        value={draft.password}
-                        placeholder="Session only"
-                        onChange={(event) =>
-                          updateDraft({ password: event.currentTarget.value })
-                        }
-                      />
-                    </label>
-                    <label className="full-row">
-                      <span>Database / service / path</span>
-                      <input
-                        value={draft.database}
-                        onChange={(event) =>
-                          updateDraft({ database: event.currentTarget.value })
-                        }
-                      />
-                    </label>
-                  </div>
-                )}
-                <div className="connection-transport full-row">
-                  <ShieldCheck size={15} />
-                  <span>Transport</span>
-                  <strong>Direct TCP / local file</strong>
-                </div>
-                {connectionError ? (
-                  <p className="inline-error full-row">
-                    <AlertTriangle size={13} />
-                    <span>{connectionError}</span>
-                  </p>
-                ) : null}
-              </div>
-              <div className="dialog-footer">
-                <button
-                  className="text-button danger"
-                  type="button"
-                  onClick={() => void deleteProfile()}
-                >
-                  Delete
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  disabled={!activeConnectionOpen}
-                  onClick={() => void disconnectActiveProfile()}
-                >
-                  <Power size={13} />
-                  Disconnect
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={() => saveDraft()}
-                >
-                  Save
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  disabled={testingConnection}
-                  onClick={() => void testActiveProfile()}
-                >
-                  {testingConnection ? "Testing" : "Test"}
-                </button>
-                <button className="primary-action" type="submit" disabled={connecting}>
-                  <Database size={14} />
-                  {connecting ? "Connecting" : "Connect"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ConnectionManagerDialog
+          profiles={filteredProfiles}
+          connectedIds={connectedIds}
+          selectedProfileId={selectedProfileId}
+          draft={draft}
+          search={connectionSearch}
+          error={connectionError}
+          activeConnectionOpen={activeConnectionOpen}
+          testing={testingConnection}
+          connecting={connecting}
+          onClose={() => setConnectionManagerOpen(false)}
+          onSearchChange={setConnectionSearch}
+          onAddProfile={addProfile}
+          onSelectProfile={selectProfile}
+          onUpdateDraft={updateDraft}
+          onDeleteProfile={() => void deleteProfile()}
+          onDisconnect={() => void disconnectActiveProfile()}
+          onSave={() => saveDraft()}
+          onTest={() => void testActiveProfile()}
+          onConnect={connectActiveProfile}
+        />
       ) : null}
 
       {settingsOpen ? (
@@ -5162,89 +4849,21 @@ function App() {
       ) : null}
 
       {aboutOpen ? (
-        <div
-          className="palette-overlay"
-          onClick={() => setAboutOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="data-dialog about-dialog"
-            role="dialog"
-            aria-label={`About ${APP_NAME}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="dialog-header">
-              <strong>About {APP_NAME}</strong>
-              <span>Version and support information</span>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setAboutOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="about-body">
-              <div className="about-mark">
-                <img className="about-icon" src="/irodori-icon.svg" alt="" />
-                <span>
-                  <strong>{APP_NAME}</strong>
-                  <small>Database workbench</small>
-                </span>
-              </div>
-              <dl className="about-grid">
-                <div>
-                  <dt>Version</dt>
-                  <dd>{APP_VERSION}</dd>
-                </div>
-                <div>
-                  <dt>Identifier</dt>
-                  <dd>{APP_IDENTIFIER}</dd>
-                </div>
-                <div>
-                  <dt>Runtime</dt>
-                  <dd>{tauriRuntimeError() ? "Browser preview" : "Tauri desktop"}</dd>
-                </div>
-                <div>
-                  <dt>Active connection</dt>
-                  <dd>
-                    {activeConnection.name} ·{" "}
-                    {activeConnectionOpen ? "connected" : "closed"}
-                  </dd>
-                </div>
-              </dl>
-              <div className="about-help">
-                <Info size={16} />
-                <span>
-                  Use Connection Manager for saved database profiles, Settings for
-                  editor/keymap/JSON configuration, and the workspace menu for
-                  support diagnostics.
-                </span>
-              </div>
-            </div>
-            <div className="dialog-footer">
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  setAboutOpen(false);
-                  openSettingsSection("general");
-                }}
-              >
-                <Settings size={13} />
-                Settings
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => void copyAppDiagnostics()}
-              >
-                <Copy size={13} />
-                Copy diagnostics
-              </button>
-            </div>
-          </div>
-        </div>
+        <AboutDialog
+          appName={APP_NAME}
+          appVersion={APP_VERSION}
+          appIdentifier={APP_IDENTIFIER}
+          runtimeLabel={tauriRuntimeError() ? "Browser preview" : "Tauri desktop"}
+          activeConnectionLabel={`${activeConnection.name} \u00b7 ${
+            activeConnectionOpen ? "connected" : "closed"
+          }`}
+          onClose={() => setAboutOpen(false)}
+          onOpenSettings={() => {
+            setAboutOpen(false);
+            openSettingsSection("general");
+          }}
+          onCopyDiagnostics={() => void copyAppDiagnostics()}
+        />
       ) : null}
 
       <GitDrawer />
@@ -5259,882 +4878,89 @@ function App() {
       />
 
       {pendingQueryParameters ? (
-        <div
-          className="palette-overlay"
-          onClick={() => setPendingQueryParameters(null)}
-          role="presentation"
-        >
-          <form
-            className="parameter-dialog"
-            role="dialog"
-            aria-label="Query parameters"
-            onSubmit={submitQueryParameters}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="parameter-header">
-              <KeyRound size={16} />
-              <strong>Query Parameters</strong>
-              <span>{compactSql(pendingQueryParameters.sql, 68)}</span>
-            </div>
-            <div className="parameter-list">
-              {pendingQueryParameters.promptSet.prompts.map((prompt, index) => (
-                <label className="parameter-row" key={prompt.id}>
-                  <span>
-                    <strong>{prompt.label}</strong>
-                    <small>{prompt.placeholder}</small>
-                  </span>
-                  <input
-                    autoFocus={index === 0}
-                    value={parameterDraftValues[prompt.id] ?? ""}
-                    onChange={(event) =>
-                      setParameterDraftValues((current) => ({
-                        ...current,
-                        [prompt.id]: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <div className="parameter-actions">
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setPendingQueryParameters(null)}
-              >
-                Cancel
-              </button>
-              <button className="primary-button" type="submit">
-                <Play size={14} />
-                Run
-              </button>
-            </div>
-          </form>
-        </div>
+        <QueryParameterDialog
+          pending={pendingQueryParameters}
+          values={parameterDraftValues}
+          onValuesChange={setParameterDraftValues}
+          onClose={() => setPendingQueryParameters(null)}
+          onSubmit={submitQueryParameters}
+        />
       ) : null}
 
       {paletteOpen ? (
-        <div
-          className="palette-overlay"
-          onClick={() => setPaletteOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="palette"
-            role="dialog"
-            aria-label="Command palette"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <input
-              className="palette-input"
-              autoFocus
-              placeholder="Type a command…"
-              value={paletteQuery}
-              onChange={(event) => setPaletteQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  setPaletteOpen(false);
-                } else if (event.key === "Enter") {
-                  const first = paletteResults[0];
-                  if (first) {
-                    setPaletteOpen(false);
-                    runCommand(first.id);
-                  }
-                }
-              }}
-            />
-            <div className="palette-list">
-              {paletteResults.length > 0 ? (
-                paletteResults.map((command) => (
-                  <button
-                    key={command.id}
-                    className="palette-item"
-                    type="button"
-                    onClick={() => {
-                      setPaletteOpen(false);
-                      runCommand(command.id);
-                    }}
-                  >
-                    <span>{command.title}</span>
-                    <small>{command.category}</small>
-                    {keymap[command.id] ? (
-                      <kbd>{formatKeySequence(keymap[command.id])}</kbd>
-                    ) : null}
-                  </button>
-                ))
-              ) : (
-                <div className="palette-empty">No matching commands</div>
-              )}
-            </div>
-          </div>
-        </div>
+        <CommandPalette
+          query={paletteQuery}
+          commands={paletteResults}
+          keymap={keymap}
+          onQueryChange={setPaletteQuery}
+          onRunCommand={runCommand}
+          onClose={() => setPaletteOpen(false)}
+        />
       ) : null}
 
       {importPreview || importError ? (
-        <div
-          className="palette-overlay"
-          onClick={() => {
+        <ImportDialog
+          preview={importPreview}
+          error={importError}
+          sqlPreview={importSqlPreview}
+          onPreviewChange={setImportPreview}
+          onClose={() => {
             setImportPreview(null);
             setImportError(null);
           }}
-          role="presentation"
-        >
-          <div
-            className="data-dialog import-dialog"
-            role="dialog"
-            aria-label="Import preview"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="dialog-header">
-              <strong>Import</strong>
-              <span>
-                {importPreview
-                  ? `${importPreview.fileName} · ${importPreview.format.toUpperCase()}`
-                  : "File"}
-              </span>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  setImportPreview(null);
-                  setImportError(null);
-                }}
-              >
-                Close
-              </button>
-            </div>
-            {importError ? (
-              <div className="dialog-body">
-                <div className="result-error" role="alert">
-                  <AlertTriangle size={16} />
-                  <span>{importError}</span>
-                </div>
-              </div>
-            ) : null}
-            {importPreview ? (
-              <>
-                <div className="dialog-body">
-                  <div className="dialog-form-row">
-                    <label>
-                      <span>Table</span>
-                      <input
-                        value={importPreview.tableName}
-                        onChange={(event) =>
-                          setImportPreview((current) =>
-                            current
-                              ? {
-                                  ...current,
-                                  tableName: event.currentTarget.value,
-                                }
-                              : current,
-                          )
-                        }
-                      />
-                    </label>
-                    <span className="dialog-stat">
-                      {toCount(importPreview.rows.length)} /{" "}
-                      {toCount(importPreview.totalRows)} rows
-                      {importPreview.truncated ? " capped" : ""}
-                    </span>
-                  </div>
-                  <div className="preview-table-wrap">
-                    <table className="preview-table">
-                      <thead>
-                        <tr>
-                          {importPreview.columns.map((column, index) => (
-                            <th key={`${column}-${index}`}>{column}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importPreview.rows.slice(0, 8).map((row, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {importPreview.columns.map((_, columnIndex) => (
-                              <td key={columnIndex}>
-                                {formatCell(row[columnIndex])}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <pre className="sql-preview">{importSqlPreview}</pre>
-                </div>
-                <div className="dialog-footer">
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() =>
-                      void navigator.clipboard?.writeText(importSqlPreview)
-                    }
-                  >
-                    Copy SQL
-                  </button>
-                  <button
-                    className="primary-action"
-                    type="button"
-                    onClick={putImportSqlInEditor}
-                  >
-                    Put SQL in editor
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
+          onPutSqlInEditor={putImportSqlInEditor}
+          formatCell={formatCell}
+          formatCount={toCount}
+        />
       ) : null}
 
       {schemaDesignerOpen ? (
-        <div
-          className="palette-overlay"
-          onClick={() => setSchemaDesignerOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="data-dialog schema-dialog"
-            role="dialog"
-            aria-label="Schema designer"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="dialog-header">
-              <strong>Schema Designer</strong>
-              <span>
-                {schemaDraft.mode === "create" ? "CREATE TABLE" : "ALTER TABLE"}
-              </span>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setSchemaDesignerOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="dialog-body schema-body">
-              <div className="dialog-form-row schema-target">
-                <label>
-                  <span>Mode</span>
-                  <select
-                    value={schemaDraft.mode}
-                    onChange={(event) =>
-                      setSchemaDraft((current) => ({
-                        ...current,
-                        mode: event.currentTarget.value as SchemaDesignerMode,
-                      }))
-                    }
-                  >
-                    <option value="create">Create</option>
-                    <option value="alter">Alter</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Schema</span>
-                  <input
-                    value={schemaDraft.schema}
-                    onChange={(event) =>
-                      setSchemaDraft((current) => ({
-                        ...current,
-                        schema: event.currentTarget.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>Table</span>
-                  <input
-                    value={schemaDraft.table}
-                    onChange={(event) =>
-                      setSchemaDraft((current) => ({
-                        ...current,
-                        table: event.currentTarget.value,
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-
-              <section className="designer-section">
-                <header>
-                  <strong>Columns</strong>
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() =>
-                      setSchemaDraft((current) => ({
-                        ...current,
-                        columns: [
-                          ...current.columns,
-                          {
-                            id: schemaDraftId("column"),
-                            name: "",
-                            dataType: "TEXT",
-                            nullable: true,
-                            primaryKey: false,
-                            defaultValue: "",
-                          },
-                        ],
-                      }))
-                    }
-                  >
-                    + Column
-                  </button>
-                </header>
-                <div className="designer-grid column-grid">
-                  {schemaDraft.columns.map((column) => {
-                    const locked =
-                      schemaDraft.mode === "alter" && column.existing;
-                    return (
-                      <div
-                        className={`designer-row${column.existing ? " is-existing" : ""}`}
-                        key={column.id}
-                      >
-                        <input
-                          aria-label="Column name"
-                          value={column.name}
-                          disabled={locked}
-                          onChange={(event) =>
-                            updateSchemaColumn(column.id, {
-                              name: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <input
-                          aria-label="Column type"
-                          value={column.dataType}
-                          disabled={locked}
-                          onChange={(event) =>
-                            updateSchemaColumn(column.id, {
-                              dataType: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <label className="check-cell">
-                          <input
-                            type="checkbox"
-                            checked={!column.nullable}
-                            disabled={locked}
-                            onChange={(event) =>
-                              updateSchemaColumn(column.id, {
-                                nullable: !event.currentTarget.checked,
-                              })
-                            }
-                          />
-                          <span>NN</span>
-                        </label>
-                        <label className="check-cell">
-                          <input
-                            type="checkbox"
-                            checked={column.primaryKey}
-                            disabled={locked}
-                            onChange={(event) =>
-                              updateSchemaColumn(column.id, {
-                                primaryKey: event.currentTarget.checked,
-                              })
-                            }
-                          />
-                          <span>PK</span>
-                        </label>
-                        <input
-                          aria-label="Default value"
-                          value={column.defaultValue}
-                          disabled={locked}
-                          placeholder="default"
-                          onChange={(event) =>
-                            updateSchemaColumn(column.id, {
-                              defaultValue: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <button
-                          className="mini-button"
-                          type="button"
-                          disabled={locked}
-                          onClick={() =>
-                            setSchemaDraft((current) => ({
-                              ...current,
-                              columns: current.columns.filter(
-                                (item) => item.id !== column.id,
-                              ),
-                            }))
-                          }
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="designer-section">
-                <header>
-                  <strong>Indexes</strong>
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() =>
-                      setSchemaDraft((current) => ({
-                        ...current,
-                        indexes: [
-                          ...current.indexes,
-                          {
-                            id: schemaDraftId("index"),
-                            name: "",
-                            columns: "",
-                            unique: false,
-                          },
-                        ],
-                      }))
-                    }
-                  >
-                    + Index
-                  </button>
-                </header>
-                <div className="designer-grid index-grid">
-                  {schemaDraft.indexes.map((index) => {
-                    const locked =
-                      schemaDraft.mode === "alter" && index.existing;
-                    return (
-                      <div
-                        className={`designer-row${index.existing ? " is-existing" : ""}`}
-                        key={index.id}
-                      >
-                        <input
-                          aria-label="Index name"
-                          value={index.name}
-                          disabled={locked}
-                          placeholder="auto name"
-                          onChange={(event) =>
-                            updateSchemaIndex(index.id, {
-                              name: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <input
-                          aria-label="Index columns"
-                          value={index.columns}
-                          disabled={locked}
-                          placeholder="col_a, col_b"
-                          onChange={(event) =>
-                            updateSchemaIndex(index.id, {
-                              columns: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <label className="check-cell">
-                          <input
-                            type="checkbox"
-                            checked={index.unique}
-                            disabled={locked}
-                            onChange={(event) =>
-                              updateSchemaIndex(index.id, {
-                                unique: event.currentTarget.checked,
-                              })
-                            }
-                          />
-                          <span>Unique</span>
-                        </label>
-                        <button
-                          className="mini-button"
-                          type="button"
-                          disabled={locked}
-                          onClick={() =>
-                            setSchemaDraft((current) => ({
-                              ...current,
-                              indexes: current.indexes.filter(
-                                (item) => item.id !== index.id,
-                              ),
-                            }))
-                          }
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="designer-section">
-                <header>
-                  <strong>Foreign Keys</strong>
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() =>
-                      setSchemaDraft((current) => ({
-                        ...current,
-                        foreignKeys: [
-                          ...current.foreignKeys,
-                          {
-                            id: schemaDraftId("fk"),
-                            name: "",
-                            columns: "",
-                            referencesSchema: "",
-                            referencesTable: "",
-                            referencesColumns: "",
-                            onDelete: "",
-                          },
-                        ],
-                      }))
-                    }
-                  >
-                    + FK
-                  </button>
-                </header>
-                <div className="designer-grid fk-grid">
-                  {schemaDraft.foreignKeys.map((foreignKey) => {
-                    const locked =
-                      schemaDraft.mode === "alter" && foreignKey.existing;
-                    return (
-                      <div
-                        className={`designer-row${foreignKey.existing ? " is-existing" : ""}`}
-                        key={foreignKey.id}
-                      >
-                        <input
-                          aria-label="Foreign key name"
-                          value={foreignKey.name}
-                          disabled={locked}
-                          placeholder="auto name"
-                          onChange={(event) =>
-                            updateSchemaForeignKey(foreignKey.id, {
-                              name: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <input
-                          aria-label="Foreign key columns"
-                          value={foreignKey.columns}
-                          disabled={locked}
-                          placeholder="local cols"
-                          onChange={(event) =>
-                            updateSchemaForeignKey(foreignKey.id, {
-                              columns: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <input
-                          aria-label="Referenced schema"
-                          value={foreignKey.referencesSchema}
-                          disabled={locked}
-                          placeholder="schema"
-                          onChange={(event) =>
-                            updateSchemaForeignKey(foreignKey.id, {
-                              referencesSchema: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <input
-                          aria-label="Referenced table"
-                          value={foreignKey.referencesTable}
-                          disabled={locked}
-                          placeholder="table"
-                          onChange={(event) =>
-                            updateSchemaForeignKey(foreignKey.id, {
-                              referencesTable: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <input
-                          aria-label="Referenced columns"
-                          value={foreignKey.referencesColumns}
-                          disabled={locked}
-                          placeholder="ref cols"
-                          onChange={(event) =>
-                            updateSchemaForeignKey(foreignKey.id, {
-                              referencesColumns: event.currentTarget.value,
-                            })
-                          }
-                        />
-                        <select
-                          aria-label="On delete"
-                          value={foreignKey.onDelete}
-                          disabled={locked}
-                          onChange={(event) =>
-                            updateSchemaForeignKey(foreignKey.id, {
-                              onDelete: event.currentTarget.value,
-                            })
-                          }
-                        >
-                          <option value="">ON DELETE</option>
-                          <option value="CASCADE">CASCADE</option>
-                          <option value="SET NULL">SET NULL</option>
-                          <option value="RESTRICT">RESTRICT</option>
-                          <option value="NO ACTION">NO ACTION</option>
-                        </select>
-                        <button
-                          className="mini-button"
-                          type="button"
-                          disabled={locked}
-                          onClick={() =>
-                            setSchemaDraft((current) => ({
-                              ...current,
-                              foreignKeys: current.foreignKeys.filter(
-                                (item) => item.id !== foreignKey.id,
-                              ),
-                            }))
-                          }
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <pre className="sql-preview schema-sql">{schemaSqlPreview}</pre>
-            </div>
-            <div className="dialog-footer">
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => void copySchemaSql()}
-              >
-                Copy SQL
-              </button>
-              <button
-                className="primary-action"
-                type="button"
-                onClick={putSchemaSqlInEditor}
-              >
-                Put SQL in editor
-              </button>
-            </div>
-          </div>
-        </div>
+        <SchemaDesignerDialog
+          draft={schemaDraft}
+          sqlPreview={schemaSqlPreview}
+          onDraftChange={setSchemaDraft}
+          onClose={() => setSchemaDesignerOpen(false)}
+          onCopySql={() => void copySchemaSql()}
+          onPutSqlInEditor={putSchemaSqlInEditor}
+        />
       ) : null}
 
       {diagramOpen ? (
-        <div
-          className="palette-overlay"
-          onClick={() => setDiagramOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="diagram"
-            role="dialog"
-            aria-label="ER diagram"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="diagram-header">
-              <strong>ER Diagram</strong>
-              <span>
-                {activeConnection.name}
-                {diagramModel
-                  ? ` · ${diagramModel.tables.length}/${diagramModel.totalTables} tables · ${diagramModel.edges.length} edges`
-                  : ""}
-              </span>
-              <button
-                className="text-button"
-                type="button"
-                title="Fit diagram"
-                onClick={fitDiagramToViewport}
-                disabled={!diagramLayout}
-              >
-                <Maximize2 size={13} />
-                <span>Fit</span>
-              </button>
-              <button
-                className="mini-button"
-                type="button"
-                title="Zoom out"
-                aria-label="Zoom out"
-                disabled={!diagramLayout}
-                onClick={() =>
-                  setDiagramZoom((zoom) => clampNumber(zoom - 0.1, 0.25, 2))
-                }
-              >
-                <ZoomOut size={13} />
-              </button>
-              <span className="diagram-zoom">
-                {Math.round(diagramZoom * 100)}%
-              </span>
-              <button
-                className="mini-button"
-                type="button"
-                title="Zoom in"
-                aria-label="Zoom in"
-                disabled={!diagramLayout}
-                onClick={() =>
-                  setDiagramZoom((zoom) => clampNumber(zoom + 0.1, 0.25, 2))
-                }
-              >
-                <ZoomIn size={13} />
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={copyDiagramSvg}
-                disabled={!diagramLayout}
-              >
-                <Copy size={13} />
-                <span>SVG</span>
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => void copyDiagramPng()}
-                disabled={!diagramLayout}
-              >
-                <Copy size={13} />
-                <span>PNG</span>
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={downloadDiagramSvg}
-                disabled={!diagramLayout}
-              >
-                <Download size={13} />
-                <span>SVG</span>
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => void downloadDiagramPng()}
-                disabled={!diagramLayout}
-              >
-                <ImageDown size={13} />
-                <span>PNG</span>
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  if (activeMetadata) {
-                    void navigator.clipboard?.writeText(diagramMermaid);
-                  }
-                }}
-                disabled={!activeMetadata}
-              >
-                Copy Mermaid
-              </button>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setDiagramOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="diagram-controls">
-              <label className="diagram-search">
-                <Search size={14} />
-                <input
-                  value={diagramSearch}
-                  placeholder="Filter schemas, tables, columns"
-                  onChange={(event) =>
-                    setDiagramSearch(event.currentTarget.value)
-                  }
-                />
-              </label>
-              <div className="diagram-schema-actions">
-                <button
-                  className="mini-button"
-                  type="button"
-                  onClick={() => setDiagramSchemaNames(availableDiagramSchemas)}
-                >
-                  All
-                </button>
-                <button
-                  className="mini-button"
-                  type="button"
-                  onClick={() => setDiagramSchemaNames([])}
-                >
-                  None
-                </button>
-              </div>
-              <div
-                className="diagram-schema-list"
-                role="group"
-                aria-label="Schemas"
-              >
-                {availableDiagramSchemas.map((schema) => {
-                  const active = diagramSchemaNames.includes(schema);
-                  return (
-                    <button
-                      key={schema}
-                      className={active ? "schema-chip active" : "schema-chip"}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() =>
-                        setDiagramSchemaNames((current) =>
-                          current.includes(schema)
-                            ? current.filter((item) => item !== schema)
-                            : [...current, schema],
-                        )
-                      }
-                    >
-                      {schema}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="diagram-canvas" ref={diagramCanvasRef}>
-              {diagramError ? (
-                <div className="result-error" role="alert">
-                  <AlertTriangle size={16} />
-                  <span>{diagramError}</span>
-                </div>
-              ) : null}
-              {!diagramError &&
-              (!diagramLayout || diagramLayout.tables.length === 0) ? (
-                <div className="grid-state">
-                  No tables match the current diagram filters
-                </div>
-              ) : null}
-              {!diagramError &&
-              diagramLayout &&
-              diagramLayout.tables.length > 0 ? (
-                <div
-                  className="diagram-stage"
-                  style={{
-                    width: diagramLayout.width * diagramZoom,
-                    height: diagramLayout.height * diagramZoom,
-                  }}
-                >
-                  <div
-                    className="diagram-scale"
-                    style={{
-                      transform: `scale(${diagramZoom})`,
-                      width: diagramLayout.width,
-                      height: diagramLayout.height,
-                    }}
-                  >
-                    <ErdSvg
-                      layout={diagramLayout}
-                      svgRef={diagramSvgRef}
-                      svgStyle={diagramSvgStyle}
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <ErdDialog
+          activeConnectionName={activeConnection.name}
+          model={diagramModel}
+          layout={diagramLayout}
+          svgRef={diagramSvgRef}
+          canvasRef={diagramCanvasRef}
+          svgStyle={diagramSvgStyle}
+          zoom={diagramZoom}
+          search={diagramSearch}
+          schemaNames={diagramSchemaNames}
+          availableSchemas={availableDiagramSchemas}
+          error={diagramError}
+          metadataLoaded={Boolean(activeMetadata)}
+          onClose={() => setDiagramOpen(false)}
+          onFit={fitDiagramToViewport}
+          onZoomChange={setDiagramZoom}
+          onSearchChange={setDiagramSearch}
+          onSchemaNamesChange={setDiagramSchemaNames}
+          onCopySvg={copyDiagramSvg}
+          onCopyPng={() => void copyDiagramPng()}
+          onDownloadSvg={downloadDiagramSvg}
+          onDownloadPng={() => void downloadDiagramPng()}
+          onCopyMermaid={() => {
+            if (activeMetadata) {
+              void navigator.clipboard?.writeText(diagramMermaid);
+            }
+          }}
+        />
       ) : null}
 
       {actionNotice ? (
-        <div
-          className={`action-toast ${actionNotice.kind}`}
-          role={actionNotice.kind === "error" ? "alert" : "status"}
-          aria-live={actionNotice.kind === "error" ? "assertive" : "polite"}
-        >
-          <span className="action-toast-mark" aria-hidden="true" />
-          <span>
-            <strong>{actionNotice.title}</strong>
-            {actionNotice.detail ? <small>{actionNotice.detail}</small> : null}
-          </span>
-          <button
-            type="button"
-            aria-label="Dismiss notification"
-            onClick={() => setActionNotice(null)}
-          >
-            <X size={13} />
-          </button>
-        </div>
+        <ActionToast
+          notice={actionNotice}
+          onDismiss={() => setActionNotice(null)}
+        />
       ) : null}
     </main>
   );
