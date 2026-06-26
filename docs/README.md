@@ -95,6 +95,7 @@ python3 -m http.server 8080 --directory docs/site
 | --- | --- |
 | Support-status registry drift | `node tools/docs/support-status.mjs` |
 | DB feature sample catalog | `node tools/docs/db-feature-samples.mjs` |
+| Extension manifest templates/examples | `make extension-manifests` |
 | All docs guards | `make docs-check` |
 | Regenerate cheatsheets from knowledge data | `make docs` |
 

@@ -56,6 +56,9 @@ jobs:
       - name: Check data-source support inventory
         run: node tools/docs/support-status.mjs --check
 
+      - name: Validate extension manifests
+        run: node tools/extensions/validate-manifests.mjs
+
       - name: Build Rust workspace scaffold
         run: cargo build
 

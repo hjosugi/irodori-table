@@ -74,6 +74,17 @@ Core manifest fields:
 - `dev`: watch paths, fake database fixtures, and log file configuration for local
   development.
 
+Validate all checked-in extension templates and examples from the repository
+root:
+
+```sh
+make extension-manifests
+```
+
+The same guard runs in CI and checks required fields, unknown keys, safe relative
+paths, permission/contribution consistency, template/example licenses, and
+manifest sample fixtures.
+
 ## Type Generation
 
 The extension SDK uses the same `typeship` pattern as the desktop app.

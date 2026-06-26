@@ -674,9 +674,10 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ## EXT — Extension SDK
 
-### EXT-001 — Stabilize `irodori.extension.json`
+### EXT-001 — Stabilize `irodori.extension.json` ✅
 - **Goal:** A documented extension manifest.
 - **Done when:** the manifest schema is finalized and validated; `extension.schema.json` matches; a sample manifest validates.
+- **Done:** `extension.schema.json` is the checked-in manifest contract and `tools/extensions/validate-manifests.mjs` validates all template/example `irodori.extension.json` files for required fields, unknown keys, safe relative paths, permission/contribution consistency, `MIT OR 0BSD` licensing, and sample fixtures. `make extension-manifests` and CI run the guard.
 - **Depends on:** FND-002
 - **Size:** M · **Priority:** P1
 
