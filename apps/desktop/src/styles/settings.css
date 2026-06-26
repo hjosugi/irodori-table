@@ -75,6 +75,18 @@
   font-size: 12px;
 }
 
+.settings-row input {
+  width: 120px;
+  height: var(--control-sm);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--input-bg);
+  font: inherit;
+  text-align: right;
+}
+
 .settings-command-list {
   padding: 0;
 }

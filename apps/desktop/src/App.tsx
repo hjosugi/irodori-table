@@ -46,13 +46,23 @@ import {
   Sun,
   Table2,
   TerminalSquare,
-  Trash2,
   Upload,
   X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { runQueryStream } from "./db-stream";
+import { runQuerySpill, runQueryStream } from "./lib/tauri/db-stream";
+import {
+  QueryHistoryDialog,
+  QueryHistorySidebar,
+  useQueryHistoryStore,
+  type QueryHistoryItem,
+} from "./features/query-history";
+import { usePreferencesStore } from "./features/preferences";
+import {
+  WindowedRows,
+  createWindowedRowsProxy,
+} from "./result-window";
 import {
   buildErdModel,
   hasDiagram,
@@ -142,6 +152,8 @@ import {
   dbDisconnect,
   dbListObjects,
   dbQueryParameters,
+  dbReleaseResult,
+  dbResultWindow,
   jobsCancel,
   jobsList,
   type CellValue,
@@ -159,6 +171,7 @@ import {
   type RowDelete,
   type RowInsert,
   type RowUpdate,
+  type SpillRunResult,
   type TableEdits,
   workspaceSnapshot,
   type WorkspaceSnapshot,
@@ -167,15 +180,13 @@ import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
 import {
   formatterOptions,
   isSqlFormatterId,
-  type SqlFormatterId,
 } from "./sql/formatter";
 import {
   isSqlLinterId,
   linterOptions,
-  type SqlLinterId,
 } from "./sql/linter";
 import { selectedOrCurrentStatement } from "./sql/statements";
-import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
+import { cssVariables, darkTheme, lightTheme } from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
@@ -346,7 +357,6 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
 type ConnectionInputMode = "url" | "fields";
-type EditorSplitMode = "single" | "right" | "down";
 
 type ConnectionDraft = {
   id: string;
@@ -364,18 +374,7 @@ type ConnectionDraft = {
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
 const savedQueryStorageKey = "irodori.savedScratchQuery.v1";
-const queryHistoryStorageKey = "irodori.queryHistory.v1";
 const queryParameterMemoryStorageKey = "irodori.queryParameters.v1";
-const themeStorageKey = "irodori.theme.v1";
-const vimModeStorageKey = "irodori.editor.vimMode.v1";
-const formatterStorageKey = "irodori.editor.formatter.v1";
-const linterStorageKey = "irodori.editor.linter.v1";
-const sidebarStorageKey = "irodori.sidebar.open.v1";
-const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
-const inspectorWidthStorageKey = "irodori.inspector.width.v1";
-const resultsHeightStorageKey = "irodori.results.height.v1";
-const editorSplitModeStorageKey = "irodori.editor.splitMode.v1";
-const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
 const defaultConnectionColor = "#6b7280";
 const connectionColorOptions = [
   defaultConnectionColor,
@@ -388,51 +387,12 @@ const connectionColorOptions = [
   "#ea580c",
 ];
 
-function loadThemeKind(): ThemeKind {
-  return window.localStorage.getItem(themeStorageKey) === "light"
-    ? "light"
-    : "dark";
-}
-
 function loadSavedQuery(): string {
   return window.localStorage.getItem(savedQueryStorageKey) ?? initialQuery;
 }
 
-function loadVimMode() {
-  return window.localStorage.getItem(vimModeStorageKey) === "true";
-}
-
-function loadFormatter(): SqlFormatterId {
-  const stored = window.localStorage.getItem(formatterStorageKey);
-  return isSqlFormatterId(stored) ? stored : "sql-formatter";
-}
-
-function loadLinter(): SqlLinterId {
-  const stored = window.localStorage.getItem(linterStorageKey);
-  return isSqlLinterId(stored) ? stored : "gentle";
-}
-
-function loadSidebarOpen() {
-  return window.localStorage.getItem(sidebarStorageKey) !== "false";
-}
-
-function loadEditorSplitMode(): EditorSplitMode {
-  const stored = window.localStorage.getItem(editorSplitModeStorageKey);
-  return stored === "right" || stored === "down" ? stored : "single";
-}
-
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function loadStoredNumber(
-  key: string,
-  fallback: number,
-  min: number,
-  max: number,
-) {
-  const stored = Number(window.localStorage.getItem(key));
-  return Number.isFinite(stored) ? clampNumber(stored, min, max) : fallback;
 }
 
 function keyScopeFromTarget(
@@ -475,25 +435,7 @@ function isCellEditorClipboardShortcut(
   );
 }
 
-const maxQueryHistoryItems = 200;
-const queryHistoryDisplayLimit = 25;
-
-type QueryHistoryItem = {
-  id: string;
-  connectionId: string;
-  connectionName: string;
-  engine: string;
-  sql: string;
-  status: "ok" | "error";
-  rowCount: number;
-  elapsedMs: number;
-  truncated: boolean;
-  error?: string;
-  ranAt: string;
-};
-
 type QueryParameterMemory = Record<string, Record<string, string>>;
-type HistoryScope = "active" | "all";
 
 type PendingQueryParameters = {
   sql: string;
@@ -969,52 +911,6 @@ function withUniqueProfileIds(profiles: ConnectionDraft[]) {
   });
 }
 
-function loadQueryHistory(): QueryHistoryItem[] {
-  try {
-    const raw = window.localStorage.getItem(queryHistoryStorageKey);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed
-      .flatMap((item): QueryHistoryItem[] => {
-        if (
-          !isRecord(item) ||
-          typeof item.id !== "string" ||
-          typeof item.connectionId !== "string" ||
-          typeof item.connectionName !== "string" ||
-          typeof item.engine !== "string" ||
-          typeof item.sql !== "string" ||
-          typeof item.ranAt !== "string" ||
-          (item.status !== "ok" && item.status !== "error")
-        ) {
-          return [];
-        }
-        return [
-          {
-            id: item.id,
-            connectionId: item.connectionId,
-            connectionName: item.connectionName,
-            engine: item.engine,
-            sql: item.sql,
-            status: item.status,
-            rowCount: Number(item.rowCount) || 0,
-            elapsedMs: Number(item.elapsedMs) || 0,
-            truncated: Boolean(item.truncated),
-            error: typeof item.error === "string" ? item.error : undefined,
-            ranAt: item.ranAt,
-          },
-        ];
-      })
-      .slice(0, maxQueryHistoryItems);
-  } catch {
-    return [];
-  }
-}
-
 function loadQueryParameterMemory(): QueryParameterMemory {
   try {
     const raw = window.localStorage.getItem(queryParameterMemoryStorageKey);
@@ -1108,57 +1004,6 @@ function tauriRuntimeError() {
   return "Tauri desktop runtime is not available. Open the Tauri app window, not the Vite browser URL.";
 }
 
-function formatHistoryTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "--:--";
-  }
-  return date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatHistoryDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown time";
-  }
-  return date.toLocaleString([], {
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function formatHistoryOutcome(item: QueryHistoryItem) {
-  if (item.status === "error") {
-    return item.error ? compactSql(item.error, 72) : "failed";
-  }
-  return `${toCount(item.rowCount)} rows${
-    item.truncated ? " capped" : ""
-  } · ${toCount(item.elapsedMs)} ms`;
-}
-
-function historySearchText(
-  item: QueryHistoryItem,
-  connection?: WorkspaceConnection,
-) {
-  return [
-    item.sql,
-    item.error ?? "",
-    item.status,
-    item.engine,
-    item.connectionName,
-    connection?.engine ?? "",
-    connection?.name ?? "",
-  ]
-    .join("\n")
-    .toLowerCase();
-}
-
 function validateDraft(draft: ConnectionDraft): string | null {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
   if (!resolvedDraft.id.trim()) {
@@ -1228,6 +1073,19 @@ const GRID_COLUMN_OVERSCAN = 2;
 const GRID_GUTTER_WIDTH = 34;
 const GRID_WINDOWED_ROW_THRESHOLD = 50_000;
 const GRID_WINDOWED_CELL_THRESHOLD = 250_000;
+
+// EXEC-010 disk-offload paging: rows per `db_result_window` fetch and how many
+// pages stay resident before LRU eviction. `24 * 1000 = 24k` rows is the flat-
+// memory ceiling on the client regardless of total result size.
+const RESULT_WINDOW_PAGE_SIZE = 1_000;
+const RESULT_WINDOW_MAX_RESIDENT_PAGES = 24;
+// Stable empty collections so a disk-offloaded result forces the windowed grid
+// path (no client-side edits/filters/sort over a result that lives on disk).
+const EMPTY_CELL_EDITS: ReadonlyMap<string, GridCellDraft> = new Map();
+const EMPTY_NEW_ROWS: readonly (readonly GridCellDraft[])[] = [];
+const EMPTY_DELETED_ROWS: ReadonlySet<number> = new Set();
+const EMPTY_FILTER_RULES: readonly ResultFilterRule[] = [];
+const EMPTY_SORT_RULES: readonly ResultSortRule[] = [];
 const GRID_COPY_ROW_LIMIT = 50_000;
 const SIDEBAR_WIDTH_MIN = 220;
 const SIDEBAR_WIDTH_MAX = 420;
@@ -1261,45 +1119,38 @@ function App() {
     fallbackSnapshot.activeConnectionId,
   );
   const [query, setQuery] = useState(loadSavedQuery);
-  const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
+  const themeKind = usePreferencesStore((state) => state.themeKind);
+  const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
   const theme = themeKind === "dark" ? darkTheme : lightTheme;
-  const [vimMode, setVimMode] = useState(loadVimMode);
-  const [formatter, setFormatter] = useState<SqlFormatterId>(loadFormatter);
-  const [sqlLinter, setSqlLinter] = useState<SqlLinterId>(loadLinter);
-  const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
-  const [sidebarWidth, setSidebarWidth] = useState(() =>
-    loadStoredNumber(
-      sidebarWidthStorageKey,
-      272,
-      SIDEBAR_WIDTH_MIN,
-      SIDEBAR_WIDTH_MAX,
-    ),
+  const vimMode = usePreferencesStore((state) => state.vimMode);
+  const setVimMode = usePreferencesStore((state) => state.setVimMode);
+  const formatter = usePreferencesStore((state) => state.formatter);
+  const setFormatter = usePreferencesStore((state) => state.setFormatter);
+  const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
+  const setSqlLinter = usePreferencesStore((state) => state.setSqlLinter);
+  const sidebarOpen = usePreferencesStore((state) => state.sidebarOpen);
+  const setSidebarOpen = usePreferencesStore((state) => state.setSidebarOpen);
+  const sidebarWidth = usePreferencesStore((state) => state.sidebarWidth);
+  const setSidebarWidth = usePreferencesStore((state) => state.setSidebarWidth);
+  const inspectorWidth = usePreferencesStore((state) => state.inspectorWidth);
+  const setInspectorWidth = usePreferencesStore(
+    (state) => state.setInspectorWidth,
   );
-  const [inspectorWidth, setInspectorWidth] = useState(() =>
-    loadStoredNumber(
-      inspectorWidthStorageKey,
-      285,
-      INSPECTOR_WIDTH_MIN,
-      INSPECTOR_WIDTH_MAX,
-    ),
+  const resultsHeight = usePreferencesStore((state) => state.resultsHeight);
+  const setResultsHeight = usePreferencesStore(
+    (state) => state.setResultsHeight,
   );
-  const [resultsHeight, setResultsHeight] = useState(() =>
-    loadStoredNumber(
-      resultsHeightStorageKey,
-      228,
-      RESULTS_HEIGHT_MIN,
-      RESULTS_HEIGHT_MAX,
-    ),
+  const editorSplitMode = usePreferencesStore(
+    (state) => state.editorSplitMode,
   );
-  const [editorSplitMode, setEditorSplitMode] =
-    useState<EditorSplitMode>(loadEditorSplitMode);
-  const [editorSplitPercent, setEditorSplitPercent] = useState(() =>
-    loadStoredNumber(
-      editorSplitSizeStorageKey,
-      50,
-      EDITOR_SPLIT_MIN,
-      EDITOR_SPLIT_MAX,
-    ),
+  const setEditorSplitMode = usePreferencesStore(
+    (state) => state.setEditorSplitMode,
+  );
+  const editorSplitPercent = usePreferencesStore(
+    (state) => state.editorSplitPercent,
+  );
+  const setEditorSplitPercent = usePreferencesStore(
+    (state) => state.setEditorSplitPercent,
   );
   const [activeEditorGroup, setActiveEditorGroup] = useState<
     "primary" | "secondary"
@@ -1325,6 +1176,28 @@ function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
+  // EXEC-010: when a run spills past the in-memory budget, the grid pages rows from
+  // disk through this handle instead of holding them all in JS. `spillInfo` drives
+  // the windowed grid path; `spillRef` holds the live LRU page source; the version
+  // counter forces the grid view model to recompute as pages arrive.
+  const resultOffloadEnabled = usePreferencesStore(
+    (state) => state.resultOffloadEnabled,
+  );
+  const setResultOffloadEnabled = usePreferencesStore(
+    (state) => state.setResultOffloadEnabled,
+  );
+  const resultMemoryBudget = usePreferencesStore(
+    (state) => state.resultMemoryBudget,
+  );
+  const setResultMemoryBudget = usePreferencesStore(
+    (state) => state.setResultMemoryBudget,
+  );
+  const [spillInfo, setSpillInfo] = useState<{ handle: string; total: number } | null>(
+    null,
+  );
+  const [gridWindowVersion, setGridWindowVersion] = useState(0);
+  const spillRef = useRef<{ handle: string; source: WindowedRows } | null>(null);
+  const pendingPagesRef = useRef<Set<number>>(new Set());
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [resultMode, setResultMode] = useState<ResultMode>("data");
   const [tableViewObject, setTableViewObject] = useState<DbObjectMetadata | null>(
@@ -1398,12 +1271,12 @@ function App() {
   const [schemaDraft, setSchemaDraft] =
     useState<SchemaDesignerDraft>(blankSchemaDraft);
   const diagramInitializedFor = useRef<string | null>(null);
-  const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
-  const [historySearch, setHistorySearch] = useState("");
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyScope, setHistoryScope] = useState<HistoryScope>("active");
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
-    null,
+  const appendHistory = useQueryHistoryStore((state) => state.append);
+  const openQueryHistoryDialog = useQueryHistoryStore(
+    (state) => state.openDialog,
+  );
+  const closeQueryHistoryDialog = useQueryHistoryStore(
+    (state) => state.closeDialog,
   );
   const [queryParameterMemory, setQueryParameterMemory] =
     useState<QueryParameterMemory>(loadQueryParameterMemory);
@@ -1448,66 +1321,16 @@ function App() {
 
   useEffect(() => {
     window.localStorage.setItem(
-      queryHistoryStorageKey,
-      JSON.stringify(history),
-    );
-  }, [history]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
       queryParameterMemoryStorageKey,
       JSON.stringify(queryParameterMemory),
     );
   }, [queryParameterMemory]);
 
   useEffect(() => {
-    window.localStorage.setItem(themeStorageKey, themeKind);
-  }, [themeKind]);
-
-  useEffect(() => {
-    window.localStorage.setItem(vimModeStorageKey, String(vimMode));
-  }, [vimMode]);
-
-  useEffect(() => {
-    window.localStorage.setItem(formatterStorageKey, formatter);
-  }, [formatter]);
-
-  useEffect(() => {
-    window.localStorage.setItem(linterStorageKey, sqlLinter);
-  }, [sqlLinter]);
-
-  useEffect(() => {
-    window.localStorage.setItem(sidebarStorageKey, String(sidebarOpen));
-  }, [sidebarOpen]);
-
-  useEffect(() => {
-    window.localStorage.setItem(sidebarWidthStorageKey, String(sidebarWidth));
-  }, [sidebarWidth]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      inspectorWidthStorageKey,
-      String(inspectorWidth),
-    );
-  }, [inspectorWidth]);
-
-  useEffect(() => {
-    window.localStorage.setItem(resultsHeightStorageKey, String(resultsHeight));
-  }, [resultsHeight]);
-
-  useEffect(() => {
-    window.localStorage.setItem(editorSplitModeStorageKey, editorSplitMode);
     if (editorSplitMode === "single") {
       setActiveEditorGroup("primary");
     }
   }, [editorSplitMode]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      editorSplitSizeStorageKey,
-      String(editorSplitPercent),
-    );
-  }, [editorSplitPercent]);
 
   useEffect(() => {
     return () => {
@@ -1586,51 +1409,6 @@ function App() {
     }
     return editorApiRef.current;
   }
-  const historyNeedle = historySearch.trim().toLowerCase();
-  const scopedHistory = useMemo(() => {
-    const activeHistory = history.filter(
-      (item) => item.connectionId === activeConnectionId,
-    );
-    const visibleHistory = historyNeedle
-      ? activeHistory.filter((item) =>
-          historySearchText(
-            item,
-            connectionById.get(item.connectionId),
-          ).includes(historyNeedle),
-        )
-      : activeHistory;
-
-    return visibleHistory.slice(0, queryHistoryDisplayLimit);
-  }, [activeConnectionId, connectionById, history, historyNeedle]);
-  const activeHistoryCount = useMemo(
-    () =>
-      history.filter((item) => item.connectionId === activeConnectionId).length,
-    [activeConnectionId, history],
-  );
-  const historyDialogItems = useMemo(() => {
-    const scopedItems =
-      historyScope === "active"
-        ? history.filter((item) => item.connectionId === activeConnectionId)
-        : history;
-    return historyNeedle
-      ? scopedItems.filter((item) =>
-          historySearchText(
-            item,
-            connectionById.get(item.connectionId),
-          ).includes(historyNeedle),
-        )
-      : scopedItems;
-  }, [
-    activeConnectionId,
-    connectionById,
-    history,
-    historyNeedle,
-    historyScope,
-  ]);
-  const selectedHistoryItem =
-    historyDialogItems.find((item) => item.id === selectedHistoryId) ??
-    historyDialogItems[0] ??
-    null;
   const availableDiagramSchemas = useMemo(
     () =>
       activeMetadata?.schemas
@@ -1813,22 +1591,28 @@ function App() {
   };
 
   // Build the display rows from raw results plus staged edits, filters, and sort.
+  // A disk-offloaded result (EXEC-010) forces the windowed path with empty
+  // edits/filters/sort: its rows live on disk, so it is browse-only here and reads
+  // through the `db_result_window` proxy. `gridWindowVersion` re-runs this as pages
+  // arrive. Client-side sort/filter/edit over a spilled result need server-side
+  // EXEC-005A / run-to-file EXEC-008 and are intentionally disabled.
+  const spilled = spillInfo !== null;
   const resultGridView = useMemo(
     () =>
       buildResultGridViewModel(
         {
           rows: activeResult?.rows ?? resultRows,
-          cellEdits,
-          newRows,
-          deletedRows,
-          filterRules,
-          quickFilter,
+          cellEdits: spilled ? EMPTY_CELL_EDITS : cellEdits,
+          newRows: spilled ? EMPTY_NEW_ROWS : newRows,
+          deletedRows: spilled ? EMPTY_DELETED_ROWS : deletedRows,
+          filterRules: spilled ? EMPTY_FILTER_RULES : filterRules,
+          quickFilter: spilled ? "" : quickFilter,
           filterJoin,
-          sortRules,
+          sortRules: spilled ? EMPTY_SORT_RULES : sortRules,
         },
         {
-          windowedRowThreshold: GRID_WINDOWED_ROW_THRESHOLD,
-          windowedCellThreshold: GRID_WINDOWED_CELL_THRESHOLD,
+          windowedRowThreshold: spilled ? 0 : GRID_WINDOWED_ROW_THRESHOLD,
+          windowedCellThreshold: spilled ? 0 : GRID_WINDOWED_CELL_THRESHOLD,
         },
       ),
     [
@@ -1840,6 +1624,8 @@ function App() {
       quickFilter,
       filterJoin,
       sortRules,
+      spilled,
+      gridWindowVersion,
     ],
   );
   const {
@@ -1870,6 +1656,48 @@ function App() {
   const visibleRows = resultGridView.rowsInRange(firstVisible, lastVisible);
   const structureObject = resultMode === "structure" ? tableViewObject : null;
   const showingStructure = Boolean(structureObject);
+
+  // EXEC-010: fetch the disk pages the visible range needs, ingest them into the
+  // LRU source, and bump the version so the grid repaints with real cells. The LRU
+  // budget keeps resident rows flat no matter how far the user scrolls.
+  useEffect(() => {
+    const spill = spillRef.current;
+    if (!spill || !spillInfo || spillInfo.handle !== spill.handle) {
+      return;
+    }
+    const requests = spill.source.missingPages(firstVisible, lastVisible);
+    if (requests.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      for (const request of requests) {
+        if (cancelled || pendingPagesRef.current.has(request.pageIndex)) {
+          continue;
+        }
+        pendingPagesRef.current.add(request.pageIndex);
+        try {
+          const page = await dbResultWindow(
+            spill.handle,
+            request.offset,
+            request.limit,
+          );
+          if (cancelled) {
+            return;
+          }
+          spill.source.ingest(Number(page.offset), page.rows);
+          setGridWindowVersion((version) => version + 1);
+        } catch {
+          // Leave the rows as placeholders; a later scroll retries the page.
+        } finally {
+          pendingPagesRef.current.delete(request.pageIndex);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [spillInfo, firstVisible, lastVisible, gridWindowVersion]);
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
     pendingGridScroll.current = {
@@ -2048,6 +1876,19 @@ function App() {
     setFilterRules([]);
     setFilterJoin("and");
     setFiltersOpen(false);
+  }
+
+  // EXEC-010: drop the active disk-offloaded result and ask the backend to remove
+  // its temp file. Safe to call when nothing is spilled.
+  function releaseActiveSpill() {
+    const previous = spillRef.current;
+    spillRef.current = null;
+    pendingPagesRef.current.clear();
+    if (previous) {
+      void dbReleaseResult(previous.handle).catch(() => {});
+    }
+    setSpillInfo(null);
+    setGridWindowVersion(0);
   }
 
   function toggleSort(col: number, additive = false) {
@@ -2552,7 +2393,7 @@ function App() {
         openSettingsSection("general");
         break;
       case "history.open":
-        openHistoryDialog();
+        openQueryHistoryDialog();
         break;
       case "help.open":
       case "about.open":
@@ -3270,27 +3111,12 @@ function App() {
     }
   }
 
-  function appendHistory(item: QueryHistoryItem) {
-    setHistory((current) => [item, ...current].slice(0, maxQueryHistoryItems));
-  }
-
-  function openHistoryDialog(itemId?: string) {
-    setSelectedHistoryId(
-      itemId ??
-        selectedHistoryItem?.id ??
-        scopedHistory[0]?.id ??
-        history[0]?.id ??
-        null,
-    );
-    setHistoryOpen(true);
-  }
-
   function loadHistoryItem(item: QueryHistoryItem) {
     if (item.connectionId !== activeConnectionId) {
       setActiveConnectionId(item.connectionId);
     }
     setQuery(item.sql);
-    setHistoryOpen(false);
+    closeQueryHistoryDialog();
     window.setTimeout(() => activeEditorApi()?.focus(), 0);
     showActionNotice("success", "SQL loaded", item.connectionName);
   }
@@ -3306,36 +3132,8 @@ function App() {
       return;
     }
     setQuery(item.sql);
-    setHistoryOpen(false);
+    closeQueryHistoryDialog();
     await runEditorSql(item.sql, { allowMagic: false });
-  }
-
-  function deleteHistoryItem(id: string) {
-    const deleted = history.find((item) => item.id === id);
-    setHistory((current) => current.filter((item) => item.id !== id));
-    if (selectedHistoryId === id) {
-      setSelectedHistoryId(null);
-    }
-    showActionNotice(
-      "success",
-      "History deleted",
-      deleted ? compactSql(deleted.sql, 56) : undefined,
-    );
-  }
-
-  function clearVisibleHistory() {
-    if (historyDialogItems.length === 0) {
-      return;
-    }
-    const count = historyDialogItems.length;
-    const label = count === 1 ? "history entry" : "history entries";
-    if (!window.confirm(`Delete ${toCount(count)} visible ${label}?`)) {
-      return;
-    }
-    const ids = new Set(historyDialogItems.map((item) => item.id));
-    setHistory((current) => current.filter((item) => !ids.has(item.id)));
-    setSelectedHistoryId(null);
-    showActionNotice("success", "History cleared", `${toCount(count)} deleted`);
   }
 
   function exportActiveResult(format: ResultExportFormat) {
@@ -3817,6 +3615,9 @@ function App() {
     // A new run invalidates any staged edits and resets the scroll/filter/sort view.
     resetEdits();
     resetGridView();
+    // Release the previous disk-offloaded result (EXEC-010) so its temp file is
+    // freed before this run replaces it.
+    releaseActiveSpill();
     if (gridRef.current) {
       gridRef.current.scrollTop = 0;
       gridRef.current.scrollLeft = 0;
@@ -3880,30 +3681,110 @@ function App() {
           publishStreamResultNow();
         });
       };
-      await runQueryStream(
-        {
+      const finalizeSpillRun = (spill: SpillRunResult) => {
+        const first = ensureResultSet(0);
+        const totalRows = Number(spill.totalRows);
+        const source = new WindowedRows({
+          total: totalRows,
+          columnCount: spill.columns.length,
+          pageSize: RESULT_WINDOW_PAGE_SIZE,
+          maxResidentPages: RESULT_WINDOW_MAX_RESIDENT_PAGES,
+        });
+        source.ingest(0, first.rows);
+        spillRef.current = { handle: spill.handle, source };
+        pendingPagesRef.current.clear();
+        setSpillInfo({ handle: spill.handle, total: totalRows });
+        setGridWindowVersion((version) => version + 1);
+        setResult({
+          columns: spill.columns,
+          rows: createWindowedRowsProxy(source) as QueryResult["rows"],
+          rowCount: spill.totalRows,
+          elapsedMs: spill.elapsedMs,
+          truncated: spill.truncated,
+          message: spill.spilled
+            ? "result retained on disk; scrolling pages rows on demand"
+            : spill.truncated
+              ? "result capped at memory budget"
+              : undefined,
+        });
+        appendHistory({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           connectionId: activeConnectionId,
+          connectionName: activeConnection.name,
+          engine: activeConnection.engine,
           sql: sqlToRun,
-          maxRows: 10_000,
-          queryId,
-          params,
-        },
-        (event) => {
-          switch (event.type) {
-            case "columns":
-              ensureResultSet(event.resultSetIndex).columns = event.columns;
-              publishStreamResultNow();
-              break;
-            case "rows":
-              {
+          status: "ok",
+          rowCount: totalRows,
+          elapsedMs: Number(spill.elapsedMs),
+          truncated: spill.truncated,
+          ranAt,
+        });
+        if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
+          void refreshObjects(activeConnectionId, true);
+        }
+        showActionNotice(
+          "success",
+          "Query finished",
+          `${toCount(totalRows)} rows in ${toCount(spill.elapsedMs)} ms`,
+        );
+      };
+      if (resultOffloadEnabled) {
+        // EXEC-010 disk offload: stream the resident first page for an immediate
+        // paint, then hand the grid a windowed source that pages the rest from disk.
+        const spill = await runQuerySpill(
+          {
+            connectionId: activeConnectionId,
+            sql: sqlToRun,
+            memoryBudget: resultMemoryBudget,
+            offloadEnabled: true,
+            queryId,
+            params,
+          },
+          (event) => {
+            switch (event.type) {
+              case "columns":
+                ensureResultSet(event.resultSetIndex).columns = event.columns;
+                publishStreamResultNow();
+                break;
+              case "rows": {
                 const set = ensureResultSet(event.resultSetIndex);
                 set.rows.push(...event.rows);
                 set.rowCount = BigInt(set.rows.length);
                 set.elapsedMs = BigInt(Math.round(performance.now() - started));
+                scheduleStreamResultPublish();
+                break;
               }
-              scheduleStreamResultPublish();
-              break;
-            case "done":
+            }
+          },
+        );
+        finalizeSpillRun(spill);
+      } else {
+        await runQueryStream(
+          {
+            connectionId: activeConnectionId,
+            sql: sqlToRun,
+            maxRows: 10_000,
+            queryId,
+            params,
+          },
+          (event) => {
+            switch (event.type) {
+              case "columns":
+                ensureResultSet(event.resultSetIndex).columns = event.columns;
+                publishStreamResultNow();
+                break;
+              case "rows":
+                {
+                  const set = ensureResultSet(event.resultSetIndex);
+                  set.rows.push(...event.rows);
+                  set.rowCount = BigInt(set.rows.length);
+                  set.elapsedMs = BigInt(
+                    Math.round(performance.now() - started),
+                  );
+                }
+                scheduleStreamResultPublish();
+                break;
+              case "done":
               for (const summary of event.resultSets) {
                 const set = ensureResultSet(summary.resultSetIndex);
                 set.rowCount = BigInt(summary.rowCount);
@@ -3953,8 +3834,9 @@ function App() {
               });
               break;
           }
-        },
-      );
+          },
+        );
+      }
     } catch (error) {
       const message = errorMessage(error);
       setQueryError(message);
@@ -4844,78 +4726,11 @@ function App() {
                   )}
                 </div>
               </section>
-              <section>
-                <div className="section-heading">
-                  <span>History</span>
-                  <div className="section-heading-actions">
-                    <small>{toCount(activeHistoryCount)}</small>
-                    <button
-                      type="button"
-                      aria-label="Open query history"
-                      title="Open query history"
-                      onClick={() => openHistoryDialog(scopedHistory[0]?.id)}
-                    >
-                      <Maximize2 size={12} />
-                    </button>
-                  </div>
-                </div>
-                <label className="history-search">
-                  <Search size={13} />
-                  <input
-                    value={historySearch}
-                    placeholder="Search history"
-                    aria-label="Search query history"
-                    onChange={(event) =>
-                      setHistorySearch(event.currentTarget.value)
-                    }
-                  />
-                  {historySearch ? (
-                    <button
-                      type="button"
-                      aria-label="Clear history search"
-                      title="Clear history search"
-                      onClick={() => setHistorySearch("")}
-                    >
-                      <X size={12} />
-                    </button>
-                  ) : null}
-                </label>
-                <div className="history-list">
-                  {scopedHistory.length > 0 ? (
-                    scopedHistory.map((item) => (
-                      <button
-                        className={`history-item ${item.status}`}
-                        key={item.id}
-                        type="button"
-                        title={
-                          item.status === "error" && item.error
-                            ? item.error
-                            : item.sql
-                        }
-                        onClick={() => setQuery(item.sql)}
-                      >
-                        <strong>{compactSql(item.sql)}</strong>
-                        <small>
-                          <span>{formatHistoryTime(item.ranAt)}</span>
-                          <span>
-                            {item.status === "ok"
-                              ? `${toCount(item.rowCount)} rows${
-                                  item.truncated ? " capped" : ""
-                                } · ${toCount(item.elapsedMs)} ms`
-                              : "failed"}
-                          </span>
-                        </small>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="empty-browser">
-                      {historyNeedle
-                        ? "No matching history"
-                        : "No query history"}
-                    </div>
-                  )}
-                </div>
-              </section>
+              <QueryHistorySidebar
+                activeConnectionId={activeConnectionId}
+                connectionById={connectionById}
+                onLoad={(item) => setQuery(item.sql)}
+              />
             </aside>
           </div>
 
@@ -6092,6 +5907,50 @@ function App() {
                     </label>
                     <label className="settings-row">
                       <span>
+                        <strong>Result offload</strong>
+                        <small>Page large result sets from disk instead of capping in RAM.</small>
+                      </span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={resultOffloadEnabled ? "active" : undefined}
+                          onClick={() => setResultOffloadEnabled(true)}
+                        >
+                          On
+                        </button>
+                        <button
+                          type="button"
+                          className={!resultOffloadEnabled ? "active" : undefined}
+                          onClick={() => setResultOffloadEnabled(false)}
+                        >
+                          Off
+                        </button>
+                      </div>
+                    </label>
+                    <label className="settings-row">
+                      <span>
+                        <strong>Resident rows</strong>
+                        <small>Rows kept in memory before the disk-backed result takes over.</small>
+                      </span>
+                      <input
+                        type="number"
+                        min={1_000}
+                        max={100_000}
+                        step={1_000}
+                        value={resultMemoryBudget}
+                        onChange={(event) =>
+                          setResultMemoryBudget(
+                            clampNumber(
+                              Number(event.currentTarget.value),
+                              1_000,
+                              100_000,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="settings-row">
+                      <span>
                         <strong>Sidebar</strong>
                         <small>Object browser and connection switcher.</small>
                       </span>
@@ -6401,217 +6260,14 @@ function App() {
         </div>
       ) : null}
 
-      {historyOpen ? (
-        <div
-          className="palette-overlay history-overlay"
-          onClick={() => setHistoryOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="data-dialog history-dialog"
-            role="dialog"
-            aria-label="Query history"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="dialog-header">
-              <strong>Query History</strong>
-              <span>
-                {toCount(historyDialogItems.length)} visible of{" "}
-                {toCount(history.length)} saved
-              </span>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setHistoryOpen(false)}
-              >
-                <X size={13} />
-                Close
-              </button>
-            </div>
-            <div className="history-toolbar">
-              <label className="history-search">
-                <Search size={13} />
-                <input
-                  autoFocus
-                  value={historySearch}
-                  placeholder="Search SQL, connection, engine, or error"
-                  aria-label="Search query history"
-                  onChange={(event) =>
-                    setHistorySearch(event.currentTarget.value)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      setHistoryOpen(false);
-                    }
-                  }}
-                />
-                {historySearch ? (
-                  <button
-                    type="button"
-                    aria-label="Clear history search"
-                    title="Clear history search"
-                    onClick={() => setHistorySearch("")}
-                  >
-                    <X size={12} />
-                  </button>
-                ) : null}
-              </label>
-              <div
-                className="segmented-control history-scope"
-                role="group"
-                aria-label="History scope"
-              >
-                <button
-                  type="button"
-                  className={historyScope === "active" ? "active" : undefined}
-                  onClick={() => setHistoryScope("active")}
-                >
-                  Active
-                </button>
-                <button
-                  type="button"
-                  className={historyScope === "all" ? "active" : undefined}
-                  onClick={() => setHistoryScope("all")}
-                >
-                  All
-                </button>
-              </div>
-              <button
-                className="text-button danger"
-                type="button"
-                disabled={historyDialogItems.length === 0}
-                onClick={clearVisibleHistory}
-              >
-                <Trash2 size={13} />
-                Clear visible
-              </button>
-            </div>
-            <div className="history-dialog-body">
-              <div
-                className="history-results"
-                role="listbox"
-                aria-label="Query history entries"
-              >
-                {historyDialogItems.length > 0 ? (
-                  historyDialogItems.map((item) => {
-                    const selected = selectedHistoryItem?.id === item.id;
-                    return (
-                      <button
-                        className={`history-row ${item.status}${
-                          selected ? " active" : ""
-                        }`}
-                        key={item.id}
-                        type="button"
-                        role="option"
-                        aria-selected={selected}
-                        title={item.sql}
-                        onClick={() => setSelectedHistoryId(item.id)}
-                      >
-                        <span className="history-row-main">
-                          <strong>{compactSql(item.sql, 128)}</strong>
-                          <small>
-                            {item.connectionName} · {item.engine}
-                          </small>
-                        </span>
-                        <span className="history-row-meta">
-                          <span>{formatHistoryDateTime(item.ranAt)}</span>
-                          <span>{formatHistoryOutcome(item)}</span>
-                        </span>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="empty-browser">
-                    {historyNeedle ? "No matching history" : "No query history"}
-                  </div>
-                )}
-              </div>
-              <section
-                className="history-detail"
-                aria-label="Selected query history"
-              >
-                {selectedHistoryItem ? (
-                  <>
-                    <div className="history-detail-header">
-                      <div className="history-detail-title">
-                        <span>
-                          <strong>{selectedHistoryItem.connectionName}</strong>
-                          <small>{selectedHistoryItem.engine}</small>
-                        </span>
-                        <span
-                          className={`history-status-badge ${selectedHistoryItem.status}`}
-                        >
-                          {selectedHistoryItem.status === "ok"
-                            ? "Success"
-                            : "Failed"}
-                        </span>
-                      </div>
-                      <div className="history-meta">
-                        <span className="history-chip">
-                          {formatHistoryDateTime(selectedHistoryItem.ranAt)}
-                        </span>
-                        <span className="history-chip">
-                          {formatHistoryOutcome(selectedHistoryItem)}
-                        </span>
-                      </div>
-                      <div className="history-detail-actions">
-                        <button
-                          className="text-button"
-                          type="button"
-                          onClick={() => loadHistoryItem(selectedHistoryItem)}
-                        >
-                          Load
-                        </button>
-                        <button
-                          className="primary-button"
-                          type="button"
-                          disabled={
-                            selectedHistoryItem.connectionId !==
-                              activeConnectionId ||
-                            !activeConnectionOpen ||
-                            running
-                          }
-                          title={
-                            selectedHistoryItem.connectionId !== activeConnectionId
-                              ? "Load this SQL to switch connection before running"
-                              : activeConnectionOpen
-                                ? "Run this SQL again"
-                                : "Connect before running"
-                          }
-                          onClick={() => void runHistoryItem(selectedHistoryItem)}
-                        >
-                          <Play size={13} fill="currentColor" />
-                          Run again
-                        </button>
-                        <button
-                          className="text-button danger"
-                          type="button"
-                          onClick={() => deleteHistoryItem(selectedHistoryItem.id)}
-                        >
-                          <Trash2 size={13} />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                    <pre className="history-sql">{selectedHistoryItem.sql}</pre>
-                    {selectedHistoryItem.error ? (
-                      <div className="inline-error history-error">
-                        <AlertTriangle size={13} />
-                        <span>{selectedHistoryItem.error}</span>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <div className="history-empty-detail">
-                    <Clock3 size={18} />
-                    <span>Select a history entry</span>
-                  </div>
-                )}
-              </section>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <QueryHistoryDialog
+        activeConnectionId={activeConnectionId}
+        activeConnectionOpen={activeConnectionOpen}
+        running={running}
+        connectionById={connectionById}
+        onLoad={loadHistoryItem}
+        onRun={(item) => void runHistoryItem(item)}
+      />
 
       {pendingQueryParameters ? (
         <div

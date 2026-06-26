@@ -341,6 +341,12 @@
   min-width: 0;
 }
 
+.history-detail-actions .primary-button:disabled {
+  border-color: var(--border-strong);
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+
 .history-sql {
   flex: 1;
   min-height: 0;
