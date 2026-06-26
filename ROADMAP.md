@@ -66,10 +66,12 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   - `irodori-completion`: parser-aware deterministic completion, ranking, snippets, signature help, and optional provider hooks.
   - `irodori-ai`: opt-in AI provider abstraction, local model support, audit log, redaction, and MCP bridge.
   - `irodori-knowledge`: local SQLite-backed source snapshots, extracted facts, implementation notes, and search over DB/client specs.
-  - `irodori-jobs`: long-running job runtime for large index construction, ML/eval pipelines, knowledge refresh, imports/exports, bulk edits, and other batch work with cancellation, checkpoints, progress, and resource budgets.
   - `irodori-ml`: local-first ML dataset preparation, evaluation, ranking experiments, and provider/model benchmarking; user data never leaves the machine unless an explicit workspace policy allows that class of data.
   - `irodori-io`: shared export/import encoders — CSV/TSV (header toggle, delimiter/quote control), SQL INSERT/UPSERT, JSON/NDJSON, Avro, Parquet — plus dump/restore orchestration.
   - `irodori-server`: optional headless/local HTTP API exposing read and safe-write data operations over the same adapter, proxy, and security model (study PostgREST and DuckDB httpserver patterns, implement independently).
+- Job runtime currently belongs in `irodori-core::jobs`. Do not split an
+  `irodori-jobs` crate until at least two real workflows and the local API prove
+  that an independent package boundary pays for itself.
 - Areas that do not yet have a real shared API, such as datasource contracts and
   i18n catalogs, should remain modules or app-local code until the split pays for
   itself.
@@ -198,23 +200,49 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Internationalization for Rust/TypeScript desktop apps: ICU MessageFormat and Project Fluent for ja/en catalogs.
 - Test automation: ephemeral-database harnesses (containers/embedded), golden-snapshot testing for generated bindings, and headless UI testing for Tauri.
 
+## Recently Burned Down
+
+- Desktop workbench structure is no longer centered on a huge `App.tsx`: dialogs,
+  results, workbench shell, command handlers, and UI state now have dedicated
+  feature modules/stores.
+- Theme UX has moved into Settings, with saved custom themes, VS Code-theme
+  import normalization, and active-theme switching tracked by `THEME-001/002`.
+- Editor controls were tightened: Run Current sits at the editor corner, split
+  controls are icon-only, and the user-facing pane split is capped to the simple
+  two-pane workflow.
+- Git graph baseline is present and should be hardened as a workbench view, not a
+  detached experiment.
+- `JOB-001` is no longer a blank crate-sized task: the shared runtime foundation
+  lives in `irodori-core::jobs` with progress, cancellation, logs, artifacts,
+  retry/concurrency fields, budgets, checkpoints, desktop commands, and server
+  DTO reuse.
+- `EXEC-004B` is closed: lazy 1M-row virtualization coverage exists alongside
+  wide-column virtualization. Future work moves to renderer-path benchmarks and
+  very-large scrollbar scaling only if larger fixtures require it.
+
 ## Immediate Next Steps
 
-- Keep `docs/clean-room.md` enforced during every reference-driven change.
-- Expand `docs/feature-matrix.md` through hands-on review of TablePlus, A5:SQL Mk-2, Beekeeper Studio, SQLTools, vscode-mssql, and major DB clients.
-- Build a Beekeeper-plus checklist from OSS code/docs and mark what must be matched, exceeded, or skipped.
-- Keep `docs/db-client-market-scan-2026-06-21.md` and `docs/completion-and-ai-strategy.md` current as product/research inputs.
-- Keep `docs/data-source-coverage-strategy.md` and `docs/type-bridge-handoff.md` current before the adapter and command surfaces harden.
-- Initialize the local knowledge DB with `node tools/knowledge/refresh.mjs --no-fetch`, then add scheduled refresh automation.
-- Add source snapshots for YugabyteDB, InfluxDB, Neo4j, and source-specific GUI tools.
-- Spike renderer options: Tauri WebView, canvas/WebGPU inside WebView, and native Rust GPU GUI for editor/result-grid surfaces.
-- Expand the Rust-generated TypeScript binding spike beyond `workspace_snapshot`, add a friendly typegen command, and check generated drift in CI.
-- Turn `docs/extension-development.md` into a working SDK scaffold and first sample extension.
-- Scaffold the Tauri/Rust workspace.
-- Choose the first editor engine after a Vim-mode and completion spike.
-- Implement SQLite/PostgreSQL vertical slice before broadening the adapter surface.
-- Work `docs/implementation-backlog.md` ticket by ticket; keep it in sync with the phases above.
-- Expand `docs/data-source-coverage-strategy.md` with the Iceberg/lakehouse catalog plan and Snowflake auth coverage.
-- Prototype export encoders (CSV/TSV header toggle and SQL INSERT) inside the vertical slice, then add JSON/Avro/Parquet.
-- Spike a read-only local data API behind a feature flag before opening write paths.
-- Scaffold ja/en i18n and a test-automation harness (unit + ephemeral-DB integration + generated-binding golden check) early.
+- Keep `docs/clean-room.md`, `docs/feature-matrix.md`,
+  `docs/production-readiness.md`, and `docs/implementation-backlog.md` aligned,
+  but avoid mixing unrelated parallel edits into release commits.
+- Finish `THEME-001b`: convert remaining hardcoded workbench/result/sidebar
+  colors to normalized theme variables so imported/saved themes affect the whole
+  shell, not just the editor and chrome.
+- Finish `THEME-002`: wire file import, custom theme naming, save/delete, and
+  Settings-based switching on top of the normalized VS Code importer.
+- Harden the Git graph workbench view: commit search/filter, branch/remote
+  context, selection details, and keyboard navigation.
+- Close the workspace basics before adding more pane complexity: query tab CRUD,
+  per-tab connection binding, saved queries, history search, and a drawer/modal
+  detail view with full SQL, rerun, delete, and save actions.
+- Advance `JOB-004` by migrating one real workflow, preferably run-to-file export
+  or knowledge refresh, onto `irodori-core::jobs` to prove the runtime contract.
+- Start `PERF-001` now that row, wide-column, and 1M-row virtualization gates are
+  in place: compare WebView DOM, canvas/WebGPU-in-WebView, and native Rust GPU
+  paths for editor and result-grid hot surfaces.
+- Keep the crate layout conservative: add modules first, extract crates only when
+  a stable shared API, independent test boundary, or multi-host release boundary
+  is already visible.
+- Keep CI/release discipline tight: typegen drift, frontend unit tests, browser
+  smoke, Rust tests, security checks, and release notes should be green before
+  each cut.
