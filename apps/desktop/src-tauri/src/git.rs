@@ -158,7 +158,10 @@ pub fn git_status(repo_path: Option<String>) -> IrodoriResult<GitStatusSummary> 
 }
 
 #[tauri::command]
-pub fn git_log(repo_path: Option<String>, limit: Option<u32>) -> IrodoriResult<Vec<GitCommitSummary>> {
+pub fn git_log(
+    repo_path: Option<String>,
+    limit: Option<u32>,
+) -> IrodoriResult<Vec<GitCommitSummary>> {
     let repo_root = resolve_repo_root(repo_path.as_deref())?;
     git_log_impl(&repo_root, limit.unwrap_or(12).clamp(1, LOG_LIMIT_MAX))
 }
@@ -169,7 +172,11 @@ pub fn git_diff(
     file_path: Option<String>,
 ) -> IrodoriResult<GitDiffResult> {
     let repo_root = resolve_repo_root(repo_path.as_deref())?;
-    let file = match file_path.as_deref().map(str::trim).filter(|path| !path.is_empty()) {
+    let file = match file_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+    {
         Some(path) => Some(validate_relative_file_path(path)?),
         None => None,
     };
@@ -206,7 +213,10 @@ pub fn git_diff(
 }
 
 #[tauri::command]
-pub fn git_commit_all(repo_path: Option<String>, message: String) -> IrodoriResult<GitCommandOutput> {
+pub fn git_commit_all(
+    repo_path: Option<String>,
+    message: String,
+) -> IrodoriResult<GitCommandOutput> {
     let repo_root = resolve_repo_root(repo_path.as_deref())?;
     let message = message.trim();
     if message.is_empty() {
@@ -297,14 +307,18 @@ pub fn git_discard_files(
     let mut stderr = String::new();
     let mut status_code = 0;
     if !tracked.is_empty() {
-        let output =
-            run_git_with_paths(&repo_root, &["restore", "--staged", "--worktree"], &tracked, &[0])?;
+        let output = run_git_with_paths(
+            &repo_root,
+            &["restore", "--staged", "--worktree"],
+            &tracked,
+            &[0],
+        )?;
         stdout.push_str(&String::from_utf8_lossy(&output.stdout));
         stderr.push_str(&String::from_utf8_lossy(&output.stderr));
         status_code = output.status.code().unwrap_or(status_code);
     }
     if !untracked.is_empty() {
-        let output = run_git_with_paths(&repo_root, &["clean", "-f"], &untracked, &[0])?;
+        let output = run_git_with_paths(&repo_root, &["clean", "-fd"], &untracked, &[0])?;
         stdout.push_str(&String::from_utf8_lossy(&output.stdout));
         stderr.push_str(&String::from_utf8_lossy(&output.stderr));
         status_code = output.status.code().unwrap_or(status_code);
@@ -400,7 +414,9 @@ fn resolve_repo_root(repo_path: Option<&str>) -> IrodoriResult<PathBuf> {
 
     let manifest_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     try_repo_root(&manifest_root).map_err(|message| {
-        IrodoriError::validation(format!("default workspace is not a git repository: {message}"))
+        IrodoriError::validation(format!(
+            "default workspace is not a git repository: {message}"
+        ))
     })
 }
 
@@ -443,11 +459,10 @@ fn run_git(repo_root: &Path, args: &[&str], success_codes: &[i32]) -> IrodoriRes
         return Ok(output);
     }
 
-    Err(IrodoriError::new(
-        IrodoriErrorKind::Internal,
-        output_stderr(output),
+    Err(
+        IrodoriError::new(IrodoriErrorKind::Internal, output_stderr(output))
+            .with_code(format!("git.exit.{code}")),
     )
-    .with_code(format!("git.exit.{code}")))
 }
 
 fn run_git_owned(
@@ -466,7 +481,9 @@ fn run_git_with_paths(
     success_codes: &[i32],
 ) -> IrodoriResult<Output> {
     if paths.is_empty() {
-        return Err(IrodoriError::validation("at least one git file path is required"));
+        return Err(IrodoriError::validation(
+            "at least one git file path is required",
+        ));
     }
     let mut args: Vec<String> = base_args.iter().map(|arg| (*arg).to_string()).collect();
     args.push("--".into());
@@ -790,13 +807,14 @@ fn validate_relative_file_path(path: &str) -> IrodoriResult<PathBuf> {
 
 fn validate_relative_file_paths(paths: Vec<String>) -> IrodoriResult<Vec<String>> {
     if paths.is_empty() {
-        return Err(IrodoriError::validation("at least one git file path is required"));
+        return Err(IrodoriError::validation(
+            "at least one git file path is required",
+        ));
     }
     paths
         .iter()
         .map(|path| {
-            validate_relative_file_path(path)
-                .map(|path| path.to_string_lossy().to_string())
+            validate_relative_file_path(path).map(|path| path.to_string_lossy().to_string())
         })
         .collect()
 }
@@ -807,7 +825,9 @@ fn validate_branch_name(repo_root: &Path, branch: String) -> IrodoriResult<Strin
         return Err(IrodoriError::validation("git branch name is required"));
     }
     if branch.starts_with('-') {
-        return Err(IrodoriError::validation("git branch name cannot start with '-'"));
+        return Err(IrodoriError::validation(
+            "git branch name cannot start with '-'",
+        ));
     }
     run_git(repo_root, &["check-ref-format", "--branch", branch], &[0])?;
     Ok(branch.to_string())
@@ -836,7 +856,14 @@ fn build_untracked_diff(repo_root: &Path, path: &Path) -> IrodoriResult<String> 
     let path_string = absolute.to_string_lossy().to_string();
     let output = run_git(
         repo_root,
-        &["diff", "--no-ext-diff", "--no-index", "--", "/dev/null", &path_string],
+        &[
+            "diff",
+            "--no-ext-diff",
+            "--no-index",
+            "--",
+            "/dev/null",
+            &path_string,
+        ],
         &[0, 1],
     )?;
     Ok(output_stdout(output))
@@ -885,6 +912,41 @@ fn path_to_string(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct TestRepo {
+        path: PathBuf,
+    }
+
+    impl Drop for TestRepo {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn test_repo(name: &str) -> TestRepo {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "irodori-git-{name}-{}-{suffix}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("create test repo dir");
+        let output = Command::new("git")
+            .arg("init")
+            .current_dir(&path)
+            .output()
+            .expect("run git init");
+        assert!(
+            output.status.success(),
+            "git init failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        TestRepo { path }
+    }
 
     #[test]
     fn parses_branch_header_with_upstream_counts() {
@@ -960,6 +1022,25 @@ aws\tssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/my-repo (fetch)",
         assert_eq!(
             commit.refs,
             vec!["HEAD -> main", "tag: v1.0.0", "origin/main"]
+        );
+    }
+
+    #[test]
+    fn discards_untracked_directories() {
+        let repo = test_repo("discard-untracked-dir");
+        let nested_file = repo.path.join("generated").join("snapshot.json");
+        fs::create_dir_all(nested_file.parent().unwrap()).expect("create nested dir");
+        fs::write(&nested_file, "{}").expect("write untracked file");
+
+        git_discard_files(
+            Some(path_to_string(&repo.path)),
+            vec!["generated".to_string()],
+        )
+        .expect("discard untracked directory");
+
+        assert!(
+            !repo.path.join("generated").exists(),
+            "untracked directory should be removed"
         );
     }
 }
