@@ -115,9 +115,17 @@ impl Schema {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColumnChange {
-    Type { from: String, to: String },
-    Nullability { nullable: bool },
-    Default { from: Option<String>, to: Option<String> },
+    Type {
+        from: String,
+        to: String,
+    },
+    Nullability {
+        nullable: bool,
+    },
+    Default {
+        from: Option<String>,
+        to: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,9 +172,10 @@ impl SchemaDiff {
     /// Whether the diff drops a table, column, or index (data-losing changes).
     pub fn has_destructive_changes(&self) -> bool {
         !self.dropped_tables.is_empty()
-            || self.altered_tables.iter().any(|table| {
-                !table.dropped_columns.is_empty() || !table.dropped_indexes.is_empty()
-            })
+            || self
+                .altered_tables
+                .iter()
+                .any(|table| !table.dropped_columns.is_empty() || !table.dropped_indexes.is_empty())
     }
 
     /// A short, human-readable change set for the preview header.
@@ -453,16 +462,18 @@ fn emit_altered_table(
                 let column = dialect.quote_identifier(&altered.column.name);
                 for change in &altered.changes {
                     let sql = match change {
-                        ColumnChange::Type { to, .. } => format!(
-                            "ALTER TABLE {quoted_table} ALTER COLUMN {column} TYPE {to};"
-                        ),
+                        ColumnChange::Type { to, .. } => {
+                            format!("ALTER TABLE {quoted_table} ALTER COLUMN {column} TYPE {to};")
+                        }
                         ColumnChange::Nullability { nullable: false } => format!(
                             "ALTER TABLE {quoted_table} ALTER COLUMN {column} SET NOT NULL;"
                         ),
                         ColumnChange::Nullability { nullable: true } => format!(
                             "ALTER TABLE {quoted_table} ALTER COLUMN {column} DROP NOT NULL;"
                         ),
-                        ColumnChange::Default { to: Some(value), .. } => format!(
+                        ColumnChange::Default {
+                            to: Some(value), ..
+                        } => format!(
                             "ALTER TABLE {quoted_table} ALTER COLUMN {column} SET DEFAULT {value};"
                         ),
                         ColumnChange::Default { to: None, .. } => format!(
@@ -623,8 +634,9 @@ mod tests {
         let sql = diff
             .to_migration(&PostgresDialect, AlterColumnStyle::Standard)
             .to_sql();
-        assert!(sql
-            .contains("ALTER TABLE \"users\" ADD COLUMN \"active\" boolean NOT NULL DEFAULT true;"));
+        assert!(sql.contains(
+            "ALTER TABLE \"users\" ADD COLUMN \"active\" boolean NOT NULL DEFAULT true;"
+        ));
         assert!(sql.contains("ALTER TABLE \"users\" DROP COLUMN \"note\";"));
         assert!(sql.contains("ALTER TABLE \"users\" ALTER COLUMN \"email\" TYPE varchar(320);"));
         assert!(sql.contains("ALTER TABLE \"users\" ALTER COLUMN \"email\" DROP NOT NULL;"));
@@ -632,7 +644,9 @@ mod tests {
 
     #[test]
     fn alter_column_mysql_uses_modify_and_backticks() {
-        let old = Schema::new(vec![Table::new("t").with_columns(vec![col("c", "int").not_null()])]);
+        let old = Schema::new(vec![
+            Table::new("t").with_columns(vec![col("c", "int").not_null()])
+        ]);
         let new = Schema::new(vec![
             Table::new("t").with_columns(vec![col("c", "bigint").with_default("0")])
         ]);
@@ -690,7 +704,9 @@ mod tests {
         assert!(altered.dropped_indexes.contains(&"changed".to_string()));
         assert_eq!(altered.added_indexes.len(), 2); // changed + fresh
 
-        let mysql = diff.to_migration(&MySqlDialect, AlterColumnStyle::MySql).to_sql();
+        let mysql = diff
+            .to_migration(&MySqlDialect, AlterColumnStyle::MySql)
+            .to_sql();
         assert!(mysql.contains("DROP INDEX `gone` ON `t`;"));
         assert!(mysql.contains("CREATE INDEX `changed` ON `t` (`c`, `d`);"));
         assert!(mysql.contains("CREATE UNIQUE INDEX `fresh` ON `t` (`e`);"));
@@ -700,7 +716,10 @@ mod tests {
     fn summary_reads_clearly() {
         let old = Schema::new(vec![users_v1(), Table::new("temp")]);
         let new = Schema::new(vec![Table::new("users")
-            .with_columns(vec![col("id", "integer").not_null(), col("created", "timestamp")])
+            .with_columns(vec![
+                col("id", "integer").not_null(),
+                col("created", "timestamp"),
+            ])
             .with_primary_key(vec!["id".into()])
             .with_indexes(vec![Index {
                 name: "users_email_idx".into(),

@@ -515,9 +515,15 @@ mod tests {
         let corpus = vec![doc(0, "alpha beta"), doc(1, "beta gamma")];
 
         let runtime = runtime_with_job("a");
-        build_index(&runtime, "a", &store, corpus.clone(), IndexBuildConfig::default())
-            .await
-            .unwrap();
+        build_index(
+            &runtime,
+            "a",
+            &store,
+            corpus.clone(),
+            IndexBuildConfig::default(),
+        )
+        .await
+        .unwrap();
         let postings_after_first = store.posting_count().await.unwrap();
 
         // Re-indexing the same corpus must not duplicate documents or postings.
@@ -614,10 +620,7 @@ mod tests {
             .unwrap();
         runtime2.start("r2").unwrap();
         runtime2
-            .update_checkpoint(
-                "r2",
-                JobCheckpoint::new(1, partial.to_string(), "{}"),
-            )
+            .update_checkpoint("r2", JobCheckpoint::new(1, partial.to_string(), "{}"))
             .unwrap();
 
         let second = build_index(&runtime2, "r2", &store, build_corpus(), config)

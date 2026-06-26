@@ -86,7 +86,10 @@ fn schema_index_spec(connection_id: &str) -> JobSpec {
     JobSpec {
         resumable: true,
         source: Some(connection_id.to_string()),
-        ..JobSpec::new(JobKind::IndexBuild, format!("index schema: {connection_id}"))
+        ..JobSpec::new(
+            JobKind::IndexBuild,
+            format!("index schema: {connection_id}"),
+        )
     }
 }
 
@@ -267,10 +270,12 @@ mod tests {
             .await
             .expect("search");
         assert!(orders.iter().any(|hit| hit.object.contains("orders")));
-        assert!(search_schema_impl(&index, "idx".into(), "nope".into(), None)
-            .await
-            .expect("search")
-            .is_empty());
+        assert!(
+            search_schema_impl(&index, "idx".into(), "nope".into(), None)
+                .await
+                .expect("search")
+                .is_empty()
+        );
     }
 
     #[tokio::test]

@@ -32,7 +32,10 @@ pub struct JobContext<'a> {
 impl<'a> JobContext<'a> {
     fn new(runtime: &'a JobRuntime, job_id: &str) -> Self {
         let record = runtime.get(job_id);
-        let resumable = record.as_ref().map(|job| job.spec.resumable).unwrap_or(false);
+        let resumable = record
+            .as_ref()
+            .map(|job| job.spec.resumable)
+            .unwrap_or(false);
         let resume_cursor = record
             .and_then(|job| job.checkpoint)
             .map(|checkpoint| checkpoint.cursor.parse::<u64>().unwrap_or(0))

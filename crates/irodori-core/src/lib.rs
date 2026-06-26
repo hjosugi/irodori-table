@@ -8,6 +8,7 @@ pub mod security;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+pub use batch::{run_job, BatchOutcome, BatchResult, JobContext};
 pub use connection::{
     AuthConfig, ConnectionProfile, ConnectionProfileExport, DirectTransport, LocalFileTransport,
     PortableAuthConfig, PortableConnectionProfile, PortableProxyAuthConfig, PortableProxyChainHop,
@@ -18,7 +19,6 @@ pub use connection::{
     SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
     CONNECTION_PROFILE_SCHEMA_VERSION,
 };
-pub use batch::{run_job, BatchOutcome, BatchResult, JobContext};
 pub use jobs::{
     JobArtifact, JobCheckpoint, JobConcurrencyPolicy, JobKind, JobList, JobLogEntry, JobLogLevel,
     JobProgress, JobRecord, JobResourceBudget, JobRetryPolicy, JobRuntime, JobRuntimeConfig,

@@ -84,7 +84,10 @@ impl StatementContext {
             let matches_name = table.alias.is_none() && table.name.eq_ignore_ascii_case(q);
             if matches_alias || matches_name {
                 // A `FROM cte` reference resolves to the CTE's columns.
-                if let Some(cte) = self.ctes.iter().find(|c| c.name.eq_ignore_ascii_case(&table.name))
+                if let Some(cte) = self
+                    .ctes
+                    .iter()
+                    .find(|c| c.name.eq_ignore_ascii_case(&table.name))
                 {
                     return Some(ResolvedSource::Columns(cte.columns.clone()));
                 }
@@ -256,9 +259,33 @@ fn tokenize(sql: &str) -> Vec<Token> {
 
 /// Keywords that end a table reference / cannot be an alias.
 const REF_STOP_KEYWORDS: &[&str] = &[
-    "where", "group", "order", "having", "limit", "offset", "union", "intersect", "except", "join",
-    "inner", "left", "right", "full", "outer", "cross", "on", "using", "as", "natural", "into",
-    "values", "set", "returning", "window", "qualify", "fetch",
+    "where",
+    "group",
+    "order",
+    "having",
+    "limit",
+    "offset",
+    "union",
+    "intersect",
+    "except",
+    "join",
+    "inner",
+    "left",
+    "right",
+    "full",
+    "outer",
+    "cross",
+    "on",
+    "using",
+    "as",
+    "natural",
+    "into",
+    "values",
+    "set",
+    "returning",
+    "window",
+    "qualify",
+    "fetch",
 ];
 
 fn is_stop_keyword(token: &Token) -> bool {
@@ -633,10 +660,8 @@ mod tests {
 
     #[test]
     fn multiple_ctes() {
-        let c = ctx(
-            "with a as (select x from t1), b as (select y, z from t2) \
-             select * from a join b on a.x = b.y",
-        );
+        let c = ctx("with a as (select x from t1), b as (select y, z from t2) \
+             select * from a join b on a.x = b.y");
         assert_eq!(c.ctes.len(), 2);
         assert_eq!(c.ctes[0].columns, vec!["x"]);
         assert_eq!(c.ctes[1].columns, vec!["y", "z"]);
