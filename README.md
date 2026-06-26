@@ -210,6 +210,7 @@ make check
 | Backlog and task IDs | [docs/implementation-backlog.md](docs/implementation-backlog.md) |
 | UI language switching and translation keys | [docs/i18n.md](docs/i18n.md) |
 | Release-readiness checklist | [docs/production-readiness.md](docs/production-readiness.md) |
+| Maintainability audit | [docs/maintainability-audit.md](docs/maintainability-audit.md) |
 | Extension development | [docs/extension-development.md](docs/extension-development.md) and [packages/extension-sdk/README.md](packages/extension-sdk/README.md) |
 | Clean-room rules | [docs/clean-room.md](docs/clean-room.md) |
 | License policy | [docs/licensing.md](docs/licensing.md) |

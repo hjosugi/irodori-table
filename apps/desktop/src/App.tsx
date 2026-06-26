@@ -1415,9 +1415,12 @@ function App() {
         return;
       }
       if (kind === "sidebar") {
+        // When the sidebar sits on the right its resize handle is on its left
+        // edge, so dragging left should widen it — invert the delta.
+        const delta = moveEvent.clientX - startX;
         setSidebarWidth(
           clampNumber(
-            startSidebarWidth + moveEvent.clientX - startX,
+            startSidebarWidth + (sidebarSide === "right" ? -delta : delta),
             SIDEBAR_WIDTH_MIN,
             SIDEBAR_WIDTH_MAX,
           ),
@@ -2203,6 +2206,7 @@ function App() {
         },
         layout: {
           sidebarOpen,
+          sidebarSide,
           sidebarWidth,
           inspectorWidth,
           resultsHeight,
@@ -2389,6 +2393,12 @@ function App() {
       if (isRecord(parsed.layout)) {
         if (typeof parsed.layout.sidebarOpen === "boolean") {
           setSidebarOpen(parsed.layout.sidebarOpen);
+        }
+        if (
+          parsed.layout.sidebarSide === "left" ||
+          parsed.layout.sidebarSide === "right"
+        ) {
+          setSidebarSide(parsed.layout.sidebarSide);
         }
         const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
         if (Number.isFinite(nextSidebarWidth)) {
@@ -3835,6 +3845,7 @@ function App() {
         themeKind={theme.kind}
         activeKeyScope={activeKeyScope}
         sidebarOpen={sidebarOpen}
+        sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
         resultsHeight={resultsHeight}
@@ -3865,6 +3876,9 @@ function App() {
           activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
         }
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        onToggleSidebarSide={() =>
+          setSidebarSide((side) => (side === "left" ? "right" : "left"))
+        }
         onOpenSettings={() => openSettingsSection("general")}
         onOpenKeymap={() => openSettingsSection("keymap")}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}

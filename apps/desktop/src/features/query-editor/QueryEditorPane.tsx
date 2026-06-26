@@ -1,6 +1,8 @@
 import {
   useEffect,
+  useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -28,6 +30,7 @@ import type { SqlFormatterId } from "../../sql/formatter";
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "../../theme";
 import type { EditorSplitMode } from "../workbench";
+import { findSqlFile, hasDraggedFiles } from "./drag-drop";
 
 export type EditorGroup = "primary" | "secondary";
 export type EditorSelection = { from: number; to: number };
@@ -81,6 +84,7 @@ export interface QueryEditorPaneProps {
   onEditorSplitResizeKey: (
     event: ReactKeyboardEvent<HTMLDivElement>,
   ) => void;
+  onSqlFileDrop?: (file: File) => void;
 }
 
 export function QueryEditorPane({
@@ -124,11 +128,14 @@ export function QueryEditorPane({
   setRunMenuOpen,
   beginEditorSplitResize,
   onEditorSplitResizeKey,
+  onSqlFileDrop,
 }: QueryEditorPaneProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
   } | null>(null);
+  const [sqlFileDragOver, setSqlFileDragOver] = useState(false);
+  const sqlFileDragDepthRef = useRef(0);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -142,6 +149,15 @@ export function QueryEditorPane({
       window.removeEventListener("blur", close);
     };
   }, [contextMenu]);
+
+  useEffect(() => {
+    if (onSqlFileDrop) {
+      return;
+    }
+
+    sqlFileDragDepthRef.current = 0;
+    setSqlFileDragOver(false);
+  }, [onSqlFileDrop]);
 
   const openEditorContextMenu = (
     event: ReactMouseEvent<HTMLDivElement>,
@@ -158,8 +174,78 @@ export function QueryEditorPane({
     runCommand(commandId);
   };
 
+  const resetSqlFileDragState = () => {
+    sqlFileDragDepthRef.current = 0;
+    setSqlFileDragOver(false);
+  };
+
+  const prepareSqlFileDrop = (event: ReactDragEvent<HTMLElement>) => {
+    if (!onSqlFileDrop || !hasDraggedFiles(event.dataTransfer)) {
+      return false;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    return true;
+  };
+
+  const handleSqlFileDragEnter = (event: ReactDragEvent<HTMLElement>) => {
+    if (!prepareSqlFileDrop(event)) {
+      return;
+    }
+
+    sqlFileDragDepthRef.current += 1;
+    setSqlFileDragOver(true);
+  };
+
+  const handleSqlFileDragOver = (event: ReactDragEvent<HTMLElement>) => {
+    if (!prepareSqlFileDrop(event)) {
+      return;
+    }
+
+    setSqlFileDragOver(true);
+  };
+
+  const handleSqlFileDragLeave = (event: ReactDragEvent<HTMLElement>) => {
+    if (!onSqlFileDrop || !hasDraggedFiles(event.dataTransfer)) {
+      return;
+    }
+
+    event.stopPropagation();
+    sqlFileDragDepthRef.current = Math.max(0, sqlFileDragDepthRef.current - 1);
+
+    if (sqlFileDragDepthRef.current === 0) {
+      setSqlFileDragOver(false);
+    }
+  };
+
+  const handleSqlFileDrop = (event: ReactDragEvent<HTMLElement>) => {
+    const dropSqlFile = onSqlFileDrop;
+
+    if (!dropSqlFile || !prepareSqlFileDrop(event)) {
+      return;
+    }
+
+    resetSqlFileDragState();
+
+    const sqlFile = findSqlFile(event.dataTransfer.files);
+    if (!sqlFile) {
+      return;
+    }
+
+    dropSqlFile(sqlFile);
+  };
+
   return (
-    <section className="editor-pane" aria-label={activeTabLabel}>
+    <section
+      className={`editor-pane${sqlFileDragOver ? " sql-file-drag-over" : ""}`}
+      aria-label={activeTabLabel}
+      onDragEnter={handleSqlFileDragEnter}
+      onDragOver={handleSqlFileDragOver}
+      onDragLeave={handleSqlFileDragLeave}
+      onDrop={handleSqlFileDrop}
+    >
       <div className="editor-meta">
         <div className="editor-title">
           <span>{activeTabLabel}</span>

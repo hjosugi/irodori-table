@@ -20,6 +20,11 @@ export const dictionaries = {
   ja,
 } satisfies TranslationDictionaries;
 
+export const localeLabels: Record<SupportedLocale, string> = {
+  en: en["locale.en"],
+  ja: ja["locale.ja"],
+};
+
 const localeAliases: Readonly<Record<string, SupportedLocale>> = {
   english: "en",
   japanese: "ja",
@@ -72,6 +77,10 @@ export function normalizeLocale(
 }
 
 function browserLocaleCandidates(): readonly LocaleInput[] {
+  if (typeof navigator === "undefined") {
+    return [];
+  }
+
   if (navigator.languages.length > 0) {
     return navigator.languages;
   }
@@ -90,7 +99,7 @@ export function detectBrowserLocale(
     }
   }
 
-  return fallback;
+  return fallbackLocale;
 }
 
 export function interpolate(

@@ -1,0 +1,118 @@
+// @vitest-environment jsdom
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  defaultWorkbenchViewPlacements,
+  type WorkbenchViewPlacements,
+} from "@/features/workbench/types";
+
+const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
+
+function installLocalStorage() {
+  const values = new Map<string, string>();
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      get length() {
+        return values.size;
+      },
+      clear() {
+        values.clear();
+      },
+      getItem(key: string) {
+        return values.get(key) ?? null;
+      },
+      key(index: number) {
+        return Array.from(values.keys())[index] ?? null;
+      },
+      removeItem(key: string) {
+        values.delete(key);
+      },
+      setItem(key: string, value: string) {
+        values.set(key, value);
+      },
+    },
+  });
+}
+
+async function loadWorkbenchStore() {
+  vi.resetModules();
+  const module = await import("@/features/workbench/store/workbench-store");
+  return module.useWorkbenchStore;
+}
+
+describe("workbench store view placements", () => {
+  beforeEach(() => {
+    installLocalStorage();
+    vi.resetModules();
+  });
+
+  it("loads default view placements", async () => {
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().viewPlacements).toEqual(
+      defaultWorkbenchViewPlacements,
+    );
+  });
+
+  it("sets and persists a single view placement", async () => {
+    const store = await loadWorkbenchStore();
+    const expected: WorkbenchViewPlacements = {
+      ...defaultWorkbenchViewPlacements,
+      queryHistory: "left",
+    };
+
+    store.getState().setViewPlacement("queryHistory", "left");
+
+    expect(store.getState().viewPlacements).toEqual(expected);
+    expect(
+      JSON.parse(window.localStorage.getItem(viewPlacementsStorageKey) ?? "{}"),
+    ).toEqual(expected);
+  });
+
+  it("sets and persists all view placements", async () => {
+    const store = await loadWorkbenchStore();
+    const next: WorkbenchViewPlacements = {
+      ...defaultWorkbenchViewPlacements,
+      objectBrowser: "right",
+      git: "left",
+    };
+
+    store.getState().setViewPlacements(next);
+
+    expect(store.getState().viewPlacements).toEqual(next);
+    expect(
+      JSON.parse(window.localStorage.getItem(viewPlacementsStorageKey) ?? "{}"),
+    ).toEqual(next);
+  });
+
+  it("sanitizes stored view placements", async () => {
+    window.localStorage.setItem(
+      viewPlacementsStorageKey,
+      JSON.stringify({
+        objectBrowser: "right",
+        completion: "middle",
+        queryHistory: "left",
+        unknownView: "left",
+      }),
+    );
+
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().viewPlacements).toEqual({
+      ...defaultWorkbenchViewPlacements,
+      objectBrowser: "right",
+      queryHistory: "left",
+    });
+  });
+
+  it("falls back to default placements for invalid stored JSON", async () => {
+    window.localStorage.setItem(viewPlacementsStorageKey, "{");
+
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().viewPlacements).toEqual(
+      defaultWorkbenchViewPlacements,
+    );
+  });
+});

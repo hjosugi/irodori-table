@@ -234,7 +234,7 @@ export function SettingsDialog({
   resetSettingsJsonDraft,
   applySettingsJson,
 }: SettingsDialogProps) {
-  const t = createTranslator(locale);
+  const { t } = createTranslator(locale);
 
   function updateSnippet(
     index: number,

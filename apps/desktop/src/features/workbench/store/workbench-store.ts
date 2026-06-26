@@ -1,14 +1,21 @@
 import { create } from "zustand";
+import {
+  defaultWorkbenchViewPlacements,
+  workbenchViewIds,
+  type WorkbenchSide,
+  type WorkbenchViewId,
+  type WorkbenchViewPlacements,
+} from "../types";
 
 export type EditorSplitMode = "single" | "right" | "down";
-/** Which side the primary sidebar (object browser) sits on — VS Code-style. */
-export type SidebarSide = "left" | "right";
+export type SidebarSide = WorkbenchSide;
 
 type ValueUpdater<T> = T | ((current: T) => T);
 
 type WorkbenchState = {
   sidebarOpen: boolean;
   sidebarSide: SidebarSide;
+  viewPlacements: WorkbenchViewPlacements;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -16,6 +23,8 @@ type WorkbenchState = {
   editorSplitPercent: number;
   setSidebarOpen: (value: ValueUpdater<boolean>) => void;
   setSidebarSide: (value: ValueUpdater<SidebarSide>) => void;
+  setViewPlacement: (viewId: WorkbenchViewId, side: WorkbenchSide) => void;
+  setViewPlacements: (value: ValueUpdater<WorkbenchViewPlacements>) => void;
   setSidebarWidth: (value: ValueUpdater<number>) => void;
   setInspectorWidth: (value: ValueUpdater<number>) => void;
   setResultsHeight: (value: ValueUpdater<number>) => void;
@@ -25,6 +34,7 @@ type WorkbenchState = {
 
 const sidebarStorageKey = "irodori.sidebar.open.v1";
 const sidebarSideStorageKey = "irodori.sidebar.side.v1";
+const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
 const resultsHeightStorageKey = "irodori.results.height.v1";
@@ -74,6 +84,42 @@ function loadSidebarSide(): SidebarSide {
     : "left";
 }
 
+function isWorkbenchSide(value: unknown): value is WorkbenchSide {
+  return value === "left" || value === "right";
+}
+
+function defaultViewPlacements(): WorkbenchViewPlacements {
+  return { ...defaultWorkbenchViewPlacements };
+}
+
+function normalizeViewPlacements(value: unknown): WorkbenchViewPlacements {
+  const next = defaultViewPlacements();
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return next;
+  }
+
+  const stored = value as Partial<Record<WorkbenchViewId, unknown>>;
+  workbenchViewIds.forEach((viewId) => {
+    const side = stored[viewId];
+    if (isWorkbenchSide(side)) {
+      next[viewId] = side;
+    }
+  });
+  return next;
+}
+
+function loadViewPlacements(): WorkbenchViewPlacements {
+  const stored = window.localStorage.getItem(viewPlacementsStorageKey);
+  if (!stored) {
+    return defaultViewPlacements();
+  }
+  try {
+    return normalizeViewPlacements(JSON.parse(stored));
+  } catch {
+    return defaultViewPlacements();
+  }
+}
+
 function loadEditorSplitMode(): EditorSplitMode {
   const stored = window.localStorage.getItem(editorSplitModeStorageKey);
   return stored === "right" || stored === "down" ? stored : "single";
@@ -82,6 +128,7 @@ function loadEditorSplitMode(): EditorSplitMode {
 export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   sidebarOpen: loadSidebarOpen(),
   sidebarSide: loadSidebarSide(),
+  viewPlacements: loadViewPlacements(),
   sidebarWidth: loadStoredNumber(
     sidebarWidthStorageKey,
     sidebarWidthDefault,
@@ -111,6 +158,19 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
     set((state) => ({ sidebarOpen: resolveValue(state.sidebarOpen, value) })),
   setSidebarSide: (value) =>
     set((state) => ({ sidebarSide: resolveValue(state.sidebarSide, value) })),
+  setViewPlacement: (viewId, side) =>
+    set((state) => ({
+      viewPlacements: normalizeViewPlacements({
+        ...state.viewPlacements,
+        [viewId]: side,
+      }),
+    })),
+  setViewPlacements: (value) =>
+    set((state) => ({
+      viewPlacements: normalizeViewPlacements(
+        resolveValue(state.viewPlacements, value),
+      ),
+    })),
   setSidebarWidth: (value) =>
     set((state) => ({
       sidebarWidth: clampNumber(
@@ -152,6 +212,10 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
 useWorkbenchStore.subscribe((state) => {
   window.localStorage.setItem(sidebarStorageKey, String(state.sidebarOpen));
   window.localStorage.setItem(sidebarSideStorageKey, state.sidebarSide);
+  window.localStorage.setItem(
+    viewPlacementsStorageKey,
+    JSON.stringify(state.viewPlacements),
+  );
   window.localStorage.setItem(sidebarWidthStorageKey, String(state.sidebarWidth));
   window.localStorage.setItem(
     inspectorWidthStorageKey,

@@ -37,6 +37,7 @@ near-duplicate status page.
 | Extension SDK | [extension-development.md](extension-development.md) |
 | Type bridge handoff | [type-bridge-handoff.md](type-bridge-handoff.md) |
 | Local knowledge base | [knowledge-base.md](knowledge-base.md) |
+| Maintainability audit | [maintainability-audit.md](maintainability-audit.md) |
 
 ## Research And Automation
 
