@@ -13,23 +13,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   min-height: var(--bar-md);
-  padding: 0 10px;
+  padding: 0 9px 0 10px;
   border-bottom: 1px solid var(--border);
 }
 
 .results-header div:first-child {
   display: flex;
   align-items: baseline;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
 }
 
 .results-title {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
 }
@@ -42,9 +42,9 @@
 
 .result-tabs button {
   height: var(--control-xxs);
-  padding: 0 8px;
+  padding: 0 9px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 3px;
   background: transparent;
   color: var(--muted);
   font: inherit;
@@ -69,6 +69,7 @@
 .results-header strong {
   flex: 0 0 auto;
   font-size: var(--font-ui-md);
+  font-weight: 700;
 }
 
 .results-header span {
@@ -84,7 +85,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -102,9 +103,9 @@
   z-index: 12;
   display: grid;
   min-width: 178px;
-  padding: 5px;
+  padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 4px;
   background: var(--surface-raised);
   box-shadow: 0 12px 28px rgba(31, 35, 40, 0.18);
 }
@@ -117,7 +118,7 @@
   min-height: 28px;
   padding: 0 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--text);
   background: transparent;
   text-align: left;
@@ -151,7 +152,7 @@
   height: var(--control-sm);
   padding: 0 7px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--muted);
   background: var(--surface-raised);
 }
@@ -217,7 +218,7 @@
   height: var(--control-sm);
   padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--surface-raised);
 }
 
@@ -225,7 +226,7 @@
   height: 20px;
   padding: 0 8px;
   border: 0;
-  border-radius: 3px;
+  border-radius: 2px;
   color: var(--muted);
   background: transparent;
   font: inherit;
@@ -302,8 +303,8 @@
 }
 
 .row-detail {
-  flex: 0 0 340px;
-  width: 340px;
+  flex: 0 0 352px;
+  width: 352px;
   min-width: 240px;
   display: flex;
   flex-direction: column;
@@ -317,7 +318,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 30px;
+  height: var(--bar-md);
   padding: 0 8px 0 10px;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
@@ -362,7 +363,7 @@
   display: grid;
   gap: 2px;
   padding: 5px 6px;
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--surface-muted);
 }
 
@@ -405,7 +406,7 @@
   padding: 6px 8px;
   max-height: 240px;
   overflow: auto;
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--editor-bg);
   border: 1px solid var(--cell-border);
   font-size: 11px;
@@ -461,7 +462,7 @@
 
 .grid-row {
   display: grid;
-  height: 28px;
+  height: 27px;
   box-sizing: border-box;
   min-width: 1px;
   border-bottom: 1px solid var(--cell-border);
@@ -569,7 +570,9 @@
 }
 
 .grid-row span.cell-selected {
-  box-shadow: inset 0 0 0 2px var(--focus);
+  box-shadow:
+    inset 0 0 0 1px var(--focus),
+    inset 0 -1px 0 var(--focus);
 }
 
 .grid-row span.cell-null,
@@ -584,7 +587,7 @@
   height: 17px;
   padding: 0 5px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--surface-muted);
   font-style: normal;
   font-size: 10px;
@@ -640,9 +643,9 @@
 
 .grid-row span {
   overflow: hidden;
-  padding: 5px 9px;
+  padding: 4px 8px;
   border-right: 1px solid var(--cell-border);
-  line-height: 17px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -669,10 +672,10 @@
 .structure-view {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
   overflow: auto;
-  padding: 10px;
+  padding: 8px;
   background: var(--editor-bg);
 }
 
@@ -714,7 +717,7 @@
 .structure-table-wrap {
   overflow: auto;
   border: 1px solid var(--cell-border);
-  border-radius: 5px;
+  border-radius: 3px;
   background: var(--surface);
 }
 
@@ -729,7 +732,7 @@
 .structure-table th,
 .structure-table td {
   max-width: 260px;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border-right: 1px solid var(--cell-border);
   border-bottom: 1px solid var(--cell-border);
   overflow: hidden;
@@ -755,9 +758,9 @@
 .structure-card {
   display: grid;
   gap: 5px;
-  padding: 9px;
+  padding: 8px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 3px;
   background: var(--surface);
 }
 

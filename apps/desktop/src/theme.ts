@@ -125,18 +125,18 @@ export const darkTheme: IrodoriTheme = {
   name: "Irodori Dark",
   kind: "dark",
   ui: {
-    border: "#303030",
+    border: "#2b2b2b",
     borderStrong: "#3c3c3c",
-    surface: "#1e1e1e",
-    surfaceRaised: "#252526",
-    surfaceMuted: "#181818",
+    surface: "#181818",
+    surfaceRaised: "#1f1f1f",
+    surfaceMuted: "#151515",
     chrome: "#2d2d30",
     editorBg: "#1e1e1e",
-    text: "#d4d4d4",
+    text: "#cccccc",
     muted: "#858585",
     green: "#89d185",
     teal: "#4ec9b0",
-    blue: "#75beff",
+    blue: "#0e639c",
     amber: "#d7ba7d",
     red: "#f48771",
     purple: "#c586c0",
@@ -147,11 +147,11 @@ export const darkTheme: IrodoriTheme = {
     inputBg: "#1f1f1f",
     gridHeader: "#252526",
     gridRowAlt: "#1b1b1b",
-    cellBorder: "#303030",
+    cellBorder: "#2d2d30",
     dangerBg: "#3b1d1d",
     warningBg: "#3a3219",
     selection: "#264f78",
-    activeLine: "#262626",
+    activeLine: "#2a2a2a",
     caret: "#aeafad",
     gutterBg: "#1e1e1e",
     gutterText: "#858585",
@@ -176,6 +176,207 @@ export const themes: Record<ThemeKind, IrodoriTheme> = {
   light: lightTheme,
   dark: darkTheme,
 };
+
+export type CustomThemeEntry = {
+  id: string;
+  name: string;
+  theme: IrodoriTheme;
+};
+
+export type ThemeJsonImportSource = "irodori" | "vscode";
+
+export interface ThemeJsonImport {
+  theme: IrodoriTheme;
+  source: ThemeJsonImportSource;
+  warnings: string[];
+}
+
+const irodoriUiColorKeys: Array<keyof IrodoriUiColors> = [
+  "border",
+  "borderStrong",
+  "surface",
+  "surfaceRaised",
+  "surfaceMuted",
+  "chrome",
+  "editorBg",
+  "text",
+  "muted",
+  "green",
+  "teal",
+  "blue",
+  "amber",
+  "red",
+  "purple",
+  "hover",
+  "selected",
+  "selectedStrong",
+  "focus",
+  "inputBg",
+  "gridHeader",
+  "gridRowAlt",
+  "cellBorder",
+  "dangerBg",
+  "warningBg",
+  "selection",
+  "activeLine",
+  "caret",
+  "gutterBg",
+  "gutterText",
+];
+
+const irodoriSyntaxColorKeys: Array<keyof IrodoriSyntaxColors> = [
+  "keyword",
+  "string",
+  "number",
+  "comment",
+  "type",
+  "property",
+  "name",
+  "operator",
+  "function",
+  "bracket",
+  "punctuation",
+  "bool",
+];
+
+function readThemeKind(value: unknown, fallback: ThemeKind): ThemeKind {
+  return value === "light" || value === "dark" ? value : fallback;
+}
+
+function everyRecordValueIsString(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+) {
+  return keys.every((key) => typeof value[key] === "string");
+}
+
+export function irodoriThemeFromJson(value: unknown): IrodoriTheme {
+  if (!isJsonObject(value)) {
+    throw new Error("theme must be an object");
+  }
+  const kind = readThemeKind(value.kind, "dark");
+  if (
+    typeof value.name !== "string" ||
+    !isJsonObject(value.ui) ||
+    !isJsonObject(value.syntax) ||
+    !everyRecordValueIsString(value.ui, irodoriUiColorKeys) ||
+    !everyRecordValueIsString(value.syntax, irodoriSyntaxColorKeys)
+  ) {
+    throw new Error("theme must be a complete Irodori theme JSON object");
+  }
+
+  const uiSource = value.ui;
+  const syntaxSource = value.syntax;
+  const ui = Object.fromEntries(
+    irodoriUiColorKeys.map((key) => [key, uiSource[key] as string]),
+  ) as unknown as IrodoriUiColors;
+  const syntax = Object.fromEntries(
+    irodoriSyntaxColorKeys.map((key) => [key, syntaxSource[key] as string]),
+  ) as unknown as IrodoriSyntaxColors;
+
+  return {
+    name: value.name,
+    kind,
+    ui,
+    syntax,
+  };
+}
+
+function looksLikeVsCodeTheme(value: JsonObject) {
+  return (
+    isJsonObject(value.colors) ||
+    Array.isArray(value.tokenColors) ||
+    isJsonObject(value.semanticTokenColors) ||
+    value.type === "dark" ||
+    value.type === "light" ||
+    value.type === "hc" ||
+    value.type === "hcLight"
+  );
+}
+
+export function importThemeJson(
+  value: unknown,
+  fallbackKind: ThemeKind,
+): ThemeJsonImport {
+  try {
+    return {
+      theme: irodoriThemeFromJson(value),
+      source: "irodori",
+      warnings: [],
+    };
+  } catch (error) {
+    if (!isJsonObject(value) || !looksLikeVsCodeTheme(value)) {
+      throw error;
+    }
+    const result = importVsCodeTheme(value, {
+      fallbackTheme: themes[fallbackKind],
+    });
+    return {
+      theme: result.theme,
+      source: "vscode",
+      warnings: result.warnings,
+    };
+  }
+}
+
+function customThemeSlug(name: string) {
+  return (
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "theme"
+  );
+}
+
+function createCustomThemeId(name: string, entries: CustomThemeEntry[]) {
+  const base = `custom-${customThemeSlug(name)}`;
+  let candidate = base;
+  let suffix = 2;
+  while (entries.some((entry) => entry.id === candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+export function upsertCustomThemeEntry(
+  entries: CustomThemeEntry[],
+  theme: IrodoriTheme,
+) {
+  const existing = entries.find(
+    (entry) => entry.name.toLowerCase() === theme.name.toLowerCase(),
+  );
+  const id = existing?.id ?? createCustomThemeId(theme.name, entries);
+  const nextEntry = { id, name: theme.name, theme };
+  const nextEntries = existing
+    ? entries.map((entry) => (entry.id === id ? nextEntry : entry))
+    : [...entries, nextEntry];
+  return { id, entries: nextEntries };
+}
+
+export function customThemeEntryFromJson(
+  value: unknown,
+  index: number,
+  entries: CustomThemeEntry[],
+): CustomThemeEntry {
+  const themeSource =
+    isJsonObject(value) && "theme" in value ? value.theme : value;
+  const theme = irodoriThemeFromJson(themeSource);
+  const name =
+    isJsonObject(value) && typeof value.name === "string" && value.name.trim()
+      ? value.name.trim()
+      : theme.name;
+  const id =
+    isJsonObject(value) && typeof value.id === "string" && value.id.trim()
+      ? value.id.trim()
+      : createCustomThemeId(name || `Custom Theme ${index + 1}`, entries);
+  return {
+    id,
+    name: name || `Custom Theme ${index + 1}`,
+    theme: { ...theme, name: name || theme.name },
+  };
+}
 
 export interface VsCodeThemeImportOptions {
   fallbackTheme?: IrodoriTheme;
@@ -411,7 +612,7 @@ export function editorThemeExtensions(theme: IrodoriTheme): Extension {
       ".cm-scroller": {
         fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
         fontSize: "13px",
-        lineHeight: "21px",
+        lineHeight: "20px",
       },
       "&.cm-focused": { outline: "none" },
       ".cm-content": { caretColor: ui.caret },
@@ -424,6 +625,14 @@ export function editorThemeExtensions(theme: IrodoriTheme): Extension {
         color: ui.gutterText,
         border: "none",
         borderRight: `1px solid ${ui.border}`,
+      },
+      ".cm-line": {
+        paddingLeft: "10px",
+        paddingRight: "14px",
+      },
+      ".cm-lineNumbers .cm-gutterElement": {
+        paddingLeft: "8px",
+        paddingRight: "10px",
       },
       ".cm-activeLineGutter": { backgroundColor: ui.activeLine },
       ".cm-matchingBracket, &.cm-focused .cm-matchingBracket": {

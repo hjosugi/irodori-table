@@ -11,7 +11,7 @@
 }
 
 .app-shell[data-theme="dark"] .titlebar {
-  box-shadow: inset 0 -1px 0 #1b1b1b;
+  box-shadow: inset 0 -1px 0 #1f1f1f;
 }
 
 .app-shell[data-theme="dark"] .connection-select,
@@ -35,7 +35,7 @@
 .app-shell[data-theme="dark"] .mode-toggle {
   border-color: #3c3c3c;
   color: #cccccc;
-  background: var(--surface-raised);
+  background: #1f1f1f;
 }
 
 .app-shell[data-theme="dark"] .connection-editor input,
@@ -55,20 +55,31 @@
   background: #0e639c;
 }
 
+.app-shell[data-theme="dark"] .primary-action:hover:not(:disabled),
+.app-shell[data-theme="dark"] .primary-button:hover:not(:disabled) {
+  border-color: #1177bb;
+  background: #1177bb;
+}
+
 .app-shell[data-theme="dark"] .text-button,
-.app-shell[data-theme="dark"] .mode-toggle button.active,
-.app-shell[data-theme="dark"] .result-tabs button.active {
+.app-shell[data-theme="dark"] .mode-toggle button.active {
   color: #9cdcfe;
-  background: var(--selected-strong);
+  background: #094771;
+}
+
+.app-shell[data-theme="dark"] .result-tabs button.active {
+  color: #ffffff;
+  border-color: #3c3c3c;
+  background: #37373d;
 }
 
 .app-shell[data-theme="dark"] .sidebar {
-  border-color: #303030;
-  background: var(--surface-muted);
+  border-color: #2b2b2b;
+  background: #181818;
 }
 
 .app-shell[data-theme="dark"] .connection-rail {
-  border-color: #303030;
+  border-color: #2b2b2b;
   background: #252526;
 }
 
@@ -78,17 +89,17 @@
 .app-shell[data-theme="dark"] .rail-connection:focus-visible,
 .app-shell[data-theme="dark"] .rail-connection.active {
   border-color: #3c3c3c;
-  background: var(--selected);
+  background: #333337;
 }
 
 .app-shell[data-theme="dark"] .sidebar-section,
 .app-shell[data-theme="dark"] .section-heading {
-  border-color: #303030;
+  border-color: #2b2b2b;
 }
 
 .app-shell[data-theme="dark"] .section-heading {
   color: #bbbbbb;
-  background: var(--surface-muted);
+  background: #181818;
 }
 
 .app-shell[data-theme="dark"] .connection-item.active,
@@ -109,7 +120,7 @@
 .app-shell[data-theme="dark"] .command-item:hover,
 .app-shell[data-theme="dark"] .command-item:focus-within,
 .app-shell[data-theme="dark"] .palette-item:focus-visible,
-.app-shell[data-theme="dark"] .tab.active {
+.app-shell[data-theme="dark"] .settings-nav button.active {
   background: var(--selected);
 }
 
@@ -126,7 +137,6 @@
 }
 
 .app-shell[data-theme="dark"] .main-pane,
-.app-shell[data-theme="dark"] .tab-strip,
 .app-shell[data-theme="dark"] .editor-pane,
 .app-shell[data-theme="dark"] .editor-meta,
 .app-shell[data-theme="dark"] .results-pane,
@@ -140,28 +150,42 @@
 .app-shell[data-theme="dark"] .action-menu,
 .app-shell[data-theme="dark"] .preview-table-wrap,
 .app-shell[data-theme="dark"] .sql-preview {
-  border-color: #303030;
+  border-color: #2b2b2b;
   background: #1e1e1e;
+}
+
+.app-shell[data-theme="dark"] .tab-strip {
+  border-color: #2b2b2b;
+  background: #1f1f1f;
+}
+
+.app-shell[data-theme="dark"] .editor-meta,
+.app-shell[data-theme="dark"] .results-header {
+  background: #1f1f1f;
 }
 
 .app-shell[data-theme="dark"] .tab-folder {
   color: #cccccc;
-  background: var(--surface-raised);
+  background: #252526;
 }
 
 .app-shell[data-theme="dark"] .tab {
   color: #bbbbbb;
+  border-color: transparent;
+  background: transparent;
 }
 
 .app-shell[data-theme="dark"] .tab.active {
   color: #ffffff;
-  border-color: #303030;
-  box-shadow: inset 0 2px 0 #0e639c;
+  border-color: #2b2b2b;
+  border-bottom-color: #1e1e1e;
+  background: #1e1e1e;
+  box-shadow: inset 0 2px 0 #007acc;
 }
 
 .app-shell[data-theme="dark"] .inspector {
-  border-left: 1px solid #303030;
-  background: var(--surface-muted);
+  border-left: 1px solid #2b2b2b;
+  background: #151515;
 }
 
 .app-shell[data-theme="dark"] .result-grid {
@@ -169,19 +193,19 @@
 }
 
 .app-shell[data-theme="dark"] .grid-row {
-  border-color: #303030;
+  border-color: #2d2d30;
 }
 
 .app-shell[data-theme="dark"] .grid-row.header {
   color: #cccccc;
-  background: var(--grid-header);
+  background: #252526;
 }
 
 .app-shell[data-theme="dark"] .grid-row span,
 .app-shell[data-theme="dark"] .grid-gutter,
 .app-shell[data-theme="dark"] .preview-table th,
 .app-shell[data-theme="dark"] .preview-table td {
-  border-color: #303030;
+  border-color: #2d2d30;
 }
 
 .app-shell[data-theme="dark"] .grid-row:not(.header):nth-child(odd) {
@@ -194,6 +218,19 @@
 
 .app-shell[data-theme="dark"] .grid-row.row-edited {
   background: var(--warning-bg);
+}
+
+.app-shell[data-theme="dark"] .grid-row:not(.header):hover {
+  background: #2a2d2e;
+}
+
+.app-shell[data-theme="dark"] .grid-row.row-selected,
+.app-shell[data-theme="dark"] .grid-row.row-selected:hover {
+  background: #094771;
+}
+
+.app-shell[data-theme="dark"] .grid-row span.cell-selected {
+  background: #183f5f;
 }
 
 .app-shell[data-theme="dark"] .command-scope {

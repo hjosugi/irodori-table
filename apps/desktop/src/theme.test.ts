@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   cssVariables,
+  customThemeEntryFromJson,
   darkTheme,
+  importThemeJson,
   importVsCodeTheme,
+  irodoriThemeFromJson,
   lightTheme,
   themes,
+  upsertCustomThemeEntry,
 } from "./theme";
 
 describe("theme model", () => {
@@ -24,6 +28,70 @@ describe("theme model", () => {
     expect(vars["--border"]).toBe(darkTheme.ui.border);
     expect(vars["--editor-bg"]).toBe(darkTheme.ui.editorBg);
     expect(Object.keys(vars).every((key) => key.startsWith("--"))).toBe(true);
+  });
+
+  it("round-trips complete Irodori custom theme JSON", () => {
+    const source = {
+      ...darkTheme,
+      name: "Custom Dark",
+      ui: {
+        ...darkTheme.ui,
+        editorBg: "#101418",
+      },
+    };
+    const theme = irodoriThemeFromJson(source);
+    expect(theme.name).toBe("Custom Dark");
+    expect(theme.kind).toBe("dark");
+    expect(theme.ui.editorBg).toBe("#101418");
+    expect(theme.syntax.keyword).toBe(darkTheme.syntax.keyword);
+  });
+
+  it("converts VS Code JSON into a saved Irodori custom theme", () => {
+    const imported = importThemeJson(
+      {
+        name: "Workbench Smoke",
+        type: "dark",
+        colors: {
+          "editor.background": "#101418",
+          "editor.foreground": "#d8dee9",
+          "focusBorder": "#4ea1ff",
+        },
+        tokenColors: [
+          { scope: "keyword", settings: { foreground: "#82aaff" } },
+        ],
+      },
+      "dark",
+    );
+    expect(imported.source).toBe("vscode");
+    expect(imported.theme.name).toBe("Workbench Smoke");
+    expect(imported.theme.ui.editorBg).toBe("#101418");
+    expect(imported.theme.syntax.keyword).toBe("#82aaff");
+
+    const saved = upsertCustomThemeEntry([], imported.theme);
+    expect(saved.id).toBe("custom-workbench-smoke");
+    expect(saved.entries[0].name).toBe("Workbench Smoke");
+
+    const updated = upsertCustomThemeEntry(saved.entries, {
+      ...imported.theme,
+      ui: { ...imported.theme.ui, editorBg: "#111111" },
+    });
+    expect(updated.entries).toHaveLength(1);
+    expect(updated.entries[0].theme.ui.editorBg).toBe("#111111");
+  });
+
+  it("loads custom theme entries from settings JSON shape", () => {
+    const entry = customThemeEntryFromJson(
+      {
+        id: "night",
+        name: "Night Work",
+        theme: { ...darkTheme, name: "Original Name" },
+      },
+      0,
+      [],
+    );
+    expect(entry.id).toBe("night");
+    expect(entry.name).toBe("Night Work");
+    expect(entry.theme.name).toBe("Night Work");
   });
 
   it("imports common VS Code workbench colors", () => {

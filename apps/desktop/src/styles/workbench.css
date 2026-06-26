@@ -1,21 +1,21 @@
 .workspace {
   display: grid;
-  grid-template-columns: 52px var(--sidebar-width, 272px) minmax(0, 1fr);
+  grid-template-columns: 50px var(--sidebar-width, 276px) minmax(0, 1fr);
   min-height: 0;
 }
 
 .workspace.sidebar-collapsed {
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 50px minmax(0, 1fr);
 }
 
 .connection-rail {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   justify-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   min-height: 0;
-  padding: 8px 6px;
+  padding: 7px 6px;
   border-right: 1px solid var(--border);
   background: var(--surface);
 }
@@ -24,7 +24,7 @@
   display: grid;
   align-content: start;
   justify-items: center;
-  gap: 7px;
+  gap: 6px;
   min-height: 0;
   overflow: auto;
   width: 100%;
@@ -36,10 +36,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 33px;
+  height: 33px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 4px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
@@ -65,8 +65,8 @@
   position: absolute;
   left: -6px;
   width: 3px;
-  height: 24px;
-  border-radius: 999px;
+  height: 23px;
+  border-radius: 0 2px 2px 0;
   background: var(--focus);
 }
 
@@ -121,7 +121,7 @@
   align-items: center;
   justify-content: space-between;
   height: var(--bar-md);
-  padding: 0 10px;
+  padding: 0 10px 0 11px;
   color: var(--muted);
   font-size: var(--font-ui-sm);
   font-weight: 800;
@@ -131,7 +131,7 @@
 .section-heading-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -149,7 +149,7 @@
   height: 22px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
@@ -168,8 +168,8 @@
 .history-list,
 .command-list {
   display: grid;
-  gap: 3px;
-  padding: 0 8px 8px;
+  gap: 1px;
+  padding: 0 7px 8px;
 }
 
 .connection-list {
@@ -263,7 +263,7 @@
   display: grid;
   align-items: center;
   min-width: 0;
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--text);
   background: transparent;
   text-align: left;
@@ -273,7 +273,7 @@
 .connection-item {
   grid-template-columns: 22px minmax(0, 1fr) 11px;
   gap: 8px;
-  padding: 8px;
+  padding: 7px 8px;
 }
 
 .connection-item span,
@@ -350,7 +350,7 @@
 .object-row {
   grid-template-columns: 22px minmax(0, 1fr) auto;
   gap: 7px;
-  min-height: 29px;
+  min-height: 28px;
   padding: 0 8px;
 }
 
@@ -420,7 +420,7 @@
 .schema-tree summary {
   grid-template-columns: 22px minmax(0, 1fr) auto;
   gap: 7px;
-  min-height: 30px;
+  min-height: 29px;
   padding: 0 8px;
   cursor: pointer;
   font-weight: 800;
@@ -433,14 +433,14 @@
 }
 
 .object-tree {
-  margin-left: 12px;
+  margin-left: 10px;
 }
 
 .object-tree summary {
   position: relative;
   grid-template-columns: 22px minmax(0, 1fr) auto 26px;
   gap: 7px;
-  min-height: 29px;
+  min-height: 28px;
   padding: 0 8px;
   cursor: pointer;
 }
@@ -504,7 +504,7 @@
 .metadata-row {
   grid-template-columns: 22px minmax(0, 1fr) minmax(76px, auto);
   gap: 7px;
-  min-height: 26px;
+  min-height: 25px;
   padding: 0 8px;
   background: transparent;
   text-align: left;
@@ -535,7 +535,7 @@
 
 .main-pane {
   display: grid;
-  grid-template-rows: var(--bar-md) minmax(240px, 1fr) var(--results-height, 228px);
+  grid-template-rows: var(--bar-md) minmax(240px, 1fr) var(--results-height, 238px);
   min-width: 0;
   min-height: 0;
 }
@@ -543,9 +543,9 @@
 .tab-strip {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 0;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 6px 0 8px;
   overflow-x: auto;
   overflow-y: hidden;
   border-bottom: 1px solid var(--border);
@@ -557,28 +557,31 @@
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: var(--control-md);
+  gap: 7px;
+  height: var(--bar-md);
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: var(--font-ui-md);
   line-height: var(--line-compact);
 }
 
 .tab-folder {
   flex: 0 0 auto;
+  height: var(--control-md);
+  margin-right: 7px;
   padding: 0 9px;
   color: var(--muted);
   background: var(--surface-muted);
   font-size: var(--font-ui-sm);
   font-weight: 800;
+  border-radius: 3px;
 }
 
 .tab {
   flex: 0 1 180px;
   min-width: 54px;
   max-width: 180px;
-  padding: 0 11px;
+  padding: 0 13px;
   overflow: hidden;
   color: var(--text);
   background: transparent;
@@ -613,6 +616,7 @@
   align-items: center;
   justify-content: space-between;
   min-width: 0;
+  height: var(--bar-md);
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
   color: var(--muted);
@@ -623,7 +627,7 @@
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  gap: 8px;
+  gap: 7px;
 }
 
 .editor-title span,
@@ -649,13 +653,14 @@
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
-  gap: 6px;
+  gap: 5px;
 }
 
 .editor-command-bar .icon-button,
 .editor-command-bar .text-button,
 .editor-command-bar .primary-action {
   height: var(--control-sm);
+  border-radius: 3px;
 }
 
 .editor-command-bar .run-main-button span {
@@ -700,7 +705,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 58%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 46%, transparent);
 }
 
 .editor-split-mode {
@@ -840,7 +845,7 @@ body.panel-resizing .result-grid {
 .inspector {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 0;
   min-width: 0;
   overflow: auto;
   padding-bottom: 8px;
@@ -849,8 +854,8 @@ body.panel-resizing .result-grid {
 
 .completion-item {
   gap: 2px;
-  min-height: 44px;
-  padding: 7px 8px;
+  min-height: 42px;
+  padding: 6px 8px;
 }
 
 .completion-item strong {
@@ -864,16 +869,16 @@ body.panel-resizing .result-grid {
 
 .history-item {
   gap: 3px;
-  min-height: 48px;
-  padding: 7px 8px;
+  min-height: 44px;
+  padding: 6px 8px;
 }
 
 .history-search {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  margin: 0 8px 6px;
+  height: 27px;
+  margin: 0 7px 6px;
   padding: 0 7px;
   border: 1px solid var(--border);
   border-radius: 4px;

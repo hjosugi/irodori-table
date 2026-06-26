@@ -180,7 +180,15 @@ import { type SqlEditorHandle } from "./SqlEditor";
 import { isSqlFormatterId } from "./sql/formatter";
 import { isSqlLinterId } from "./sql/linter";
 import { selectedOrCurrentStatement } from "./sql/statements";
-import { cssVariables, darkTheme, lightTheme } from "./theme";
+import {
+  cssVariables,
+  customThemeEntryFromJson,
+  darkTheme,
+  importThemeJson,
+  lightTheme,
+  upsertCustomThemeEntry,
+  type ThemeKind,
+} from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
@@ -752,6 +760,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function builtInTheme(kind: ThemeKind) {
+  return kind === "dark" ? darkTheme : lightTheme;
+}
+
 function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
   return {
     ...profile,
@@ -1075,7 +1087,22 @@ function App() {
   const [query, setQuery] = useState(loadSavedQuery);
   const themeKind = usePreferencesStore((state) => state.themeKind);
   const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
-  const theme = themeKind === "dark" ? darkTheme : lightTheme;
+  const activeCustomThemeId = usePreferencesStore(
+    (state) => state.activeCustomThemeId,
+  );
+  const setActiveCustomThemeId = usePreferencesStore(
+    (state) => state.setActiveCustomThemeId,
+  );
+  const customThemes = usePreferencesStore((state) => state.customThemes);
+  const setCustomThemes = usePreferencesStore(
+    (state) => state.setCustomThemes,
+  );
+  const activeCustomTheme = useMemo(
+    () =>
+      customThemes.find((entry) => entry.id === activeCustomThemeId) ?? null,
+    [activeCustomThemeId, customThemes],
+  );
+  const theme = activeCustomTheme?.theme ?? builtInTheme(themeKind);
   const vimMode = usePreferencesStore((state) => state.vimMode);
   const setVimMode = usePreferencesStore((state) => state.setVimMode);
   const formatter = usePreferencesStore((state) => state.formatter);
@@ -2425,11 +2452,33 @@ function App() {
       .includes(paletteQuery.trim().toLowerCase()),
   );
 
+  function activateBuiltInTheme(value: ThemeKind | ((kind: ThemeKind) => ThemeKind)) {
+    const nextThemeKind = typeof value === "function" ? value(themeKind) : value;
+    setThemeKind(nextThemeKind);
+    setActiveCustomThemeId(null);
+  }
+
+  function activateCustomTheme(themeId: string | null) {
+    if (!themeId) {
+      setActiveCustomThemeId(null);
+      return;
+    }
+    const entry = customThemes.find((customTheme) => customTheme.id === themeId);
+    if (!entry) {
+      setActiveCustomThemeId(null);
+      return;
+    }
+    setThemeKind(entry.theme.kind);
+    setActiveCustomThemeId(entry.id);
+  }
+
   function buildSettingsJson() {
     return JSON.stringify(
       {
         version: 1,
-        theme: themeKind,
+        theme: activeCustomTheme?.theme ?? themeKind,
+        activeCustomThemeId,
+        customThemes,
         editor: {
           vimMode,
           formatter,
@@ -2499,8 +2548,79 @@ function App() {
       if (!isRecord(parsed)) {
         throw new Error("settings JSON root must be an object");
       }
+      let themeNotice: string | null = null;
+      let nextCustomThemes = customThemes;
+      let nextActiveCustomThemeId: string | null | undefined;
+      if (Array.isArray(parsed.customThemes)) {
+        nextCustomThemes = [];
+        for (const [index, value] of parsed.customThemes.entries()) {
+          nextCustomThemes.push(
+            customThemeEntryFromJson(value, index, nextCustomThemes),
+          );
+        }
+        setCustomThemes(nextCustomThemes);
+      }
       if (parsed.theme === "dark" || parsed.theme === "light") {
-        setThemeKind(parsed.theme);
+        activateBuiltInTheme(parsed.theme);
+        nextActiveCustomThemeId = null;
+      } else if (isRecord(parsed.theme)) {
+        const themeSource = parsed.theme;
+        const importResult = importThemeJson(themeSource, themeKind);
+        const nextTheme = importResult.theme;
+        parsed.theme = nextTheme;
+        themeNotice =
+          importResult.source === "vscode"
+            ? importResult.warnings.length > 0
+              ? `Converted VS Code theme: ${nextTheme.name} (${importResult.warnings.length} warning(s))`
+              : `Converted VS Code theme: ${nextTheme.name}`
+            : `Custom theme: ${nextTheme.name}`;
+        const savedTheme = upsertCustomThemeEntry(nextCustomThemes, nextTheme);
+        nextCustomThemes = savedTheme.entries;
+        setCustomThemes(nextCustomThemes);
+        setThemeKind(nextTheme.kind);
+        setActiveCustomThemeId(savedTheme.id);
+        nextActiveCustomThemeId = savedTheme.id;
+        parsed.activeCustomThemeId = savedTheme.id;
+        parsed.customThemes = nextCustomThemes;
+      } else if (isRecord(parsed.vscodeTheme)) {
+        const fallbackKind =
+          parsed.theme === "light" || parsed.theme === "dark"
+            ? parsed.theme
+            : themeKind;
+        const importResult = importThemeJson(parsed.vscodeTheme, fallbackKind);
+        const savedTheme = upsertCustomThemeEntry(
+          nextCustomThemes,
+          importResult.theme,
+        );
+        nextCustomThemes = savedTheme.entries;
+        setCustomThemes(nextCustomThemes);
+        setThemeKind(importResult.theme.kind);
+        setActiveCustomThemeId(savedTheme.id);
+        parsed.theme = importResult.theme;
+        parsed.activeCustomThemeId = savedTheme.id;
+        parsed.customThemes = nextCustomThemes;
+        delete parsed.vscodeTheme;
+        nextActiveCustomThemeId = savedTheme.id;
+        themeNotice =
+          importResult.warnings.length > 0
+            ? `Converted VS Code theme: ${importResult.theme.name} (${importResult.warnings.length} warning(s))`
+            : `Converted VS Code theme: ${importResult.theme.name}`;
+      } else if (
+        typeof parsed.activeCustomThemeId === "string" &&
+        nextCustomThemes.some((entry) => entry.id === parsed.activeCustomThemeId)
+      ) {
+        const entry = nextCustomThemes.find(
+          (themeEntry) => themeEntry.id === parsed.activeCustomThemeId,
+        );
+        if (entry) {
+          setThemeKind(entry.theme.kind);
+          setActiveCustomThemeId(entry.id);
+          nextActiveCustomThemeId = entry.id;
+          themeNotice = `Custom theme: ${entry.name}`;
+        }
+      }
+      if (nextActiveCustomThemeId === undefined && Array.isArray(parsed.customThemes)) {
+        setActiveCustomThemeId(null);
       }
       if (isRecord(parsed.editor)) {
         if (typeof parsed.editor.vimMode === "boolean") {
@@ -2589,7 +2709,11 @@ function App() {
       }
       setSettingsJsonDraft(JSON.stringify(parsed, null, 2));
       setSettingsJsonError(null);
-      showActionNotice("success", "Settings applied", "JSON settings were loaded");
+      showActionNotice(
+        "success",
+        "Settings applied",
+        themeNotice ?? "JSON settings were loaded",
+      );
     } catch (error) {
       const message = errorMessage(error);
       setSettingsJsonError(message);
@@ -3894,7 +4018,7 @@ function App() {
             }
             aria-label="Toggle color theme"
             onClick={() =>
-              setThemeKind((kind) => (kind === "dark" ? "light" : "dark"))
+              activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
             }
           >
             {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
@@ -4000,7 +4124,9 @@ function App() {
                 role="menuitem"
                 onClick={() => {
                   setWorkspaceMenuOpen(false);
-                  setThemeKind((kind) => (kind === "dark" ? "light" : "dark"));
+                  activateBuiltInTheme((kind) =>
+                    kind === "dark" ? "light" : "dark",
+                  );
                 }}
               >
                 {themeKind === "dark" ? "Light Theme" : "Dark Theme"}
@@ -5542,7 +5668,12 @@ function App() {
           vimMode={vimMode}
           setVimMode={setVimMode}
           themeKind={themeKind}
-          setThemeKind={setThemeKind}
+          setThemeKind={activateBuiltInTheme}
+          customThemes={customThemes}
+          activeCustomThemeId={activeCustomThemeId}
+          activeCustomThemeName={activeCustomTheme?.name ?? null}
+          setActiveCustomThemeId={activateCustomTheme}
+          clearCustomTheme={() => activateBuiltInTheme(theme.kind)}
           formatter={formatter}
           setFormatter={setFormatter}
           sqlLinter={sqlLinter}

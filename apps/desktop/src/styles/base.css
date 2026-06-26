@@ -1,7 +1,7 @@
 :root {
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter,
+    ui-sans-serif, system-ui, sans-serif;
   color: #1f2328;
   background: #f3f3f3;
   font-synthesis: none;
@@ -67,13 +67,13 @@ textarea:disabled {
   --font-code: 13px;
   --line-ui: 1.35;
   --line-compact: 1;
-  --control-xxs: 23px;
+  --control-xxs: 22px;
   --control-xs: 24px;
-  --control-sm: 26px;
-  --control-md: 28px;
-  --bar-sm: 32px;
-  --bar-md: 34px;
-  --status-height: 24px;
+  --control-sm: 25px;
+  --control-md: 27px;
+  --bar-sm: 31px;
+  --bar-md: 33px;
+  --status-height: 22px;
   --border: #d3d8d2;
   --border-strong: #b8c1b5;
   --surface: #f7f8f4;
@@ -120,8 +120,8 @@ textarea:disabled {
 }
 
 .titlebar {
-  gap: 10px;
-  padding: 0 10px;
+  gap: 8px;
+  padding: 0 8px;
 }
 
 .brand,
@@ -133,16 +133,16 @@ textarea:disabled {
 }
 
 .brand {
-  min-width: 28px;
-  width: 28px;
+  min-width: 26px;
+  width: 26px;
   justify-content: center;
   color: var(--text);
   font-weight: 700;
 }
 
 .brand-icon {
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
   display: block;
 }
 
@@ -166,9 +166,9 @@ textarea:disabled {
   align-items: center;
   justify-content: center;
   height: var(--control-xs);
-  width: 28px;
+  width: 27px;
   border: 1px solid var(--border-strong);
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--muted);
   background: var(--surface-raised);
   cursor: pointer;
@@ -180,9 +180,9 @@ textarea:disabled {
   z-index: 25;
   display: grid;
   min-width: 210px;
-  padding: 5px;
+  padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--surface-raised);
   box-shadow: 0 14px 34px rgba(31, 35, 40, 0.2);
 }
@@ -200,7 +200,7 @@ textarea:disabled {
   gap: 12px;
   min-height: 30px;
   padding: 0 9px;
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--text);
   background: transparent;
   text-align: left;
@@ -242,7 +242,7 @@ textarea:disabled {
 
 .toolbar {
   gap: 8px;
-  padding: 0 8px;
+  padding: 0 7px;
 }
 
 .connection-select,
@@ -258,7 +258,7 @@ textarea:disabled {
   height: var(--control-md);
   min-width: 0;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--text);
   background: var(--surface-raised);
   font-size: var(--font-ui-sm);
@@ -295,7 +295,7 @@ textarea:disabled {
 }
 
 .connection-select {
-  min-width: 264px;
+  min-width: 258px;
   max-width: min(360px, 46vw);
   justify-content: flex-start;
   padding: 0 10px;
@@ -322,7 +322,7 @@ textarea:disabled {
   border-color: var(--blue);
   color: #ffffff;
   background: var(--blue);
-  font-weight: 700;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -358,9 +358,9 @@ textarea:disabled {
 }
 
 .mini-button {
-  width: 26px;
+  width: 25px;
   height: var(--control-xxs);
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--surface-raised);
 }
 
@@ -394,7 +394,7 @@ textarea:disabled {
 }
 
 .run-main-button {
-  border-radius: 4px 0 0 4px;
+  border-radius: 3px 0 0 3px;
 }
 
 .run-menu-toggle {
@@ -402,7 +402,7 @@ textarea:disabled {
   min-width: 30px;
   padding: 0;
   border-left-color: color-mix(in srgb, #000 16%, transparent);
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 3px 3px 0;
 }
 
 .run-menu-popover {

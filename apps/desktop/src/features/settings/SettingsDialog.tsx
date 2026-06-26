@@ -6,6 +6,7 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import type { JobList, JobSummary } from "../../generated/irodori-api";
+import type { CustomThemeEntry } from "../preferences";
 import {
   commandHasConflict,
   formatKeySequence,
@@ -37,6 +38,11 @@ export interface SettingsDialogProps {
   setVimMode: (value: boolean) => void;
   themeKind: ThemeKind;
   setThemeKind: (value: ThemeKind) => void;
+  customThemes: CustomThemeEntry[];
+  activeCustomThemeId: string | null;
+  activeCustomThemeName: string | null;
+  setActiveCustomThemeId: (value: string | null) => void;
+  clearCustomTheme: () => void;
   formatter: SqlFormatterId;
   setFormatter: (value: SqlFormatterId) => void;
   sqlLinter: SqlLinterId;
@@ -133,6 +139,11 @@ export function SettingsDialog({
   setVimMode,
   themeKind,
   setThemeKind,
+  customThemes,
+  activeCustomThemeId,
+  activeCustomThemeName,
+  setActiveCustomThemeId,
+  clearCustomTheme,
   formatter,
   setFormatter,
   sqlLinter,
@@ -242,7 +253,11 @@ export function SettingsDialog({
                 <label className="settings-row">
                   <span>
                     <strong>Theme</strong>
-                    <small>Workbench color mode.</small>
+                    <small>
+                      {activeCustomThemeName
+                        ? `Using custom: ${activeCustomThemeName}`
+                        : "Workbench color mode."}
+                    </small>
                   </span>
                   <div className="segmented-control">
                     <button
@@ -261,6 +276,40 @@ export function SettingsDialog({
                     </button>
                   </div>
                 </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>Saved themes</strong>
+                    <small>Custom theme library.</small>
+                  </span>
+                  <select
+                    value={activeCustomThemeId ?? ""}
+                    onChange={(event) =>
+                      setActiveCustomThemeId(event.currentTarget.value || null)
+                    }
+                  >
+                    <option value="">Built-in theme</option>
+                    {customThemes.map((theme) => (
+                      <option key={theme.id} value={theme.id}>
+                        {theme.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {activeCustomThemeName ? (
+                  <div className="settings-row settings-row-alert">
+                    <span>
+                      <strong>Custom theme</strong>
+                      <small>Saved as {activeCustomThemeName}.</small>
+                    </span>
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={clearCustomTheme}
+                    >
+                      Use Built-in
+                    </button>
+                  </div>
+                ) : null}
                 <label className="settings-row">
                   <span>
                     <strong>SQL formatter</strong>
@@ -535,8 +584,8 @@ export function SettingsDialog({
                   <span>
                     <strong>Settings JSON</strong>
                     <small>
-                      Edits apply to theme, editor, layout, keymap, and saved
-                      connections.
+                      Edits apply to theme JSON, editor, layout, keymap, and
+                      saved connections.
                     </small>
                   </span>
                   <button
