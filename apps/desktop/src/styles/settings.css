@@ -132,3 +132,92 @@
 .settings-json-error {
   margin: 0;
 }
+
+.settings-jobs {
+  display: grid;
+  gap: 12px;
+}
+
+.jobs-section {
+  display: grid;
+  gap: 8px;
+}
+
+.jobs-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.jobs-section-title span {
+  color: var(--text);
+}
+
+.jobs-list {
+  display: grid;
+  gap: 8px;
+}
+
+.job-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.job-main,
+.job-meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.job-main strong,
+.job-main small,
+.job-meta small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-main strong {
+  font-size: 13px;
+}
+
+.job-main small,
+.job-meta small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-meta {
+  justify-items: end;
+}
+
+.job-error {
+  color: var(--danger) !important;
+}
+
+.job-progress {
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.job-progress span {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+}

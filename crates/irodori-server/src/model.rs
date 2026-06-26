@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub use irodori_core::{JobList, JobRecord, JobSummary};
+
 /// A configured data source the API can serve.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,4 +58,15 @@ pub struct QueryBody {
 pub struct ErrorBody {
     pub error: String,
     pub code: &'static str,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn job_list_uses_core_shape_for_api_boundaries() {
+        let value = serde_json::to_value(JobList::default()).unwrap();
+        assert_eq!(value, serde_json::json!({ "active": [], "history": [] }));
+    }
 }

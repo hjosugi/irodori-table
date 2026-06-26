@@ -10,6 +10,36 @@ export type IrodoriError = { kind: IrodoriErrorKind, message: string, code?: str
 
 export type CommandResult<T> = { ok: boolean, data?: T, error?: IrodoriError, };
 
+export type JobKind = "knowledgeRefresh" | "import" | "export" | "indexBuild" | "mlEvaluation" | "bulkEdit" | "sourceScan" | "other";
+
+export type JobStatus = "queued" | "running" | "cancelling" | "succeeded" | "failed" | "cancelled";
+
+export type JobLogLevel = "debug" | "info" | "warn" | "error";
+
+export type JobRetryPolicy = { maxAttempts: number, initialBackoffMs: bigint, maxBackoffMs: bigint, };
+
+export type JobConcurrencyPolicy = { group: string, maxConcurrentInGroup?: number, };
+
+export type JobResourceBudget = { maxMemoryMb?: bigint, maxDiskMb?: bigint, maxCpuPercent?: number, };
+
+export type JobSpec = { kind: JobKind, title: string, source?: string, tags?: Array<string>, retry: JobRetryPolicy, concurrency: JobConcurrencyPolicy, resourceBudget: JobResourceBudget, resumable: boolean, };
+
+export type JobProgress = { completed: bigint, total?: bigint, unit: string, message?: string, percent?: number, };
+
+export type JobCheckpoint = { version: number, cursor: string, payloadJson: string, savedAtMs: bigint, };
+
+export type JobArtifact = { id: string, name: string, path: string, mediaType?: string, sizeBytes?: bigint, };
+
+export type JobLogEntry = { sequence: bigint, occurredAtMs: bigint, level: JobLogLevel, message: string, fields?: { [key in string]: string }, };
+
+export type JobRecord = { id: string, spec: JobSpec, status: JobStatus, progress: JobProgress, createdAtMs: bigint, updatedAtMs: bigint, startedAtMs?: bigint, finishedAtMs?: bigint, attempt: number, nextRetryAtMs?: bigint, cancelRequested: boolean, checkpoint?: JobCheckpoint, artifacts?: Array<JobArtifact>, error?: IrodoriError, logs?: Array<JobLogEntry>, };
+
+export type JobSummary = { id: string, kind: JobKind, title: string, status: JobStatus, progress: JobProgress, createdAtMs: bigint, updatedAtMs: bigint, startedAtMs?: bigint, finishedAtMs?: bigint, attempt: number, cancelRequested: boolean, nextRetryAtMs?: bigint, latestLogMessage?: string, artifactCount: number, error?: IrodoriError, };
+
+export type JobList = { active: Array<JobSummary>, history: Array<JobSummary>, };
+
+export type JobRuntimeConfig = { maxConcurrentJobs: number, maxHistory: number, };
+
 export type PrivacyMode = "normal" | "private";
 
 export type RedactionReport = { text: string, redactions: number, };
@@ -147,6 +177,18 @@ export type DbColumnReference = { schema: string, object: string, column: string
 
 export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
+}
+
+export function jobsList(): Promise<JobList> {
+  return invoke<JobList>("jobs_list");
+}
+
+export function jobsGet(jobId: string): Promise<JobRecord | null> {
+  return invoke<JobRecord | null>("jobs_get", { jobId });
+}
+
+export function jobsCancel(jobId: string): Promise<JobRecord> {
+  return invoke<JobRecord>("jobs_cancel", { jobId });
 }
 
 export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {

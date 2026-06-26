@@ -141,12 +141,16 @@ import {
   dbDisconnect,
   dbListObjects,
   dbQueryParameters,
+  jobsCancel,
+  jobsList,
   type CellValue,
   type ConnectionInfo,
   type ConnectionProfile,
   type DatabaseMetadata,
   type DbEngine,
   type DbObjectMetadata,
+  type JobList,
+  type JobSummary,
   type QueryResult,
   type QueryResultSet,
   type QueryParameterInput,
@@ -487,7 +491,7 @@ type PendingQueryParameters = {
   promptSet: QueryParameterPromptSet;
 };
 
-type SettingsTab = "general" | "keymap" | "json";
+type SettingsTab = "general" | "keymap" | "jobs" | "json";
 type ResultMode = "data" | "structure";
 type ActionNotice = {
   id: number;
@@ -590,6 +594,56 @@ function parseClipboardTable(text: string): string[][] {
 
 function toCount(value: bigint | number) {
   return Number(value).toLocaleString();
+}
+
+const emptyJobList: JobList = { active: [], history: [] };
+
+function formatJobKind(kind: JobSummary["kind"]) {
+  switch (kind) {
+    case "knowledgeRefresh":
+      return "Knowledge refresh";
+    case "indexBuild":
+      return "Index build";
+    case "mlEvaluation":
+      return "ML evaluation";
+    case "bulkEdit":
+      return "Bulk edit";
+    case "sourceScan":
+      return "Source scan";
+    default:
+      return kind.charAt(0).toUpperCase() + kind.slice(1);
+  }
+}
+
+function formatJobTime(value?: bigint) {
+  if (value === undefined) {
+    return "-";
+  }
+  const date = new Date(Number(value));
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleString([], {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatJobProgress(job: JobSummary) {
+  const progress = job.progress;
+  if (progress.total !== undefined) {
+    return `${toCount(progress.completed)} / ${toCount(progress.total)} ${progress.unit}`;
+  }
+  if (progress.completed > 0n) {
+    return `${toCount(progress.completed)} ${progress.unit}`;
+  }
+  return progress.message ?? "Waiting";
+}
+
+function isCancellableJob(job: JobSummary) {
+  return job.status === "queued" || job.status === "running";
 }
 
 function objectKindLabel(object: DbObjectMetadata) {
@@ -1276,6 +1330,9 @@ function App() {
   const [settingsJsonError, setSettingsJsonError] = useState<string | null>(
     null,
   );
+  const [jobs, setJobs] = useState<JobList>(emptyJobList);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState<string | null>(null);
   const [objectActionMenu, setObjectActionMenu] = useState<string | null>(null);
   // ER diagram modal (rendered from metadata through our SVG layout).
   const [diagramOpen, setDiagramOpen] = useState(false);
@@ -1320,6 +1377,12 @@ function App() {
         setSnapshot(fallbackSnapshot);
       });
   }, []);
+
+  useEffect(() => {
+    if (settingsOpen && settingsTab === "jobs") {
+      void refreshJobs();
+    }
+  }, [settingsOpen, settingsTab]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -2494,6 +2557,34 @@ function App() {
     if (tab === "json") {
       setSettingsJsonDraft(buildSettingsJson());
       setSettingsJsonError(null);
+    }
+  }
+
+  async function refreshJobs() {
+    setJobsLoading(true);
+    setJobsError(null);
+    try {
+      const next = await jobsList();
+      setJobs(next);
+    } catch (error) {
+      const message = errorMessage(error);
+      setJobsError(message);
+      setJobs(emptyJobList);
+    } finally {
+      setJobsLoading(false);
+    }
+  }
+
+  async function cancelJob(jobId: string) {
+    setJobsError(null);
+    try {
+      await jobsCancel(jobId);
+      await refreshJobs();
+      showActionNotice("info", "Job cancellation requested", jobId);
+    } catch (error) {
+      const message = errorMessage(error);
+      setJobsError(message);
+      showActionNotice("error", "Job cancellation failed", message);
     }
   }
 
@@ -5696,6 +5787,14 @@ function App() {
                 </button>
                 <button
                   type="button"
+                  className={settingsTab === "jobs" ? "active" : undefined}
+                  onClick={() => openSettingsSection("jobs")}
+                >
+                  <Clock3 size={15} />
+                  Jobs
+                </button>
+                <button
+                  type="button"
                   className={settingsTab === "json" ? "active" : undefined}
                   onClick={() => openSettingsSection("json")}
                 >
@@ -5863,6 +5962,112 @@ function App() {
                         </div>
                       );
                     })}
+                  </div>
+                ) : settingsTab === "jobs" ? (
+                  <div className="settings-jobs">
+                    <div className="settings-json-toolbar">
+                      <span>
+                        <strong>Background Jobs</strong>
+                        <small>
+                          Active and recent local work tracked by the shared job runtime.
+                        </small>
+                      </span>
+                      <button
+                        className="text-button"
+                        type="button"
+                        onClick={() => void refreshJobs()}
+                        disabled={jobsLoading}
+                      >
+                        {jobsLoading ? "Refreshing" : "Refresh"}
+                      </button>
+                    </div>
+                    {jobsError ? (
+                      <div className="inline-error settings-json-error">
+                        <AlertTriangle size={13} />
+                        <span>{jobsError}</span>
+                      </div>
+                    ) : null}
+                    <section className="jobs-section">
+                      <div className="jobs-section-title">
+                        <strong>Active</strong>
+                        <span>{jobs.active.length}</span>
+                      </div>
+                      {jobs.active.length > 0 ? (
+                        <div className="jobs-list">
+                          {jobs.active.map((job) => (
+                            <div className="job-row" key={job.id}>
+                              <div className="job-main">
+                                <strong>{job.title}</strong>
+                                <small>
+                                  {formatJobKind(job.kind)} · {job.status} ·{" "}
+                                  {formatJobProgress(job)}
+                                </small>
+                                {job.progress.percent !== undefined ? (
+                                  <div className="job-progress">
+                                    <span
+                                      style={{
+                                        width: `${job.progress.percent}%`,
+                                      }}
+                                    />
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="job-meta">
+                                <small>Attempt {job.attempt}</small>
+                                {isCancellableJob(job) ? (
+                                  <button
+                                    className="text-button"
+                                    type="button"
+                                    onClick={() => void cancelJob(job.id)}
+                                  >
+                                    Cancel
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-browser">No active jobs</div>
+                      )}
+                    </section>
+                    <section className="jobs-section">
+                      <div className="jobs-section-title">
+                        <strong>History</strong>
+                        <span>{jobs.history.length}</span>
+                      </div>
+                      {jobs.history.length > 0 ? (
+                        <div className="jobs-list">
+                          {jobs.history.map((job) => (
+                            <div className={`job-row ${job.status}`} key={job.id}>
+                              <div className="job-main">
+                                <strong>{job.title}</strong>
+                                <small>
+                                  {formatJobKind(job.kind)} · {job.status} ·{" "}
+                                  {formatJobTime(job.finishedAtMs ?? job.updatedAtMs)}
+                                </small>
+                                {job.error ? (
+                                  <small className="job-error">
+                                    {job.error.message}
+                                  </small>
+                                ) : job.latestLogMessage ? (
+                                  <small>{job.latestLogMessage}</small>
+                                ) : null}
+                              </div>
+                              <div className="job-meta">
+                                <small>
+                                  {job.artifactCount
+                                    ? `${job.artifactCount} artifacts`
+                                    : "No artifacts"}
+                                </small>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-browser">No finished jobs</div>
+                      )}
+                    </section>
                   </div>
                 ) : (
                   <div className="settings-json">

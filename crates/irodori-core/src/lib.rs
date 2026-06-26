@@ -1,6 +1,7 @@
 //! Core workspace, command, error, and shared domain types for Irodori Table.
 
 pub mod connection;
+pub mod jobs;
 pub mod security;
 
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,11 @@ pub use connection::{
     ProxyTransport, SecretRef, SecretSlot, SecretSlotPurpose, SourceFamily, SourceKind,
     SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
     CONNECTION_PROFILE_SCHEMA_VERSION,
+};
+pub use jobs::{
+    JobArtifact, JobCheckpoint, JobConcurrencyPolicy, JobKind, JobList, JobLogEntry, JobLogLevel,
+    JobProgress, JobRecord, JobResourceBudget, JobRetryPolicy, JobRuntime, JobRuntimeConfig,
+    JobSpec, JobStatus, JobSummary,
 };
 pub use security::{
     AuditEvent, AuditEventKind, AuditLog, PrivacyMode, RedactedExport, RedactionReport, Redactor,

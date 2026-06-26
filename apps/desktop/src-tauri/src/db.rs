@@ -57,12 +57,15 @@ mod oracle;
 mod postgres;
 mod redis;
 mod snowflake;
+mod spill;
 mod sqlite;
 mod stream;
 
 pub use edit::{AppliedEdits, CellValue, RowDelete, RowInsert, RowUpdate, TableEdits};
 pub use engine::DbEngine;
 use engine::Wire;
+pub use spill::SpillConfig;
+use spill::ResultStore;
 
 /// One query's decoded result: `(column names, rows of JSON cells, truncated)`.
 pub(crate) type RowSet = (Vec<String>, Vec<Vec<serde_json::Value>>, bool);
@@ -73,6 +76,14 @@ pub(crate) type RowSet = (Vec<String>, Vec<Vec<serde_json::Value>>, bool);
 /// later ticket adds optional disk offload for very large windows (EXEC-010).
 pub(crate) const DEFAULT_MAX_ROWS: usize = 10_000;
 pub(crate) const MAX_RESULT_ROWS: usize = 100_000;
+
+/// Hard ceiling on rows retained by a disk-offloaded result (EXEC-010). Bounds
+/// temp-file size and server work even when offload lets a result exceed the
+/// interactive in-memory page.
+pub(crate) const MAX_SPILL_ROWS: usize = 20_000_000;
+/// Finished result stores kept for windowed paging before the oldest is evicted
+/// (closing its temp file). One per recent run/tab is plenty.
+const MAX_RETAINED_RESULTS: usize = 16;
 
 const MAX_CONNECTION_ID_LEN: usize = 128;
 const MAX_SQL_BYTES: usize = 4 * 1024 * 1024;
@@ -510,6 +521,38 @@ pub struct QueryResultSet {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub message: Option<String>,
+}
+
+/// Outcome of a disk-offloaded run (EXEC-010). The first `in_memory_rows` rows are
+/// also streamed to the UI over the channel for an immediate paint; `handle`
+/// addresses the retained store so the grid can page the rest from disk via
+/// `db_result_window`, and `release` it when the result is replaced.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct SpillRunResult {
+    /// Opaque id for `db_result_window` / `db_release_result`.
+    pub handle: String,
+    pub columns: Vec<String>,
+    /// Total rows retained (resident + spilled).
+    pub total_rows: u64,
+    /// Rows kept resident in RAM and streamed to the UI (the first page).
+    pub in_memory_rows: u64,
+    /// Whether any rows were written to the temp spill file.
+    pub spilled: bool,
+    /// Whether rows were dropped (offload off and over budget, or the hard ceiling).
+    pub truncated: bool,
+    pub elapsed_ms: u64,
+}
+
+/// One page of a retained result, read from RAM and/or the spill file.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct ResultWindow {
+    /// Absolute index of the first returned row.
+    pub offset: u64,
+    pub rows: Vec<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, TS)]
@@ -1325,6 +1368,19 @@ pub struct DbState {
     cancels: Arc<Mutex<HashMap<String, CancellationToken>>>,
     pub metadata_cache: Arc<Mutex<MetadataCache>>,
     tunnels: Arc<Mutex<HashMap<String, tokio_util::sync::CancellationToken>>>,
+    /// Retained disk-offloaded results (EXEC-010), keyed by handle, for windowed
+    /// paging. Bounded by `MAX_RETAINED_RESULTS`; evicting an entry closes its file.
+    results: Arc<Mutex<HashMap<String, ResultEntry>>>,
+    /// Monotonic counter for handle generation and oldest-first eviction.
+    result_seq: Arc<std::sync::atomic::AtomicU64>,
+}
+
+/// A retained result store plus the bookkeeping eviction and disconnect-cleanup
+/// need.
+struct ResultEntry {
+    seq: u64,
+    connection_id: String,
+    store: Arc<Mutex<ResultStore>>,
 }
 
 impl Default for DbState {
@@ -1334,6 +1390,8 @@ impl Default for DbState {
             cancels: Arc::new(Mutex::new(HashMap::new())),
             metadata_cache: Arc::new(Mutex::new(MetadataCache::new())),
             tunnels: Arc::new(Mutex::new(HashMap::new())),
+            results: Arc::new(Mutex::new(HashMap::new())),
+            result_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 }
@@ -1948,6 +2006,36 @@ pub(crate) async fn run_query_stream_with_params_impl(
     params: Option<Vec<QueryParameterInput>>,
     sink: mpsc::Sender<stream::FetchEvent>,
 ) -> Result<stream::StreamSummary, String> {
+    let cap = bounded_query_cap(max_rows)?;
+    run_query_stream_capped_impl(
+        state,
+        connection_id,
+        sql,
+        cap,
+        timeout_ms,
+        query_id,
+        params,
+        sink,
+    )
+    .await
+}
+
+/// Streaming core shared by the regular stream command and the disk-offload
+/// (EXEC-010) path. Identical to [`run_query_stream_with_params_impl`] except the
+/// caller passes an explicit row `cap` instead of going through
+/// [`bounded_query_cap`], so the spill path can fetch far past the interactive
+/// 100k page limit while the resident page stays bounded.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn run_query_stream_capped_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    cap: usize,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
+    sink: mpsc::Sender<stream::FetchEvent>,
+) -> Result<stream::StreamSummary, String> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
         return Err("connection id is required".into());
@@ -1959,7 +2047,6 @@ pub(crate) async fn run_query_stream_with_params_impl(
     if sql.len() > MAX_SQL_BYTES {
         return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
     }
-    let cap = bounded_query_cap(max_rows)?;
     let conn = {
         let guard = state.conns.lock().await;
         guard
@@ -2004,6 +2091,230 @@ pub(crate) async fn run_query_stream_with_params_impl(
         state.cancels.lock().await.remove(qid);
     }
     result
+}
+
+/// Clamp UI-supplied offload settings into a safe [`SpillConfig`]. The memory
+/// budget is bounded to the interactive page limit, and the hard ceiling caps
+/// total retained rows regardless of what the UI requests.
+pub(crate) fn bounded_spill_config(
+    memory_budget: Option<usize>,
+    offload_enabled: Option<bool>,
+) -> SpillConfig {
+    let memory_budget = memory_budget
+        .unwrap_or(DEFAULT_MAX_ROWS)
+        .clamp(1, MAX_RESULT_ROWS);
+    SpillConfig {
+        memory_budget,
+        offload_enabled: offload_enabled.unwrap_or(true),
+        max_total_rows: MAX_SPILL_ROWS,
+    }
+}
+
+/// Run a query, retaining the full result behind a disk-offloaded [`ResultStore`]
+/// (EXEC-010) while streaming only the in-memory prefix to the UI over `ui_sink`.
+///
+/// The producer (engine stream) and the consumer (append-to-store + forward the
+/// prefix) run concurrently, so the first page paints as it arrives even while the
+/// rest of a huge result is still spilling to disk. On completion the store is
+/// finalized and registered under a fresh handle, and a [`SpillRunResult`] returns
+/// the handle, total row count, and resident-page size.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn run_query_spill_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    config: SpillConfig,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
+    ui_sink: mpsc::Sender<stream::FetchEvent>,
+) -> Result<SpillRunResult, String> {
+    let started = Instant::now();
+    let store = Arc::new(Mutex::new(ResultStore::new(Vec::new(), config)));
+    let (prod_tx, mut prod_rx) = mpsc::channel::<stream::FetchEvent>(16);
+
+    let producer = run_query_stream_capped_impl(
+        state,
+        connection_id.clone(),
+        sql,
+        config.fetch_cap(),
+        timeout_ms,
+        query_id,
+        params,
+        prod_tx,
+    );
+
+    let consume_store = store.clone();
+    let consumer = async move {
+        let budget = config.memory_budget as u64;
+        // Absolute row index of the next streamed row in result set 0.
+        let mut set0_seen: u64 = 0;
+        while let Some(event) = prod_rx.recv().await {
+            match event {
+                stream::FetchEvent::Columns {
+                    result_set_index,
+                    columns,
+                } => {
+                    if result_set_index == 0 {
+                        consume_store.lock().await.set_columns(columns.clone());
+                    }
+                    // Forwarding failures (UI channel gone) are non-fatal: keep
+                    // spilling so the retained store stays complete for paging.
+                    let _ = ui_sink
+                        .send(stream::FetchEvent::Columns {
+                            result_set_index,
+                            columns,
+                        })
+                        .await;
+                }
+                stream::FetchEvent::Rows {
+                    result_set_index,
+                    rows,
+                } => {
+                    if result_set_index == 0 {
+                        // Forward only the still-missing slice of the resident page.
+                        if set0_seen < budget {
+                            let take = ((budget - set0_seen) as usize).min(rows.len());
+                            if take > 0 {
+                                let _ = ui_sink
+                                    .send(stream::FetchEvent::Rows {
+                                        result_set_index,
+                                        rows: rows[..take].to_vec(),
+                                    })
+                                    .await;
+                            }
+                        }
+                        let produced = rows.len() as u64;
+                        consume_store.lock().await.append(rows).await?;
+                        set0_seen += produced;
+                    } else {
+                        // Extra result sets (rare under spill) stream through whole.
+                        let _ = ui_sink
+                            .send(stream::FetchEvent::Rows {
+                                result_set_index,
+                                rows,
+                            })
+                            .await;
+                    }
+                }
+            }
+        }
+        Ok::<(), String>(())
+    };
+
+    let (producer_result, consumer_result) = tokio::join!(producer, consumer);
+    consumer_result?;
+    let summary = producer_result?;
+
+    let (total, columns, in_memory, spilled, truncated) = {
+        let mut guard = store.lock().await;
+        guard.finalize().await?;
+        (
+            guard.total(),
+            guard.columns().to_vec(),
+            guard.memory_len() as u64,
+            guard.spilled(),
+            guard.truncated() || summary.truncated,
+        )
+    };
+    let handle = register_result(state, &connection_id, store).await;
+
+    Ok(SpillRunResult {
+        handle,
+        columns,
+        total_rows: total,
+        in_memory_rows: in_memory,
+        spilled,
+        truncated,
+        elapsed_ms: started.elapsed().as_millis() as u64,
+    })
+}
+
+/// Register a finished store under a fresh handle, evicting the oldest retained
+/// result (and closing its temp file) when over `MAX_RETAINED_RESULTS`.
+async fn register_result(
+    state: &DbState,
+    connection_id: &str,
+    store: Arc<Mutex<ResultStore>>,
+) -> String {
+    let seq = state
+        .result_seq
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let handle = format!("result-{seq}");
+    let evicted = {
+        let mut results = state.results.lock().await;
+        results.insert(
+            handle.clone(),
+            ResultEntry {
+                seq,
+                connection_id: connection_id.to_string(),
+                store,
+            },
+        );
+        if results.len() > MAX_RETAINED_RESULTS {
+            // Evict the oldest by sequence.
+            let oldest = results
+                .iter()
+                .min_by_key(|(_, entry)| entry.seq)
+                .map(|(key, _)| key.clone());
+            oldest.and_then(|key| results.remove(&key))
+        } else {
+            None
+        }
+    };
+    if let Some(entry) = evicted {
+        entry.store.lock().await.close().await;
+    }
+    handle
+}
+
+/// Read one page `[offset, offset+limit)` of a retained result, transparently
+/// reading resident rows from RAM and spilled rows from disk.
+pub async fn result_window_impl(
+    state: &DbState,
+    handle: String,
+    offset: u64,
+    limit: usize,
+) -> Result<ResultWindow, String> {
+    let store = {
+        let results = state.results.lock().await;
+        results
+            .get(&handle)
+            .map(|entry| entry.store.clone())
+            .ok_or_else(|| format!("no such result: {handle}"))?
+    };
+    let limit = limit.min(MAX_RESULT_ROWS);
+    let rows = store.lock().await.window(offset, limit).await?;
+    Ok(ResultWindow { offset, rows })
+}
+
+/// Release a retained result, closing its temp file. Idempotent.
+pub async fn release_result_impl(state: &DbState, handle: String) -> bool {
+    let entry = state.results.lock().await.remove(&handle);
+    if let Some(entry) = entry {
+        entry.store.lock().await.close().await;
+        true
+    } else {
+        false
+    }
+}
+
+/// Release every retained result for a connection (called on disconnect).
+async fn release_results_for_connection(state: &DbState, connection_id: &str) {
+    let evicted: Vec<ResultEntry> = {
+        let mut results = state.results.lock().await;
+        let keys: Vec<String> = results
+            .iter()
+            .filter(|(_, entry)| entry.connection_id == connection_id)
+            .map(|(key, _)| key.clone())
+            .collect();
+        keys.into_iter()
+            .filter_map(|key| results.remove(&key))
+            .collect()
+    };
+    for entry in evicted {
+        entry.store.lock().await.close().await;
+    }
 }
 
 pub async fn list_objects_impl(
@@ -2077,8 +2388,11 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
     if let Some(cancel_token) = state.tunnels.lock().await.remove(&connection_id) {
         cancel_token.cancel();
     }
-    let mut cache = state.metadata_cache.lock().await;
-    cache.invalidate_connection(&connection_id);
+    release_results_for_connection(state, &connection_id).await;
+    {
+        let mut cache = state.metadata_cache.lock().await;
+        cache.invalidate_connection(&connection_id);
+    }
     Ok(())
 }
 
@@ -2607,6 +2921,121 @@ pub async fn db_run_query_stream(
         .send(final_event)
         .map_err(|e| IrodoriError::transport(e.to_string()))?;
     Ok(())
+}
+
+/// Run a query with bounded-memory disk offload (EXEC-010). The resident first
+/// page streams to `on_event` (columns → rows) for an immediate paint exactly like
+/// `db_run_query_stream`, while the full result is retained behind a temp-SQLite
+/// store. The returned [`SpillRunResult`] carries the `handle` the grid uses to
+/// page the rest from disk via `db_result_window`.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn db_run_query_spill(
+    state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
+    connection_id: String,
+    sql: String,
+    memory_budget: Option<usize>,
+    offload_enabled: Option<bool>,
+    timeout_ms: Option<u64>,
+    query_id: Option<String>,
+    params: Option<Vec<QueryParameterInput>>,
+    on_event: tauri::ipc::Channel<QueryStreamEvent>,
+) -> IrodoriResult<SpillRunResult> {
+    let config = bounded_spill_config(memory_budget, offload_enabled);
+    let (tx, mut rx) = mpsc::channel::<stream::FetchEvent>(16);
+    let audit_connection_id = connection_id.clone();
+    let audit_sql = sql.clone();
+
+    let fetch = run_query_spill_impl(
+        state.inner(),
+        connection_id,
+        sql,
+        config,
+        timeout_ms,
+        query_id,
+        params,
+        tx,
+    );
+    let forward = async {
+        while let Some(event) = rx.recv().await {
+            let out = match event {
+                stream::FetchEvent::Columns {
+                    result_set_index,
+                    columns,
+                } => QueryStreamEvent::Columns {
+                    result_set_index,
+                    columns,
+                },
+                stream::FetchEvent::Rows {
+                    result_set_index,
+                    rows,
+                } => QueryStreamEvent::Rows {
+                    result_set_index,
+                    rows,
+                },
+            };
+            on_event
+                .send(out)
+                .map_err(|e| IrodoriError::transport(e.to_string()))?;
+        }
+        Ok::<(), IrodoriError>(())
+    };
+
+    let (outcome, forwarded) = tokio::join!(fetch, forward);
+    forwarded?;
+    match outcome {
+        Ok(result) => {
+            security
+                .record(
+                    AuditEventKind::QueryRun,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([
+                        ("rowCount".to_string(), result.total_rows.to_string()),
+                        ("inMemoryRows".to_string(), result.in_memory_rows.to_string()),
+                        ("spilled".to_string(), result.spilled.to_string()),
+                        ("elapsedMs".to_string(), result.elapsed_ms.to_string()),
+                        ("truncated".to_string(), result.truncated.to_string()),
+                    ]),
+                )
+                .await;
+            Ok(result)
+        }
+        Err(error) => {
+            security
+                .record(
+                    AuditEventKind::QueryFailed,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([("error".to_string(), error.clone())]),
+                )
+                .await;
+            Err(IrodoriError::from(error))
+        }
+    }
+}
+
+/// Read one page of a retained disk-offloaded result for the grid (EXEC-010).
+#[tauri::command]
+pub async fn db_result_window(
+    state: tauri::State<'_, DbState>,
+    handle: String,
+    offset: u64,
+    limit: usize,
+) -> IrodoriResult<ResultWindow> {
+    result_window_impl(state.inner(), handle, offset, limit)
+        .await
+        .map_err(IrodoriError::from)
+}
+
+/// Release a retained disk-offloaded result, removing its temp file (EXEC-010).
+#[tauri::command]
+pub async fn db_release_result(
+    state: tauri::State<'_, DbState>,
+    handle: String,
+) -> IrodoriResult<bool> {
+    Ok(release_result_impl(state.inner(), handle).await)
 }
 
 /// Commit staged result-grid edits (updates/inserts/deletes) for one table in a

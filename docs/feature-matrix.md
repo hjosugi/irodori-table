@@ -32,7 +32,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Performance | Virtualized editor and result-grid rendering | P0 | Large SQL files and large result sets |
 | Performance | GPU-aware rendering path with software fallback | P1 | WezTerm-style performance reference |
 | Performance | Compare Tauri WebView vs native Rust GUI/GPU surfaces | P0 | Avoid painting ourselves into a slow UI corner |
-| Batch Jobs | Long-running job runtime with progress, cancellation, checkpoint/resume, logs, artifacts, and resource budgets | P1 | JOB-001/JOB-004; required for huge index builds, ML/eval runs, refresh, import/export, and bulk work |
+| Batch Jobs | Long-running job runtime with progress, cancellation, checkpoint/resume, logs, artifacts, and resource budgets | P1 | JOB-001 core runtime + desktop/API model landed; JOB-004 migrates real workflows onto it |
 | Batch Jobs | Huge local index construction for knowledge, source, metadata, query-history, and implementation-note search | P1 | JOB-002; required large-workload foundation |
 | Baseline | Quickly beat Beekeeper Studio OSS daily-driver workflow | P0 | First competitive checkpoint |
 | Baseline | Track Snowsight-style generic database client parity gaps across desktop, local API, and future hosts | P1 | Cross-platform product requirements, not desktop-only widgets; statuses below follow backlog |

@@ -3061,6 +3061,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "irodori-core",
  "serde",
  "serde_json",
  "sqlx",

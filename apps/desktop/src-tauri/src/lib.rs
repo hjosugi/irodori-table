@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub mod db;
+pub mod jobs;
 pub mod security;
 
 #[derive(Serialize, Deserialize, TS)]
@@ -143,9 +144,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(db::DbState::default())
+        .manage(jobs::JobState::default())
         .manage(security::SecurityState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
+            jobs::jobs_list,
+            jobs::jobs_get,
+            jobs::jobs_cancel,
             db::db_connect,
             db::db_query_parameters,
             db::db_run_query,
@@ -194,6 +199,21 @@ mod typegen {
             .decl(&decl::<irodori_core::IrodoriErrorKind>())
             .decl(&decl::<irodori_core::IrodoriError>())
             .decl(&decl::<irodori_core::CommandResult<serde_json::Value>>())
+            .decl(&decl::<irodori_core::JobKind>())
+            .decl(&decl::<irodori_core::JobStatus>())
+            .decl(&decl::<irodori_core::JobLogLevel>())
+            .decl(&decl::<irodori_core::JobRetryPolicy>())
+            .decl(&decl::<irodori_core::JobConcurrencyPolicy>())
+            .decl(&decl::<irodori_core::JobResourceBudget>())
+            .decl(&decl::<irodori_core::JobSpec>())
+            .decl(&decl::<irodori_core::JobProgress>())
+            .decl(&decl::<irodori_core::JobCheckpoint>())
+            .decl(&decl::<irodori_core::JobArtifact>())
+            .decl(&decl::<irodori_core::JobLogEntry>())
+            .decl(&decl::<irodori_core::JobRecord>())
+            .decl(&decl::<irodori_core::JobSummary>())
+            .decl(&decl::<irodori_core::JobList>())
+            .decl(&decl::<irodori_core::JobRuntimeConfig>())
             .decl(&decl::<irodori_core::PrivacyMode>())
             .decl(&decl::<irodori_core::RedactionReport>())
             .decl(&decl::<irodori_core::RedactedExport>())
@@ -253,6 +273,14 @@ mod typegen {
             .decl(&decl::<db::DbColumnInspection>())
             .decl(&decl::<db::DbColumnReference>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
+            .command(Command::new("jobs_list", "JobList"))
+            .command(
+                Command::new("jobs_get", "JobRecord | null")
+                    .arg(Arg::rust("job_id", TsType::string())),
+            )
+            .command(
+                Command::new("jobs_cancel", "JobRecord").arg(Arg::rust("job_id", TsType::string())),
+            )
             .command(
                 Command::new("db_connect", "ConnectionInfo")
                     .arg(Arg::new("profile", TsType::named("ConnectionProfile"))),

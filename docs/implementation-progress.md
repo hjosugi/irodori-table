@@ -136,6 +136,12 @@ Highlights:
 - Query history is now persisted locally per connection and records success/error,
   elapsed time, row counts, truncated status, and the SQL that ran. Clicking an
   item restores it into the editor.
+- The shared long-running job foundation is in place in `irodori-core::jobs`:
+  in-memory job tracking covers stable IDs, state transitions, progress,
+  cancellation requests, structured logs, artifacts, errors, retry policy,
+  concurrency limits, resource budget fields, and checkpoints. Desktop exposes
+  generated `jobsList`/`jobsGet`/`jobsCancel` commands and a Settings → Jobs view;
+  the local API crate reuses the same core DTOs.
 - Result grids can be exported from the desktop UI as CSV, TSV, JSON, JSONL, SQL
   INSERT text, an Excel-compatible HTML workbook (`.xls`), and Markdown. These
   are current-result client-side serializers; native XLSX and streaming

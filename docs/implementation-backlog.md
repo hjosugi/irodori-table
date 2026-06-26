@@ -147,12 +147,19 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### JOB-001 — Long-running job runtime
 - **Goal:** One cancellable runtime for all large local/background work.
 - **Done when:** jobs have stable IDs, status, progress, cancellation, structured logs, artifacts, errors, retry policy, concurrency limits, CPU/memory/disk budgets, and checkpoint/resume hooks; the desktop can show active/history jobs and the same model is usable by the local API.
-- **Scope note:** Do not pick this as one implementation task. It is intentionally
-  the umbrella contract for `JOB-002`/`JOB-003`/`JOB-004`, and is too large to
-  finish cleanly in one pass. Split it into model-only, in-process runtime,
-  desktop history UI, and first-workflow migration slices before coding. Do not
-  create a new `irodori-jobs` crate until at least two real workflows need the
-  same API boundary.
+- **Done:** `irodori-core::jobs` now provides the shared job model and in-memory
+  runtime: stable job IDs, queued/running/cancelling/succeeded/failed/cancelled
+  states, progress with percent, cancellation requests, structured log entries,
+  artifacts, error capture, retry policy with backoff, global and per-group
+  concurrency limits, CPU/memory/disk budget fields, and resumable checkpoints.
+  The desktop Tauri boundary exposes `jobs_list`, `jobs_get`, and `jobs_cancel`
+  with generated TypeScript types, and Settings has a Jobs tab showing active and
+  historical jobs with cancel actions. `irodori-server::model` re-exports the
+  same core job DTOs so the local API uses the same shape when endpoints land.
+  Unit coverage exercises lifecycle, progress, logs, artifacts, checkpoints,
+  cancellation, retry, concurrency, and server JSON shape.
+- **Remaining follow-up:** migrate real workflows one by one (`JOB-004`) so
+  knowledge refresh/import/export/index/ML work reports into the runtime.
 - **Depends on:** FND-006, SHELL-001
 - **Size:** L · **Priority:** P1
 
