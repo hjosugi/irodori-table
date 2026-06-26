@@ -48,6 +48,14 @@ describe("keybinding resolver", () => {
     expect(
       resolveKeybinding({
         keymap: defaultKeymap,
+        scope: "editor",
+        chord: "Mod+W",
+      }),
+    ).toMatchObject({ kind: "command", commandId: "tab.close" });
+
+    expect(
+      resolveKeybinding({
+        keymap: defaultKeymap,
         scope: "grid",
         chord: "Mod+Shift+P",
       }),
