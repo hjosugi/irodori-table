@@ -8,6 +8,7 @@ import {
   resolveKeybinding,
   type Keymap,
 } from "@/keybindings";
+import { appCommandCatalog } from "@/app/app-config";
 
 describe("keybinding resolver", () => {
   it("resolves global commands everywhere and scoped commands only in scope", () => {
@@ -34,6 +35,15 @@ describe("keybinding resolver", () => {
         chord: "Mod+Alt+Shift+Enter",
       }),
     ).toMatchObject({ kind: "command", commandId: "query.runFromStart" });
+
+    expect(
+      resolveKeybinding({
+        keymap: defaultKeymap,
+        scope: "grid",
+        chord: "Mod+,",
+        commands: appCommandCatalog,
+      }),
+    ).toMatchObject({ kind: "command", commandId: "settings.open" });
 
     expect(
       resolveKeybinding({

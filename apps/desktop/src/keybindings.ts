@@ -163,6 +163,7 @@ export const commandCatalog: CommandMeta[] = [
 /** VS Code-flavored default keymap. */
 export const defaultKeymap: Keymap = {
   "palette.open": "Mod+Shift+P",
+  "settings.open": "Mod+,",
   "diagram.show": "Mod+Shift+D",
   "query.run": "Mod+Enter",
   "query.runCurrent": "Mod+Shift+Enter",
