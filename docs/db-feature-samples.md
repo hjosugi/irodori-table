@@ -33,6 +33,27 @@ the capability map remains complete: Redshift, Neon, H2, Neo4j, Redis,
 Cassandra, ClickHouse, Snowflake, BigQuery, Bigtable, InfluxDB, Memgraph,
 Qdrant, Milvus, and Pinecone.
 
+## Managed wire-compatible targets
+
+These are not new low-level adapters. They should be surfaced as connection
+templates/presets that route through existing engines.
+
+| Target | Route through | Focus |
+| --- | --- | --- |
+| Supabase Postgres | `postgres` | Direct/pooler connection strings, SSL, RLS-aware browsing, hosted Postgres extensions such as pgvector |
+| Amazon Aurora | `postgres` or `mysql` | Aurora PostgreSQL/MySQL endpoints, reader/writer endpoint guidance, IAM auth, cluster topology |
+| Google Cloud SQL | `postgres`, `mysql`, or `sqlserver` | Public/private IP, Cloud SQL Auth Proxy, IAM DB auth, SSL certs, instance metadata |
+
+## Lakehouse targets
+
+Iceberg and S3 Tables are not SQL wire-compatible databases. They need a
+catalog/table-format connection model plus an execution backend.
+
+| Target | Route | Focus |
+| --- | --- | --- |
+| Apache Iceberg | REST/Hive/AWS Glue/JDBC catalogs + object store credentials | Catalog, namespace, table, schema, partition, snapshot, manifest, and metadata browsing |
+| Amazon S3 Tables | Managed Iceberg table buckets | Table buckets, namespaces, tables, AWS IAM, and query execution through Athena/Redshift/Spark-compatible engines |
+
 ## Checks
 
 Run the catalog guard directly:

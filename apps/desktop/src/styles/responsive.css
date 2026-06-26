@@ -62,6 +62,15 @@
     flex: 0 0 auto;
     padding: 0 8px;
   }
+
+  .chart-result-toolbar {
+    flex-wrap: wrap;
+    align-content: center;
+  }
+
+  .chart-result-toolbar select {
+    max-width: 140px;
+  }
 }
 
 @media (max-width: 720px) {

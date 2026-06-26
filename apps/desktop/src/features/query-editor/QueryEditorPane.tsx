@@ -130,6 +130,74 @@ export function QueryEditorPane({
             {running ? "running..." : activeConnectionOpen ? "ready" : "closed"}
           </small>
         </div>
+      </div>
+      <div
+        ref={editorSplitRef}
+        className={`editor-split editor-split-${editorSplitMode}`}
+      >
+        <div
+          className={`editor-shell editor-group${
+            activeEditorGroup === "primary" ? " active" : ""
+          }`}
+          onFocusCapture={() => setActiveEditorGroup("primary")}
+          onPointerDown={() => setActiveEditorGroup("primary")}
+        >
+          <SqlEditor
+            ref={editorApiRef}
+            value={query}
+            onChange={onQueryChange}
+            onSelectionChange={(selection) => {
+              setActiveEditorGroup("primary");
+              setEditorSelection(selection);
+            }}
+            engine={editorEngine}
+            metadata={activeMetadata}
+            theme={theme}
+            vimMode={vimMode}
+            formatter={formatter}
+            linter={sqlLinter}
+          />
+        </div>
+        {editorSplitOpen ? (
+          <>
+            <div
+              className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
+              role="separator"
+              aria-label="Resize editor split"
+              aria-orientation={
+                editorSplitMode === "down" ? "horizontal" : "vertical"
+              }
+              tabIndex={0}
+              onPointerDown={beginEditorSplitResize}
+              onKeyDown={onEditorSplitResizeKey}
+            />
+            <div
+              className={`editor-shell editor-group${
+                activeEditorGroup === "secondary" ? " active" : ""
+              }`}
+              onFocusCapture={() => setActiveEditorGroup("secondary")}
+              onPointerDown={() => setActiveEditorGroup("secondary")}
+            >
+              <SqlEditor
+                ref={secondaryEditorApiRef}
+                value={query}
+                onChange={onQueryChange}
+                onSelectionChange={(selection) => {
+                  setActiveEditorGroup("secondary");
+                  setEditorSelection(selection);
+                }}
+                engine={editorEngine}
+                metadata={activeMetadata}
+                theme={theme}
+                vimMode={vimMode}
+                formatter={formatter}
+                linter={sqlLinter}
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
+      <div className="editor-floating-actions">
         <div className="editor-command-bar">
           <button
             className="text-button toolbar-command"
@@ -237,148 +305,82 @@ export function QueryEditorPane({
             <Square size={15} />
           </button>
         </div>
-      </div>
-      <div
-        ref={editorSplitRef}
-        className={`editor-split editor-split-${editorSplitMode}`}
-      >
-        <div
-          className={`editor-shell editor-group${
-            activeEditorGroup === "primary" ? " active" : ""
-          }`}
-          onFocusCapture={() => setActiveEditorGroup("primary")}
-          onPointerDown={() => setActiveEditorGroup("primary")}
-        >
-          <SqlEditor
-            ref={editorApiRef}
-            value={query}
-            onChange={onQueryChange}
-            onSelectionChange={(selection) => {
-              setActiveEditorGroup("primary");
-              setEditorSelection(selection);
-            }}
-            engine={editorEngine}
-            metadata={activeMetadata}
-            theme={theme}
-            vimMode={vimMode}
-            formatter={formatter}
-            linter={sqlLinter}
-          />
-        </div>
-        {editorSplitOpen ? (
-          <>
-            <div
-              className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
-              role="separator"
-              aria-label="Resize editor split"
-              aria-orientation={
-                editorSplitMode === "down" ? "horizontal" : "vertical"
-              }
-              tabIndex={0}
-              onPointerDown={beginEditorSplitResize}
-              onKeyDown={onEditorSplitResizeKey}
-            />
-            <div
-              className={`editor-shell editor-group${
-                activeEditorGroup === "secondary" ? " active" : ""
-              }`}
-              onFocusCapture={() => setActiveEditorGroup("secondary")}
-              onPointerDown={() => setActiveEditorGroup("secondary")}
-            >
-              <SqlEditor
-                ref={secondaryEditorApiRef}
-                value={query}
-                onChange={onQueryChange}
-                onSelectionChange={(selection) => {
-                  setActiveEditorGroup("secondary");
-                  setEditorSelection(selection);
-                }}
-                engine={editorEngine}
-                metadata={activeMetadata}
-                theme={theme}
-                vimMode={vimMode}
-                formatter={formatter}
-                linter={sqlLinter}
-              />
+        <div className="run-control editor-floating-run">
+          <button
+            className="primary-action run-main-button"
+            type="button"
+            title={
+              runShortcutLabel
+                ? `${runPrimaryLabel} (${runShortcutLabel})`
+                : runPrimaryLabel
+            }
+            disabled={running}
+            onClick={() => void runQuery()}
+          >
+            <Play size={15} fill="currentColor" />
+            <span>{runPrimaryLabel}</span>
+          </button>
+          <button
+            className="primary-action run-menu-toggle"
+            type="button"
+            title="Run options"
+            aria-label="Run options"
+            aria-haspopup="menu"
+            aria-expanded={runMenuOpen}
+            disabled={running}
+            onClick={() => setRunMenuOpen((open) => !open)}
+          >
+            <ChevronDown size={14} />
+          </button>
+          {runMenuOpen ? (
+            <div className="app-menu-popover run-menu-popover" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void runQuery()}
+              >
+                <span>{runPrimaryLabel}</span>
+                {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!hasSelectedEditorSql}
+                onClick={() => void runSelectionQuery()}
+              >
+                <span>Run Selection</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void runCurrentQuery()}
+              >
+                <span>Run Current</span>
+                {runCurrentShortcutLabel ? (
+                  <kbd>{runCurrentShortcutLabel}</kbd>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void runFromStartQuery()}
+              >
+                <span>Run From Top</span>
+                {runFromStartShortcutLabel ? (
+                  <kbd>{runFromStartShortcutLabel}</kbd>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void runAllQuery()}
+              >
+                <span>Run All</span>
+                {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
+              </button>
             </div>
-          </>
-        ) : null}
-      </div>
-      <div className="run-control editor-floating-run">
-        <button
-          className="primary-action run-main-button"
-          type="button"
-          title={
-            runShortcutLabel
-              ? `${runPrimaryLabel} (${runShortcutLabel})`
-              : runPrimaryLabel
-          }
-          disabled={running}
-          onClick={() => void runQuery()}
-        >
-          <Play size={15} fill="currentColor" />
-          <span>{runPrimaryLabel}</span>
-        </button>
-        <button
-          className="primary-action run-menu-toggle"
-          type="button"
-          title="Run options"
-          aria-label="Run options"
-          aria-haspopup="menu"
-          aria-expanded={runMenuOpen}
-          disabled={running}
-          onClick={() => setRunMenuOpen((open) => !open)}
-        >
-          <ChevronDown size={14} />
-        </button>
-        {runMenuOpen ? (
-          <div className="app-menu-popover run-menu-popover" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void runQuery()}
-            >
-              <span>{runPrimaryLabel}</span>
-              {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!hasSelectedEditorSql}
-              onClick={() => void runSelectionQuery()}
-            >
-              <span>Run Selection</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void runCurrentQuery()}
-            >
-              <span>Run Current</span>
-              {runCurrentShortcutLabel ? (
-                <kbd>{runCurrentShortcutLabel}</kbd>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void runFromStartQuery()}
-            >
-              <span>Run From Top</span>
-              {runFromStartShortcutLabel ? (
-                <kbd>{runFromStartShortcutLabel}</kbd>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void runAllQuery()}
-            >
-              <span>Run All</span>
-              {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
-            </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </section>
   );

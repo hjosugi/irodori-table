@@ -203,6 +203,16 @@ export type DbColumnInspection = { schema: string, object: string, name: string,
 
 export type DbColumnReference = { schema: string, object: string, column: string, };
 
+export type SchemaSearchHit = { 
+/**
+ * The qualified object the term matched (e.g. `public.users`).
+ */
+object: string, 
+/**
+ * How many indexed terms in that object matched.
+ */
+frequency: number, };
+
 export type GitChangeKind = "modified" | "added" | "deleted" | "renamed" | "copied" | "untracked" | "unmerged" | "typeChanged" | "unknown";
 
 export type GitFileStatus = { path: string, originalPath?: string, indexStatus: string, worktreeStatus: string, kind: GitChangeKind, };
@@ -229,6 +239,14 @@ export function jobsGet(jobId: string): Promise<JobRecord | null> {
 
 export function jobsCancel(jobId: string): Promise<JobRecord> {
   return invoke<JobRecord>("jobs_cancel", { jobId });
+}
+
+export function dbIndexSchema(connectionId: string): Promise<string> {
+  return invoke<string>("db_index_schema", { connectionId });
+}
+
+export function dbSearchSchema(connectionId: string, term: string, limit?: number): Promise<Array<SchemaSearchHit>> {
+  return invoke<Array<SchemaSearchHit>>("db_search_schema", { connectionId, term, limit });
 }
 
 export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {

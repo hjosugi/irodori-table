@@ -3,6 +3,7 @@ use ts_rs::TS;
 
 pub mod db;
 pub mod git;
+pub mod indexing;
 pub mod jobs;
 pub mod security;
 
@@ -146,12 +147,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(db::DbState::default())
         .manage(jobs::JobState::default())
+        .manage(indexing::SchemaIndexState::default())
         .manage(security::SecurityState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
             jobs::jobs_list,
             jobs::jobs_get,
             jobs::jobs_cancel,
+            indexing::db_index_schema,
+            indexing::db_search_schema,
             db::db_connect,
             db::db_query_parameters,
             db::db_run_query,
@@ -283,6 +287,7 @@ mod typegen {
             .decl(&decl::<db::DbObjectInspection>())
             .decl(&decl::<db::DbColumnInspection>())
             .decl(&decl::<db::DbColumnReference>())
+            .decl(&decl::<indexing::SchemaSearchHit>())
             .decl(&decl::<git::GitChangeKind>())
             .decl(&decl::<git::GitFileStatus>())
             .decl(&decl::<git::GitCommitSummary>())
@@ -297,6 +302,17 @@ mod typegen {
             )
             .command(
                 Command::new("jobs_cancel", "JobRecord").arg(Arg::rust("job_id", TsType::string())),
+            )
+            .command(
+                // Returns the background job id; watch it in the jobs dashboard.
+                Command::returning("db_index_schema", TsType::string())
+                    .arg(Arg::rust("connection_id", TsType::string())),
+            )
+            .command(
+                Command::new("db_search_schema", "Array<SchemaSearchHit>")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("term", TsType::string()))
+                    .arg(Arg::rust("limit", TsType::number()).optional()),
             )
             .command(
                 Command::new("db_connect", "ConnectionInfo")

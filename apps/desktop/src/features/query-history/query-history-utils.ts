@@ -55,9 +55,16 @@ export function historySearchText(
   item: QueryHistoryItem,
   connection?: QueryHistoryConnection,
 ) {
+  const resultText = item.result
+    ? [
+        item.result.columns.join(" "),
+        ...item.result.rows.slice(0, 8).map((row) => row.map(String).join(" ")),
+      ].join("\n")
+    : "";
   return [
     item.sql,
     item.error ?? "",
+    resultText,
     item.status,
     item.engine,
     item.connectionName,

@@ -45,7 +45,7 @@ window.IRODORI_SEARCH_INDEX = [
       "duckdb",
     ],
     body:
-      "Irodori Table DB guide. Database-specific sample projects and official resources for PostgreSQL, MySQL, MariaDB, SQLite, DuckDB, SQL Server, Oracle, MongoDB, TimescaleDB, CockroachDB, YugabyteDB, TiDB, Redshift, Neon, Neo4j, Redis, Cassandra, ClickHouse, Snowflake, BigQuery, Bigtable, InfluxDB, Qdrant, Milvus, Pinecone. MySQL Forums. Beekeeper Studio Blog.",
+      "Irodori Table DB guide. Database-specific sample projects and official resources for PostgreSQL, MySQL, MariaDB, SQLite, DuckDB, SQL Server, Oracle, MongoDB, TimescaleDB, CockroachDB, YugabyteDB, TiDB, Redshift, Neon, Supabase, Aurora, Cloud SQL, Apache Iceberg, S3 Tables, Neo4j, Redis, Cassandra, ClickHouse, Snowflake, BigQuery, Bigtable, InfluxDB, Qdrant, Milvus, Pinecone. MySQL Forums. Beekeeper Studio Blog.",
   },
   {
     title: "DB feature samples",

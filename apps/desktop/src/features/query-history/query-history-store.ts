@@ -77,6 +77,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function storage(): Storage | null {
+  try {
+    return typeof window !== "undefined" && window.localStorage
+      ? window.localStorage
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
@@ -110,7 +120,7 @@ function rowArray(value: unknown): unknown[][] {
 }
 
 function loadQueryHistoryMaxItems() {
-  const stored = Number(window.localStorage.getItem(queryHistoryMaxItemsStorageKey));
+  const stored = Number(storage()?.getItem(queryHistoryMaxItemsStorageKey));
   return Number.isFinite(stored)
     ? clampQueryHistoryMaxItems(stored)
     : queryHistoryMaxItemsDefault;
@@ -118,7 +128,7 @@ function loadQueryHistoryMaxItems() {
 
 function loadQueryHistoryResultRows() {
   const stored = Number(
-    window.localStorage.getItem(queryHistoryResultRowsStorageKey),
+    storage()?.getItem(queryHistoryResultRowsStorageKey),
   );
   return Number.isFinite(stored)
     ? clampQueryHistoryResultRows(stored)
@@ -288,7 +298,7 @@ function sanitizeQueryHistoryItemForSettings(
 
 function loadQueryHistory(maxItems: number, rowLimit: number): QueryHistoryItem[] {
   try {
-    const raw = window.localStorage.getItem(queryHistoryStorageKey);
+    const raw = storage()?.getItem(queryHistoryStorageKey);
     if (!raw) {
       return [];
     }
@@ -385,20 +395,24 @@ let lastPersistedItems = useQueryHistoryStore.getState().items;
 let lastPersistedMaxItems = useQueryHistoryStore.getState().maxItems;
 let lastPersistedResultRowLimit = useQueryHistoryStore.getState().resultRowLimit;
 useQueryHistoryStore.subscribe((state) => {
+  const localStorage = storage();
+  if (!localStorage) {
+    return;
+  }
   if (state.items !== lastPersistedItems) {
     lastPersistedItems = state.items;
-    window.localStorage.setItem(queryHistoryStorageKey, JSON.stringify(state.items));
+    localStorage.setItem(queryHistoryStorageKey, JSON.stringify(state.items));
   }
   if (state.maxItems !== lastPersistedMaxItems) {
     lastPersistedMaxItems = state.maxItems;
-    window.localStorage.setItem(
+    localStorage.setItem(
       queryHistoryMaxItemsStorageKey,
       String(state.maxItems),
     );
   }
   if (state.resultRowLimit !== lastPersistedResultRowLimit) {
     lastPersistedResultRowLimit = state.resultRowLimit;
-    window.localStorage.setItem(
+    localStorage.setItem(
       queryHistoryResultRowsStorageKey,
       String(state.resultRowLimit),
     );

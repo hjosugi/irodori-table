@@ -27,49 +27,15 @@ function main() {
 
   for (const engine of entries) {
     const where = `engine '${engine.id}'`;
-    requireString(errors, engine.id, `${where} id`);
-    requireString(errors, engine.label, `${where} label`);
-    requireString(errors, engine.family, `${where} family`);
-    requireString(errors, engine.irodoriStatus, `${where} irodoriStatus`);
+    validateCatalogEntry(errors, featureIds, engine, where, {
+      requireFamily: true,
+      requireIrodoriStatus: true,
+    });
 
     if (engineStatus.has(engine.id) && engineStatus.get(engine.id) !== engine.irodoriStatus) {
       errors.push(
         `${where} irodoriStatus '${engine.irodoriStatus}' does not match knowledge/engines.json '${engineStatus.get(engine.id)}'`,
       );
-    }
-
-    if (!Array.isArray(engine.whatYouCanDo) || engine.whatYouCanDo.length === 0) {
-      errors.push(`${where} needs at least one whatYouCanDo item`);
-    }
-    if (!Array.isArray(engine.resources) || engine.resources.length === 0) {
-      errors.push(`${where} needs at least one official resource`);
-    }
-    for (const resource of engine.resources ?? []) {
-      requireString(errors, resource.label, `${where} resource label`);
-      requireString(errors, resource.url, `${where} resource url`);
-      if (typeof resource.url === "string" && !resource.url.startsWith("https://")) {
-        errors.push(`${where} resource '${resource.label ?? "(unknown)"}' must use https`);
-      }
-    }
-
-    if (!Array.isArray(engine.features) || engine.features.length === 0) {
-      errors.push(`${where} needs at least one feature`);
-    }
-    for (const feature of engine.features ?? []) {
-      requireString(errors, feature.id, `${where} feature id`);
-      requireString(errors, feature.title, `${where} feature title`);
-      if (feature.id) {
-        if (featureIds.has(feature.id)) {
-          errors.push(`duplicate feature id '${feature.id}'`);
-        }
-        featureIds.add(feature.id);
-      }
-      if (!feature.queryFile && feature.referenceOnly !== true) {
-        errors.push(`${where} feature '${feature.id}' needs queryFile or referenceOnly=true`);
-      }
-      if (feature.queryFile) {
-        checkFile(errors, feature.queryFile, `${where} feature '${feature.id}' queryFile`);
-      }
     }
 
     if (engine.sampleProject) {
@@ -87,6 +53,19 @@ function main() {
         checkFile(errors, `samples/${engine.id}/compose.yaml`, `${where} container compose`);
       }
     }
+  }
+
+  for (const target of catalog.managedTargets ?? []) {
+    validateCatalogEntry(errors, featureIds, target, `managed target '${target.id}'`, {
+      requireRoutesThrough: true,
+      requireStatus: true,
+    });
+  }
+
+  for (const target of catalog.lakehouseTargets ?? []) {
+    validateCatalogEntry(errors, featureIds, target, `lakehouse target '${target.id}'`, {
+      requireStatus: true,
+    });
   }
 
   for (const projectDir of projectDirectories()) {
@@ -127,6 +106,55 @@ function read(path) {
 function requireString(errors, value, label) {
   if (typeof value !== "string" || value.trim() === "") {
     errors.push(`${label} must be a non-empty string`);
+  }
+}
+
+function validateCatalogEntry(errors, featureIds, entry, where, options = {}) {
+  requireString(errors, entry.id, `${where} id`);
+  requireString(errors, entry.label, `${where} label`);
+  if (options.requireFamily) {
+    requireString(errors, entry.family, `${where} family`);
+  }
+  if (options.requireIrodoriStatus) {
+    requireString(errors, entry.irodoriStatus, `${where} irodoriStatus`);
+  }
+  if (options.requireStatus) {
+    requireString(errors, entry.status, `${where} status`);
+  }
+  if (options.requireRoutesThrough) {
+    requireString(errors, entry.routesThrough, `${where} routesThrough`);
+  }
+  if (!Array.isArray(entry.whatYouCanDo) || entry.whatYouCanDo.length === 0) {
+    errors.push(`${where} needs at least one whatYouCanDo item`);
+  }
+  if (!Array.isArray(entry.resources) || entry.resources.length === 0) {
+    errors.push(`${where} needs at least one official resource`);
+  }
+  for (const resource of entry.resources ?? []) {
+    requireString(errors, resource.label, `${where} resource label`);
+    requireString(errors, resource.url, `${where} resource url`);
+    if (typeof resource.url === "string" && !resource.url.startsWith("https://")) {
+      errors.push(`${where} resource '${resource.label ?? "(unknown)"}' must use https`);
+    }
+  }
+  if (!Array.isArray(entry.features) || entry.features.length === 0) {
+    errors.push(`${where} needs at least one feature`);
+  }
+  for (const feature of entry.features ?? []) {
+    requireString(errors, feature.id, `${where} feature id`);
+    requireString(errors, feature.title, `${where} feature title`);
+    if (feature.id) {
+      if (featureIds.has(feature.id)) {
+        errors.push(`duplicate feature id '${feature.id}'`);
+      }
+      featureIds.add(feature.id);
+    }
+    if (!feature.queryFile && feature.referenceOnly !== true) {
+      errors.push(`${where} feature '${feature.id}' needs queryFile or referenceOnly=true`);
+    }
+    if (feature.queryFile) {
+      checkFile(errors, feature.queryFile, `${where} feature '${feature.id}' queryFile`);
+    }
   }
 }
 

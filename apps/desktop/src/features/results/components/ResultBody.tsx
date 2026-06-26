@@ -18,14 +18,17 @@ import {
   type ResultGridSortRuleView,
 } from "@/result-view-model";
 import { RowDetailSidebar } from "@/RowDetailSidebar";
+import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import type { EditingCell, ResultMode, SelectedCell } from "../types";
+import { ChartResultView } from "./ChartResultView";
 import { GraphResultView } from "./GraphResultView";
 import { WebGlResultGrid } from "./WebGlResultGrid";
 
 export function ResultBody({
   structureObject,
   resultMode,
+  chartModel,
   graphModel,
   editorEngine,
   formatObjectName,
@@ -74,6 +77,7 @@ export function ResultBody({
 }: {
   structureObject: DbObjectMetadata | null;
   resultMode: ResultMode;
+  chartModel: ChartResultModel | null;
   graphModel: GraphResultModel | null;
   editorEngine: DbEngine;
   formatObjectName: (object: DbObjectMetadata) => string;
@@ -140,6 +144,10 @@ export function ResultBody({
 
   if (resultMode === "graph" && graphModel) {
     return <GraphResultView model={graphModel} />;
+  }
+
+  if (resultMode === "chart" && chartModel) {
+    return <ChartResultView model={chartModel} />;
   }
 
   if (resultMode === "webgl") {

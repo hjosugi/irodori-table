@@ -52,6 +52,10 @@ export interface SettingsDialogProps {
   setResultOffloadEnabled: (value: boolean) => void;
   resultMemoryBudget: number;
   setResultMemoryBudget: (value: number) => void;
+  queryHistoryMaxItems: number;
+  setQueryHistoryMaxItems: (value: number) => void;
+  queryHistoryResultRows: number;
+  setQueryHistoryResultRows: (value: number) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (value: BooleanUpdater) => void;
   commandCatalog: CommandMeta[];
@@ -153,6 +157,10 @@ export function SettingsDialog({
   setResultOffloadEnabled,
   resultMemoryBudget,
   setResultMemoryBudget,
+  queryHistoryMaxItems,
+  setQueryHistoryMaxItems,
+  queryHistoryResultRows,
+  setQueryHistoryResultRows,
   sidebarOpen,
   setSidebarOpen,
   commandCatalog,
@@ -346,6 +354,48 @@ export function SettingsDialog({
                           1_000,
                           100_000,
                         ),
+                      )
+                    }
+                  />
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>Query history</strong>
+                    <small>
+                      Number of query runs retained locally. Set to 0 to disable
+                      history.
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={500}
+                    step={25}
+                    value={queryHistoryMaxItems}
+                    onChange={(event) =>
+                      setQueryHistoryMaxItems(
+                        clampNumber(Number(event.currentTarget.value), 0, 500),
+                      )
+                    }
+                  />
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>History result rows</strong>
+                    <small>
+                      Rows saved with each successful query. Set to 0 to keep SQL
+                      only.
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={500}
+                    step={10}
+                    value={queryHistoryResultRows}
+                    onChange={(event) =>
+                      setQueryHistoryResultRows(
+                        clampNumber(Number(event.currentTarget.value), 0, 500),
                       )
                     }
                   />

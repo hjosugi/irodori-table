@@ -85,6 +85,21 @@ MongoDB, Redis, Cassandra, CockroachDB, ClickHouse, BigQuery, Snowflake, and wir
 - Apache Hive stays in scope mainly as a catalog/metastore source for Iceberg and legacy warehouses.
 - Elasticsearch/OpenSearch are the first search sources; study Kibana Discover and Dev Tools console for query-and-browse expectations (behavior only — Kibana is source-available under Elastic License 2.0 / SSPL / AGPL).
 
+### Managed Wire-Compatible Targets
+
+Some hosted services should be supported as connection templates over existing
+adapters instead of adding duplicate engine variants:
+
+- Supabase Postgres routes through the PostgreSQL adapter. Product work is around
+  direct vs. pooler connection strings, SSL, RLS-aware docs, hosted extension
+  discoverability, and connection-limit guidance.
+- Amazon Aurora routes through PostgreSQL or MySQL depending on cluster engine.
+  Product work is around writer/reader/custom endpoint guidance, IAM auth,
+  cluster topology, serverless scaling context, and AWS Performance Insights links.
+- Google Cloud SQL routes through PostgreSQL, MySQL, or SQL Server. Product work
+  is around public/private IP, Cloud SQL Auth Proxy, IAM database auth, SSL certs,
+  and instance metadata.
+
 ### Shared Visual Model, Heavy Consoles Later
 
 - P1 shared query-result graph, chart, worksheet visualization, and dashboard definition model (open; not implemented). Plan the serializable model/API early enough to shape result frames, filters, saved queries, exports, and extension visualizers across desktop, local API, and future hosts.

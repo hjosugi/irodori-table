@@ -1,14 +1,30 @@
+use std::sync::Arc;
+
 use irodori_core::{JobList, JobRecord, JobRuntime, Result as IrodoriResult};
 use tauri::State;
 
-#[derive(Default)]
 pub struct JobState {
-    runtime: JobRuntime,
+    runtime: Arc<JobRuntime>,
+}
+
+impl Default for JobState {
+    fn default() -> Self {
+        Self {
+            runtime: Arc::new(JobRuntime::default()),
+        }
+    }
 }
 
 impl JobState {
     pub fn runtime(&self) -> &JobRuntime {
         &self.runtime
+    }
+
+    /// A shared owning handle so a background task can keep driving the runtime
+    /// after the spawning command returns — the dashboard then shows live progress
+    /// and can cancel the in-flight job.
+    pub fn runtime_arc(&self) -> Arc<JobRuntime> {
+        Arc::clone(&self.runtime)
     }
 }
 

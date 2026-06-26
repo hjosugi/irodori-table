@@ -11,6 +11,105 @@
       }
     ]
   },
+  "managedTargets": [
+    {
+      "id": "supabase",
+      "label": "Supabase Postgres",
+      "routesThrough": "postgres",
+      "status": "wire_compatible_target",
+      "whatYouCanDo": [
+        "Connect with the existing PostgreSQL engine using a Supabase direct, session-pooler, or transaction-pooler connection string.",
+        "Browse normal Postgres schemas, tables, views, extensions, and query results.",
+        "Track Supabase-specific workflow notes for SSL, Supavisor ports, RLS, pgvector, auth/storage tables, and hosted connection limits."
+      ],
+      "features": [
+        { "id": "supabase-postgres-wire", "title": "Postgres wire connection string", "referenceOnly": true },
+        { "id": "supabase-pooler-modes", "title": "Direct, session pooler, and transaction pooler modes", "referenceOnly": true },
+        { "id": "supabase-extensions", "title": "Hosted Postgres extensions such as pgvector and pg_graphql", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Supabase repository", "url": "https://github.com/supabase/supabase" },
+        { "label": "Connect to Supabase Postgres", "url": "https://supabase.com/docs/guides/database/connecting-to-postgres" }
+      ]
+    },
+    {
+      "id": "aurora",
+      "label": "Amazon Aurora",
+      "routesThrough": "postgres/mysql",
+      "status": "wire_compatible_target",
+      "whatYouCanDo": [
+        "Connect to Aurora PostgreSQL with the PostgreSQL engine or Aurora MySQL with the MySQL engine.",
+        "Use standard DB client workflows against cluster, reader, writer, and custom endpoints.",
+        "Track Aurora-specific UX for cluster topology, reader endpoint selection, Performance Insights links, IAM auth, and serverless scaling."
+      ],
+      "features": [
+        { "id": "aurora-postgres-wire", "title": "Aurora PostgreSQL through Postgres wire", "referenceOnly": true },
+        { "id": "aurora-mysql-wire", "title": "Aurora MySQL through MySQL wire", "referenceOnly": true },
+        { "id": "aurora-cluster-endpoints", "title": "Writer/reader/custom endpoint guidance", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Amazon Aurora documentation", "url": "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html" }
+      ]
+    },
+    {
+      "id": "cloudsql",
+      "label": "Google Cloud SQL",
+      "routesThrough": "postgres/mysql/sqlserver",
+      "status": "wire_compatible_target",
+      "whatYouCanDo": [
+        "Connect with the existing PostgreSQL, MySQL, or SQL Server engines depending on the Cloud SQL instance type.",
+        "Use normal SQL browsing, query execution, metadata, and result history once networking and TLS are configured.",
+        "Track Cloud SQL-specific UX for public/private IP, Cloud SQL Auth Proxy, IAM database auth, SSL certs, and instance metadata."
+      ],
+      "features": [
+        { "id": "cloudsql-postgres", "title": "Cloud SQL for PostgreSQL through Postgres wire", "referenceOnly": true },
+        { "id": "cloudsql-mysql", "title": "Cloud SQL for MySQL through MySQL wire", "referenceOnly": true },
+        { "id": "cloudsql-sqlserver", "title": "Cloud SQL for SQL Server through TDS", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Cloud SQL documentation", "url": "https://cloud.google.com/sql/docs" }
+      ]
+    }
+  ],
+  "lakehouseTargets": [
+    {
+      "id": "apache-iceberg",
+      "label": "Apache Iceberg",
+      "status": "planned_table_format",
+      "whatYouCanDo": [
+        "Planned as a table-format/catalog source, not a SQL wire-compatible database.",
+        "Needs catalog connection support for REST, Hive Metastore, AWS Glue, JDBC catalogs, and object-store credentials.",
+        "Expected Irodori UX includes catalog/table browser, schema/partition/snapshot inspection, metadata-driven previews, and execution through DuckDB/Trino/Spark/Athena-style engines."
+      ],
+      "features": [
+        { "id": "iceberg-rest-catalog", "title": "REST catalog connection model", "referenceOnly": true },
+        { "id": "iceberg-snapshots", "title": "Snapshot, schema, partition, and manifest browser", "referenceOnly": true },
+        { "id": "iceberg-duckdb-execution", "title": "Local execution path through DuckDB/DataFusion where possible", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Apache Iceberg documentation", "url": "https://iceberg.apache.org/docs/latest/" },
+        { "label": "Apache Iceberg specification", "url": "https://iceberg.apache.org/spec/" }
+      ]
+    },
+    {
+      "id": "s3-tables",
+      "label": "Amazon S3 Tables",
+      "status": "planned_managed_iceberg",
+      "whatYouCanDo": [
+        "Planned as a managed Iceberg target over AWS table buckets.",
+        "Needs S3 Tables/IAM/table-bucket discovery plus execution through Athena, Redshift, Spark, or compatible Iceberg engines.",
+        "Expected Irodori UX includes table bucket, namespace, table, snapshot, maintenance, and AWS analytics integration visibility."
+      ],
+      "features": [
+        { "id": "s3-tables-table-bucket", "title": "Table bucket and namespace browser", "referenceOnly": true },
+        { "id": "s3-tables-iceberg", "title": "Managed Apache Iceberg table metadata", "referenceOnly": true },
+        { "id": "s3-tables-athena-redshift", "title": "Query through Athena, Redshift, Spark, or compatible engines", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Amazon S3 Tables documentation", "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html" }
+      ]
+    }
+  ],
   "engines": [
     {
       "id": "postgres",

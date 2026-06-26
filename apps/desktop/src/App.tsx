@@ -16,9 +16,13 @@ import {
 } from "lucide-react";
 import { runQuerySpill, runQueryStream } from "./lib/tauri/db-stream";
 import {
+  createQueryHistoryResultSnapshot,
   QueryHistoryDialog,
+  queryHistoryMaxItemsHardLimit,
+  queryHistoryResultRowsHardLimit,
   useQueryHistoryStore,
   type QueryHistoryItem,
+  type QueryHistoryResultSnapshot,
 } from "./features/query-history";
 import {
   APP_IDENTIFIER,
@@ -140,6 +144,7 @@ import {
   type ResultGridDraftCell as GridCellDraft,
   type ResultGridRowOrigin,
 } from "./result-view-model";
+import { buildChartResultModel } from "./features/results/chart-result";
 import { buildGraphResultModel } from "./features/results/graph-result";
 import {
   deriveResultEditTarget,
@@ -252,6 +257,42 @@ function toCount(value: bigint | number) {
 }
 
 const emptyJobList: JobList = { active: [], history: [] };
+
+function historySnapshotToQueryResult(
+  snapshot: QueryHistoryResultSnapshot,
+): QueryResult {
+  const message = snapshot.retentionTruncated
+    ? `history preview retained ${toCount(snapshot.retainedRows)} of ${toCount(
+        snapshot.rowCount,
+      )} rows`
+    : snapshot.message;
+  const resultSets =
+    snapshot.resultSets && snapshot.resultSets.length > 1
+      ? snapshot.resultSets.map((set) => ({
+          statementIndex: set.statementIndex,
+          statement: set.statement,
+          columns: set.columns,
+          rows: set.rows,
+          rowCount: BigInt(set.retainedRows),
+          elapsedMs: BigInt(set.elapsedMs),
+          truncated: set.truncated || set.retentionTruncated,
+          message: set.retentionTruncated
+            ? `history preview retained ${toCount(set.retainedRows)} of ${toCount(
+                set.rowCount,
+              )} rows`
+            : set.message,
+        }))
+      : undefined;
+  return {
+    columns: snapshot.columns,
+    rows: snapshot.rows,
+    rowCount: BigInt(snapshot.retainedRows),
+    elapsedMs: BigInt(snapshot.elapsedMs),
+    truncated: snapshot.truncated || snapshot.retentionTruncated,
+    message,
+    resultSets,
+  };
+}
 
 function objectKindLabel(object: DbObjectMetadata) {
   switch (object.kind) {
@@ -734,6 +775,16 @@ function App() {
   );
   const diagramInitializedFor = useRef<string | null>(null);
   const appendHistory = useQueryHistoryStore((state) => state.append);
+  const queryHistoryMaxItems = useQueryHistoryStore((state) => state.maxItems);
+  const setQueryHistoryMaxItems = useQueryHistoryStore(
+    (state) => state.setMaxItems,
+  );
+  const queryHistoryResultRows = useQueryHistoryStore(
+    (state) => state.resultRowLimit,
+  );
+  const setQueryHistoryResultRows = useQueryHistoryStore(
+    (state) => state.setResultRowLimit,
+  );
   const openQueryHistoryDialog = useQueryHistoryStore(
     (state) => state.openDialog,
   );
@@ -1094,6 +1145,21 @@ function App() {
     unfilteredRowCount,
   } = resultGridView;
 
+  const chartResultModel = useMemo(() => {
+    if (!activeResult || spillInfo || resultColumns.length === 0) {
+      return null;
+    }
+    const rows = resultGridView
+      .rowsInRange(0, Math.min(resultGridView.totalRowCount, 5_000))
+      .map((row) => row.cells);
+    if (rows.length === 0) {
+      return null;
+    }
+    const model = buildChartResultModel(resultColumns, rows);
+    return model.defaultSelection ? model : null;
+  }, [activeResult, resultColumns, resultGridView, spillInfo]);
+  const chartAvailable = Boolean(chartResultModel);
+
   // Virtualize the result grid: render only the rows in (and just around) the
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
   // ~30 DOM rows instead of 10k, so streaming stays smooth.
@@ -1114,13 +1180,23 @@ function App() {
   const showingStructure = Boolean(structureObject);
 
   useEffect(() => {
+    if (resultMode === "chart" && (!chartAvailable || editMode)) {
+      setResultMode("data");
+    }
     if (resultMode === "graph" && !graphAvailable) {
       setResultMode("data");
     }
     if (resultMode === "webgl" && (!webGlAvailable || editMode)) {
       setResultMode("data");
     }
-  }, [editMode, graphAvailable, resultMode, setResultMode, webGlAvailable]);
+  }, [
+    chartAvailable,
+    editMode,
+    graphAvailable,
+    resultMode,
+    setResultMode,
+    webGlAvailable,
+  ]);
 
   // EXEC-010: fetch the disk pages the visible range needs, ingest them into the
   // LRU source, and bump the version so the grid repaints with real cells. The LRU
@@ -1958,6 +2034,10 @@ function App() {
           formatter,
           linter: sqlLinter,
         },
+        queryHistory: {
+          maxItems: queryHistoryMaxItems,
+          resultRows: queryHistoryResultRows,
+        },
         layout: {
           sidebarOpen,
           sidebarWidth,
@@ -2111,6 +2191,20 @@ function App() {
           isSqlLinterId(parsed.editor.linter)
         ) {
           setSqlLinter(parsed.editor.linter);
+        }
+      }
+      if (isRecord(parsed.queryHistory)) {
+        const nextMaxItems = Number(parsed.queryHistory.maxItems);
+        if (Number.isFinite(nextMaxItems)) {
+          setQueryHistoryMaxItems(
+            clampNumber(nextMaxItems, 0, queryHistoryMaxItemsHardLimit),
+          );
+        }
+        const nextResultRows = Number(parsed.queryHistory.resultRows);
+        if (Number.isFinite(nextResultRows)) {
+          setQueryHistoryResultRows(
+            clampNumber(nextResultRows, 0, queryHistoryResultRowsHardLimit),
+          );
         }
       }
       if (isRecord(parsed.layout)) {
@@ -2702,6 +2796,33 @@ function App() {
     await runEditorSql(item.sql, { allowMagic: false });
   }
 
+  function restoreHistoryResult(item: QueryHistoryItem) {
+    if (!item.result) {
+      showActionNotice(
+        "info",
+        "No result retained",
+        "This history entry has SQL only",
+      );
+      return;
+    }
+    releaseActiveSpill();
+    setResult(historySnapshotToQueryResult(item.result));
+    setLastRunSql(item.sql);
+    setQueryError(null);
+    setResultMode("data");
+    setTableViewObject(null);
+    setActiveResultIndex(0);
+    resetEdits();
+    resetGridView();
+    setSelectedRowKey(null);
+    closeQueryHistoryDialog();
+    showActionNotice(
+      "success",
+      "Result restored",
+      `${toCount(item.result.retainedRows)} retained rows`,
+    );
+  }
+
   function exportActiveResult(format: ResultExportFormat) {
     if (!activeResult) {
       showActionNotice("info", "No result to export");
@@ -3231,6 +3352,19 @@ function App() {
       const finalizeSpillRun = (spill: SpillRunResult) => {
         const first = ensureResultSet(0);
         const totalRows = Number(spill.totalRows);
+        const historyResult = createQueryHistoryResultSnapshot(
+          {
+            columns: spill.columns,
+            rows: first.rows,
+            rowCount: spill.totalRows,
+            elapsedMs: spill.elapsedMs,
+            truncated: spill.truncated,
+            message: spill.spilled
+              ? "result retained on disk; history kept a preview"
+              : undefined,
+          },
+          queryHistoryResultRows,
+        );
         const source = new WindowedRows({
           total: totalRows,
           columnCount: spill.columns.length,
@@ -3264,6 +3398,7 @@ function App() {
           rowCount: totalRows,
           elapsedMs: Number(spill.elapsedMs),
           truncated: spill.truncated,
+          result: historyResult,
           ranAt,
         });
         if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
@@ -3342,18 +3477,46 @@ function App() {
                   : undefined;
               }
               publishStreamResultNow();
-              appendHistory({
-                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                connectionId: activeConnectionId,
-                connectionName: activeConnection.name,
-                engine: activeConnection.engine,
-                sql: sqlToRun,
-                status: "ok",
-                rowCount: event.rowCount,
-                elapsedMs: event.elapsedMs,
-                truncated: event.truncated,
-                ranAt,
-              });
+              {
+                const first = ensureResultSet(0);
+                const historyResult = createQueryHistoryResultSnapshot(
+                  {
+                    columns: first.columns,
+                    rows: first.rows,
+                    rowCount: BigInt(event.rowCount),
+                    elapsedMs: BigInt(event.elapsedMs),
+                    truncated: event.truncated,
+                    message: first.message,
+                    resultSets:
+                      streamResultSets.length > 1
+                        ? streamResultSets.map((set) => ({
+                            statementIndex: set.statementIndex,
+                            statement: set.statement,
+                            columns: set.columns,
+                            rows: set.rows,
+                            rowCount: set.rowCount,
+                            elapsedMs: set.elapsedMs,
+                            truncated: set.truncated,
+                            message: set.message,
+                          }))
+                        : undefined,
+                  },
+                  queryHistoryResultRows,
+                );
+                appendHistory({
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                  connectionId: activeConnectionId,
+                  connectionName: activeConnection.name,
+                  engine: activeConnection.engine,
+                  sql: sqlToRun,
+                  status: "ok",
+                  rowCount: event.rowCount,
+                  elapsedMs: event.elapsedMs,
+                  truncated: event.truncated,
+                  result: historyResult,
+                  ranAt,
+                });
+              }
               if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
                 void refreshObjects(activeConnectionId, true);
               }
@@ -3630,7 +3793,9 @@ function App() {
             running={running}
             tableViewObject={tableViewObject}
             resultMode={resultMode}
+            chartModel={chartResultModel}
             graphModel={graphResultModel}
+            chartAvailable={chartAvailable}
             graphAvailable={graphAvailable}
             webGlAvailable={webGlAvailable}
             resultSets={resultSets}
@@ -3771,6 +3936,10 @@ function App() {
           setResultOffloadEnabled={setResultOffloadEnabled}
           resultMemoryBudget={resultMemoryBudget}
           setResultMemoryBudget={setResultMemoryBudget}
+          queryHistoryMaxItems={queryHistoryMaxItems}
+          setQueryHistoryMaxItems={setQueryHistoryMaxItems}
+          queryHistoryResultRows={queryHistoryResultRows}
+          setQueryHistoryResultRows={setQueryHistoryResultRows}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           commandCatalog={appCommandCatalog}
@@ -3823,6 +3992,7 @@ function App() {
         connectionById={connectionById}
         onLoad={loadHistoryItem}
         onRun={(item) => void runHistoryItem(item)}
+        onRestoreResult={restoreHistoryResult}
       />
 
       {pendingQueryParameters ? (

@@ -110,7 +110,21 @@ variant + `Wire` + adapter.
 - Object stores: S3 / GCS / Azure Blob
 - Delta Lake, Apache Hudi (after Iceberg)
 
-## 5. Gaps worth deciding on
+## 5. Managed wire-compatible targets
+
+These should not become separate `DbEngine` variants unless they need native API
+surface beyond connection templates. They route through existing adapters:
+
+| Target | Route through | Status | Product work |
+|---|---|---|---|
+| Supabase Postgres | `postgres` | Covered by Postgres wire; needs preset/docs | Direct vs. pooler connection strings, SSL, RLS notes, hosted extensions such as pgvector. |
+| Amazon Aurora PostgreSQL | `postgres` | Covered by Postgres wire; needs preset/docs | Writer/reader/custom endpoint hints, IAM auth, cluster topology. |
+| Amazon Aurora MySQL | `mysql` | Covered by MySQL wire; needs preset/docs | Writer/reader/custom endpoint hints, IAM auth, cluster topology. |
+| Google Cloud SQL for PostgreSQL | `postgres` | Covered by Postgres wire; needs preset/docs | Public/private IP, Auth Proxy, IAM DB auth, SSL cert handling. |
+| Google Cloud SQL for MySQL | `mysql` | Covered by MySQL wire; needs preset/docs | Public/private IP, Auth Proxy, IAM DB auth, SSL cert handling. |
+| Google Cloud SQL for SQL Server | `sqlserver` | Covered by TDS path; needs preset/docs | Public/private IP, Auth Proxy, SQL Server connection-string guidance. |
+
+## 6. Gaps worth deciding on
 
 - **Vector DBs are half-declared.** Qdrant/Milvus/Pinecone are enum variants with
   no adapter and no UI requirements in the coverage strategy. Either commit a
@@ -122,7 +136,9 @@ variant + `Wire` + adapter.
 - **ScyllaDB** can likely ride the existing `cassandra.rs` CQL path the way
   MariaDB rides MySQL — a registration + verification task, not a new driver.
 - **Iceberg/lakehouse** is the largest unstarted area and the stated P2 priority;
-  it needs a catalog-backed connection model, not just a wire.
+  it needs a catalog-backed connection model, not just a wire. Apache Iceberg and
+  Amazon S3 Tables should be modeled as table/catalog sources with execution
+  backends, not as normal SQL engines.
 
 When section 1–4 membership changes, it should be regenerated from the registry,
 not hand-edited — see `docs/cheatsheet-autodoc-plan.md`.

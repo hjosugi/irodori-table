@@ -3086,6 +3086,7 @@ dependencies = [
  "futures-util",
  "irodori-completion",
  "irodori-core",
+ "irodori-knowledge",
  "irodori-proxy",
  "irodori-secure-store",
  "irodori-sql",

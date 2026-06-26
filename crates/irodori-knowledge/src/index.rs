@@ -125,8 +125,12 @@ impl IndexStore {
 
     async fn open_with(options: SqliteConnectOptions) -> Result<Self, IrodoriError> {
         // One writer connection keeps the index build single-threaded and avoids
-        // SQLite write-lock contention.
+        // SQLite write-lock contention. `min_connections(1)` pins that connection so
+        // an in-memory (`:memory:`) index survives between a build and a later
+        // search instead of vanishing when the pool would otherwise close an idle
+        // connection.
         let pool = SqlitePoolOptions::new()
+            .min_connections(1)
             .max_connections(1)
             .connect_with(options)
             .await

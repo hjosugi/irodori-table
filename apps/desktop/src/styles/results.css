@@ -300,6 +300,131 @@
   background: var(--surface);
 }
 
+.chart-result-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  background: var(--surface-raised);
+}
+
+.chart-result-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--bar-md);
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-result-toolbar strong {
+  font-size: var(--font-ui-md);
+}
+
+.chart-result-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+}
+
+.chart-result-toolbar select {
+  max-width: 180px;
+  height: var(--control-sm);
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  background: var(--input-bg);
+  font-size: var(--font-ui-sm);
+}
+
+.chart-result-toolbar > span,
+.chart-result-empty {
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+}
+
+.chart-result-canvas {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background:
+    linear-gradient(var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
+    var(--surface);
+  background-size: 24px 24px;
+}
+
+.chart-result-svg {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  min-height: 100%;
+}
+
+.chart-result-axes line {
+  stroke: color-mix(in srgb, var(--border) 74%, transparent);
+  stroke-width: 1;
+}
+
+.chart-result-axes .chart-result-axis-line {
+  stroke: var(--border-strong);
+}
+
+.chart-result-axes text {
+  fill: var(--muted);
+  font-size: 11px;
+  text-anchor: end;
+}
+
+.chart-result-axes .chart-result-x-label {
+  text-anchor: middle;
+}
+
+.chart-result-axes .chart-result-axis-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-result-bars rect {
+  fill: color-mix(in srgb, var(--blue) 80%, var(--surface-raised));
+}
+
+.chart-result-bars rect:hover {
+  fill: color-mix(in srgb, var(--blue) 72%, var(--green));
+}
+
+.chart-result-line-series path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--green) 82%, var(--text));
+  stroke-width: 2.25;
+}
+
+.chart-result-line-series circle {
+  fill: var(--surface-raised);
+  stroke: color-mix(in srgb, var(--green) 82%, var(--text));
+  stroke-width: 2;
+}
+
+.chart-result-scatter-series circle {
+  fill: color-mix(in srgb, var(--amber) 76%, var(--surface-raised));
+  stroke: color-mix(in srgb, var(--amber) 70%, var(--text));
+  stroke-width: 1.5;
+  opacity: 0.86;
+}
+
+.chart-result-empty {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 24px;
+  background: var(--surface);
+}
+
 .result-filter-toolbar > span {
   min-width: 98px;
   color: var(--muted);

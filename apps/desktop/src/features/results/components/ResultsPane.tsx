@@ -38,6 +38,7 @@ import type {
   ResultGridRowOrigin,
   ResultGridSortRuleView,
 } from "@/result-view-model";
+import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { ResultBody } from "./ResultBody";
 import { ResultFilterPanel } from "./ResultFilterPanel";
@@ -47,7 +48,9 @@ type ResultsPaneProps = {
   running: boolean;
   tableViewObject: DbObjectMetadata | null;
   resultMode: ResultMode;
+  chartModel: ChartResultModel | null;
   graphModel: GraphResultModel | null;
+  chartAvailable: boolean;
   graphAvailable: boolean;
   webGlAvailable: boolean;
   resultSets: QueryResultSet[];
@@ -146,7 +149,9 @@ export function ResultsPane({
   running,
   tableViewObject,
   resultMode,
+  chartModel,
   graphModel,
+  chartAvailable,
   graphAvailable,
   webGlAvailable,
   resultSets,
@@ -236,7 +241,7 @@ export function ResultsPane({
     <section className={running ? "results-pane is-running" : "results-pane"}>
       <div className="results-header">
         <div className="results-title">
-          {tableViewObject || graphAvailable || webGlAvailable ? (
+          {tableViewObject || chartAvailable || graphAvailable || webGlAvailable ? (
             <div className="segmented-control result-mode-toggle">
               <button
                 type="button"
@@ -245,6 +250,16 @@ export function ResultsPane({
               >
                 Data
               </button>
+              {chartAvailable ? (
+                <button
+                  type="button"
+                  className={resultMode === "chart" ? "active" : undefined}
+                  disabled={editMode}
+                  onClick={() => onResultModeChange("chart")}
+                >
+                  Chart
+                </button>
+              ) : null}
               {webGlAvailable ? (
                 <button
                   type="button"
@@ -493,6 +508,7 @@ export function ResultsPane({
       <ResultBody
         structureObject={structureObject}
         resultMode={resultMode}
+        chartModel={chartModel}
         graphModel={graphModel}
         editorEngine={editorEngine}
         formatObjectName={formatObjectName}
