@@ -10,6 +10,7 @@ import {
 
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
+const resultsHeightStorageKey = "irodori.results.height.v2";
 
 function installLocalStorage() {
   const values = new Map<string, string>();
@@ -158,5 +159,23 @@ describe("workbench store view placements", () => {
       ...defaultWorkbenchViewVisibility,
       completion: false,
     });
+  });
+
+  it("defaults the results pane to a practical working height", async () => {
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().resultsHeight).toBe(340);
+  });
+
+  it("clamps and persists the results pane height", async () => {
+    const store = await loadWorkbenchStore();
+
+    store.getState().setResultsHeight(80);
+    expect(store.getState().resultsHeight).toBe(220);
+    expect(window.localStorage.getItem(resultsHeightStorageKey)).toBe("220");
+
+    store.getState().setResultsHeight(900);
+    expect(store.getState().resultsHeight).toBe(560);
+    expect(window.localStorage.getItem(resultsHeightStorageKey)).toBe("560");
   });
 });

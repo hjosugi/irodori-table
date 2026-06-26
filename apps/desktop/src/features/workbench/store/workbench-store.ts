@@ -43,7 +43,7 @@ const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
-const resultsHeightStorageKey = "irodori.results.height.v1";
+const resultsHeightStorageKey = "irodori.results.height.v2";
 const editorSplitModeStorageKey = "irodori.editor.splitMode.v1";
 const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
 
@@ -53,9 +53,9 @@ const sidebarWidthMax = 420;
 const inspectorWidthDefault = 300;
 const inspectorWidthMin = 220;
 const inspectorWidthMax = 420;
-const resultsHeightDefault = 240;
-const resultsHeightMin = 160;
-const resultsHeightMax = 520;
+const resultsHeightDefault = 340;
+const resultsHeightMin = 220;
+const resultsHeightMax = 560;
 const editorSplitPercentDefault = 50;
 const editorSplitPercentMin = 28;
 const editorSplitPercentMax = 72;
@@ -76,7 +76,11 @@ function loadStoredNumber(
   min: number,
   max: number,
 ) {
-  const stored = Number(window.localStorage.getItem(key));
+  const raw = window.localStorage.getItem(key);
+  if (raw === null) {
+    return fallback;
+  }
+  const stored = Number(raw);
   return Number.isFinite(stored) ? clampNumber(stored, min, max) : fallback;
 }
 
