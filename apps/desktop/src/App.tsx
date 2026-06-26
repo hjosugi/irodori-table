@@ -33,6 +33,7 @@ import {
   resultRows,
   savedQueryStorageKey,
   tabs,
+  workspaceMenuSections,
 } from "./app/app-config";
 import { AboutDialog } from "./app/AboutDialog";
 import { ActionToast, type ActionNotice } from "./app/ActionToast";
@@ -1822,11 +1823,19 @@ function App() {
       setPaletteOpen(true);
     },
     openSettings: () => openSettingsSection("general"),
+    openKeymap: () => openSettingsSection("keymap"),
     openHistory: openQueryHistoryDialog,
     openGit: openGitDrawer,
     openHelp: () => setAboutOpen(true),
     openConnectionManager: () => setConnectionManagerOpen(true),
     openDiagram: () => setDiagramOpen(true),
+    toggleTheme: () =>
+      activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark")),
+    toggleSidebar: () => setSidebarOpen((open) => !open),
+    toggleCompletion: () => setViewOpen("completion", (open) => !open),
+    toggleHistory: () => setViewOpen("queryHistory", (open) => !open),
+    toggleSidebarSide: () =>
+      setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left"),
     closeActiveTab: closeActiveSqlTab,
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
@@ -3608,6 +3617,9 @@ function App() {
         resultsHeight={resultsHeight}
         editorSplitPercent={editorSplitPercent}
         workspaceMenuOpen={workspaceMenuOpen}
+        workspaceMenuSections={workspaceMenuSections}
+        commandCatalog={appCommandCatalog}
+        keymap={keymap}
         activeConnectionName={activeConnection.name}
         activeConnectionEngine={activeConnection.engine}
         activeConnectionColor={activeConnectionColor}
@@ -3635,14 +3647,11 @@ function App() {
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
         onToggleCompletion={() => setViewOpen("completion", (open) => !open)}
         onToggleHistory={() => setViewOpen("queryHistory", (open) => !open)}
-        onToggleSidebarSide={() =>
-          setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
-        }
         onOpenSettings={() => openSettingsSection("general")}
-        onOpenKeymap={() => openSettingsSection("keymap")}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
         onOpenGit={openGitDrawer}
         onOpenHelp={() => setAboutOpen(true)}
+        onRunCommand={runCommand}
         onToggleWorkspaceMenu={() => setWorkspaceMenuOpen((open) => !open)}
         onCloseWorkspaceMenu={() => setWorkspaceMenuOpen(false)}
         sidebar={

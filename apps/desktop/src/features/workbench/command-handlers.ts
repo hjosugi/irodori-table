@@ -4,11 +4,17 @@ type WorkbenchCommandHandlerDeps = {
   editMode: boolean;
   openPalette: () => void;
   openSettings: () => void;
+  openKeymap: () => void;
   openHistory: () => void;
   openGit: () => void;
   openHelp: () => void;
   openConnectionManager: () => void;
   openDiagram: () => void;
+  toggleTheme: () => void;
+  toggleSidebar: () => void;
+  toggleCompletion: () => void;
+  toggleHistory: () => void;
+  toggleSidebarSide: () => void;
   closeActiveTab: () => void;
   buildSchemaIndex: () => void;
   runQuery: () => Promise<void>;
@@ -38,11 +44,17 @@ export function createWorkbenchCommandHandler({
   editMode,
   openPalette,
   openSettings,
+  openKeymap,
   openHistory,
   openGit,
   openHelp,
   openConnectionManager,
   openDiagram,
+  toggleTheme,
+  toggleSidebar,
+  toggleCompletion,
+  toggleHistory,
+  toggleSidebarSide,
   closeActiveTab,
   buildSchemaIndex,
   runQuery,
@@ -74,6 +86,24 @@ export function createWorkbenchCommandHandler({
         break;
       case "settings.open":
         openSettings();
+        break;
+      case "settings.keymap":
+        openKeymap();
+        break;
+      case "theme.toggle":
+        toggleTheme();
+        break;
+      case "view.sidebar.toggle":
+        toggleSidebar();
+        break;
+      case "view.completion.toggle":
+        toggleCompletion();
+        break;
+      case "view.history.toggle":
+        toggleHistory();
+        break;
+      case "view.sidebar.swap":
+        toggleSidebarSide();
         break;
       case "history.open":
         openHistory();

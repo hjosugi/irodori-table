@@ -237,6 +237,28 @@ textarea:disabled {
 .app-menu-popover {
   top: calc(100% + 5px);
   right: 0;
+  min-width: 250px;
+}
+
+.app-menu-section {
+  display: grid;
+  gap: 1px;
+}
+
+.app-menu-section-title,
+.app-menu-version {
+  padding: 4px 9px 3px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.app-menu-version {
+  justify-self: end;
+  padding-top: 5px;
+  text-transform: none;
 }
 
 .app-menu-popover button,
@@ -252,6 +274,13 @@ textarea:disabled {
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.app-menu-popover button > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-menu-label {
@@ -279,6 +308,7 @@ textarea:disabled {
   color: var(--muted);
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .menu-separator {

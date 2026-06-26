@@ -40,13 +40,49 @@ const shellCommands: CommandMeta[] = [
   {
     id: "settings.open",
     title: "Open Settings",
-    category: "Workspace",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
+    id: "settings.keymap",
+    title: "Open Keyboard Shortcuts",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
+    id: "theme.toggle",
+    title: "Toggle Color Theme",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
+    id: "view.sidebar.toggle",
+    title: "Toggle Sidebar",
+    category: "View",
+    scope: "global",
+  },
+  {
+    id: "view.completion.toggle",
+    title: "Toggle Completion Panel",
+    category: "View",
+    scope: "global",
+  },
+  {
+    id: "view.history.toggle",
+    title: "Toggle History Panel",
+    category: "View",
+    scope: "global",
+  },
+  {
+    id: "view.sidebar.swap",
+    title: "Move Sidebar Left/Right",
+    category: "View",
     scope: "global",
   },
   {
     id: "history.open",
     title: "Open Query History",
-    category: "Workspace",
+    category: "View",
     scope: "global",
   },
   {
@@ -73,6 +109,47 @@ export const appCommandCatalog: CommandMeta[] = [
   ...commandCatalog,
   ...shellCommands,
   ...resultCopyCommands,
+];
+
+export type AppMenuItem = {
+  commandId: string;
+};
+
+export type AppMenuSection = {
+  label: string;
+  items: AppMenuItem[];
+};
+
+export const workspaceMenuSections: AppMenuSection[] = [
+  {
+    label: "Workspace",
+    items: [
+      { commandId: "palette.open" },
+      { commandId: "connection.manager" },
+      { commandId: "git.open" },
+    ],
+  },
+  {
+    label: "View",
+    items: [
+      { commandId: "view.sidebar.toggle" },
+      { commandId: "view.completion.toggle" },
+      { commandId: "view.history.toggle" },
+      { commandId: "view.sidebar.swap" },
+    ],
+  },
+  {
+    label: "Preferences",
+    items: [
+      { commandId: "settings.open" },
+      { commandId: "settings.keymap" },
+      { commandId: "theme.toggle" },
+    ],
+  },
+  {
+    label: "Help",
+    items: [{ commandId: "help.open" }, { commandId: "about.open" }],
+  },
 ];
 
 export const resultCopyDefaultKeymap: Keymap = {

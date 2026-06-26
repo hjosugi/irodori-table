@@ -14,11 +14,16 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  PanelRight,
   Settings,
   Sun,
 } from "lucide-react";
-import type { KeybindingScope } from "@/keybindings";
+import type { AppMenuSection } from "@/app/app-config";
+import {
+  formatKeySequence,
+  type CommandMeta,
+  type KeybindingScope,
+  type Keymap,
+} from "@/keybindings";
 import type { ThemeKind } from "@/theme";
 import type { SidebarSide } from "../store/workbench-store";
 
@@ -36,6 +41,9 @@ type WorkbenchShellProps = {
   resultsHeight: number;
   editorSplitPercent: number;
   workspaceMenuOpen: boolean;
+  workspaceMenuSections: readonly AppMenuSection[];
+  commandCatalog: readonly CommandMeta[];
+  keymap: Keymap;
   activeConnectionName: string;
   activeConnectionEngine: string;
   activeConnectionColor: string;
@@ -55,12 +63,11 @@ type WorkbenchShellProps = {
   onToggleSidebar: () => void;
   onToggleCompletion: () => void;
   onToggleHistory: () => void;
-  onToggleSidebarSide: () => void;
   onOpenSettings: () => void;
-  onOpenKeymap: () => void;
   onOpenConnectionManager: () => void;
   onOpenGit: () => void;
   onOpenHelp: () => void;
+  onRunCommand: (commandId: string) => void;
   onToggleWorkspaceMenu: () => void;
   onCloseWorkspaceMenu: () => void;
 };
@@ -79,6 +86,9 @@ export function WorkbenchShell({
   resultsHeight,
   editorSplitPercent,
   workspaceMenuOpen,
+  workspaceMenuSections,
+  commandCatalog,
+  keymap,
   activeConnectionName,
   activeConnectionEngine,
   activeConnectionColor,
@@ -98,15 +108,45 @@ export function WorkbenchShell({
   onToggleSidebar,
   onToggleCompletion,
   onToggleHistory,
-  onToggleSidebarSide,
   onOpenSettings,
-  onOpenKeymap,
   onOpenConnectionManager,
   onOpenGit,
   onOpenHelp,
+  onRunCommand,
   onToggleWorkspaceMenu,
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
+  const commandById = new Map(commandCatalog.map((command) => [command.id, command]));
+
+  const shortcutFor = (commandId: string) => {
+    const shortcut = keymap[commandId];
+    return shortcut ? formatKeySequence(shortcut) : null;
+  };
+
+  const titleFor = (command: CommandMeta) => {
+    switch (command.id) {
+      case "view.sidebar.toggle":
+        return sidebarOpen ? "Hide Sidebar" : "Show Sidebar";
+      case "view.completion.toggle":
+        return completionOpen ? "Hide Completion" : "Show Completion";
+      case "view.history.toggle":
+        return historyOpen ? "Hide History" : "Show History";
+      case "view.sidebar.swap":
+        return sidebarSide === "left" ? "Move Sidebar Right" : "Move Sidebar Left";
+      case "theme.toggle":
+        return themeKind === "dark" ? "Light Theme" : "Dark Theme";
+      case "about.open":
+        return `About ${appName}`;
+      default:
+        return command.title;
+    }
+  };
+
+  const runMenuCommand = (commandId: string) => {
+    onCloseWorkspaceMenu();
+    onRunCommand(commandId);
+  };
+
   return (
     <main
       className="app-shell"
@@ -172,95 +212,40 @@ export function WorkbenchShell({
           </button>
           {workspaceMenuOpen ? (
             <div className="app-menu-popover" role="menu">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onOpenConnectionManager();
-                }}
-              >
-                Connection Manager
-                <kbd>Ctrl+Shift+D</kbd>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onOpenKeymap();
-                }}
-              >
-                Keyboard Shortcuts
-                <kbd>Ctrl+,</kbd>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onOpenGit();
-                }}
-              >
-                Git Panel
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onToggleSidebarSide();
-                }}
-              >
-                <span className="app-menu-label">
-                  <PanelRight size={14} />
-                  {sidebarSide === "left"
-                    ? "Move Sidebar Right"
-                    : "Move Sidebar Left"}
-                </span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onOpenSettings();
-                }}
-              >
-                Settings
-              </button>
-              <span className="menu-separator" role="separator" />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onOpenHelp();
-                }}
-              >
-                Help
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onOpenHelp();
-                }}
-              >
-                About {appName}
-                <kbd>v{appVersion}</kbd>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onCloseWorkspaceMenu();
-                  onToggleTheme();
-                }}
-              >
-                {themeKind === "dark" ? "Light Theme" : "Dark Theme"}
-              </button>
+              {workspaceMenuSections.map((section, sectionIndex) => (
+                <div
+                  className="app-menu-section"
+                  role="group"
+                  aria-label={section.label}
+                  key={section.label}
+                >
+                  {sectionIndex > 0 ? (
+                    <span className="menu-separator" role="separator" />
+                  ) : null}
+                  <div className="app-menu-section-title">{section.label}</div>
+                  {section.items.map((item) => {
+                    const command = commandById.get(item.commandId);
+                    if (!command) {
+                      return null;
+                    }
+                    const shortcut = shortcutFor(command.id);
+                    return (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        key={command.id}
+                        onClick={() => runMenuCommand(command.id)}
+                      >
+                        <span>{titleFor(command)}</span>
+                        {shortcut ? <kbd>{shortcut}</kbd> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+              <span className="app-menu-version" aria-label="Application version">
+                v{appVersion}
+              </span>
             </div>
           ) : null}
         </div>
