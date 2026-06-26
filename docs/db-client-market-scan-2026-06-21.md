@@ -116,6 +116,41 @@ Sources:
 - https://dbgate.org/
 - https://www.pgadmin.org/
 
+## Platform, Editor, And Tooling References
+
+These are implementation inputs rather than product parity targets.
+
+- Tauri v2 remains the default desktop shell candidate because Rust can own local
+  work while the UI stays portable.
+- CodeMirror 6 is the accepted editor host. Tree-sitter remains the semantic
+  parsing layer to evaluate per dialect for outline, selection, and completion
+  context; SQL grammar quality varies by dialect.
+- VS Code theme import should normalize workbench colors, TextMate scopes, and
+  semantic token colors into Irodori's internal theme model.
+- WezTerm, Zed, Lapce, and Helix are performance references for startup time,
+  input latency, modal editing, and large-document handling. Zed is copyleft, so
+  use it for architecture study only.
+- PostgREST and DuckDB's httpserver extension are local-data-API references.
+  Irodori's server remains read-only by default and reuses the adapter/security
+  model.
+- `ts-rs`, `specta`, `typeshare`, and `schemars` are type-generation references.
+  Irodori currently consumes the local typebridge path documented in
+  `type-bridge-handoff.md`.
+- `oracle-rs`, JDBC Thin, and python/node-oracledb thin modes are the Oracle
+  no-Instant-Client precedents. Irodori keeps Oracle thin-first and records
+  packaging decisions separately.
+- GitHub Copilot's MCP support is the safer integration shape for future
+  AI-assisted workflows: expose scoped schema/search/explain/query tools rather
+  than coupling the desktop UI to one provider.
+
+## Paper Watchlist
+
+- Text-to-SQL survey work is relevant to schema linking, database-content
+  retrieval, and prompt/context construction for large schemas.
+- SQL issue-debugging and query-repair research is relevant to optional
+  assistance, but AI features must stay opt-in, auditable, redacted, and
+  permission-scoped.
+
 ## What Modern DB Clients Are Expected To Do
 
 - Start fast, stay responsive, and handle huge result sets without UI stalls.

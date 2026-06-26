@@ -2,7 +2,7 @@
 
 - **Status:** Accepted implementation direction; last reconciled 2026-06-25 JST.
 - **Backlog:** decides **EDIT-001**; gates **EDIT-002** (highlighting) and **EDIT-008** (formatter). Related: THEME-001, EDIT-005 (Vim), EDIT-007 (SQL-aware selection), completion-and-ai-strategy.md.
-- **Current implementation snapshot:** CM6 editor exists; keyword/basic completion exists; `sql-formatter` is wired. Schema-aware completion is still open until metadata-backed suggestions are product-wired and tested through a shared completion contract.
+- **Current implementation snapshot:** CM6 editor exists, `sql-formatter` is wired, and desktop schema-aware completion is smoke-tested from live metadata. The shared completion contract for local API and future hosts remains open.
 
 ## Context
 
@@ -16,7 +16,7 @@ multi-cursor, and large-file performance.
 Constraints from existing docs:
 
 - **Multi-dialect, multi-language mandate.** Not just SQL: Cypher, time-series SQL/native, document/KV, search DSLs, warehouse dialects (`completion-and-ai-strategy.md`).
-- **Host portability.** A future move off the Tauri WebView to a native Rust GUI must not be foreclosed (`research-notes.md` line 61).
+- **Host portability.** A future move off the Tauri WebView to a native Rust GUI must not be foreclosed; keep the semantic layer and completion contracts portable across hosts.
 - **License.** Core is `MIT OR 0BSD`; every editor dependency must be permissive and compatible.
 - **"Tree-sitter where strong, dialect fallback."** EDIT-002 already commits to this wording; SQL tree-sitter grammar quality varies by dialect.
 

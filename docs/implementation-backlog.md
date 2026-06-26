@@ -63,7 +63,7 @@ These are explicit competitive gaps, not closed by nearby core-library work alon
 ### FND-001 — Clean-room contribution rules enforced in PR template ✅
 - **Goal:** Make `docs/clean-room.md` actionable at review time.
 - **Done when:** a PR template includes the contribution checklist; CONTRIBUTING links the policy; a sample PR shows the checklist rendered.
-- **Done:** `.github/pull_request_template.md` embeds the clean-room/licensing checklist, `CONTRIBUTING.md` links `docs/clean-room.md` and `docs/licensing.md`, and `docs/sample-pr.md` shows the checklist rendered in a filled sample.
+- **Done:** `.github/pull_request_template.md` embeds the clean-room/licensing checklist, and `CONTRIBUTING.md` links `docs/clean-room.md` and `docs/licensing.md` with a compact filled PR-body example.
 - **Depends on:** —
 - **Size:** S · **Priority:** P0
 

@@ -4,8 +4,8 @@
 # Rust integration tests, then stop it. Each supported engine has its own compose
 # under samples/<engine>/compose.yaml.
 #
-#   scripts/verify-db.sh postgres      # up → test → down for one engine
-#   scripts/verify-db.sh all           # the bootable engines, in turn
+#   scripts/verify-db.sh postgres      # up -> test -> down for one engine
+#   scripts/verify-db.sh all           # the normal bootable engines, in turn
 #   scripts/verify-db.sh up postgres   # just bring it up and print the env line
 #   scripts/verify-db.sh down postgres # stop + remove it
 set -uo pipefail
@@ -15,8 +15,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SAMPLES="$ROOT/samples"
 MANIFEST="$ROOT/apps/desktop/src-tauri/Cargo.toml"
 
-# engine -> (EVAR, URL, TEST). Oracle (thin pending) and MongoDB (driver pending)
-# have compose targets but no Irodori connector yet, so they are not verifiable.
+# engine -> (EVAR, URL, TEST). Oracle uses a flag env because its integration
+# test reads structured host/port/user/password defaults from the sample compose.
 meta() {
   case "$1" in
     postgres)    EVAR=IRODORI_PG_URL;        URL="postgres://irodori:irodori@127.0.0.1:55432/samples"; T=postgres_samples;;
@@ -28,7 +28,8 @@ meta() {
     tidb)        EVAR=IRODORI_TIDB_URL;      URL="mysql://root@localhost:54000/test";                   T=tidb_connect;;
     sqlserver)   EVAR=IRODORI_MSSQL_URL;     URL="server=tcp:localhost,51433;User Id=sa;Password=Irodori_Strong!23;TrustServerCertificate=true"; T=sqlserver_samples;;
     mongodb)     EVAR=IRODORI_MONGO_URL;     URL="mongodb://irodori:irodori@localhost:57017/samples?authSource=admin"; T=mongo_samples;;
-    *) echo "no Irodori connector for '$1' (oracle=thin pending, sqlite/duckdb=embedded)"; return 1;;
+    oracle)      EVAR=IRODORI_ORACLE;        URL="1"; T=oracle_samples;;
+    *) echo "no sample DB compose target for '$1' (sqlite/duckdb are embedded; redshift is cloud-only)"; return 1;;
   esac
 }
 
@@ -87,6 +88,6 @@ case "${1:-}" in
     exit $rc ;;
   up)   meta "$2" && up_engine "$2" && echo "export $EVAR=\"$URL\"" ;;
   down) down_engine "$2" ;;
-  ""|-h|--help) echo "usage: $0 {all | <engine> | up <engine> | down <engine>}"; echo "engines: postgres mysql mariadb timescaledb cockroachdb yugabytedb tidb sqlserver"; ;;
+  ""|-h|--help) echo "usage: $0 {all | <engine> | up <engine> | down <engine>}"; echo "engines: postgres mysql mariadb timescaledb cockroachdb yugabytedb tidb sqlserver mongodb oracle"; ;;
   *) verify "$1" ;;
 esac

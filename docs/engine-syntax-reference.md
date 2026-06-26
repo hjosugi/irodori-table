@@ -29,8 +29,9 @@ reference.
 | Oracle | thin TNS / `oracle-rs` | 1521 | SQL | `oracle_samples` | `samples/oracle` |
 | Redshift | postgres wire / sqlx | 5439 | SQL | — (AWS-only, no local container) | — |
 
-Run them with `scripts/verify-db.sh <engine>` (or `all`). Env-gated tests skip
-unless `IRODORI_*_URL` is set; `verify-db.sh` sets it per engine.
+Run them with `make db-verify DB=<engine>` or `make db-all`. Env-gated tests
+skip unless the matching `IRODORI_*` variable is set; the sample harness sets it
+per engine.
 
 ## Connection syntax
 
@@ -47,7 +48,7 @@ Irodori accepts either structured fields (`host`/`port`/`user`/`password`/
 | SQL Server (ADO) | `server=tcp:host,1433;User Id=sa;Password=…;TrustServerCertificate=true` |
 | DuckDB | a file path or `:memory:` (in `database`/`url`) |
 | MongoDB | `mongodb://user:pass@host:27017/db?authSource=admin` |
-| Oracle (planned) | descriptor `//host:1521/service` |
+| Oracle | structured `host`/`port`/`user`/`password`/service fields |
 
 ## Per-engine notes
 

@@ -1,7 +1,8 @@
 //! Real-database integration tests against the Docker `samples` stack.
 //!
-//! Skipped unless `IRODORI_PG_URL` / `IRODORI_MYSQL_URL` are set. Bring the stack
-//! up and run them with `scripts/dev-db.sh up` then `scripts/dev-db.sh test`.
+//! Skipped unless the matching `IRODORI_*` environment variable is set. Run one
+//! engine through the root harness with `make db-verify DB=postgres`, or keep it
+//! running for manual checks with `make db-up DB=postgres`.
 //!
 //! Queries stay within sqlx `Any`'s supported types (int, bigint, text). Rich
 //! type coverage (decimal, timestamp, json, bytea) needs the per-engine native

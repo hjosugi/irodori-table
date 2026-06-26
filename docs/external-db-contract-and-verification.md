@@ -74,11 +74,11 @@ implementing the adapter, catalog model, or lakehouse execution path.
 Use the sample harness for engines that already have compose fixtures:
 
 ```bash
-scripts/verify-db.sh postgres
-scripts/verify-db.sh mysql
-scripts/verify-db.sh all
-scripts/verify-db.sh up postgres
-scripts/verify-db.sh down postgres
+make db-verify DB=postgres
+make db-verify DB=mysql
+make db-all
+make db-up DB=postgres
+make db-down DB=postgres
 ```
 
 For engines with no `samples/<engine>/compose.yaml`, add a fixture before

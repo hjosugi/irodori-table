@@ -39,8 +39,13 @@ Optional AppImage runtime support on Arch-based systems:
 sudo pacman -S --needed fuse2
 ```
 
-There is no root npm workspace at the moment. Install Node dependencies inside
-each app directory that you work on.
+Use the root `Makefile` for day-to-day commands. There is still no root npm
+workspace; the root targets run `npm --prefix ...` against each app.
+
+```sh
+make help
+make setup
+```
 
 Recommended editor setup:
 
@@ -52,25 +57,22 @@ Recommended editor setup:
 From the repo root:
 
 ```sh
-cargo build
-cd apps/desktop
-npm ci
-npm run tauri dev
+make setup-desktop
+make desktop-dev
 ```
 
-`npm run tauri dev` starts the Tauri shell and the Vite dev server. The desktop
-frontend dev server uses `http://localhost:1420` with `strictPort: true`, so free
-that port if startup fails.
+`make desktop-dev` starts the Tauri shell and the Vite dev server. The desktop
+frontend dev server uses `http://localhost:1420` with `strictPort: true`, so
+free that port if startup fails.
 
 Useful desktop commands:
 
 ```sh
-cd apps/desktop
-npm run dev           # Vite only, useful when launching a debug binary manually
-npm run typegen       # regenerate Rust -> TypeScript bindings
-npm test              # Vitest
-npm run build         # typegen + TypeScript + Vite production build
-npm run test:e2e      # Playwright
+make desktop-vite     # Vite only, useful when launching a debug binary manually
+make desktop-typegen  # regenerate Rust -> TypeScript bindings
+make desktop-test     # Vitest
+make desktop-build    # typegen + TypeScript + Vite production build
+make desktop-e2e      # Playwright
 ```
 
 To build and install a local Linux AppImage from the repo root:
@@ -84,50 +86,77 @@ make run-linux
 The web app is separate from the Tauri desktop shell.
 
 ```sh
-cd apps/web
-npm ci
-npm run dev
+make setup-web
+make web-dev
 ```
 
 The Vite server defaults to `http://localhost:1422`. It proxies `/api/*` to
 `http://localhost:1423` for online database endpoint testing.
 
-To run the local Postgres-backed endpoint from `apps/web`:
+To run the local Postgres-backed endpoint for the web app, use a second
+terminal:
 
 ```sh
-cd apps/web
-npm run endpoint:docker
+make web-endpoint
 ```
 
 If your environment cannot create a compose bridge network, try:
 
 ```sh
-cd apps/web
-npm run endpoint:docker:host
+make web-endpoint-host
 ```
 
+Stop the endpoint stack with `make web-endpoint-down`.
+
 More detail: [docs/web-app-architecture.md](docs/web-app-architecture.md).
+
+## Sample Databases
+
+Sample databases live under `samples/<engine>/compose.yaml`. They are for the
+desktop app, Rust integration tests, and manual connection testing. The harness
+chooses Podman when available, otherwise Docker; override with
+`ENGINE_BIN=docker` or `ENGINE_BIN=podman`.
+
+Start one database and keep it running:
+
+```sh
+make db-up DB=postgres
+```
+
+That prints the env var and DSN used by the Rust tests, for example
+`export IRODORI_PG_URL="postgres://irodori:irodori@127.0.0.1:55432/samples"`.
+Use the same DSN in the desktop connection dialog when testing manually.
+
+Run the connection/query integration test for one database, then stop it:
+
+```sh
+make db-verify DB=postgres
+```
+
+Run the normal bootable set:
+
+```sh
+make db-all
+```
+
+Stop a database that was started with `db-up`:
+
+```sh
+make db-down DB=postgres
+```
+
+Common `DB` values are `postgres`, `mysql`, `mariadb`, `timescaledb`,
+`cockroachdb`, `yugabytedb`, `tidb`, `sqlserver`, `mongodb`, and `oracle`.
+SQLite and DuckDB are embedded and do not need containers. Redshift is
+cloud-only. More detail: [samples/README.md](samples/README.md).
 
 ## Local Checks
 
 Common checks from a fresh checkout:
 
 ```sh
-cargo test
-cd apps/desktop && npm test && npm run build
-cd apps/web && npm test && npm run build
+make check
 ```
-
-Database integration checks use one compose file per engine under `samples/`:
-
-```sh
-scripts/verify-db.sh postgres
-scripts/verify-db.sh all
-scripts/verify-db.sh up postgres
-scripts/verify-db.sh down postgres
-```
-
-More detail: [samples/README.md](samples/README.md).
 
 ## Repo Map
 

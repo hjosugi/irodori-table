@@ -58,16 +58,10 @@ export GDK_BACKEND=wayland
 ### Running in Dev Mode
 To run the hot-reloading development server:
 ```bash
-cd apps/desktop
-npm run dev
-# In another terminal
-npm run tauri dev
+make desktop-dev
 ```
-Alternatively, run both in a single step using the Tauri CLI:
-```bash
-cd apps/desktop
-npx tauri dev
-```
+`make desktop-dev` runs the Tauri CLI from `apps/desktop`, which starts Vite and
+the desktop shell together.
 
 ### Direct Binary Execution
 > **Heads up:** a *debug* binary loads its UI from the Vite dev server
@@ -80,7 +74,7 @@ To inspect Rust stdout/logs while still pointing the webview at a running UI,
 start the dev server first, then launch the binary in a second terminal:
 ```bash
 # Terminal 1 - serve the frontend on :1420
-cd apps/desktop && npm run dev
+make desktop-vite
 # Terminal 2 - run the already-built debug binary
 ./apps/desktop/src-tauri/target/debug/irodori-table-desktop
 ```
@@ -88,9 +82,8 @@ cd apps/desktop && npm run dev
 To run a **standalone** binary that needs no dev server, build one with the
 frontend embedded from `frontendDist` (`../dist`):
 ```bash
-cd apps/desktop
-npm run build            # populate apps/desktop/dist
-npx tauri build --debug  # debug binary with embedded assets (keeps logs/symbols)
+make desktop-build       # populate apps/desktop/dist
+npm --prefix apps/desktop run tauri -- build --debug
 # Or a full AppImage with embedded assets:
 make run-linux
 ```

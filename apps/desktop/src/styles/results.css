@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 34px;
+  min-height: var(--bar-md);
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
 }
@@ -27,7 +27,11 @@
 }
 
 .results-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .result-tabs {
@@ -37,14 +41,14 @@
 }
 
 .result-tabs button {
-  height: 23px;
+  height: var(--control-xxs);
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
   cursor: pointer;
 }
 
@@ -63,18 +67,25 @@
 }
 
 .results-header strong {
-  font-size: 13px;
+  flex: 0 0 auto;
+  font-size: var(--font-ui-md);
 }
 
 .results-header span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .results-actions {
   position: relative;
   display: flex;
+  align-items: center;
   gap: 7px;
+  min-width: 0;
 }
 
 .action-split {
@@ -137,7 +148,7 @@
   align-items: center;
   gap: 6px;
   width: clamp(150px, 18vw, 240px);
-  height: 26px;
+  height: var(--control-sm);
   padding: 0 7px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -153,7 +164,7 @@
   color: var(--text);
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
 }
 
 .result-quick-filter button {
@@ -203,7 +214,7 @@
 .segmented-control {
   display: inline-flex;
   align-items: center;
-  height: 25px;
+  height: var(--control-sm);
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -211,14 +222,14 @@
 }
 
 .segmented-control button {
-  height: 19px;
+  height: 20px;
   padding: 0 8px;
   border: 0;
   border-radius: 3px;
   color: var(--muted);
   background: transparent;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--font-ui-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -243,14 +254,14 @@
 .filter-value-placeholder {
   width: 100%;
   min-width: 0;
-  height: 26px;
+  height: var(--control-sm);
   padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text);
   background: var(--input-bg);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
 }
 
 .filter-value-placeholder {
@@ -275,7 +286,7 @@
   overflow: auto;
   background: var(--editor-bg);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
 }
 
 /* Result grid + row-detail drawer sit side by side. */
@@ -450,7 +461,7 @@
 
 .grid-row {
   display: grid;
-  height: 27px;
+  height: 28px;
   box-sizing: border-box;
   min-width: 1px;
   border-bottom: 1px solid var(--cell-border);
@@ -631,6 +642,7 @@
   overflow: hidden;
   padding: 5px 9px;
   border-right: 1px solid var(--cell-border);
+  line-height: 17px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -786,5 +798,5 @@
   border-top: 1px solid var(--border);
   border-bottom: 0;
   color: #566159;
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
 }

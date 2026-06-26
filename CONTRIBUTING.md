@@ -1,4 +1,4 @@
-f# Contributing
+# Contributing
 
 Irodori Table is built as a permissive, clean-room project. Contributions should
 be easy for downstream users to copy, fork, embed, or compete with under
@@ -39,17 +39,14 @@ desktop app remains in `apps/desktop`.
 For system packages, troubleshooting webview rendering bugs on Wayland/NVIDIA, and debugging procedures on Linux (particularly Arch Linux or CachyOS), please refer to [docs/linux-development.md](docs/linux-development.md).
 
 ```sh
-cargo build
-cd apps/desktop
-npm ci
-npm test
+make setup
+make check
 ```
 
 For generated Tauri bindings:
 
 ```sh
-cd apps/desktop
-npm run typegen
+make desktop-typegen
 ```
 
 ## Pull Requests
@@ -58,3 +55,16 @@ Use the default PR template and keep the clean-room checklist filled in. If a
 change is influenced by third-party OSS code, name the source, license, files or
 APIs reviewed, and what was adapted.
 
+Example PR body:
+
+```md
+## Summary
+
+- Add dialect-aware identifier quoting for generated edit statements.
+- Keep statement generation independent and covered by unit tests.
+
+## Verification
+
+- cargo test -p irodori-table-desktop edit::tests
+- scripts/check-licenses.sh
+```
