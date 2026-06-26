@@ -15,7 +15,7 @@ window.IRODORI_SEARCH_INDEX = [
     summary: "Run the app, build it, or preview the static site.",
     tags: ["install", "build", "npm", "vite", "tauri", "local"],
     body:
-      "apps/desktop. npm install, npm run dev, npm run build. site preview: python3 -m http.server 8080 --directory site.",
+      "apps/desktop. npm install, npm run dev, npm run build. site preview: python3 -m http.server 8080 --directory docs/site.",
   },
   {
     title: "Connections and data sources",
@@ -78,10 +78,10 @@ window.IRODORI_SEARCH_INDEX = [
     title: "Result grid and export",
     category: "Results",
     url: "docs.html#results",
-    summary: "Streaming, capped pages, virtualization, and CSV export.",
-    tags: ["results", "grid", "streaming", "virtualization", "csv", "export"],
+    summary: "Streaming, capped pages, virtualization, disk offload, and multi-format export.",
+    tags: ["results", "grid", "streaming", "virtualization", "csv", "json", "markdown", "export", "offload"],
     body:
-      "Results use streaming, capped pages, truncated flag, row virtualization, CSV export.",
+      "Results use streaming, capped pages, truncated flag, row virtualization, disk offload, windowed paging, CSV, TSV, JSON, JSONL, SQL INSERT, Excel HTML, Markdown export.",
   },
   {
     title: "Security and transports",
@@ -111,6 +111,15 @@ window.IRODORI_SEARCH_INDEX = [
       "Roadmap: direction, phases, architecture, research, TablePlus lightness, DataGrip editing, DBeaver coverage, completion, AI, Vim, proxy, i18n, SDK.",
   },
   {
+    title: "Documentation guide",
+    category: "Project docs",
+    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/README.md",
+    summary: "Where each status, runbook, generated-doc, and public-site document belongs.",
+    tags: ["docs", "index", "source of truth", "site", "generated"],
+    body:
+      "Documentation guide: fast paths, source-of-truth rules, public site, generated docs, cleanup rules.",
+  },
+  {
     title: "Implementation progress",
     category: "Project docs",
     url: "https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-progress.md",
@@ -118,6 +127,15 @@ window.IRODORI_SEARCH_INDEX = [
     tags: ["progress", "verified", "engine", "desktop", "tests"],
     body:
       "Implementation progress: engine layer, verified engines, desktop UI, tests, samples, remaining work.",
+  },
+  {
+    title: "Data source support status",
+    category: "Project docs",
+    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/data-source-support-status.md",
+    summary: "Wired, verified, planned, and recognized database engines.",
+    tags: ["engine", "database", "support", "postgres", "mysql", "oracle", "snowflake", "bigquery", "redis"],
+    body:
+      "Data source support status: wired engines, verified engines, recognized no connector, managed wire-compatible targets, Iceberg and S3 Tables gaps.",
   },
   {
     title: "Feature matrix",

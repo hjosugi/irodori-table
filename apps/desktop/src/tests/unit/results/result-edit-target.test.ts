@@ -3,7 +3,7 @@ import type {
   DatabaseMetadata,
   DbObjectMetadata,
 } from "@/generated/irodori-api";
-import { deriveResultEditTarget } from "@/result-edit-target";
+import { deriveResultEditTarget } from "@/features/results/result-edit-target";
 
 function table(overrides: Partial<DbObjectMetadata>): DbObjectMetadata {
   return {

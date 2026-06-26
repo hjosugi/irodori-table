@@ -1,4 +1,4 @@
-import type { KeybindingScope } from "@/keybindings";
+import type { KeybindingScope } from "@/core/keybindings";
 
 export type CompletionHint = {
   label: string;

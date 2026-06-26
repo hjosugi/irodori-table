@@ -1,7 +1,7 @@
 import type {
   ResultGridDisplayRow,
   ResultGridViewModel,
-} from "@/result-view-model";
+} from "@/features/results/result-view-model";
 import type { ResultCellRange, ResultCellRangeBounds } from "./types";
 
 export const RESULT_SELECTION_SUMMARY_CELL_LIMIT = 100_000;

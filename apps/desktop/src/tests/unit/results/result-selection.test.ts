@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildResultGridViewModel } from "@/result-view-model";
+import { buildResultGridViewModel } from "@/features/results/result-view-model";
 import {
   normalizeResultCellRange,
   readResultCellRangeRows,

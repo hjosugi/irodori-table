@@ -117,14 +117,14 @@ import {
 import {
   WindowedRows,
   createWindowedRowsProxy,
-} from "@/result-window";
+} from "@/features/results/result-window";
 import {
   buildErdModel,
   hasDiagram,
   layoutErdModel,
   toMermaidErd,
   type ErdLayout,
-} from "@/erd";
+} from "@/features/erd/erd";
 import {
   downloadBlob,
   erdFileName,
@@ -132,15 +132,15 @@ import {
   svgMarkupToPngBlob,
   writePngBlobToClipboard,
   writeTextToClipboard,
-} from "@/erd-export";
-import { erdSvgStyle } from "@/erd-svg";
-import { errorMessage } from "@/errors";
+} from "@/features/erd/erd-export";
+import { erdSvgStyle } from "@/features/erd/erd-svg";
+import { errorMessage } from "@/core/errors";
 import {
   detectImportFileKind,
   generateImportSql,
   inferImportTableName,
   parseImportText,
-} from "@/importers";
+} from "@/features/import/importers";
 import {
   KEY_SEQUENCE_TIMEOUT_MS,
   effectiveKeymap,
@@ -152,12 +152,12 @@ import {
   loadOverrides,
   resolveKeybinding,
   saveOverrides,
-} from "@/keybindings";
+} from "@/core/keybindings";
 import {
   buildResultExport,
   resultExportFileName,
   type ResultExportFormat,
-} from "@/result-export";
+} from "@/features/results/result-export";
 import {
   calculateResultGridVirtualColumnWindow,
   calculateResultGridVirtualRowWindow,
@@ -166,22 +166,22 @@ import {
   formatResultGridTsvRow,
   type ResultFilterRule,
   type ResultGridRowLike,
-} from "@/result-grid";
+} from "@/features/results/result-grid";
 import {
   buildResultGridViewModel,
   formatResultGridCell as formatCell,
   resultGridRowKey,
   type ResultGridDraftCell as GridCellDraft,
   type ResultGridRowOrigin,
-} from "@/result-view-model";
+} from "@/features/results/result-view-model";
 import { buildChartResultModel } from "@/features/results/chart-result";
 import { buildGraphResultModel } from "@/features/results/graph-result";
 import {
   deriveResultEditTarget,
   type ResultEditTarget,
-} from "@/result-edit-target";
+} from "@/features/results/result-edit-target";
 import { useSchemaDesignerStore } from "@/features/schema-designer/schema-designer-store";
-import { buildSchemaSql } from "@/schema-designer";
+import { buildSchemaSql } from "@/features/schema-designer/schema-designer";
 import {
   dbApplyEdits,
   dbCancel,
@@ -209,7 +209,7 @@ import {
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "@/generated/irodori-api";
-import { type SqlEditorHandle } from "@/SqlEditor";
+import { type SqlEditorHandle } from "@/features/query-editor/SqlEditor";
 import { sqlSnippetsFromJson } from "@/sql/completion";
 import { isSqlFormatterId } from "@/sql/formatter";
 import { isSqlLinterId } from "@/sql/linter";
@@ -222,8 +222,8 @@ import {
   upsertCustomThemeEntry,
   type ThemeKind,
 } from "@/theme";
-import { findTableMetadata, parseSourceTable } from "@/row-detail";
-import { parseQueryMagic, type QueryMagicAction } from "@/query-magics";
+import { findTableMetadata, parseSourceTable } from "@/features/results/row-detail";
+import { parseQueryMagic, type QueryMagicAction } from "@/features/query-editor/query-magics";
 import {
   EMPTY_CELL_EDITS,
   EMPTY_DELETED_ROWS,

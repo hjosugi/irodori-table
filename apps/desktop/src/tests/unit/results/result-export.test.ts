@@ -5,7 +5,7 @@ import {
   resultExportFormats,
   unsupportedResultExportFormatMessage,
   type ResultLike,
-} from "@/result-export";
+} from "@/features/results/result-export";
 
 const result: ResultLike = {
   columns: ["id", "name", "note"],

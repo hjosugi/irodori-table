@@ -16,7 +16,7 @@ import {
   parseSourceTable,
   quoteIdent,
   rowToJsonObject,
-} from "@/row-detail";
+} from "@/features/results/row-detail";
 
 function column(name: string, dataType = "text") {
   return { name, dataType, nullable: true, ordinal: 0 };

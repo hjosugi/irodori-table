@@ -1,5 +1,5 @@
-import type { CommandMeta, Keymap } from "@/keybindings";
-import { formatKeySequence } from "@/keybindings";
+import type { CommandMeta, Keymap } from "@/core/keybindings";
+import { formatKeySequence } from "@/core/keybindings";
 
 export function CommandPalette({
   query,

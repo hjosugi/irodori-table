@@ -252,7 +252,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### SHELL-005 — Packaging + auto-update channel decision
 - **Goal:** Shippable installers per OS.
 - **Done when:** CI produces installers for each OS; an ADR records the update channel approach.
-- **Status:** Partial. Linux AppImage v0.2.5 has been released (`v0.2.5` tag; desktop/Tauri package version `0.2.5`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
+- **Status:** Partial. Linux AppImage v0.2.22 has been released (`v0.2.22` tag; desktop/Tauri package version `0.2.22`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P2
 

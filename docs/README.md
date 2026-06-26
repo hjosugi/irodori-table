@@ -1,8 +1,37 @@
 # Documentation Guide
 
-This directory holds planning, architecture, runbook, and policy documents. Keep
-the source of truth narrow: update the owning document instead of adding another
-near-duplicate status page.
+This directory holds planning, architecture, runbook, policy, generated-reference,
+and public-site documents. Keep the source of truth narrow: update the owning
+document instead of adding another near-duplicate status page.
+
+## Fast Paths
+
+| If you need to... | Read / update |
+| --- | --- |
+| Start local development | [../README.md](../README.md), [linux-development.md](linux-development.md) |
+| Check what is implemented today | [implementation-progress.md](implementation-progress.md) |
+| Pick the next ticket | [implementation-backlog.md](implementation-backlog.md) |
+| Check engine support | [data-source-support-status.md](data-source-support-status.md) |
+| Add DB-specific samples or links | [db-feature-samples.md](db-feature-samples.md), [../samples/db-feature-samples.json](../samples/db-feature-samples.json) |
+| Update public website copy | [site/](site/) |
+| Add generated per-engine docs | [cheatsheets/README.md](cheatsheets/README.md), [cheatsheet-autodoc-plan.md](cheatsheet-autodoc-plan.md) |
+| Record a durable architectural choice | [adr/](adr/) |
+
+## Source-Of-Truth Rules
+
+| Topic | Owning document |
+| --- | --- |
+| Phase-level product direction | [../ROADMAP.md](../ROADMAP.md) |
+| Ticket IDs, dependencies, and done criteria | [implementation-backlog.md](implementation-backlog.md) |
+| Built-and-verified snapshot | [implementation-progress.md](implementation-progress.md) |
+| Release gates before daily-driver use | [production-readiness.md](production-readiness.md) |
+| Engine registry status | [data-source-support-status.md](data-source-support-status.md) |
+| DB-specific runnable sample catalog | [db-feature-samples.md](db-feature-samples.md) + [../samples/db-feature-samples.json](../samples/db-feature-samples.json) |
+| Feature parity and competitive gaps | [feature-matrix.md](feature-matrix.md) |
+| Public website/search/blog copy | [site/](site/) |
+
+Before adding a new status page, check whether one of these rows should be
+updated instead.
 
 ## Product And Status
 
@@ -26,6 +55,18 @@ near-duplicate status page.
 | UI language switching and translation keys | [i18n.md](i18n.md) |
 | Generated cheatsheets | [cheatsheets/README.md](cheatsheets/README.md) |
 
+## Public Site
+
+`docs/site/` is a checked-in static site. It is not generated from the Markdown
+docs yet, so keep the site copy and `docs/site/search-data.js` in sync when
+changing user-facing support/status text.
+
+Preview from the repo root:
+
+```sh
+python3 -m http.server 8080 --directory docs/site
+```
+
 ## Architecture And Strategy
 
 | Area | Read |
@@ -48,6 +89,15 @@ near-duplicate status page.
 | Generated-doc automation plan | [cheatsheet-autodoc-plan.md](cheatsheet-autodoc-plan.md) |
 | Multi-agent handoff notes | [agent-coordination.md](agent-coordination.md) |
 
+## Generated Or Guarded Docs
+
+| Surface | Command |
+| --- | --- |
+| Support-status registry drift | `node tools/docs/support-status.mjs` |
+| DB feature sample catalog | `node tools/docs/db-feature-samples.mjs` |
+| All docs guards | `make docs-check` |
+| Regenerate cheatsheets from knowledge data | `make docs` |
+
 ## Governance
 
 | Need | Read |
@@ -60,6 +110,8 @@ near-duplicate status page.
 
 - Prefer updating the status/backlog/source-of-truth docs above over creating a
   new dated note.
+- Keep public-site facts in `docs/site/*.html` and `docs/site/search-data.js`
+  aligned with the owning Markdown/source JSON.
 - Keep dated audit evidence out of the repo unless it is required for a release
   gate or a regression test. Temporary screenshots belong in `/tmp` or release
   artifacts.

@@ -6,9 +6,9 @@ import {
   erdFileName,
   serializeSvgElement,
   svgMarkupToPngBlob,
-} from "@/erd-export";
-import { buildErdModel, layoutErdModel } from "@/erd";
-import { ErdSvg, erdSvgStyle } from "@/erd-svg";
+} from "@/features/erd/erd-export";
+import { buildErdModel, layoutErdModel } from "@/features/erd/erd";
+import { ErdSvg, erdSvgStyle } from "@/features/erd/erd-svg";
 import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
 import { lightTheme } from "@/theme";
 

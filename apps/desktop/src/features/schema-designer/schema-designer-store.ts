@@ -4,7 +4,7 @@ import {
   blankSchemaDraft,
   schemaDraftFromObject,
   type SchemaDesignerDraft,
-} from "@/schema-designer";
+} from "@/features/schema-designer/schema-designer";
 
 type ValueUpdater<T> = T | ((current: T) => T);
 

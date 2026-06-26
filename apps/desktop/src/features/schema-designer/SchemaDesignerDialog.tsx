@@ -6,7 +6,7 @@ import {
   type SchemaDesignerMode,
   type SchemaForeignKeyDraft,
   type SchemaIndexDraft,
-} from "@/schema-designer";
+} from "@/features/schema-designer/schema-designer";
 
 export function SchemaDesignerDialog({
   draft,

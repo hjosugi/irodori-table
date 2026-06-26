@@ -23,7 +23,7 @@ import {
   type CommandMeta,
   type KeybindingScope,
   type Keymap,
-} from "@/keybindings";
+} from "@/core/keybindings";
 import type { ThemeKind } from "@/theme";
 import type { SidebarSide } from "../store/workbench-store";
 

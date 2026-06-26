@@ -61,7 +61,7 @@
             </div>
             <div>
               <dt>Updated</dt>
-              <dd>2026-06-25</dd>
+              <dd>2026-06-27</dd>
             </div>
           </dl>
         </div>
@@ -147,7 +147,7 @@ npm run dev</code></pre>
               <pre class="code-block"><code>cd apps/desktop
 npm run build</code></pre>
               <p>公式サイトだけ確認します。</p>
-              <pre class="code-block"><code>python3 -m http.server 8080 --directory site</code></pre>
+              <pre class="code-block"><code>python3 -m http.server 8080 --directory docs/site</code></pre>
             </section>
 
             <section class="doc-section" id="connections">
@@ -155,7 +155,7 @@ npm run build</code></pre>
               <h2>接続と対応データソース</h2>
               <p>
                 SQL、document、key-value、warehouse 系を同じ接続層で扱います。
-                詳細な検証状況は implementation progress を参照してください。
+                詳細な検証状況は data-source support status と implementation progress を参照してください。
               </p>
               <div class="status-list">
                 <span class="status-pill">PostgreSQL</span>
@@ -171,6 +171,8 @@ npm run build</code></pre>
                 <span class="status-pill">BigQuery</span>
                 <span class="status-pill">Redis</span>
                 <span class="status-pill">Cassandra</span>
+                <span class="status-pill">Bigtable</span>
+                <span class="status-pill">InfluxDB</span>
               </div>
             </section>
 
@@ -208,7 +210,8 @@ group by c.id, c.name;</code></pre>
               <h2>結果グリッドと export</h2>
               <p>
                 結果はストリーミング、上限付き取得、row virtualization を前提にします。
-                CSV export も提供します。
+                export は CSV、TSV、JSON、JSONL、SQL INSERT、Excel互換HTML、Markdown を提供します。
+                大きい結果はディスク offload と windowed paging で保持できます。
               </p>
             </section>
 
@@ -237,11 +240,20 @@ group by c.id, c.name;</code></pre>
                 <a href="https://github.com/hjosugi/irodori-table/blob/main/ROADMAP.md">
                   Roadmap
                 </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/README.md">
+                  Documentation guide
+                </a>
                 <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-progress.md">
                   Implementation progress
                 </a>
                 <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-backlog.md">
                   Implementation backlog
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/data-source-support-status.md">
+                  Data source support status
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/engine-syntax-reference.md">
+                  Engine syntax reference
                 </a>
                 <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/feature-matrix.md">
                   Feature matrix

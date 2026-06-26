@@ -63,5 +63,5 @@ only the supported set.
   evidence and query-result graph views remain open.
 - Vim mode is wired with Playwright smoke coverage for toggle, insert, and a
   normal-mode delete flow; deeper Vim parity remains open.
-- Linux AppImage v0.2.5 has been released. Cross-platform installer/signing and
+- Linux AppImage v0.2.22 has been released. Cross-platform installer/signing and
   update-channel decisions are still release-readiness work.

@@ -3,7 +3,7 @@ import {
   buildResultGridViewModel,
   formatResultGridCell,
   resultGridRowKey,
-} from "@/result-view-model";
+} from "@/features/results/result-view-model";
 
 describe("result grid view model", () => {
   function syntheticRows(rowCount: number, columnCount = 2) {

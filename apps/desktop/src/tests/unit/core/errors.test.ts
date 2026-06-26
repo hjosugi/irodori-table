@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { errorMessage, isIrodoriError } from "@/errors";
+import { errorMessage, isIrodoriError } from "@/core/errors";
 
 describe("errorMessage", () => {
   it("reads structured backend errors", () => {

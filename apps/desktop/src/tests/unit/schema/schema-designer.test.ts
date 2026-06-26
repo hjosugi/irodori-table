@@ -5,7 +5,7 @@ import {
   buildSchemaSql,
   schemaDraftFromObject,
   splitIdentifierList,
-} from "@/schema-designer";
+} from "@/features/schema-designer/schema-designer";
 
 describe("schema designer SQL", () => {
   it("builds create table SQL with primary key, index, and foreign key", () => {

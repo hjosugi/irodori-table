@@ -4,7 +4,7 @@ import {
   resultCopyDefaultKeymap,
   workspaceMenuSections,
 } from "@/app/app-config";
-import { defaultKeymap } from "@/keybindings";
+import { defaultKeymap } from "@/core/keybindings";
 
 describe("app command config", () => {
   it("keeps command ids unique", () => {

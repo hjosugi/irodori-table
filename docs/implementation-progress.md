@@ -188,8 +188,8 @@ Highlights:
 - Vim mode is wired through `@replit/codemirror-vim` behind a persisted header
   toggle; Playwright covers toggling, insert-mode editing, and a normal-mode delete
   flow. Deeper Vim behavior parity remains open.
-- Linux AppImage v0.2.5 has been released; the desktop package/Tauri version and
-  local Git tag are `0.2.5`/`v0.2.5`. Cross-platform installer/signing/update
+- Linux AppImage v0.2.22 has been released; the desktop package/Tauri version and
+  local Git tag are `0.2.22`/`v0.2.22`. Cross-platform installer/signing/update
   channel hardening remains tracked in the backlog.
 - In-memory databases are first-class for local work: SQLite `:memory:` is wired
   through structured profiles and verified by a unit test; DuckDB `:memory:` is

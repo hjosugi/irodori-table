@@ -7,7 +7,7 @@ import {
   formatKeySequence,
   resolveKeybinding,
   type Keymap,
-} from "@/keybindings";
+} from "@/core/keybindings";
 import { appCommandCatalog } from "@/app/app-config";
 
 describe("keybinding resolver", () => {

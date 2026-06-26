@@ -6,7 +6,7 @@ import {
   parseImportText,
   sanitizeSqlName,
   unsupportedImportFormatMessage,
-} from "@/importers";
+} from "@/features/import/importers";
 
 describe("import helpers", () => {
   it("detects supported import file kinds", () => {
