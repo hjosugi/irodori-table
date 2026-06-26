@@ -6317,15 +6317,15 @@ dependencies = [
 
 [[package]]
 name = "typeship"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01df95ca6732e4681480643fea41aec60071aa29219cb9c10dd0759ab8325a3e"
+checksum = "780dc5ef3e7d0289f153b587d62e6d25609be3342fea32f649645cd419e3c8ab"
 
 [[package]]
 name = "typeship-ts-rs"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "225d6d1a7fd1cb77bbb240b447a76170495ceee75bca650ded370d7464e6be62"
+checksum = "930a7dca6a4ff18422cfcd4367fb059169c57e72f1e74e968e8826448cea9685"
 dependencies = [
  "ts-rs",
  "typeship",

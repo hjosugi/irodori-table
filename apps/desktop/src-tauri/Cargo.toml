@@ -84,5 +84,5 @@ duckdb = ["dep:duckdb"]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # TypeScript boundary generation. The Rust types stay the single source of truth;
 # ts-rs renders them and typeship assembles + drift-checks the module.
-typeship = "0.1.1"
-typeship-ts-rs = "0.1.1"
+typeship = "0.1.2"
+typeship-ts-rs = "0.1.2"
