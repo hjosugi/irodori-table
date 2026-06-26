@@ -24,6 +24,7 @@ near-duplicate status page.
 | DB-specific feature samples and catalog checks | [db-feature-samples.md](db-feature-samples.md) |
 | External database verification rules | [external-db-contract-and-verification.md](external-db-contract-and-verification.md) |
 | Web app runtime and endpoint contract | [web-app-architecture.md](web-app-architecture.md) |
+| UI language switching and translation keys | [i18n.md](i18n.md) |
 | Generated cheatsheets | [cheatsheets/README.md](cheatsheets/README.md) |
 
 ## Architecture And Strategy

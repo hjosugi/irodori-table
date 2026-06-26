@@ -655,14 +655,16 @@ export function SettingsDialog({
                   const recordingLabel =
                     recordingSequence.length > 0
                       ? `${formatKeySequence(recordingSequence.join(" "))} ...`
-                      : "Press keys...";
+                      : t("settings.keymap.recordingLabel");
                   return (
                     <div className="command-item" key={command.id}>
                       <button
                         className="command-run"
                         type="button"
                         onClick={() => runCommand(command.id)}
-                        title={`Run: ${command.title}`}
+                        title={t("settings.keymap.runTitle", {
+                          title: command.title,
+                        })}
                       >
                         {command.title}
                       </button>
@@ -674,10 +676,10 @@ export function SettingsDialog({
                         type="button"
                         title={
                           recording
-                            ? "Press one or two chords for the new shortcut"
+                            ? t("settings.keymap.recordingTitle")
                             : conflicted
-                              ? "Shortcut conflict - click to rebind"
-                              : "Click to rebind"
+                              ? t("settings.keymap.conflictTitle")
+                              : t("settings.keymap.rebindTitle")
                         }
                         onClick={() => beginRecording(command.id)}
                       >
@@ -685,16 +687,16 @@ export function SettingsDialog({
                           ? recordingLabel
                           : chord
                             ? formatKeySequence(chord)
-                            : "unset"}
+                            : t("settings.keymap.unset")}
                       </button>
                       {keymapOverrides[command.id] ? (
                         <button
                           className="command-reset"
                           type="button"
-                          title="Reset to default"
+                          title={t("settings.keymap.resetTitle")}
                           onClick={() => resetKeybinding(command.id)}
                         >
-                          Reset
+                          {t("common.reset")}
                         </button>
                       ) : null}
                     </div>
@@ -705,10 +707,12 @@ export function SettingsDialog({
               <div className="settings-snippets">
                 <div className="settings-json-toolbar">
                   <span>
-                    <strong>SQL Snippets</strong>
+                    <strong>{t("settings.snippets.title")}</strong>
                     <small>
-                      Completion triggers can use CodeMirror snippet
-                      placeholders such as ${"{1:table}"} and ${"{0}"}.
+                      {t("settings.snippets.description", {
+                        first: "${1:table}",
+                        final: "${0}",
+                      })}
                     </small>
                   </span>
                   <button
@@ -716,14 +720,14 @@ export function SettingsDialog({
                     type="button"
                     onClick={() => setSqlSnippets(copyDefaultSqlSnippets())}
                   >
-                    Reset defaults
+                    {t("settings.snippets.resetDefaults")}
                   </button>
                   <button
                     className="primary-button"
                     type="button"
                     onClick={addSnippet}
                   >
-                    Add snippet
+                    {t("settings.snippets.add")}
                   </button>
                 </div>
                 {sqlSnippets.length > 0 ? (
@@ -735,7 +739,7 @@ export function SettingsDialog({
                       >
                         <div className="snippet-editor-grid">
                           <label>
-                            <span>Trigger</span>
+                            <span>{t("settings.snippets.trigger")}</span>
                             <input
                               value={snippet.label}
                               spellCheck={false}
@@ -747,7 +751,7 @@ export function SettingsDialog({
                             />
                           </label>
                           <label>
-                            <span>Scope</span>
+                            <span>{t("settings.snippets.scope")}</span>
                             <select
                               value={snippet.scope}
                               onChange={(event) => {
@@ -765,7 +769,7 @@ export function SettingsDialog({
                             </select>
                           </label>
                           <label>
-                            <span>Rank</span>
+                            <span>{t("settings.snippets.rank")}</span>
                             <input
                               type="number"
                               min={0}
@@ -784,7 +788,7 @@ export function SettingsDialog({
                             />
                           </label>
                           <label className="snippet-detail-field">
-                            <span>Detail</span>
+                            <span>{t("settings.snippets.detail")}</span>
                             <input
                               value={snippet.detail}
                               onChange={(event) =>
@@ -796,7 +800,7 @@ export function SettingsDialog({
                           </label>
                         </div>
                         <label className="snippet-template-field">
-                          <span>Template</span>
+                          <span>{t("settings.snippets.template")}</span>
                           <textarea
                             value={snippet.template}
                             spellCheck={false}
@@ -813,24 +817,25 @@ export function SettingsDialog({
                             type="button"
                             onClick={() => removeSnippet(index)}
                           >
-                            Remove
+                            {t("settings.snippets.remove")}
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="empty-browser">No snippets configured</div>
+                  <div className="empty-browser">
+                    {t("settings.snippets.empty")}
+                  </div>
                 )}
               </div>
             ) : settingsTab === "jobs" ? (
               <div className="settings-jobs">
                 <div className="settings-json-toolbar">
                   <span>
-                    <strong>Background Jobs</strong>
+                    <strong>{t("settings.jobs.title")}</strong>
                     <small>
-                      Active and recent local work tracked by the shared job
-                      runtime.
+                      {t("settings.jobs.description")}
                     </small>
                   </span>
                   <button
@@ -839,7 +844,7 @@ export function SettingsDialog({
                     onClick={() => void refreshJobs()}
                     disabled={jobsLoading}
                   >
-                    {jobsLoading ? "Refreshing" : "Refresh"}
+                    {jobsLoading ? t("common.refreshing") : t("common.refresh")}
                   </button>
                 </div>
                 {jobsError ? (
@@ -850,7 +855,7 @@ export function SettingsDialog({
                 ) : null}
                 <section className="jobs-section">
                   <div className="jobs-section-title">
-                    <strong>Active</strong>
+                    <strong>{t("settings.jobs.active")}</strong>
                     <span>{jobs.active.length}</span>
                   </div>
                   {jobs.active.length > 0 ? (
@@ -872,14 +877,18 @@ export function SettingsDialog({
                             ) : null}
                           </div>
                           <div className="job-meta">
-                            <small>Attempt {job.attempt}</small>
+                            <small>
+                              {t("settings.jobs.attempt", {
+                                attempt: job.attempt,
+                              })}
+                            </small>
                             {isCancellableJob(job) ? (
                               <button
                                 className="text-button"
                                 type="button"
                                 onClick={() => void cancelJob(job.id)}
                               >
-                                Cancel
+                                {t("common.cancel")}
                               </button>
                             ) : null}
                           </div>
@@ -887,12 +896,14 @@ export function SettingsDialog({
                       ))}
                     </div>
                   ) : (
-                    <div className="empty-browser">No active jobs</div>
+                    <div className="empty-browser">
+                      {t("settings.jobs.noActive")}
+                    </div>
                   )}
                 </section>
                 <section className="jobs-section">
                   <div className="jobs-section-title">
-                    <strong>History</strong>
+                    <strong>{t("settings.jobs.history")}</strong>
                     <span>{jobs.history.length}</span>
                   </div>
                   {jobs.history.length > 0 ? (
@@ -916,15 +927,19 @@ export function SettingsDialog({
                           <div className="job-meta">
                             <small>
                               {job.artifactCount
-                                ? `${job.artifactCount} artifacts`
-                                : "No artifacts"}
+                                ? t("settings.jobs.artifacts", {
+                                    count: job.artifactCount,
+                                  })
+                                : t("settings.jobs.noArtifacts")}
                             </small>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="empty-browser">No finished jobs</div>
+                    <div className="empty-browser">
+                      {t("settings.jobs.noFinished")}
+                    </div>
                   )}
                 </section>
               </div>
@@ -932,25 +947,22 @@ export function SettingsDialog({
               <div className="settings-json">
                 <div className="settings-json-toolbar">
                   <span>
-                    <strong>Settings JSON</strong>
-                    <small>
-                      Edits apply to theme JSON, editor, layout, keymap, and
-                      saved connections.
-                    </small>
+                    <strong>{t("settings.json.title")}</strong>
+                    <small>{t("settings.json.description")}</small>
                   </span>
                   <button
                     className="text-button"
                     type="button"
                     onClick={resetSettingsJsonDraft}
                   >
-                    Reset from current
+                    {t("settings.json.resetFromCurrent")}
                   </button>
                   <button
                     className="primary-button"
                     type="button"
                     onClick={applySettingsJson}
                   >
-                    Apply JSON
+                    {t("settings.json.apply")}
                   </button>
                 </div>
                 <textarea

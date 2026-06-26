@@ -191,7 +191,7 @@ function jsonPreview(value: unknown): string {
 }
 
 function truncate(value: string, max = 120): string {
-  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+  return value.length <= max ? value : `${value.slice(0, max - 3)}...`;
 }
 
 function normalizeId(value: string): string {

@@ -208,6 +208,7 @@ make check
 | Product capability matrix | [docs/feature-matrix.md](docs/feature-matrix.md) |
 | Current implementation snapshot | [docs/implementation-progress.md](docs/implementation-progress.md) |
 | Backlog and task IDs | [docs/implementation-backlog.md](docs/implementation-backlog.md) |
+| UI language switching and translation keys | [docs/i18n.md](docs/i18n.md) |
 | Release-readiness checklist | [docs/production-readiness.md](docs/production-readiness.md) |
 | Extension development | [docs/extension-development.md](docs/extension-development.md) and [packages/extension-sdk/README.md](packages/extension-sdk/README.md) |
 | Clean-room rules | [docs/clean-room.md](docs/clean-room.md) |

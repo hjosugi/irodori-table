@@ -80,6 +80,7 @@ import { ErdDialog } from "./features/erd/ErdDialog";
 import { SchemaDesignerDialog } from "./features/schema-designer/SchemaDesignerDialog";
 import { SettingsDialog, type SettingsTab } from "./features/settings";
 import { usePreferencesStore } from "./features/preferences";
+import { normalizeLocale } from "./i18n";
 import {
   createWorkbenchCommandHandler,
   Inspector,
@@ -576,6 +577,8 @@ function App() {
     (state) => state.setActiveConnectionId,
   );
   const [query, setQuery] = useState(loadSavedQuery);
+  const locale = usePreferencesStore((state) => state.locale);
+  const setLocale = usePreferencesStore((state) => state.setLocale);
   const themeKind = usePreferencesStore((state) => state.themeKind);
   const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
   const activeCustomThemeId = usePreferencesStore(
@@ -606,6 +609,8 @@ function App() {
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
+  const sidebarSide = useWorkbenchStore((state) => state.sidebarSide);
+  const setSidebarSide = useWorkbenchStore((state) => state.setSidebarSide);
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
   const inspectorWidth = useWorkbenchStore((state) => state.inspectorWidth);
@@ -2181,6 +2186,7 @@ function App() {
     return JSON.stringify(
       {
         version: 1,
+        locale,
         theme: activeCustomTheme?.theme ?? themeKind,
         activeCustomThemeId,
         customThemes,
@@ -2258,6 +2264,11 @@ function App() {
       const parsed = JSON.parse(settingsJsonDraft) as unknown;
       if (!isRecord(parsed)) {
         throw new Error("settings JSON root must be an object");
+      }
+      if (typeof parsed.locale === "string") {
+        const nextLocale = normalizeLocale(parsed.locale);
+        setLocale(nextLocale);
+        parsed.locale = nextLocale;
       }
       let themeNotice: string | null = null;
       let nextCustomThemes = customThemes;
@@ -4137,6 +4148,8 @@ function App() {
           settingsTab={settingsTab}
           onOpenSection={openSettingsSection}
           onClose={() => setSettingsOpen(false)}
+          locale={locale}
+          setLocale={setLocale}
           vimMode={vimMode}
           setVimMode={setVimMode}
           autoCommit={autoCommit}

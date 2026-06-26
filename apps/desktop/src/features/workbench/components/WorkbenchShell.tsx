@@ -12,11 +12,13 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRight,
   Settings,
   Sun,
 } from "lucide-react";
 import type { KeybindingScope } from "@/keybindings";
 import type { ThemeKind } from "@/theme";
+import type { SidebarSide } from "../store/workbench-store";
 
 type WorkbenchShellProps = {
   appName: string;
@@ -24,6 +26,7 @@ type WorkbenchShellProps = {
   themeKind: ThemeKind;
   activeKeyScope: KeybindingScope;
   sidebarOpen: boolean;
+  sidebarSide: SidebarSide;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -46,6 +49,7 @@ type WorkbenchShellProps = {
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
   onToggleTheme: () => void;
   onToggleSidebar: () => void;
+  onToggleSidebarSide: () => void;
   onOpenSettings: () => void;
   onOpenKeymap: () => void;
   onOpenConnectionManager: () => void;
@@ -61,6 +65,7 @@ export function WorkbenchShell({
   themeKind,
   activeKeyScope,
   sidebarOpen,
+  sidebarSide,
   sidebarWidth,
   inspectorWidth,
   resultsHeight,
@@ -83,6 +88,7 @@ export function WorkbenchShell({
   onScopeMouseDown,
   onToggleTheme,
   onToggleSidebar,
+  onToggleSidebarSide,
   onOpenSettings,
   onOpenKeymap,
   onOpenConnectionManager,
@@ -193,6 +199,17 @@ export function WorkbenchShell({
                 role="menuitem"
                 onClick={() => {
                   onCloseWorkspaceMenu();
+                  onToggleSidebarSide();
+                }}
+              >
+                <PanelRight size={14} />
+                {sidebarSide === "left" ? "Move Sidebar Right" : "Move Sidebar Left"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onCloseWorkspaceMenu();
                   onOpenSettings();
                 }}
               >
@@ -276,7 +293,15 @@ export function WorkbenchShell({
         </button>
       </section>
 
-      <div className={sidebarOpen ? "workspace" : "workspace sidebar-collapsed"}>
+      <div
+        className={[
+          "workspace",
+          sidebarOpen ? null : "sidebar-collapsed",
+          sidebarSide === "right" ? "sidebar-right" : null,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         {sidebar}
         {children}
       </div>

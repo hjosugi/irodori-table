@@ -109,6 +109,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   ),
   setSidebarOpen: (value) =>
     set((state) => ({ sidebarOpen: resolveValue(state.sidebarOpen, value) })),
+  setSidebarSide: (value) =>
+    set((state) => ({ sidebarSide: resolveValue(state.sidebarSide, value) })),
   setSidebarWidth: (value) =>
     set((state) => ({
       sidebarWidth: clampNumber(
@@ -149,6 +151,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
 
 useWorkbenchStore.subscribe((state) => {
   window.localStorage.setItem(sidebarStorageKey, String(state.sidebarOpen));
+  window.localStorage.setItem(sidebarSideStorageKey, state.sidebarSide);
   window.localStorage.setItem(sidebarWidthStorageKey, String(state.sidebarWidth));
   window.localStorage.setItem(
     inspectorWidthStorageKey,

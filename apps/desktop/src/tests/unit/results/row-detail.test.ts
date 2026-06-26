@@ -6,13 +6,16 @@ import type {
   ForeignKey,
 } from "@/generated/irodori-api";
 import {
+  buildJsonTree,
   buildForeignKeyLookup,
   findTableByName,
   findTableMetadata,
+  formatRowAsJson,
   foreignKeyColumns,
   formatDetailValue,
   parseSourceTable,
   quoteIdent,
+  rowToJsonObject,
 } from "@/row-detail";
 
 function column(name: string, dataType = "text") {
@@ -62,6 +65,48 @@ describe("formatDetailValue", () => {
     expect(formatDetailValue(42)).toEqual({ text: "42", json: false });
     expect(formatDetailValue("hi")).toEqual({ text: "hi", json: false });
     expect(formatDetailValue(false)).toEqual({ text: "false", json: false });
+  });
+
+  it("renders bigint values without throwing", () => {
+    expect(formatDetailValue(42n)).toEqual({ text: "42", json: false });
+    expect(formatDetailValue({ id: 42n }).text).toBe('{\n  "id": "42"\n}');
+  });
+});
+
+describe("row JSON helpers", () => {
+  it("formats a complete row as JSON", () => {
+    expect(formatRowAsJson(["id", "name", "meta"], [1, "Kawase", { tier: "gold" }])).toBe(
+      '{\n  "id": 1,\n  "name": "Kawase",\n  "meta": {\n    "tier": "gold"\n  }\n}',
+    );
+  });
+
+  it("keeps duplicate result-column names by suffixing keys", () => {
+    expect(rowToJsonObject(["id", "id", "id_2", ""], [1, 2, 3, 4])).toEqual({
+      id: 1,
+      id_2: 2,
+      id_2_2: 3,
+      column_4: 4,
+    });
+  });
+
+  it("normalizes values that JSON.stringify cannot handle directly", () => {
+    const circular: Record<string, unknown> = { id: 1 };
+    circular.self = circular;
+    expect(rowToJsonObject(["big", "missing", "circular"], [9n, undefined, circular])).toEqual({
+      big: "9",
+      missing: null,
+      circular: { id: 1, self: "[Circular]" },
+    });
+  });
+
+  it("builds a browsable JSON tree", () => {
+    const tree = buildJsonTree(rowToJsonObject(["id", "payload"], [1, { tags: ["a", "b"] }]));
+    expect(tree.type).toBe("object");
+    expect(tree.children.map((node) => node.key)).toEqual(["id", "payload"]);
+    const payload = tree.children[1];
+    expect(payload.path).toBe("$.payload");
+    expect(payload.children[0].path).toBe("$.payload.tags");
+    expect(payload.children[0].children[1].preview).toBe('"b"');
   });
 });
 
