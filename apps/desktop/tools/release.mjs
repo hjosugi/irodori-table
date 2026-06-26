@@ -14,6 +14,7 @@ const tauriCargoPath = resolve(desktopRoot, "src-tauri/Cargo.toml");
 const rootCargoPath = resolve(repoRoot, "Cargo.toml");
 const rootCargoLockPath = resolve(repoRoot, "Cargo.lock");
 const pkgLockPath = resolve(desktopRoot, "package-lock.json");
+const appSourcePath = resolve(desktopRoot, "src/App.tsx");
 
 // 1. Parse bump type
 const bumpType = process.argv[2] || "patch"; // patch, minor, major
@@ -58,6 +59,15 @@ rootCargo = rootCargo.replace(/^(version\s*=\s*")[^"]*(")/m, `$1${newVersion}$2`
 writeFileSync(rootCargoPath, rootCargo, "utf8");
 console.log(`Updated root Cargo.toml`);
 
+// Desktop UI version label
+let appSource = readFileSync(appSourcePath, "utf8");
+appSource = appSource.replace(
+  /^(const APP_VERSION\s*=\s*")[^"]*(";\s*)$/m,
+  `$1${newVersion}$2`,
+);
+writeFileSync(appSourcePath, appSource, "utf8");
+console.log(`Updated apps/desktop/src/App.tsx`);
+
 // 4b. Sync lockfiles so the committed tree builds with --locked / npm ci.
 // Cargo.lock: members use `version.workspace = true`, so the root bump moves
 // every workspace crate. `--workspace` relocks only those, never external deps.
@@ -79,7 +89,7 @@ console.log(`Updated package-lock.json`);
 // 5. Git operations
 try {
   console.log("Staging modified files...");
-  execSync(`git add "${pkgJsonPath}" "${pkgLockPath}" "${tauriConfPath}" "${tauriCargoPath}" "${rootCargoPath}" "${rootCargoLockPath}"`, { stdio: "inherit" });
+  execSync(`git add "${pkgJsonPath}" "${pkgLockPath}" "${tauriConfPath}" "${tauriCargoPath}" "${rootCargoPath}" "${rootCargoLockPath}" "${appSourcePath}"`, { stdio: "inherit" });
   
   const commitMsg = `chore: release v${newVersion}`;
   console.log(`Committing: ${commitMsg}`);
