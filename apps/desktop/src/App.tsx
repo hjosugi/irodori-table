@@ -41,7 +41,6 @@ import {
 import { runQuerySpill, runQueryStream } from "./lib/tauri/db-stream";
 import {
   QueryHistoryDialog,
-  QueryHistorySidebar,
   useQueryHistoryStore,
   type QueryHistoryItem,
 } from "./features/query-history";
@@ -61,20 +60,22 @@ import { AboutDialog } from "./app/AboutDialog";
 import { ActionToast, type ActionNotice } from "./app/ActionToast";
 import { CommandPalette } from "./app/CommandPalette";
 import { GitDrawer, useGitStore } from "./features/git";
-import { ResultBody } from "./features/results";
+import {
+  ResultBody,
+  useResultGridStore,
+  useResultsStore,
+} from "./features/results";
 import {
   defaultConnectionColor,
   describeConnection,
   engineLabel,
-  loadProfiles,
   memoryDefaults,
   newDraft,
   profileFromDraft,
-  profilesStorageKey,
   repairBuiltinSampleProfile,
   sanitizedProfile,
   settingsProfileFromJson,
-  starterProfiles,
+  useConnectionStore,
   validateDraft,
   withStarterProfiles,
   withUniqueProfileIds,
@@ -94,6 +95,7 @@ import { ErdDialog } from "./features/erd/ErdDialog";
 import { SchemaDesignerDialog } from "./features/schema-designer/SchemaDesignerDialog";
 import { SettingsDialog, type SettingsTab } from "./features/settings";
 import { usePreferencesStore } from "./features/preferences";
+import { Inspector, useWorkbenchStore } from "./features/workbench";
 import {
   WindowedRows,
   createWindowedRowsProxy,
@@ -147,7 +149,6 @@ import {
   formatResultGridTsvRow,
   resultFilterNeedsValue,
   resultFilterOperators,
-  type ResultFilterJoin,
   type ResultFilterOperator,
   type ResultFilterRule,
   type ResultGridRowLike,
@@ -164,11 +165,11 @@ import {
   deriveResultEditTarget,
   type ResultEditTarget,
 } from "./result-edit-target";
+import { useSchemaDesignerStore } from "./features/schema-designer/schema-designer-store";
 import {
   blankSchemaDraft,
   buildSchemaSql,
   schemaDraftFromObject,
-  type SchemaDesignerDraft,
 } from "./schema-designer";
 import {
   dbApplyEdits,
@@ -262,8 +263,6 @@ function isCellEditorClipboardShortcut(
 }
 
 type QueryParameterMemory = Record<string, Record<string, string>>;
-
-type ResultMode = "data" | "structure";
 
 // Parse pasted clipboard text (TSV, or CSV as a fallback) into a grid of strings.
 function parseClipboardTable(text: string): string[][] {
@@ -489,10 +488,22 @@ function App() {
   const actionNoticeTimerRef = useRef<number | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const pendingGridScroll = useRef({ top: 0, left: 0 });
-  const [gridScrollTop, setGridScrollTop] = useState(0);
-  const [gridScrollLeft, setGridScrollLeft] = useState(0);
-  const [gridViewportHeight, setGridViewportHeight] = useState(480);
-  const [gridViewportWidth, setGridViewportWidth] = useState(900);
+  const gridScrollTop = useResultGridStore((state) => state.gridScrollTop);
+  const setGridScrollTop = useResultGridStore((state) => state.setGridScrollTop);
+  const gridScrollLeft = useResultGridStore((state) => state.gridScrollLeft);
+  const setGridScrollLeft = useResultGridStore((state) => state.setGridScrollLeft);
+  const gridViewportHeight = useResultGridStore(
+    (state) => state.gridViewportHeight,
+  );
+  const setGridViewportHeight = useResultGridStore(
+    (state) => state.setGridViewportHeight,
+  );
+  const gridViewportWidth = useResultGridStore(
+    (state) => state.gridViewportWidth,
+  );
+  const setGridViewportWidth = useResultGridStore(
+    (state) => state.setGridViewportWidth,
+  );
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
@@ -502,8 +513,11 @@ function App() {
   });
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
-  const [activeConnectionId, setActiveConnectionId] = useState(
-    fallbackSnapshot.activeConnectionId,
+  const activeConnectionId = useConnectionStore(
+    (state) => state.activeConnectionId,
+  );
+  const setActiveConnectionId = useConnectionStore(
+    (state) => state.setActiveConnectionId,
   );
   const [query, setQuery] = useState(loadSavedQuery);
   const themeKind = usePreferencesStore((state) => state.themeKind);
@@ -530,28 +544,28 @@ function App() {
   const setFormatter = usePreferencesStore((state) => state.setFormatter);
   const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
   const setSqlLinter = usePreferencesStore((state) => state.setSqlLinter);
-  const sidebarOpen = usePreferencesStore((state) => state.sidebarOpen);
-  const setSidebarOpen = usePreferencesStore((state) => state.setSidebarOpen);
-  const sidebarWidth = usePreferencesStore((state) => state.sidebarWidth);
-  const setSidebarWidth = usePreferencesStore((state) => state.setSidebarWidth);
-  const inspectorWidth = usePreferencesStore((state) => state.inspectorWidth);
-  const setInspectorWidth = usePreferencesStore(
+  const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
+  const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
+  const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
+  const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
+  const inspectorWidth = useWorkbenchStore((state) => state.inspectorWidth);
+  const setInspectorWidth = useWorkbenchStore(
     (state) => state.setInspectorWidth,
   );
-  const resultsHeight = usePreferencesStore((state) => state.resultsHeight);
-  const setResultsHeight = usePreferencesStore(
+  const resultsHeight = useWorkbenchStore((state) => state.resultsHeight);
+  const setResultsHeight = useWorkbenchStore(
     (state) => state.setResultsHeight,
   );
-  const editorSplitMode = usePreferencesStore(
+  const editorSplitMode = useWorkbenchStore(
     (state) => state.editorSplitMode,
   );
-  const setEditorSplitMode = usePreferencesStore(
+  const setEditorSplitMode = useWorkbenchStore(
     (state) => state.setEditorSplitMode,
   );
-  const editorSplitPercent = usePreferencesStore(
+  const editorSplitPercent = useWorkbenchStore(
     (state) => state.editorSplitPercent,
   );
-  const setEditorSplitPercent = usePreferencesStore(
+  const setEditorSplitPercent = useWorkbenchStore(
     (state) => state.setEditorSplitPercent,
   );
   const [activeEditorGroup, setActiveEditorGroup] =
@@ -559,78 +573,137 @@ function App() {
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
-  const [profiles, setProfiles] = useState<ConnectionDraft[]>(loadProfiles);
-  const [selectedProfileId, setSelectedProfileId] = useState(
-    () => profiles[0]?.id ?? "local-pg",
+  const profiles = useConnectionStore((state) => state.profiles);
+  const setProfiles = useConnectionStore((state) => state.setProfiles);
+  const selectedProfileId = useConnectionStore((state) => state.selectedProfileId);
+  const setSelectedProfileId = useConnectionStore(
+    (state) => state.setSelectedProfileId,
   );
-  const [draft, setDraft] = useState<ConnectionDraft>(
-    () => profiles[0] ?? starterProfiles[0],
+  const draft = useConnectionStore((state) => state.draft);
+  const setDraft = useConnectionStore((state) => state.setDraft);
+  const connectionManagerOpen = useConnectionStore(
+    (state) => state.connectionManagerOpen,
   );
-  const [connectionManagerOpen, setConnectionManagerOpen] = useState(false);
-  const [connectionSearch, setConnectionSearch] = useState("");
-  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
-  const [liveConnections, setLiveConnections] = useState<
-    Record<string, WorkspaceConnection>
-  >({});
-  const [connecting, setConnecting] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const setConnectionManagerOpen = useConnectionStore(
+    (state) => state.setConnectionManagerOpen,
+  );
+  const connectionSearch = useConnectionStore((state) => state.connectionSearch);
+  const setConnectionSearch = useConnectionStore(
+    (state) => state.setConnectionSearch,
+  );
+  const connectedIds = useConnectionStore((state) => state.connectedIds);
+  const setConnectedIds = useConnectionStore((state) => state.setConnectedIds);
+  const liveConnections = useConnectionStore((state) => state.liveConnections);
+  const setLiveConnections = useConnectionStore(
+    (state) => state.setLiveConnections,
+  );
+  const connecting = useConnectionStore((state) => state.connecting);
+  const setConnecting = useConnectionStore((state) => state.setConnecting);
+  const testingConnection = useConnectionStore(
+    (state) => state.testingConnection,
+  );
+  const setTestingConnection = useConnectionStore(
+    (state) => state.setTestingConnection,
+  );
+  const connectionError = useConnectionStore((state) => state.connectionError);
+  const setConnectionError = useConnectionStore(
+    (state) => state.setConnectionError,
+  );
+  const metadataByConnection = useConnectionStore(
+    (state) => state.metadataByConnection,
+  );
+  const setMetadataByConnection = useConnectionStore(
+    (state) => state.setMetadataByConnection,
+  );
+  const metadataLoading = useConnectionStore((state) => state.metadataLoading);
+  const setMetadataLoading = useConnectionStore(
+    (state) => state.setMetadataLoading,
+  );
+  const metadataErrors = useConnectionStore((state) => state.metadataErrors);
+  const setMetadataErrors = useConnectionStore((state) => state.setMetadataErrors);
+  const objectActionMenu = useConnectionStore((state) => state.objectActionMenu);
+  const setObjectActionMenu = useConnectionStore(
+    (state) => state.setObjectActionMenu,
+  );
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   // EXEC-010: when a run spills past the in-memory budget, the grid pages rows from
   // disk through this handle instead of holding them all in JS. `spillInfo` drives
   // the windowed grid path; `spillRef` holds the live LRU page source; the version
   // counter forces the grid view model to recompute as pages arrive.
-  const resultOffloadEnabled = usePreferencesStore(
+  const resultOffloadEnabled = useResultsStore(
     (state) => state.resultOffloadEnabled,
   );
-  const setResultOffloadEnabled = usePreferencesStore(
+  const setResultOffloadEnabled = useResultsStore(
     (state) => state.setResultOffloadEnabled,
   );
-  const resultMemoryBudget = usePreferencesStore(
+  const resultMemoryBudget = useResultsStore(
     (state) => state.resultMemoryBudget,
   );
-  const setResultMemoryBudget = usePreferencesStore(
+  const setResultMemoryBudget = useResultsStore(
     (state) => state.setResultMemoryBudget,
   );
-  const [spillInfo, setSpillInfo] = useState<{ handle: string; total: number } | null>(
-    null,
+  const spillInfo = useResultGridStore((state) => state.spillInfo);
+  const setSpillInfo = useResultGridStore((state) => state.setSpillInfo);
+  const gridWindowVersion = useResultGridStore(
+    (state) => state.gridWindowVersion,
   );
-  const [gridWindowVersion, setGridWindowVersion] = useState(0);
+  const setGridWindowVersion = useResultGridStore(
+    (state) => state.setGridWindowVersion,
+  );
+  const bumpGridWindowVersion = useResultGridStore(
+    (state) => state.bumpGridWindowVersion,
+  );
   const spillRef = useRef<{ handle: string; source: WindowedRows } | null>(null);
   const pendingPagesRef = useRef<Set<number>>(new Set());
-  const [activeResultIndex, setActiveResultIndex] = useState(0);
-  const [resultMode, setResultMode] = useState<ResultMode>("data");
-  const [tableViewObject, setTableViewObject] = useState<DbObjectMetadata | null>(
-    null,
+  const activeResultIndex = useResultGridStore(
+    (state) => state.activeResultIndex,
+  );
+  const setActiveResultIndex = useResultGridStore(
+    (state) => state.setActiveResultIndex,
+  );
+  const resultMode = useResultGridStore((state) => state.resultMode);
+  const setResultMode = useResultGridStore((state) => state.setResultMode);
+  const tableViewObject = useResultGridStore((state) => state.tableViewObject);
+  const setTableViewObject = useResultGridStore(
+    (state) => state.setTableViewObject,
   );
   const [queryError, setQueryError] = useState<string | null>(null);
   // SQL of the last run, used to infer the editable target table.
   const [lastRunSql, setLastRunSql] = useState<string>("");
   // Staged (non-immediate) result editing: changes accumulate until Commit.
-  const [editMode, setEditMode] = useState(false);
-  const [cellEdits, setCellEdits] = useState<Map<string, GridCellDraft>>(
-    new Map(),
+  const editMode = useResultGridStore((state) => state.editMode);
+  const setEditMode = useResultGridStore((state) => state.setEditMode);
+  const cellEdits = useResultGridStore((state) => state.cellEdits);
+  const setCellEdits = useResultGridStore((state) => state.setCellEdits);
+  const newRows = useResultGridStore((state) => state.newRows);
+  const setNewRows = useResultGridStore((state) => state.setNewRows);
+  const deletedRows = useResultGridStore((state) => state.deletedRows);
+  const setDeletedRows = useResultGridStore((state) => state.setDeletedRows);
+  const editingCell = useResultGridStore((state) => state.editingCell);
+  const setEditingCell = useResultGridStore((state) => state.setEditingCell);
+  const selectedCell = useResultGridStore((state) => state.selectedCell);
+  const setSelectedCell = useResultGridStore((state) => state.setSelectedCell);
+  const sortRules = useResultGridStore((state) => state.sortRules);
+  const setSortRules = useResultGridStore((state) => state.setSortRules);
+  const filtersOpen = useResultGridStore((state) => state.filtersOpen);
+  const setFiltersOpen = useResultGridStore((state) => state.setFiltersOpen);
+  const quickFilter = useResultGridStore((state) => state.quickFilter);
+  const setQuickFilter = useResultGridStore((state) => state.setQuickFilter);
+  const filterJoin = useResultGridStore((state) => state.filterJoin);
+  const setFilterJoin = useResultGridStore((state) => state.setFilterJoin);
+  const filterRules = useResultGridStore((state) => state.filterRules);
+  const setFilterRules = useResultGridStore((state) => state.setFilterRules);
+  const selectedRowKey = useResultGridStore((state) => state.selectedRowKey);
+  const setSelectedRowKey = useResultGridStore(
+    (state) => state.setSelectedRowKey,
   );
-  const [newRows, setNewRows] = useState<GridCellDraft[][]>([]);
-  const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
-  const [editingCell, setEditingCell] = useState<{
-    key: string;
-    col: number;
-    seed?: string;
-  } | null>(null);
-  const [selectedCell, setSelectedCell] = useState<{
-    key: string;
-    col: number;
-  } | null>(null);
-  const [sortRules, setSortRules] = useState<ResultSortRule[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [quickFilter, setQuickFilter] = useState("");
-  const [filterJoin, setFilterJoin] = useState<ResultFilterJoin>("and");
-  const [filterRules, setFilterRules] = useState<ResultFilterRule[]>([]);
-  const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
-  const [committing, setCommitting] = useState(false);
-  const [commitError, setCommitError] = useState<string | null>(null);
+  const committing = useResultGridStore((state) => state.committing);
+  const setCommitting = useResultGridStore((state) => state.setCommitting);
+  const commitError = useResultGridStore((state) => state.commitError);
+  const setCommitError = useResultGridStore((state) => state.setCommitError);
+  const resetGridStoreEdits = useResultGridStore((state) => state.resetEdits);
+  const resetGridStoreView = useResultGridStore((state) => state.resetGridView);
   // Remappable keybindings: defaults merged with user overrides (localStorage).
   const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
   const keymap = {
@@ -656,7 +729,6 @@ function App() {
   const [jobs, setJobs] = useState<JobList>(emptyJobList);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState<string | null>(null);
-  const [objectActionMenu, setObjectActionMenu] = useState<string | null>(null);
   // ER diagram modal (rendered from metadata through our SVG layout).
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [diagramError, setDiagramError] = useState<string | null>(null);
@@ -668,9 +740,10 @@ function App() {
     null,
   );
   const [importError, setImportError] = useState<string | null>(null);
-  const [schemaDesignerOpen, setSchemaDesignerOpen] = useState(false);
-  const [schemaDraft, setSchemaDraft] =
-    useState<SchemaDesignerDraft>(blankSchemaDraft);
+  const schemaDesignerOpen = useSchemaDesignerStore((state) => state.open);
+  const setSchemaDesignerOpen = useSchemaDesignerStore((state) => state.setOpen);
+  const schemaDraft = useSchemaDesignerStore((state) => state.draft);
+  const setSchemaDraft = useSchemaDesignerStore((state) => state.setDraft);
   const diagramInitializedFor = useRef<string | null>(null);
   const appendHistory = useQueryHistoryStore((state) => state.append);
   const openQueryHistoryDialog = useQueryHistoryStore(
@@ -687,15 +760,6 @@ function App() {
   const [parameterDraftValues, setParameterDraftValues] = useState<
     Record<string, string>
   >({});
-  const [metadataByConnection, setMetadataByConnection] = useState<
-    Record<string, DatabaseMetadata>
-  >({});
-  const [metadataLoading, setMetadataLoading] = useState<Set<string>>(
-    new Set(),
-  );
-  const [metadataErrors, setMetadataErrors] = useState<Record<string, string>>(
-    {},
-  );
 
   useEffect(() => {
     workspaceSnapshot()
@@ -713,13 +777,6 @@ function App() {
       void refreshJobs();
     }
   }, [settingsOpen, settingsTab]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      profilesStorageKey,
-      JSON.stringify(profiles.map(sanitizedProfile)),
-    );
-  }, [profiles]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -1089,7 +1146,7 @@ function App() {
             return;
           }
           spill.source.ingest(Number(page.offset), page.rows);
-          setGridWindowVersion((version) => version + 1);
+          bumpGridWindowVersion();
         } catch {
           // Leave the rows as placeholders; a later scroll retries the page.
         } finally {
@@ -1265,20 +1322,11 @@ function App() {
 
   // Drop every staged edit (called on a new run and after a successful commit).
   function resetEdits() {
-    setCellEdits(new Map());
-    setNewRows([]);
-    setDeletedRows(new Set());
-    setEditingCell(null);
-    setSelectedCell(null);
-    setCommitError(null);
+    resetGridStoreEdits();
   }
 
   function resetGridView() {
-    setSortRules([]);
-    setQuickFilter("");
-    setFilterRules([]);
-    setFilterJoin("and");
-    setFiltersOpen(false);
+    resetGridStoreView();
   }
 
   // EXEC-010: drop the active disk-offloaded result and ask the backend to remove
@@ -2818,16 +2866,6 @@ function App() {
     showActionNotice("success", "Import SQL generated", importPreview.tableName);
   }
 
-  function openBlankSchemaDesigner() {
-    setSchemaDraft(blankSchemaDraft());
-    setSchemaDesignerOpen(true);
-  }
-
-  function openObjectSchemaDesigner(object: DbObjectMetadata) {
-    setSchemaDraft(schemaDraftFromObject(object));
-    setSchemaDesignerOpen(true);
-  }
-
   async function openTableData(object: DbObjectMetadata) {
     if (object.kind !== "table" && object.kind !== "view") {
       return;
@@ -2840,6 +2878,16 @@ function App() {
     if (activeConnectionOpen) {
       await executeQuery(sql, undefined, { sourceObject: object });
     }
+  }
+
+  function openBlankSchemaDesigner() {
+    setSchemaDraft(blankSchemaDraft());
+    setSchemaDesignerOpen(true);
+  }
+
+  function openObjectSchemaDesigner(object: DbObjectMetadata) {
+    setSchemaDraft(schemaDraftFromObject(object));
+    setSchemaDesignerOpen(true);
   }
 
   function putSchemaSqlInEditor() {
@@ -3167,7 +3215,7 @@ function App() {
         spillRef.current = { handle: spill.handle, source };
         pendingPagesRef.current.clear();
         setSpillInfo({ handle: spill.handle, total: totalRows });
-        setGridWindowVersion((version) => version + 1);
+        bumpGridWindowVersion();
         setResult({
           columns: spill.columns,
           rows: createWindowedRowsProxy(source) as QueryResult["rows"],
@@ -3985,46 +4033,15 @@ function App() {
               onPointerDown={(event) => beginPanelResize("inspector", event)}
               onKeyDown={(event) => onPanelResizeKey("inspector", event)}
             />
-            <aside className="inspector">
-              <section>
-                <div className="section-heading">
-                  <span>Completion</span>
-                  <Columns3 size={14} />
-                </div>
-                <div className="completion-list">
-                  {activeMetadataLoading ? (
-                    <div className="empty-browser loading">
-                      Loading metadata
-                    </div>
-                  ) : activeMetadataError ? (
-                    <div className="empty-browser">
-                      <AlertTriangle size={14} />
-                      <span>{activeMetadataError}</span>
-                    </div>
-                  ) : completionHints.length > 0 ? (
-                    completionHints.map((item) => (
-                      <button
-                        className="completion-item"
-                        key={`${item.detail}:${item.label}`}
-                        onClick={() => insertCompletionHint(item)}
-                      >
-                        <strong>{item.label}</strong>
-                        <small>{item.detail}</small>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="empty-browser">
-                      Connect to load completion metadata
-                    </div>
-                  )}
-                </div>
-              </section>
-              <QueryHistorySidebar
-                activeConnectionId={activeConnectionId}
-                connectionById={connectionById}
-                onLoad={(item) => setQuery(item.sql)}
-              />
-            </aside>
+            <Inspector
+              activeConnectionId={activeConnectionId}
+              connectionById={connectionById}
+              activeMetadataLoading={activeMetadataLoading}
+              activeMetadataError={activeMetadataError}
+              completionHints={completionHints}
+              onInsertCompletionHint={insertCompletionHint}
+              onLoadHistorySql={setQuery}
+            />
           </div>
 
           <section

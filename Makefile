@@ -3,26 +3,46 @@
 RELEASE := node apps/desktop/tools/release.mjs
 DB ?= postgres
 LIMIT ?= 16
+JS_PM ?= npm
 ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo docker)
 
-.PHONY: help setup setup-desktop setup-web \
-        desktop-dev desktop-vite desktop-typegen desktop-test desktop-build desktop-e2e \
+.PHONY: help setup setup-desktop setup-web setup-web-endpoint setup-fast \
+        dev test build typegen e2e doctor \
+        desktop-dev desktop-vite desktop-typegen desktop-test desktop-test-watch desktop-build desktop-e2e \
         web-dev web-test web-build web-preview web-endpoint web-endpoint-host web-endpoint-down \
         check db db-verify db-all db-up db-down \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
 
+ifneq ($(filter $(JS_PM),npm bun),$(JS_PM))
+$(error Unsupported JS_PM="$(JS_PM)"; use JS_PM=npm or JS_PM=bun)
+endif
+
+define js-run
+$(if $(filter bun,$(JS_PM)),bun --cwd=$(1) run $(2),npm --prefix $(1) run $(2))
+endef
+
 help:
 	@printf "Irodori root commands\n\n"
 	@printf "Setup\n"
-	@printf "  make setup             npm ci for desktop and web apps\n"
+	@printf "  make setup             npm ci for desktop, web, and endpoint apps\n"
 	@printf "  make setup-desktop     npm ci for apps/desktop\n"
-	@printf "  make setup-web         npm ci for apps/web\n\n"
+	@printf "  make setup-web         npm ci for apps/web\n"
+	@printf "  make setup-fast        Bun install without lockfile writes (local only)\n"
+	@printf "  make doctor            check local tools and common missing setup\n\n"
+	@printf "Shortcuts\n"
+	@printf "  make dev               desktop-dev\n"
+	@printf "  make test              desktop-test + web-test\n"
+	@printf "  make build             desktop-build + web-build\n"
+	@printf "  make typegen           desktop-typegen\n"
+	@printf "  make e2e               desktop-e2e\n"
+	@printf "  JS_PM=bun make test    run JS scripts through Bun where useful\n\n"
 	@printf "Desktop app\n"
 	@printf "  make desktop-dev       Tauri dev shell + Vite (:1420)\n"
 	@printf "  make desktop-vite      Vite only, for manual debug binaries\n"
 	@printf "  make desktop-typegen   regenerate Rust -> TypeScript bindings\n"
 	@printf "  make desktop-test      Vitest\n"
+	@printf "  make desktop-test-watch Vitest watch mode\n"
 	@printf "  make desktop-build     typegen + TypeScript + Vite production build\n"
 	@printf "  make desktop-e2e       Playwright\n"
 	@printf "  make run-linux         build, install, and launch a local Linux AppImage\n\n"
@@ -44,7 +64,7 @@ help:
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
 
-setup: setup-desktop setup-web
+setup: setup-desktop setup-web setup-web-endpoint
 
 setup-desktop:
 	npm --prefix apps/desktop ci
@@ -52,35 +72,59 @@ setup-desktop:
 setup-web:
 	npm --prefix apps/web ci
 
+setup-web-endpoint:
+	npm --prefix apps/web/endpoint ci
+
+setup-fast:
+	bun --cwd=apps/desktop install --no-save
+	bun --cwd=apps/web install --no-save
+	bun --cwd=apps/web/endpoint install --no-save
+
+dev: desktop-dev
+
+test: desktop-test web-test
+
+build: desktop-build web-build
+
+typegen: desktop-typegen
+
+e2e: desktop-e2e
+
+doctor:
+	node tools/dev/doctor.mjs
+
 desktop-dev:
-	npm --prefix apps/desktop run tauri dev
+	$(call js-run,apps/desktop,tauri dev)
 
 desktop-vite:
-	npm --prefix apps/desktop run dev
+	$(call js-run,apps/desktop,dev)
 
 desktop-typegen:
-	npm --prefix apps/desktop run typegen
+	$(call js-run,apps/desktop,typegen)
 
 desktop-test:
-	npm --prefix apps/desktop test
+	$(call js-run,apps/desktop,test)
+
+desktop-test-watch:
+	$(call js-run,apps/desktop,test:watch)
 
 desktop-build:
-	npm --prefix apps/desktop run build
+	$(call js-run,apps/desktop,build)
 
 desktop-e2e:
-	npm --prefix apps/desktop run test:e2e
+	$(call js-run,apps/desktop,test:e2e)
 
 web-dev:
-	npm --prefix apps/web run dev
+	$(call js-run,apps/web,dev)
 
 web-test:
-	npm --prefix apps/web test
+	$(call js-run,apps/web,test)
 
 web-build:
-	npm --prefix apps/web run build
+	$(call js-run,apps/web,build)
 
 web-preview:
-	npm --prefix apps/web run preview
+	$(call js-run,apps/web,preview)
 
 web-endpoint:
 	$(ENGINE_BIN) compose -f apps/web/compose.endpoint.yaml up --build
@@ -94,10 +138,8 @@ web-endpoint-down:
 
 check:
 	cargo test
-	$(MAKE) desktop-test
-	$(MAKE) desktop-build
-	$(MAKE) web-test
-	$(MAKE) web-build
+	$(MAKE) test
+	$(MAKE) build
 
 db: db-verify
 

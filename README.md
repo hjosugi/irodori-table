@@ -23,6 +23,7 @@ read first.
 
 - Rust and Cargo.
 - Node.js and npm.
+- Bun is optional for faster local JavaScript script loops.
 - Tauri v2 system dependencies for your OS.
 - Docker or Podman if you want to run sample databases.
 
@@ -40,12 +41,27 @@ sudo pacman -S --needed fuse2
 ```
 
 Use the root `Makefile` for day-to-day commands. There is still no root npm
-workspace; the root targets run `npm --prefix ...` against each app.
+workspace; the root targets run against each app directly.
 
 ```sh
 make help
 make setup
+make doctor
 ```
+
+The default JavaScript package manager is npm because CI, release automation,
+and committed lockfiles are npm-based. For local JS-heavy loops, Bun can run the
+same Make targets without changing lockfiles:
+
+```sh
+make desktop-test JS_PM=bun
+make test JS_PM=bun
+make desktop-vite JS_PM=bun
+```
+
+If you want Bun to install local dependencies without writing Bun lockfiles, use
+`make setup-fast`. Keep `make setup` as the reproducible path before release or
+CI-equivalent checks.
 
 Recommended editor setup:
 

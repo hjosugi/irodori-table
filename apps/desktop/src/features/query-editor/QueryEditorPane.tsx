@@ -20,7 +20,7 @@ import type {
 import type { SqlFormatterId } from "../../sql/formatter";
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "../../theme";
-import type { EditorSplitMode } from "../preferences";
+import type { EditorSplitMode } from "../workbench";
 
 export type EditorGroup = "primary" | "secondary";
 export type EditorSelection = { from: number; to: number };
