@@ -46,6 +46,7 @@ import {
   Sun,
   Table2,
   TerminalSquare,
+  Trash2,
   Upload,
   X,
   ZoomIn,
@@ -215,6 +216,12 @@ const shellCommands: CommandMeta[] = [
   {
     id: "settings.open",
     title: "Open Settings",
+    category: "Workspace",
+    scope: "global",
+  },
+  {
+    id: "history.open",
+    title: "Open Query History",
     category: "Workspace",
     scope: "global",
   },
@@ -468,7 +475,8 @@ function isCellEditorClipboardShortcut(
   );
 }
 
-const maxQueryHistoryItems = 50;
+const maxQueryHistoryItems = 200;
+const queryHistoryDisplayLimit = 25;
 
 type QueryHistoryItem = {
   id: string;
@@ -485,6 +493,7 @@ type QueryHistoryItem = {
 };
 
 type QueryParameterMemory = Record<string, Record<string, string>>;
+type HistoryScope = "active" | "all";
 
 type PendingQueryParameters = {
   sql: string;
@@ -1110,6 +1119,46 @@ function formatHistoryTime(value: string) {
   });
 }
 
+function formatHistoryDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown time";
+  }
+  return date.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function formatHistoryOutcome(item: QueryHistoryItem) {
+  if (item.status === "error") {
+    return item.error ? compactSql(item.error, 72) : "failed";
+  }
+  return `${toCount(item.rowCount)} rows${
+    item.truncated ? " capped" : ""
+  } · ${toCount(item.elapsedMs)} ms`;
+}
+
+function historySearchText(
+  item: QueryHistoryItem,
+  connection?: WorkspaceConnection,
+) {
+  return [
+    item.sql,
+    item.error ?? "",
+    item.status,
+    item.engine,
+    item.connectionName,
+    connection?.engine ?? "",
+    connection?.name ?? "",
+  ]
+    .join("\n")
+    .toLowerCase();
+}
+
 function validateDraft(draft: ConnectionDraft): string | null {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
   if (!resolvedDraft.id.trim()) {
@@ -1350,6 +1399,12 @@ function App() {
     useState<SchemaDesignerDraft>(blankSchemaDraft);
   const diagramInitializedFor = useRef<string | null>(null);
   const [history, setHistory] = useState<QueryHistoryItem[]>(loadQueryHistory);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyScope, setHistoryScope] = useState<HistoryScope>("active");
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
+    null,
+  );
   const [queryParameterMemory, setQueryParameterMemory] =
     useState<QueryParameterMemory>(loadQueryParameterMemory);
   const [pendingQueryParameters, setPendingQueryParameters] =
@@ -1475,6 +1530,10 @@ function App() {
       status: connectedIds.has(connection.id) ? "connected" : connection.status,
     }));
   }, [connectedIds, liveConnections, snapshot.connections]);
+  const connectionById = useMemo(
+    () => new Map(connections.map((connection) => [connection.id, connection])),
+    [connections],
+  );
   const profileById = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile])),
     [profiles],
@@ -1527,13 +1586,51 @@ function App() {
     }
     return editorApiRef.current;
   }
-  const scopedHistory = useMemo(
+  const historyNeedle = historySearch.trim().toLowerCase();
+  const scopedHistory = useMemo(() => {
+    const activeHistory = history.filter(
+      (item) => item.connectionId === activeConnectionId,
+    );
+    const visibleHistory = historyNeedle
+      ? activeHistory.filter((item) =>
+          historySearchText(
+            item,
+            connectionById.get(item.connectionId),
+          ).includes(historyNeedle),
+        )
+      : activeHistory;
+
+    return visibleHistory.slice(0, queryHistoryDisplayLimit);
+  }, [activeConnectionId, connectionById, history, historyNeedle]);
+  const activeHistoryCount = useMemo(
     () =>
-      history
-        .filter((item) => item.connectionId === activeConnectionId)
-        .slice(0, 10),
+      history.filter((item) => item.connectionId === activeConnectionId).length,
     [activeConnectionId, history],
   );
+  const historyDialogItems = useMemo(() => {
+    const scopedItems =
+      historyScope === "active"
+        ? history.filter((item) => item.connectionId === activeConnectionId)
+        : history;
+    return historyNeedle
+      ? scopedItems.filter((item) =>
+          historySearchText(
+            item,
+            connectionById.get(item.connectionId),
+          ).includes(historyNeedle),
+        )
+      : scopedItems;
+  }, [
+    activeConnectionId,
+    connectionById,
+    history,
+    historyNeedle,
+    historyScope,
+  ]);
+  const selectedHistoryItem =
+    historyDialogItems.find((item) => item.id === selectedHistoryId) ??
+    historyDialogItems[0] ??
+    null;
   const availableDiagramSchemas = useMemo(
     () =>
       activeMetadata?.schemas
@@ -2454,6 +2551,9 @@ function App() {
       case "settings.open":
         openSettingsSection("general");
         break;
+      case "history.open":
+        openHistoryDialog();
+        break;
       case "help.open":
       case "about.open":
         setAboutOpen(true);
@@ -3172,6 +3272,70 @@ function App() {
 
   function appendHistory(item: QueryHistoryItem) {
     setHistory((current) => [item, ...current].slice(0, maxQueryHistoryItems));
+  }
+
+  function openHistoryDialog(itemId?: string) {
+    setSelectedHistoryId(
+      itemId ??
+        selectedHistoryItem?.id ??
+        scopedHistory[0]?.id ??
+        history[0]?.id ??
+        null,
+    );
+    setHistoryOpen(true);
+  }
+
+  function loadHistoryItem(item: QueryHistoryItem) {
+    if (item.connectionId !== activeConnectionId) {
+      setActiveConnectionId(item.connectionId);
+    }
+    setQuery(item.sql);
+    setHistoryOpen(false);
+    window.setTimeout(() => activeEditorApi()?.focus(), 0);
+    showActionNotice("success", "SQL loaded", item.connectionName);
+  }
+
+  async function runHistoryItem(item: QueryHistoryItem) {
+    if (item.connectionId !== activeConnectionId) {
+      loadHistoryItem(item);
+      showActionNotice(
+        "info",
+        "SQL loaded",
+        "Switched connection; run after it is connected",
+      );
+      return;
+    }
+    setQuery(item.sql);
+    setHistoryOpen(false);
+    await runEditorSql(item.sql, { allowMagic: false });
+  }
+
+  function deleteHistoryItem(id: string) {
+    const deleted = history.find((item) => item.id === id);
+    setHistory((current) => current.filter((item) => item.id !== id));
+    if (selectedHistoryId === id) {
+      setSelectedHistoryId(null);
+    }
+    showActionNotice(
+      "success",
+      "History deleted",
+      deleted ? compactSql(deleted.sql, 56) : undefined,
+    );
+  }
+
+  function clearVisibleHistory() {
+    if (historyDialogItems.length === 0) {
+      return;
+    }
+    const count = historyDialogItems.length;
+    const label = count === 1 ? "history entry" : "history entries";
+    if (!window.confirm(`Delete ${toCount(count)} visible ${label}?`)) {
+      return;
+    }
+    const ids = new Set(historyDialogItems.map((item) => item.id));
+    setHistory((current) => current.filter((item) => !ids.has(item.id)));
+    setSelectedHistoryId(null);
+    showActionNotice("success", "History cleared", `${toCount(count)} deleted`);
   }
 
   function exportActiveResult(format: ResultExportFormat) {
@@ -4683,8 +4847,39 @@ function App() {
               <section>
                 <div className="section-heading">
                   <span>History</span>
-                  <Clock3 size={14} />
+                  <div className="section-heading-actions">
+                    <small>{toCount(activeHistoryCount)}</small>
+                    <button
+                      type="button"
+                      aria-label="Open query history"
+                      title="Open query history"
+                      onClick={() => openHistoryDialog(scopedHistory[0]?.id)}
+                    >
+                      <Maximize2 size={12} />
+                    </button>
+                  </div>
                 </div>
+                <label className="history-search">
+                  <Search size={13} />
+                  <input
+                    value={historySearch}
+                    placeholder="Search history"
+                    aria-label="Search query history"
+                    onChange={(event) =>
+                      setHistorySearch(event.currentTarget.value)
+                    }
+                  />
+                  {historySearch ? (
+                    <button
+                      type="button"
+                      aria-label="Clear history search"
+                      title="Clear history search"
+                      onClick={() => setHistorySearch("")}
+                    >
+                      <X size={12} />
+                    </button>
+                  ) : null}
+                </label>
                 <div className="history-list">
                   {scopedHistory.length > 0 ? (
                     scopedHistory.map((item) => (
@@ -4713,7 +4908,11 @@ function App() {
                       </button>
                     ))
                   ) : (
-                    <div className="empty-browser">No query history</div>
+                    <div className="empty-browser">
+                      {historyNeedle
+                        ? "No matching history"
+                        : "No query history"}
+                    </div>
                   )}
                 </div>
               </section>
@@ -6197,6 +6396,218 @@ function App() {
                 <Copy size={13} />
                 Copy diagnostics
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {historyOpen ? (
+        <div
+          className="palette-overlay history-overlay"
+          onClick={() => setHistoryOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="data-dialog history-dialog"
+            role="dialog"
+            aria-label="Query history"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dialog-header">
+              <strong>Query History</strong>
+              <span>
+                {toCount(historyDialogItems.length)} visible of{" "}
+                {toCount(history.length)} saved
+              </span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setHistoryOpen(false)}
+              >
+                <X size={13} />
+                Close
+              </button>
+            </div>
+            <div className="history-toolbar">
+              <label className="history-search">
+                <Search size={13} />
+                <input
+                  autoFocus
+                  value={historySearch}
+                  placeholder="Search SQL, connection, engine, or error"
+                  aria-label="Search query history"
+                  onChange={(event) =>
+                    setHistorySearch(event.currentTarget.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setHistoryOpen(false);
+                    }
+                  }}
+                />
+                {historySearch ? (
+                  <button
+                    type="button"
+                    aria-label="Clear history search"
+                    title="Clear history search"
+                    onClick={() => setHistorySearch("")}
+                  >
+                    <X size={12} />
+                  </button>
+                ) : null}
+              </label>
+              <div
+                className="segmented-control history-scope"
+                role="group"
+                aria-label="History scope"
+              >
+                <button
+                  type="button"
+                  className={historyScope === "active" ? "active" : undefined}
+                  onClick={() => setHistoryScope("active")}
+                >
+                  Active
+                </button>
+                <button
+                  type="button"
+                  className={historyScope === "all" ? "active" : undefined}
+                  onClick={() => setHistoryScope("all")}
+                >
+                  All
+                </button>
+              </div>
+              <button
+                className="text-button danger"
+                type="button"
+                disabled={historyDialogItems.length === 0}
+                onClick={clearVisibleHistory}
+              >
+                <Trash2 size={13} />
+                Clear visible
+              </button>
+            </div>
+            <div className="history-dialog-body">
+              <div
+                className="history-results"
+                role="listbox"
+                aria-label="Query history entries"
+              >
+                {historyDialogItems.length > 0 ? (
+                  historyDialogItems.map((item) => {
+                    const selected = selectedHistoryItem?.id === item.id;
+                    return (
+                      <button
+                        className={`history-row ${item.status}${
+                          selected ? " active" : ""
+                        }`}
+                        key={item.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        title={item.sql}
+                        onClick={() => setSelectedHistoryId(item.id)}
+                      >
+                        <span className="history-row-main">
+                          <strong>{compactSql(item.sql, 128)}</strong>
+                          <small>
+                            {item.connectionName} · {item.engine}
+                          </small>
+                        </span>
+                        <span className="history-row-meta">
+                          <span>{formatHistoryDateTime(item.ranAt)}</span>
+                          <span>{formatHistoryOutcome(item)}</span>
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="empty-browser">
+                    {historyNeedle ? "No matching history" : "No query history"}
+                  </div>
+                )}
+              </div>
+              <section
+                className="history-detail"
+                aria-label="Selected query history"
+              >
+                {selectedHistoryItem ? (
+                  <>
+                    <div className="history-detail-header">
+                      <div className="history-detail-title">
+                        <span>
+                          <strong>{selectedHistoryItem.connectionName}</strong>
+                          <small>{selectedHistoryItem.engine}</small>
+                        </span>
+                        <span
+                          className={`history-status-badge ${selectedHistoryItem.status}`}
+                        >
+                          {selectedHistoryItem.status === "ok"
+                            ? "Success"
+                            : "Failed"}
+                        </span>
+                      </div>
+                      <div className="history-meta">
+                        <span className="history-chip">
+                          {formatHistoryDateTime(selectedHistoryItem.ranAt)}
+                        </span>
+                        <span className="history-chip">
+                          {formatHistoryOutcome(selectedHistoryItem)}
+                        </span>
+                      </div>
+                      <div className="history-detail-actions">
+                        <button
+                          className="text-button"
+                          type="button"
+                          onClick={() => loadHistoryItem(selectedHistoryItem)}
+                        >
+                          Load
+                        </button>
+                        <button
+                          className="primary-button"
+                          type="button"
+                          disabled={
+                            selectedHistoryItem.connectionId !==
+                              activeConnectionId ||
+                            !activeConnectionOpen ||
+                            running
+                          }
+                          title={
+                            selectedHistoryItem.connectionId !== activeConnectionId
+                              ? "Load this SQL to switch connection before running"
+                              : activeConnectionOpen
+                                ? "Run this SQL again"
+                                : "Connect before running"
+                          }
+                          onClick={() => void runHistoryItem(selectedHistoryItem)}
+                        >
+                          <Play size={13} fill="currentColor" />
+                          Run again
+                        </button>
+                        <button
+                          className="text-button danger"
+                          type="button"
+                          onClick={() => deleteHistoryItem(selectedHistoryItem.id)}
+                        >
+                          <Trash2 size={13} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <pre className="history-sql">{selectedHistoryItem.sql}</pre>
+                    {selectedHistoryItem.error ? (
+                      <div className="inline-error history-error">
+                        <AlertTriangle size={13} />
+                        <span>{selectedHistoryItem.error}</span>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="history-empty-detail">
+                    <Clock3 size={18} />
+                    <span>Select a history entry</span>
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         </div>

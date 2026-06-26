@@ -118,6 +118,34 @@ export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>
  */
 truncated: boolean, message?: string, resultSets?: Array<QueryResultSet>, };
 
+export type SpillRunResult = { 
+/**
+ * Opaque id for `db_result_window` / `db_release_result`.
+ */
+handle: string, columns: Array<string>, 
+/**
+ * Total rows retained (resident + spilled).
+ */
+totalRows: bigint, 
+/**
+ * Rows kept resident in RAM and streamed to the UI (the first page).
+ */
+inMemoryRows: bigint, 
+/**
+ * Whether any rows were written to the temp spill file.
+ */
+spilled: boolean, 
+/**
+ * Whether rows were dropped (offload off and over budget, or the hard ceiling).
+ */
+truncated: boolean, elapsedMs: bigint, };
+
+export type ResultWindow = { 
+/**
+ * Absolute index of the first returned row.
+ */
+offset: bigint, rows: Array<Array<JsonValue>>, };
+
 export type QueryParameterKey = { "kind": "name", name: string, } | { "kind": "position", position: number, };
 
 export type QueryParameterInput = { key: QueryParameterKey, value: JsonValue, };
@@ -205,6 +233,14 @@ export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, 
 
 export function dbCancel(queryId: string): Promise<boolean> {
   return invoke<boolean>("db_cancel", { queryId });
+}
+
+export function dbResultWindow(handle: string, offset: number, limit: number): Promise<ResultWindow> {
+  return invoke<ResultWindow>("db_result_window", { handle, offset, limit });
+}
+
+export function dbReleaseResult(handle: string): Promise<boolean> {
+  return invoke<boolean>("db_release_result", { handle });
 }
 
 export function dbApplyEdits(connectionId: string, edits: TableEdits): Promise<AppliedEdits> {

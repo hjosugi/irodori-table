@@ -155,6 +155,9 @@ pub fn run() {
             db::db_query_parameters,
             db::db_run_query,
             db::db_run_query_stream,
+            db::db_run_query_spill,
+            db::db_result_window,
+            db::db_release_result,
             db::db_cancel,
             db::db_apply_edits,
             db::db_list_objects,
@@ -248,6 +251,8 @@ mod typegen {
             .decl(&decl::<db::ConnectionInfo>())
             .decl(&decl::<db::QueryResultSet>())
             .decl(&decl::<db::QueryResult>())
+            .decl(&decl::<db::SpillRunResult>())
+            .decl(&decl::<db::ResultWindow>())
             .decl(&decl::<db::QueryParameterKey>())
             .decl(&decl::<db::QueryParameterInput>())
             .decl(&decl::<db::QueryParameterPrompt>())
@@ -303,6 +308,21 @@ mod typegen {
             .command(
                 Command::returning("db_cancel", TsType::boolean())
                     .arg(Arg::rust("query_id", TsType::string())),
+            )
+            // `db_run_query_spill` takes a streaming `Channel`, so (like
+            // `db_run_query_stream`) its wrapper is hand-written in `db-stream.ts`;
+            // only its read/release companions are generated here. The
+            // `SpillRunResult` / `ResultWindow` types are declared above so the
+            // hand-written wrapper stays typed.
+            .command(
+                Command::new("db_result_window", "ResultWindow")
+                    .arg(Arg::new("handle", TsType::string()))
+                    .arg(Arg::new("offset", TsType::number()))
+                    .arg(Arg::new("limit", TsType::number())),
+            )
+            .command(
+                Command::returning("db_release_result", TsType::boolean())
+                    .arg(Arg::new("handle", TsType::string())),
             )
             .command(
                 Command::new("db_apply_edits", "AppliedEdits")

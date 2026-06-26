@@ -119,10 +119,6 @@ impl ResultStore {
         self.truncated
     }
 
-    pub fn config(&self) -> SpillConfig {
-        self.config
-    }
-
     /// Append a batch of streamed rows. Rows up to the budget go to RAM; the rest
     /// spill to disk when offload is enabled, or are dropped (flagging truncation)
     /// when it is not. Returns `true` while the store can accept more rows, `false`

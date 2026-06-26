@@ -3826,6 +3826,145 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn spill_run_keeps_memory_flat_and_pages_deep_rows_from_disk() {
+        // EXEC-010 end-to-end: stream a result far larger than the in-memory budget
+        // through the disk-offload path against a real SQLite connection, then prove
+        // (a) only the resident page streams to the UI, (b) the store retains every
+        // row with RAM bounded by the budget, and (c) deep windows page back from
+        // disk correctly, including across the RAM/disk seam and at the tail.
+        let state = DbState::default();
+        let profile = ConnectionProfile {
+            id: "spill".into(),
+            engine: DbEngine::Sqlite,
+            host: None,
+            port: None,
+            user: None,
+            password: None,
+            database: Some(":memory:".into()),
+            url: None,
+            transport: None,
+            options: Default::default(),
+        };
+        connect_impl(&state, &SecurityState::default(), profile)
+            .await
+            .expect("connect memory");
+
+        const TOTAL: u64 = 50_000;
+        const BUDGET: usize = 500;
+        let config = SpillConfig {
+            memory_budget: BUDGET,
+            offload_enabled: true,
+            max_total_rows: MAX_SPILL_ROWS,
+        };
+        // A recursive CTE generates TOTAL rows server-side so the stream is real.
+        let sql = format!(
+            "WITH RECURSIVE seq(n) AS (SELECT 0 UNION ALL SELECT n + 1 FROM seq WHERE n + 1 < {TOTAL}) \
+             SELECT n, 'row_' || n AS label FROM seq"
+        );
+
+        // Drain the UI prefix channel concurrently so the producer never blocks.
+        let (ui_tx, mut ui_rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let drain = tokio::spawn(async move {
+            let mut prefix_rows = 0u64;
+            let mut columns: Vec<String> = Vec::new();
+            while let Some(event) = ui_rx.recv().await {
+                match event {
+                    stream::FetchEvent::Columns { columns: cols, .. } => columns = cols,
+                    stream::FetchEvent::Rows { rows, .. } => prefix_rows += rows.len() as u64,
+                }
+            }
+            (columns, prefix_rows)
+        });
+
+        let result =
+            run_query_spill_impl(&state, "spill".into(), sql, config, None, None, None, ui_tx)
+                .await
+                .expect("spill run");
+        let (columns, prefix_rows) = drain.await.expect("drain ui channel");
+
+        assert_eq!(result.total_rows, TOTAL, "the store retains every streamed row");
+        assert_eq!(
+            result.in_memory_rows, BUDGET as u64,
+            "the resident page is exactly the budget"
+        );
+        assert!(result.spilled, "overflow spilled to disk");
+        assert!(!result.truncated);
+        assert_eq!(
+            prefix_rows, BUDGET as u64,
+            "only the resident page is forwarded to the UI"
+        );
+        assert_eq!(columns, vec!["n".to_string(), "label".to_string()]);
+
+        for &offset in &[0u64, 499, 500, 25_000, 49_995] {
+            let page = result_window_impl(&state, result.handle.clone(), offset, 3)
+                .await
+                .expect("window");
+            assert_eq!(page.offset, offset);
+            let want = (3u64).min(TOTAL - offset) as usize;
+            assert_eq!(page.rows.len(), want, "row count at offset {offset}");
+            for (i, row) in page.rows.iter().enumerate() {
+                let n = offset + i as u64;
+                assert_eq!(row[0], serde_json::json!(n as i64), "n at offset {offset}");
+                assert_eq!(
+                    row[1],
+                    serde_json::json!(format!("row_{n}")),
+                    "label at offset {offset}"
+                );
+            }
+        }
+
+        assert!(
+            release_result_impl(&state, result.handle.clone()).await,
+            "release frees the retained store"
+        );
+        assert!(
+            !release_result_impl(&state, result.handle).await,
+            "double release is a no-op"
+        );
+    }
+
+    #[tokio::test]
+    async fn spill_run_offload_disabled_caps_at_budget() {
+        // With offload off the disk path is never taken: the result caps at the
+        // budget and reports truncation, matching the legacy bounded-memory page.
+        let state = DbState::default();
+        let profile = ConnectionProfile {
+            id: "cap".into(),
+            engine: DbEngine::Sqlite,
+            host: None,
+            port: None,
+            user: None,
+            password: None,
+            database: Some(":memory:".into()),
+            url: None,
+            transport: None,
+            options: Default::default(),
+        };
+        connect_impl(&state, &SecurityState::default(), profile)
+            .await
+            .expect("connect memory");
+
+        let config = SpillConfig {
+            memory_budget: 100,
+            offload_enabled: false,
+            max_total_rows: MAX_SPILL_ROWS,
+        };
+        let sql = "WITH RECURSIVE seq(n) AS (SELECT 0 UNION ALL SELECT n + 1 FROM seq WHERE n + 1 < 5000) \
+                   SELECT n FROM seq"
+            .to_string();
+        let (ui_tx, mut ui_rx) = mpsc::channel::<stream::FetchEvent>(16);
+        let drain = tokio::spawn(async move { while ui_rx.recv().await.is_some() {} });
+        let result =
+            run_query_spill_impl(&state, "cap".into(), sql, config, None, None, None, ui_tx)
+                .await
+                .expect("spill run");
+        drain.await.expect("drain");
+        assert_eq!(result.total_rows, 100, "capped at the budget");
+        assert!(!result.spilled, "offload off never creates a temp file");
+        assert!(result.truncated);
+    }
+
+    #[tokio::test]
     async fn command_boundary_rejects_invalid_inputs() {
         let state = DbState::default();
         let mut invalid = temp_sqlite_profile("invalid");
