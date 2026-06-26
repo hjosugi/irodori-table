@@ -17,7 +17,7 @@
   min-height: 0;
   padding: 7px 6px;
   border-right: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-muted);
 }
 
 .rail-connection-list {
@@ -99,7 +99,7 @@
   grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   border-right: 1px solid var(--border);
-  background: var(--surface-muted);
+  background: var(--surface);
 }
 
 .sidebar-section {
@@ -545,7 +545,7 @@
   align-items: center;
   gap: 0;
   min-width: 0;
-  padding: 0 6px 0 8px;
+  padding: 0 7px 0 8px;
   overflow-x: auto;
   overflow-y: hidden;
   border-bottom: 1px solid var(--border);
@@ -581,6 +581,7 @@
   flex: 0 1 180px;
   min-width: 54px;
   max-width: 180px;
+  position: relative;
   padding: 0 13px;
   overflow: hidden;
   color: var(--text);
@@ -593,6 +594,16 @@
 .tab.active {
   border-color: var(--border);
   background: var(--surface-raised);
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--focus);
 }
 
 .editor-and-inspector {
@@ -701,11 +712,11 @@
   flex-wrap: wrap;
   gap: 6px;
   max-width: min(720px, calc(100vw - 260px));
-  padding: 4px;
-  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--editor-bg) 90%, var(--surface-raised));
-  box-shadow: 0 8px 24px var(--shadow-color);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   pointer-events: auto;
 }
 
@@ -947,10 +958,14 @@ body.panel-resizing .result-grid {
   background: var(--surface-muted);
 }
 
+.inspector > section {
+  border-bottom: 1px solid var(--border);
+}
+
 .completion-item {
   gap: 2px;
-  min-height: 42px;
-  padding: 6px 8px;
+  min-height: 36px;
+  padding: 5px 8px;
 }
 
 .completion-item strong {
@@ -964,7 +979,7 @@ body.panel-resizing .result-grid {
 
 .history-item {
   gap: 3px;
-  min-height: 44px;
+  min-height: 40px;
   padding: 6px 8px;
 }
 

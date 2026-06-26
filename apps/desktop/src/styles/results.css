@@ -17,6 +17,7 @@
   min-height: var(--bar-md);
   padding: 0 9px 0 10px;
   border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
 }
 
 .results-header div:first-child {
@@ -85,7 +86,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -148,11 +149,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  width: clamp(150px, 18vw, 240px);
+  width: clamp(150px, 18vw, 250px);
   height: var(--control-sm);
   padding: 0 7px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 4px;
   color: var(--muted);
   background: var(--surface-raised);
 }
@@ -754,6 +755,7 @@
   min-width: 1px;
   border-bottom: 1px solid var(--cell-border);
   color: var(--text);
+  font-size: var(--font-code);
 }
 
 .grid-row:not(.header):nth-child(odd) {
