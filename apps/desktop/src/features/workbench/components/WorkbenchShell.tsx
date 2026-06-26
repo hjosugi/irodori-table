@@ -41,7 +41,6 @@ type WorkbenchShellProps = {
   shellStyle: CSSProperties;
   sidebar: ReactNode;
   children: ReactNode;
-  dialogs: ReactNode;
   onScopeFocus: (event: FocusEvent<HTMLElement>) => void;
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
   onToggleTheme: () => void;
@@ -78,7 +77,6 @@ export function WorkbenchShell({
   shellStyle,
   sidebar,
   children,
-  dialogs,
   onScopeFocus,
   onScopeMouseDown,
   onToggleTheme,
@@ -298,7 +296,6 @@ export function WorkbenchShell({
         </span>
       </footer>
 
-      {dialogs}
     </main>
   );
 }

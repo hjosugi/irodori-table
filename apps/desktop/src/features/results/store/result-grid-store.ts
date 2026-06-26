@@ -15,6 +15,14 @@ type SpillInfo = {
   total: number;
 };
 
+export type ResultGridEditDraft = {
+  cellEdits: Map<string, GridCellDraft>;
+  newRows: GridCellDraft[][];
+  deletedRows: Set<number>;
+};
+
+const maxEditUndoDepth = 10;
+
 type ResultGridState = {
   gridScrollTop: number;
   gridScrollLeft: number;
@@ -39,6 +47,7 @@ type ResultGridState = {
   selectedRowKey: string | null;
   committing: boolean;
   commitError: string | null;
+  editUndoStack: ResultGridEditDraft[];
   setGridScrollTop: (value: ValueUpdater<number>) => void;
   setGridScrollLeft: (value: ValueUpdater<number>) => void;
   setGridViewportHeight: (value: ValueUpdater<number>) => void;
@@ -50,9 +59,6 @@ type ResultGridState = {
   setResultMode: (value: ValueUpdater<ResultMode>) => void;
   setTableViewObject: (value: ValueUpdater<DbObjectMetadata | null>) => void;
   setEditMode: (value: ValueUpdater<boolean>) => void;
-  setCellEdits: (value: ValueUpdater<Map<string, GridCellDraft>>) => void;
-  setNewRows: (value: ValueUpdater<GridCellDraft[][]>) => void;
-  setDeletedRows: (value: ValueUpdater<Set<number>>) => void;
   setEditingCell: (value: ValueUpdater<EditingCell>) => void;
   setSelectedCell: (value: ValueUpdater<SelectedCell>) => void;
   setSortRules: (value: ValueUpdater<ResultSortRule[]>) => void;
@@ -63,10 +69,12 @@ type ResultGridState = {
   setSelectedRowKey: (value: ValueUpdater<string | null>) => void;
   setCommitting: (value: ValueUpdater<boolean>) => void;
   setCommitError: (value: ValueUpdater<string | null>) => void;
+  updateEditDraft: (
+    updater: (draft: ResultGridEditDraft) => ResultGridEditDraft,
+  ) => void;
+  undoEdit: () => boolean;
   resetEdits: () => void;
   resetGridView: () => void;
-  resetGridSelection: () => void;
-  resetScrollPosition: () => void;
 };
 
 function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
@@ -75,7 +83,57 @@ function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
     : value;
 }
 
-export const useResultGridStore = create<ResultGridState>((set) => ({
+function cloneEditDraft(draft: ResultGridEditDraft): ResultGridEditDraft {
+  return {
+    cellEdits: new Map(draft.cellEdits),
+    newRows: draft.newRows.map((row) => [...row]),
+    deletedRows: new Set(draft.deletedRows),
+  };
+}
+
+function draftFromState(state: ResultGridEditDraft): ResultGridEditDraft {
+  return cloneEditDraft(state);
+}
+
+function sameEditDraft(
+  left: ResultGridEditDraft,
+  right: ResultGridEditDraft,
+): boolean {
+  if (left.cellEdits.size !== right.cellEdits.size) {
+    return false;
+  }
+  for (const [key, value] of left.cellEdits) {
+    if (!right.cellEdits.has(key) || right.cellEdits.get(key) !== value) {
+      return false;
+    }
+  }
+  if (left.newRows.length !== right.newRows.length) {
+    return false;
+  }
+  for (let rowIndex = 0; rowIndex < left.newRows.length; rowIndex += 1) {
+    const leftRow = left.newRows[rowIndex];
+    const rightRow = right.newRows[rowIndex];
+    if (leftRow.length !== rightRow.length) {
+      return false;
+    }
+    for (let col = 0; col < leftRow.length; col += 1) {
+      if (leftRow[col] !== rightRow[col]) {
+        return false;
+      }
+    }
+  }
+  if (left.deletedRows.size !== right.deletedRows.size) {
+    return false;
+  }
+  for (const rowIndex of left.deletedRows) {
+    if (!right.deletedRows.has(rowIndex)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export const useResultGridStore = create<ResultGridState>((set, get) => ({
   gridScrollTop: 0,
   gridScrollLeft: 0,
   gridViewportHeight: 480,
@@ -99,6 +157,7 @@ export const useResultGridStore = create<ResultGridState>((set) => ({
   selectedRowKey: null,
   committing: false,
   commitError: null,
+  editUndoStack: [],
   setGridScrollTop: (value) =>
     set((state) => ({ gridScrollTop: resolveValue(state.gridScrollTop, value) })),
   setGridScrollLeft: (value) =>
@@ -133,14 +192,6 @@ export const useResultGridStore = create<ResultGridState>((set) => ({
     })),
   setEditMode: (value) =>
     set((state) => ({ editMode: resolveValue(state.editMode, value) })),
-  setCellEdits: (value) =>
-    set((state) => ({ cellEdits: resolveValue(state.cellEdits, value) })),
-  setNewRows: (value) =>
-    set((state) => ({ newRows: resolveValue(state.newRows, value) })),
-  setDeletedRows: (value) =>
-    set((state) => ({
-      deletedRows: resolveValue(state.deletedRows, value),
-    })),
   setEditingCell: (value) =>
     set((state) => ({
       editingCell: resolveValue(state.editingCell, value),
@@ -175,6 +226,34 @@ export const useResultGridStore = create<ResultGridState>((set) => ({
     set((state) => ({
       commitError: resolveValue(state.commitError, value),
     })),
+  updateEditDraft: (updater) =>
+    set((state) => {
+      const before = draftFromState(state);
+      const after = cloneEditDraft(updater(cloneEditDraft(before)));
+      if (sameEditDraft(before, after)) {
+        return {};
+      }
+      return {
+        ...after,
+        editUndoStack: [...state.editUndoStack, before].slice(-maxEditUndoDepth),
+        editingCell: null,
+        commitError: null,
+      };
+    }),
+  undoEdit: () => {
+    const state = get();
+    const previous = state.editUndoStack[state.editUndoStack.length - 1];
+    if (!previous) {
+      return false;
+    }
+    set({
+      ...cloneEditDraft(previous),
+      editUndoStack: state.editUndoStack.slice(0, -1),
+      editingCell: null,
+      commitError: null,
+    });
+    return true;
+  },
   resetEdits: () =>
     set({
       cellEdits: new Map(),
@@ -183,6 +262,7 @@ export const useResultGridStore = create<ResultGridState>((set) => ({
       editingCell: null,
       selectedCell: null,
       commitError: null,
+      editUndoStack: [],
     }),
   resetGridView: () =>
     set({
@@ -191,15 +271,5 @@ export const useResultGridStore = create<ResultGridState>((set) => ({
       filterRules: [],
       filterJoin: "and",
       filtersOpen: false,
-    }),
-  resetGridSelection: () =>
-    set({
-      selectedRowKey: null,
-      selectedCell: null,
-    }),
-  resetScrollPosition: () =>
-    set({
-      gridScrollTop: 0,
-      gridScrollLeft: 0,
     }),
 }));

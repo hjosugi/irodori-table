@@ -10,6 +10,7 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
+irodori-core = { path = "../irodori-core" }
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = [

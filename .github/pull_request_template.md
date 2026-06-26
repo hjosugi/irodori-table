@@ -19,8 +19,11 @@
       adaptation boundary.
 - [ ] Any new dependency, asset, grammar, driver, sample, or template follows
       `docs/licensing.md`.
+- [ ] Any dependency, build, CI, release, extension, or credential-handling
+      change follows `docs/development-security.md`.
+- [ ] I did not introduce plaintext secret persistence, unredacted credential
+      logging, or broad background file writes.
 - [ ] Any new Rust crate declares `license = "MIT OR 0BSD"` or
       `license.workspace = true`.
 - [ ] Tests assert Irodori behavior rather than another product's private
       behavior.
-

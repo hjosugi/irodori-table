@@ -57,7 +57,8 @@ only the supported set.
   export/parameter prompts, with parser tests and browser smoke. Command-palette
   parity, audit/history structure, and run-to-file magic remain open.
 - Wide-column result virtualization is wired and browser-tested against a
-  2,000-column synthetic result; the 1M-row scroll benchmark remains open.
+  2,000-column synthetic result; the 1M-row lazy scroll benchmark is also wired
+  and browser-tested.
 - Schema ERD UI and SVG/PNG export helpers are wired, but visual/export smoke
   evidence and query-result graph views remain open.
 - Vim mode is wired with Playwright smoke coverage for toggle, insert, and a

@@ -701,7 +701,7 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     await expectRenderedCellsWithinBudget(grid, renderedRows, renderedHeaders);
 
     const bottomScrollTop =
-      (millionRowTableFixture.rowCount - 20) * GRID_ROW_HEIGHT_PX;
+      millionRowTableFixture.rowCount * GRID_ROW_HEIGHT_PX;
     await scrollGridTo(grid, { top: bottomScrollTop, left: 0 });
     await expect(renderedRows.last()).toHaveAttribute(
       "aria-rowindex",

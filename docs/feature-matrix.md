@@ -67,7 +67,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Type Bridge | Extension SDK type/schema generation | P1 | Easy extension development |
 | Browser | Schemas, tables, views, columns, indexes | P0 | Baseline |
 | Browser | Functions, procedures, triggers, packages | P1 | Oracle/enterprise needs |
-| Results | Virtualized result grid, including wide columns and 1M-row benchmark | P0 | Row and wide-column virtualization wired/tested; 1M-row synthetic benchmark remains open |
+| Results | Virtualized result grid, including wide columns and 1M-row benchmark | P0 | Row, wide-column, and lazy 1M-row virtualization are wired/tested; very-large scrollbar scaling remains future perf hardening |
 | Results | Copy, CSV export, multi-column sort, quick/rule filters | P0 | Desktop current-result paths wired; saved/shared/server-side filters remain open under EXEC-005A |
 | Results | Advanced filters: multi-column typed predicates, ranges/value lists, saved filter state | P1 | EXEC-005A open; shared filter expression model for desktop, local API, and future hosts |
 | Results | Editable result rows with safe transaction flow | P1 | EXEC-007 partial/skeleton; complete inline editing still needs shared permission/capability contracts |

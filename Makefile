@@ -10,7 +10,7 @@ ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo d
         dev test build typegen e2e doctor \
         desktop-dev desktop-vite desktop-typegen desktop-test desktop-test-watch desktop-build desktop-e2e \
         web-dev web-test web-build web-preview web-endpoint web-endpoint-host web-endpoint-down \
-        check db db-verify db-all db-up db-down \
+        check security security-strict db db-verify db-all db-up db-down \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
 
@@ -61,6 +61,8 @@ help:
 	@printf "  DB options: postgres mysql mariadb timescaledb cockroachdb yugabytedb tidb sqlserver mongodb oracle\n\n"
 	@printf "Checks and docs\n"
 	@printf "  make check             cargo test + desktop/web test/build\n"
+	@printf "  make security          license, lockfile, npm audit/signature, RustSec checks\n"
+	@printf "  make security-strict   same as security, but requires cargo-audit locally\n"
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
 
@@ -141,6 +143,12 @@ check:
 	$(MAKE) test
 	$(MAKE) build
 
+security:
+	scripts/security-check.sh
+
+security-strict:
+	REQUIRE_CARGO_AUDIT=1 scripts/security-check.sh
+
 db: db-verify
 
 db-verify:
@@ -202,4 +210,5 @@ docs:
 
 docs-check:
 	node tools/docs/support-status.mjs
+	node tools/docs/db-feature-samples.mjs
 	node tools/knowledge/cheatsheet.mjs --check

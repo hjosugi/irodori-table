@@ -3027,6 +3027,7 @@ dependencies = [
 name = "irodori-knowledge"
 version = "0.2.12"
 dependencies = [
+ "irodori-core",
  "serde",
  "sha2",
  "sqlx",

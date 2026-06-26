@@ -205,6 +205,101 @@
   min-width: 0;
 }
 
+.graph-result-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  background: var(--surface-raised);
+}
+
+.graph-result-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: var(--bar-sm);
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.graph-result-toolbar strong {
+  font-size: var(--font-ui-md);
+}
+
+.graph-result-toolbar span,
+.graph-result-empty {
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+}
+
+.graph-result-canvas {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background:
+    linear-gradient(var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
+    var(--surface);
+  background-size: 24px 24px;
+}
+
+.graph-result-svg {
+  display: block;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.graph-result-edge path {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+.graph-result-edge marker path {
+  fill: var(--muted);
+}
+
+.graph-result-edge text {
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+  fill: var(--muted);
+  font-size: 11px;
+  text-anchor: middle;
+}
+
+.graph-result-node circle {
+  fill: color-mix(in srgb, var(--focus) 16%, var(--surface-raised));
+  stroke: color-mix(in srgb, var(--focus) 62%, var(--border));
+  stroke-width: 1.5;
+}
+
+.graph-result-node text {
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.graph-result-node-label {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.graph-result-node-type {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.graph-result-empty {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 24px;
+  background: var(--surface);
+}
+
 .result-filter-toolbar > span {
   min-width: 98px;
   color: var(--muted);

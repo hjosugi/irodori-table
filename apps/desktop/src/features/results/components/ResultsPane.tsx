@@ -11,8 +11,8 @@ import {
   Copy,
   Download,
   ListFilter,
-  Plus,
   Search,
+  Undo2,
   Upload,
   X,
 } from "lucide-react";
@@ -28,10 +28,7 @@ import {
   type ResultExportFormat,
 } from "@/result-export";
 import {
-  resultFilterNeedsValue,
-  resultFilterOperators,
   type ResultFilterJoin,
-  type ResultFilterOperator,
   type ResultFilterRule,
   type ResultSortRule,
 } from "@/result-grid";
@@ -41,13 +38,17 @@ import type {
   ResultGridRowOrigin,
   ResultGridSortRuleView,
 } from "@/result-view-model";
+import type { GraphResultModel } from "../graph-result";
 import { ResultBody } from "./ResultBody";
+import { ResultFilterPanel } from "./ResultFilterPanel";
 import type { EditingCell, ResultMode, SelectedCell } from "../types";
 
 type ResultsPaneProps = {
   running: boolean;
   tableViewObject: DbObjectMetadata | null;
   resultMode: ResultMode;
+  graphModel: GraphResultModel | null;
+  graphAvailable: boolean;
   resultSets: QueryResultSet[];
   activeResult: QueryResultSet | null;
   activeResultIndex: number;
@@ -65,6 +66,7 @@ type ResultsPaneProps = {
   resultColumns: string[];
   exportMenuOpen: boolean;
   editMode: boolean;
+  editUndoDepth: number;
   committing: boolean;
   showingStructure: boolean;
   structureObject: DbObjectMetadata | null;
@@ -110,6 +112,7 @@ type ResultsPaneProps = {
   onCopyVisibleResult: () => void;
   onImportFile: (file: File) => void;
   onAddNewRow: () => void;
+  onUndoEdit: () => void;
   onCommitEdits: () => void;
   onDiscardEdits: () => void;
   onEnableEditMode: () => void;
@@ -140,6 +143,8 @@ export function ResultsPane({
   running,
   tableViewObject,
   resultMode,
+  graphModel,
+  graphAvailable,
   resultSets,
   activeResult,
   activeResultIndex,
@@ -157,6 +162,7 @@ export function ResultsPane({
   resultColumns,
   exportMenuOpen,
   editMode,
+  editUndoDepth,
   committing,
   showingStructure,
   structureObject,
@@ -202,6 +208,7 @@ export function ResultsPane({
   onCopyVisibleResult,
   onImportFile,
   onAddNewRow,
+  onUndoEdit,
   onCommitEdits,
   onDiscardEdits,
   onEnableEditMode,
@@ -223,7 +230,7 @@ export function ResultsPane({
     <section className={running ? "results-pane is-running" : "results-pane"}>
       <div className="results-header">
         <div className="results-title">
-          {tableViewObject ? (
+          {tableViewObject || graphAvailable ? (
             <div className="segmented-control result-mode-toggle">
               <button
                 type="button"
@@ -232,13 +239,24 @@ export function ResultsPane({
               >
                 Data
               </button>
-              <button
-                type="button"
-                className={resultMode === "structure" ? "active" : undefined}
-                onClick={() => onResultModeChange("structure")}
-              >
-                Structure
-              </button>
+              {graphAvailable ? (
+                <button
+                  type="button"
+                  className={resultMode === "graph" ? "active" : undefined}
+                  onClick={() => onResultModeChange("graph")}
+                >
+                  Graph
+                </button>
+              ) : null}
+              {tableViewObject ? (
+                <button
+                  type="button"
+                  className={resultMode === "structure" ? "active" : undefined}
+                  onClick={() => onResultModeChange("structure")}
+                >
+                  Structure
+                </button>
+              ) : null}
             </div>
           ) : null}
           {resultSets.length > 1 ? (
@@ -391,6 +409,20 @@ export function ResultsPane({
               <button
                 className="text-button"
                 type="button"
+                disabled={editUndoDepth === 0 || committing || showingStructure}
+                title={
+                  editUndoDepth > 0
+                    ? `Undo last staged edit (${editUndoDepth} available)`
+                    : "No staged edits to undo"
+                }
+                onClick={onUndoEdit}
+              >
+                <Undo2 size={13} />
+                <span>Undo</span>
+              </button>
+              <button
+                className="text-button"
+                type="button"
                 disabled={pendingCount === 0 || committing || showingStructure}
                 onClick={onCommitEdits}
               >
@@ -428,139 +460,24 @@ export function ResultsPane({
         </div>
       ) : null}
       {filtersOpen || filterRules.length > 0 ? (
-        <div className="result-filter-panel">
-          <div className="result-filter-toolbar">
-            <span>
-              {filtersActive
-                ? `${formatCount(filteredOutCount)} hidden`
-                : "No active filters"}
-            </span>
-            <div
-              className="segmented-control"
-              role="group"
-              aria-label="Filter join"
-            >
-              <button
-                type="button"
-                className={filterJoin === "and" ? "active" : undefined}
-                onClick={() => onSetFilterJoin("and")}
-              >
-                AND
-              </button>
-              <button
-                type="button"
-                className={filterJoin === "or" ? "active" : undefined}
-                onClick={() => onSetFilterJoin("or")}
-              >
-                OR
-              </button>
-            </div>
-            <button
-              className="text-button"
-              type="button"
-              onClick={() => onAddFilterRule("any")}
-            >
-              <Plus size={13} />
-              <span>Rule</span>
-            </button>
-            {filtersActive ? (
-              <button
-                className="text-button"
-                type="button"
-                onClick={onClearResultFilters}
-              >
-                Clear
-              </button>
-            ) : null}
-          </div>
-          {filterRules.length > 0 ? (
-            <div className="result-filter-rules">
-              {filterRules.map((rule) => {
-                const needsValue = resultFilterNeedsValue(rule.operator);
-                return (
-                  <div className="result-filter-rule" key={rule.id}>
-                    <label className="check-cell compact">
-                      <input
-                        type="checkbox"
-                        checked={rule.enabled}
-                        aria-label="Filter enabled"
-                        onChange={(event) =>
-                          onUpdateFilterRule(rule.id, {
-                            enabled: event.currentTarget.checked,
-                          })
-                        }
-                      />
-                    </label>
-                    <select
-                      aria-label="Filter column"
-                      value={
-                        rule.columnIndex === "any"
-                          ? "any"
-                          : String(rule.columnIndex)
-                      }
-                      onChange={(event) =>
-                        onUpdateFilterRule(rule.id, {
-                          columnIndex:
-                            event.currentTarget.value === "any"
-                              ? "any"
-                              : Number(event.currentTarget.value),
-                        })
-                      }
-                    >
-                      <option value="any">Any column</option>
-                      {resultColumns.map((column, index) => (
-                        <option value={index} key={`${column}-${index}`}>
-                          {column}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      aria-label="Filter operator"
-                      value={rule.operator}
-                      onChange={(event) =>
-                        onUpdateFilterRule(rule.id, {
-                          operator: event.currentTarget
-                            .value as ResultFilterOperator,
-                        })
-                      }
-                    >
-                      {resultFilterOperators.map((operator) => (
-                        <option key={operator.value} value={operator.value}>
-                          {operator.label}
-                        </option>
-                      ))}
-                    </select>
-                    {needsValue ? (
-                      <input
-                        aria-label="Filter value"
-                        value={rule.value}
-                        onChange={(event) =>
-                          onUpdateFilterRule(rule.id, {
-                            value: event.currentTarget.value,
-                          })
-                        }
-                      />
-                    ) : (
-                      <span className="filter-value-placeholder">--</span>
-                    )}
-                    <button
-                      className="mini-button"
-                      type="button"
-                      title="Remove filter"
-                      aria-label="Remove filter"
-                      onClick={() => onRemoveFilterRule(rule.id)}
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+        <ResultFilterPanel
+          filtersActive={filtersActive}
+          filteredOutCount={filteredOutCount}
+          filterJoin={filterJoin}
+          filterRules={filterRules}
+          resultColumns={resultColumns}
+          formatCount={formatCount}
+          onSetFilterJoin={onSetFilterJoin}
+          onAddFilterRule={onAddFilterRule}
+          onUpdateFilterRule={onUpdateFilterRule}
+          onRemoveFilterRule={onRemoveFilterRule}
+          onClearResultFilters={onClearResultFilters}
+        />
       ) : null}
       <ResultBody
         structureObject={structureObject}
+        resultMode={resultMode}
+        graphModel={graphModel}
         editorEngine={editorEngine}
         formatObjectName={formatObjectName}
         formatCount={formatCount}

@@ -56,6 +56,28 @@ with that host-network compose automatically if the normal bridge compose fails.
 | DuckDB | embedded | — | — | ✅ `--features duckdb`, no container |
 | Redshift | postgres wire | — (AWS-only) | — | ✅ wire-compatible; point at a real cluster |
 
+## DB-specific feature sample projects
+
+Generic connection/query verification lives in `make db-verify DB=<engine>`.
+DB-specific sample projects live under `samples/projects/<engine>/` and are
+tracked by the machine-readable catalog `samples/db-feature-samples.json`.
+
+Examples:
+
+```bash
+make db-up DB=postgres
+# Open samples/projects/postgres/queries.sql in Irodori Table and run statements.
+make db-down DB=postgres
+```
+
+Catalog consistency is checked by:
+
+```bash
+node tools/docs/db-feature-samples.mjs
+```
+
+See `docs/db-feature-samples.md` for the full per-engine list.
+
 ## Sample schema
 
 Auto-seeded engines load `samples/<engine>/01_samples.sql` (MariaDB and

@@ -36,6 +36,7 @@ export interface QueryEditorPaneProps {
   activeTabLabel: string;
   activeConnectionOpen: boolean;
   running: boolean;
+  autoCommit: boolean;
   formatter: SqlFormatterId;
   query: string;
   onQueryChange: (next: string) => void;
@@ -61,6 +62,7 @@ export interface QueryEditorPaneProps {
   runMenuOpen: boolean;
   hasSelectedEditorSql: boolean;
   runCommand: (commandId: string) => void;
+  setAutoCommit: (value: boolean | ((current: boolean) => boolean)) => void;
   saveCurrentQuery: () => void;
   runQuery: () => Promise<void>;
   runSelectionQuery: () => Promise<void>;
@@ -81,6 +83,7 @@ export function QueryEditorPane({
   activeTabLabel,
   activeConnectionOpen,
   running,
+  autoCommit,
   formatter,
   query,
   onQueryChange,
@@ -106,6 +109,7 @@ export function QueryEditorPane({
   runMenuOpen,
   hasSelectedEditorSql,
   runCommand,
+  setAutoCommit,
   saveCurrentQuery,
   runQuery,
   runSelectionQuery,
@@ -136,6 +140,24 @@ export function QueryEditorPane({
           >
             <AlignLeft size={15} />
             <span>Format</span>
+          </button>
+          <button
+            className={
+              autoCommit
+                ? "text-button toolbar-command active"
+                : "text-button toolbar-command"
+            }
+            type="button"
+            title={
+              autoCommit
+                ? "Auto Commit is on"
+                : "Manual transaction mode is selected"
+            }
+            aria-label="Toggle Auto Commit"
+            aria-pressed={autoCommit}
+            onClick={() => setAutoCommit((current) => !current)}
+          >
+            <span>{autoCommit ? "Auto Commit" : "Manual Tx"}</span>
           </button>
           <button
             className="icon-button"

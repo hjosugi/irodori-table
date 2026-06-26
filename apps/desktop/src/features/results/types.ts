@@ -1,4 +1,4 @@
-export type ResultMode = "data" | "structure";
+export type ResultMode = "data" | "structure" | "graph";
 
 export type EditingCell = {
   key: string;

@@ -16,6 +16,7 @@ const legacyCustomThemeStorageKey = "irodori.theme.customJson.v1";
 const vimModeStorageKey = "irodori.editor.vimMode.v1";
 const formatterStorageKey = "irodori.editor.formatter.v1";
 const linterStorageKey = "irodori.editor.linter.v1";
+const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 
 type PreferencesState = {
   themeKind: ThemeKind;
@@ -24,12 +25,14 @@ type PreferencesState = {
   vimMode: boolean;
   formatter: SqlFormatterId;
   sqlLinter: SqlLinterId;
+  autoCommit: boolean;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
   setActiveCustomThemeId: (value: ValueUpdater<string | null>) => void;
   setCustomThemes: (value: ValueUpdater<CustomThemeEntry[]>) => void;
   setVimMode: (value: ValueUpdater<boolean>) => void;
   setFormatter: (value: ValueUpdater<SqlFormatterId>) => void;
   setSqlLinter: (value: ValueUpdater<SqlLinterId>) => void;
+  setAutoCommit: (value: ValueUpdater<boolean>) => void;
 };
 
 function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
@@ -117,6 +120,10 @@ function loadLinter(): SqlLinterId {
   return isSqlLinterId(stored) ? stored : "gentle";
 }
 
+function loadAutoCommit() {
+  return window.localStorage.getItem(autoCommitStorageKey) !== "false";
+}
+
 const initialCustomThemes = loadCustomThemes();
 
 export const usePreferencesStore = create<PreferencesState>((set) => ({
@@ -126,6 +133,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   vimMode: loadVimMode(),
   formatter: loadFormatter(),
   sqlLinter: loadLinter(),
+  autoCommit: loadAutoCommit(),
   setThemeKind: (value) =>
     set((state) => ({ themeKind: resolveValue(state.themeKind, value) })),
   setActiveCustomThemeId: (value) =>
@@ -148,6 +156,8 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({ formatter: resolveValue(state.formatter, value) })),
   setSqlLinter: (value) =>
     set((state) => ({ sqlLinter: resolveValue(state.sqlLinter, value) })),
+  setAutoCommit: (value) =>
+    set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
 }));
 
 usePreferencesStore.subscribe((state) => {
@@ -168,4 +178,5 @@ usePreferencesStore.subscribe((state) => {
   window.localStorage.setItem(vimModeStorageKey, String(state.vimMode));
   window.localStorage.setItem(formatterStorageKey, state.formatter);
   window.localStorage.setItem(linterStorageKey, state.sqlLinter);
+  window.localStorage.setItem(autoCommitStorageKey, String(state.autoCommit));
 });

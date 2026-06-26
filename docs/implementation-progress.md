@@ -82,7 +82,10 @@ Highlights:
   render only the visible column window plus horizontal overscan, with left/right
   spacer columns preserving scroll width. Playwright covers a 1,000-row x
   2,000-column synthetic result and asserts the DOM cell budget during horizontal
-  scroll. The remaining PERF gate is the 1M-row synthetic scroll benchmark.
+  scroll. `EXEC-004B` now adds a lazy 1,000,000-row x 128-column Playwright
+  benchmark that scrolls top/middle/bottom/rapid positions, keeps rendered
+  rows/cells bounded, and records dropped-frame proxy thresholds. The remaining
+  PERF gate is `PERF-001`'s renderer-path spike.
 - **Bounded memory**: every engine streams rows and caps at `max_rows` (default
   **10,000**) with a `truncated` flag, so a `select *` over a 10M-row table stays
   light instead of exhausting RAM (the TablePlus problem). Verified: a 10M-row seed,
@@ -191,6 +194,23 @@ Highlights:
 - In-memory databases are first-class for local work: SQLite `:memory:` is wired
   through structured profiles and verified by a unit test; DuckDB `:memory:` is
   available when the `duckdb` feature is built.
+
+## Batch jobs & local indexing — built
+
+- **Job runtime (JOB-001)**: `irodori-core::jobs` provides the shared job model —
+  stable IDs, status state machine, progress, structured logs, artifacts, retry
+  policy, concurrency/resource budgets, cancellation, and resumable checkpoints —
+  plus a `JobRuntime` and desktop jobs dashboard.
+- **Huge local index builder (JOB-002)**: `irodori-knowledge::index` builds a
+  disk-backed inverted index over an arbitrarily large corpus through the job
+  runtime. Documents stream lazily from an iterator; a bounded in-memory postings
+  buffer flushes to SQLite once it crosses `flush_postings`, so **peak RAM stays
+  flat regardless of corpus size** (the same anti-OOM discipline EXEC-010 applies
+  to result rows). The build reports progress, cancels cooperatively, and writes a
+  checkpoint cursor so an interrupted run resumes from the last durable document;
+  `INSERT OR IGNORE` keys make rebuilds/incremental runs idempotent. Verified by a
+  50,000-document benchmark asserting the postings buffer never exceeds the flush
+  budget while the index stays queryable, plus resume-after-cancel coverage.
 
 ## Test & sample infrastructure
 

@@ -31,6 +31,13 @@ Run the license check before opening a PR:
 scripts/check-licenses.sh
 ```
 
+For dependency, build, CI, release, extension, or credential-handling changes,
+also read [docs/development-security.md](docs/development-security.md) and run:
+
+```sh
+make security
+```
+
 ## Local Checks
 
 The root workspace contains the Rust crate skeletons used by the roadmap. The

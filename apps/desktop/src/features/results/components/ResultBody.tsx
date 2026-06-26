@@ -18,10 +18,14 @@ import {
   type ResultGridSortRuleView,
 } from "@/result-view-model";
 import { RowDetailSidebar } from "@/RowDetailSidebar";
-import type { EditingCell, SelectedCell } from "../types";
+import type { GraphResultModel } from "../graph-result";
+import type { EditingCell, ResultMode, SelectedCell } from "../types";
+import { GraphResultView } from "./GraphResultView";
 
 export function ResultBody({
   structureObject,
+  resultMode,
+  graphModel,
   editorEngine,
   formatObjectName,
   formatCount,
@@ -66,6 +70,8 @@ export function ResultBody({
   onCloseRowDetail,
 }: {
   structureObject: DbObjectMetadata | null;
+  resultMode: ResultMode;
+  graphModel: GraphResultModel | null;
   editorEngine: DbEngine;
   formatObjectName: (object: DbObjectMetadata) => string;
   formatCount: (value: bigint | number) => string;
@@ -125,6 +131,10 @@ export function ResultBody({
         formatCount={formatCount}
       />
     );
+  }
+
+  if (resultMode === "graph" && graphModel) {
+    return <GraphResultView model={graphModel} />;
   }
 
   return (

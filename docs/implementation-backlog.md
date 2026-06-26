@@ -54,7 +54,7 @@ top to bottom within an epic unless a dependency says otherwise.
 These are explicit competitive gaps, not closed by nearby core-library work alone.
 
 - **Snowsight:** desktop schema/table/column autocomplete is wired and smoke-tested from live metadata (`CMPL-002A`), but the shared completion service/API contract remains open; Copilot-style inline autocomplete is open (`AI-004`); charts/dashboards/worksheet visualization are open (`ADV-004E`); explain/query profile is open (`CMPL-007`); inline editing is a partial desktop skeleton (`EXEC-007`); desktop result exploration now has client-side quick filtering, multi-rule predicate filters, and multi-column sort, but saved filters plus server-side/filter-plan SQL remain open (`EXEC-005A`). Each needs a shared contract for desktop now and local API/future hosts later.
-- **Beekeeper:** no-code schema editor is partially wired as a reviewable DDL designer (`ADV-003`), but direct apply/alter coverage and DB-specific DDL safety remain open; current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; deterministic Query Magics have a desktop baseline while command-palette/result-to-file parity remains open (`AI-005`), and AI Shell is open (`AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column virtualization is app-wired and browser-tested, while the 1M-row scroll benchmark remains open (`EXEC-004B`).
+- **Beekeeper:** no-code schema editor is partially wired as a reviewable DDL designer (`ADV-003`), but direct apply/alter coverage and DB-specific DDL safety remain open; current-result export now covers CSV, TSV, JSON, JSONL, SQL INSERT text, an Excel-compatible HTML workbook, and Markdown, but full import/export parity remains open/partial by format (`IO`) with native XLSX, streaming run-to-file, Avro/Parquet, and dump/restore still open; deterministic Query Magics have a desktop baseline while command-palette/result-to-file parity remains open (`AI-005`), and AI Shell is open (`AI-006`); ERD SVG/image/multi-schema/layout work is implemented but still has QA hardening while query-result graph views remain open (`ADV-004` series); wide-column and 1M-row virtualization are app-wired and browser-tested (`EXEC-004B`).
 
 ---
 
@@ -112,9 +112,10 @@ These are explicit competitive gaps, not closed by nearby core-library work alon
 - **Depends on:** —
 - **Size:** S · **Priority:** P0
 
-### KNOW-002 — Local SQLite knowledge store + schema
+### KNOW-002 — Local SQLite knowledge store + schema ✅
 - **Goal:** Persist snapshots and extracted facts locally.
 - **Done when:** `irodori-knowledge` opens `knowledge/irodori-knowledge.sqlite` with the documented schema; round-trip insert/query test passes.
+- **Done:** `irodori-knowledge::KnowledgeStore` opens a SQLite database (WAL, foreign keys), applies the tracked `knowledge/schema.sql` (shared with `tools/knowledge/refresh.mjs`), and exposes source/snapshot/fact persistence + search. Covered by `sqlite_store_round_trips_sources_snapshots_and_search`.
 - **Depends on:** FND-002, KNOW-001
 - **Size:** M · **Priority:** P0
 
@@ -163,9 +164,11 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** FND-006, SHELL-001
 - **Size:** L · **Priority:** P1
 
-### JOB-002 — Huge local index builder
+### JOB-002 — Huge local index builder ✅ (core done)
 - **Goal:** Build and refresh large search/metadata indexes without freezing the app.
 - **Done when:** knowledge snapshots, source registries, schema metadata, query history, and implementation notes can be indexed incrementally with chunked ingest, disk-backed state, backpressure, progress, cancellation, and checkpointed resume; a synthetic large-corpus benchmark records throughput and peak memory.
+- **Done:** `irodori-knowledge::index` adds a disk-backed inverted-index builder driven through the JOB-001 `JobRuntime`. `build_index(runtime, job_id, store, corpus, config)` pulls documents lazily from any iterator, tokenizes them, and accumulates a bounded in-memory postings buffer that flushes to a SQLite `IndexStore` (`index_docs` + `index_postings`, `INSERT OR IGNORE` so rebuilds/incremental runs are idempotent) once it crosses `flush_postings` — so **peak RAM is flat regardless of corpus size**. The build reports progress, honors `should_cancel` cooperatively, and (for resumable jobs) writes a `JobCheckpoint` cursor every `checkpoint_every_docs`, so an interrupted build resumes from the last durable document instead of restarting; on completion it records a throughput figure and an index artifact. `IndexStore::search` returns frequency-ranked postings. Verified by unit tests (small-corpus correctness + ranking, idempotent rebuild, **resume-after-cancel** rebuilding the exact remaining suffix) and a **50,000-document synthetic benchmark** asserting `peak_buffer_postings` stays within the flush budget while the full index stays queryable.
+- **Remaining:** wire schema/query-history/knowledge-snapshot corpora as concrete `Document` sources and surface index builds in the desktop jobs dashboard; record a throughput/peak-memory number in CI as a perf gate; optional segment-merge/compaction for very large indexes.
 - **Depends on:** JOB-001, KNOW-002, CMPL-001
 - **Size:** L · **Priority:** P1
 
@@ -367,11 +370,11 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** EXEC-001
 - **Size:** M · **Priority:** P0
 
-### EXEC-004 — Virtualized result grid 🚧 (row + wide-column virtualization done; 1M benchmark open)
+### EXEC-004 — Virtualized result grid ✅
 - **Goal:** Smooth scrolling over huge results.
 - **Done when:** the grid renders only visible rows/cols; 1M-row synthetic result scrolls without jank in a benchmark.
-- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely. **Column virtualization** is wired with fixed column width, horizontal overscan, left/right spacer columns, and browser E2E coverage for a 1,000-row x 2,000-column fixture proving bounded DOM cells during horizontal scroll.
-- **Remaining:** a 1M-row synthetic scroll benchmark (the cap is 10k today; only run-to-file/disk-offload exceeds it).
+- **Done:** **row virtualization** — the desktop result grid renders only the rows in (and `GRID_OVERSCAN` around) the viewport, with top/bottom `.grid-pad` spacers preserving the scrollbar (fixed `GRID_ROW_HEIGHT` = 27px, viewport tracked via `ResizeObserver`, scroll coalesced through `requestAnimationFrame`). A capped 10k-row page is ~30 DOM rows instead of 10k, so the streamed result stays smooth; scroll resets to the top on each new run. `.result-grid` moved from a CSS `grid-auto-rows` layout to a flex column so spacers size freely. **Column virtualization** is wired with fixed column width, horizontal overscan, left/right spacer columns, and browser E2E coverage for a 1,000-row x 2,000-column fixture proving bounded DOM cells during horizontal scroll. **1M-row benchmark** coverage now injects a lazy 1,000,000-row x 128-column fixture, scrolls top/middle/bottom/rapid positions, and asserts bounded rendered rows/cells plus no blank frames.
+- **Remaining:** very-large full-scrollbar scaling above browser pixel limits can be revisited with a virtual scroll-range mapper if a future 10M-row UI benchmark requires direct pixel scrolling.
 - **Depends on:** EXEC-002
 - **Size:** L · **Priority:** P0
 
@@ -383,10 +386,11 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** EXEC-004
 - **Size:** M · **Priority:** P0
 
-### EXEC-004B — 1M-row synthetic scroll benchmark
+### EXEC-004B — 1M-row synthetic scroll benchmark ✅
 - **Goal:** Turn "smooth huge result scrolling" into a release gate instead of a subjective check.
 - **Done when:** a benchmark can inject a synthetic 1,000,000-row result without loading 1M DOM rows; scripted top/middle/bottom/rapid scroll completes within the budget; rendered row count stays near viewport + overscan; no blank grid frames are captured.
 - **Benchmark budget:** desktop Playwright run records scroll duration, max DOM rows/cells, and dropped-frame proxy metrics; failure threshold is documented and stable enough for CI or nightly perf runs.
+- **Done:** `apps/desktop/e2e/virtualization.spec.ts` has a lazy logical 1M-row fixture that avoids materializing row arrays, asserts row/column/cell DOM budgets at top/middle/bottom and horizontal offsets, checks rapid scroll max-frame/elapsed thresholds, and verifies the logical fixture stayed lazy. The bottom jump intentionally uses a beyond-end scroll value and lets Chromium clamp to the real bottom.
 - **Depends on:** EXEC-004A
 - **Size:** M · **Priority:** P0
 

@@ -1,0 +1,96 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /apps/desktop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:15"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps
+    groups:
+      desktop-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:30"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps
+    groups:
+      web-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /apps/web/endpoint
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:45"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps
+    groups:
+      endpoint-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps
+    groups:
+      rust:
+        patterns:
+          - "*"
+
+  - package-ecosystem: cargo
+    directory: /apps/desktop/src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:15"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps
+    groups:
+      desktop-tauri-rust:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /apps/web/endpoint
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:30"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: deps

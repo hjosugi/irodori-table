@@ -11,32 +11,8 @@ import {
   useState,
 } from "react";
 import {
-  AlertTriangle,
-  ChevronDown,
-  Columns3,
-  Copy,
-  Database,
-  Download,
-  GitBranch,
-  HelpCircle,
-  KeyRound,
   Folder,
-  ListFilter,
-  Menu,
-  Moon,
-  MoreHorizontal,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
-  RefreshCw,
-  Share2,
-  Search,
-  Settings,
-  Sun,
-  Table2,
-  TerminalSquare,
-  Upload,
-  X,
 } from "lucide-react";
 import { runQuerySpill, runQueryStream } from "./lib/tauri/db-stream";
 import {
@@ -61,9 +37,10 @@ import { ActionToast, type ActionNotice } from "./app/ActionToast";
 import { CommandPalette } from "./app/CommandPalette";
 import { GitDrawer, useGitStore } from "./features/git";
 import {
-  ResultBody,
+  ResultsPane,
   useResultGridStore,
   useResultsStore,
+  type ResultGridEditDraft,
 } from "./features/results";
 import {
   defaultConnectionColor,
@@ -95,7 +72,13 @@ import { ErdDialog } from "./features/erd/ErdDialog";
 import { SchemaDesignerDialog } from "./features/schema-designer/SchemaDesignerDialog";
 import { SettingsDialog, type SettingsTab } from "./features/settings";
 import { usePreferencesStore } from "./features/preferences";
-import { Inspector, useWorkbenchStore } from "./features/workbench";
+import {
+  createWorkbenchCommandHandler,
+  Inspector,
+  Sidebar,
+  WorkbenchShell,
+  useWorkbenchStore,
+} from "./features/workbench";
 import {
   WindowedRows,
   createWindowedRowsProxy,
@@ -138,7 +121,6 @@ import {
 import {
   buildResultExport,
   resultExportFileName,
-  resultExportFormats,
   type ResultExportFormat,
 } from "./result-export";
 import {
@@ -147,9 +129,6 @@ import {
   cycleResultSortRules,
   formatResultGridTsv,
   formatResultGridTsvRow,
-  resultFilterNeedsValue,
-  resultFilterOperators,
-  type ResultFilterOperator,
   type ResultFilterRule,
   type ResultGridRowLike,
   type ResultSortRule,
@@ -161,16 +140,13 @@ import {
   type ResultGridDraftCell as GridCellDraft,
   type ResultGridRowOrigin,
 } from "./result-view-model";
+import { buildGraphResultModel } from "./features/results/graph-result";
 import {
   deriveResultEditTarget,
   type ResultEditTarget,
 } from "./result-edit-target";
 import { useSchemaDesignerStore } from "./features/schema-designer/schema-designer-store";
-import {
-  blankSchemaDraft,
-  buildSchemaSql,
-  schemaDraftFromObject,
-} from "./schema-designer";
+import { buildSchemaSql } from "./schema-designer";
 import {
   dbApplyEdits,
   dbCancel,
@@ -258,7 +234,7 @@ function isCellEditorClipboardShortcut(
     !!target?.closest(".cell-editor") &&
     (event.ctrlKey || event.metaKey) &&
     !event.altKey &&
-    ["c", "x", "v"].includes(event.key.toLowerCase())
+    ["c", "x", "v", "z"].includes(event.key.toLowerCase())
   );
 }
 
@@ -544,6 +520,8 @@ function App() {
   const setFormatter = usePreferencesStore((state) => state.setFormatter);
   const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
   const setSqlLinter = usePreferencesStore((state) => state.setSqlLinter);
+  const autoCommit = usePreferencesStore((state) => state.autoCommit);
+  const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
@@ -568,8 +546,10 @@ function App() {
   const setEditorSplitPercent = useWorkbenchStore(
     (state) => state.setEditorSplitPercent,
   );
-  const [activeEditorGroup, setActiveEditorGroup] =
+  const [preferredEditorGroup, setActiveEditorGroup] =
     useState<EditorGroup>("primary");
+  const activeEditorGroup: EditorGroup =
+    editorSplitMode === "single" ? "primary" : preferredEditorGroup;
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -675,11 +655,13 @@ function App() {
   const editMode = useResultGridStore((state) => state.editMode);
   const setEditMode = useResultGridStore((state) => state.setEditMode);
   const cellEdits = useResultGridStore((state) => state.cellEdits);
-  const setCellEdits = useResultGridStore((state) => state.setCellEdits);
   const newRows = useResultGridStore((state) => state.newRows);
-  const setNewRows = useResultGridStore((state) => state.setNewRows);
   const deletedRows = useResultGridStore((state) => state.deletedRows);
-  const setDeletedRows = useResultGridStore((state) => state.setDeletedRows);
+  const editUndoDepth = useResultGridStore(
+    (state) => state.editUndoStack.length,
+  );
+  const updateEditDraft = useResultGridStore((state) => state.updateEditDraft);
+  const undoEdit = useResultGridStore((state) => state.undoEdit);
   const editingCell = useResultGridStore((state) => state.editingCell);
   const setEditingCell = useResultGridStore((state) => state.setEditingCell);
   const selectedCell = useResultGridStore((state) => state.selectedCell);
@@ -744,6 +726,12 @@ function App() {
   const setSchemaDesignerOpen = useSchemaDesignerStore((state) => state.setOpen);
   const schemaDraft = useSchemaDesignerStore((state) => state.draft);
   const setSchemaDraft = useSchemaDesignerStore((state) => state.setDraft);
+  const openBlankSchemaDesigner = useSchemaDesignerStore(
+    (state) => state.openBlank,
+  );
+  const openObjectSchemaDesigner = useSchemaDesignerStore(
+    (state) => state.openForObject,
+  );
   const diagramInitializedFor = useRef<string | null>(null);
   const appendHistory = useQueryHistoryStore((state) => state.append);
   const openQueryHistoryDialog = useQueryHistoryStore(
@@ -784,12 +772,6 @@ function App() {
       JSON.stringify(queryParameterMemory),
     );
   }, [queryParameterMemory]);
-
-  useEffect(() => {
-    if (editorSplitMode === "single") {
-      setActiveEditorGroup("primary");
-    }
-  }, [editorSplitMode]);
 
   useEffect(() => {
     return () => {
@@ -973,16 +955,11 @@ function App() {
       },
     ];
   }, [result]);
-  const activeResult =
-    resultSets[
-      Math.min(activeResultIndex, Math.max(0, resultSets.length - 1))
-    ] ?? null;
-
-  useEffect(() => {
-    if (activeResultIndex >= resultSets.length) {
-      setActiveResultIndex(0);
-    }
-  }, [activeResultIndex, resultSets.length]);
+  const activeResultIndexView = Math.min(
+    activeResultIndex,
+    Math.max(0, resultSets.length - 1),
+  );
+  const activeResult = resultSets[activeResultIndexView] ?? null;
 
   useEffect(() => {
     if (gridRef.current) {
@@ -993,7 +970,7 @@ function App() {
     setGridScrollLeft(0);
     setSelectedRowKey(null);
     setSelectedCell(null);
-  }, [activeResultIndex, result]);
+  }, [activeResultIndexView, result]);
 
   const resultColumns = activeResult?.columns ?? [
     "id",
@@ -1001,6 +978,24 @@ function App() {
     "lifetime_value",
     "last_order_at",
   ];
+  const graphResultModel = useMemo(() => {
+    if (
+      (editorEngine !== "neo4j" && editorEngine !== "memgraph") ||
+      !activeResult ||
+      spillInfo
+    ) {
+      return null;
+    }
+    const rows = activeResult.rows
+      .slice(0, 500)
+      .filter((row): row is unknown[] => Array.isArray(row));
+    if (rows.length === 0) {
+      return null;
+    }
+    const model = buildGraphResultModel(activeResult.columns, rows);
+    return model.nodes.length > 0 || model.edges.length > 0 ? model : null;
+  }, [activeResult, editorEngine, spillInfo]);
+  const graphAvailable = Boolean(graphResultModel);
   // Resolve which table the active result came from so foreign-key cells become
   // navigable in the row-detail drawer. Falls back to column matching; a null table
   // simply disables FK links while the rest of the detail view still works.
@@ -1117,6 +1112,12 @@ function App() {
   const structureObject = resultMode === "structure" ? tableViewObject : null;
   const showingStructure = Boolean(structureObject);
 
+  useEffect(() => {
+    if (resultMode === "graph" && !graphAvailable) {
+      setResultMode("data");
+    }
+  }, [graphAvailable, resultMode, setResultMode]);
+
   // EXEC-010: fetch the disk pages the visible range needs, ingest them into the
   // LRU source, and bump the version so the grid repaints with real cells. The LRU
   // budget keeps resident rows flat no matter how far the user scrolls.
@@ -1185,6 +1186,23 @@ function App() {
       setSelectedRowKey(null);
       setSelectedCell(null);
     }
+  }
+
+  function selectResultSet(index: number) {
+    setActiveResultIndex(index);
+    resetEdits();
+    resetGridView();
+    resetGridScrollPosition(true);
+  }
+
+  function updateQuickFilter(value: string) {
+    setQuickFilter(value);
+    resetGridScrollPosition(true);
+  }
+
+  function clearQuickFilter() {
+    setQuickFilter("");
+    resetGridScrollPosition(true);
   }
 
   type PanelResizeKind = "sidebar" | "inspector" | "results" | "editorSplit";
@@ -1403,6 +1421,43 @@ function App() {
     setEditingCell(seed === undefined ? { key, col } : { key, col, seed });
   }
 
+  function applyCellValueToDraft(
+    draft: ResultGridEditDraft,
+    origin: ResultGridRowOrigin,
+    col: number,
+    value: GridCellDraft,
+  ): ResultGridEditDraft {
+    if (col < 0 || col >= resultColumns.length) {
+      return draft;
+    }
+    if (origin.kind === "orig") {
+      const cellEdits = new Map(draft.cellEdits);
+      const key = `o${origin.index}:${col}`;
+      const originalRaw = activeResult?.rows[origin.index]?.[col] ?? null;
+      const unchanged =
+        value === null ? originalRaw === null : value === formatCell(originalRaw);
+      if (unchanged) {
+        cellEdits.delete(key);
+      } else {
+        cellEdits.set(key, value);
+      }
+      return { ...draft, cellEdits };
+    }
+
+    if (!draft.newRows[origin.index]) {
+      return draft;
+    }
+    const newRows = draft.newRows.map((row, index) => {
+      if (index !== origin.index) {
+        return row;
+      }
+      const next = [...row];
+      next[col] = value;
+      return next;
+    });
+    return { ...draft, newRows };
+  }
+
   // Stage a single cell's new value against its origin (an original row keeps the
   // edit in `cellEdits`; a staged new row mutates `newRows`).
   function setCellValue(
@@ -1410,34 +1465,7 @@ function App() {
     col: number,
     value: GridCellDraft,
   ) {
-    if (origin.kind === "orig") {
-      setCellEdits((current) => {
-        const next = new Map(current);
-        const key = `o${origin.index}:${col}`;
-        const originalRaw = activeResult?.rows[origin.index]?.[col] ?? null;
-        const unchanged =
-          value === null
-            ? originalRaw === null
-            : value === formatCell(originalRaw);
-        if (unchanged) {
-          next.delete(key);
-        } else {
-          next.set(key, value);
-        }
-        return next;
-      });
-    } else {
-      setNewRows((current) =>
-        current.map((row, index) => {
-          if (index !== origin.index) {
-            return row;
-          }
-          const next = [...row];
-          next[col] = value;
-          return next;
-        }),
-      );
-    }
+    updateEditDraft((draft) => applyCellValueToDraft(draft, origin, col, value));
   }
 
   function addNewRow() {
@@ -1445,29 +1473,32 @@ function App() {
       setCommitError("result editing needs a single table query with a visible key");
       return;
     }
-    setNewRows((current) => [...current, resultColumns.map(() => "")]);
+    updateEditDraft((draft) => ({
+      ...draft,
+      newRows: [...draft.newRows, resultColumns.map(() => "")],
+    }));
     setEditMode(true);
   }
 
   // Stage a row delete (original rows) or drop a staged new row.
   function deleteRow(origin: ResultGridRowOrigin) {
     const rowKey = resultGridRowKey(origin);
-    if (origin.kind === "orig") {
-      setDeletedRows((current) => new Set(current).add(origin.index));
-      setCellEdits((current) => {
-        const next = new Map(current);
-        for (const key of [...next.keys()]) {
+    updateEditDraft((draft) => {
+      if (origin.kind === "orig") {
+        const deletedRows = new Set(draft.deletedRows).add(origin.index);
+        const cellEdits = new Map(draft.cellEdits);
+        for (const key of [...cellEdits.keys()]) {
           if (key.startsWith(`o${origin.index}:`)) {
-            next.delete(key);
+            cellEdits.delete(key);
           }
         }
-        return next;
-      });
-    } else {
-      setNewRows((current) =>
-        current.filter((_, index) => index !== origin.index),
-      );
-    }
+        return { ...draft, cellEdits, deletedRows };
+      }
+      return {
+        ...draft,
+        newRows: draft.newRows.filter((_, index) => index !== origin.index),
+      };
+    });
     setEditingCell(null);
     setSelectedRowKey((current) => (current === rowKey ? null : current));
   }
@@ -1489,27 +1520,45 @@ function App() {
     if (startPos < 0) {
       return;
     }
-    block.forEach((cells, rowOffset) => {
-      const target = resultGridView.rowAt(startPos + rowOffset)?.origin;
-      if (target) {
-        cells.forEach((value, colOffset) => {
-          const col = startCol + colOffset;
-          if (col < resultColumns.length) {
-            setCellValue(target, col, value);
-          }
-        });
-      } else {
-        // Past the last row: append as new rows.
+    updateEditDraft((draft) => {
+      let nextDraft = draft;
+      block.forEach((cells, rowOffset) => {
+        const target = resultGridView.rowAt(startPos + rowOffset)?.origin;
+        if (target) {
+          cells.forEach((value, colOffset) => {
+            nextDraft = applyCellValueToDraft(
+              nextDraft,
+              target,
+              startCol + colOffset,
+              value,
+            );
+          });
+          return;
+        }
         const newRow = resultColumns.map((_, col) => {
           const colOffset = col - startCol;
           return colOffset >= 0 && colOffset < cells.length
             ? cells[colOffset]
             : "";
         });
-        setNewRows((current) => [...current, newRow]);
-      }
+        nextDraft = {
+          ...nextDraft,
+          newRows: [...nextDraft.newRows, newRow],
+        };
+      });
+      return nextDraft;
     });
     setEditMode(true);
+  }
+
+  function undoLastEdit() {
+    if (!editMode || editUndoDepth === 0 || showingStructure) {
+      return;
+    }
+    if (undoEdit()) {
+      setEditMode(true);
+      showActionNotice("info", "Edit undone", "Reverted the last staged edit");
+    }
   }
 
   function scrollGridCellIntoView(rowIndex: number, col: number) {
@@ -1834,85 +1883,37 @@ function App() {
   }
 
   // Run a command by id (the keybinding handler and the Commands list share this).
-  function runCommand(id: string) {
-    switch (id) {
-      case "palette.open":
-        setPaletteQuery("");
-        setPaletteOpen(true);
-        break;
-      case "settings.open":
-        openSettingsSection("general");
-        break;
-      case "history.open":
-        openQueryHistoryDialog();
-        break;
-      case "git.open":
-        openGitDrawer();
-        break;
-      case "help.open":
-      case "about.open":
-        setAboutOpen(true);
-        break;
-      case "connection.manager":
-        setConnectionManagerOpen(true);
-        break;
-      case "diagram.show":
-        setDiagramOpen(true);
-        break;
-      case "query.run":
-        void runQuery();
-        break;
-      case "query.runCurrent":
-        void runCurrentQuery();
-        break;
-      case "query.runFromStart":
-        void runFromStartQuery();
-        break;
-      case "query.runAll":
-        void runAllQuery();
-        break;
-      case "query.cancel":
-        void cancelQuery();
-        break;
-      case "editor.focus":
-        activeEditorApi()?.focus();
-        break;
-      case "editor.format":
-        formatQuery();
-        break;
-      case "editor.comment.toggle":
-        activeEditorApi()?.toggleComment();
-        break;
-      case "result.export":
-        exportActiveResult("csv");
-        break;
-      case "result.copySelection":
-        void copySelectedGridCellOrRow();
-        break;
-      case "result.copyRow":
-        void copySelectedGridRow();
-        break;
-      case "result.copyVisible":
-        void copyVisibleResult();
-        break;
-      case "edit.toggle":
-        if (editMode) {
-          setEditMode(false);
-        } else if (canEditActiveResult()) {
-          setEditMode(true);
-          setCommitError(null);
-        } else {
-          setCommitError("result editing needs a single table query with a visible key");
-        }
-        break;
-      case "edit.addRow":
-        addNewRow();
-        break;
-      case "edit.commit":
-        void commitEdits();
-        break;
-    }
-  }
+  const runCommand = createWorkbenchCommandHandler({
+    editMode,
+    openPalette: () => {
+      setPaletteQuery("");
+      setPaletteOpen(true);
+    },
+    openSettings: () => openSettingsSection("general"),
+    openHistory: openQueryHistoryDialog,
+    openGit: openGitDrawer,
+    openHelp: () => setAboutOpen(true),
+    openConnectionManager: () => setConnectionManagerOpen(true),
+    openDiagram: () => setDiagramOpen(true),
+    runQuery,
+    runCurrentQuery,
+    runFromStartQuery,
+    runAllQuery,
+    cancelQuery,
+    focusEditor: () => activeEditorApi()?.focus(),
+    formatQuery,
+    toggleEditorComment: () => activeEditorApi()?.toggleComment(),
+    exportCsv: () => exportActiveResult("csv"),
+    copySelectedGridCellOrRow,
+    copySelectedGridRow,
+    copyVisibleResult,
+    canEditActiveResult,
+    setEditMode,
+    setCommitError,
+    addNewRow,
+    undoLastEdit,
+    commitEdits,
+  });
 
   const keymapConflicts = findConflicts(keymap, appCommandCatalog);
   const paletteResults = appCommandCatalog.filter((command) =>
@@ -2444,6 +2445,16 @@ function App() {
     setConnectionError(null);
   }
 
+  function selectSidebarConnection(
+    connection: WorkspaceConnection,
+    profile: ConnectionDraft | undefined,
+  ) {
+    setActiveConnectionId(connection.id);
+    if (profile) {
+      selectProfile(profile);
+    }
+  }
+
   function saveDraft(showSaved = true) {
     const validationError = validateDraft(draft);
     if (validationError) {
@@ -2880,14 +2891,25 @@ function App() {
     }
   }
 
-  function openBlankSchemaDesigner() {
-    setSchemaDraft(blankSchemaDraft());
-    setSchemaDesignerOpen(true);
+  function openSnapshotObject(object: WorkspaceConnection["objects"][number]) {
+    if (object.kind === "procedure") {
+      return;
+    }
+    const sql =
+      editorEngine === "sqlserver"
+        ? `select top (200) * from ${quoteSqlIdentifier(editorEngine, object.name)};`
+        : `select * from ${quoteSqlIdentifier(editorEngine, object.name)} limit 200;`;
+    setQuery(sql);
+    if (activeConnectionOpen) {
+      void executeQuery(sql);
+    }
   }
 
-  function openObjectSchemaDesigner(object: DbObjectMetadata) {
-    setSchemaDraft(schemaDraftFromObject(object));
-    setSchemaDesignerOpen(true);
+  function showObjectInDiagram(object: DbObjectMetadata) {
+    pendingDiagramSearchRef.current = object.name;
+    setDiagramSearch(object.name);
+    setDiagramOpen(true);
+    setObjectActionMenu(null);
   }
 
   function putSchemaSqlInEditor() {
@@ -3418,540 +3440,83 @@ function App() {
   }
 
   return (
-    <main
-      className="app-shell"
-      style={
-        {
-          ...cssVariables(theme),
-          "--sidebar-width": `${sidebarWidth}px`,
-          "--inspector-width": `${inspectorWidth}px`,
-          "--results-height": `${resultsHeight}px`,
-          "--editor-split-primary": `${editorSplitPercent}%`,
-        } as CSSProperties
-      }
-      data-theme={theme.kind}
-      data-key-scope={activeKeyScope}
-      onFocusCapture={(event) => {
-        const scope = keyScopeFromTarget(event.target, "global");
-        activeKeyScopeRef.current = scope;
-        setActiveKeyScope(scope);
-      }}
-      onMouseDownCapture={(event) => {
-        const scope = keyScopeFromTarget(event.target, activeKeyScope);
-        activeKeyScopeRef.current = scope;
-        setActiveKeyScope(scope);
-      }}
-    >
-      <header className="titlebar">
-        <div className="brand" title={APP_NAME} aria-label={APP_NAME}>
-          <img className="brand-icon" src="/irodori-icon.svg" alt="" />
-        </div>
-        <div className="titlebar-actions">
-          <button
-            className="theme-toggle"
-            type="button"
-            title={
-              themeKind === "dark"
-                ? "Switch to light theme"
-                : "Switch to dark theme"
-            }
-            aria-label="Toggle color theme"
-            onClick={() =>
-              activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
-            }
-          >
-            {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-          <button
-            className="theme-toggle"
-            type="button"
-            title="Settings"
-            aria-label="Settings"
-            onClick={() => {
-              openSettingsSection("general");
-            }}
-          >
-            <Settings size={15} />
-          </button>
-          <button
-            className="theme-toggle"
-            type="button"
-            title="Help"
-            aria-label="Help"
-            onClick={() => setAboutOpen(true)}
-          >
-            <HelpCircle size={15} />
-          </button>
-          <button
-            className="theme-toggle"
-            type="button"
-            title="Workspace menu"
-            aria-label="Workspace menu"
-            aria-expanded={workspaceMenuOpen}
-            onClick={() => setWorkspaceMenuOpen((open) => !open)}
-          >
-            <Menu size={15} />
-          </button>
-          {workspaceMenuOpen ? (
-            <div className="app-menu-popover" role="menu">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  setConnectionManagerOpen(true);
-                }}
-              >
-                Connection Manager
-                <kbd>Ctrl+Shift+D</kbd>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  openSettingsSection("keymap");
-                }}
-              >
-                Keyboard Shortcuts
-                <kbd>Ctrl+,</kbd>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  openGitDrawer();
-                }}
-              >
-                Git Panel
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  openSettingsSection("general");
-                }}
-              >
-                Settings
-              </button>
-              <span className="menu-separator" role="separator" />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  setAboutOpen(true);
-                }}
-              >
-                Help
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  setAboutOpen(true);
-                }}
-              >
-                About {APP_NAME}
-                <kbd>v{APP_VERSION}</kbd>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setWorkspaceMenuOpen(false);
-                  activateBuiltInTheme((kind) =>
-                    kind === "dark" ? "light" : "dark",
-                  );
-                }}
-              >
-                {themeKind === "dark" ? "Light Theme" : "Dark Theme"}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </header>
-
-      <section className="toolbar" aria-label="Workspace toolbar">
-        <button
-          className="icon-button sidebar-toggle"
-          type="button"
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          aria-pressed={!sidebarOpen}
-          onClick={() => setSidebarOpen((open) => !open)}
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose size={15} />
-          ) : (
-            <PanelLeftOpen size={15} />
-          )}
-        </button>
-        <button
-          className="connection-select"
-          type="button"
-          onClick={() => setConnectionManagerOpen(true)}
-        >
-          <span
-            className="connection-color-dot"
-            style={{ background: activeConnectionColor }}
-            aria-hidden="true"
-          />
-          <span>{activeConnection.name}</span>
-          <small>{activeConnection.engine}</small>
-          <ChevronDown size={15} />
-        </button>
-        <div className="toolbar-spacer" />
-        <button
-          className="icon-button"
-          type="button"
-          title="Git panel"
-          aria-label="Git panel"
-          onClick={openGitDrawer}
-        >
-          <GitBranch size={15} />
-        </button>
-      </section>
-
-      <div
-        className={sidebarOpen ? "workspace" : "workspace sidebar-collapsed"}
-      >
-        <nav className="connection-rail" aria-label="Connections">
-          <button
-            className="rail-action"
-            type="button"
-            title="New connection"
-            aria-label="New connection"
-            onClick={() => {
+    <>
+      <WorkbenchShell
+        appName={APP_NAME}
+        appVersion={APP_VERSION}
+        themeKind={theme.kind}
+        activeKeyScope={activeKeyScope}
+        sidebarOpen={sidebarOpen}
+        sidebarWidth={sidebarWidth}
+        inspectorWidth={inspectorWidth}
+        resultsHeight={resultsHeight}
+        editorSplitPercent={editorSplitPercent}
+        workspaceMenuOpen={workspaceMenuOpen}
+        activeConnectionName={activeConnection.name}
+        activeConnectionEngine={activeConnection.engine}
+        activeConnectionColor={activeConnectionColor}
+        activeConnectionStatus={activeConnectionStatus}
+        activeTransportLabel={activeTransportLabel}
+        vimMode={vimMode}
+        queryLineCount={query.split("\n").length}
+        sqlLintEnabled={sqlLinter === "gentle"}
+        running={running}
+        shellStyle={cssVariables(theme)}
+        onScopeFocus={(event) => {
+          const scope = keyScopeFromTarget(event.target, "global");
+          activeKeyScopeRef.current = scope;
+          setActiveKeyScope(scope);
+        }}
+        onScopeMouseDown={(event) => {
+          const scope = keyScopeFromTarget(event.target, activeKeyScope);
+          activeKeyScopeRef.current = scope;
+          setActiveKeyScope(scope);
+        }}
+        onToggleTheme={() =>
+          activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
+        }
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        onOpenSettings={() => openSettingsSection("general")}
+        onOpenKeymap={() => openSettingsSection("keymap")}
+        onOpenConnectionManager={() => setConnectionManagerOpen(true)}
+        onOpenGit={openGitDrawer}
+        onOpenHelp={() => setAboutOpen(true)}
+        onToggleWorkspaceMenu={() => setWorkspaceMenuOpen((open) => !open)}
+        onCloseWorkspaceMenu={() => setWorkspaceMenuOpen(false)}
+        sidebar={
+          <Sidebar
+            sidebarOpen={sidebarOpen}
+            connections={connections}
+            profileById={profileById}
+            activeConnectionId={activeConnectionId}
+            activeConnection={activeConnection}
+            activeConnectionOpen={activeConnectionOpen}
+            activeMetadata={activeMetadata}
+            activeMetadataLoading={activeMetadataLoading}
+            activeMetadataError={activeMetadataError}
+            connectedIds={connectedIds}
+            objectActionMenu={objectActionMenu}
+            objectKindLabel={objectKindLabel}
+            formatObjectName={(object) => qualifiedObjectName(editorEngine, object)}
+            onAddProfile={() => {
               addProfile();
               setConnectionManagerOpen(true);
             }}
-          >
-            <Plus size={16} />
-          </button>
-          <div className="rail-connection-list">
-            {connections.map((connection) => {
-              const profile = profileById.get(connection.id);
-              const active = connection.id === activeConnectionId;
-              const connected = connectedIds.has(connection.id);
-              return (
-                <button
-                  className={`rail-connection${active ? " active" : ""}`}
-                  key={connection.id}
-                  type="button"
-                  title={`${connection.name} · ${connection.engine}${
-                    connected ? " · connected" : " · closed"
-                  }`}
-                  aria-label={`Switch to ${connection.name}`}
-                  aria-current={active ? "true" : undefined}
-                  onClick={() => {
-                    setActiveConnectionId(connection.id);
-                    if (profile) {
-                      selectProfile(profile);
-                    }
-                  }}
-                  onDoubleClick={() => setConnectionManagerOpen(true)}
-                >
-                  <Database size={17} />
-                  <span
-                    className="connection-color-dot"
-                    style={{
-                      background: profile?.color || defaultConnectionColor,
-                    }}
-                    aria-hidden="true"
-                  />
-                  <i className={connected ? "connected" : ""} aria-hidden="true" />
-                </button>
-              );
-            })}
-          </div>
-          <button
-            className="rail-action"
-            type="button"
-            title="Connection manager"
-            aria-label="Connection manager"
-            onClick={() => setConnectionManagerOpen(true)}
-          >
-            <Settings size={16} />
-          </button>
-        </nav>
-        {sidebarOpen ? (
-          <aside className="sidebar">
-            <section className="sidebar-section browser-section">
-              <div className="section-heading">
-                <span>
-                  {activeMetadata
-                    ? `${activeMetadata.schemas.length} schemas`
-                    : "public"}
-                </span>
-                <button
-                  className="mini-button"
-                  type="button"
-                  title="Schema designer"
-                  aria-label="Schema designer"
-                  onClick={openBlankSchemaDesigner}
-                >
-                  <Plus size={14} />
-                </button>
-                <button
-                  className="mini-button"
-                  type="button"
-                  title="ER diagram"
-                  aria-label="ER diagram"
-                  disabled={!hasDiagram(activeMetadata)}
-                  onClick={() => setDiagramOpen(true)}
-                >
-                  <Share2 size={14} />
-                </button>
-                <button
-                  className="mini-button"
-                  type="button"
-                  title="Refresh objects"
-                  aria-label="Refresh objects"
-                  disabled={!activeConnectionOpen || activeMetadataLoading}
-                  onClick={() => refreshObjects(activeConnectionId, true, true)}
-                >
-                  <RefreshCw size={14} />
-                </button>
-              </div>
-              <div className="object-browser">
-                {activeMetadataLoading ? (
-                  <div className="empty-browser loading" role="status">
-                    Loading objects...
-                  </div>
-                ) : activeMetadataError ? (
-                  <div className="inline-error browser-error">
-                    <AlertTriangle size={13} />
-                    <span>{activeMetadataError}</span>
-                  </div>
-                ) : activeMetadata ? (
-                  activeMetadata.schemas.length > 0 ? (
-                    activeMetadata.schemas.map((schema) => (
-                      <details className="schema-tree" key={schema.name} open>
-                        <summary>
-                          <Folder size={14} />
-                          <span>{schema.name}</span>
-                          <small>{schema.objects.length}</small>
-                        </summary>
-                        {schema.objects.map((object) => {
-                          const objectKey = `${object.schema}.${object.name}`;
-                          const canOpenData =
-                            object.kind === "table" || object.kind === "view";
-                          return (
-                          <details
-                            className="object-tree"
-                            key={objectKey}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              setObjectActionMenu(objectKey);
-                            }}
-                          >
-                            <summary>
-                              {object.kind === "procedure" || object.kind === "function" ? (
-                                <TerminalSquare size={15} />
-                              ) : (
-                                <Table2 size={15} />
-                              )}
-                              <button
-                                className="object-name-button"
-                                type="button"
-                                disabled={!canOpenData}
-                                title={
-                                  canOpenData
-                                    ? `Open ${qualifiedObjectName(editorEngine, object)}`
-                                    : objectKindLabel(object)
-                                }
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  void openTableData(object);
-                                }}
-                              >
-                                {object.name}
-                              </button>
-                              <small>
-                                {objectKindLabel(object)} ·{" "}
-                                {object.columns.length}
-                              </small>
-                              <button
-                                className="object-menu-button"
-                                type="button"
-                                title="Object actions"
-                                aria-label={`Actions for ${object.name}`}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  setObjectActionMenu((current) =>
-                                    current === objectKey ? null : objectKey,
-                                  );
-                                }}
-                              >
-                                <MoreHorizontal size={14} />
-                              </button>
-                              {objectActionMenu === objectKey ? (
-                                <div className="object-action-menu" role="menu">
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    disabled={!canOpenData}
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      void openTableData(object);
-                                    }}
-                                  >
-                                    Open Data
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    disabled={object.kind !== "table"}
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      openObjectSchemaDesigner(object);
-                                      setObjectActionMenu(null);
-                                    }}
-                                  >
-                                    Structure
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    disabled={!hasDiagram(activeMetadata)}
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      pendingDiagramSearchRef.current = object.name;
-                                      setDiagramSearch(object.name);
-                                      setDiagramOpen(true);
-                                      setObjectActionMenu(null);
-                                    }}
-                                  >
-                                    Show in ERD
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      void navigator.clipboard?.writeText(
-                                        qualifiedObjectName(editorEngine, object),
-                                      );
-                                      setObjectActionMenu(null);
-                                    }}
-                                  >
-                                    Copy Name
-                                  </button>
-                                </div>
-                              ) : null}
-                            </summary>
-                            <div className="metadata-children">
-                              {object.kind === "table" ? (
-                                <button
-                                  className="metadata-row"
-                                  type="button"
-                                  title={`Design ${object.name}`}
-                                  onClick={() =>
-                                    openObjectSchemaDesigner(object)
-                                  }
-                                >
-                                  <KeyRound size={14} />
-                                  <span>Design table</span>
-                                  <small>alter / index / FK</small>
-                                </button>
-                              ) : null}
-                              {object.columns.map((column) => (
-                                <button
-                                  className="metadata-row"
-                                  key={`${object.schema}.${object.name}.${column.name}`}
-                                  type="button"
-                                  title={`${column.name}: ${column.dataType}`}
-                                >
-                                  <Columns3 size={14} />
-                                  <span>{column.name}</span>
-                                  <small>
-                                    {column.dataType}
-                                    {column.nullable ? "" : " not null"}
-                                  </small>
-                                </button>
-                              ))}
-                              {object.indexes.map((index) => (
-                                <button
-                                  className="metadata-row"
-                                  key={`${object.schema}.${object.name}.${index.name}`}
-                                  type="button"
-                                  title={`${index.name}: ${index.columns.join(", ")}`}
-                                >
-                                  <KeyRound size={14} />
-                                  <span>{index.name}</span>
-                                  <small>
-                                    {index.unique ? "unique" : "index"}
-                                    {index.columns.length > 0
-                                      ? ` · ${index.columns.join(", ")}`
-                                      : ""}
-                                  </small>
-                                </button>
-                              ))}
-                            </div>
-                          </details>
-                          );
-                        })}
-                      </details>
-                    ))
-                  ) : (
-                    <div className="empty-browser">No objects found</div>
-                  )
-                ) : activeConnection.objects.length > 0 ? (
-                  activeConnection.objects.map((object) => (
-                    <button
-                      className="object-row"
-                      key={object.name}
-                      type="button"
-                      onClick={() => {
-                        if (object.kind === "procedure") {
-                          return;
-                        }
-                        const sql =
-                          editorEngine === "sqlserver"
-                            ? `select top (200) * from ${quoteSqlIdentifier(editorEngine, object.name)};`
-                            : `select * from ${quoteSqlIdentifier(editorEngine, object.name)} limit 200;`;
-                        setQuery(sql);
-                        if (activeConnectionOpen) {
-                          void executeQuery(sql);
-                        }
-                      }}
-                    >
-                      {object.kind === "procedure" ? (
-                        <TerminalSquare size={15} />
-                      ) : (
-                        <Table2 size={15} />
-                      )}
-                      <span>{object.name}</span>
-                      <small>{object.rows ?? object.kind}</small>
-                    </button>
-                  ))
-                ) : (
-                  <div className="empty-browser">No objects loaded</div>
-                )}
-              </div>
-            </section>
-            <div
-              className="panel-resizer sidebar-resizer"
-              role="separator"
-              aria-label="Resize sidebar"
-              aria-orientation="vertical"
-              tabIndex={0}
-              onPointerDown={(event) => beginPanelResize("sidebar", event)}
-              onKeyDown={(event) => onPanelResizeKey("sidebar", event)}
-            />
-          </aside>
-        ) : null}
-
+            onOpenConnectionManager={() => setConnectionManagerOpen(true)}
+            onSelectConnection={selectSidebarConnection}
+            onOpenBlankSchemaDesigner={openBlankSchemaDesigner}
+            onOpenObjectSchemaDesigner={openObjectSchemaDesigner}
+            onOpenDiagram={() => setDiagramOpen(true)}
+            onRefreshObjects={() => refreshObjects(activeConnectionId, true, true)}
+            onOpenTableData={(object) => void openTableData(object)}
+            onOpenSnapshotObject={openSnapshotObject}
+            onShowObjectInDiagram={showObjectInDiagram}
+            onSetObjectActionMenu={setObjectActionMenu}
+            onBeginResize={(event) => beginPanelResize("sidebar", event)}
+            onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
+          />
+        }
+      >
         <section className="main-pane">
           <div className="tab-strip">
             <div className="tab-folder">
@@ -3983,6 +3548,7 @@ function App() {
               activeTabLabel={activeTabLabel}
               activeConnectionOpen={activeConnectionOpen}
               running={running}
+              autoCommit={autoCommit}
               formatter={formatter}
               query={query}
               onQueryChange={setQuery}
@@ -4008,6 +3574,7 @@ function App() {
               runMenuOpen={runMenuOpen}
               hasSelectedEditorSql={hasSelectedEditorSql}
               runCommand={runCommand}
+              setAutoCommit={setAutoCommit}
               saveCurrentQuery={saveCurrentQuery}
               runQuery={runQuery}
               runSelectionQuery={runSelectionQuery}
@@ -4035,471 +3602,121 @@ function App() {
             />
             <Inspector
               activeConnectionId={activeConnectionId}
+              editorEngine={editorEngine}
               connectionById={connectionById}
               activeMetadataLoading={activeMetadataLoading}
               activeMetadataError={activeMetadataError}
               completionHints={completionHints}
               onInsertCompletionHint={insertCompletionHint}
+              onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
               onLoadHistorySql={setQuery}
             />
           </div>
 
-          <section
-            className={running ? "results-pane is-running" : "results-pane"}
-          >
-            <div
-              className="panel-resizer results-resizer"
-              role="separator"
-              aria-label="Resize results"
-              aria-orientation="horizontal"
-              tabIndex={0}
-              onPointerDown={(event) => beginPanelResize("results", event)}
-              onKeyDown={(event) => onPanelResizeKey("results", event)}
-            />
-            <div className="results-header">
-              <div className="results-title">
-                {tableViewObject ? (
-                  <div className="segmented-control result-mode-toggle">
-                    <button
-                      type="button"
-                      className={resultMode === "data" ? "active" : undefined}
-                      onClick={() => setResultMode("data")}
-                    >
-                      Data
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        resultMode === "structure" ? "active" : undefined
-                      }
-                      onClick={() => setResultMode("structure")}
-                    >
-                      Structure
-                    </button>
-                  </div>
-                ) : null}
-                {resultSets.length > 1 ? (
-                  <div
-                    className="result-tabs"
-                    role="tablist"
-                    aria-label="Result sets"
-                  >
-                    {resultSets.map((set, index) => (
-                      <button
-                        key={set.statementIndex}
-                        type="button"
-                        role="tab"
-                        aria-selected={index === activeResultIndex}
-                        className={
-                          index === activeResultIndex ? "active" : undefined
-                        }
-                        title={set.statement}
-                        onClick={() => {
-                          setActiveResultIndex(index);
-                          resetEdits();
-                          resetGridView();
-                          if (gridRef.current) {
-                            gridRef.current.scrollTop = 0;
-                            gridRef.current.scrollLeft = 0;
-                          }
-                          setGridScrollTop(0);
-                          setGridScrollLeft(0);
-                          setSelectedRowKey(null);
-                          setSelectedCell(null);
-                        }}
-                      >
-                        Result {index + 1}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <strong>Result 1</strong>
-                )}
-                <span>
-                  {queryError
-                    ? "failed"
-                    : pendingCount > 0
-                      ? `${displayedResultSummary} · ${pendingCount} pending`
-                      : displayedResultSummary}
-                </span>
-              </div>
-              <div className="results-actions">
-                <label className="result-quick-filter">
-                  <Search size={13} />
-                  <input
-                    aria-label="Quick result filter"
-                    value={quickFilter}
-                    disabled={!activeResult || Boolean(showingStructure)}
-                    placeholder="Filter rows"
-                    onChange={(event) => {
-                      setQuickFilter(event.currentTarget.value);
-                      resetGridScrollPosition(true);
-                    }}
-                  />
-                  {quickFilter ? (
-                    <button
-                      type="button"
-                      aria-label="Clear quick filter"
-                      title="Clear quick filter"
-                      onClick={() => {
-                        setQuickFilter("");
-                        resetGridScrollPosition(true);
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
-                  ) : null}
-                </label>
-                <button
-                  className={`text-button${filtersOpen || filtersActive ? " active" : ""}`}
-                  type="button"
-                  disabled={!activeResult || Boolean(showingStructure)}
-                  onClick={() => setFiltersOpen((open) => !open)}
-                >
-                  <ListFilter size={13} />
-                  <span>
-                    {activeFilters.length > 0
-                      ? `Filter ${activeFilters.length}`
-                      : "Filter"}
-                  </span>
-                </button>
-                <div className="action-split">
-                  <button
-                    className="text-button"
-                    type="button"
-                    disabled={!activeResult || Boolean(showingStructure)}
-                    onClick={() => exportActiveResult("csv")}
-                  >
-                    <Download size={13} />
-                    <span>CSV</span>
-                  </button>
-                  <button
-                    className="mini-button"
-                    type="button"
-                    title="Export formats"
-                    aria-label="Export formats"
-                    disabled={!activeResult || Boolean(showingStructure)}
-                    onClick={() => setExportMenuOpen((open) => !open)}
-                  >
-                    <ChevronDown size={13} />
-                  </button>
-                  {exportMenuOpen ? (
-                    <div className="action-menu" role="menu">
-                      {resultExportFormats.map((format) => (
-                        <button
-                          key={format.id}
-                          type="button"
-                          role="menuitem"
-                          title={format.title}
-                          onClick={() => exportActiveResult(format.id)}
-                        >
-                          <span>{format.label}</span>
-                          <small>
-                            .
-                            {
-                              buildResultExport(
-                                { columns: [], rows: [] },
-                                format.id,
-                              ).extension
-                            }
-                          </small>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <button
-                  className="text-button"
-                  type="button"
-                  disabled={!activeResult || Boolean(showingStructure)}
-                  onClick={() => void copyVisibleResult()}
-                >
-                  <Copy size={13} />
-                  <span>Copy TSV</span>
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={() => importFileRef.current?.click()}
-                >
-                  <Upload size={13} />
-                  <span>Import</span>
-                </button>
-                <input
-                  ref={importFileRef}
-                  className="hidden-file-input"
-                  type="file"
-                  accept=".csv,.tsv,.tab,.json,.jsonl,.ndjson,.sql,.xls,.xlsx"
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    event.currentTarget.value = "";
-                    if (file) {
-                      void handleImportFile(file);
-                    }
-                  }}
-                />
-                {editMode ? (
-                  <>
-                    <button
-                      className="text-button"
-                      type="button"
-                      disabled={!canEditActiveResult() || Boolean(showingStructure)}
-                      title="Requires a single-table result with a visible primary or unique key"
-                      onClick={addNewRow}
-                    >
-                      + Row
-                    </button>
-                    <button
-                      className="text-button"
-                      type="button"
-                      disabled={pendingCount === 0 || committing || Boolean(showingStructure)}
-                      onClick={() => void commitEdits()}
-                    >
-                      {committing
-                        ? "Committing…"
-                        : `Commit${pendingCount ? ` (${pendingCount})` : ""}`}
-                    </button>
-                    <button
-                      className="text-button"
-                      type="button"
-                      onClick={() => {
-                        resetEdits();
-                        setEditMode(false);
-                      }}
-                    >
-                      Discard
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="text-button"
-                    type="button"
-                    disabled={!canEditActiveResult() || Boolean(showingStructure)}
-                    title="Requires a single-table result with a visible primary or unique key"
-                    onClick={() => {
-                      setCommitError(null);
-                      setEditMode(true);
-                    }}
-                  >
-                    Edit Data
-                  </button>
-                )}
-              </div>
-            </div>
-            {commitError ? (
-              <div className="result-error" role="alert">
-                <AlertTriangle size={16} />
-                <span>{commitError}</span>
-              </div>
-            ) : null}
-            {queryError ? (
-              <div className="result-error" role="alert">
-                <AlertTriangle size={16} />
-                <span>{queryError}</span>
-              </div>
-            ) : null}
-            {filtersOpen || filterRules.length > 0 ? (
-              <div className="result-filter-panel">
-                <div className="result-filter-toolbar">
-                  <span>
-                    {filtersActive
-                      ? `${toCount(filteredOutCount)} hidden`
-                      : "No active filters"}
-                  </span>
-                  <div
-                    className="segmented-control"
-                    role="group"
-                    aria-label="Filter join"
-                  >
-                    <button
-                      type="button"
-                      className={filterJoin === "and" ? "active" : undefined}
-                      onClick={() => setFilterJoin("and")}
-                    >
-                      AND
-                    </button>
-                    <button
-                      type="button"
-                      className={filterJoin === "or" ? "active" : undefined}
-                      onClick={() => setFilterJoin("or")}
-                    >
-                      OR
-                    </button>
-                  </div>
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() => addFilterRule("any")}
-                  >
-                    <Plus size={13} />
-                    <span>Rule</span>
-                  </button>
-                  {filtersActive ? (
-                    <button
-                      className="text-button"
-                      type="button"
-                      onClick={clearResultFilters}
-                    >
-                      Clear
-                    </button>
-                  ) : null}
-                </div>
-                {filterRules.length > 0 ? (
-                  <div className="result-filter-rules">
-                    {filterRules.map((rule) => {
-                      const needsValue = resultFilterNeedsValue(rule.operator);
-                      return (
-                        <div className="result-filter-rule" key={rule.id}>
-                          <label className="check-cell compact">
-                            <input
-                              type="checkbox"
-                              checked={rule.enabled}
-                              aria-label="Filter enabled"
-                              onChange={(event) =>
-                                updateFilterRule(rule.id, {
-                                  enabled: event.currentTarget.checked,
-                                })
-                              }
-                            />
-                          </label>
-                          <select
-                            aria-label="Filter column"
-                            value={
-                              rule.columnIndex === "any"
-                                ? "any"
-                                : String(rule.columnIndex)
-                            }
-                            onChange={(event) =>
-                              updateFilterRule(rule.id, {
-                                columnIndex:
-                                  event.currentTarget.value === "any"
-                                    ? "any"
-                                    : Number(event.currentTarget.value),
-                              })
-                            }
-                          >
-                            <option value="any">Any column</option>
-                            {resultColumns.map((column, index) => (
-                              <option value={index} key={`${column}-${index}`}>
-                                {column}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            aria-label="Filter operator"
-                            value={rule.operator}
-                            onChange={(event) =>
-                              updateFilterRule(rule.id, {
-                                operator: event.currentTarget
-                                  .value as ResultFilterOperator,
-                              })
-                            }
-                          >
-                            {resultFilterOperators.map((operator) => (
-                              <option
-                                key={operator.value}
-                                value={operator.value}
-                              >
-                                {operator.label}
-                              </option>
-                            ))}
-                          </select>
-                          {needsValue ? (
-                            <input
-                              aria-label="Filter value"
-                              value={rule.value}
-                              onChange={(event) =>
-                                updateFilterRule(rule.id, {
-                                  value: event.currentTarget.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            <span className="filter-value-placeholder">--</span>
-                          )}
-                          <button
-                            className="mini-button"
-                            type="button"
-                            title="Remove filter"
-                            aria-label="Remove filter"
-                            onClick={() => removeFilterRule(rule.id)}
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <ResultBody
-              structureObject={structureObject}
-              editorEngine={editorEngine}
-              formatObjectName={(object) =>
-                qualifiedObjectName(editorEngine, object)
-              }
-              formatCount={toCount}
-              editMode={editMode}
-              running={running}
-              filtersActive={filtersActive}
-              unfilteredRowCount={unfilteredRowCount}
-              totalRows={totalRows}
-              resultColumns={resultColumns}
-              gridRef={gridRef}
-              gridRowStyle={gridRowStyle}
-              gridTotalWidth={gridTotalWidth}
-              leftColumnPad={leftColumnPad}
-              rightColumnPad={rightColumnPad}
-              topPad={topPad}
-              bottomPad={bottomPad}
-              firstVisible={firstVisible}
-              visibleColumnIndexes={visibleColumnIndexes}
-              visibleRows={visibleRows}
-              sortRuleByColumn={sortRuleByColumn}
-              sortRules={sortRules}
-              selectedRowKey={selectedRowKey}
-              selectedCell={selectedCell}
-              editingCell={editingCell}
-              cellEdits={cellEdits}
-              selectedRowValues={selectedRowValues}
-              rowDetailTable={rowDetailTable}
-              activeMetadata={activeMetadata}
-              activeConnectionId={activeConnectionId}
-              onGridScroll={onGridScroll}
-              onGridKeyDown={onGridKeyDown}
-              onGridPaste={onGridPaste}
-              onGridCopy={onGridCopy}
-              onToggleSort={toggleSort}
-              onSelectGridRow={selectGridRow}
-              onSelectGridCell={selectGridCell}
-              onBeginCellEdit={beginCellEdit}
-              onSetCellValue={setCellValue}
-              onDeleteRow={deleteRow}
-              onPasteTableAt={pasteTableAt}
-              onEndCellEdit={() => setEditingCell(null)}
-              onCloseRowDetail={() => setSelectedRowKey(null)}
-            />
-          </section>
-        </section>
-      </div>
-
-      <footer className="statusbar">
-        <span>
-          <span
-            className="connection-color-dot"
-            style={{ background: activeConnectionColor }}
-            aria-hidden="true"
+          <div
+            className="panel-resizer results-resizer"
+            role="separator"
+            aria-label="Resize results"
+            aria-orientation="horizontal"
+            tabIndex={0}
+            onPointerDown={(event) => beginPanelResize("results", event)}
+            onKeyDown={(event) => onPanelResizeKey("results", event)}
           />
-          {activeConnectionStatus}
-        </span>
-        <span>{activeTransportLabel}</span>
-        <span>
-          {vimMode ? "Vim" : "Default"} · {query.split("\n").length} lines ·{" "}
-          {sqlLinter === "gentle" ? "lint on" : "lint off"} ·{" "}
-          {running ? "running" : "idle"}
-        </span>
-      </footer>
+          <ResultsPane
+            running={running}
+            tableViewObject={tableViewObject}
+            resultMode={resultMode}
+            graphModel={graphResultModel}
+            graphAvailable={graphAvailable}
+            resultSets={resultSets}
+            activeResult={activeResult}
+            activeResultIndex={activeResultIndexView}
+            queryError={queryError}
+            commitError={commitError}
+            pendingCount={pendingCount}
+            displayedResultSummary={displayedResultSummary}
+            quickFilter={quickFilter}
+            filtersOpen={filtersOpen}
+            filtersActive={filtersActive}
+            activeFilters={activeFilters}
+            filteredOutCount={filteredOutCount}
+            filterJoin={filterJoin}
+            filterRules={filterRules}
+            resultColumns={resultColumns}
+            exportMenuOpen={exportMenuOpen}
+            editMode={editMode}
+            editUndoDepth={editUndoDepth}
+            committing={committing}
+            showingStructure={showingStructure}
+            structureObject={structureObject}
+            editorEngine={editorEngine}
+            unfilteredRowCount={unfilteredRowCount}
+            totalRows={totalRows}
+            gridRef={gridRef}
+            importFileRef={importFileRef}
+            gridRowStyle={gridRowStyle}
+            gridTotalWidth={gridTotalWidth}
+            leftColumnPad={leftColumnPad}
+            rightColumnPad={rightColumnPad}
+            topPad={topPad}
+            bottomPad={bottomPad}
+            firstVisible={firstVisible}
+            visibleColumnIndexes={visibleColumnIndexes}
+            visibleRows={visibleRows}
+            sortRuleByColumn={sortRuleByColumn}
+            sortRules={sortRules}
+            selectedRowKey={selectedRowKey}
+            selectedCell={selectedCell}
+            editingCell={editingCell}
+            cellEdits={cellEdits}
+            selectedRowValues={selectedRowValues}
+            rowDetailTable={rowDetailTable}
+            activeMetadata={activeMetadata}
+            activeConnectionId={activeConnectionId}
+            formatObjectName={(object) => qualifiedObjectName(editorEngine, object)}
+            formatCount={toCount}
+            canEditActiveResult={canEditActiveResult}
+            onResultModeChange={setResultMode}
+            onSelectResultSet={selectResultSet}
+            onQuickFilterChange={updateQuickFilter}
+            onClearQuickFilter={clearQuickFilter}
+            onToggleFilters={() => setFiltersOpen((open) => !open)}
+            onSetFilterJoin={setFilterJoin}
+            onAddFilterRule={addFilterRule}
+            onUpdateFilterRule={updateFilterRule}
+            onRemoveFilterRule={removeFilterRule}
+            onClearResultFilters={clearResultFilters}
+            onExportActiveResult={exportActiveResult}
+            onToggleExportMenu={() => setExportMenuOpen((open) => !open)}
+            onCopyVisibleResult={() => void copyVisibleResult()}
+            onImportFile={(file) => void handleImportFile(file)}
+            onAddNewRow={addNewRow}
+            onUndoEdit={undoLastEdit}
+            onCommitEdits={() => void commitEdits()}
+            onDiscardEdits={() => {
+              resetEdits();
+              setEditMode(false);
+            }}
+            onEnableEditMode={() => {
+              setCommitError(null);
+              setEditMode(true);
+            }}
+            onGridScroll={onGridScroll}
+            onGridKeyDown={onGridKeyDown}
+            onGridPaste={onGridPaste}
+            onGridCopy={onGridCopy}
+            onToggleSort={toggleSort}
+            onSelectGridRow={selectGridRow}
+            onSelectGridCell={selectGridCell}
+            onBeginCellEdit={beginCellEdit}
+            onSetCellValue={setCellValue}
+            onDeleteRow={deleteRow}
+            onPasteTableAt={pasteTableAt}
+            onEndCellEdit={() => setEditingCell(null)}
+            onCloseRowDetail={() => setSelectedRowKey(null)}
+          />
+        </section>
+      </WorkbenchShell>
 
       {connectionManagerOpen ? (
         <ConnectionManagerDialog
@@ -4686,7 +3903,7 @@ function App() {
           onDismiss={() => setActionNotice(null)}
         />
       ) : null}
-    </main>
+    </>
   );
 }
 

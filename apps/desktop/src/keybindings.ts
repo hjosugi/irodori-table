@@ -103,6 +103,12 @@ export const commandCatalog: CommandMeta[] = [
     category: "Edit",
     scope: "grid",
   },
+  {
+    id: "edit.undo",
+    title: "Undo staged edit",
+    category: "Edit",
+    scope: "grid",
+  },
   { id: "edit.addRow", title: "Add row", category: "Edit", scope: "grid" },
   {
     id: "edit.commit",
@@ -126,6 +132,7 @@ export const defaultKeymap: Keymap = {
   "editor.comment.toggle": "Mod+/",
   "result.export": "Mod+Shift+S",
   "edit.toggle": "Mod+E",
+  "edit.undo": "Mod+Z",
   "edit.addRow": "Mod+Shift+Enter",
   "edit.commit": "Mod+S",
 };

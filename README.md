@@ -47,6 +47,7 @@ workspace; the root targets run against each app directly.
 make help
 make setup
 make doctor
+make security
 ```
 
 The default JavaScript package manager is npm because CI, release automation,
@@ -67,6 +68,9 @@ Recommended editor setup:
 
 - VS Code with the Tauri extension.
 - rust-analyzer.
+
+Security workflow notes are in [SECURITY.md](SECURITY.md) and
+[docs/development-security.md](docs/development-security.md).
 
 ## Quick Start: Desktop App
 

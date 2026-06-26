@@ -1,5 +1,8 @@
 //! Local knowledge-base storage and source snapshot primitives.
 
+/// JOB-002 — disk-backed, job-driven inverted index builder.
+pub mod index;
+
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};

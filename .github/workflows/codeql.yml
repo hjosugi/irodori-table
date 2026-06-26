@@ -1,0 +1,58 @@
+name: CodeQL
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/codeql.yml
+      - apps/**
+      - crates/**
+      - packages/**
+      - templates/**
+      - examples/**
+      - Cargo.lock
+      - Cargo.toml
+      - package-lock.json
+      - package.json
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "37 19 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  javascript-typescript:
+    name: JavaScript and TypeScript
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: +security-extended,security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: rust
+          build-mode: none
+          queries: +security-extended,security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:rust

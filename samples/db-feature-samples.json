@@ -1,0 +1,585 @@
+{
+  "_meta": {
+    "description": "Machine-readable catalog of Irodori Table DB-specific feature samples, manual sample projects, verification commands, and official learning resources.",
+    "engineRegistry": "knowledge/engines.json",
+    "sampleProjectRoot": "samples/projects",
+    "referenceBlogs": [
+      {
+        "label": "Beekeeper Studio Blog",
+        "url": "https://www.beekeeperstudio.io/blog",
+        "note": "Reference for practical database client workflows and product writing."
+      }
+    ]
+  },
+  "engines": [
+    {
+      "id": "postgres",
+      "label": "PostgreSQL",
+      "family": "relational",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Run SQL through the native Postgres adapter.",
+        "Browse schemas, tables, views, columns, keys, indexes, comments, and row estimates.",
+        "Exercise JSONB, arrays, GIN indexes, extensions, generate_series, and explain output."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/postgres",
+        "queryFile": "samples/projects/postgres/queries.sql",
+        "testCommand": "make db-verify DB=postgres"
+      },
+      "features": [
+        { "id": "postgres-jsonb-gin", "title": "JSONB plus GIN index filtering", "queryFile": "samples/projects/postgres/queries.sql" },
+        { "id": "postgres-extension", "title": "Extension bootstrap with pg_trgm", "queryFile": "samples/projects/postgres/queries.sql" },
+        { "id": "postgres-explain-json", "title": "EXPLAIN output as JSON", "queryFile": "samples/projects/postgres/queries.sql" }
+      ],
+      "resources": [
+        { "label": "PostgreSQL", "url": "https://www.postgresql.org/" },
+        { "label": "PostgreSQL Documentation", "url": "https://www.postgresql.org/docs/current/" }
+      ]
+    },
+    {
+      "id": "mysql",
+      "label": "MySQL",
+      "family": "relational",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Run MySQL SQL through sqlx's MySQL adapter.",
+        "Browse tables, views, routines, columns, indexes, and comments from information_schema.",
+        "Exercise JSON functions, foreign keys, window functions, and EXPLAIN FORMAT=JSON."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/mysql",
+        "queryFile": "samples/projects/mysql/queries.sql",
+        "testCommand": "make db-verify DB=mysql"
+      },
+      "features": [
+        { "id": "mysql-json", "title": "JSON object storage and projection", "queryFile": "samples/projects/mysql/queries.sql" },
+        { "id": "mysql-window", "title": "Window ranking over sample orders", "queryFile": "samples/projects/mysql/queries.sql" },
+        { "id": "mysql-explain-json", "title": "EXPLAIN FORMAT=JSON", "queryFile": "samples/projects/mysql/queries.sql" }
+      ],
+      "resources": [
+        { "label": "MySQL Documentation", "url": "https://dev.mysql.com/doc/" },
+        { "label": "MySQL Forums", "url": "https://forums.mysql.com/" }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "label": "SQLite",
+      "family": "relational",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Run local file or in-memory SQLite queries without a server.",
+        "Use SQLite as a lightweight embedded sample DB for UI and metadata work.",
+        "Exercise JSON functions, foreign keys, FTS5, and PRAGMA-based inspection."
+      ],
+      "sampleProject": {
+        "kind": "embedded",
+        "directory": "samples/projects/sqlite",
+        "queryFile": "samples/projects/sqlite/queries.sql",
+        "testCommand": "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml sqlite"
+      },
+      "features": [
+        { "id": "sqlite-json", "title": "JSON profile fields", "queryFile": "samples/projects/sqlite/queries.sql" },
+        { "id": "sqlite-fts5", "title": "FTS5 virtual table search", "queryFile": "samples/projects/sqlite/queries.sql" },
+        { "id": "sqlite-foreign-keys", "title": "Foreign-key enforcement with PRAGMA", "queryFile": "samples/projects/sqlite/queries.sql" }
+      ],
+      "resources": [
+        { "label": "SQLite Documentation", "url": "https://www.sqlite.org/docs.html" }
+      ]
+    },
+    {
+      "id": "sqlserver",
+      "label": "SQL Server",
+      "family": "relational",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Connect over TDS through the pure-Rust tiberius adapter.",
+        "Run T-SQL, inspect SQL Server metadata, and verify precision-safe values.",
+        "Exercise JSON_VALUE, identity columns, TOP, OFFSET/FETCH, and window functions."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/sqlserver",
+        "queryFile": "samples/projects/sqlserver/queries.sql",
+        "testCommand": "make db-verify DB=sqlserver"
+      },
+      "features": [
+        { "id": "sqlserver-json", "title": "T-SQL JSON projection", "queryFile": "samples/projects/sqlserver/queries.sql" },
+        { "id": "sqlserver-pagination", "title": "OFFSET/FETCH pagination", "queryFile": "samples/projects/sqlserver/queries.sql" },
+        { "id": "sqlserver-window", "title": "Window ranking", "queryFile": "samples/projects/sqlserver/queries.sql" }
+      ],
+      "resources": [
+        { "label": "SQL Server Documentation", "url": "https://learn.microsoft.com/en-us/sql/?view=sql-server-ver17" }
+      ]
+    },
+    {
+      "id": "duckdb",
+      "label": "DuckDB",
+      "family": "analytical",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Run embedded analytical SQL without a server.",
+        "Use DuckDB as a local analytics engine for files, generated data, and result exploration.",
+        "Exercise struct values, summarize, window functions, and EXPLAIN."
+      ],
+      "sampleProject": {
+        "kind": "embedded",
+        "directory": "samples/projects/duckdb",
+        "queryFile": "samples/projects/duckdb/queries.sql",
+        "testCommand": "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --features duckdb duckdb_in_memory"
+      },
+      "features": [
+        { "id": "duckdb-struct", "title": "Struct result values", "queryFile": "samples/projects/duckdb/queries.sql" },
+        { "id": "duckdb-summarize", "title": "SUMMARIZE table profile", "queryFile": "samples/projects/duckdb/queries.sql" },
+        { "id": "duckdb-window", "title": "Analytical window ranking", "queryFile": "samples/projects/duckdb/queries.sql" }
+      ],
+      "resources": [
+        { "label": "DuckDB Documentation", "url": "https://duckdb.org/docs/stable/" }
+      ]
+    },
+    {
+      "id": "cockroachdb",
+      "label": "CockroachDB",
+      "family": "distributed-sql",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Connect through the Postgres wire adapter.",
+        "Run Cockroach SQL against a local single-node cluster.",
+        "Exercise unique_rowid, UPSERT, range inspection, and distributed SQL metadata."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/cockroachdb",
+        "queryFile": "samples/projects/cockroachdb/queries.sql",
+        "testCommand": "make db-verify DB=cockroachdb"
+      },
+      "features": [
+        { "id": "cockroach-unique-rowid", "title": "unique_rowid primary keys", "queryFile": "samples/projects/cockroachdb/queries.sql" },
+        { "id": "cockroach-upsert", "title": "UPSERT write path", "queryFile": "samples/projects/cockroachdb/queries.sql" },
+        { "id": "cockroach-ranges", "title": "SHOW RANGES inspection", "queryFile": "samples/projects/cockroachdb/queries.sql" }
+      ],
+      "resources": [
+        { "label": "CockroachDB Docs", "url": "https://www.cockroachlabs.com/docs/" }
+      ]
+    },
+    {
+      "id": "yugabytedb",
+      "label": "YugabyteDB",
+      "family": "distributed-sql",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Postgres-compatible YSQL wire path.",
+        "Run YSQL queries against a local single-node YugabyteDB sample.",
+        "Exercise split tablets and YSQL table-property inspection."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/yugabytedb",
+        "queryFile": "samples/projects/yugabytedb/queries.sql",
+        "testCommand": "make db-verify DB=yugabytedb"
+      },
+      "features": [
+        { "id": "yugabyte-ysql", "title": "Postgres-compatible YSQL", "queryFile": "samples/projects/yugabytedb/queries.sql" },
+        { "id": "yugabyte-tablets", "title": "SPLIT INTO tablets", "queryFile": "samples/projects/yugabytedb/queries.sql" }
+      ],
+      "resources": [
+        { "label": "YugabyteDB Docs", "url": "https://docs.yugabyte.com/" },
+        { "label": "YSQL API", "url": "https://docs.yugabyte.com/stable/api/ysql/" }
+      ]
+    },
+    {
+      "id": "redshift",
+      "label": "Amazon Redshift",
+      "family": "warehouse",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Postgres wire path to a real AWS cluster.",
+        "Run warehouse SQL and inspect basic result sets.",
+        "Track Redshift-specific auth, COPY/UNLOAD, external schema, and system-view work as cloud-only follow-ups."
+      ],
+      "features": [
+        { "id": "redshift-postgres-wire", "title": "Postgres wire connection to AWS Redshift", "referenceOnly": true },
+        { "id": "redshift-warehouse-sql", "title": "Warehouse SQL and system views", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Amazon Redshift Documentation", "url": "https://docs.aws.amazon.com/redshift/" }
+      ]
+    },
+    {
+      "id": "timescaledb",
+      "label": "TimescaleDB",
+      "family": "time-series",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Connect through the Postgres wire adapter.",
+        "Use TimescaleDB hypertables for time-series data.",
+        "Exercise time_bucket, hypertable metadata, and time-window aggregation."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/timescaledb",
+        "queryFile": "samples/projects/timescaledb/queries.sql",
+        "testCommand": "make db-verify DB=timescaledb"
+      },
+      "features": [
+        { "id": "timescale-hypertable", "title": "Hypertable creation", "queryFile": "samples/projects/timescaledb/queries.sql" },
+        { "id": "timescale-time-bucket", "title": "time_bucket aggregation", "queryFile": "samples/projects/timescaledb/queries.sql" },
+        { "id": "timescale-metadata", "title": "timescaledb_information metadata", "queryFile": "samples/projects/timescaledb/queries.sql" }
+      ],
+      "resources": [
+        { "label": "Timescale Documentation", "url": "https://docs.timescale.com/" }
+      ]
+    },
+    {
+      "id": "neon",
+      "label": "Neon",
+      "family": "relational",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Postgres wire path to hosted Neon databases.",
+        "Run normal Postgres SQL and browse standard Postgres metadata.",
+        "Track branch, compute, pooling, and serverless-specific UX as hosted follow-ups."
+      ],
+      "features": [
+        { "id": "neon-postgres-wire", "title": "Hosted Postgres wire connection", "referenceOnly": true },
+        { "id": "neon-branching", "title": "Branching and hosted workflow reference", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Neon Docs", "url": "https://neon.com/docs" }
+      ]
+    },
+    {
+      "id": "h2",
+      "label": "H2",
+      "family": "relational",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Use the experimental Postgres-wire path where H2 is configured for compatibility.",
+        "Run lightweight relational checks for Java-centric projects.",
+        "Track native H2 connection UX separately from the Postgres-wire experiment."
+      ],
+      "features": [
+        { "id": "h2-postgres-mode", "title": "Experimental Postgres-compatible access", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "H2 Documentation", "url": "https://h2database.com/html/main.html" }
+      ]
+    },
+    {
+      "id": "mariadb",
+      "label": "MariaDB",
+      "family": "relational",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Connect through the MySQL wire adapter.",
+        "Run MariaDB SQL against a local container that reuses the MySQL sample schema.",
+        "Exercise JSON_VALID, JSON_VALUE, recursive CTEs, and window functions."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/mariadb",
+        "queryFile": "samples/projects/mariadb/queries.sql",
+        "testCommand": "make db-verify DB=mariadb"
+      },
+      "features": [
+        { "id": "mariadb-json", "title": "JSON_VALID and JSON_VALUE", "queryFile": "samples/projects/mariadb/queries.sql" },
+        { "id": "mariadb-recursive-cte", "title": "Recursive CTE", "queryFile": "samples/projects/mariadb/queries.sql" },
+        { "id": "mariadb-window", "title": "Window aggregate", "queryFile": "samples/projects/mariadb/queries.sql" }
+      ],
+      "resources": [
+        { "label": "MariaDB Documentation", "url": "https://mariadb.com/kb/en/documentation/" }
+      ]
+    },
+    {
+      "id": "tidb",
+      "label": "TiDB",
+      "family": "distributed-sql",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the MySQL wire adapter.",
+        "Run TiDB SQL against a local unistore sample server.",
+        "Exercise tidb_version, shard_row_id_bits, and EXPLAIN ANALYZE."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/tidb",
+        "queryFile": "samples/projects/tidb/queries.sql",
+        "testCommand": "make db-verify DB=tidb"
+      },
+      "features": [
+        { "id": "tidb-version", "title": "tidb_version diagnostics", "queryFile": "samples/projects/tidb/queries.sql" },
+        { "id": "tidb-shard-row-id", "title": "shard_row_id_bits table option", "queryFile": "samples/projects/tidb/queries.sql" },
+        { "id": "tidb-explain-analyze", "title": "EXPLAIN ANALYZE", "queryFile": "samples/projects/tidb/queries.sql" }
+      ],
+      "resources": [
+        { "label": "TiDB Documentation", "url": "https://docs.pingcap.com/tidb/stable" }
+      ]
+    },
+    {
+      "id": "mongodb",
+      "label": "MongoDB",
+      "family": "document",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Connect through the MongoDB adapter behind Irodori's common Connection trait.",
+        "Query by collection name or a JSON object with collection and filter.",
+        "Project documents into a tabular result and inspect collection metadata."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/mongodb",
+        "queryFile": "samples/projects/mongodb/queries.js",
+        "testCommand": "make db-verify DB=mongodb"
+      },
+      "features": [
+        { "id": "mongodb-collection-query", "title": "Collection-name query", "queryFile": "samples/projects/mongodb/queries.js" },
+        { "id": "mongodb-filter-json", "title": "JSON filter query", "queryFile": "samples/projects/mongodb/queries.js" },
+        { "id": "mongodb-aggregation", "title": "Aggregation pipeline reference", "queryFile": "samples/projects/mongodb/queries.js" }
+      ],
+      "resources": [
+        { "label": "MongoDB Documentation", "url": "https://www.mongodb.com/docs/" }
+      ]
+    },
+    {
+      "id": "neo4j",
+      "label": "Neo4j",
+      "family": "graph",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Bolt adapter.",
+        "Run Cypher and return graph-like records through the result pipeline.",
+        "Use the Neo4j cheatsheet as the first graph-query reference."
+      ],
+      "features": [
+        { "id": "neo4j-cypher", "title": "Cypher query execution", "referenceOnly": true },
+        { "id": "neo4j-graph-results", "title": "Graph result shape planning", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Neo4j Docs", "url": "https://neo4j.com/docs/" },
+        { "label": "Cypher Manual", "url": "https://neo4j.com/docs/cypher-manual/current/" }
+      ]
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "family": "key-value",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Redis adapter.",
+        "Model key-value browsing, command execution, and result projection.",
+        "Track key scanning, TTL, streams, pub/sub, and RedisJSON as source-specific UX work."
+      ],
+      "features": [
+        { "id": "redis-command", "title": "Command-style key-value query", "referenceOnly": true },
+        { "id": "redis-key-browser", "title": "Key browser and TTL metadata", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Redis Docs", "url": "https://redis.io/docs/latest/" }
+      ]
+    },
+    {
+      "id": "cassandra",
+      "label": "Cassandra",
+      "family": "wide-column",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Cassandra/CQL adapter.",
+        "Run CQL and inspect keyspace/table metadata.",
+        "Track partition-key-aware query help, paging, clustering keys, and ScyllaDB compatibility."
+      ],
+      "features": [
+        { "id": "cassandra-cql", "title": "CQL query execution", "referenceOnly": true },
+        { "id": "cassandra-keyspace", "title": "Keyspace and table metadata", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Apache Cassandra Docs", "url": "https://cassandra.apache.org/doc/latest/" }
+      ]
+    },
+    {
+      "id": "clickhouse",
+      "label": "ClickHouse",
+      "family": "analytical",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the ClickHouse HTTP adapter.",
+        "Run analytical SQL and project HTTP results into Irodori tables.",
+        "Track MergeTree metadata, FORMAT handling, compression, and progress reporting."
+      ],
+      "features": [
+        { "id": "clickhouse-http", "title": "HTTP SQL adapter", "referenceOnly": true },
+        { "id": "clickhouse-mergetree", "title": "MergeTree metadata planning", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "ClickHouse Docs", "url": "https://clickhouse.com/docs/" }
+      ]
+    },
+    {
+      "id": "snowflake",
+      "label": "Snowflake",
+      "family": "warehouse",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Snowflake HTTP adapter subset.",
+        "Run warehouse SQL and inspect tabular results.",
+        "Track role, warehouse, database switching, SSO, OAuth, MFA, and key-pair auth."
+      ],
+      "features": [
+        { "id": "snowflake-http", "title": "HTTP SQL API subset", "referenceOnly": true },
+        { "id": "snowflake-auth", "title": "Warehouse auth modes", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Snowflake Documentation", "url": "https://docs.snowflake.com/" }
+      ]
+    },
+    {
+      "id": "bigquery",
+      "label": "BigQuery",
+      "family": "warehouse",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the BigQuery HTTP adapter.",
+        "Run GoogleSQL and project query-job results.",
+        "Track project/dataset browsing, job polling, location, billing, and IAM UX."
+      ],
+      "features": [
+        { "id": "bigquery-google-sql", "title": "GoogleSQL query jobs", "referenceOnly": true },
+        { "id": "bigquery-dataset-browser", "title": "Project and dataset browsing", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "BigQuery Documentation", "url": "https://cloud.google.com/bigquery/docs" }
+      ]
+    },
+    {
+      "id": "bigtable",
+      "label": "Bigtable",
+      "family": "wide-column",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the Bigtable adapter.",
+        "Model instance/table/key-range browsing.",
+        "Track row-key scans, column families, filters, and IAM/project configuration."
+      ],
+      "features": [
+        { "id": "bigtable-table-browser", "title": "Instance and table browsing", "referenceOnly": true },
+        { "id": "bigtable-row-key", "title": "Row-key scan workflow", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Bigtable Documentation", "url": "https://cloud.google.com/bigtable/docs" }
+      ]
+    },
+    {
+      "id": "influxdb",
+      "label": "InfluxDB",
+      "family": "time-series",
+      "irodoriStatus": "wired",
+      "whatYouCanDo": [
+        "Connect through the InfluxDB HTTP adapter.",
+        "Treat InfluxDB 3 SQL as a first-class time-series query model.",
+        "Track bucket/database browsing, time-range helpers, downsampling, and tag/field completion."
+      ],
+      "features": [
+        { "id": "influxdb-sql", "title": "InfluxDB 3 SQL", "referenceOnly": true },
+        { "id": "influxdb-time-series", "title": "Time-series frame planning", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "InfluxDB Documentation", "url": "https://docs.influxdata.com/" },
+        { "label": "InfluxDB 3 SQL", "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/" }
+      ]
+    },
+    {
+      "id": "oracle",
+      "label": "Oracle Database",
+      "family": "relational",
+      "irodoriStatus": "verified",
+      "whatYouCanDo": [
+        "Connect through the pure-Rust thin TNS path without Oracle Instant Client.",
+        "Run Oracle SQL and browse tables/columns through the adapter.",
+        "Exercise JSON_VALUE, identity columns, FETCH FIRST, analytic functions, and DBMS_XPLAN."
+      ],
+      "sampleProject": {
+        "kind": "container",
+        "directory": "samples/projects/oracle",
+        "queryFile": "samples/projects/oracle/queries.sql",
+        "testCommand": "make db-verify DB=oracle"
+      },
+      "features": [
+        { "id": "oracle-thin", "title": "Thin TNS connection", "queryFile": "samples/projects/oracle/queries.sql" },
+        { "id": "oracle-json", "title": "Oracle SQL/JSON projection", "queryFile": "samples/projects/oracle/queries.sql" },
+        { "id": "oracle-explain-plan", "title": "DBMS_XPLAN explain output", "queryFile": "samples/projects/oracle/queries.sql" }
+      ],
+      "resources": [
+        { "label": "Oracle Database Documentation", "url": "https://docs.oracle.com/en/database/oracle/oracle-database/" }
+      ]
+    },
+    {
+      "id": "memgraph",
+      "label": "Memgraph",
+      "family": "graph",
+      "irodoriStatus": "recognized_no_connector",
+      "whatYouCanDo": [
+        "Currently recognized by the engine registry but rejected at connect time.",
+        "Expected to reuse much of the Neo4j/Bolt/Cypher work.",
+        "Track Memgraph-specific metadata, procedures, and verification after routing is implemented."
+      ],
+      "features": [
+        { "id": "memgraph-bolt", "title": "Bolt/Cypher connector reuse candidate", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Memgraph Docs", "url": "https://memgraph.com/docs" }
+      ]
+    },
+    {
+      "id": "qdrant",
+      "label": "Qdrant",
+      "family": "vector",
+      "irodoriStatus": "recognized_no_connector",
+      "whatYouCanDo": [
+        "Currently recognized by the engine registry but rejected at connect time.",
+        "Needs a vector-source contract before it can be a production connector.",
+        "Track collection browsing, similarity search, payload filters, and vector-result visualization."
+      ],
+      "features": [
+        { "id": "qdrant-vector-search", "title": "Vector collection and search model", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Qdrant Documentation", "url": "https://qdrant.tech/documentation/" }
+      ]
+    },
+    {
+      "id": "milvus",
+      "label": "Milvus",
+      "family": "vector",
+      "irodoriStatus": "recognized_no_connector",
+      "whatYouCanDo": [
+        "Currently recognized by the engine registry but rejected at connect time.",
+        "Needs a vector-source contract before it can be a production connector.",
+        "Track collection/schema browsing, index metadata, similarity search, and hybrid filtering."
+      ],
+      "features": [
+        { "id": "milvus-vector-search", "title": "Vector search and index metadata model", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Milvus Documentation", "url": "https://milvus.io/docs" }
+      ]
+    },
+    {
+      "id": "pinecone",
+      "label": "Pinecone",
+      "family": "vector",
+      "irodoriStatus": "recognized_no_connector",
+      "whatYouCanDo": [
+        "Currently recognized by the engine registry but rejected at connect time.",
+        "Needs an HTTP vector-source contract before it can be a production connector.",
+        "Track index browsing, namespaces, metadata filters, and similarity search result display."
+      ],
+      "features": [
+        { "id": "pinecone-vector-search", "title": "Hosted vector index workflow", "referenceOnly": true }
+      ],
+      "resources": [
+        { "label": "Pinecone Documentation", "url": "https://docs.pinecone.io/" }
+      ]
+    }
+  ]
+}

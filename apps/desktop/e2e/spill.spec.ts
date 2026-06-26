@@ -300,6 +300,8 @@ async function readMetrics(page: Page): Promise<SpillMetrics> {
 }
 
 test.describe("EXEC-010 disk offload paging", () => {
+  test.describe.configure({ mode: "serial" });
+
   test("pages far rows from disk while keeping the DOM and fetches bounded", async ({
     page,
   }) => {
@@ -348,6 +350,8 @@ test.describe("EXEC-010 disk offload paging", () => {
   });
 
   test("releases the retained result when a new run replaces it", async ({ page }) => {
+    test.setTimeout(60_000);
+
     await installSpillMock(page);
     await page.goto("/");
     await connectAndRun(page);

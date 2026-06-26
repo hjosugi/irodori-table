@@ -42,6 +42,22 @@ describe("keybinding resolver", () => {
         chord: "Mod+Shift+P",
       }),
     ).toMatchObject({ kind: "command", commandId: "palette.open" });
+
+    expect(
+      resolveKeybinding({
+        keymap: defaultKeymap,
+        scope: "grid",
+        chord: "Mod+Z",
+      }),
+    ).toMatchObject({ kind: "command", commandId: "edit.undo" });
+
+    expect(
+      resolveKeybinding({
+        keymap: defaultKeymap,
+        scope: "editor",
+        chord: "Mod+Z",
+      }),
+    ).toMatchObject({ kind: "none" });
   });
 
   it("tracks two-chord sequences", () => {
