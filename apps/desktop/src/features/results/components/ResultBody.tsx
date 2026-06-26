@@ -21,6 +21,7 @@ import { RowDetailSidebar } from "@/RowDetailSidebar";
 import type { GraphResultModel } from "../graph-result";
 import type { EditingCell, ResultMode, SelectedCell } from "../types";
 import { GraphResultView } from "./GraphResultView";
+import { WebGlResultGrid } from "./WebGlResultGrid";
 
 export function ResultBody({
   structureObject,
@@ -38,6 +39,8 @@ export function ResultBody({
   gridRef,
   gridRowStyle,
   gridTotalWidth,
+  gridRowHeight,
+  gridColumnWidth,
   leftColumnPad,
   rightColumnPad,
   topPad,
@@ -84,6 +87,8 @@ export function ResultBody({
   gridRef: RefObject<HTMLDivElement | null>;
   gridRowStyle: CSSProperties;
   gridTotalWidth: number;
+  gridRowHeight: number;
+  gridColumnWidth: number;
   leftColumnPad: number;
   rightColumnPad: number;
   topPad: number;
@@ -135,6 +140,48 @@ export function ResultBody({
 
   if (resultMode === "graph" && graphModel) {
     return <GraphResultView model={graphModel} />;
+  }
+
+  if (resultMode === "webgl") {
+    return (
+      <div className="result-body">
+        <WebGlResultGrid
+          columns={resultColumns}
+          totalRows={totalRows}
+          visibleRows={visibleRows}
+          visibleColumnIndexes={visibleColumnIndexes}
+          firstVisible={firstVisible}
+          rowHeight={gridRowHeight}
+          columnWidth={gridColumnWidth}
+          gridRef={gridRef}
+          selectedRowKey={selectedRowKey}
+          selectedCell={selectedCell}
+          sortRuleByColumn={sortRuleByColumn}
+          sortRules={sortRules}
+          running={running}
+          filtersActive={filtersActive}
+          unfilteredRowCount={unfilteredRowCount}
+          onGridScroll={onGridScroll}
+          onGridKeyDown={onGridKeyDown}
+          onGridPaste={onGridPaste}
+          onGridCopy={onGridCopy}
+          onToggleSort={onToggleSort}
+          onSelectGridRow={onSelectGridRow}
+          onSelectGridCell={onSelectGridCell}
+        />
+        {selectedRowValues ? (
+          <RowDetailSidebar
+            columns={resultColumns}
+            values={selectedRowValues}
+            table={rowDetailTable}
+            metadata={activeMetadata}
+            engine={editorEngine}
+            connectionId={activeConnectionId}
+            onClose={onCloseRowDetail}
+          />
+        ) : null}
+      </div>
+    );
   }
 
   return (

@@ -996,6 +996,7 @@ function App() {
     return model.nodes.length > 0 || model.edges.length > 0 ? model : null;
   }, [activeResult, editorEngine, spillInfo]);
   const graphAvailable = Boolean(graphResultModel);
+  const webGlAvailable = Boolean(activeResult && resultColumns.length > 0);
   // Resolve which table the active result came from so foreign-key cells become
   // navigable in the row-detail drawer. Falls back to column matching; a null table
   // simply disables FK links while the rest of the detail view still works.
@@ -1116,7 +1117,10 @@ function App() {
     if (resultMode === "graph" && !graphAvailable) {
       setResultMode("data");
     }
-  }, [graphAvailable, resultMode, setResultMode]);
+    if (resultMode === "webgl" && (!webGlAvailable || editMode)) {
+      setResultMode("data");
+    }
+  }, [editMode, graphAvailable, resultMode, setResultMode, webGlAvailable]);
 
   // EXEC-010: fetch the disk pages the visible range needs, ingest them into the
   // LRU source, and bump the version so the grid repaints with real cells. The LRU
@@ -3628,6 +3632,7 @@ function App() {
             resultMode={resultMode}
             graphModel={graphResultModel}
             graphAvailable={graphAvailable}
+            webGlAvailable={webGlAvailable}
             resultSets={resultSets}
             activeResult={activeResult}
             activeResultIndex={activeResultIndexView}
@@ -3656,6 +3661,8 @@ function App() {
             importFileRef={importFileRef}
             gridRowStyle={gridRowStyle}
             gridTotalWidth={gridTotalWidth}
+            gridRowHeight={GRID_ROW_HEIGHT}
+            gridColumnWidth={GRID_COLUMN_WIDTH}
             leftColumnPad={leftColumnPad}
             rightColumnPad={rightColumnPad}
             topPad={topPad}

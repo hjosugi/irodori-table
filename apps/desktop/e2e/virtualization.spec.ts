@@ -438,6 +438,24 @@ async function scrollGridTo(
   );
 }
 
+async function nonBlankCanvasPixels(canvasLocator: Locator) {
+  return canvasLocator.evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const context = canvas.getContext("2d");
+    if (!context || canvas.width === 0 || canvas.height === 0) {
+      return 0;
+    }
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let nonBlank = 0;
+    for (let index = 3; index < pixels.length; index += 4) {
+      if (pixels[index] > 0) {
+        nonBlank += 1;
+      }
+    }
+    return nonBlank;
+  });
+}
+
 async function expectRenderedRowsWithinBudget(
   grid: Locator,
   rows: Locator,
@@ -639,6 +657,51 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
 
     await runFixtureQuery(page, 2);
     await expectGridScrollPosition(grid, { top: 0, left: 0 });
+  });
+
+  test("WebGL result mode paints large results without DOM cells", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    await installVirtualizationMock(page);
+    await page.goto("/");
+    const webglSupported = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      return Boolean(
+        canvas.getContext("webgl2") ?? canvas.getContext("webgl"),
+      );
+    });
+    test.skip(!webglSupported, "Chromium did not expose WebGL in this run");
+
+    await connectMockDatabase(page);
+    await runFixtureQuery(page, 1);
+    await waitForGridPaint();
+
+    const webGlButton = page.getByRole("button", {
+      name: "WebGL",
+      exact: true,
+    });
+    await expect(webGlButton).toBeVisible();
+    await webGlButton.click();
+
+    const grid = page.locator(".webgl-result-grid");
+    await expect(grid).toBeVisible();
+    await expect(grid).toHaveAttribute("aria-rowcount", "10001");
+    await expect(grid.locator("canvas")).toHaveCount(2);
+    await expect(grid.locator(".grid-row")).toHaveCount(0);
+
+    await expect
+      .poll(() => nonBlankCanvasPixels(grid.locator("canvas").nth(1)))
+      .toBeGreaterThan(0);
+
+    await scrollGridTo(grid, {
+      top: 7_500 * GRID_ROW_HEIGHT_PX,
+      left: 2 * GRID_COLUMN_WIDTH_PX,
+    });
+    await expect
+      .poll(() => nonBlankCanvasPixels(grid.locator("canvas").nth(1)))
+      .toBeGreaterThan(0);
   });
 
   test("EXEC-004B million-row logical fixture stays bounded while scrolling", async ({

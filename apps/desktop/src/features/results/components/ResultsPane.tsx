@@ -49,6 +49,7 @@ type ResultsPaneProps = {
   resultMode: ResultMode;
   graphModel: GraphResultModel | null;
   graphAvailable: boolean;
+  webGlAvailable: boolean;
   resultSets: QueryResultSet[];
   activeResult: QueryResultSet | null;
   activeResultIndex: number;
@@ -77,6 +78,8 @@ type ResultsPaneProps = {
   importFileRef: RefObject<HTMLInputElement | null>;
   gridRowStyle: CSSProperties;
   gridTotalWidth: number;
+  gridRowHeight: number;
+  gridColumnWidth: number;
   leftColumnPad: number;
   rightColumnPad: number;
   topPad: number;
@@ -145,6 +148,7 @@ export function ResultsPane({
   resultMode,
   graphModel,
   graphAvailable,
+  webGlAvailable,
   resultSets,
   activeResult,
   activeResultIndex,
@@ -173,6 +177,8 @@ export function ResultsPane({
   importFileRef,
   gridRowStyle,
   gridTotalWidth,
+  gridRowHeight,
+  gridColumnWidth,
   leftColumnPad,
   rightColumnPad,
   topPad,
@@ -230,7 +236,7 @@ export function ResultsPane({
     <section className={running ? "results-pane is-running" : "results-pane"}>
       <div className="results-header">
         <div className="results-title">
-          {tableViewObject || graphAvailable ? (
+          {tableViewObject || graphAvailable || webGlAvailable ? (
             <div className="segmented-control result-mode-toggle">
               <button
                 type="button"
@@ -239,6 +245,16 @@ export function ResultsPane({
               >
                 Data
               </button>
+              {webGlAvailable ? (
+                <button
+                  type="button"
+                  className={resultMode === "webgl" ? "active" : undefined}
+                  disabled={editMode}
+                  onClick={() => onResultModeChange("webgl")}
+                >
+                  WebGL
+                </button>
+              ) : null}
               {graphAvailable ? (
                 <button
                   type="button"
@@ -490,6 +506,8 @@ export function ResultsPane({
         gridRef={gridRef}
         gridRowStyle={gridRowStyle}
         gridTotalWidth={gridTotalWidth}
+        gridRowHeight={gridRowHeight}
+        gridColumnWidth={gridColumnWidth}
         leftColumnPad={leftColumnPad}
         rightColumnPad={rightColumnPad}
         topPad={topPad}
