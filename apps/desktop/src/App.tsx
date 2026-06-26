@@ -61,6 +61,7 @@ import { AboutDialog } from "./app/AboutDialog";
 import { ActionToast, type ActionNotice } from "./app/ActionToast";
 import { CommandPalette } from "./app/CommandPalette";
 import { GitDrawer, useGitStore } from "./features/git";
+import { ResultBody } from "./features/results";
 import {
   defaultConnectionColor,
   describeConnection,
@@ -210,7 +211,6 @@ import {
   upsertCustomThemeEntry,
   type ThemeKind,
 } from "./theme";
-import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
 import "./App.css";
@@ -4416,346 +4416,53 @@ function App() {
                 ) : null}
               </div>
             ) : null}
-            {structureObject ? (
-              <div className="structure-view">
-                <section className="structure-section">
-                  <header>
-                    <strong>{qualifiedObjectName(editorEngine, structureObject)}</strong>
-                    <span>
-                      {structureObject.columns.length} columns
-                      {structureObject.rowEstimate
-                        ? ` · ~${toCount(structureObject.rowEstimate)} rows`
-                        : ""}
-                    </span>
-                  </header>
-                  <div className="structure-table-wrap">
-                    <table className="structure-table">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Type</th>
-                          <th>Null</th>
-                          <th>Key</th>
-                          <th>Default</th>
-                          <th>Comment</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {structureObject.columns.map((column) => (
-                          <tr key={`${column.ordinal}:${column.name}`}>
-                            <td>{column.name}</td>
-                            <td>{column.dataType}</td>
-                            <td>{column.nullable ? "YES" : "NO"}</td>
-                            <td>
-                              {structureObject.primaryKey.includes(column.name)
-                                ? "PK"
-                                : ""}
-                            </td>
-                            <td>{column.defaultValue || ""}</td>
-                            <td>{column.comment || ""}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-                <section className="structure-side">
-                  <div className="structure-card">
-                    <strong>Primary Key</strong>
-                    <span>
-                      {structureObject.primaryKey.length > 0
-                        ? structureObject.primaryKey.join(", ")
-                        : "No primary key"}
-                    </span>
-                  </div>
-                  <div className="structure-card">
-                    <strong>Indexes</strong>
-                    {structureObject.indexes.length > 0 ? (
-                      structureObject.indexes.map((index) => (
-                        <span key={index.name}>
-                          {index.name || "(unnamed)"} ·{" "}
-                          {index.unique ? "unique" : "index"} ·{" "}
-                          {index.columns.join(", ")}
-                        </span>
-                      ))
-                    ) : (
-                      <span>No indexes loaded</span>
-                    )}
-                  </div>
-                  <div className="structure-card">
-                    <strong>Foreign Keys</strong>
-                    {structureObject.foreignKeys.length > 0 ? (
-                      structureObject.foreignKeys.map((fk, index) => (
-                        <span key={`${fk.referencesTable}:${index}`}>
-                          {fk.columns.join(", ")} -&gt;{" "}
-                          {[fk.referencesSchema, fk.referencesTable]
-                            .filter(Boolean)
-                            .join(".")}
-                          ({fk.referencesColumns.join(", ")})
-                        </span>
-                      ))
-                    ) : (
-                      <span>No outgoing foreign keys</span>
-                    )}
-                  </div>
-                  {structureObject.ddl ? (
-                    <pre className="sql-preview structure-ddl">
-                      {structureObject.ddl}
-                    </pre>
-                  ) : null}
-                </section>
-              </div>
-            ) : (
-            <div className="result-body">
-              <div
-                className="result-grid"
-                role="table"
-                aria-label="Query result"
-                aria-rowcount={totalRows + 1}
-                aria-colcount={resultColumns.length + (editMode ? 1 : 0)}
-                ref={gridRef}
-                tabIndex={0}
-                onScroll={onGridScroll}
-                onKeyDown={onGridKeyDown}
-                onPaste={onGridPaste}
-                onCopy={onGridCopy}
-              >
-                <div
-                  className="grid-row header"
-                  role="row"
-                  style={gridRowStyle}
-                >
-                  {editMode ? (
-                    <span className="grid-gutter" aria-hidden="true" />
-                  ) : null}
-                  {leftColumnPad > 0 ? (
-                    <span className="grid-col-pad" aria-hidden="true" />
-                  ) : null}
-                  {visibleColumnIndexes.map((colIndex) => {
-                    const column = resultColumns[colIndex];
-                    const sortRule = sortRuleByColumn.get(colIndex);
-                    return (
-                      <span
-                        role="columnheader"
-                        aria-colindex={editMode ? colIndex + 2 : colIndex + 1}
-                        key={`${column}-${colIndex}`}
-                        className={`sortable${sortRule ? " sorted" : ""}`}
-                        title="Click to sort. Shift-click to add a sort key."
-                        onClick={(event) =>
-                          toggleSort(colIndex, event.shiftKey)
-                        }
-                      >
-                        <b className="column-label">{column}</b>
-                        {sortRule ? (
-                          <em className="sort-indicator">
-                            {sortRule.direction === "asc" ? "▲" : "▼"}
-                            {sortRules.length > 1 ? (
-                              <small>{sortRule.priority}</small>
-                            ) : null}
-                          </em>
-                        ) : null}
-                      </span>
-                    );
-                  })}
-                  {rightColumnPad > 0 ? (
-                    <span className="grid-col-pad" aria-hidden="true" />
-                  ) : null}
-                </div>
-                {topPad > 0 ? (
-                  <div
-                    className="grid-pad"
-                    style={{
-                      height: topPad,
-                      minWidth: gridTotalWidth,
-                      width: gridTotalWidth,
-                    }}
-                    aria-hidden="true"
-                  />
-                ) : null}
-                {running && totalRows === 0 ? (
-                  <div
-                    className="grid-state loading"
-                    role="status"
-                    style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
-                  >
-                    Running query...
-                  </div>
-                ) : null}
-                {!running && totalRows === 0 ? (
-                  <div
-                    className="grid-state"
-                    role="row"
-                    style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
-                  >
-                    {filtersActive && unfilteredRowCount > 0
-                      ? "No rows match filters"
-                      : "No rows returned"}
-                  </div>
-                ) : null}
-                {visibleRows.map((row, visibleRowIndex) => (
-                  <div
-                    className={`grid-row${row.state === "new" ? " row-new" : row.state === "edited" ? " row-edited" : ""}${selectedRowKey === row.key ? " row-selected" : ""}`}
-                    role="row"
-                    aria-selected={selectedRowKey === row.key}
-                    aria-rowindex={firstVisible + visibleRowIndex + 2}
-                    key={row.key}
-                    tabIndex={0}
-                    style={gridRowStyle}
-                    onClick={() => selectGridRow(row.key, true)}
-                    onFocus={() => selectGridRow(row.key)}
-                  >
-                    {editMode ? (
-                      <button
-                        className="grid-gutter delete-row"
-                        type="button"
-                        title="Delete row"
-                        aria-label="Delete row"
-                        onClick={() => deleteRow(row.origin)}
-                      >
-                        ×
-                      </button>
-                    ) : null}
-                    {leftColumnPad > 0 ? (
-                      <span className="grid-col-pad" aria-hidden="true" />
-                    ) : null}
-                    {visibleColumnIndexes.map((cellIndex) => {
-                      const cell = row.cells[cellIndex] ?? "";
-                      const isEditing =
-                        editingCell?.key === row.key &&
-                        editingCell.col === cellIndex;
-                      const isEdited =
-                        row.origin.kind === "orig" &&
-                        cellEdits.has(`o${row.origin.index}:${cellIndex}`);
-                      const isSelected =
-                        selectedCell?.key === row.key &&
-                        selectedCell.col === cellIndex;
-                      const isNullCell = cell === "NULL";
-                      const isEmptyCell = cell === "";
-                      const cellClass = [
-                        isEdited ? "cell-edited" : "",
-                        isSelected ? "cell-selected" : "",
-                        isNullCell ? "cell-null" : "",
-                        isEmptyCell ? "cell-empty" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ");
-                      return (
-                        <span
-                          role="cell"
-                          key={cellIndex}
-                          aria-colindex={
-                            editMode ? cellIndex + 2 : cellIndex + 1
-                          }
-                          aria-selected={isSelected}
-                          className={cellClass || undefined}
-                          title={isEmptyCell ? "EMPTY string" : cell}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            selectGridCell(row.key, cellIndex);
-                          }}
-                          onDoubleClick={() => {
-                            beginCellEdit(row.key, cellIndex);
-                          }}
-                          onPaste={(event) => {
-                            if (!editMode) {
-                              return;
-                            }
-                            event.preventDefault();
-                            pasteTableAt(
-                              row.origin,
-                              cellIndex,
-                              event.clipboardData.getData("text"),
-                            );
-                          }}
-                        >
-                          {isEditing ? (
-                            <div className="cell-editor">
-                              <input
-                                className="cell-input"
-                                autoFocus
-                                defaultValue={editingCell?.seed ?? cell}
-                                onBlur={(event) => {
-                                  setCellValue(
-                                    row.origin,
-                                    cellIndex,
-                                    event.target.value,
-                                  );
-                                  setEditingCell(null);
-                                }}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    setCellValue(
-                                      row.origin,
-                                      cellIndex,
-                                      event.currentTarget.value,
-                                    );
-                                    setEditingCell(null);
-                                  } else if (event.key === "Escape") {
-                                    setEditingCell(null);
-                                  } else if (
-                                    event.key === "Backspace" &&
-                                    (event.ctrlKey || event.metaKey)
-                                  ) {
-                                    event.preventDefault();
-                                    setCellValue(row.origin, cellIndex, null);
-                                    setEditingCell(null);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                title="Set NULL"
-                                onMouseDown={(event) => event.preventDefault()}
-                                onClick={() => {
-                                  setCellValue(row.origin, cellIndex, null);
-                                  setEditingCell(null);
-                                }}
-                              >
-                                NULL
-                              </button>
-                            </div>
-                          ) : (
-                            isEmptyCell ? (
-                              <em className="cell-token">EMPTY</em>
-                            ) : isNullCell ? (
-                              <em className="cell-token">NULL</em>
-                            ) : (
-                              cell
-                            )
-                          )}
-                        </span>
-                      );
-                    })}
-                    {rightColumnPad > 0 ? (
-                      <span className="grid-col-pad" aria-hidden="true" />
-                    ) : null}
-                  </div>
-                ))}
-                {bottomPad > 0 ? (
-                  <div
-                    className="grid-pad"
-                    style={{
-                      height: bottomPad,
-                      minWidth: gridTotalWidth,
-                      width: gridTotalWidth,
-                    }}
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </div>
-              {selectedRowValues ? (
-                <RowDetailSidebar
-                  columns={resultColumns}
-                  values={selectedRowValues}
-                  table={rowDetailTable}
-                  metadata={activeMetadata}
-                  engine={editorEngine}
-                  connectionId={activeConnectionId}
-                  onClose={() => setSelectedRowKey(null)}
-                />
-              ) : null}
-            </div>
-            )}
+            <ResultBody
+              structureObject={structureObject}
+              editorEngine={editorEngine}
+              formatObjectName={(object) =>
+                qualifiedObjectName(editorEngine, object)
+              }
+              formatCount={toCount}
+              editMode={editMode}
+              running={running}
+              filtersActive={filtersActive}
+              unfilteredRowCount={unfilteredRowCount}
+              totalRows={totalRows}
+              resultColumns={resultColumns}
+              gridRef={gridRef}
+              gridRowStyle={gridRowStyle}
+              gridTotalWidth={gridTotalWidth}
+              leftColumnPad={leftColumnPad}
+              rightColumnPad={rightColumnPad}
+              topPad={topPad}
+              bottomPad={bottomPad}
+              firstVisible={firstVisible}
+              visibleColumnIndexes={visibleColumnIndexes}
+              visibleRows={visibleRows}
+              sortRuleByColumn={sortRuleByColumn}
+              sortRules={sortRules}
+              selectedRowKey={selectedRowKey}
+              selectedCell={selectedCell}
+              editingCell={editingCell}
+              cellEdits={cellEdits}
+              selectedRowValues={selectedRowValues}
+              rowDetailTable={rowDetailTable}
+              activeMetadata={activeMetadata}
+              activeConnectionId={activeConnectionId}
+              onGridScroll={onGridScroll}
+              onGridKeyDown={onGridKeyDown}
+              onGridPaste={onGridPaste}
+              onGridCopy={onGridCopy}
+              onToggleSort={toggleSort}
+              onSelectGridRow={selectGridRow}
+              onSelectGridCell={selectGridCell}
+              onBeginCellEdit={beginCellEdit}
+              onSetCellValue={setCellValue}
+              onDeleteRow={deleteRow}
+              onPasteTableAt={pasteTableAt}
+              onEndCellEdit={() => setEditingCell(null)}
+              onCloseRowDetail={() => setSelectedRowKey(null)}
+            />
           </section>
         </section>
       </div>
