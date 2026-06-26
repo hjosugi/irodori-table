@@ -22,6 +22,7 @@ type VirtualizedResultFixture = {
   readonly columns: readonly string[];
   readonly rowCount: number;
   readonly rowsPerBatch: number;
+  readonly logicalRows?: boolean;
 };
 
 type VirtualizationMockBackend = {
@@ -47,10 +48,22 @@ type MockTauriInternals = {
   unregisterCallback: (id: number) => void;
 };
 
+type VirtualizationMetrics = {
+  logicalRows: boolean;
+  batches: number;
+  sentRows: number;
+  createdLogicalRows: number;
+  materializedArrayRows: number;
+  materializedArrayCells: number;
+  logicalRowMapCalls: number;
+  logicalCellReads: number;
+};
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: MockTauriInternals;
     __IRODORI_VIRTUALIZATION_DONE_COUNT__?: number;
+    __IRODORI_VIRTUALIZATION_METRICS__?: VirtualizationMetrics;
   }
 }
 
@@ -64,6 +77,13 @@ const wideTableFixture = {
   columns: Array.from({ length: 2_000 }, (_, index) => `col_${index}`),
   rowCount: 1_000,
   rowsPerBatch: 100,
+} satisfies VirtualizedResultFixture;
+
+const millionRowTableFixture = {
+  columns: Array.from({ length: 128 }, (_, index) => `col_${index}`),
+  rowCount: 1_000_000,
+  rowsPerBatch: 10_000,
+  logicalRows: true,
 } satisfies VirtualizedResultFixture;
 
 function createVirtualizationMockBackend(
@@ -119,12 +139,15 @@ function createVirtualizationMockBackend(
   };
 }
 
-function virtualRowBudget(viewportHeight: number) {
+function virtualRowBudget(
+  viewportHeight: number,
+  rowCount = hugeTableFixture.rowCount,
+) {
   // The app initializes with a 480px grid viewport before ResizeObserver reports.
   // Budget against that fallback as well as the measured height so early renders
   // are still bounded without depending on a precise browser layout tick.
   return calculateResultGridVirtualRowWindow({
-    rowCount: hugeTableFixture.rowCount,
+    rowCount,
     scrollTop: 0,
     viewportHeight: Math.max(viewportHeight, GRID_INITIAL_VIEWPORT_HEIGHT_PX),
     rowHeight: GRID_ROW_HEIGHT_PX,
@@ -153,8 +176,11 @@ function virtualColumnBudget(
   });
 }
 
-function expectedFirstRowText(scrollTop: number) {
-  return `row_${expectedFirstRowIndex(scrollTop, hugeTableFixture.rowCount)}`;
+function expectedFirstRowText(
+  scrollTop: number,
+  rowCount = hugeTableFixture.rowCount,
+) {
+  return `row_${expectedFirstRowIndex(scrollTop, rowCount)}`;
 }
 
 function expectedFirstRowIndex(scrollTop: number, rowCount: number) {
@@ -196,21 +222,79 @@ async function installVirtualizationMock(
         : "local-pg";
     };
 
-    const rowFor = (rowIndex: number) =>
-      fixture.columns.map((column, columnIndex) =>
-        columnIndex === 0 ? `row_${rowIndex}` : `${column}_${rowIndex}`,
-      );
+    const metrics = {
+      logicalRows: fixture.logicalRows === true,
+      batches: 0,
+      sentRows: 0,
+      createdLogicalRows: 0,
+      materializedArrayRows: 0,
+      materializedArrayCells: 0,
+      logicalRowMapCalls: 0,
+      logicalCellReads: 0,
+    };
 
-    const rowsFrom = (startIndex: number, count: number) =>
-      Array.from(
-        {
-          length: Math.max(
-            0,
-            Math.min(count, fixture.rowCount - startIndex),
-          ),
-        },
-        (_, offset) => rowFor(startIndex + offset),
+    const cellFor = (rowIndex: number, columnIndex: number) =>
+      columnIndex === 0
+        ? `row_${rowIndex}`
+        : `${fixture.columns[columnIndex] ?? `col_${columnIndex}`}_${rowIndex}`;
+
+    const materializedRowFor = (rowIndex: number) => {
+      metrics.materializedArrayRows += 1;
+      metrics.materializedArrayCells += fixture.columns.length;
+      return fixture.columns.map((_, columnIndex) =>
+        cellFor(rowIndex, columnIndex),
       );
+    };
+
+    const logicalRowFor = (rowIndex: number) => {
+      metrics.createdLogicalRows += 1;
+      return {
+        length: fixture.columns.length,
+        map<T>(
+          callback: (value: string, columnIndex: number, row: unknown) => T,
+          thisArg?: unknown,
+        ) {
+          metrics.logicalRowMapCalls += 1;
+          const cells: T[] = [];
+          for (
+            let columnIndex = 0;
+            columnIndex < fixture.columns.length;
+            columnIndex += 1
+          ) {
+            metrics.logicalCellReads += 1;
+            cells.push(
+              callback.call(
+                thisArg,
+                cellFor(rowIndex, columnIndex),
+                columnIndex,
+                this,
+              ),
+            );
+          }
+          return cells;
+        },
+      };
+    };
+
+    const rowsFrom = (startIndex: number, count: number) => {
+      const length = Math.max(0, Math.min(count, fixture.rowCount - startIndex));
+      metrics.batches += 1;
+      metrics.sentRows += length;
+
+      if (fixture.logicalRows) {
+        return {
+          *[Symbol.iterator]() {
+            for (let offset = 0; offset < length; offset += 1) {
+              yield logicalRowFor(startIndex + offset);
+            }
+          },
+        } as unknown as unknown[][];
+      }
+
+      return Array.from({ length }, (_, offset) =>
+        materializedRowFor(startIndex + offset),
+      );
+    };
 
     const streamRows = async (channel: MockStreamChannel) => {
       for (
@@ -223,7 +307,9 @@ async function installVirtualizationMock(
           resultSetIndex: 0,
           rows: rowsFrom(rowIndex, fixture.rowsPerBatch),
         });
-        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        if (!fixture.logicalRows) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        }
       }
     };
 
@@ -231,6 +317,7 @@ async function installVirtualizationMock(
     let nextCallbackId = 1;
 
     window.__IRODORI_VIRTUALIZATION_DONE_COUNT__ = 0;
+    window.__IRODORI_VIRTUALIZATION_METRICS__ = metrics;
     window.__TAURI_INTERNALS__ = {
       invoke: async (command, args) => {
         switch (command) {
@@ -347,9 +434,13 @@ async function scrollGridTo(
   );
 }
 
-async function expectRenderedRowsWithinBudget(grid: Locator, rows: Locator) {
+async function expectRenderedRowsWithinBudget(
+  grid: Locator,
+  rows: Locator,
+  rowCount = hugeTableFixture.rowCount,
+) {
   const viewportHeight = await grid.evaluate((element) => element.clientHeight);
-  const budget = virtualRowBudget(viewportHeight);
+  const budget = virtualRowBudget(viewportHeight, rowCount);
 
   await expect
     .poll(() => rows.count(), {
@@ -384,6 +475,24 @@ async function expectRenderedColumnsWithinBudget(
     await headers.count(),
     `rendered columns should stay within virtualized budget (${budget.maxRenderedColumnCount})`,
   ).toBeLessThanOrEqual(budget.maxRenderedColumnCount);
+}
+
+async function expectRenderedCellsWithinBudget(
+  grid: Locator,
+  rows: Locator,
+  headers: Locator,
+) {
+  const [visibleRowCount, visibleColumnCount, renderedCellCount] =
+    await Promise.all([
+      rows.count(),
+      headers.count(),
+      grid.locator(".grid-row:not(.header) [role='cell']").count(),
+    ]);
+
+  expect(
+    renderedCellCount,
+    "rendered body cells should stay within the visible row x visible column window",
+  ).toBeLessThanOrEqual(visibleRowCount * visibleColumnCount);
 }
 
 async function expectedFirstColumnText(grid: Locator, columnCount: number) {
@@ -427,7 +536,75 @@ async function expectGridScrollPosition(
     .toEqual(expected);
 }
 
+async function rapidScrollBenchmark(
+  grid: Locator,
+  positions: readonly { top: number; left?: number }[],
+) {
+  return grid.evaluate(async (element, nextPositions) => {
+    const frameDurations: number[] = [];
+    let blankFrameCount = 0;
+    const started = performance.now();
+    let previousFrameAt = started;
+
+    for (const position of nextPositions) {
+      element.scrollTop = position.top;
+      if (position.left !== undefined) {
+        element.scrollLeft = position.left;
+      }
+
+      const frameAt = await new Promise<number>((resolve) =>
+        requestAnimationFrame(resolve),
+      );
+      frameDurations.push(frameAt - previousFrameAt);
+      previousFrameAt = frameAt;
+      if (element.querySelectorAll(".grid-row:not(.header)").length === 0) {
+        blankFrameCount += 1;
+      }
+    }
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+
+    return {
+      blankFrameCount,
+      elapsedMs: performance.now() - started,
+      left: element.scrollLeft,
+      maxFrameMs: Math.max(0, ...frameDurations),
+      top: element.scrollTop,
+    };
+  }, positions);
+}
+
+async function readVirtualizationMetrics(page: Page) {
+  const metrics = await page.evaluate(
+    () => window.__IRODORI_VIRTUALIZATION_METRICS__,
+  );
+  expect(
+    metrics,
+    "virtualization fixture metrics should be installed",
+  ).toBeTruthy();
+  return metrics as VirtualizationMetrics;
+}
+
+async function expectLogicalFixtureStayedLazy(
+  page: Page,
+  fixture: VirtualizedResultFixture,
+) {
+  const metrics = await readVirtualizationMetrics(page);
+
+  expect(metrics.logicalRows).toBe(true);
+  expect(metrics.sentRows).toBe(fixture.rowCount);
+  expect(metrics.createdLogicalRows).toBe(fixture.rowCount);
+  expect(metrics.materializedArrayRows).toBe(0);
+  expect(metrics.materializedArrayCells).toBe(0);
+  expect(metrics.logicalRowMapCalls).toBeLessThan(10_000);
+  expect(metrics.logicalCellReads).toBeLessThan(fixture.rowCount * 2);
+}
+
 test.describe("Result Grid Virtualization and Sticky Gutter", () => {
+  test.describe.configure({ mode: "serial" });
+
   test("virtualization limits DOM nodes and handles large scrolling", async ({
     page,
   }) => {
@@ -460,6 +637,146 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     await expectGridScrollPosition(grid, { top: 0, left: 0 });
   });
 
+  test("EXEC-004B million-row logical fixture stays bounded while scrolling", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    await installVirtualizationMock(page, millionRowTableFixture);
+    await page.goto("/");
+
+    await connectMockDatabase(page);
+    await runFixtureQuery(page, 1);
+    await waitForGridPaint();
+
+    const grid = page.locator(".result-grid");
+    const renderedRows = grid.locator(".grid-row:not(.header)");
+    const renderedHeaders = grid.locator(
+      ".grid-row.header [role='columnheader']",
+    );
+    await expect(grid).toBeVisible();
+    await expect(page.locator(".results-title")).toContainText("1,000,000 rows");
+    await expect(grid).toHaveAttribute("aria-rowcount", "1000001");
+    await expect(grid).toHaveAttribute(
+      "aria-colcount",
+      String(millionRowTableFixture.columns.length),
+    );
+    await expect(renderedRows.first()).toContainText("row_0");
+    await expectRenderedRowsWithinBudget(
+      grid,
+      renderedRows,
+      millionRowTableFixture.rowCount,
+    );
+    await expectRenderedColumnsWithinBudget(
+      grid,
+      renderedHeaders,
+      millionRowTableFixture.columns.length,
+    );
+    await expectRenderedCellsWithinBudget(grid, renderedRows, renderedHeaders);
+
+    const middleScrollTop = 500_000 * GRID_ROW_HEIGHT_PX;
+    await scrollGridTo(grid, { top: middleScrollTop, left: 0 });
+    const middleActualTop = await grid.evaluate((element) => element.scrollTop);
+    await expect(renderedRows.first()).toHaveAttribute(
+      "aria-rowindex",
+      String(
+        expectedFirstRowIndex(
+          middleActualTop,
+          millionRowTableFixture.rowCount,
+        ) + 2,
+      ),
+    );
+    await expect(renderedRows.first()).toContainText(
+      expectedFirstRowText(middleActualTop, millionRowTableFixture.rowCount),
+    );
+    await expectRenderedRowsWithinBudget(
+      grid,
+      renderedRows,
+      millionRowTableFixture.rowCount,
+    );
+    await expectRenderedCellsWithinBudget(grid, renderedRows, renderedHeaders);
+
+    const bottomScrollTop =
+      (millionRowTableFixture.rowCount - 20) * GRID_ROW_HEIGHT_PX;
+    await scrollGridTo(grid, { top: bottomScrollTop, left: 0 });
+    await expect(renderedRows.last()).toHaveAttribute(
+      "aria-rowindex",
+      String(millionRowTableFixture.rowCount + 1),
+    );
+    await expect(renderedRows.last()).toContainText(
+      `row_${millionRowTableFixture.rowCount - 1}`,
+    );
+    await expectRenderedRowsWithinBudget(
+      grid,
+      renderedRows,
+      millionRowTableFixture.rowCount,
+    );
+
+    const deepScrollLeft = 96 * GRID_COLUMN_WIDTH_PX;
+    await scrollGridTo(grid, { top: middleScrollTop, left: deepScrollLeft });
+    const horizontalActualTop = await grid.evaluate(
+      (element) => element.scrollTop,
+    );
+    await expect(renderedRows.first()).toHaveAttribute(
+      "aria-rowindex",
+      String(
+        expectedFirstRowIndex(
+          horizontalActualTop,
+          millionRowTableFixture.rowCount,
+        ) + 2,
+      ),
+    );
+    await expect(renderedHeaders.first()).toContainText(
+      await expectedFirstColumnText(grid, millionRowTableFixture.columns.length),
+    );
+    await expectRenderedColumnsWithinBudget(
+      grid,
+      renderedHeaders,
+      millionRowTableFixture.columns.length,
+    );
+    await expectRenderedCellsWithinBudget(grid, renderedRows, renderedHeaders);
+
+    const benchmark = await rapidScrollBenchmark(grid, [
+      { top: 0, left: 0 },
+      { top: 125_000 * GRID_ROW_HEIGHT_PX, left: deepScrollLeft / 2 },
+      { top: 750_000 * GRID_ROW_HEIGHT_PX, left: deepScrollLeft },
+      { top: 250_000 * GRID_ROW_HEIGHT_PX, left: 0 },
+      { top: bottomScrollTop, left: deepScrollLeft },
+      { top: middleScrollTop, left: 0 },
+    ]);
+    expect(benchmark.blankFrameCount).toBe(0);
+    expect(
+      benchmark.maxFrameMs,
+      `rapid virtual scroll max frame was ${benchmark.maxFrameMs.toFixed(1)} ms`,
+    ).toBeLessThan(500);
+    expect(
+      benchmark.elapsedMs,
+      `rapid virtual scroll elapsed ${benchmark.elapsedMs.toFixed(1)} ms`,
+    ).toBeLessThan(2_500);
+
+    await expect(renderedRows.first()).toHaveAttribute(
+      "aria-rowindex",
+      String(
+        expectedFirstRowIndex(
+          benchmark.top,
+          millionRowTableFixture.rowCount,
+        ) + 2,
+      ),
+    );
+    await expectRenderedRowsWithinBudget(
+      grid,
+      renderedRows,
+      millionRowTableFixture.rowCount,
+    );
+    await expectRenderedColumnsWithinBudget(
+      grid,
+      renderedHeaders,
+      millionRowTableFixture.columns.length,
+    );
+    await expectRenderedCellsWithinBudget(grid, renderedRows, renderedHeaders);
+    await expectLogicalFixtureStayedLazy(page, millionRowTableFixture);
+  });
+
   test("wide-column virtualization keeps DOM cells bounded while scrolling", async ({
     page,
   }) => {
@@ -472,7 +789,9 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
 
     const grid = page.locator(".result-grid");
     const renderedRows = grid.locator(".grid-row:not(.header)");
-    const renderedHeaders = grid.locator(".grid-row.header [role='columnheader']");
+    const renderedHeaders = grid.locator(
+      ".grid-row.header [role='columnheader']",
+    );
     await expect(page.locator(".results-title")).toContainText("1,000 rows");
     await expect(renderedRows.first()).toContainText("row_0");
     await expect(renderedHeaders.first()).toContainText("col_0");

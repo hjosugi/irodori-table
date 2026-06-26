@@ -3,7 +3,7 @@ import { Pool } from "pg";
 
 const port = Number(process.env.PORT ?? 8787);
 const databaseUrl =
-  process.env.DATABASE_URL ?? "postgres://irodori:irodori@localhost:55432/samples";
+  process.env.DATABASE_URL ?? "postgres://irodori:irodori@127.0.0.1:55432/samples";
 const apiToken = process.env.API_TOKEN ?? "";
 const corsOrigin = process.env.CORS_ORIGIN ?? "*";
 const maxBodyBytes = Number(process.env.MAX_BODY_BYTES ?? 1_048_576);

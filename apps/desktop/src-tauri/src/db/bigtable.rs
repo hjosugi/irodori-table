@@ -157,6 +157,7 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
     let mut temp_row: Option<TempRow> = None;
     let mut current_family = String::new();
     let mut current_qualifier = String::new();
+    let mut current_timestamp = String::new();
     let mut current_value = Vec::<u8>::new();
 
     let mut committed_rows = Vec::new();
@@ -185,6 +186,9 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
                         .and_then(|bytes| String::from_utf8(bytes).map_err(|e| e.to_string()))
                         .unwrap_or_else(|_| q.clone());
                 }
+                if let Some(ref ts) = chunk.timestamp_micros {
+                    current_timestamp = ts.clone();
+                }
                 if let Some(ref val) = chunk.value {
                     if let Ok(decoded_val) = base64_decode(val) {
                         current_value.extend(decoded_val);
@@ -192,10 +196,18 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
                 }
                 let val_size = chunk.value_size.unwrap_or(0);
                 if val_size == 0 {
-                    let cell_key = format!("{}:{}", current_family, current_qualifier);
+                    let cell_key = if current_timestamp.is_empty() {
+                        format!("{}:{}", current_family, current_qualifier)
+                    } else {
+                        format!(
+                            "{}:{}@{}",
+                            current_family, current_qualifier, current_timestamp
+                        )
+                    };
                     let cell_str = String::from_utf8(current_value.clone())
                         .unwrap_or_else(|_| format!("0x{}", hex_encode(&current_value)));
                     current_value.clear();
+                    current_timestamp.clear();
 
                     if let Some(ref mut row) = temp_row {
                         row.cells.insert(cell_key.clone(), cell_str);
@@ -211,6 +223,7 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
                 if chunk.reset_row.unwrap_or(false) {
                     temp_row = None;
                     current_value.clear();
+                    current_timestamp.clear();
                 }
             }
         }

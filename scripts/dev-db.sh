@@ -4,7 +4,7 @@
 # generate large-scale seed data. Uses plain `podman`/`docker run`, so it works
 # even where compose is unavailable.
 #
-#   scripts/dev-db.sh up                 # start postgres + mysql, wait, print env
+#   scripts/dev-db.sh up [postgres|mysql] # start samples, wait, print env
 #   scripts/dev-db.sh seed postgres      # bulk-generate (ROWS rows, TABLES tables)
 #   scripts/dev-db.sh test               # run the Rust integration tests
 #   scripts/dev-db.sh down               # remove containers
@@ -19,7 +19,7 @@ MANIFEST="$ROOT/apps/desktop/src-tauri/Cargo.toml"
 
 PG_NAME=irodori-pg
 MY_NAME=irodori-mysql
-PG_URL="postgres://irodori:irodori@localhost:55432/samples"
+PG_URL="postgres://irodori:irodori@127.0.0.1:55432/samples"
 MY_URL="mysql://irodori:irodori@localhost:55306/samples"
 
 ROWS="${ROWS:-10000000}"
@@ -28,31 +28,61 @@ TABLES="${TABLES:-100}"
 pg()  { "$ENGINE_BIN" exec -i "$PG_NAME" psql -v ON_ERROR_STOP=1 -U irodori -d samples "$@"; }
 my()  { "$ENGINE_BIN" exec -i "$MY_NAME" mysql --local-infile=1 -uirodori -pirodori samples "$@"; }
 
-up() {
+up_pg() {
   "$ENGINE_BIN" run -d --replace --name "$PG_NAME" \
     -e POSTGRES_USER=irodori -e POSTGRES_PASSWORD=irodori -e POSTGRES_DB=samples \
     -p 55432:5432 -v "$SAMPLES/postgres:/docker-entrypoint-initdb.d:ro,Z" \
     docker.io/library/postgres:16-alpine >/dev/null
+  echo "started $PG_NAME (55432)"
+}
+
+up_my() {
   "$ENGINE_BIN" run -d --replace --name "$MY_NAME" \
     -e MYSQL_ROOT_PASSWORD=root -e MYSQL_USER=irodori -e MYSQL_PASSWORD=irodori -e MYSQL_DATABASE=samples \
     -p 55306:3306 -v "$SAMPLES/mysql:/docker-entrypoint-initdb.d:ro,Z" \
     docker.io/library/mysql:8.4 --local-infile=1 >/dev/null
-  echo "started $PG_NAME (55432) and $MY_NAME (55306)"
-  wait_ready
-  env_
+  echo "started $MY_NAME (55306)"
 }
 
-wait_ready() {
+up() {
+  local target="${1:-all}"
+  case "$target" in
+    postgres|pg) up_pg; wait_ready_pg; env_ postgres ;;
+    mysql|my)    up_my; wait_ready_my; env_ mysql ;;
+    all|"")      up_pg; up_my; wait_ready_pg; wait_ready_my; env_ all ;;
+    *) echo "usage: $0 up [postgres|mysql]"; exit 1 ;;
+  esac
+}
+
+wait_ready_pg() {
   printf 'waiting for postgres'
   for _ in $(seq 1 60); do
     if pg -c 'select 1' >/dev/null 2>&1; then printf ' ready\n'; break; fi
     printf '.'; sleep 1
   done
+  if ! pg -c 'select 1' >/dev/null 2>&1; then
+    printf ' failed\n'
+    "$ENGINE_BIN" logs --tail 80 "$PG_NAME" >&2 || true
+    exit 1
+  fi
+}
+
+wait_ready_my() {
   printf 'waiting for mysql'
   for _ in $(seq 1 90); do
     if my -e 'select 1' >/dev/null 2>&1; then printf ' ready\n'; break; fi
     printf '.'; sleep 1
   done
+  if ! my -e 'select 1' >/dev/null 2>&1; then
+    printf ' failed\n'
+    "$ENGINE_BIN" logs --tail 80 "$MY_NAME" >&2 || true
+    exit 1
+  fi
+}
+
+wait_ready() {
+  wait_ready_pg
+  wait_ready_my
 }
 
 # Bulk seed: one large `events` table (ROWS) + many small tables (TABLES).
@@ -127,23 +157,51 @@ SQL
   echo "[mysql] seeded"
 }
 
-down() { "$ENGINE_BIN" rm -f "$PG_NAME" "$MY_NAME" >/dev/null 2>&1 || true; echo "removed sample containers"; }
+down() {
+  local target="${1:-all}"
+  case "$target" in
+    postgres|pg) "$ENGINE_BIN" rm -f "$PG_NAME" >/dev/null 2>&1 || true; echo "removed $PG_NAME" ;;
+    mysql|my)    "$ENGINE_BIN" rm -f "$MY_NAME" >/dev/null 2>&1 || true; echo "removed $MY_NAME" ;;
+    all|"")      "$ENGINE_BIN" rm -f "$PG_NAME" "$MY_NAME" >/dev/null 2>&1 || true; echo "removed sample containers" ;;
+    *) echo "usage: $0 down [postgres|mysql]"; exit 1 ;;
+  esac
+}
 
 env_() {
-  echo "export IRODORI_PG_URL=\"$PG_URL\""
-  echo "export IRODORI_MYSQL_URL=\"$MY_URL\""
+  case "${1:-all}" in
+    postgres|pg) echo "export IRODORI_PG_URL=\"$PG_URL\"" ;;
+    mysql|my)    echo "export IRODORI_MYSQL_URL=\"$MY_URL\"" ;;
+    all|"")
+      echo "export IRODORI_PG_URL=\"$PG_URL\""
+      echo "export IRODORI_MYSQL_URL=\"$MY_URL\""
+      ;;
+    *) echo "usage: $0 env [postgres|mysql]"; exit 1 ;;
+  esac
 }
 
 run_tests() {
-  IRODORI_PG_URL="$PG_URL" IRODORI_MYSQL_URL="$MY_URL" \
-    cargo test --manifest-path "$MANIFEST" --test integration_db -- --nocapture
+  case "${1:-all}" in
+    postgres|pg)
+      IRODORI_PG_URL="$PG_URL" \
+        cargo test --manifest-path "$MANIFEST" --test integration_db postgres_samples -- --nocapture
+      ;;
+    mysql|my)
+      IRODORI_MYSQL_URL="$MY_URL" \
+        cargo test --manifest-path "$MANIFEST" --test integration_db mysql_samples -- --nocapture
+      ;;
+    all|"")
+      IRODORI_PG_URL="$PG_URL" IRODORI_MYSQL_URL="$MY_URL" \
+        cargo test --manifest-path "$MANIFEST" --test integration_db -- --nocapture
+      ;;
+    *) echo "usage: $0 test [postgres|mysql]"; exit 1 ;;
+  esac
 }
 
 case "${1:-}" in
-  up)   up ;;
-  down) down ;;
-  env)  env_ ;;
+  up)   shift; up "${1:-all}" ;;
+  down) shift; down "${1:-all}" ;;
+  env)  shift; env_ "${1:-all}" ;;
   seed) shift; seed "${1:-postgres}" ;;
-  test) run_tests ;;
-  *) echo "usage: $0 {up|down|env|seed [postgres|mysql]|test}"; exit 1 ;;
+  test) shift; run_tests "${1:-all}" ;;
+  *) echo "usage: $0 {up|down|env|seed|test} [postgres|mysql]"; exit 1 ;;
 esac

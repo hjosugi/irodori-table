@@ -17,6 +17,10 @@ scripts/verify-db.sh down postgres # stop + remove
 that connects **through Irodori's own `db::*` code** (`tests/integration_db.rs`),
 then stops the container.
 
+PostgreSQL also has `samples/postgres/compose.host.yaml` for Linux/Podman
+setups where bridge networking is unavailable. `verify-db.sh postgres` retries
+with that host-network compose automatically if the normal bridge compose fails.
+
 ## Engine matrix
 
 | Engine | Wire / driver | Compose | Host port | Irodori status |
@@ -38,9 +42,12 @@ then stops the container.
 ## Sample schema
 
 Auto-seeded engines load `samples/<engine>/01_samples.sql` (MariaDB and
-TimescaleDB reuse the MySQL/Postgres files): `customers`, `orders`,
-`invoice_lines`, and the `recent_revenue` view. CockroachDB, YugabyteDB, TiDB,
-and SQL Server are not auto-seeded; their checks run a self-contained query.
+TimescaleDB reuse the MySQL/Postgres files). The PostgreSQL fixture includes
+the transactional demo tables `customers`, `orders`, `invoice_lines`, and
+`recent_revenue`, plus a richer browsing demo: `countries`, `producers`,
+`cheeses`, `stores`, `reviews`, and `cheese_summary`. CockroachDB, YugabyteDB,
+TiDB, and SQL Server are not auto-seeded; their checks run a self-contained
+query.
 
 ## Scale / performance seed
 
@@ -48,10 +55,10 @@ and SQL Server are not auto-seeded; their checks run a self-contained query.
 rows + 100 tables, with bounded-memory streaming):
 
 ```bash
-scripts/dev-db.sh up
+scripts/dev-db.sh up postgres
 ROWS=10000000 TABLES=100 scripts/dev-db.sh seed postgres
-scripts/dev-db.sh test
-scripts/dev-db.sh down
+scripts/dev-db.sh test postgres
+scripts/dev-db.sh down postgres
 ```
 
 ## Notes

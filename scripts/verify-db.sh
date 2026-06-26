@@ -19,7 +19,7 @@ MANIFEST="$ROOT/apps/desktop/src-tauri/Cargo.toml"
 # have compose targets but no Irodori connector yet, so they are not verifiable.
 meta() {
   case "$1" in
-    postgres)    EVAR=IRODORI_PG_URL;        URL="postgres://irodori:irodori@localhost:55432/samples"; T=postgres_samples;;
+    postgres)    EVAR=IRODORI_PG_URL;        URL="postgres://irodori:irodori@127.0.0.1:55432/samples"; T=postgres_samples;;
     mysql)       EVAR=IRODORI_MYSQL_URL;     URL="mysql://irodori:irodori@localhost:55306/samples";     T=mysql_samples;;
     mariadb)     EVAR=IRODORI_MARIADB_URL;   URL="mysql://irodori:irodori@localhost:55307/samples";     T=mariadb_connect;;
     timescaledb) EVAR=IRODORI_TIMESCALE_URL; URL="postgres://irodori:irodori@localhost:55433/samples";  T=timescaledb_samples;;
@@ -32,12 +32,41 @@ meta() {
   esac
 }
 
-compose() { "$ENGINE_BIN" compose -f "$SAMPLES/$1/compose.yaml" "${@:2}"; }
+compose_file() {
+  if [ "${SAMPLE_NETWORK:-bridge}" = "host" ] && [ -f "$SAMPLES/$1/compose.host.yaml" ]; then
+    echo "$SAMPLES/$1/compose.host.yaml"
+  else
+    echo "$SAMPLES/$1/compose.yaml"
+  fi
+}
+
+compose() { "$ENGINE_BIN" compose -f "$(compose_file "$1")" "${@:2}"; }
+
+down_engine() {
+  compose "$1" down -v >/dev/null 2>&1 || true
+  if [ "$1" = "postgres" ] && [ -f "$SAMPLES/$1/compose.host.yaml" ]; then
+    SAMPLE_NETWORK=host compose "$1" down -v >/dev/null 2>&1 || true
+  fi
+}
+
+up_engine() {
+  local e="$1"
+  if compose "$e" up -d; then
+    return 0
+  fi
+  if [ "$e" = "postgres" ] && [ "${SAMPLE_NETWORK:-bridge}" != "host" ] && [ -f "$SAMPLES/$e/compose.host.yaml" ]; then
+    echo "bridge network startup failed; retrying postgres with SAMPLE_NETWORK=host"
+    compose "$e" down -v >/dev/null 2>&1 || true
+    SAMPLE_NETWORK=host compose "$e" up -d
+    return $?
+  fi
+  return 1
+}
 
 verify() {
   local e="$1"; meta "$e" || return 2
   echo "== $e: up =="
-  compose "$e" up -d || { echo "FAIL($e): compose up"; return 1; }
+  up_engine "$e" || { echo "FAIL($e): compose up"; return 1; }
   echo "== $e: verify (test retries until the DB is ready) =="
   local ok=1
   for _ in $(seq 1 40); do
@@ -46,7 +75,7 @@ verify() {
   done
   [ $ok -eq 0 ] && echo "PASS: $e" || echo "FAIL/timeout: $e"
   echo "== $e: down =="
-  compose "$e" down -v >/dev/null 2>&1 || true
+  down_engine "$e"
   return $ok
 }
 
@@ -56,8 +85,8 @@ case "${1:-}" in
     for e in postgres mysql mariadb timescaledb cockroachdb tidb sqlserver mongodb; do verify "$e" || rc=1; done
     echo "=== done (heavy/slow engines yugabytedb, oracle: run individually) ==="
     exit $rc ;;
-  up)   meta "$2" && compose "$2" up -d && echo "export $EVAR=\"$URL\"" ;;
-  down) compose "$2" down -v ;;
+  up)   meta "$2" && up_engine "$2" && echo "export $EVAR=\"$URL\"" ;;
+  down) down_engine "$2" ;;
   ""|-h|--help) echo "usage: $0 {all | <engine> | up <engine> | down <engine>}"; echo "engines: postgres mysql mariadb timescaledb cockroachdb yugabytedb tidb sqlserver"; ;;
   *) verify "$1" ;;
 esac

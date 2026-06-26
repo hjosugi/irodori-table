@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildResultExport,
   resultExportFileName,
+  resultExportFormats,
+  unsupportedResultExportFormatMessage,
   type ResultLike,
 } from "./result-export";
 
@@ -15,6 +17,36 @@ const result: ResultLike = {
 };
 
 describe("result exports", () => {
+  it("advertises the implemented export formats", () => {
+    expect(resultExportFormats.map(({ id, label }) => [id, label])).toEqual([
+      ["csv", "CSV"],
+      ["tsv", "TSV"],
+      ["json", "JSON"],
+      ["jsonl", "JSONL"],
+      ["sql", "SQL"],
+      ["excel", "Excel-compatible"],
+      ["markdown", "Markdown"],
+    ]);
+    expect(resultExportFormats.find((format) => format.id === "excel")?.title).toBe(
+      "HTML workbook readable by Excel",
+    );
+  });
+
+  it("reports unsupported export formats with clear errors", () => {
+    expect(() => buildResultExport(result, "xlsx")).toThrow(
+      "Native XLSX export is not supported.",
+    );
+    expect(() => buildResultExport(result, "parquet")).toThrow(
+      "Parquet export is not supported.",
+    );
+    expect(() =>
+      resultExportFileName("local", "avro", new Date("2026-06-25T00:00:00.000Z")),
+    ).toThrow("Avro export is not supported.");
+    expect(unsupportedResultExportFormatMessage("xml")).toBe(
+      'Unsupported export format "xml". Supported export formats: CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown.',
+    );
+  });
+
   it("exports quoted CSV", () => {
     expect(buildResultExport(result, "csv").content).toBe(
       'id,name,note\r\n1,Alice,plain\r\n2,"Bob, Jr.","line\nbreak"\r\n3,O\'Hara,"{""active"":true}"',
@@ -60,27 +92,52 @@ describe("result exports", () => {
     );
   });
 
+  it("escapes SQL identifiers and literals", () => {
+    const exported = buildResultExport(
+      {
+        columns: ['strange "id"', "payload"],
+        rows: [
+          [true, "O'Hara"],
+          [Number.NaN, { name: "O'Hara" }],
+        ],
+      },
+      "sql",
+      'people "archive"',
+    );
+
+    expect(exported.content).toContain(
+      `INSERT INTO "people ""archive""" ("strange ""id""", "payload") VALUES (TRUE, 'O''Hara');`,
+    );
+    expect(exported.content).toContain(
+      `INSERT INTO "people ""archive""" ("strange ""id""", "payload") VALUES (NULL, '{"name":"O''Hara"}');`,
+    );
+  });
+
   it("exports empty SQL results as a comment", () => {
     expect(buildResultExport({ columns: ["id"], rows: [] }, "sql", "empty table").content).toBe(
       '-- No rows to export for "empty table".\n',
     );
   });
 
-  it("exports Markdown tables with escaped pipes", () => {
+  it("exports Markdown tables with escaped pipes, backslashes, and newlines", () => {
     const exported = buildResultExport(
-      { columns: ["a|b"], rows: [["x|y"]] },
+      { columns: ["a|b", "path"], rows: [["x|y", "C:\\tmp\nnext"]] },
       "markdown",
     );
-    expect(exported.content).toBe("| a\\|b |\n| --- |\n| x\\|y |\n");
+    expect(exported.content).toBe(
+      "| a\\|b | path |\n| --- | --- |\n| x\\|y | C:\\\\tmp<br>next |\n",
+    );
   });
 
-  it("exports an Excel-compatible workbook", () => {
+  it("exports an escaped Excel-compatible workbook", () => {
     const exported = buildResultExport(
-      { columns: ["name"], rows: [["<Alice>"]] },
+      { columns: ['na"me', "html"], rows: [["<Alice & Bob>", '"quoted"']] },
       "excel",
     );
     expect(exported.extension).toBe("xls");
-    expect(exported.content).toContain("&lt;Alice&gt;");
+    expect(exported.content).toContain("<th>na&quot;me</th>");
+    expect(exported.content).toContain("&lt;Alice &amp; Bob&gt;");
+    expect(exported.content).toContain("&quot;quoted&quot;");
   });
 
   it("uses the export extension in download names", () => {

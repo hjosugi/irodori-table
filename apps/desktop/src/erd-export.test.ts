@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement, createRef } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   downloadBlob,
   erdFileName,
   serializeSvgElement,
   svgMarkupToPngBlob,
 } from "./erd-export";
+import { buildErdModel, layoutErdModel } from "./erd";
+import { ErdSvg, erdSvgStyle } from "./erd-svg";
+import type { DatabaseMetadata, DbObjectMetadata } from "./generated/irodori-api";
+import { lightTheme } from "./theme";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -72,6 +78,74 @@ describe("ERD exports", () => {
     expect(style.hasAttribute("type")).toBe(false);
   });
 
+  it("serializes a rendered ERD SVG with dimensions, groups, and edges", () => {
+    const metadata: DatabaseMetadata = {
+      schemas: [
+        {
+          name: "sales",
+          objects: [
+            table("sales", "customers", ["id", "email"]),
+            table("sales", "orders", ["id", "customer_id", "owner_id"], [
+              {
+                columns: ["customer_id"],
+                referencesTable: "customers",
+                referencesColumns: ["id"],
+              },
+              {
+                columns: ["owner_id"],
+                referencesSchema: "auth",
+                referencesTable: "users",
+                referencesColumns: ["id"],
+              },
+            ]),
+          ],
+        },
+        {
+          name: "auth",
+          objects: [table("auth", "users", ["id", "name"])],
+        },
+      ],
+    };
+    const layout = layoutErdModel(buildErdModel(metadata));
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(
+      createElement(ErdSvg, {
+        layout,
+        svgRef: createRef<SVGSVGElement>(),
+        svgStyle: erdSvgStyle(lightTheme),
+      }),
+    );
+    const svg = container.querySelector("svg");
+    expect(svg).toBeInstanceOf(SVGSVGElement);
+
+    const markup = serializeSvgElement(svg as SVGSVGElement);
+    const blob = new Blob([markup], { type: "image/svg+xml;charset=utf-8" });
+    const parsed = new DOMParser().parseFromString(markup, "image/svg+xml");
+    const parsedSvg = parsed.documentElement;
+
+    expect(blob.size).toBeGreaterThan(1000);
+    expect(parsed.querySelector("parsererror")).toBeNull();
+    expect(parsedSvg.getAttribute("width")).toBe(String(layout.width));
+    expect(parsedSvg.getAttribute("height")).toBe(String(layout.height));
+    expect(parsedSvg.getAttribute("viewBox")).toBe(
+      `0 0 ${layout.width} ${layout.height}`,
+    );
+    expect(svgTextContent(parsedSvg, ".erd-schema-title")).toEqual(["sales", "auth"]);
+    expect(svgTextContent(parsedSvg, ".erd-table-title")).toEqual([
+      "customers",
+      "orders",
+      "users",
+    ]);
+    expect(parsedSvg.querySelectorAll(".erd-schema")).toHaveLength(2);
+    expect(parsedSvg.querySelectorAll("path.erd-edge")).toHaveLength(2);
+    expect(parsedSvg.querySelectorAll("path.erd-edge.cross")).toHaveLength(1);
+    expect(svgTextContent(parsedSvg, ".erd-edge-label")).toEqual([
+      "customer_id",
+      "owner_id",
+    ]);
+    expect(markup).not.toMatch(/\b(?:NaN|undefined)\b/);
+  });
+
   it("downloads blobs with the requested file name and revokes object URLs", () => {
     vi.useFakeTimers();
     const { createObjectURL, revokeObjectURL } = stubObjectUrls("blob:erd-svg");
@@ -95,6 +169,29 @@ describe("ERD exports", () => {
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:erd-svg");
   });
 
+  it("converts SVG markup to a non-empty PNG blob", async () => {
+    const { createObjectURL, revokeObjectURL } = stubObjectUrls("blob:erd-png");
+    stubImageThatLoads();
+    const canvas = stubCanvasPng();
+
+    const blob = await svgMarkupToPngBlob(
+      `<svg xmlns="${SVG_NS}" width="240" height="120" viewBox="0 0 240 120"><rect width="240" height="120" /></svg>`,
+      240,
+      120,
+    );
+
+    expect(blob.type).toBe("image/png");
+    expect(blob.size).toBeGreaterThan(0);
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:erd-png");
+    expect(canvas.getContext).toHaveBeenCalledWith("2d");
+    expect(canvas.setTransform).toHaveBeenCalled();
+    expect(canvas.drawImage).toHaveBeenCalled();
+    expect(canvas.canvasSizes).toHaveLength(1);
+    expect(canvas.canvasSizes[0].width).toBeGreaterThanOrEqual(240);
+    expect(canvas.canvasSizes[0].height).toBeGreaterThanOrEqual(120);
+  });
+
   it("rejects invalid and oversized PNG dimensions", async () => {
     const { revokeObjectURL } = stubObjectUrls("blob:erd-png");
     stubImageThatLoads();
@@ -112,6 +209,32 @@ describe("ERD exports", () => {
   });
 });
 
+function table(
+  schema: string,
+  name: string,
+  columns: string[],
+  foreignKeys: DbObjectMetadata["foreignKeys"] = [],
+): DbObjectMetadata {
+  return {
+    schema,
+    name,
+    kind: "table",
+    columns: columns.map((column, index) => ({
+      name: column,
+      dataType: index === 0 ? "integer" : "text",
+      nullable: index !== 0,
+      ordinal: index + 1,
+    })),
+    indexes: [],
+    primaryKey: [columns[0]],
+    foreignKeys,
+  };
+}
+
+function svgTextContent(root: Element, selector: string) {
+  return Array.from(root.querySelectorAll(selector), (node) => node.textContent ?? "");
+}
+
 function stubObjectUrls(url: string) {
   const createObjectURL = vi.fn(() => url);
   const revokeObjectURL = vi.fn();
@@ -123,19 +246,43 @@ function stubObjectUrls(url: string) {
 }
 
 function setUrlObjectMethod(name: UrlObjectMethod, value: unknown) {
-  const original = Object.getOwnPropertyDescriptor(URL, name);
-  Object.defineProperty(URL, name, {
+  return setObjectMethod(URL, name, value);
+}
+
+function setObjectMethod(target: object, name: string, value: unknown) {
+  const original = Object.getOwnPropertyDescriptor(target, name);
+  Object.defineProperty(target, name, {
     configurable: true,
     writable: true,
     value,
   });
   return () => {
     if (original) {
-      Object.defineProperty(URL, name, original);
+      Object.defineProperty(target, name, original);
     } else {
-      delete (URL as unknown as Record<UrlObjectMethod, unknown>)[name];
+      delete (target as Record<string, unknown>)[name];
     }
   };
+}
+
+function stubCanvasPng() {
+  const canvasSizes: Array<{ width: number; height: number }> = [];
+  const setTransform = vi.fn();
+  const drawImage = vi.fn();
+  const getContext = vi.fn(() => ({ setTransform, drawImage }));
+  const toBlob = vi.fn(function (
+    this: HTMLCanvasElement,
+    callback: BlobCallback,
+    type?: string,
+  ) {
+    canvasSizes.push({ width: this.width, height: this.height });
+    callback(new Blob(["png bytes"], { type: type ?? "image/png" }));
+  });
+  urlRestorers.push(
+    setObjectMethod(HTMLCanvasElement.prototype, "getContext", getContext),
+    setObjectMethod(HTMLCanvasElement.prototype, "toBlob", toBlob),
+  );
+  return { canvasSizes, drawImage, getContext, setTransform, toBlob };
 }
 
 function stubImageThatLoads() {

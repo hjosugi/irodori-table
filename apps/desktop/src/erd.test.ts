@@ -179,6 +179,88 @@ describe("ERD model", () => {
     expect(hiddenTargetSchema.edges).toEqual([]);
   });
 
+  it("represents multi-schema groups with same-schema and cross-schema relationships", () => {
+    const metadata: DatabaseMetadata = {
+      schemas: [
+        {
+          name: "sales",
+          objects: [
+            table("sales", "customers", ["id", "email"]),
+            table("sales", "orders", ["id", "customer_id", "owner_id"], [
+              {
+                columns: ["customer_id"],
+                referencesTable: "customers",
+                referencesColumns: ["id"],
+              },
+              {
+                columns: ["owner_id"],
+                referencesSchema: "auth",
+                referencesTable: "users",
+                referencesColumns: ["id"],
+              },
+            ]),
+          ],
+        },
+        {
+          name: "audit",
+          objects: [
+            table("audit", "order_events", ["id", "order_id"], [
+              {
+                columns: ["order_id"],
+                referencesSchema: "sales",
+                referencesTable: "orders",
+                referencesColumns: ["id"],
+              },
+            ]),
+          ],
+        },
+        {
+          name: "auth",
+          objects: [table("auth", "users", ["id", "name"])],
+        },
+      ],
+    };
+
+    const model = buildErdModel(metadata);
+    expect(model.schemas.map((schema) => [schema.name, schema.tables.length])).toEqual([
+      ["sales", 2],
+      ["audit", 1],
+      ["auth", 1],
+    ]);
+    expect(model.edges).toEqual([
+      expect.objectContaining({
+        sourceId: "sales.orders",
+        targetId: "sales.customers",
+        label: "customer_id",
+        crossSchema: false,
+      }),
+      expect.objectContaining({
+        sourceId: "sales.orders",
+        targetId: "auth.users",
+        label: "owner_id",
+        crossSchema: true,
+      }),
+      expect.objectContaining({
+        sourceId: "audit.order_events",
+        targetId: "sales.orders",
+        label: "order_id",
+        crossSchema: true,
+      }),
+    ]);
+
+    const layout = layoutErdModel(model);
+    expect(layout.schemas.map((schema) => schema.name)).toEqual([
+      "sales",
+      "audit",
+      "auth",
+    ]);
+    expect(layout.edges).toHaveLength(3);
+    expect(layout.edges.filter((edge) => edge.crossSchema)).toHaveLength(2);
+    for (const edge of layout.edges) {
+      expectEdgePathToBeSane(edge, layout);
+    }
+  });
+
   it("lays out self and cross-schema edges with finite anchored paths", () => {
     const metadata: DatabaseMetadata = {
       schemas: [
@@ -234,35 +316,30 @@ describe("ERD model", () => {
     }
   });
 
-  it("lays out a 100-table fixture without table overlap", () => {
+  it("lays out a dense 100-table fixture with 250 finite anchored edges", () => {
     const objects = Array.from({ length: 100 }, (_, index) =>
-      table("warehouse", `table_${index + 1}`, ["id", "parent_id", "name"], [
-        index > 0
-          ? {
-              columns: ["parent_id"],
-              referencesTable: `table_${index}`,
-              referencesColumns: ["id"],
-            }
-          : {
-              columns: [],
-              referencesTable: "missing",
-              referencesColumns: [],
-            },
-      ]),
+      denseWarehouseTable(index),
     );
     const metadata: DatabaseMetadata = {
       schemas: [{ name: "warehouse", objects }],
     };
     const layout = layoutErdModel(buildErdModel(metadata));
     expect(layout.tables).toHaveLength(100);
-    expect(layout.edges).toHaveLength(99);
+    expect(layout.edges).toHaveLength(250);
     expect(layout.width).toBeGreaterThan(900);
     expect(layout.height).toBeGreaterThan(2000);
+    expect(layout.edges.map((edge) => edge.path).join(" ")).not.toMatch(
+      /\b(?:NaN|undefined)\b/,
+    );
 
     for (let i = 0; i < layout.tables.length; i += 1) {
       for (let j = i + 1; j < layout.tables.length; j += 1) {
         expect(rectsOverlap(layout.tables[i], layout.tables[j])).toBe(false);
       }
+    }
+
+    for (const edge of layout.edges) {
+      expectEdgePathToBeSane(edge, layout);
     }
   });
 
@@ -326,6 +403,38 @@ describe("ERD model", () => {
     }
   });
 });
+
+function denseWarehouseTable(index: number) {
+  const tableNumber = index + 1;
+  const foreignKeys: DbObjectMetadata["foreignKeys"] = [];
+  if (tableNumber > 1) {
+    foreignKeys.push({
+      columns: ["parent_id"],
+      referencesTable: `table_${tableNumber - 1}`,
+      referencesColumns: ["id"],
+    });
+  }
+  if (tableNumber > 2) {
+    foreignKeys.push({
+      columns: ["prior_id"],
+      referencesTable: `table_${tableNumber - 2}`,
+      referencesColumns: ["id"],
+    });
+  }
+  if (tableNumber >= 11 && tableNumber <= 63) {
+    foreignKeys.push({
+      columns: ["anchor_id"],
+      referencesTable: `table_${tableNumber - 10}`,
+      referencesColumns: ["id"],
+    });
+  }
+  return table(
+    "warehouse",
+    `table_${tableNumber}`,
+    ["id", "parent_id", "prior_id", "anchor_id", "name"],
+    foreignKeys,
+  );
+}
 
 function rectsOverlap(
   a: { x: number; y: number; width: number; height: number },

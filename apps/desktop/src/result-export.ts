@@ -29,7 +29,7 @@ export const resultExportFormats: Array<{
   { id: "json", label: "JSON", title: "JSON array" },
   { id: "jsonl", label: "JSONL", title: "One JSON object per line" },
   { id: "sql", label: "SQL", title: "INSERT statements" },
-  { id: "excel", label: "Excel", title: "Excel-compatible HTML workbook" },
+  { id: "excel", label: "Excel-compatible", title: "HTML workbook readable by Excel" },
   { id: "markdown", label: "Markdown", title: "Markdown table" },
 ];
 
@@ -85,10 +85,10 @@ const resultExportDefinitions: Record<
 
 export function buildResultExport(
   result: ResultLike,
-  format: ResultExportFormat,
+  format: ResultExportFormat | string,
   tableName = "query_result",
 ): ResultExport {
-  const { serialize, ...definition } = resultExportDefinitions[format];
+  const { serialize, ...definition } = resultExportDefinition(format);
   return {
     ...definition,
     content: serialize(result, tableName),
@@ -97,12 +97,39 @@ export function buildResultExport(
 
 export function resultExportFileName(
   connectionId: string,
-  format: ResultExportFormat,
+  format: ResultExportFormat | string,
   now = new Date(),
 ): string {
-  const extension = resultExportDefinitions[format].extension;
+  const extension = resultExportDefinition(format).extension;
   const timestamp = now.toISOString().replace(/[:.]/g, "-");
   return `irodori-${connectionId}-${timestamp}.${extension}`;
+}
+
+const supportedResultExportFormats = new Set<string>(
+  resultExportFormats.map((format) => format.id),
+);
+
+export function unsupportedResultExportFormatMessage(format: string): string {
+  const normalized = format.trim().toLowerCase().replace(/^\./, "");
+  const supported = "CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown";
+  switch (normalized) {
+    case "xlsx":
+      return `Native XLSX export is not supported. Use the Excel-compatible HTML export, or export ${supported}.`;
+    case "parquet":
+      return `Parquet export is not supported. Export ${supported}.`;
+    case "avro":
+      return `Avro export is not supported. Export ${supported}.`;
+    default:
+      return `Unsupported export format "${format}". Supported export formats: ${supported}.`;
+  }
+}
+
+function resultExportDefinition(format: ResultExportFormat | string) {
+  const normalized = format.trim().toLowerCase();
+  if (!supportedResultExportFormats.has(normalized)) {
+    throw new Error(unsupportedResultExportFormatMessage(format));
+  }
+  return resultExportDefinitions[normalized as ResultExportFormat];
 }
 
 function jsonFromResult(result: ResultLike): string {

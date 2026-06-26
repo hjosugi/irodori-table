@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
 
 pub struct RedisConn {
-    conn: Mutex<redis::aio::Connection>,
+    conn: Mutex<redis::aio::MultiplexedConnection>,
     db_index: i64,
 }
 
@@ -41,7 +41,7 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<RedisConn, String> {
 
     let client = redis::Client::open(url).map_err(|e| e.to_string())?;
     let conn = client
-        .get_async_connection()
+        .get_multiplexed_async_connection()
         .await
         .map_err(|e| format!("Failed to connect to Redis: {e}"))?;
 

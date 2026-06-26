@@ -8,7 +8,6 @@ use scylla::frame::response::result::Row;
 
 pub struct CassandraConn {
     session: Session,
-    keyspace: String,
 }
 
 pub async fn connect(profile: &ConnectionProfile) -> Result<CassandraConn, String> {
@@ -34,7 +33,7 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<CassandraConn, Strin
             .map_err(|e| format!("Failed to select keyspace {keyspace}: {e}"))?;
     }
 
-    Ok(CassandraConn { session, keyspace })
+    Ok(CassandraConn { session })
 }
 
 pub async fn version(conn: &CassandraConn) -> Option<String> {

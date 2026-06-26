@@ -1,18 +1,20 @@
-name: irodori-postgres
+name: irodori-postgres-host
 # Irodori URL: postgres://irodori:irodori@127.0.0.1:55432/samples
+# Host-network fallback for Linux/Podman environments where bridge networking is
+# unavailable. Prefer compose.yaml unless the normal bridge startup fails.
 services:
   postgres:
     image: docker.io/library/postgres:16-alpine
+    network_mode: host
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1", "-p", "55432"]
     environment:
       POSTGRES_USER: irodori
       POSTGRES_PASSWORD: irodori
       POSTGRES_DB: samples
-    ports:
-      - "55432:5432"
     volumes:
       - ./01_samples.sql:/docker-entrypoint-initdb.d/01_samples.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U irodori -d samples"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 55432 -U irodori -d samples"]
       interval: 3s
       timeout: 3s
       retries: 30

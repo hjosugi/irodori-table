@@ -30,6 +30,14 @@ describe("keybinding resolver", () => {
     expect(
       resolveKeybinding({
         keymap: defaultKeymap,
+        scope: "editor",
+        chord: "Mod+Alt+Shift+Enter",
+      }),
+    ).toMatchObject({ kind: "command", commandId: "query.runFromStart" });
+
+    expect(
+      resolveKeybinding({
+        keymap: defaultKeymap,
         scope: "grid",
         chord: "Mod+Shift+P",
       }),

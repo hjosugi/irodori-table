@@ -13,29 +13,33 @@ import {
 import {
   AlertTriangle,
   AlignLeft,
-  Bolt,
   ChevronDown,
   Clock3,
   Columns3,
   Copy,
   Database,
   Download,
+  HelpCircle,
   ImageDown,
+  Info,
   KeyRound,
   Folder,
   Keyboard,
-  Layers3,
   ListFilter,
+  Menu,
   Maximize2,
   Moon,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Play,
   Plus,
+  Power,
   RefreshCw,
   Share2,
   Save,
   Search,
+  Settings,
   ShieldCheck,
   SplitSquareHorizontal,
   Square,
@@ -160,12 +164,21 @@ import {
   isSqlFormatterId,
   type SqlFormatterId,
 } from "./sql/formatter";
+import {
+  isSqlLinterId,
+  linterOptions,
+  type SqlLinterId,
+} from "./sql/linter";
 import { selectedOrCurrentStatement } from "./sql/statements";
 import { cssVariables, darkTheme, lightTheme, type ThemeKind } from "./theme";
 import { RowDetailSidebar } from "./RowDetailSidebar";
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
 import "./App.css";
+
+const APP_NAME = "Irodori Table";
+const APP_VERSION = "0.2.5";
+const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
   {
@@ -188,8 +201,36 @@ const resultCopyCommands: CommandMeta[] = [
   },
 ];
 
+const shellCommands: CommandMeta[] = [
+  {
+    id: "connection.manager",
+    title: "Open Connection Manager",
+    category: "Workspace",
+    scope: "global",
+  },
+  {
+    id: "settings.open",
+    title: "Open Settings",
+    category: "Workspace",
+    scope: "global",
+  },
+  {
+    id: "help.open",
+    title: "Open Help",
+    category: "Help",
+    scope: "global",
+  },
+  {
+    id: "about.open",
+    title: "About Irodori Table",
+    category: "Help",
+    scope: "global",
+  },
+];
+
 const appCommandCatalog: CommandMeta[] = [
   ...commandCatalog,
+  ...shellCommands,
   ...resultCopyCommands,
 ];
 
@@ -202,15 +243,18 @@ const fallbackSnapshot: WorkspaceSnapshot = {
   connections: [
     {
       id: "local-pg",
-      name: "Local Warehouse",
+      name: "Local Postgres",
       engine: "PostgreSQL 16",
-      status: "connected",
-      latencyMs: 3,
+      status: "idle",
+      latencyMs: 0,
       proxy: "direct",
       objects: [
+        { name: "cheeses", kind: "table", rows: "5" },
+        { name: "countries", kind: "table", rows: "5" },
         { name: "orders", kind: "table", rows: "1.2M" },
         { name: "customers", kind: "table", rows: "83K" },
         { name: "invoice_lines", kind: "table", rows: "4.8M" },
+        { name: "cheese_summary", kind: "view" },
         { name: "recent_revenue", kind: "view" },
         { name: "refresh_rollups", kind: "procedure" },
       ],
@@ -291,10 +335,12 @@ const engineOptions: Array<{ value: DbEngine; label: string }> = [
 
 type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
 type ConnectionInputMode = "url" | "fields";
+type EditorSplitMode = "single" | "right" | "down";
 
 type ConnectionDraft = {
   id: string;
   name: string;
+  color: string;
   engine: DbEngine;
   mode: ConnectionInputMode;
   url: string;
@@ -306,20 +352,39 @@ type ConnectionDraft = {
 };
 
 const profilesStorageKey = "irodori.connectionProfiles.v1";
+const savedQueryStorageKey = "irodori.savedScratchQuery.v1";
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
 const queryParameterMemoryStorageKey = "irodori.queryParameters.v1";
 const themeStorageKey = "irodori.theme.v1";
 const vimModeStorageKey = "irodori.editor.vimMode.v1";
 const formatterStorageKey = "irodori.editor.formatter.v1";
+const linterStorageKey = "irodori.editor.linter.v1";
 const sidebarStorageKey = "irodori.sidebar.open.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
 const resultsHeightStorageKey = "irodori.results.height.v1";
+const editorSplitModeStorageKey = "irodori.editor.splitMode.v1";
+const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
+const defaultConnectionColor = "#6b7280";
+const connectionColorOptions = [
+  defaultConnectionColor,
+  "#2563eb",
+  "#16a34a",
+  "#ca8a04",
+  "#dc2626",
+  "#9333ea",
+  "#0891b2",
+  "#ea580c",
+];
 
 function loadThemeKind(): ThemeKind {
   return window.localStorage.getItem(themeStorageKey) === "light"
     ? "light"
     : "dark";
+}
+
+function loadSavedQuery(): string {
+  return window.localStorage.getItem(savedQueryStorageKey) ?? initialQuery;
 }
 
 function loadVimMode() {
@@ -331,8 +396,18 @@ function loadFormatter(): SqlFormatterId {
   return isSqlFormatterId(stored) ? stored : "sql-formatter";
 }
 
+function loadLinter(): SqlLinterId {
+  const stored = window.localStorage.getItem(linterStorageKey);
+  return isSqlLinterId(stored) ? stored : "gentle";
+}
+
 function loadSidebarOpen() {
   return window.localStorage.getItem(sidebarStorageKey) !== "false";
+}
+
+function loadEditorSplitMode(): EditorSplitMode {
+  const stored = window.localStorage.getItem(editorSplitModeStorageKey);
+  return stored === "right" || stored === "down" ? stored : "single";
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -412,20 +487,33 @@ type PendingQueryParameters = {
   promptSet: QueryParameterPromptSet;
 };
 
+type SettingsTab = "general" | "keymap" | "json";
+type ResultMode = "data" | "structure";
+type ActionNotice = {
+  id: number;
+  kind: "success" | "error" | "info";
+  title: string;
+  detail?: string;
+};
+
 type ImportPreview = ParsedImport & {
   fileName: string;
   format: ImportTextFormat;
   tableName: string;
 };
 
+const localPostgresSampleUrl =
+  "postgres://irodori:irodori@127.0.0.1:55432/samples";
+
 const starterProfiles: ConnectionDraft[] = [
   {
     id: "local-pg",
     name: "Local Postgres",
+    color: "#16a34a",
     engine: "postgres",
     mode: "url",
-    url: "postgres://irodori:irodori@localhost:55432/samples",
-    host: "localhost",
+    url: localPostgresSampleUrl,
+    host: "127.0.0.1",
     port: "55432",
     user: "irodori",
     password: "",
@@ -434,6 +522,7 @@ const starterProfiles: ConnectionDraft[] = [
   {
     id: "local-mysql",
     name: "Local MySQL",
+    color: "#2563eb",
     engine: "mysql",
     mode: "url",
     url: "mysql://irodori:irodori@localhost:55306/samples",
@@ -446,6 +535,7 @@ const starterProfiles: ConnectionDraft[] = [
   {
     id: "sqlite-memory",
     name: "SQLite Memory",
+    color: "#ca8a04",
     engine: "sqlite",
     mode: "fields",
     url: "",
@@ -458,6 +548,7 @@ const starterProfiles: ConnectionDraft[] = [
   {
     id: "duckdb-memory",
     name: "DuckDB Memory",
+    color: "#9333ea",
     engine: "duckdb",
     mode: "url",
     url: ":memory:",
@@ -514,6 +605,24 @@ function objectKindLabel(object: DbObjectMetadata) {
     default:
       return "table";
   }
+}
+
+function quoteSqlIdentifier(engine: DbEngine, name: string) {
+  const quote = engine === "mysql" || engine === "mariadb" || engine === "tidb" ? "`" : '"';
+  return `${quote}${name.split(quote).join(quote + quote)}${quote}`;
+}
+
+function qualifiedObjectName(engine: DbEngine, object: DbObjectMetadata) {
+  const parts = [object.schema, object.name].filter(Boolean);
+  return parts.map((part) => quoteSqlIdentifier(engine, part)).join(".");
+}
+
+function tablePreviewSql(engine: DbEngine, object: DbObjectMetadata) {
+  const table = qualifiedObjectName(engine, object);
+  if (engine === "sqlserver") {
+    return `select top (200) * from ${table};`;
+  }
+  return `select * from ${table} limit 200;`;
 }
 
 type CompletionHint = {
@@ -639,10 +748,11 @@ function newDraft(seed: number): ConnectionDraft {
   return {
     id: `connection-${seed}`,
     name: `Connection ${seed}`,
+    color: defaultConnectionColor,
     engine: "postgres",
     mode: "url",
     url: "",
-    host: "localhost",
+    host: "127.0.0.1",
     port: "5432",
     user: "",
     password: "",
@@ -650,16 +760,12 @@ function newDraft(seed: number): ConnectionDraft {
   };
 }
 
-function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
-  return { ...profile, password: "" };
-}
-
 function withStarterProfiles(profiles: ConnectionDraft[]) {
   const existing = new Set(profiles.map((profile) => profile.id));
   return [
     ...profiles,
     ...starterProfiles.filter((profile) => !existing.has(profile.id)),
-  ];
+  ].map(repairBuiltinSampleProfile);
 }
 
 function loadProfiles() {
@@ -676,6 +782,7 @@ function loadProfiles() {
       parsed.map((profile) => ({
         ...newDraft(1),
         ...profile,
+        color: profile.color || defaultConnectionColor,
         password: "",
         port: profile.port ?? defaultPort(profile.engine),
       })),
@@ -687,6 +794,116 @@ function loadProfiles() {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
+  return {
+    ...profile,
+    color: profile.color || defaultConnectionColor,
+    password: "",
+  };
+}
+
+function repairBuiltinSampleProfile(profile: ConnectionDraft): ConnectionDraft {
+  if (profile.id !== "local-pg") {
+    return profile;
+  }
+  const url = profile.url.trim();
+  const looksLikeBundledSample =
+    !url ||
+    /(?:localhost|127\.0\.0\.1):55432(?:\/samples)?(?:[?#].*)?$/.test(url) ||
+    profile.host === "localhost" ||
+    profile.host === "127.0.0.1" ||
+    profile.database === "samples" ||
+    profile.name === "Local Warehouse" ||
+    profile.name === "Local Postgres";
+  if (!looksLikeBundledSample) {
+    return profile;
+  }
+  return {
+    ...profile,
+    name:
+      profile.name === "Local Warehouse" || !profile.name.trim()
+        ? "Local Postgres"
+        : profile.name,
+    color: profile.color || "#16a34a",
+    engine: "postgres",
+    mode: "url",
+    url: localPostgresSampleUrl,
+    host: "127.0.0.1",
+    port: "55432",
+    user: "irodori",
+    password: "",
+    database: "samples",
+  };
+}
+
+function isDbEngine(value: unknown): value is DbEngine {
+  return (
+    typeof value === "string" &&
+    engineOptions.some((option) => option.value === value)
+  );
+}
+
+function jsonString(value: unknown, fallback: string) {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return fallback;
+}
+
+function nonEmptyJsonString(value: unknown, fallback: string) {
+  return jsonString(value, fallback).trim() || fallback;
+}
+
+function settingsProfileFromJson(
+  value: unknown,
+  index: number,
+): ConnectionDraft {
+  if (!isRecord(value)) {
+    throw new Error(`connections[${index}] must be an object`);
+  }
+  const engine = isDbEngine(value.engine) ? value.engine : "postgres";
+  const defaults = {
+    ...newDraft(index + 1),
+    ...memoryDefaults(engine),
+  };
+  const mode: ConnectionInputMode =
+    value.mode === "fields" || value.mode === "url" ? value.mode : "url";
+  return repairBuiltinSampleProfile(
+    sanitizedProfile({
+      ...defaults,
+      id: nonEmptyJsonString(value.id, defaults.id),
+      name: nonEmptyJsonString(value.name, defaults.name),
+      color: nonEmptyJsonString(value.color, defaultConnectionColor),
+      engine,
+      mode,
+      url: jsonString(value.url, defaults.url),
+      host: jsonString(value.host, defaults.host),
+      port: jsonString(value.port, defaults.port || defaultPort(engine)),
+      user: jsonString(value.user, defaults.user),
+      password: "",
+      database: jsonString(value.database, defaults.database),
+    }),
+  );
+}
+
+function withUniqueProfileIds(profiles: ConnectionDraft[]) {
+  const used = new Set<string>();
+  return profiles.map((profile, index) => {
+    const base = profile.id.trim() || `connection-${index + 1}`;
+    let id = base;
+    let suffix = 2;
+    while (used.has(id)) {
+      id = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    used.add(id);
+    return { ...profile, id };
+  });
 }
 
 function loadQueryHistory(): QueryHistoryItem[] {
@@ -818,6 +1035,16 @@ function compactSql(sql: string, maxLength = 92) {
   return `${compact.slice(0, maxLength - 3)}...`;
 }
 
+function tauriRuntimeError() {
+  const internals = (
+    window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }
+  ).__TAURI_INTERNALS__;
+  if (typeof internals?.invoke === "function") {
+    return null;
+  }
+  return "Tauri desktop runtime is not available. Open the Tauri app window, not the Vite browser URL.";
+}
+
 function formatHistoryTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -830,56 +1057,61 @@ function formatHistoryTime(value: string) {
 }
 
 function validateDraft(draft: ConnectionDraft): string | null {
-  if (!draft.id.trim()) {
+  const resolvedDraft = repairBuiltinSampleProfile(draft);
+  if (!resolvedDraft.id.trim()) {
     return "connection id is required";
   }
-  if (!draft.name.trim()) {
+  if (!resolvedDraft.name.trim()) {
     return "name is required";
   }
-  if (draft.mode === "url" && !draft.url.trim()) {
+  if (resolvedDraft.mode === "url" && !resolvedDraft.url.trim()) {
     return "URL/DSN is required";
   }
   if (
-    draft.mode === "fields" &&
-    draft.engine === "sqlite" &&
-    !draft.database.trim()
+    resolvedDraft.mode === "fields" &&
+    resolvedDraft.engine === "sqlite" &&
+    !resolvedDraft.database.trim()
   ) {
     return "SQLite needs a file path or :memory:";
   }
   if (
-    draft.mode === "fields" &&
-    draft.engine !== "sqlite" &&
-    draft.engine !== "duckdb"
+    resolvedDraft.mode === "fields" &&
+    resolvedDraft.engine !== "sqlite" &&
+    resolvedDraft.engine !== "duckdb"
   ) {
-    if (!draft.host.trim()) {
+    if (!resolvedDraft.host.trim()) {
       return "host is required";
     }
-    if (draft.engine === "pinecone") {
+    if (resolvedDraft.engine === "pinecone") {
       return "Pinecone is selectable as a placeholder; a driver is not implemented yet";
     }
   }
-  if (draft.port.trim() && !Number.isInteger(Number(draft.port))) {
+  if (
+    resolvedDraft.port.trim() &&
+    !Number.isInteger(Number(resolvedDraft.port))
+  ) {
     return "port must be a number";
   }
   return null;
 }
 
 function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
-  if (draft.mode === "url") {
+  const resolvedDraft = repairBuiltinSampleProfile(draft);
+  if (resolvedDraft.mode === "url") {
     return {
-      id: draft.id.trim(),
-      engine: draft.engine,
-      url: draft.url.trim(),
+      id: resolvedDraft.id.trim(),
+      engine: resolvedDraft.engine,
+      url: resolvedDraft.url.trim(),
     };
   }
   return {
-    id: draft.id.trim(),
-    engine: draft.engine,
-    host: draft.host.trim() || undefined,
-    port: draft.port.trim() ? Number(draft.port) : undefined,
-    user: draft.user.trim() || undefined,
-    password: draft.password || undefined,
-    database: draft.database.trim() || undefined,
+    id: resolvedDraft.id.trim(),
+    engine: resolvedDraft.engine,
+    host: resolvedDraft.host.trim() || undefined,
+    port: resolvedDraft.port.trim() ? Number(resolvedDraft.port) : undefined,
+    user: resolvedDraft.user.trim() || undefined,
+    password: resolvedDraft.password || undefined,
+    database: resolvedDraft.database.trim() || undefined,
   };
 }
 
@@ -900,6 +1132,8 @@ const INSPECTOR_WIDTH_MIN = 220;
 const INSPECTOR_WIDTH_MAX = 420;
 const RESULTS_HEIGHT_MIN = 150;
 const RESULTS_HEIGHT_MAX = 520;
+const EDITOR_SPLIT_MIN = 28;
+const EDITOR_SPLIT_MAX = 72;
 
 function App() {
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -907,6 +1141,7 @@ function App() {
   const diagramSvgRef = useRef<SVGSVGElement | null>(null);
   const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
   const pendingDiagramSearchRef = useRef<string | null>(null);
+  const actionNoticeTimerRef = useRef<number | null>(null);
   const gridScrollRaf = useRef<number | null>(null);
   const pendingGridScroll = useRef({ top: 0, left: 0 });
   const [gridScrollTop, setGridScrollTop] = useState(0);
@@ -914,16 +1149,20 @@ function App() {
   const [gridViewportHeight, setGridViewportHeight] = useState(480);
   const [gridViewportWidth, setGridViewportWidth] = useState(900);
   const editorApiRef = useRef<SqlEditorHandle>(null);
+  const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
+  const editorSplitRef = useRef<HTMLDivElement | null>(null);
+  const [editorSelection, setEditorSelection] = useState({ from: 0, to: 0 });
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [activeConnectionId, setActiveConnectionId] = useState(
     fallbackSnapshot.activeConnectionId,
   );
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(loadSavedQuery);
   const [themeKind, setThemeKind] = useState<ThemeKind>(loadThemeKind);
   const theme = themeKind === "dark" ? darkTheme : lightTheme;
   const [vimMode, setVimMode] = useState(loadVimMode);
   const [formatter, setFormatter] = useState<SqlFormatterId>(loadFormatter);
+  const [sqlLinter, setSqlLinter] = useState<SqlLinterId>(loadLinter);
   const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     loadStoredNumber(
@@ -949,6 +1188,19 @@ function App() {
       RESULTS_HEIGHT_MAX,
     ),
   );
+  const [editorSplitMode, setEditorSplitMode] =
+    useState<EditorSplitMode>(loadEditorSplitMode);
+  const [editorSplitPercent, setEditorSplitPercent] = useState(() =>
+    loadStoredNumber(
+      editorSplitSizeStorageKey,
+      50,
+      EDITOR_SPLIT_MIN,
+      EDITOR_SPLIT_MAX,
+    ),
+  );
+  const [activeEditorGroup, setActiveEditorGroup] = useState<
+    "primary" | "secondary"
+  >("primary");
   const [running, setRunning] = useState(false);
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -959,6 +1211,8 @@ function App() {
   const [draft, setDraft] = useState<ConnectionDraft>(
     () => profiles[0] ?? starterProfiles[0],
   );
+  const [connectionManagerOpen, setConnectionManagerOpen] = useState(false);
+  const [connectionSearch, setConnectionSearch] = useState("");
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
   const [liveConnections, setLiveConnections] = useState<
     Record<string, WorkspaceConnection>
@@ -966,8 +1220,13 @@ function App() {
   const [connecting, setConnecting] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
+  const [resultMode, setResultMode] = useState<ResultMode>("data");
+  const [tableViewObject, setTableViewObject] = useState<DbObjectMetadata | null>(
+    null,
+  );
   const [queryError, setQueryError] = useState<string | null>(null);
   // SQL of the last run, used to infer the editable target table.
   const [lastRunSql, setLastRunSql] = useState<string>("");
@@ -997,6 +1256,10 @@ function App() {
   const [commitError, setCommitError] = useState<string | null>(null);
   // Remappable keybindings: defaults merged with user overrides (localStorage).
   const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
+  const keymap = {
+    ...resultCopyDefaultKeymap,
+    ...effectiveKeymap(keymapOverrides),
+  };
   const [activeKeyScope, setActiveKeyScope] =
     useState<KeybindingScope>("global");
   const [recordingCommand, setRecordingCommand] = useState<string | null>(null);
@@ -1004,6 +1267,16 @@ function App() {
   // Command palette (Ctrl/Cmd+Shift+P).
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [runMenuOpen, setRunMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const [settingsJsonDraft, setSettingsJsonDraft] = useState("");
+  const [settingsJsonError, setSettingsJsonError] = useState<string | null>(
+    null,
+  );
+  const [objectActionMenu, setObjectActionMenu] = useState<string | null>(null);
   // ER diagram modal (rendered from metadata through our SVG layout).
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [diagramError, setDiagramError] = useState<string | null>(null);
@@ -1082,6 +1355,10 @@ function App() {
   }, [formatter]);
 
   useEffect(() => {
+    window.localStorage.setItem(linterStorageKey, sqlLinter);
+  }, [sqlLinter]);
+
+  useEffect(() => {
     window.localStorage.setItem(sidebarStorageKey, String(sidebarOpen));
   }, [sidebarOpen]);
 
@@ -1100,6 +1377,28 @@ function App() {
     window.localStorage.setItem(resultsHeightStorageKey, String(resultsHeight));
   }, [resultsHeight]);
 
+  useEffect(() => {
+    window.localStorage.setItem(editorSplitModeStorageKey, editorSplitMode);
+    if (editorSplitMode === "single") {
+      setActiveEditorGroup("primary");
+    }
+  }, [editorSplitMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      editorSplitSizeStorageKey,
+      String(editorSplitPercent),
+    );
+  }, [editorSplitPercent]);
+
+  useEffect(() => {
+    return () => {
+      if (actionNoticeTimerRef.current !== null) {
+        window.clearTimeout(actionNoticeTimerRef.current);
+      }
+    };
+  }, []);
+
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
     snapshot.connections.forEach((connection) => {
@@ -1113,6 +1412,21 @@ function App() {
       status: connectedIds.has(connection.id) ? "connected" : connection.status,
     }));
   }, [connectedIds, liveConnections, snapshot.connections]);
+  const profileById = useMemo(
+    () => new Map(profiles.map((profile) => [profile.id, profile])),
+    [profiles],
+  );
+  const filteredProfiles = useMemo(() => {
+    const needle = connectionSearch.trim().toLowerCase();
+    if (!needle) {
+      return profiles;
+    }
+    return profiles.filter((profile) =>
+      `${profile.name} ${profile.id} ${engineLabel(profile.engine)} ${profile.host} ${profile.database} ${profile.url}`
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [connectionSearch, profiles]);
 
   const activeConnection = useMemo(
     () =>
@@ -1124,8 +1438,18 @@ function App() {
     (profile) => profile.id === activeConnectionId,
   );
   const activeEngine = activeProfile?.engine ?? draft.engine;
-
+  const editorSplitOpen = editorSplitMode !== "single";
   const activeConnectionOpen = connectedIds.has(activeConnectionId);
+  const activeConnectionColor =
+    activeProfile?.color || profileById.get(activeConnectionId)?.color || defaultConnectionColor;
+  const activeConnectionStatus = activeConnectionOpen
+    ? `Connected · ${activeConnection.latencyMs} ms`
+    : "Disconnected";
+  const activeTransportLabel =
+    activeConnection.proxy === "direct"
+      ? "Direct connection"
+      : activeConnection.proxy || "Transport not configured";
+
   const activeMetadata = metadataByConnection[activeConnectionId];
   const activeMetadataLoading = metadataLoading.has(activeConnectionId);
   const activeMetadataError = metadataErrors[activeConnectionId];
@@ -1133,6 +1457,13 @@ function App() {
     () => completionHintsFromMetadata(activeMetadata),
     [activeMetadata],
   );
+
+  function activeEditorApi() {
+    if (editorSplitOpen && activeEditorGroup === "secondary") {
+      return secondaryEditorApiRef.current ?? editorApiRef.current;
+    }
+    return editorApiRef.current;
+  }
   const scopedHistory = useMemo(
     () =>
       history
@@ -1210,6 +1541,19 @@ function App() {
   }, [profiles, activeConnectionId, draft.engine]);
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label;
+  const selectedEditorSql = query
+    .slice(editorSelection.from, editorSelection.to)
+    .trim();
+  const hasSelectedEditorSql = selectedEditorSql.length > 0;
+  const runPrimaryLabel = hasSelectedEditorSql ? "Run Selection" : "Run Current";
+  const runShortcutLabel = formatKeySequence(keymap["query.run"] ?? "");
+  const runCurrentShortcutLabel = formatKeySequence(
+    keymap["query.runCurrent"] ?? "",
+  );
+  const runFromStartShortcutLabel = formatKeySequence(
+    keymap["query.runFromStart"] ?? "",
+  );
+  const runAllShortcutLabel = formatKeySequence(keymap["query.runAll"] ?? "");
 
   const resultSets = useMemo<QueryResultSet[]>(() => {
     if (!result) {
@@ -1364,6 +1708,8 @@ function App() {
   const topPad = rowWindow.topPadPx;
   const bottomPad = rowWindow.bottomPadPx;
   const visibleRows = resultGridView.rowsInRange(firstVisible, lastVisible);
+  const structureObject = resultMode === "structure" ? tableViewObject : null;
+  const showingStructure = Boolean(structureObject);
 
   function onGridScroll(event: UIEvent<HTMLDivElement>) {
     pendingGridScroll.current = {
@@ -1393,7 +1739,7 @@ function App() {
     }
   }
 
-  type PanelResizeKind = "sidebar" | "inspector" | "results";
+  type PanelResizeKind = "sidebar" | "inspector" | "results" | "editorSplit";
 
   function resizePanel(kind: PanelResizeKind, delta: number) {
     switch (kind) {
@@ -1416,6 +1762,11 @@ function App() {
           clampNumber(current + delta, RESULTS_HEIGHT_MIN, RESULTS_HEIGHT_MAX),
         );
         break;
+      case "editorSplit":
+        setEditorSplitPercent((current) =>
+          clampNumber(current + delta, EDITOR_SPLIT_MIN, EDITOR_SPLIT_MAX),
+        );
+        break;
     }
   }
 
@@ -1429,9 +1780,27 @@ function App() {
     const startSidebarWidth = sidebarWidth;
     const startInspectorWidth = inspectorWidth;
     const startResultsHeight = resultsHeight;
+    const editorSplitBounds = editorSplitRef.current?.getBoundingClientRect();
     document.body.classList.add("panel-resizing");
 
     const onMove = (moveEvent: PointerEvent) => {
+      if (kind === "editorSplit") {
+        if (!editorSplitBounds) {
+          return;
+        }
+        const next =
+          editorSplitMode === "down"
+            ? ((moveEvent.clientY - editorSplitBounds.top) /
+                Math.max(1, editorSplitBounds.height)) *
+              100
+            : ((moveEvent.clientX - editorSplitBounds.left) /
+                Math.max(1, editorSplitBounds.width)) *
+              100;
+        setEditorSplitPercent(
+          clampNumber(next, EDITOR_SPLIT_MIN, EDITOR_SPLIT_MAX),
+        );
+        return;
+      }
       if (kind === "sidebar") {
         setSidebarWidth(
           clampNumber(
@@ -1487,6 +1856,14 @@ function App() {
     }
     event.preventDefault();
     const step = event.shiftKey ? 32 : 16;
+    if (kind === "editorSplit") {
+      if (editorSplitMode === "down") {
+        resizePanel(kind, event.key === "ArrowDown" ? 4 : -4);
+      } else {
+        resizePanel(kind, event.key === "ArrowRight" ? 4 : -4);
+      }
+      return;
+    }
     if (kind === "results") {
       resizePanel(kind, event.key === "ArrowUp" ? step : -step);
       return;
@@ -1778,12 +2155,16 @@ function App() {
 
   async function copyGridText(text: string | null) {
     if (text === null) {
+      showActionNotice("info", "Nothing to copy");
       return;
     }
     try {
       await writeTextToClipboard(text);
+      showActionNotice("success", "Copied", "Selection copied to clipboard");
     } catch (error) {
-      setQueryError(errorMessage(error));
+      const message = errorMessage(error);
+      setQueryError(message);
+      showActionNotice("error", "Copy failed", message);
     }
   }
 
@@ -1934,9 +2315,9 @@ function App() {
   async function commitEdits() {
     const target = inferEditTarget();
     if (!target) {
-      setCommitError(
-        "could not detect an editable target table from the query",
-      );
+      const message = "could not detect an editable target table from the query";
+      setCommitError(message);
+      showActionNotice("error", "Commit failed", message);
       return;
     }
     const updates: RowUpdate[] = [];
@@ -1986,8 +2367,15 @@ function App() {
       setEditMode(false);
       // Re-run the last query so the grid shows the committed state.
       await runQuery();
+      showActionNotice(
+        "success",
+        "Edits committed",
+        `${toCount(updates.length)} updates, ${toCount(inserts.length)} inserts, ${toCount(deletes.length)} deletes`,
+      );
     } catch (error) {
-      setCommitError(errorMessage(error));
+      const message = errorMessage(error);
+      setCommitError(message);
+      showActionNotice("error", "Commit failed", message);
     } finally {
       setCommitting(false);
     }
@@ -2000,23 +2388,42 @@ function App() {
         setPaletteQuery("");
         setPaletteOpen(true);
         break;
+      case "settings.open":
+        openSettingsSection("general");
+        break;
+      case "help.open":
+      case "about.open":
+        setAboutOpen(true);
+        break;
+      case "connection.manager":
+        setConnectionManagerOpen(true);
+        break;
       case "diagram.show":
         setDiagramOpen(true);
         break;
       case "query.run":
         void runQuery();
         break;
+      case "query.runCurrent":
+        void runCurrentQuery();
+        break;
+      case "query.runFromStart":
+        void runFromStartQuery();
+        break;
+      case "query.runAll":
+        void runAllQuery();
+        break;
       case "query.cancel":
         void cancelQuery();
         break;
       case "editor.focus":
-        editorApiRef.current?.focus();
+        activeEditorApi()?.focus();
         break;
       case "editor.format":
         formatQuery();
         break;
       case "editor.comment.toggle":
-        editorApiRef.current?.toggleComment();
+        activeEditorApi()?.toggleComment();
         break;
       case "result.export":
         exportActiveResult("csv");
@@ -2049,16 +2456,177 @@ function App() {
     }
   }
 
-  const keymap = {
-    ...resultCopyDefaultKeymap,
-    ...effectiveKeymap(keymapOverrides),
-  };
   const keymapConflicts = findConflicts(keymap, appCommandCatalog);
   const paletteResults = appCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
       .includes(paletteQuery.trim().toLowerCase()),
   );
+
+  function buildSettingsJson() {
+    return JSON.stringify(
+      {
+        version: 1,
+        theme: themeKind,
+        editor: {
+          vimMode,
+          formatter,
+          linter: sqlLinter,
+        },
+        layout: {
+          sidebarOpen,
+          sidebarWidth,
+          inspectorWidth,
+          resultsHeight,
+        },
+        activeConnectionId,
+        keymapOverrides,
+        connections: profiles.map(sanitizedProfile),
+      },
+      null,
+      2,
+    );
+  }
+
+  function openSettingsSection(tab: SettingsTab) {
+    setSettingsTab(tab);
+    setSettingsOpen(true);
+    if (tab === "json") {
+      setSettingsJsonDraft(buildSettingsJson());
+      setSettingsJsonError(null);
+    }
+  }
+
+  function resetSettingsJsonDraft() {
+    setSettingsJsonDraft(buildSettingsJson());
+    setSettingsJsonError(null);
+    showActionNotice("info", "Settings JSON reset", "Loaded current settings");
+  }
+
+  function applySettingsJson() {
+    try {
+      const parsed = JSON.parse(settingsJsonDraft) as unknown;
+      if (!isRecord(parsed)) {
+        throw new Error("settings JSON root must be an object");
+      }
+      if (parsed.theme === "dark" || parsed.theme === "light") {
+        setThemeKind(parsed.theme);
+      }
+      if (isRecord(parsed.editor)) {
+        if (typeof parsed.editor.vimMode === "boolean") {
+          setVimMode(parsed.editor.vimMode);
+        }
+        if (
+          typeof parsed.editor.formatter === "string" &&
+          isSqlFormatterId(parsed.editor.formatter)
+        ) {
+          setFormatter(parsed.editor.formatter);
+        }
+        if (
+          typeof parsed.editor.linter === "string" &&
+          isSqlLinterId(parsed.editor.linter)
+        ) {
+          setSqlLinter(parsed.editor.linter);
+        }
+      }
+      if (isRecord(parsed.layout)) {
+        if (typeof parsed.layout.sidebarOpen === "boolean") {
+          setSidebarOpen(parsed.layout.sidebarOpen);
+        }
+        const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
+        if (Number.isFinite(nextSidebarWidth)) {
+          setSidebarWidth(
+            clampNumber(
+              nextSidebarWidth,
+              SIDEBAR_WIDTH_MIN,
+              SIDEBAR_WIDTH_MAX,
+            ),
+          );
+        }
+        const nextInspectorWidth = Number(parsed.layout.inspectorWidth);
+        if (Number.isFinite(nextInspectorWidth)) {
+          setInspectorWidth(
+            clampNumber(
+              nextInspectorWidth,
+              INSPECTOR_WIDTH_MIN,
+              INSPECTOR_WIDTH_MAX,
+            ),
+          );
+        }
+        const nextResultsHeight = Number(parsed.layout.resultsHeight);
+        if (Number.isFinite(nextResultsHeight)) {
+          setResultsHeight(
+            clampNumber(
+              nextResultsHeight,
+              RESULTS_HEIGHT_MIN,
+              RESULTS_HEIGHT_MAX,
+            ),
+          );
+        }
+      }
+      if (isRecord(parsed.keymapOverrides)) {
+        const nextKeymap: Keymap = {};
+        for (const [commandId, chord] of Object.entries(parsed.keymapOverrides)) {
+          if (typeof chord === "string") {
+            nextKeymap[commandId] = chord;
+          }
+        }
+        setKeymapOverrides(nextKeymap);
+        saveOverrides(nextKeymap);
+      }
+      if (Array.isArray(parsed.connections)) {
+        const nextProfiles = withStarterProfiles(
+          withUniqueProfileIds(
+            parsed.connections.map((profile, index) =>
+              settingsProfileFromJson(profile, index),
+            ),
+          ),
+        );
+        if (nextProfiles.length > 0) {
+          const selectedId =
+            typeof parsed.activeConnectionId === "string" &&
+            nextProfiles.some((profile) => profile.id === parsed.activeConnectionId)
+              ? parsed.activeConnectionId
+              : nextProfiles[0].id;
+          const selectedProfile =
+            nextProfiles.find((profile) => profile.id === selectedId) ??
+            nextProfiles[0];
+          setProfiles(nextProfiles);
+          setSelectedProfileId(selectedProfile.id);
+          setActiveConnectionId(selectedProfile.id);
+          setDraft(selectedProfile);
+        }
+      }
+      setSettingsJsonDraft(JSON.stringify(parsed, null, 2));
+      setSettingsJsonError(null);
+      showActionNotice("success", "Settings applied", "JSON settings were loaded");
+    } catch (error) {
+      const message = errorMessage(error);
+      setSettingsJsonError(message);
+      showActionNotice("error", "Settings JSON failed", message);
+    }
+  }
+
+  function showActionNotice(
+    kind: ActionNotice["kind"],
+    title: string,
+    detail?: string,
+  ) {
+    if (actionNoticeTimerRef.current !== null) {
+      window.clearTimeout(actionNoticeTimerRef.current);
+    }
+    setActionNotice({
+      id: Date.now(),
+      kind,
+      title,
+      detail,
+    });
+    actionNoticeTimerRef.current = window.setTimeout(() => {
+      setActionNotice(null);
+      actionNoticeTimerRef.current = null;
+    }, kind === "error" ? 5200 : 3200);
+  }
+
   // Keep the keydown listener stable while reading the latest state via refs.
   const keymapRef = useRef(keymap);
   keymapRef.current = keymap;
@@ -2287,8 +2855,9 @@ function App() {
   }
 
   function selectProfile(profile: ConnectionDraft) {
-    setSelectedProfileId(profile.id);
-    setDraft(profile);
+    const repaired = repairBuiltinSampleProfile(profile);
+    setSelectedProfileId(repaired.id);
+    setDraft(repaired);
     setConnectionError(null);
   }
 
@@ -2296,9 +2865,10 @@ function App() {
     const validationError = validateDraft(draft);
     if (validationError) {
       setConnectionError(validationError);
+      showActionNotice("error", "Connection was not saved", validationError);
       return false;
     }
-    const cleanDraft = sanitizedProfile(draft);
+    const cleanDraft = repairBuiltinSampleProfile(sanitizedProfile(draft));
     setProfiles((current) => {
       const existing = current.findIndex(
         (profile) => profile.id === cleanDraft.id,
@@ -2313,6 +2883,7 @@ function App() {
     setSelectedProfileId(cleanDraft.id);
     if (showSaved) {
       setConnectionError(null);
+      showActionNotice("success", "Connection saved", cleanDraft.name);
     }
     return true;
   }
@@ -2323,6 +2894,7 @@ function App() {
     setSelectedProfileId(next.id);
     setDraft(next);
     setConnectionError(null);
+    showActionNotice("info", "New connection draft created", next.name);
   }
 
   async function deleteProfile() {
@@ -2342,12 +2914,20 @@ function App() {
       setDraft(fallback);
       return next.length > 0 ? next : [sanitizedProfile(fallback)];
     });
+    showActionNotice("success", "Connection deleted", id);
   }
 
   async function testActiveProfile() {
     const validationError = validateDraft(draft);
     if (validationError) {
       setConnectionError(validationError);
+      showActionNotice("error", "Connection test failed", validationError);
+      return;
+    }
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setConnectionError(runtimeError);
+      showActionNotice("error", "Connection test failed", runtimeError);
       return;
     }
     setTestingConnection(true);
@@ -2359,11 +2939,16 @@ function App() {
         id: testId,
       });
       await dbDisconnect(testId);
-      setConnectionError(
-        `Test succeeded for ${draft.name.trim()} (${engineLabel(draft.engine)})`,
+      setConnectionError(null);
+      showActionNotice(
+        "success",
+        "Connection test succeeded",
+        `${draft.name.trim()} (${engineLabel(draft.engine)})`,
       );
     } catch (error) {
-      setConnectionError(errorMessage(error));
+      const message = errorMessage(error);
+      setConnectionError(message);
+      showActionNotice("error", "Connection test failed", message);
     } finally {
       setTestingConnection(false);
     }
@@ -2372,6 +2957,12 @@ function App() {
   async function connectActiveProfile(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!saveDraft(false)) {
+      return;
+    }
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setConnectionError(runtimeError);
+      showActionNotice("error", "Connect failed", runtimeError);
       return;
     }
     setConnecting(true);
@@ -2392,8 +2983,16 @@ function App() {
       setConnectedIds((current) => new Set(current).add(nextConnection.id));
       setActiveConnectionId(nextConnection.id);
       void refreshObjects(nextConnection.id, true);
+      setConnectionManagerOpen(false);
+      showActionNotice(
+        "success",
+        "Connected",
+        `${draft.name.trim()} · ${elapsedMs} ms`,
+      );
     } catch (error) {
-      setConnectionError(errorMessage(error));
+      const message = errorMessage(error);
+      setConnectionError(message);
+      showActionNotice("error", "Connect failed", message);
     } finally {
       setConnecting(false);
     }
@@ -2418,13 +3017,26 @@ function App() {
       const { [id]: _removed, ...next } = current;
       return next;
     });
+    showActionNotice("success", "Disconnected", id);
   }
 
   async function refreshObjects(
     connectionId = activeConnectionId,
     force = false,
+    notify = false,
   ) {
     if (!force && !connectedIds.has(connectionId)) {
+      return;
+    }
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setMetadataErrors((current) => ({
+        ...current,
+        [connectionId]: runtimeError,
+      }));
+      if (notify) {
+        showActionNotice("error", "Refresh failed", runtimeError);
+      }
       return;
     }
     setMetadataLoading((current) => new Set(current).add(connectionId));
@@ -2438,11 +3050,26 @@ function App() {
         ...current,
         [connectionId]: metadata,
       }));
+      if (notify) {
+        const objectCount = metadata.schemas.reduce(
+          (count, schema) => count + schema.objects.length,
+          0,
+        );
+        showActionNotice(
+          "success",
+          "Objects refreshed",
+          `${toCount(objectCount)} objects loaded`,
+        );
+      }
     } catch (error) {
+      const message = errorMessage(error);
       setMetadataErrors((current) => ({
         ...current,
-        [connectionId]: errorMessage(error),
+        [connectionId]: message,
       }));
+      if (notify) {
+        showActionNotice("error", "Refresh failed", message);
+      }
     } finally {
       setMetadataLoading((current) => {
         const next = new Set(current);
@@ -2458,6 +3085,7 @@ function App() {
 
   function exportActiveResult(format: ResultExportFormat) {
     if (!activeResult) {
+      showActionNotice("info", "No result to export");
       return;
     }
     const target = inferEditTarget();
@@ -2478,6 +3106,11 @@ function App() {
     link.remove();
     setExportMenuOpen(false);
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    showActionNotice(
+      "success",
+      "Export started",
+      resultExportFileName(activeConnectionId, format),
+    );
   }
 
   function currentDiagramSvgMarkup() {
@@ -2500,8 +3133,11 @@ function App() {
         erdFileName(activeConnectionId, "svg"),
       );
       setDiagramError(null);
+      showActionNotice("success", "ERD SVG exported", erdFileName(activeConnectionId, "svg"));
     } catch (error) {
-      setDiagramError(errorMessage(error));
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "ERD export failed", message);
     }
   }
 
@@ -2511,8 +3147,11 @@ function App() {
       const blob = await svgMarkupToPngBlob(markup, width, height);
       downloadBlob(blob, erdFileName(activeConnectionId, "png"));
       setDiagramError(null);
+      showActionNotice("success", "ERD PNG exported", erdFileName(activeConnectionId, "png"));
     } catch (error) {
-      setDiagramError(errorMessage(error));
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "ERD export failed", message);
     }
   }
 
@@ -2521,8 +3160,11 @@ function App() {
       const { markup } = currentDiagramSvgMarkup();
       await writeTextToClipboard(markup);
       setDiagramError(null);
+      showActionNotice("success", "ERD SVG copied");
     } catch (error) {
-      setDiagramError(errorMessage(error));
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "Copy failed", message);
     }
   }
 
@@ -2532,8 +3174,11 @@ function App() {
       const blob = await svgMarkupToPngBlob(markup, width, height);
       await writePngBlobToClipboard(blob);
       setDiagramError(null);
+      showActionNotice("success", "ERD PNG copied");
     } catch (error) {
-      setDiagramError(errorMessage(error));
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "Copy failed", message);
     }
   }
 
@@ -2564,16 +3209,21 @@ function App() {
     setImportPreview(null);
     setImportError(null);
     if (!kind) {
-      setImportError("Unsupported import file type");
+      const message = "Unsupported import file type";
+      setImportError(message);
+      showActionNotice("error", "Import failed", message);
       return;
     }
     const text = await file.text();
     if (kind === "sql") {
       setQuery(text);
+      showActionNotice("success", "SQL loaded", file.name);
       return;
     }
     if (kind === "excel") {
-      setImportError("Excel import is not available in the desktop UI yet");
+      const message = "Excel import is not available in the desktop UI yet";
+      setImportError(message);
+      showActionNotice("error", "Import failed", message);
       return;
     }
     try {
@@ -2584,8 +3234,15 @@ function App() {
         format: kind,
         tableName: inferImportTableName(file.name),
       });
+      showActionNotice(
+        "success",
+        "Import preview ready",
+        `${file.name} · ${toCount(parsed.totalRows)} rows`,
+      );
     } catch (error) {
-      setImportError(errorMessage(error));
+      const message = errorMessage(error);
+      setImportError(message);
+      showActionNotice("error", "Import failed", message);
     }
   }
 
@@ -2602,6 +3259,7 @@ function App() {
     );
     setImportPreview(null);
     setImportError(null);
+    showActionNotice("success", "Import SQL generated", importPreview.tableName);
   }
 
   function openBlankSchemaDesigner() {
@@ -2614,14 +3272,38 @@ function App() {
     setSchemaDesignerOpen(true);
   }
 
+  async function openTableData(object: DbObjectMetadata) {
+    if (object.kind !== "table" && object.kind !== "view") {
+      return;
+    }
+    const sql = tablePreviewSql(editorEngine, object);
+    setQuery(sql);
+    setObjectActionMenu(null);
+    setTableViewObject(object);
+    setResultMode("data");
+    if (activeConnectionOpen) {
+      await executeQuery(sql, undefined, { sourceObject: object });
+    }
+  }
+
   function putSchemaSqlInEditor() {
     setQuery(buildSchemaSql(schemaDraft));
     setSchemaDesignerOpen(false);
+    showActionNotice("success", "Schema SQL generated", schemaDraft.table);
+  }
+
+  async function copySchemaSql() {
+    try {
+      await writeTextToClipboard(schemaSqlPreview);
+      showActionNotice("success", "Schema SQL copied");
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
   }
 
   function insertCompletionHint(hint: CompletionHint) {
-    editorApiRef.current?.insertText(hint.insertText);
-    editorApiRef.current?.focus();
+    activeEditorApi()?.insertText(hint.insertText);
+    activeEditorApi()?.focus();
   }
 
   function updateSchemaColumn(id: string, patch: Partial<SchemaColumnDraft>) {
@@ -2654,30 +3336,109 @@ function App() {
     }));
   }
 
+  function saveCurrentQuery() {
+    try {
+      window.localStorage.setItem(savedQueryStorageKey, query);
+      showActionNotice("success", "Query saved", activeTabLabel ?? "scratch");
+    } catch (error) {
+      showActionNotice("error", "Query save failed", errorMessage(error));
+    }
+  }
+
+  async function copyAppDiagnostics() {
+    const diagnostics = [
+      `${APP_NAME} ${APP_VERSION}`,
+      `Identifier: ${APP_IDENTIFIER}`,
+      `Runtime: ${tauriRuntimeError() ? "browser preview" : "Tauri desktop"}`,
+      `Theme: ${theme.kind}`,
+      `Active connection: ${activeConnectionId}`,
+      `Connection status: ${activeConnectionOpen ? "connected" : "closed"}`,
+      `Engine: ${activeEngine}`,
+      `User agent: ${navigator.userAgent}`,
+    ].join("\n");
+    try {
+      await navigator.clipboard?.writeText(diagnostics);
+      showActionNotice("success", "Diagnostics copied");
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
+  }
+
   function formatQuery() {
-    const error = editorApiRef.current?.format();
+    const error = activeEditorApi()?.format();
     setQueryError(error ?? null);
+    if (error) {
+      showActionNotice("error", "Format failed", error);
+    } else {
+      showActionNotice("success", "SQL formatted", formatter);
+    }
   }
 
   async function runQuery() {
-    if (!activeConnectionOpen) {
-      setQueryError(`not connected: ${activeConnectionId}`);
-      return;
-    }
-    const selection = editorApiRef.current?.getSelection() ?? {
-      from: 0,
-      to: 0,
-    };
+    setRunMenuOpen(false);
+    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
     const sqlToRun = selectedOrCurrentStatement(
       selection.from,
       selection.to,
       query,
     );
+    await runEditorSql(sqlToRun, { allowMagic: true });
+  }
+
+  async function runSelectionQuery() {
+    setRunMenuOpen(false);
+    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
+    const sqlToRun = query.slice(selection.from, selection.to).trim();
     if (!sqlToRun) {
-      setQueryError("query is empty");
+      showActionNotice("info", "No selection to run");
       return;
     }
-    const magic = parseQueryMagic(sqlToRun, activeEngine);
+    await runEditorSql(sqlToRun, { allowMagic: true });
+  }
+
+  async function runCurrentQuery() {
+    setRunMenuOpen(false);
+    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
+    const cursor = selection.to;
+    const sqlToRun = selectedOrCurrentStatement(cursor, cursor, query);
+    await runEditorSql(sqlToRun, { allowMagic: true });
+  }
+
+  async function runFromStartQuery() {
+    setRunMenuOpen(false);
+    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
+    const cursor = Math.max(selection.from, selection.to);
+    const sqlToRun = query.slice(0, cursor).trim();
+    await runEditorSql(sqlToRun, { allowMagic: false });
+  }
+
+  async function runAllQuery() {
+    setRunMenuOpen(false);
+    await runEditorSql(query.trim(), { allowMagic: false });
+  }
+
+  async function runEditorSql(
+    sqlToRun: string,
+    options: { allowMagic: boolean },
+  ) {
+    if (!activeConnectionOpen) {
+      const message = `not connected: ${activeConnectionId}`;
+      setQueryError(message);
+      showActionNotice("error", "Run failed", message);
+      return;
+    }
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setQueryError(runtimeError);
+      showActionNotice("error", "Run failed", runtimeError);
+      return;
+    }
+    if (!sqlToRun) {
+      setQueryError("query is empty");
+      showActionNotice("info", "Nothing to run");
+      return;
+    }
+    const magic = options.allowMagic ? parseQueryMagic(sqlToRun, activeEngine) : null;
     if (magic) {
       await runQueryMagic(magic);
       return;
@@ -2734,6 +3495,12 @@ function App() {
     sqlToRun: string,
     requirePrompt: boolean,
   ) {
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setQueryError(runtimeError);
+      showActionNotice("error", "Parameter scan failed", runtimeError);
+      return true;
+    }
     try {
       const promptSet = await dbQueryParameters(sqlToRun);
       if (promptSet.prompts.length > 0) {
@@ -2752,10 +3519,13 @@ function App() {
       }
       if (requirePrompt) {
         setQueryError("No query parameters found in this SQL.");
+        showActionNotice("info", "No parameters found");
         return true;
       }
     } catch (error) {
-      setQueryError(errorMessage(error));
+      const message = errorMessage(error);
+      setQueryError(message);
+      showActionNotice("error", "Parameter scan failed", message);
       return true;
     }
     return false;
@@ -2764,18 +3534,30 @@ function App() {
   async function executeQuery(
     sqlToRun: string,
     params?: QueryParameterInput[],
+    options: { sourceObject?: DbObjectMetadata } = {},
   ) {
     if (!activeConnectionOpen) {
-      setQueryError(`not connected: ${activeConnectionId}`);
+      const message = `not connected: ${activeConnectionId}`;
+      setQueryError(message);
+      showActionNotice("error", "Run failed", message);
+      return;
+    }
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setQueryError(runtimeError);
+      showActionNotice("error", "Run failed", runtimeError);
       return;
     }
     if (!sqlToRun.trim()) {
       setQueryError("query is empty");
+      showActionNotice("info", "Nothing to run");
       return;
     }
     setRunning(true);
     setQueryError(null);
     setLastRunSql(sqlToRun);
+    setResultMode("data");
+    setTableViewObject(options.sourceObject ?? null);
     setActiveResultIndex(0);
     // A new run invalidates any staged edits and resets the scroll/filter/sort view.
     resetEdits();
@@ -2892,9 +3674,15 @@ function App() {
               if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
                 void refreshObjects(activeConnectionId, true);
               }
+              showActionNotice(
+                "success",
+                "Query finished",
+                `${toCount(event.rowCount)} rows in ${toCount(event.elapsedMs)} ms`,
+              );
               break;
             case "error":
               setQueryError(event.message);
+              showActionNotice("error", "Query failed", event.message);
               appendHistory({
                 id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 connectionId: activeConnectionId,
@@ -2915,6 +3703,7 @@ function App() {
     } catch (error) {
       const message = errorMessage(error);
       setQueryError(message);
+      showActionNotice("error", "Query failed", message);
       appendHistory({
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         connectionId: activeConnectionId,
@@ -2963,8 +3752,10 @@ function App() {
     }
     try {
       await dbCancel(id);
+      showActionNotice("info", "Cancel requested");
     } catch {
       // Best-effort: if the run already finished there is nothing to cancel.
+      showActionNotice("info", "Query already finished");
     }
   }
 
@@ -2977,6 +3768,7 @@ function App() {
           "--sidebar-width": `${sidebarWidth}px`,
           "--inspector-width": `${inspectorWidth}px`,
           "--results-height": `${resultsHeight}px`,
+          "--editor-split-primary": `${editorSplitPercent}%`,
         } as CSSProperties
       }
       data-theme={theme.kind}
@@ -2993,44 +3785,124 @@ function App() {
       }}
     >
       <header className="titlebar">
-        <div className="window-controls" aria-hidden="true">
-          <span className="dot red" />
-          <span className="dot amber" />
-          <span className="dot green" />
+        <div className="brand" title={APP_NAME} aria-label={APP_NAME}>
+          <img className="brand-icon" src="/irodori-icon.svg" alt="" />
         </div>
-        <div className="brand">
-          <Database size={18} />
-          <span>Irodori Table</span>
+        <div className="titlebar-actions">
+          <button
+            className="theme-toggle"
+            type="button"
+            title={
+              themeKind === "dark"
+                ? "Switch to light theme"
+                : "Switch to dark theme"
+            }
+            aria-label="Toggle color theme"
+            onClick={() =>
+              setThemeKind((kind) => (kind === "dark" ? "light" : "dark"))
+            }
+          >
+            {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          <button
+            className="theme-toggle"
+            type="button"
+            title="Settings"
+            aria-label="Settings"
+            onClick={() => {
+              openSettingsSection("general");
+            }}
+          >
+            <Settings size={15} />
+          </button>
+          <button
+            className="theme-toggle"
+            type="button"
+            title="Help"
+            aria-label="Help"
+            onClick={() => setAboutOpen(true)}
+          >
+            <HelpCircle size={15} />
+          </button>
+          <button
+            className="theme-toggle"
+            type="button"
+            title="Workspace menu"
+            aria-label="Workspace menu"
+            aria-expanded={workspaceMenuOpen}
+            onClick={() => setWorkspaceMenuOpen((open) => !open)}
+          >
+            <Menu size={15} />
+          </button>
+          {workspaceMenuOpen ? (
+            <div className="app-menu-popover" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
+                  setConnectionManagerOpen(true);
+                }}
+              >
+                Connection Manager
+                <kbd>Ctrl+Shift+D</kbd>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
+                  openSettingsSection("keymap");
+                }}
+              >
+                Keyboard Shortcuts
+                <kbd>Ctrl+,</kbd>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
+                  openSettingsSection("general");
+                }}
+              >
+                Settings
+              </button>
+              <span className="menu-separator" role="separator" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
+                  setAboutOpen(true);
+                }}
+              >
+                Help
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
+                  setAboutOpen(true);
+                }}
+              >
+                About {APP_NAME}
+                <kbd>v{APP_VERSION}</kbd>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false);
+                  setThemeKind((kind) => (kind === "dark" ? "light" : "dark"));
+                }}
+              >
+                {themeKind === "dark" ? "Light Theme" : "Dark Theme"}
+              </button>
+            </div>
+          ) : null}
         </div>
-        <div className="global-search">
-          <Search size={15} />
-          <input aria-label="Search" placeholder="Open anything" />
-        </div>
-        <button
-          className={vimMode ? "keymap-chip active" : "keymap-chip"}
-          type="button"
-          title={vimMode ? "Disable Vim mode" : "Enable Vim mode"}
-          aria-pressed={vimMode}
-          onClick={() => setVimMode((enabled) => !enabled)}
-        >
-          <Keyboard size={14} />
-          <span>{vimMode ? "Vim" : "Keymap"}</span>
-        </button>
-        <button
-          className="theme-toggle"
-          type="button"
-          title={
-            themeKind === "dark"
-              ? "Switch to light theme"
-              : "Switch to dark theme"
-          }
-          aria-label="Toggle color theme"
-          onClick={() =>
-            setThemeKind((kind) => (kind === "dark" ? "light" : "dark"))
-          }
-        >
-          {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
@@ -3048,319 +3920,87 @@ function App() {
             <PanelLeftOpen size={15} />
           )}
         </button>
-        <button className="connection-select" type="button">
-          <Database size={16} />
+        <button
+          className="connection-select"
+          type="button"
+          onClick={() => setConnectionManagerOpen(true)}
+        >
+          <span
+            className="connection-color-dot"
+            style={{ background: activeConnectionColor }}
+            aria-hidden="true"
+          />
           <span>{activeConnection.name}</span>
           <small>{activeConnection.engine}</small>
           <ChevronDown size={15} />
         </button>
-        <button
-          className="primary-action"
-          type="button"
-          disabled={running}
-          onClick={runQuery}
-        >
-          <Play size={15} fill="currentColor" />
-          <span>Run Current</span>
-        </button>
-        <button
-          className="icon-button"
-          type="button"
-          title="Cancel query"
-          aria-label="Cancel query"
-          disabled={!running}
-          onClick={cancelQuery}
-        >
-          <Square size={15} />
-        </button>
-        <button
-          className="icon-button"
-          type="button"
-          title={`Format SQL (${formatter})`}
-          aria-label="Format SQL"
-          onClick={() => runCommand("editor.format")}
-        >
-          <AlignLeft size={15} />
-        </button>
-        <select
-          className="formatter-select"
-          aria-label="SQL formatter"
-          value={formatter}
-          onChange={(event) => {
-            const next = event.target.value;
-            if (isSqlFormatterId(next)) {
-              setFormatter(next);
-            }
-          }}
-        >
-          {formatterOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <button
-          className="icon-button"
-          type="button"
-          title="Toggle SQL comment"
-          aria-label="Toggle SQL comment"
-          onClick={() => runCommand("editor.comment.toggle")}
-        >
-          <TerminalSquare size={15} />
-        </button>
-        <button
-          className="icon-button"
-          type="button"
-          title="Save query"
-          aria-label="Save query"
-        >
-          <Save size={15} />
-        </button>
-        <button
-          className="icon-button"
-          type="button"
-          title="Split editor"
-          aria-label="Split editor"
-        >
-          <SplitSquareHorizontal size={15} />
-        </button>
         <div className="toolbar-spacer" />
-        <div className="latency">
-          <Bolt size={14} />
-          <span>
-            {activeConnectionOpen
-              ? `${activeConnection.latencyMs} ms`
-              : "closed"}
-          </span>
-        </div>
-        <div className="latency proxy">
-          <ShieldCheck size={14} />
-          <span>{activeConnection.proxy}</span>
-        </div>
       </section>
 
       <div
         className={sidebarOpen ? "workspace" : "workspace sidebar-collapsed"}
       >
+        <nav className="connection-rail" aria-label="Connections">
+          <button
+            className="rail-action"
+            type="button"
+            title="New connection"
+            aria-label="New connection"
+            onClick={() => {
+              addProfile();
+              setConnectionManagerOpen(true);
+            }}
+          >
+            <Plus size={16} />
+          </button>
+          <div className="rail-connection-list">
+            {connections.map((connection) => {
+              const profile = profileById.get(connection.id);
+              const active = connection.id === activeConnectionId;
+              const connected = connectedIds.has(connection.id);
+              return (
+                <button
+                  className={`rail-connection${active ? " active" : ""}`}
+                  key={connection.id}
+                  type="button"
+                  title={`${connection.name} · ${connection.engine}${
+                    connected ? " · connected" : " · closed"
+                  }`}
+                  aria-label={`Switch to ${connection.name}`}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => {
+                    setActiveConnectionId(connection.id);
+                    if (profile) {
+                      selectProfile(profile);
+                    }
+                  }}
+                  onDoubleClick={() => setConnectionManagerOpen(true)}
+                >
+                  <Database size={17} />
+                  <span
+                    className="connection-color-dot"
+                    style={{
+                      background: profile?.color || defaultConnectionColor,
+                    }}
+                    aria-hidden="true"
+                  />
+                  <i className={connected ? "connected" : ""} aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="rail-action"
+            type="button"
+            title="Connection manager"
+            aria-label="Connection manager"
+            onClick={() => setConnectionManagerOpen(true)}
+          >
+            <Settings size={16} />
+          </button>
+        </nav>
         {sidebarOpen ? (
           <aside className="sidebar">
-            <section className="sidebar-section connection-section">
-              <div className="section-heading">
-                <span>Connections</span>
-                <button
-                  className="mini-button"
-                  type="button"
-                  title="New connection"
-                  aria-label="New connection"
-                  onClick={addProfile}
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-              <form
-                className="connection-editor"
-                onSubmit={connectActiveProfile}
-              >
-                <div className="profile-strip" aria-label="Connection profiles">
-                  {profiles.map((profile) => (
-                    <button
-                      className={
-                        profile.id === selectedProfileId
-                          ? "profile-pill active"
-                          : "profile-pill"
-                      }
-                      key={profile.id}
-                      type="button"
-                      onClick={() => selectProfile(profile)}
-                    >
-                      <Database size={13} />
-                      <span>{profile.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="quick-connect-row">
-                  <input
-                    aria-label="Connection name"
-                    placeholder="Name"
-                    value={draft.name}
-                    onChange={(event) =>
-                      updateDraft({ name: event.currentTarget.value })
-                    }
-                  />
-                  <input
-                    aria-label="Connection id"
-                    placeholder="ID"
-                    value={draft.id}
-                    onChange={(event) =>
-                      updateDraft({ id: event.currentTarget.value })
-                    }
-                  />
-                </div>
-                <div className="quick-connect-row">
-                  <select
-                    aria-label="Engine"
-                    value={draft.engine}
-                    onChange={(event) =>
-                      updateDraft({
-                        engine: event.currentTarget.value as DbEngine,
-                      })
-                    }
-                  >
-                    {engineOptions.map((engine) => (
-                      <option key={engine.value} value={engine.value}>
-                        {engine.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div
-                    className="mode-toggle"
-                    aria-label="Connection input mode"
-                  >
-                    <button
-                      className={draft.mode === "url" ? "active" : ""}
-                      type="button"
-                      onClick={() => updateDraft({ mode: "url" })}
-                    >
-                      URL
-                    </button>
-                    <button
-                      className={draft.mode === "fields" ? "active" : ""}
-                      type="button"
-                      onClick={() => updateDraft({ mode: "fields" })}
-                    >
-                      Fields
-                    </button>
-                  </div>
-                </div>
-                {draft.mode === "url" ? (
-                  <input
-                    aria-label="Connection URL"
-                    placeholder="URL / DSN"
-                    value={draft.url}
-                    onChange={(event) =>
-                      updateDraft({ url: event.currentTarget.value })
-                    }
-                  />
-                ) : (
-                  <>
-                    <div className="quick-connect-row host-row">
-                      <input
-                        aria-label="Host"
-                        placeholder="Host"
-                        value={draft.host}
-                        onChange={(event) =>
-                          updateDraft({ host: event.currentTarget.value })
-                        }
-                      />
-                      <input
-                        aria-label="Port"
-                        placeholder="Port"
-                        inputMode="numeric"
-                        value={draft.port}
-                        onChange={(event) =>
-                          updateDraft({ port: event.currentTarget.value })
-                        }
-                      />
-                    </div>
-                    <div className="quick-connect-row">
-                      <input
-                        aria-label="User"
-                        placeholder="User"
-                        value={draft.user}
-                        onChange={(event) =>
-                          updateDraft({ user: event.currentTarget.value })
-                        }
-                      />
-                      <input
-                        aria-label="Password"
-                        placeholder="Password"
-                        type="password"
-                        value={draft.password}
-                        onChange={(event) =>
-                          updateDraft({ password: event.currentTarget.value })
-                        }
-                      />
-                    </div>
-                    <input
-                      aria-label="Database"
-                      placeholder="Database / service / path"
-                      value={draft.database}
-                      onChange={(event) =>
-                        updateDraft({ database: event.currentTarget.value })
-                      }
-                    />
-                  </>
-                )}
-                <div className="quick-connect-actions">
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() => saveDraft()}
-                  >
-                    Save
-                  </button>
-                  <button
-                    className="text-button"
-                    type="button"
-                    disabled={testingConnection}
-                    onClick={testActiveProfile}
-                  >
-                    {testingConnection ? "Testing" : "Test"}
-                  </button>
-                  <button
-                    className="primary-action compact"
-                    type="submit"
-                    disabled={connecting}
-                  >
-                    <Database size={14} />
-                    <span>{connecting ? "Connecting" : "Connect"}</span>
-                  </button>
-                  <button
-                    className="text-button"
-                    type="button"
-                    disabled={!activeConnectionOpen}
-                    onClick={disconnectActiveProfile}
-                  >
-                    Disconnect
-                  </button>
-                  <button
-                    className="text-button danger"
-                    type="button"
-                    onClick={deleteProfile}
-                  >
-                    Delete
-                  </button>
-                </div>
-                {connectionError ? (
-                  <p className="inline-error">
-                    <AlertTriangle size={13} />
-                    <span>{connectionError}</span>
-                  </p>
-                ) : null}
-              </form>
-              <div className="connection-list">
-                {connections.map((connection) => (
-                  <button
-                    className={
-                      connection.id === activeConnectionId
-                        ? "connection-item active"
-                        : "connection-item"
-                    }
-                    key={connection.id}
-                    type="button"
-                    onClick={() => setActiveConnectionId(connection.id)}
-                  >
-                    <Database size={16} />
-                    <span>
-                      <strong>{connection.name}</strong>
-                      <small>{connection.engine}</small>
-                    </span>
-                    <i className={connection.status} />
-                  </button>
-                ))}
-              </div>
-            </section>
-
             <section className="sidebar-section browser-section">
               <div className="section-heading">
                 <span>
@@ -3393,7 +4033,7 @@ function App() {
                   title="Refresh objects"
                   aria-label="Refresh objects"
                   disabled={!activeConnectionOpen || activeMetadataLoading}
-                  onClick={() => refreshObjects()}
+                  onClick={() => refreshObjects(activeConnectionId, true, true)}
                 >
                   <RefreshCw size={14} />
                 </button>
@@ -3417,18 +4057,119 @@ function App() {
                           <span>{schema.name}</span>
                           <small>{schema.objects.length}</small>
                         </summary>
-                        {schema.objects.map((object) => (
+                        {schema.objects.map((object) => {
+                          const objectKey = `${object.schema}.${object.name}`;
+                          const canOpenData =
+                            object.kind === "table" || object.kind === "view";
+                          return (
                           <details
                             className="object-tree"
-                            key={`${object.schema}.${object.name}`}
+                            key={objectKey}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              setObjectActionMenu(objectKey);
+                            }}
                           >
                             <summary>
-                              <Table2 size={15} />
-                              <span>{object.name}</span>
+                              {object.kind === "procedure" || object.kind === "function" ? (
+                                <TerminalSquare size={15} />
+                              ) : (
+                                <Table2 size={15} />
+                              )}
+                              <button
+                                className="object-name-button"
+                                type="button"
+                                disabled={!canOpenData}
+                                title={
+                                  canOpenData
+                                    ? `Open ${qualifiedObjectName(editorEngine, object)}`
+                                    : objectKindLabel(object)
+                                }
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void openTableData(object);
+                                }}
+                              >
+                                {object.name}
+                              </button>
                               <small>
                                 {objectKindLabel(object)} ·{" "}
                                 {object.columns.length}
                               </small>
+                              <button
+                                className="object-menu-button"
+                                type="button"
+                                title="Object actions"
+                                aria-label={`Actions for ${object.name}`}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  setObjectActionMenu((current) =>
+                                    current === objectKey ? null : objectKey,
+                                  );
+                                }}
+                              >
+                                <MoreHorizontal size={14} />
+                              </button>
+                              {objectActionMenu === objectKey ? (
+                                <div className="object-action-menu" role="menu">
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    disabled={!canOpenData}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      void openTableData(object);
+                                    }}
+                                  >
+                                    Open Data
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    disabled={object.kind !== "table"}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      openObjectSchemaDesigner(object);
+                                      setObjectActionMenu(null);
+                                    }}
+                                  >
+                                    Structure
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    disabled={!hasDiagram(activeMetadata)}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      pendingDiagramSearchRef.current = object.name;
+                                      setDiagramSearch(object.name);
+                                      setDiagramOpen(true);
+                                      setObjectActionMenu(null);
+                                    }}
+                                  >
+                                    Show in ERD
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      void navigator.clipboard?.writeText(
+                                        qualifiedObjectName(editorEngine, object),
+                                      );
+                                      setObjectActionMenu(null);
+                                    }}
+                                  >
+                                    Copy Name
+                                  </button>
+                                </div>
+                              ) : null}
                             </summary>
                             <div className="metadata-children">
                               {object.kind === "table" ? (
@@ -3479,7 +4220,8 @@ function App() {
                               ))}
                             </div>
                           </details>
-                        ))}
+                          );
+                        })}
                       </details>
                     ))
                   ) : (
@@ -3491,6 +4233,19 @@ function App() {
                       className="object-row"
                       key={object.name}
                       type="button"
+                      onClick={() => {
+                        if (object.kind === "procedure") {
+                          return;
+                        }
+                        const sql =
+                          editorEngine === "sqlserver"
+                            ? `select top (200) * from ${quoteSqlIdentifier(editorEngine, object.name)};`
+                            : `select * from ${quoteSqlIdentifier(editorEngine, object.name)} limit 200;`;
+                        setQuery(sql);
+                        if (activeConnectionOpen) {
+                          void executeQuery(sql);
+                        }
+                      }}
                     >
                       {object.kind === "procedure" ? (
                         <TerminalSquare size={15} />
@@ -3547,26 +4302,247 @@ function App() {
           <div className="editor-and-inspector">
             <section className="editor-pane" aria-label={activeTabLabel}>
               <div className="editor-meta">
-                <span>{activeTabLabel}</span>
-                <span>
-                  {running
-                    ? "running..."
-                    : activeConnectionOpen
-                      ? "ready"
-                      : "closed"}
-                </span>
+                <div className="editor-title">
+                  <span>{activeTabLabel}</span>
+                  <small>
+                    {running
+                      ? "running..."
+                      : activeConnectionOpen
+                        ? "ready"
+                        : "closed"}
+                  </small>
+                </div>
+                <div className="editor-command-bar">
+                  <button
+                    className="text-button toolbar-command"
+                    type="button"
+                    title={`Format SQL (${formatter})`}
+                    aria-label="Format SQL"
+                    onClick={() => runCommand("editor.format")}
+                  >
+                    <AlignLeft size={15} />
+                    <span>Format</span>
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Toggle SQL comment"
+                    aria-label="Toggle SQL comment"
+                    onClick={() => runCommand("editor.comment.toggle")}
+                  >
+                    <TerminalSquare size={15} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Save query"
+                    aria-label="Save query"
+                    onClick={saveCurrentQuery}
+                  >
+                    <Save size={15} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title={editorSplitOpen ? "Close editor split" : "Split editor"}
+                    aria-label="Split editor"
+                    aria-pressed={editorSplitOpen}
+                    onClick={() => {
+                      setEditorSplitMode((mode) =>
+                        mode === "single" ? "right" : "single",
+                      );
+                    }}
+                  >
+                    <SplitSquareHorizontal size={15} />
+                  </button>
+                  {editorSplitOpen ? (
+                    <div
+                      className="segmented-control editor-split-mode"
+                      role="group"
+                      aria-label="Editor split direction"
+                    >
+                      <button
+                        type="button"
+                        className={
+                          editorSplitMode === "right" ? "active" : undefined
+                        }
+                        onClick={() => setEditorSplitMode("right")}
+                      >
+                        Right
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          editorSplitMode === "down" ? "active" : undefined
+                        }
+                        onClick={() => setEditorSplitMode("down")}
+                      >
+                        Down
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="run-control">
+                    <button
+                      className="primary-action run-main-button"
+                      type="button"
+                      title={
+                        runShortcutLabel
+                          ? `${runPrimaryLabel} (${runShortcutLabel})`
+                          : runPrimaryLabel
+                      }
+                      disabled={running}
+                      onClick={runQuery}
+                    >
+                      <Play size={15} fill="currentColor" />
+                      <span>{runPrimaryLabel}</span>
+                    </button>
+                    <button
+                      className="primary-action run-menu-toggle"
+                      type="button"
+                      title="Run options"
+                      aria-label="Run options"
+                      aria-haspopup="menu"
+                      aria-expanded={runMenuOpen}
+                      disabled={running}
+                      onClick={() => setRunMenuOpen((open) => !open)}
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                    {runMenuOpen ? (
+                      <div
+                        className="app-menu-popover run-menu-popover"
+                        role="menu"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void runQuery()}
+                        >
+                          <span>{runPrimaryLabel}</span>
+                          {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={!hasSelectedEditorSql}
+                          onClick={() => void runSelectionQuery()}
+                        >
+                          <span>Run Selection</span>
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void runCurrentQuery()}
+                        >
+                          <span>Run Current</span>
+                          {runCurrentShortcutLabel ? (
+                            <kbd>{runCurrentShortcutLabel}</kbd>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void runFromStartQuery()}
+                        >
+                          <span>Run From Top</span>
+                          {runFromStartShortcutLabel ? (
+                            <kbd>{runFromStartShortcutLabel}</kbd>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void runAllQuery()}
+                        >
+                          <span>Run All</span>
+                          {runAllShortcutLabel ? (
+                            <kbd>{runAllShortcutLabel}</kbd>
+                          ) : null}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Cancel query"
+                    aria-label="Cancel query"
+                    disabled={!running}
+                    onClick={cancelQuery}
+                  >
+                    <Square size={15} />
+                  </button>
+                </div>
               </div>
-              <div className="editor-shell">
-                <SqlEditor
-                  ref={editorApiRef}
-                  value={query}
-                  onChange={setQuery}
-                  engine={editorEngine}
-                  metadata={activeMetadata}
-                  theme={theme}
-                  vimMode={vimMode}
-                  formatter={formatter}
-                />
+              <div
+                ref={editorSplitRef}
+                className={`editor-split editor-split-${editorSplitMode}`}
+              >
+                <div
+                  className={`editor-shell editor-group${
+                    activeEditorGroup === "primary" ? " active" : ""
+                  }`}
+                  onFocusCapture={() => setActiveEditorGroup("primary")}
+                  onPointerDown={() => setActiveEditorGroup("primary")}
+                >
+                  <SqlEditor
+                    ref={editorApiRef}
+                    value={query}
+                    onChange={setQuery}
+                    onSelectionChange={(selection) => {
+                      setActiveEditorGroup("primary");
+                      setEditorSelection(selection);
+                    }}
+                    engine={editorEngine}
+                    metadata={activeMetadata}
+                    theme={theme}
+                    vimMode={vimMode}
+                    formatter={formatter}
+                    linter={sqlLinter}
+                  />
+                </div>
+                {editorSplitOpen ? (
+                  <>
+                    <div
+                      className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
+                      role="separator"
+                      aria-label="Resize editor split"
+                      aria-orientation={
+                        editorSplitMode === "down" ? "horizontal" : "vertical"
+                      }
+                      tabIndex={0}
+                      onPointerDown={(event) =>
+                        beginPanelResize("editorSplit", event)
+                      }
+                      onKeyDown={(event) =>
+                        onPanelResizeKey("editorSplit", event)
+                      }
+                    />
+                    <div
+                      className={`editor-shell editor-group${
+                        activeEditorGroup === "secondary" ? " active" : ""
+                      }`}
+                      onFocusCapture={() => setActiveEditorGroup("secondary")}
+                      onPointerDown={() => setActiveEditorGroup("secondary")}
+                    >
+                      <SqlEditor
+                        ref={secondaryEditorApiRef}
+                        value={query}
+                        onChange={setQuery}
+                        onSelectionChange={(selection) => {
+                          setActiveEditorGroup("secondary");
+                          setEditorSelection(selection);
+                        }}
+                        engine={editorEngine}
+                        metadata={activeMetadata}
+                        theme={theme}
+                        vimMode={vimMode}
+                        formatter={formatter}
+                        linter={sqlLinter}
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
             </section>
 
@@ -3650,69 +4626,6 @@ function App() {
                   )}
                 </div>
               </section>
-              <section>
-                <div className="section-heading">
-                  <span>Keybindings</span>
-                  <Layers3 size={14} />
-                </div>
-                <div className="command-list">
-                  {appCommandCatalog.map((command) => {
-                    const chord = keymap[command.id];
-                    const conflicted = commandHasConflict(
-                      keymapConflicts,
-                      command.id,
-                    );
-                    const recording = recordingCommand === command.id;
-                    const recordingLabel =
-                      recordingSequence.length > 0
-                        ? `${formatKeySequence(recordingSequence.join(" "))} ...`
-                        : "Press keys...";
-                    return (
-                      <div className="command-item" key={command.id}>
-                        <button
-                          className="command-run"
-                          type="button"
-                          onClick={() => runCommand(command.id)}
-                          title={`Run: ${command.title}`}
-                        >
-                          {command.title}
-                        </button>
-                        <small className={`command-scope ${command.scope}`}>
-                          {command.scope}
-                        </small>
-                        <button
-                          className={`command-chord${conflicted ? " conflict" : ""}`}
-                          type="button"
-                          title={
-                            recording
-                              ? "Press one or two chords for the new shortcut"
-                              : conflicted
-                                ? "Shortcut conflict — click to rebind"
-                                : "Click to rebind"
-                          }
-                          onClick={() => beginRecording(command.id)}
-                        >
-                          {recording
-                            ? recordingLabel
-                            : chord
-                              ? formatKeySequence(chord)
-                              : "unset"}
-                        </button>
-                        {keymapOverrides[command.id] ? (
-                          <button
-                            className="command-reset"
-                            type="button"
-                            title="Reset to default"
-                            onClick={() => resetKeybinding(command.id)}
-                          >
-                            ↺
-                          </button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
             </aside>
           </div>
 
@@ -3730,6 +4643,26 @@ function App() {
             />
             <div className="results-header">
               <div className="results-title">
+                {tableViewObject ? (
+                  <div className="segmented-control result-mode-toggle">
+                    <button
+                      type="button"
+                      className={resultMode === "data" ? "active" : undefined}
+                      onClick={() => setResultMode("data")}
+                    >
+                      Data
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        resultMode === "structure" ? "active" : undefined
+                      }
+                      onClick={() => setResultMode("structure")}
+                    >
+                      Structure
+                    </button>
+                  </div>
+                ) : null}
                 {resultSets.length > 1 ? (
                   <div
                     className="result-tabs"
@@ -3781,7 +4714,7 @@ function App() {
                   <input
                     aria-label="Quick result filter"
                     value={quickFilter}
-                    disabled={!activeResult}
+                    disabled={!activeResult || Boolean(showingStructure)}
                     placeholder="Filter rows"
                     onChange={(event) => {
                       setQuickFilter(event.currentTarget.value);
@@ -3805,7 +4738,7 @@ function App() {
                 <button
                   className={`text-button${filtersOpen || filtersActive ? " active" : ""}`}
                   type="button"
-                  disabled={!activeResult}
+                  disabled={!activeResult || Boolean(showingStructure)}
                   onClick={() => setFiltersOpen((open) => !open)}
                 >
                   <ListFilter size={13} />
@@ -3819,7 +4752,7 @@ function App() {
                   <button
                     className="text-button"
                     type="button"
-                    disabled={!activeResult}
+                    disabled={!activeResult || Boolean(showingStructure)}
                     onClick={() => exportActiveResult("csv")}
                   >
                     <Download size={13} />
@@ -3830,7 +4763,7 @@ function App() {
                     type="button"
                     title="Export formats"
                     aria-label="Export formats"
-                    disabled={!activeResult}
+                    disabled={!activeResult || Boolean(showingStructure)}
                     onClick={() => setExportMenuOpen((open) => !open)}
                   >
                     <ChevronDown size={13} />
@@ -3863,7 +4796,7 @@ function App() {
                 <button
                   className="text-button"
                   type="button"
-                  disabled={!activeResult}
+                  disabled={!activeResult || Boolean(showingStructure)}
                   onClick={() => void copyVisibleResult()}
                 >
                   <Copy size={13} />
@@ -3895,7 +4828,7 @@ function App() {
                     <button
                       className="text-button"
                       type="button"
-                      disabled={!canEditActiveResult()}
+                      disabled={!canEditActiveResult() || Boolean(showingStructure)}
                       title="Requires a single-table result with a visible primary or unique key"
                       onClick={addNewRow}
                     >
@@ -3904,7 +4837,7 @@ function App() {
                     <button
                       className="text-button"
                       type="button"
-                      disabled={pendingCount === 0 || committing}
+                      disabled={pendingCount === 0 || committing || Boolean(showingStructure)}
                       onClick={() => void commitEdits()}
                     >
                       {committing
@@ -3926,7 +4859,7 @@ function App() {
                   <button
                     className="text-button"
                     type="button"
-                    disabled={!canEditActiveResult()}
+                    disabled={!canEditActiveResult() || Boolean(showingStructure)}
                     title="Requires a single-table result with a visible primary or unique key"
                     onClick={() => {
                       setCommitError(null);
@@ -4085,6 +5018,96 @@ function App() {
                 ) : null}
               </div>
             ) : null}
+            {structureObject ? (
+              <div className="structure-view">
+                <section className="structure-section">
+                  <header>
+                    <strong>{qualifiedObjectName(editorEngine, structureObject)}</strong>
+                    <span>
+                      {structureObject.columns.length} columns
+                      {structureObject.rowEstimate
+                        ? ` · ~${toCount(structureObject.rowEstimate)} rows`
+                        : ""}
+                    </span>
+                  </header>
+                  <div className="structure-table-wrap">
+                    <table className="structure-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Type</th>
+                          <th>Null</th>
+                          <th>Key</th>
+                          <th>Default</th>
+                          <th>Comment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {structureObject.columns.map((column) => (
+                          <tr key={`${column.ordinal}:${column.name}`}>
+                            <td>{column.name}</td>
+                            <td>{column.dataType}</td>
+                            <td>{column.nullable ? "YES" : "NO"}</td>
+                            <td>
+                              {structureObject.primaryKey.includes(column.name)
+                                ? "PK"
+                                : ""}
+                            </td>
+                            <td>{column.defaultValue || ""}</td>
+                            <td>{column.comment || ""}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+                <section className="structure-side">
+                  <div className="structure-card">
+                    <strong>Primary Key</strong>
+                    <span>
+                      {structureObject.primaryKey.length > 0
+                        ? structureObject.primaryKey.join(", ")
+                        : "No primary key"}
+                    </span>
+                  </div>
+                  <div className="structure-card">
+                    <strong>Indexes</strong>
+                    {structureObject.indexes.length > 0 ? (
+                      structureObject.indexes.map((index) => (
+                        <span key={index.name}>
+                          {index.name || "(unnamed)"} ·{" "}
+                          {index.unique ? "unique" : "index"} ·{" "}
+                          {index.columns.join(", ")}
+                        </span>
+                      ))
+                    ) : (
+                      <span>No indexes loaded</span>
+                    )}
+                  </div>
+                  <div className="structure-card">
+                    <strong>Foreign Keys</strong>
+                    {structureObject.foreignKeys.length > 0 ? (
+                      structureObject.foreignKeys.map((fk, index) => (
+                        <span key={`${fk.referencesTable}:${index}`}>
+                          {fk.columns.join(", ")} -&gt;{" "}
+                          {[fk.referencesSchema, fk.referencesTable]
+                            .filter(Boolean)
+                            .join(".")}
+                          ({fk.referencesColumns.join(", ")})
+                        </span>
+                      ))
+                    ) : (
+                      <span>No outgoing foreign keys</span>
+                    )}
+                  </div>
+                  {structureObject.ddl ? (
+                    <pre className="sql-preview structure-ddl">
+                      {structureObject.ddl}
+                    </pre>
+                  ) : null}
+                </section>
+              </div>
+            ) : (
             <div className="result-body">
               <div
                 className="result-grid"
@@ -4208,9 +5231,13 @@ function App() {
                       const isSelected =
                         selectedCell?.key === row.key &&
                         selectedCell.col === cellIndex;
+                      const isNullCell = cell === "NULL";
+                      const isEmptyCell = cell === "";
                       const cellClass = [
                         isEdited ? "cell-edited" : "",
                         isSelected ? "cell-selected" : "",
+                        isNullCell ? "cell-null" : "",
+                        isEmptyCell ? "cell-empty" : "",
                       ]
                         .filter(Boolean)
                         .join(" ");
@@ -4223,7 +5250,7 @@ function App() {
                           }
                           aria-selected={isSelected}
                           className={cellClass || undefined}
-                          title={cell}
+                          title={isEmptyCell ? "EMPTY string" : cell}
                           onClick={(event) => {
                             event.stopPropagation();
                             selectGridCell(row.key, cellIndex);
@@ -4290,7 +5317,13 @@ function App() {
                               </button>
                             </div>
                           ) : (
-                            cell
+                            isEmptyCell ? (
+                              <em className="cell-token">EMPTY</em>
+                            ) : isNullCell ? (
+                              <em className="cell-token">NULL</em>
+                            ) : (
+                              cell
+                            )
                           )}
                         </span>
                       );
@@ -4324,18 +5357,645 @@ function App() {
                 />
               ) : null}
             </div>
+            )}
           </section>
         </section>
       </div>
 
       <footer className="statusbar">
         <span>
-          <Clock3 size={13} />
-          history scoped to {activeConnection.name}
+          <span
+            className="connection-color-dot"
+            style={{ background: activeConnectionColor }}
+            aria-hidden="true"
+          />
+          {activeConnectionStatus}
         </span>
-        <span>{query.split("\n").length} lines</span>
-        <span>{running ? "query running" : "idle"}</span>
+        <span>{activeTransportLabel}</span>
+        <span>
+          {vimMode ? "Vim" : "Default"} · {query.split("\n").length} lines ·{" "}
+          {sqlLinter === "gentle" ? "lint on" : "lint off"} ·{" "}
+          {running ? "running" : "idle"}
+        </span>
       </footer>
+
+      {connectionManagerOpen ? (
+        <div
+          className="palette-overlay connection-overlay"
+          onClick={() => setConnectionManagerOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="connection-dialog"
+            role="dialog"
+            aria-label="Connection manager"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <aside className="connection-picker">
+              <div className="connection-picker-header">
+                <button
+                  className="icon-button"
+                  type="button"
+                  title="New connection"
+                  aria-label="New connection"
+                  onClick={addProfile}
+                >
+                  <Plus size={16} />
+                </button>
+                <label className="connection-search">
+                  <Search size={15} />
+                  <input
+                    autoFocus
+                    value={connectionSearch}
+                    placeholder="Search connections"
+                    onChange={(event) =>
+                      setConnectionSearch(event.currentTarget.value)
+                    }
+                  />
+                </label>
+              </div>
+              <div className="connection-profile-list">
+                {filteredProfiles.map((profile) => {
+                  const connected = connectedIds.has(profile.id);
+                  return (
+                    <button
+                      key={profile.id}
+                      className={
+                        profile.id === selectedProfileId
+                          ? "connection-profile active"
+                          : "connection-profile"
+                      }
+                      type="button"
+                      onClick={() => selectProfile(profile)}
+                    >
+                      <span
+                        className="connection-color-dot"
+                        style={{ background: profile.color }}
+                        aria-hidden="true"
+                      />
+                      <span>
+                        <strong>{profile.name}</strong>
+                        <small>
+                          {engineLabel(profile.engine)}
+                          {profile.database ? ` · ${profile.database}` : ""}
+                        </small>
+                      </span>
+                      <i className={connected ? "connected" : ""} />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="connection-picker-empty">
+                {filteredProfiles.length === 0 ? "No matching connections" : null}
+              </div>
+            </aside>
+            <form className="connection-form" onSubmit={connectActiveProfile}>
+              <div className="dialog-header">
+                <strong>{draft.name.trim() || "New Connection"}</strong>
+                <span>{engineLabel(draft.engine)}</span>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => setConnectionManagerOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="dialog-body connection-form-body">
+                <label className="full-row">
+                  <span>Connection name</span>
+                  <input
+                    value={draft.name}
+                    placeholder="Connection's name"
+                    onChange={(event) =>
+                      updateDraft({ name: event.currentTarget.value })
+                    }
+                  />
+                </label>
+                <div className="connection-color-row full-row">
+                  <span>Color tag</span>
+                  <div className="connection-color-options">
+                    {connectionColorOptions.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={
+                          draft.color === color
+                            ? "connection-color-swatch active"
+                            : "connection-color-swatch"
+                        }
+                        style={{ background: color }}
+                        aria-label={`Use color ${color}`}
+                        onClick={() => updateDraft({ color })}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="connection-form-grid">
+                  <label>
+                    <span>Engine</span>
+                    <select
+                      value={draft.engine}
+                      onChange={(event) =>
+                        updateDraft({
+                          engine: event.currentTarget.value as DbEngine,
+                        })
+                      }
+                    >
+                      {engineOptions.map((engine) => (
+                        <option key={engine.value} value={engine.value}>
+                          {engine.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Profile ID</span>
+                    <input
+                      value={draft.id}
+                      onChange={(event) =>
+                        updateDraft({ id: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                  <div className="mode-toggle form-toggle" aria-label="Connection input mode">
+                    <button
+                      className={draft.mode === "url" ? "active" : ""}
+                      type="button"
+                      onClick={() => updateDraft({ mode: "url" })}
+                    >
+                      URL
+                    </button>
+                    <button
+                      className={draft.mode === "fields" ? "active" : ""}
+                      type="button"
+                      onClick={() => updateDraft({ mode: "fields" })}
+                    >
+                      Fields
+                    </button>
+                  </div>
+                </div>
+                {draft.mode === "url" ? (
+                  <label className="full-row">
+                    <span>URL / DSN</span>
+                    <input
+                      value={draft.url}
+                      placeholder="postgres://user:password@host:5432/database"
+                      onChange={(event) =>
+                        updateDraft({ url: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : (
+                  <div className="connection-form-grid">
+                    <label>
+                      <span>Host / socket</span>
+                      <input
+                        value={draft.host}
+                        placeholder="localhost"
+                        onChange={(event) =>
+                          updateDraft({ host: event.currentTarget.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Port</span>
+                      <input
+                        inputMode="numeric"
+                        value={draft.port}
+                        onChange={(event) =>
+                          updateDraft({ port: event.currentTarget.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>User</span>
+                      <input
+                        value={draft.user}
+                        onChange={(event) =>
+                          updateDraft({ user: event.currentTarget.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Password</span>
+                      <input
+                        type="password"
+                        value={draft.password}
+                        placeholder="Session only"
+                        onChange={(event) =>
+                          updateDraft({ password: event.currentTarget.value })
+                        }
+                      />
+                    </label>
+                    <label className="full-row">
+                      <span>Database / service / path</span>
+                      <input
+                        value={draft.database}
+                        onChange={(event) =>
+                          updateDraft({ database: event.currentTarget.value })
+                        }
+                      />
+                    </label>
+                  </div>
+                )}
+                <div className="connection-transport full-row">
+                  <ShieldCheck size={15} />
+                  <span>Transport</span>
+                  <strong>Direct TCP / local file</strong>
+                </div>
+                {connectionError ? (
+                  <p className="inline-error full-row">
+                    <AlertTriangle size={13} />
+                    <span>{connectionError}</span>
+                  </p>
+                ) : null}
+              </div>
+              <div className="dialog-footer">
+                <button
+                  className="text-button danger"
+                  type="button"
+                  onClick={() => void deleteProfile()}
+                >
+                  Delete
+                </button>
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={!activeConnectionOpen}
+                  onClick={() => void disconnectActiveProfile()}
+                >
+                  <Power size={13} />
+                  Disconnect
+                </button>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => saveDraft()}
+                >
+                  Save
+                </button>
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={testingConnection}
+                  onClick={() => void testActiveProfile()}
+                >
+                  {testingConnection ? "Testing" : "Test"}
+                </button>
+                <button className="primary-action" type="submit" disabled={connecting}>
+                  <Database size={14} />
+                  {connecting ? "Connecting" : "Connect"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {settingsOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setSettingsOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="data-dialog settings-dialog"
+            role="dialog"
+            aria-label="Settings"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dialog-header">
+              <strong>Settings</strong>
+              <span>Editor, theme, shortcuts</span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="settings-body">
+              <nav className="settings-nav" aria-label="Settings sections">
+                <button
+                  type="button"
+                  className={settingsTab === "general" ? "active" : undefined}
+                  onClick={() => openSettingsSection("general")}
+                >
+                  <Settings size={15} />
+                  General
+                </button>
+                <button
+                  type="button"
+                  className={settingsTab === "keymap" ? "active" : undefined}
+                  onClick={() => openSettingsSection("keymap")}
+                >
+                  <Keyboard size={15} />
+                  Keymap
+                </button>
+                <button
+                  type="button"
+                  className={settingsTab === "json" ? "active" : undefined}
+                  onClick={() => openSettingsSection("json")}
+                >
+                  <TerminalSquare size={15} />
+                  JSON
+                </button>
+              </nav>
+              <section className="settings-panel">
+                {settingsTab === "general" ? (
+                  <div className="settings-stack">
+                    <label className="settings-row">
+                      <span>
+                        <strong>Editor mode</strong>
+                        <small>Default editor or Vim bindings.</small>
+                      </span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={!vimMode ? "active" : undefined}
+                          onClick={() => setVimMode(false)}
+                        >
+                          Default
+                        </button>
+                        <button
+                          type="button"
+                          className={vimMode ? "active" : undefined}
+                          onClick={() => setVimMode(true)}
+                        >
+                          Vim
+                        </button>
+                      </div>
+                    </label>
+                    <label className="settings-row">
+                      <span>
+                        <strong>Theme</strong>
+                        <small>Workbench color mode.</small>
+                      </span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={themeKind === "dark" ? "active" : undefined}
+                          onClick={() => setThemeKind("dark")}
+                        >
+                          Dark
+                        </button>
+                        <button
+                          type="button"
+                          className={themeKind === "light" ? "active" : undefined}
+                          onClick={() => setThemeKind("light")}
+                        >
+                          Light
+                        </button>
+                      </div>
+                    </label>
+                    <label className="settings-row">
+                      <span>
+                        <strong>SQL formatter</strong>
+                        <small>Formatter used by the toolbar and keybinding.</small>
+                      </span>
+                      <select
+                        value={formatter}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          if (isSqlFormatterId(next)) {
+                            setFormatter(next);
+                          }
+                        }}
+                      >
+                        {formatterOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="settings-row">
+                      <span>
+                        <strong>SQL linter</strong>
+                        <small>Gentle syntax and high-risk statement checks.</small>
+                      </span>
+                      <select
+                        value={sqlLinter}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          if (isSqlLinterId(next)) {
+                            setSqlLinter(next);
+                          }
+                        }}
+                      >
+                        {linterOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="settings-row">
+                      <span>
+                        <strong>Sidebar</strong>
+                        <small>Object browser and connection switcher.</small>
+                      </span>
+                      <button
+                        className="text-button"
+                        type="button"
+                        onClick={() => setSidebarOpen((open) => !open)}
+                      >
+                        {sidebarOpen ? "Hide" : "Show"}
+                      </button>
+                    </label>
+                  </div>
+                ) : settingsTab === "keymap" ? (
+                  <div className="command-list settings-command-list">
+                    {appCommandCatalog.map((command) => {
+                      const chord = keymap[command.id];
+                      const conflicted = commandHasConflict(
+                        keymapConflicts,
+                        command.id,
+                      );
+                      const recording = recordingCommand === command.id;
+                      const recordingLabel =
+                        recordingSequence.length > 0
+                          ? `${formatKeySequence(recordingSequence.join(" "))} ...`
+                          : "Press keys...";
+                      return (
+                        <div className="command-item" key={command.id}>
+                          <button
+                            className="command-run"
+                            type="button"
+                            onClick={() => runCommand(command.id)}
+                            title={`Run: ${command.title}`}
+                          >
+                            {command.title}
+                          </button>
+                          <small className={`command-scope ${command.scope}`}>
+                            {command.scope}
+                          </small>
+                          <button
+                            className={`command-chord${conflicted ? " conflict" : ""}`}
+                            type="button"
+                            title={
+                              recording
+                                ? "Press one or two chords for the new shortcut"
+                                : conflicted
+                                  ? "Shortcut conflict - click to rebind"
+                                  : "Click to rebind"
+                            }
+                            onClick={() => beginRecording(command.id)}
+                          >
+                            {recording
+                              ? recordingLabel
+                              : chord
+                                ? formatKeySequence(chord)
+                                : "unset"}
+                          </button>
+                          {keymapOverrides[command.id] ? (
+                            <button
+                              className="command-reset"
+                              type="button"
+                              title="Reset to default"
+                              onClick={() => resetKeybinding(command.id)}
+                            >
+                              Reset
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="settings-json">
+                    <div className="settings-json-toolbar">
+                      <span>
+                        <strong>Settings JSON</strong>
+                        <small>
+                          Edits apply to theme, editor, layout, keymap, and
+                          saved connections.
+                        </small>
+                      </span>
+                      <button
+                        className="text-button"
+                        type="button"
+                        onClick={resetSettingsJsonDraft}
+                      >
+                        Reset from current
+                      </button>
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={applySettingsJson}
+                      >
+                        Apply JSON
+                      </button>
+                    </div>
+                    <textarea
+                      value={settingsJsonDraft}
+                      spellCheck={false}
+                      onChange={(event) => {
+                        setSettingsJsonDraft(event.currentTarget.value);
+                        setSettingsJsonError(null);
+                      }}
+                    />
+                    {settingsJsonError ? (
+                      <div className="inline-error settings-json-error">
+                        <AlertTriangle size={13} />
+                        <span>{settingsJsonError}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </section>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {aboutOpen ? (
+        <div
+          className="palette-overlay"
+          onClick={() => setAboutOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="data-dialog about-dialog"
+            role="dialog"
+            aria-label={`About ${APP_NAME}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dialog-header">
+              <strong>About {APP_NAME}</strong>
+              <span>Version and support information</span>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setAboutOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="about-body">
+              <div className="about-mark">
+                <img className="about-icon" src="/irodori-icon.svg" alt="" />
+                <span>
+                  <strong>{APP_NAME}</strong>
+                  <small>Database workbench</small>
+                </span>
+              </div>
+              <dl className="about-grid">
+                <div>
+                  <dt>Version</dt>
+                  <dd>{APP_VERSION}</dd>
+                </div>
+                <div>
+                  <dt>Identifier</dt>
+                  <dd>{APP_IDENTIFIER}</dd>
+                </div>
+                <div>
+                  <dt>Runtime</dt>
+                  <dd>{tauriRuntimeError() ? "Browser preview" : "Tauri desktop"}</dd>
+                </div>
+                <div>
+                  <dt>Active connection</dt>
+                  <dd>
+                    {activeConnection.name} ·{" "}
+                    {activeConnectionOpen ? "connected" : "closed"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="about-help">
+                <Info size={16} />
+                <span>
+                  Use Connection Manager for saved database profiles, Settings for
+                  editor/keymap/JSON configuration, and the workspace menu for
+                  support diagnostics.
+                </span>
+              </div>
+            </div>
+            <div className="dialog-footer">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  setAboutOpen(false);
+                  openSettingsSection("general");
+                }}
+              >
+                <Settings size={13} />
+                Settings
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => void copyAppDiagnostics()}
+              >
+                <Copy size={13} />
+                Copy diagnostics
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {pendingQueryParameters ? (
         <div
@@ -4968,9 +6628,7 @@ function App() {
               <button
                 className="text-button"
                 type="button"
-                onClick={() =>
-                  void navigator.clipboard?.writeText(schemaSqlPreview)
-                }
+                onClick={() => void copySchemaSql()}
               >
                 Copy SQL
               </button>
@@ -5194,6 +6852,27 @@ function App() {
               ) : null}
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {actionNotice ? (
+        <div
+          className={`action-toast ${actionNotice.kind}`}
+          role={actionNotice.kind === "error" ? "alert" : "status"}
+          aria-live={actionNotice.kind === "error" ? "assertive" : "polite"}
+        >
+          <span className="action-toast-mark" aria-hidden="true" />
+          <span>
+            <strong>{actionNotice.title}</strong>
+            {actionNotice.detail ? <small>{actionNotice.detail}</small> : null}
+          </span>
+          <button
+            type="button"
+            aria-label="Dismiss notification"
+            onClick={() => setActionNotice(null)}
+          >
+            <X size={13} />
+          </button>
         </div>
       ) : null}
     </main>

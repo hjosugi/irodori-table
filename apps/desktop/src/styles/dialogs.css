@@ -1,0 +1,461 @@
+.data-dialog {
+  width: min(980px, 94vw);
+  max-height: 82vh;
+}
+
+.schema-dialog {
+  width: min(1180px, 96vw);
+}
+
+.about-dialog {
+  width: min(620px, 92vw);
+  overflow: hidden;
+}
+
+.about-body {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.about-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.about-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.about-mark strong,
+.about-mark small {
+  display: block;
+}
+
+.about-mark strong {
+  font-size: 16px;
+}
+
+.about-mark small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.about-grid div {
+  display: contents;
+}
+
+.about-grid dt,
+.about-grid dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+}
+
+.about-grid dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.about-grid dd {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dialog-header,
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog-header strong {
+  font-size: 14px;
+}
+
+.dialog-header span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
+
+.dialog-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.dialog-form-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.dialog-form-row label,
+.designer-row label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dialog-form-row input,
+.dialog-form-row select,
+.designer-row input,
+.designer-row select {
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.dialog-form-row input:disabled,
+.dialog-form-row select:disabled,
+.designer-row input:disabled,
+.designer-row select:disabled {
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+
+.dialog-stat {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.preview-table-wrap {
+  max-height: 190px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--editor-bg);
+}
+
+.preview-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.preview-table th,
+.preview-table td {
+  max-width: 220px;
+  padding: 5px 8px;
+  overflow: hidden;
+  border-right: 1px solid var(--cell-border);
+  border-bottom: 1px solid var(--cell-border);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-table th {
+  position: sticky;
+  top: 0;
+  background: var(--grid-header);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.sql-preview {
+  min-height: 124px;
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--editor-bg);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.schema-body {
+  gap: 10px;
+}
+
+.schema-target {
+  grid-template-columns: 130px minmax(130px, 0.6fr) minmax(180px, 1fr);
+}
+
+.designer-section {
+  display: grid;
+  gap: 6px;
+}
+
+.designer-section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.designer-section header strong {
+  font-size: 12px;
+}
+
+.designer-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.designer-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.designer-row:hover,
+.designer-row:focus-within {
+  border-color: var(--border);
+  background: var(--hover);
+}
+
+.designer-row.is-existing {
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+}
+
+.column-grid .designer-row {
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 0.9fr) 54px 48px minmax(100px, 0.8fr) 30px;
+}
+
+.index-grid .designer-row {
+  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1fr) 86px 30px;
+}
+
+.fk-grid .designer-row {
+  grid-template-columns: minmax(130px, 0.7fr) minmax(120px, 0.7fr) minmax(110px, 0.6fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) 118px 30px;
+}
+
+.check-cell {
+  display: inline-flex;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  min-width: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--input-bg);
+  text-transform: none;
+}
+
+.check-cell:hover,
+.check-cell:focus-within {
+  border-color: var(--border-strong);
+}
+
+.check-cell:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.check-cell input {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+}
+
+.schema-sql {
+  max-height: 220px;
+}
+
+/* ER diagram modal. */
+.diagram {
+  width: min(1240px, 96vw);
+  height: min(86vh, 900px);
+}
+
+.diagram-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.diagram-header strong {
+  font-size: 14px;
+}
+
+.diagram-header > span:not(.diagram-zoom) {
+  flex: 1;
+  min-width: 170px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagram-zoom {
+  flex: 0 0 auto;
+  min-width: 44px;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-align: center;
+}
+
+.diagram-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.diagram-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--muted);
+}
+
+.diagram-search input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  outline: none;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+}
+
+.diagram-schema-actions,
+.diagram-schema-list {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.diagram-schema-list {
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.schema-chip {
+  flex: 0 0 auto;
+  height: 26px;
+  max-width: 180px;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-raised);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.schema-chip:hover,
+.schema-chip:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.schema-chip.active {
+  color: var(--focus);
+  border-color: color-mix(in srgb, var(--focus) 55%, var(--border));
+  background: var(--selected);
+}
+
+.diagram-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0;
+  background:
+    radial-gradient(circle, var(--cell-border) 1px, transparent 1px) 0 0 / 18px 18px;
+}
+
+.diagram-stage {
+  position: relative;
+  margin: 16px;
+}
+
+.diagram-scale {
+  transform-origin: 0 0;
+}
+
+.erd-svg {
+  display: block;
+  max-width: none;
+  height: auto;
+  color: var(--border-strong);
+  user-select: none;
+}

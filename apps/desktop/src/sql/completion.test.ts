@@ -7,6 +7,7 @@ import {
 import type {
   ColumnMetadata,
   DatabaseMetadata,
+  DbEngine,
   DbObjectMetadata,
   ForeignKey,
 } from "../generated/irodori-api";
@@ -81,11 +82,20 @@ function completeWithMetadata(
   completionMetadata: DatabaseMetadata,
   explicit = false,
 ): readonly Completion[] {
+  return completeWithEngine(sql, completionMetadata, "postgres", explicit);
+}
+
+function completeWithEngine(
+  sql: string,
+  completionMetadata: DatabaseMetadata,
+  engine: DbEngine,
+  explicit = false,
+): readonly Completion[] {
   const cursor = withCursor(sql);
   return (
     completeSqlLightweight({
       doc: cursor.doc,
-      engine: "postgres",
+      engine,
       explicit,
       index: buildSqlCompletionIndex(completionMetadata),
       pos: cursor.pos,
@@ -103,6 +113,121 @@ function applies(sql: string, explicit = false): string[] {
 
 function appliesWithMetadata(sql: string, completionMetadata: DatabaseMetadata): string[] {
   return completeWithMetadata(sql, completionMetadata).map((option) =>
+    String(option.apply ?? option.label),
+  );
+}
+
+type EngineCompletionFixture = {
+  name: string;
+  engine: Extract<DbEngine, "postgres" | "sqlite" | "mysql">;
+  metadata: DatabaseMetadata;
+  tableSql: string;
+  tableApply: string;
+  tableLabel: string;
+  qualifiedSql: string;
+  qualifiedApply: string;
+  qualifiedLabel: string;
+  aliasSql: string;
+  aliasColumns: string[];
+  keywordSql: string;
+  keywordLabel: string;
+};
+
+const engineCompletionFixtures: EngineCompletionFixture[] = [
+  {
+    name: "PostgreSQL",
+    engine: "postgres",
+    metadata: {
+      schemas: [
+        {
+          name: "public",
+          objects: [table("public", "customers", ["id", "name", "email"])],
+        },
+        {
+          name: "sales",
+          objects: [
+            table("sales", "invoices", ["id", "customer_id", "status"]),
+          ],
+        },
+      ],
+    },
+    tableSql: "select * from cust",
+    tableApply: "customers",
+    tableLabel: "customers",
+    qualifiedSql: "select * from sales.",
+    qualifiedApply: "invoices",
+    qualifiedLabel: "invoices",
+    aliasSql: "select c.| from customers c",
+    aliasColumns: ["id", "name", "email"],
+    keywordSql: "ili",
+    keywordLabel: "ilike",
+  },
+  {
+    name: "SQLite",
+    engine: "sqlite",
+    metadata: {
+      schemas: [
+        {
+          name: "main",
+          objects: [table("main", "accounts", ["id", "display_name", "email"])],
+        },
+        {
+          name: "analytics",
+          objects: [
+            table("analytics", "events", ["id", "account_id", "event_name"]),
+          ],
+        },
+      ],
+    },
+    tableSql: "select * from acc",
+    tableApply: "accounts",
+    tableLabel: "accounts",
+    qualifiedSql: "select * from analytics.",
+    qualifiedApply: "events",
+    qualifiedLabel: "events",
+    aliasSql: "select a.| from accounts a",
+    aliasColumns: ["id", "display_name", "email"],
+    keywordSql: "pra",
+    keywordLabel: "pragma",
+  },
+  {
+    name: "MySQL",
+    engine: "mysql",
+    metadata: {
+      schemas: [
+        {
+          name: "app",
+          objects: [table("app", "customers", ["id", "full_name", "email"])],
+        },
+        {
+          name: "audit",
+          objects: [
+            table("audit", "events", ["id", "customer_id", "event_type"]),
+          ],
+        },
+      ],
+    },
+    tableSql: "select * from cust",
+    tableApply: "customers",
+    tableLabel: "customers",
+    qualifiedSql: "select * from audit.",
+    qualifiedApply: "events",
+    qualifiedLabel: "events",
+    aliasSql: "select c.| from customers c",
+    aliasColumns: ["id", "full_name", "email"],
+    keywordSql: "stra",
+    keywordLabel: "straight_join",
+  },
+];
+
+function labelsForEngine(sql: string, fixture: EngineCompletionFixture): string[] {
+  return completeWithEngine(sql, fixture.metadata, fixture.engine).map(
+    (option) => option.label,
+  );
+}
+
+function appliesForEngine(sql: string, fixture: EngineCompletionFixture): string[] {
+  return completeWithEngine(sql, fixture.metadata, fixture.engine).map((option) =>
     String(option.apply ?? option.label),
   );
 }
@@ -209,3 +334,38 @@ describe("completeSqlLightweight", () => {
     expect(labels("select 1 -- ema")).toEqual([]);
   });
 });
+
+describe.each(engineCompletionFixtures)(
+  "completeSqlLightweight $name engine fixture",
+  (fixture) => {
+    it("suggests table names in relation context", () => {
+      expect(labelsForEngine(fixture.tableSql, fixture)).toEqual([
+        fixture.tableLabel,
+      ]);
+      expect(appliesForEngine(fixture.tableSql, fixture)).toEqual([
+        fixture.tableApply,
+      ]);
+    });
+
+    it("suggests schema-qualified relation names", () => {
+      expect(labelsForEngine(fixture.qualifiedSql, fixture)).toEqual([
+        fixture.qualifiedLabel,
+      ]);
+      expect(appliesForEngine(fixture.qualifiedSql, fixture)).toEqual([
+        fixture.qualifiedApply,
+      ]);
+    });
+
+    it("suggests columns after table aliases", () => {
+      expect(labelsForEngine(fixture.aliasSql, fixture)).toEqual(
+        fixture.aliasColumns,
+      );
+    });
+
+    it("falls back to engine keywords when metadata has no match", () => {
+      expect(labelsForEngine(fixture.keywordSql, fixture)).toContain(
+        fixture.keywordLabel,
+      );
+    });
+  },
+);

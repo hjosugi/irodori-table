@@ -10,6 +10,9 @@ dispatch in `apps/desktop/src-tauri/src/db.rs`. Roadmap intent lives in
 `docs/data-source-coverage-strategy.md` and `docs/feature-matrix.md`; this file
 reconciles intent against the code.
 
+For contract/provisioning and managed-service verification procedures, see
+`docs/external-db-contract-and-verification.md`.
+
 Status legend:
 
 - **Wired** — has a production connect path and a dedicated adapter or a

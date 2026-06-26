@@ -11,7 +11,13 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
+import {
+  linter,
+  lintGutter,
+  lintKeymap,
+  type Diagnostic,
+} from "@codemirror/lint";
 import { indentWithTab, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
@@ -19,6 +25,7 @@ import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
 import { buildSqlExtensions } from "./sql/dialect";
 import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
 import { sqlHighlightingExtensions } from "./sql/highlighting";
+import { lintSqlDocument, type SqlLinterId } from "./sql/linter";
 import { editorThemeExtensions, type IrodoriTheme } from "./theme";
 
 export interface SqlEditorHandle {
@@ -39,17 +46,20 @@ export interface SqlEditorHandle {
 interface SqlEditorProps {
   value: string;
   onChange: (next: string) => void;
+  onSelectionChange?: (selection: { from: number; to: number }) => void;
   engine: DbEngine;
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
   theme: IrodoriTheme;
   vimMode: boolean;
   formatter: SqlFormatterId;
+  linter: SqlLinterId;
 }
 
 interface SqlEditorCompartments {
   vim: Compartment;
   sql: Compartment;
+  lint: Compartment;
   theme: Compartment;
   highlight: Compartment;
 }
@@ -58,10 +68,14 @@ interface CreateSqlEditorViewOptions {
   host: HTMLDivElement;
   value: string;
   onChangeRef: { current: (next: string) => void };
+  onSelectionChangeRef: {
+    current: ((selection: { from: number; to: number }) => void) | undefined;
+  };
   engine: DbEngine;
   metadata: DatabaseMetadata | undefined;
   theme: IrodoriTheme;
   vimMode: boolean;
+  linter: SqlLinterId;
   compartments: SqlEditorCompartments;
 }
 
@@ -74,6 +88,7 @@ function createSqlEditorCompartments(): SqlEditorCompartments {
   return {
     vim: new Compartment(),
     sql: new Compartment(),
+    lint: new Compartment(),
     theme: new Compartment(),
     highlight: new Compartment(),
   };
@@ -89,10 +104,12 @@ function createSqlEditorView(options: CreateSqlEditorViewOptions): EditorView {
 function createSqlEditorState({
   value,
   onChangeRef,
+  onSelectionChangeRef,
   engine,
   metadata,
   theme,
   vimMode,
+  linter: linterId,
   compartments,
 }: Omit<CreateSqlEditorViewOptions, "host">): EditorState {
   return EditorState.create({
@@ -102,15 +119,51 @@ function createSqlEditorState({
       basicSetup,
       keymap.of([indentWithTab]),
       compartments.sql.of(buildSqlExtensions(engine, metadata)),
+      compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
       compartments.theme.of(editorThemeExtensions(theme)),
       compartments.highlight.of(sqlHighlightingExtensions(engine, theme.syntax)),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChangeRef.current(update.state.doc.toString());
         }
+        if (update.selectionSet || update.docChanged) {
+          const selection = update.state.selection.main;
+          onSelectionChangeRef.current?.({
+            from: selection.from,
+            to: selection.to,
+          });
+        }
       }),
     ],
   });
+}
+
+function visibleDiagnosticMarkers(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  return diagnostics.filter(
+    (diagnostic) =>
+      diagnostic.severity === "warning" || diagnostic.severity === "error",
+  );
+}
+
+function buildSqlLintExtensions(
+  engine: DbEngine,
+  linterId: SqlLinterId,
+): Extension[] {
+  if (linterId === "disabled") {
+    return [];
+  }
+
+  return [
+    linter((view) => lintSqlDocument(view.state.doc.toString(), engine), {
+      delay: 900,
+      autoPanel: false,
+      markerFilter: visibleDiagnosticMarkers,
+    }),
+    lintGutter({
+      markerFilter: visibleDiagnosticMarkers,
+    }),
+    keymap.of([...lintKeymap]),
+  ];
 }
 
 function reconfigureVimMode(
@@ -147,6 +200,19 @@ function reconfigureSqlExtensions(
 ) {
   view?.dispatch({
     effects: compartments.sql.reconfigure(buildSqlExtensions(engine, metadata)),
+  });
+}
+
+function reconfigureLintExtensions(
+  view: EditorView | null,
+  compartments: SqlEditorCompartments,
+  engine: DbEngine,
+  linterId: SqlLinterId,
+) {
+  view?.dispatch({
+    effects: compartments.lint.reconfigure(
+      buildSqlLintExtensions(engine, linterId),
+    ),
   });
 }
 
@@ -197,13 +263,25 @@ function insertEditorText(view: EditorView, text: string) {
 }
 
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
-  { value, onChange, engine, metadata, theme, vimMode, formatter },
+  {
+    value,
+    onChange,
+    onSelectionChange,
+    engine,
+    metadata,
+    theme,
+    vimMode,
+    formatter,
+    linter,
+  },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
+  const onSelectionChangeRef = useRef(onSelectionChange);
   onChangeRef.current = onChange;
+  onSelectionChangeRef.current = onSelectionChange;
   const compartmentsRef = useRef<SqlEditorCompartments | null>(null);
   if (!compartmentsRef.current) {
     compartmentsRef.current = createSqlEditorCompartments();
@@ -219,10 +297,12 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       host,
       value,
       onChangeRef,
+      onSelectionChangeRef,
       engine,
       metadata,
       theme,
       vimMode,
+      linter,
       compartments,
     });
     viewRef.current = view;
@@ -248,6 +328,11 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
   useEffect(() => {
     reconfigureSqlExtensions(viewRef.current, compartments, engine, metadata);
   }, [engine, metadata, compartments]);
+
+  // Reconfigure the gentle SQL diagnostics without remounting the editor.
+  useEffect(() => {
+    reconfigureLintExtensions(viewRef.current, compartments, engine, linter);
+  }, [engine, linter, compartments]);
 
   // Reconfigure editor chrome + syntax highlight when the theme or engine changes.
   useEffect(() => {

@@ -150,12 +150,20 @@ async function replaceEditorText(page: Page, text: string) {
   await page.keyboard.type(text);
 }
 
+async function connectMockDatabase(page: Page) {
+  await page
+    .getByRole("button", { name: "Connection manager", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+}
+
 test("schema metadata drives table and column completion in the editor", async ({
   page,
 }) => {
   await installCompletionMock(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await connectMockDatabase(page);
   await expect(page.locator(".editor-meta")).toContainText("ready");
   await expect(page.locator(".inspector .completion-item").first()).toContainText(
     "customers",
@@ -180,4 +188,16 @@ test("schema metadata drives table and column completion in the editor", async (
   await page.keyboard.press("Control+Space");
   await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("email");
   await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("name");
+
+  await page.keyboard.press("Escape");
+  await replaceEditorText(page, "select * from sales.");
+  await page.keyboard.press("Control+Space");
+  await expect(page.locator(".cm-tooltip-autocomplete")).toContainText(
+    "invoices",
+  );
+
+  await page.keyboard.press("Escape");
+  await replaceEditorText(page, "ili");
+  await page.keyboard.press("Control+Space");
+  await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("ilike");
 });

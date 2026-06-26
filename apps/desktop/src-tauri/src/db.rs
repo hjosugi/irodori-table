@@ -1915,6 +1915,7 @@ pub async fn cancel_query_impl(state: &DbState, query_id: String) -> bool {
 /// channel) instead of being buffered into a `QueryResult`. Applies the same
 /// optional timeout + `query_id` cancellation, and always deregisters the token.
 /// Tauri-free so it can be unit-tested with an `mpsc` receiver.
+#[cfg(test)]
 pub(crate) async fn run_query_stream_impl(
     state: &DbState,
     connection_id: String,

@@ -5,15 +5,31 @@ import {
   inferImportTableName,
   parseImportText,
   sanitizeSqlName,
+  unsupportedImportFormatMessage,
 } from "./importers";
 
 describe("import helpers", () => {
   it("detects supported import file kinds", () => {
     expect(detectImportFileKind("orders.csv")).toBe("csv");
     expect(detectImportFileKind("orders.JSONL")).toBe("jsonl");
+    expect(detectImportFileKind("orders.NDJSON")).toBe("jsonl");
     expect(detectImportFileKind("dump.sql")).toBe("sql");
     expect(detectImportFileKind("sheet.xlsx")).toBe("excel");
     expect(detectImportFileKind("notes.txt")).toBeNull();
+  });
+
+  it("reports unsupported import formats with clear errors", () => {
+    expect(() => parseImportText("", "xlsx")).toThrow(
+      "Native XLSX/XLS import is not supported.",
+    );
+    expect(() => parseImportText("", "parquet")).toThrow("Parquet import is not supported.");
+    expect(() => parseImportText("", "avro")).toThrow("Avro import is not supported.");
+    expect(() => parseImportText("", "sql")).toThrow(
+      "SQL files are loaded into the editor and are not parsed as table data.",
+    );
+    expect(unsupportedImportFormatMessage("xml")).toBe(
+      'Unsupported import format "xml". Supported text import formats: CSV, TSV, JSON, JSONL/NDJSON.',
+    );
   });
 
   it("parses quoted CSV rows", () => {
@@ -26,6 +42,26 @@ describe("import helpers", () => {
   it("parses TSV rows", () => {
     const parsed = parseImportText("id\tname\n1\tAlice\n", "tsv");
     expect(parsed.rows).toEqual([["1", "Alice"]]);
+  });
+
+  it("keeps delimited rows aligned when cells are missing or headers are blank", () => {
+    const parsed = parseImportText("id,,note\n1,Alice\n2,Bob,extra,tail\n", "csv");
+
+    expect(parsed.columns).toEqual(["id", "column_2", "note", "column_4"]);
+    expect(parsed.rows).toEqual([
+      ["1", "Alice", "", ""],
+      ["2", "Bob", "extra", "tail"],
+    ]);
+  });
+
+  it("maps quoted TSV cells and missing trailing cells", () => {
+    const parsed = parseImportText('id\tname\tflag\n1\t"Alice\tA."\ttrue\n2\tBob\n', "tsv");
+
+    expect(parsed.columns).toEqual(["id", "name", "flag"]);
+    expect(parsed.rows).toEqual([
+      ["1", "Alice\tA.", "true"],
+      ["2", "Bob", ""],
+    ]);
   });
 
   it("parses JSON object arrays without losing spaced keys", () => {
@@ -45,6 +81,13 @@ describe("import helpers", () => {
     expect(parsed.rows).toEqual([[1], [2]]);
     expect(parsed.totalRows).toBe(3);
     expect(parsed.truncated).toBe(true);
+  });
+
+  it("parses NDJSON as a JSONL alias", () => {
+    const parsed = parseImportText('{"id":1}\r\n{"id":2}\n', "ndjson");
+
+    expect(parsed.columns).toEqual(["id"]);
+    expect(parsed.rows).toEqual([[1], [2]]);
   });
 
   it("generates create and insert SQL with sanitized identifiers", () => {

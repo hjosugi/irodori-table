@@ -40,10 +40,14 @@ export function inferImportTableName(fileName: string): string {
 
 export function parseImportText(
   text: string,
-  format: ImportTextFormat,
+  format: ImportTextFormat | "ndjson" | string,
   maxRows = 10000,
 ): ParsedImport {
-  return importTextParsers[format](text, maxRows);
+  const normalizedFormat = normalizeImportTextFormat(format);
+  if (!normalizedFormat) {
+    throw new Error(unsupportedImportFormatMessage(format));
+  }
+  return importTextParsers[normalizedFormat](text, maxRows);
 }
 
 type ImportTextParser = (text: string, maxRows: number) => ParsedImport;
@@ -54,6 +58,27 @@ const importTextParsers: Record<ImportTextFormat, ImportTextParser> = {
   json: parseJsonImport,
   jsonl: parseJsonLinesImport,
 };
+
+const supportedImportTextFormats = new Set<string>(["csv", "tsv", "json", "jsonl"]);
+
+export function unsupportedImportFormatMessage(format: string): string {
+  const normalized = normalizeFormatName(format);
+  const supported = "CSV, TSV, JSON, JSONL/NDJSON";
+  switch (normalized) {
+    case "sql":
+      return "SQL files are loaded into the editor and are not parsed as table data.";
+    case "excel":
+    case "xls":
+    case "xlsx":
+      return `Native XLSX/XLS import is not supported. Import ${supported}, or load a SQL file instead.`;
+    case "parquet":
+      return `Parquet import is not supported. Import ${supported}, or load a SQL file instead.`;
+    case "avro":
+      return `Avro import is not supported. Import ${supported}, or load a SQL file instead.`;
+    default:
+      return `Unsupported import format "${format}". Supported text import formats: ${supported}.`;
+  }
+}
 
 export function generateImportSql(
   tableName: string,
@@ -88,9 +113,11 @@ function parseDelimitedImport(
   if (table.length === 0) {
     return emptyParsedImport();
   }
+  const dataRows = table.slice(1).filter(hasDelimitedContent);
+  const columnCount = maxDelimitedColumnCount([table[0], ...dataRows]);
   return parsedImport(
-    delimitedColumns(table[0]),
-    table.slice(1).filter(hasDelimitedContent),
+    delimitedColumns(padDelimitedRow(table[0], columnCount)),
+    dataRows.map((row) => padDelimitedRow(row, columnCount)),
     maxRows,
   );
 }
@@ -251,6 +278,26 @@ function parsedImport(columns: string[], allRows: unknown[][], maxRows: number):
     totalRows: allRows.length,
     truncated: allRows.length > rows.length,
   };
+}
+
+function normalizeImportTextFormat(format: string): ImportTextFormat | null {
+  const normalized = normalizeFormatName(format);
+  if (normalized === "ndjson") {
+    return "jsonl";
+  }
+  return supportedImportTextFormats.has(normalized) ? (normalized as ImportTextFormat) : null;
+}
+
+function normalizeFormatName(format: string): string {
+  return format.trim().toLowerCase().replace(/^\./, "");
+}
+
+function maxDelimitedColumnCount(rows: readonly string[][]): number {
+  return Math.max(...rows.map((row) => row.length));
+}
+
+function padDelimitedRow(row: readonly string[], columnCount: number): string[] {
+  return Array.from({ length: columnCount }, (_, index) => row[index] ?? "");
 }
 
 function delimitedColumns(columns: string[]) {

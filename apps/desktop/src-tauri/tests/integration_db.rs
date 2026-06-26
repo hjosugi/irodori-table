@@ -74,6 +74,31 @@ async fn exercise(engine: DbEngine, url: String) {
         metadata
     );
 
+    if engine == DbEngine::Postgres {
+        assert!(
+            metadata
+                .schemas
+                .iter()
+                .flat_map(|schema| schema.objects.iter())
+                .any(|object| object.name == "cheeses"),
+            "Postgres sample should include the richer cheese demo tables: {:?}",
+            metadata
+        );
+        let cheese_join = run_query_impl(
+            &state,
+            "it".into(),
+            "select cheeses.name as cheese, countries.name as country \
+             from cheeses join countries on cheeses.origin_country_id = countries.id \
+             order by cheeses.id"
+                .into(),
+            None,
+        )
+        .await
+        .expect("cheese demo join");
+        assert_eq!(cheese_join.columns, vec!["cheese", "country"]);
+        assert_eq!(cheese_join.row_count, 5, "expected 5 seeded cheeses");
+    }
+
     // Join that returns only Any-supported types (text + bigint).
     let join = run_query_impl(
         &state,

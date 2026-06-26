@@ -60,12 +60,22 @@ fn workspace_snapshot() -> WorkspaceSnapshot {
         connections: vec![
             Connection {
                 id: "local-pg".into(),
-                name: "Local Warehouse".into(),
+                name: "Local Postgres".into(),
                 engine: "PostgreSQL 16".into(),
-                status: ConnectionStatus::Connected,
-                latency_ms: 3,
+                status: ConnectionStatus::Idle,
+                latency_ms: 0,
                 proxy: "direct".into(),
                 objects: vec![
+                    DbObject {
+                        name: "cheeses".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("5".into()),
+                    },
+                    DbObject {
+                        name: "countries".into(),
+                        kind: DbObjectKind::Table,
+                        rows: Some("5".into()),
+                    },
                     DbObject {
                         name: "orders".into(),
                         kind: DbObjectKind::Table,
@@ -80,6 +90,11 @@ fn workspace_snapshot() -> WorkspaceSnapshot {
                         name: "invoice_lines".into(),
                         kind: DbObjectKind::Table,
                         rows: Some("4.8M".into()),
+                    },
+                    DbObject {
+                        name: "cheese_summary".into(),
+                        kind: DbObjectKind::View,
+                        rows: None,
                     },
                     DbObject {
                         name: "recent_revenue".into(),

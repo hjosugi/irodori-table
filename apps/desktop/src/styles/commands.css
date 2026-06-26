@@ -1,0 +1,251 @@
+/* Keybinding rows in the sidebar: command title + its (rebindable) shortcut. */
+.command-list .command-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+}
+
+.command-run {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.command-scope {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.command-chord {
+  flex: 0 0 auto;
+  max-width: 118px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.command-chord.conflict {
+  border-color: color-mix(in srgb, var(--red) 42%, var(--border));
+  background: var(--danger-bg);
+  color: var(--red);
+}
+
+.command-reset {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.command-reset:hover,
+.command-reset:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+}
+
+/* Command palette (Ctrl/Cmd+Shift+P). */
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(31, 35, 40, 0.32);
+}
+
+.connection-overlay {
+  align-items: center;
+  padding: 18px;
+  padding-top: 18px;
+}
+
+.palette,
+.parameter-dialog,
+.data-dialog,
+.diagram {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 18px 50px rgba(31, 35, 40, 0.22);
+}
+
+.palette {
+  width: min(560px, 92vw);
+  max-height: 60vh;
+}
+
+.palette-input {
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  outline: none;
+  background: transparent;
+}
+
+.palette-input:focus {
+  box-shadow: inset 0 -1px 0 var(--focus);
+}
+
+.palette-list {
+  overflow: auto;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-item:hover,
+.palette-item:focus-visible {
+  background: var(--hover);
+}
+
+.palette-item span {
+  flex: 1;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.palette-item small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.palette-item kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.palette-empty {
+  padding: 14px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.parameter-dialog {
+  width: min(520px, 92vw);
+  max-height: 70vh;
+}
+
+.parameter-header {
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.parameter-header strong {
+  font-size: 13px;
+}
+
+.parameter-header span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parameter-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.parameter-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.parameter-row span {
+  min-width: 0;
+}
+
+.parameter-row strong,
+.parameter-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parameter-row strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.parameter-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.parameter-row input {
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.parameter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}

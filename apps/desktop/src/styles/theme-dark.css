@@ -1,0 +1,209 @@
+.app-shell[data-theme="dark"] {
+  color-scheme: dark;
+  background: #1e1e1e;
+}
+
+.app-shell[data-theme="dark"] .titlebar,
+.app-shell[data-theme="dark"] .toolbar,
+.app-shell[data-theme="dark"] .statusbar {
+  background: #2d2d30;
+  border-color: #3c3c3c;
+}
+
+.app-shell[data-theme="dark"] .titlebar {
+  box-shadow: inset 0 -1px 0 #1b1b1b;
+}
+
+.app-shell[data-theme="dark"] .connection-select,
+.app-shell[data-theme="dark"] .formatter-select,
+.app-shell[data-theme="dark"] .icon-button,
+.app-shell[data-theme="dark"] .mini-button,
+.app-shell[data-theme="dark"] .text-button,
+.app-shell[data-theme="dark"] .theme-toggle,
+.app-shell[data-theme="dark"] .keymap-chip,
+.app-shell[data-theme="dark"] .latency,
+.app-shell[data-theme="dark"] .profile-pill,
+.app-shell[data-theme="dark"] .connection-editor input,
+.app-shell[data-theme="dark"] .connection-editor select,
+.app-shell[data-theme="dark"] .dialog-form-row input,
+.app-shell[data-theme="dark"] .dialog-form-row select,
+.app-shell[data-theme="dark"] .designer-row input,
+.app-shell[data-theme="dark"] .designer-row select,
+.app-shell[data-theme="dark"] .check-cell,
+.app-shell[data-theme="dark"] .diagram-search,
+.app-shell[data-theme="dark"] .schema-chip,
+.app-shell[data-theme="dark"] .mode-toggle {
+  border-color: #3c3c3c;
+  color: #cccccc;
+  background: var(--surface-raised);
+}
+
+.app-shell[data-theme="dark"] .connection-editor input,
+.app-shell[data-theme="dark"] .connection-editor select,
+.app-shell[data-theme="dark"] .dialog-form-row input,
+.app-shell[data-theme="dark"] .dialog-form-row select,
+.app-shell[data-theme="dark"] .designer-row input,
+.app-shell[data-theme="dark"] .designer-row select,
+.app-shell[data-theme="dark"] .diagram-search input {
+  color: #d4d4d4;
+}
+
+.app-shell[data-theme="dark"] .primary-action,
+.app-shell[data-theme="dark"] .primary-button {
+  border-color: var(--blue);
+  color: #ffffff;
+  background: #0e639c;
+}
+
+.app-shell[data-theme="dark"] .text-button,
+.app-shell[data-theme="dark"] .mode-toggle button.active,
+.app-shell[data-theme="dark"] .result-tabs button.active {
+  color: #9cdcfe;
+  background: var(--selected-strong);
+}
+
+.app-shell[data-theme="dark"] .sidebar {
+  border-color: #303030;
+  background: var(--surface-muted);
+}
+
+.app-shell[data-theme="dark"] .connection-rail {
+  border-color: #303030;
+  background: #252526;
+}
+
+.app-shell[data-theme="dark"] .rail-action:hover,
+.app-shell[data-theme="dark"] .rail-action:focus-visible,
+.app-shell[data-theme="dark"] .rail-connection:hover,
+.app-shell[data-theme="dark"] .rail-connection:focus-visible,
+.app-shell[data-theme="dark"] .rail-connection.active {
+  border-color: #3c3c3c;
+  background: var(--selected);
+}
+
+.app-shell[data-theme="dark"] .sidebar-section,
+.app-shell[data-theme="dark"] .section-heading {
+  border-color: #303030;
+}
+
+.app-shell[data-theme="dark"] .section-heading {
+  color: #bbbbbb;
+  background: var(--surface-muted);
+}
+
+.app-shell[data-theme="dark"] .connection-item.active,
+.app-shell[data-theme="dark"] .profile-pill.active,
+.app-shell[data-theme="dark"] .schema-chip.active,
+.app-shell[data-theme="dark"] .object-row:hover,
+.app-shell[data-theme="dark"] .schema-tree summary:hover,
+.app-shell[data-theme="dark"] .object-tree summary:hover,
+.app-shell[data-theme="dark"] .metadata-row:hover,
+.app-shell[data-theme="dark"] .action-menu button:hover,
+.app-shell[data-theme="dark"] .action-menu button:focus-visible,
+.app-shell[data-theme="dark"] .designer-row:hover,
+.app-shell[data-theme="dark"] .designer-row:focus-within,
+.app-shell[data-theme="dark"] .completion-item:hover,
+.app-shell[data-theme="dark"] .completion-item:focus-visible,
+.app-shell[data-theme="dark"] .history-item:hover,
+.app-shell[data-theme="dark"] .history-item:focus-visible,
+.app-shell[data-theme="dark"] .command-item:hover,
+.app-shell[data-theme="dark"] .command-item:focus-within,
+.app-shell[data-theme="dark"] .palette-item:focus-visible,
+.app-shell[data-theme="dark"] .tab.active {
+  background: var(--selected);
+}
+
+.app-shell[data-theme="dark"] .schema-chip:hover:not(.active),
+.app-shell[data-theme="dark"] .schema-chip:focus-visible:not(.active) {
+  border-color: #4a4a4a;
+  color: #ffffff;
+  background: var(--hover);
+}
+
+.app-shell[data-theme="dark"] .schema-chip.active {
+  border-color: color-mix(in srgb, var(--focus) 55%, #3c3c3c);
+  color: #9cdcfe;
+}
+
+.app-shell[data-theme="dark"] .main-pane,
+.app-shell[data-theme="dark"] .tab-strip,
+.app-shell[data-theme="dark"] .editor-pane,
+.app-shell[data-theme="dark"] .editor-meta,
+.app-shell[data-theme="dark"] .results-pane,
+.app-shell[data-theme="dark"] .results-header,
+.app-shell[data-theme="dark"] .data-dialog,
+.app-shell[data-theme="dark"] .diagram,
+.app-shell[data-theme="dark"] .diagram-header,
+.app-shell[data-theme="dark"] .diagram-controls,
+.app-shell[data-theme="dark"] .dialog-header,
+.app-shell[data-theme="dark"] .dialog-footer,
+.app-shell[data-theme="dark"] .action-menu,
+.app-shell[data-theme="dark"] .preview-table-wrap,
+.app-shell[data-theme="dark"] .sql-preview {
+  border-color: #303030;
+  background: #1e1e1e;
+}
+
+.app-shell[data-theme="dark"] .tab-folder {
+  color: #cccccc;
+  background: var(--surface-raised);
+}
+
+.app-shell[data-theme="dark"] .tab {
+  color: #bbbbbb;
+}
+
+.app-shell[data-theme="dark"] .tab.active {
+  color: #ffffff;
+  border-color: #303030;
+  box-shadow: inset 0 2px 0 #0e639c;
+}
+
+.app-shell[data-theme="dark"] .inspector {
+  border-left: 1px solid #303030;
+  background: var(--surface-muted);
+}
+
+.app-shell[data-theme="dark"] .result-grid {
+  background: var(--editor-bg);
+}
+
+.app-shell[data-theme="dark"] .grid-row {
+  border-color: #303030;
+}
+
+.app-shell[data-theme="dark"] .grid-row.header {
+  color: #cccccc;
+  background: var(--grid-header);
+}
+
+.app-shell[data-theme="dark"] .grid-row span,
+.app-shell[data-theme="dark"] .grid-gutter,
+.app-shell[data-theme="dark"] .preview-table th,
+.app-shell[data-theme="dark"] .preview-table td {
+  border-color: #303030;
+}
+
+.app-shell[data-theme="dark"] .grid-row:not(.header):nth-child(odd) {
+  background: var(--grid-row-alt);
+}
+
+.app-shell[data-theme="dark"] .grid-row.row-new {
+  background: color-mix(in srgb, var(--green) 17%, var(--editor-bg));
+}
+
+.app-shell[data-theme="dark"] .grid-row.row-edited {
+  background: var(--warning-bg);
+}
+
+.app-shell[data-theme="dark"] .command-scope {
+  color: #cccccc;
+  background: var(--surface-muted);
+}
+
+.app-shell[data-theme="dark"] .command-chord,
+.app-shell[data-theme="dark"] .palette-item kbd {
+  border-color: #3c3c3c;
+  color: #cccccc;
+  background: var(--surface-raised);
+}
