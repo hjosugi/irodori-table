@@ -40,7 +40,9 @@ pub struct ConnectionProfile {
     pub options: BTreeMap<String, String>,
 }
 
-pub(super) fn normalize_profile(mut profile: ConnectionProfile) -> Result<ConnectionProfile, String> {
+pub(super) fn normalize_profile(
+    mut profile: ConnectionProfile,
+) -> Result<ConnectionProfile, String> {
     profile.id = profile.id.trim().to_string();
     if profile.id.is_empty() {
         return Err("connection id is required".into());
