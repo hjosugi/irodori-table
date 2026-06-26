@@ -1,6 +1,6 @@
 # Maintainability Audit
 
-Snapshot date: 2026-06-26.
+Snapshot date: 2026-06-27.
 
 This audit summarizes the current line-count and complexity hotspots in the
 first-party code. The counts below exclude generated files, dependencies,
@@ -13,7 +13,7 @@ complexity tool.
 
 | Rank | File | Lines | Main risk | Suggested next move |
 | ---: | --- | ---: | --- | --- |
-| 1 | `apps/desktop/src/App.tsx` | 4,489 | React shell owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `App()` is about 3,950 lines with approximate complexity still above 450. | Continue extracting feature controllers/hooks until `App.tsx` is mostly composition. |
+| 1 | `apps/desktop/src/app/AppWorkbench.tsx` | 4,090 | The former `App.tsx` controller still owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `apps/desktop/src/App.tsx` is now a 4-line entrypoint. | Split this controller into feature hooks; start with query execution and result-grid control. |
 | 2 | `apps/desktop/src-tauri/src/db.rs` | 4,149 | Backend DB facade mixes DTOs, state, dispatch, stream/spill handling, metadata conversion, command wrappers, and tests. | Split by command surface and shared runtime state after current DB work stabilizes. |
 | 3 | `crates/irodori-io/src/lib.rs` | 1,896 | Export encoders, import preview, schema inference, and tests share one module. | Move format-specific encoders/importers into submodules. |
 | 4 | `crates/irodori-proxy/src/lib.rs` | 1,786 | Transport planning, auth resolution, handshakes, stream forwarding, and tests are tightly packed. | Separate planning/diagnostics from IO handshakes and forwarder runtime. |
@@ -26,10 +26,12 @@ complexity tool.
 | 11 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 1,086 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
 | 12 | `crates/irodori-completion/src/completion.rs` | 934 | Completion logic is dense and algorithmic. | Keep unit coverage high before module splitting. |
 
-## App.tsx Split Plan
+## App Workbench Split Plan
 
-Goal: make `App.tsx` a composition root under roughly 800-1,000 lines, with
-feature behavior living beside the existing feature modules.
+Current status: `apps/desktop/src/App.tsx` is a 4-line entrypoint. The remaining
+large file is `apps/desktop/src/app/AppWorkbench.tsx`; it is an intermediate
+controller, not the final architecture. The goal is to reduce it below roughly
+800-1,000 lines by moving feature behavior beside the existing feature modules.
 
 1. Extract query execution first.
    Move `runQuery`, `runEditorSql`, parameter prompting, streaming/spill result

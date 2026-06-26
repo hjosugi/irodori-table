@@ -129,6 +129,7 @@ function printHelp() {
 function generatorEnv(env) {
   const next = { ...env };
   delete next.CI;
+  next.CARGO_TARGET_DIR = resolve(repoRoot, ".irodori-local/target");
   return next;
 }
 
