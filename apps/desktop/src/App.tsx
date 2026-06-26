@@ -185,7 +185,7 @@ import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
 import "./App.css";
 
 const APP_NAME = "Irodori Table";
-const APP_VERSION = "0.2.7";
+const APP_VERSION = "0.2.9";
 const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
