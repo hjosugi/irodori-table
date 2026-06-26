@@ -600,6 +600,11 @@ export function cssVariables(theme: IrodoriTheme): Record<string, string> {
     "--cell-border": ui.cellBorder,
     "--danger-bg": ui.dangerBg,
     "--warning-bg": ui.warningBg,
+    "--selection": ui.selection,
+    "--active-line": ui.activeLine,
+    "--caret": ui.caret,
+    "--gutter-bg": ui.gutterBg,
+    "--gutter-text": ui.gutterText,
   };
 }
 

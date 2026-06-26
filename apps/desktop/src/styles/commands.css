@@ -77,7 +77,7 @@
   display: flex;
   justify-content: center;
   padding-top: 12vh;
-  background: rgba(31, 35, 40, 0.32);
+  background: var(--scrim);
 }
 
 .connection-overlay {
@@ -96,7 +96,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-raised);
-  box-shadow: 0 18px 50px rgba(31, 35, 40, 0.22);
+  box-shadow: 0 18px 50px var(--shadow-color-strong);
 }
 
 .palette {

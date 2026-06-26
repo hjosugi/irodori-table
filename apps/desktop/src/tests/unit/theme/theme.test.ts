@@ -27,6 +27,8 @@ describe("theme model", () => {
     expect(vars["--text"]).toBe(darkTheme.ui.text);
     expect(vars["--border"]).toBe(darkTheme.ui.border);
     expect(vars["--editor-bg"]).toBe(darkTheme.ui.editorBg);
+    expect(vars["--gutter-bg"]).toBe(darkTheme.ui.gutterBg);
+    expect(vars["--selection"]).toBe(darkTheme.ui.selection);
     expect(Object.keys(vars).every((key) => key.startsWith("--"))).toBe(true);
   });
 

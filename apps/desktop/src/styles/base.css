@@ -99,6 +99,16 @@ textarea:disabled {
   --cell-border: #d8dee4;
   --danger-bg: #fff1f1;
   --warning-bg: #fff8c5;
+  --selection: #add6ff;
+  --active-line: #f6f8fa;
+  --caret: #0969da;
+  --gutter-bg: #f6f8fa;
+  --gutter-text: #6e7781;
+  --accent-text: #ffffff;
+  --neutral-dot: color-mix(in srgb, var(--muted) 62%, var(--surface-raised));
+  --shadow-color: color-mix(in srgb, var(--text) 20%, transparent);
+  --shadow-color-strong: color-mix(in srgb, var(--text) 28%, transparent);
+  --scrim: color-mix(in srgb, var(--text) 32%, transparent);
   --focus-ring: 0 0 0 2px color-mix(in srgb, var(--focus) 24%, transparent);
   display: grid;
   grid-template-rows: var(--bar-sm) var(--bar-md) minmax(0, 1fr) var(--status-height);
@@ -184,7 +194,7 @@ textarea:disabled {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface-raised);
-  box-shadow: 0 14px 34px rgba(31, 35, 40, 0.2);
+  box-shadow: 0 14px 34px var(--shadow-color);
 }
 
 .app-menu-popover {
@@ -306,7 +316,7 @@ textarea:disabled {
   flex: 0 0 auto;
   width: 10px;
   height: 10px;
-  border: 1px solid color-mix(in srgb, #000 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
   border-radius: 999px;
 }
 
@@ -320,7 +330,7 @@ textarea:disabled {
 .primary-button {
   padding: 0 12px;
   border-color: var(--blue);
-  color: #ffffff;
+  color: var(--accent-text);
   background: var(--blue);
   font-weight: 650;
   white-space: nowrap;
@@ -328,8 +338,8 @@ textarea:disabled {
 
 .primary-action:hover:not(:disabled),
 .primary-button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--blue) 72%, #000000);
-  background: color-mix(in srgb, var(--blue) 88%, #000000);
+  border-color: color-mix(in srgb, var(--blue) 76%, var(--text));
+  background: color-mix(in srgb, var(--blue) 88%, var(--surface-raised));
 }
 
 .primary-action.compact {
@@ -401,7 +411,7 @@ textarea:disabled {
   width: 30px;
   min-width: 30px;
   padding: 0;
-  border-left-color: color-mix(in srgb, #000 16%, transparent);
+  border-left-color: color-mix(in srgb, var(--text) 16%, transparent);
   border-radius: 0 3px 3px 0;
 }
 
@@ -434,7 +444,7 @@ textarea:disabled {
   border-radius: 6px;
   color: var(--text);
   background: var(--surface-raised);
-  box-shadow: 0 14px 34px rgba(31, 35, 40, 0.22);
+  box-shadow: 0 14px 34px var(--shadow-color-strong);
 }
 
 .action-toast.success {

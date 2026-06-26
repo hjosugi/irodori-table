@@ -107,7 +107,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface-raised);
-  box-shadow: 0 12px 28px rgba(31, 35, 40, 0.18);
+  box-shadow: 0 12px 28px var(--shadow-color);
 }
 
 .action-menu button {
@@ -236,7 +236,7 @@
 }
 
 .segmented-control button.active {
-  color: #ffffff;
+  color: var(--accent-text);
   background: var(--blue);
 }
 
@@ -524,7 +524,7 @@
   min-width: 14px;
   height: 14px;
   border-radius: 999px;
-  color: #ffffff;
+  color: var(--accent-text);
   background: var(--blue);
   font-size: 9px;
 }
@@ -800,6 +800,6 @@
   padding: 0 10px;
   border-top: 1px solid var(--border);
   border-bottom: 0;
-  color: #566159;
+  color: var(--muted);
   font-size: var(--font-ui-sm);
 }

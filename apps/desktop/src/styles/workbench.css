@@ -86,7 +86,7 @@
   height: 7px;
   border: 1px solid var(--surface);
   border-radius: 999px;
-  background: #9aa4ad;
+  background: var(--neutral-dot);
 }
 
 .rail-connection i.connected {
@@ -340,7 +340,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #adb5aa;
+  background: var(--neutral-dot);
 }
 
 .connection-item i.connected {
@@ -688,7 +688,7 @@
   bottom: 12px;
   z-index: 12;
   border-radius: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .editor-floating-run .primary-action {
@@ -860,8 +860,8 @@ body.panel-resizing .result-grid {
 .line-numbers {
   overflow: hidden;
   padding-right: 10px;
-  color: #a58f72;
-  background: #faf5ea;
+  color: var(--gutter-text);
+  background: var(--gutter-bg);
   text-align: right;
   user-select: none;
 }
@@ -873,8 +873,8 @@ body.panel-resizing .result-grid {
   outline: 0;
   padding-left: 14px;
   padding-right: 18px;
-  color: #1f2521;
-  background: #fffef9;
+  color: var(--text);
+  background: var(--editor-bg);
 }
 
 .inspector {

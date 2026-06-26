@@ -7,7 +7,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-raised);
-  box-shadow: 0 18px 50px rgba(31, 35, 40, 0.22);
+  box-shadow: 0 18px 50px var(--shadow-color-strong);
 }
 
 .connection-picker {
@@ -110,7 +110,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #adb5aa;
+  background: var(--neutral-dot);
 }
 
 .connection-profile i.connected {
