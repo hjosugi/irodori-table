@@ -949,8 +949,10 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ## ADV — Advanced Workflows
 
-### ADV-001 — Schema compare + migration preview
+### ADV-001 — Schema compare + migration preview ✅ (core done)
 - **Done when:** two schemas diff into a readable change set and a migration script preview; safe-apply path documented.
+- **Landed:** `irodori-sql::schema` adds a pure, source-agnostic schema model (`Schema`/`Table`/`Column`/`Index`) plus `diff_schemas(old, new) -> SchemaDiff` — a structural change set of added/dropped tables, and per-table added/dropped columns, altered columns (type / nullability / default changes), and added/dropped indexes (a changed index def is a drop+recreate). `SchemaDiff::summary()` renders a readable header (`users (+1col, -1col, ~1col)`), `has_destructive_changes()`/`is_empty()` gate the flow, and `SchemaDiff::to_migration(dialect, AlterColumnStyle)` renders a **dialect-quoted migration preview**: CREATE/DROP TABLE (+ its indexes), ADD/ALTER/DROP COLUMN, and CREATE/DROP INDEX, ordered so the script applies cleanly (add/alter cols → drop indexes → drop cols → create indexes). `AlterColumnStyle` covers Postgres/ANSI granular `ALTER COLUMN` vs MySQL single-statement `MODIFY COLUMN` (and table-scoped `DROP INDEX … ON t`). Every `MigrationStatement` carries a `destructive` flag (DROPs), and the module **only generates SQL, never executes it** — the documented safe-apply contract is preview → confirm destructive steps → run inside a transaction where DDL is transactional. Covered by 9 unit tests (no-change, add/drop table, column add/drop/alter on Postgres, MySQL MODIFY + backticks, index add/drop/recreate, summary).
+- **Remaining:** map live `DatabaseMetadata` into the `Schema` model and surface the diff + preview in a desktop UI (review + safe-apply), plus richer constraint/FK and per-dialect type-mapping coverage.
 - **Depends on:** BROWSE-001
 - **Size:** L · **Priority:** P2
 
