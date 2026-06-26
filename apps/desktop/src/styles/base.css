@@ -348,6 +348,12 @@ textarea:disabled {
   background: var(--hover);
 }
 
+.icon-button.active {
+  border-color: color-mix(in srgb, var(--blue) 48%, var(--border));
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 13%, var(--surface-raised));
+}
+
 .connection-select {
   min-width: 258px;
   max-width: min(360px, 46vw);

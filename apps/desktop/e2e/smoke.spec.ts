@@ -29,6 +29,22 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(page.locator(".sidebar")).toHaveCount(0);
   await page.getByRole("button", { name: "Show sidebar" }).click();
   await expect(page.locator(".sidebar")).toBeVisible();
+  await page.getByRole("button", { name: "Close sidebar" }).click();
+  await expect(page.locator(".sidebar")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show sidebar" }).click();
+  await expect(page.locator(".sidebar")).toBeVisible();
+
+  // Inspector sections can be closed from the pane and reopened from the toolbar.
+  await expect(page.locator(".inspector")).toContainText("Completion");
+  await expect(page.locator(".inspector")).toContainText("History");
+  await page.getByRole("button", { name: "Close history" }).click();
+  await expect(page.locator(".inspector")).not.toContainText("History");
+  await page.getByRole("button", { name: "Show history" }).click();
+  await expect(page.locator(".inspector")).toContainText("History");
+  await page.getByRole("button", { name: "Close completion" }).click();
+  await expect(page.locator(".inspector")).not.toContainText("Completion");
+  await page.getByRole("button", { name: "Show completion" }).click();
+  await expect(page.locator(".inspector")).toContainText("Completion");
 
   // Vim mode can be toggled on/off without remounting the editor.
   await page.getByRole("button", { name: "Settings" }).click();

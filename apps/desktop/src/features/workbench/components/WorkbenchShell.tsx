@@ -6,8 +6,10 @@ import type {
 } from "react";
 import {
   ChevronDown,
+  Columns3,
   GitBranch,
   HelpCircle,
+  History,
   Menu,
   Moon,
   PanelLeftClose,
@@ -26,6 +28,8 @@ type WorkbenchShellProps = {
   themeKind: ThemeKind;
   activeKeyScope: KeybindingScope;
   sidebarOpen: boolean;
+  completionOpen: boolean;
+  historyOpen: boolean;
   sidebarSide: SidebarSide;
   sidebarWidth: number;
   inspectorWidth: number;
@@ -49,6 +53,8 @@ type WorkbenchShellProps = {
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
   onToggleTheme: () => void;
   onToggleSidebar: () => void;
+  onToggleCompletion: () => void;
+  onToggleHistory: () => void;
   onToggleSidebarSide: () => void;
   onOpenSettings: () => void;
   onOpenKeymap: () => void;
@@ -65,6 +71,8 @@ export function WorkbenchShell({
   themeKind,
   activeKeyScope,
   sidebarOpen,
+  completionOpen,
+  historyOpen,
   sidebarSide,
   sidebarWidth,
   inspectorWidth,
@@ -88,6 +96,8 @@ export function WorkbenchShell({
   onScopeMouseDown,
   onToggleTheme,
   onToggleSidebar,
+  onToggleCompletion,
+  onToggleHistory,
   onToggleSidebarSide,
   onOpenSettings,
   onOpenKeymap,
@@ -286,6 +296,26 @@ export function WorkbenchShell({
           <ChevronDown size={15} />
         </button>
         <div className="toolbar-spacer" />
+        <button
+          className={completionOpen ? "icon-button active" : "icon-button"}
+          type="button"
+          title={completionOpen ? "Hide completion" : "Show completion"}
+          aria-label={completionOpen ? "Hide completion" : "Show completion"}
+          aria-pressed={completionOpen}
+          onClick={onToggleCompletion}
+        >
+          <Columns3 size={15} />
+        </button>
+        <button
+          className={historyOpen ? "icon-button active" : "icon-button"}
+          type="button"
+          title={historyOpen ? "Hide history" : "Show history"}
+          aria-label={historyOpen ? "Hide history" : "Show history"}
+          aria-pressed={historyOpen}
+          onClick={onToggleHistory}
+        >
+          <History size={15} />
+        </button>
         <button
           className="icon-button"
           type="button"

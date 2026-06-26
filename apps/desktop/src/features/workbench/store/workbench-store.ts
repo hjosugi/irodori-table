@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import {
+  defaultWorkbenchViewVisibility,
   defaultWorkbenchViewPlacements,
   workbenchViewIds,
   type WorkbenchSide,
   type WorkbenchViewId,
   type WorkbenchViewPlacements,
+  type WorkbenchViewVisibility,
 } from "../types";
 
 export type EditorSplitMode = "single" | "right" | "down";
@@ -16,6 +18,7 @@ type WorkbenchState = {
   sidebarOpen: boolean;
   sidebarSide: SidebarSide;
   viewPlacements: WorkbenchViewPlacements;
+  viewVisibility: WorkbenchViewVisibility;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -25,6 +28,8 @@ type WorkbenchState = {
   setSidebarSide: (value: ValueUpdater<SidebarSide>) => void;
   setViewPlacement: (viewId: WorkbenchViewId, side: WorkbenchSide) => void;
   setViewPlacements: (value: ValueUpdater<WorkbenchViewPlacements>) => void;
+  setViewOpen: (viewId: WorkbenchViewId, value: ValueUpdater<boolean>) => void;
+  setViewVisibility: (value: ValueUpdater<WorkbenchViewVisibility>) => void;
   setSidebarWidth: (value: ValueUpdater<number>) => void;
   setInspectorWidth: (value: ValueUpdater<number>) => void;
   setResultsHeight: (value: ValueUpdater<number>) => void;
@@ -35,6 +40,7 @@ type WorkbenchState = {
 const sidebarStorageKey = "irodori.sidebar.open.v1";
 const sidebarSideStorageKey = "irodori.sidebar.side.v1";
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
+const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
 const resultsHeightStorageKey = "irodori.results.height.v1";
@@ -92,6 +98,10 @@ function defaultViewPlacements(): WorkbenchViewPlacements {
   return { ...defaultWorkbenchViewPlacements };
 }
 
+function defaultViewVisibility(): WorkbenchViewVisibility {
+  return { ...defaultWorkbenchViewVisibility };
+}
+
 function normalizeViewPlacements(value: unknown): WorkbenchViewPlacements {
   const next = defaultViewPlacements();
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -103,6 +113,22 @@ function normalizeViewPlacements(value: unknown): WorkbenchViewPlacements {
     const side = stored[viewId];
     if (isWorkbenchSide(side)) {
       next[viewId] = side;
+    }
+  });
+  return next;
+}
+
+function normalizeViewVisibility(value: unknown): WorkbenchViewVisibility {
+  const next = defaultViewVisibility();
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return next;
+  }
+
+  const stored = value as Partial<Record<WorkbenchViewId, unknown>>;
+  workbenchViewIds.forEach((viewId) => {
+    const open = stored[viewId];
+    if (typeof open === "boolean") {
+      next[viewId] = open;
     }
   });
   return next;
@@ -120,6 +146,18 @@ function loadViewPlacements(): WorkbenchViewPlacements {
   }
 }
 
+function loadViewVisibility(): WorkbenchViewVisibility {
+  const stored = window.localStorage.getItem(viewVisibilityStorageKey);
+  if (!stored) {
+    return defaultViewVisibility();
+  }
+  try {
+    return normalizeViewVisibility(JSON.parse(stored));
+  } catch {
+    return defaultViewVisibility();
+  }
+}
+
 function loadEditorSplitMode(): EditorSplitMode {
   const stored = window.localStorage.getItem(editorSplitModeStorageKey);
   return stored === "right" || stored === "down" ? stored : "single";
@@ -129,6 +167,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   sidebarOpen: loadSidebarOpen(),
   sidebarSide: loadSidebarSide(),
   viewPlacements: loadViewPlacements(),
+  viewVisibility: loadViewVisibility(),
   sidebarWidth: loadStoredNumber(
     sidebarWidthStorageKey,
     sidebarWidthDefault,
@@ -169,6 +208,19 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
     set((state) => ({
       viewPlacements: normalizeViewPlacements(
         resolveValue(state.viewPlacements, value),
+      ),
+    })),
+  setViewOpen: (viewId, value) =>
+    set((state) => ({
+      viewVisibility: normalizeViewVisibility({
+        ...state.viewVisibility,
+        [viewId]: resolveValue(state.viewVisibility[viewId], value),
+      }),
+    })),
+  setViewVisibility: (value) =>
+    set((state) => ({
+      viewVisibility: normalizeViewVisibility(
+        resolveValue(state.viewVisibility, value),
       ),
     })),
   setSidebarWidth: (value) =>
@@ -215,6 +267,10 @@ useWorkbenchStore.subscribe((state) => {
   window.localStorage.setItem(
     viewPlacementsStorageKey,
     JSON.stringify(state.viewPlacements),
+  );
+  window.localStorage.setItem(
+    viewVisibilityStorageKey,
+    JSON.stringify(state.viewVisibility),
   );
   window.localStorage.setItem(sidebarWidthStorageKey, String(state.sidebarWidth));
   window.localStorage.setItem(

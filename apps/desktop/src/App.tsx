@@ -89,6 +89,7 @@ import {
   useWorkbenchStore,
   workbenchViewIds,
   type WorkbenchViewPlacements,
+  type WorkbenchViewVisibility,
 } from "./features/workbench";
 import {
   WindowedRows,
@@ -618,6 +619,11 @@ function App() {
   const setViewPlacement = useWorkbenchStore((state) => state.setViewPlacement);
   const setViewPlacements = useWorkbenchStore(
     (state) => state.setViewPlacements,
+  );
+  const viewVisibility = useWorkbenchStore((state) => state.viewVisibility);
+  const setViewOpen = useWorkbenchStore((state) => state.setViewOpen);
+  const setViewVisibility = useWorkbenchStore(
+    (state) => state.setViewVisibility,
   );
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
@@ -2265,6 +2271,7 @@ function App() {
           sidebarOpen,
           sidebarSide,
           viewPlacements,
+          viewVisibility,
           sidebarWidth,
           inspectorWidth,
           resultsHeight,
@@ -2484,6 +2491,19 @@ function App() {
           if (importedPlacements.objectBrowser) {
             setPrimarySidebarSide(importedPlacements.objectBrowser);
           }
+        }
+        const viewVisibility = parsed.layout.viewVisibility;
+        if (isRecord(viewVisibility)) {
+          const importedVisibility: Partial<WorkbenchViewVisibility> = {};
+          for (const viewId of workbenchViewIds) {
+            const open = viewVisibility[viewId];
+            if (typeof open === "boolean") {
+              importedVisibility[viewId] = open;
+            }
+          }
+          setViewVisibility((current) => {
+            return { ...current, ...importedVisibility };
+          });
         }
         const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
         if (Number.isFinite(nextSidebarWidth)) {
@@ -3924,10 +3944,14 @@ function App() {
 
   const completionSide = viewPlacements.completion;
   const queryHistorySide = viewPlacements.queryHistory;
+  const completionOpen = viewVisibility.completion;
+  const historyOpen = viewVisibility.queryHistory;
   const showLeftInspector =
-    completionSide === "left" || queryHistorySide === "left";
+    (completionOpen && completionSide === "left") ||
+    (historyOpen && queryHistorySide === "left");
   const showRightInspector =
-    completionSide === "right" || queryHistorySide === "right";
+    (completionOpen && completionSide === "right") ||
+    (historyOpen && queryHistorySide === "right");
 
   return (
     <div
@@ -3941,6 +3965,8 @@ function App() {
         themeKind={theme.kind}
         activeKeyScope={activeKeyScope}
         sidebarOpen={sidebarOpen}
+        completionOpen={completionOpen}
+        historyOpen={historyOpen}
         sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
@@ -3972,6 +3998,8 @@ function App() {
           activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
         }
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        onToggleCompletion={() => setViewOpen("completion", (open) => !open)}
+        onToggleHistory={() => setViewOpen("queryHistory", (open) => !open)}
         onToggleSidebarSide={() =>
           setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
         }
@@ -4011,6 +4039,7 @@ function App() {
             onOpenSnapshotObject={openSnapshotObject}
             onShowObjectInDiagram={showObjectInDiagram}
             onSetObjectActionMenu={setObjectActionMenu}
+            onCloseSidebar={() => setSidebarOpen(false)}
             onBeginResize={(event) => beginPanelResize("sidebar", event)}
             onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
           />
@@ -4065,9 +4094,11 @@ function App() {
                   onInsertCompletionHint={insertCompletionHint}
                   onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
                   onLoadHistorySql={setQuery}
+                  onCloseCompletion={() => setViewOpen("completion", false)}
+                  onCloseHistory={() => setViewOpen("queryHistory", false)}
                   side="left"
-                  showCompletion={completionSide === "left"}
-                  showHistory={queryHistorySide === "left"}
+                  showCompletion={completionOpen && completionSide === "left"}
+                  showHistory={historyOpen && queryHistorySide === "left"}
                 />
                 <div
                   className="panel-resizer inspector-resizer left-inspector-resizer"
@@ -4159,9 +4190,11 @@ function App() {
                   onInsertCompletionHint={insertCompletionHint}
                   onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
                   onLoadHistorySql={setQuery}
+                  onCloseCompletion={() => setViewOpen("completion", false)}
+                  onCloseHistory={() => setViewOpen("queryHistory", false)}
                   side="right"
-                  showCompletion={completionSide === "right"}
-                  showHistory={queryHistorySide === "right"}
+                  showCompletion={completionOpen && completionSide === "right"}
+                  showHistory={historyOpen && queryHistorySide === "right"}
                 />
               </>
             ) : null}

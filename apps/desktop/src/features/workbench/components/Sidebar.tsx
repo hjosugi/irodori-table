@@ -17,6 +17,7 @@ import {
   Share2,
   Table2,
   TerminalSquare,
+  X,
 } from "lucide-react";
 import { hasDiagram } from "@/erd";
 import type {
@@ -60,6 +61,7 @@ type SidebarProps = {
   onOpenSnapshotObject: (object: SnapshotObject) => void;
   onShowObjectInDiagram: (object: DbObjectMetadata) => void;
   onSetObjectActionMenu: (value: string | null | ((current: string | null) => string | null)) => void;
+  onCloseSidebar: () => void;
   onBeginResize: (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => void;
@@ -91,6 +93,7 @@ export function Sidebar({
   onOpenSnapshotObject,
   onShowObjectInDiagram,
   onSetObjectActionMenu,
+  onCloseSidebar,
   onBeginResize,
   onResizeKey,
 }: SidebarProps) {
@@ -191,35 +194,42 @@ export function Sidebar({
                   ? `${activeMetadata.schemas.length} schemas`
                   : "public"}
               </span>
-              <button
-                className="mini-button"
-                type="button"
-                title="Schema designer"
-                aria-label="Schema designer"
-                onClick={onOpenBlankSchemaDesigner}
-              >
-                <Plus size={14} />
-              </button>
-              <button
-                className="mini-button"
-                type="button"
-                title="ER diagram"
-                aria-label="ER diagram"
-                disabled={!hasDiagram(activeMetadata)}
-                onClick={onOpenDiagram}
-              >
-                <Share2 size={14} />
-              </button>
-              <button
-                className="mini-button"
-                type="button"
-                title="Refresh objects"
-                aria-label="Refresh objects"
-                disabled={!activeConnectionOpen || activeMetadataLoading}
-                onClick={onRefreshObjects}
-              >
-                <RefreshCw size={14} />
-              </button>
+              <div className="section-heading-actions">
+                <button
+                  type="button"
+                  title="Schema designer"
+                  aria-label="Schema designer"
+                  onClick={onOpenBlankSchemaDesigner}
+                >
+                  <Plus size={14} />
+                </button>
+                <button
+                  type="button"
+                  title="ER diagram"
+                  aria-label="ER diagram"
+                  disabled={!hasDiagram(activeMetadata)}
+                  onClick={onOpenDiagram}
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
+                  type="button"
+                  title="Refresh objects"
+                  aria-label="Refresh objects"
+                  disabled={!activeConnectionOpen || activeMetadataLoading}
+                  onClick={onRefreshObjects}
+                >
+                  <RefreshCw size={14} />
+                </button>
+                <button
+                  type="button"
+                  title="Close sidebar"
+                  aria-label="Close sidebar"
+                  onClick={onCloseSidebar}
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
             <div className="object-browser">
               {activeMetadataLoading ? (

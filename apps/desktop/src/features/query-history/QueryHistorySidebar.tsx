@@ -18,12 +18,14 @@ type QueryHistorySidebarProps = {
   activeConnectionId: string;
   connectionById: ReadonlyMap<string, QueryHistoryConnection>;
   onLoad: (item: QueryHistoryItem) => void;
+  onClose?: () => void;
 };
 
 export function QueryHistorySidebar({
   activeConnectionId,
   connectionById,
   onLoad,
+  onClose,
 }: QueryHistorySidebarProps) {
   const items = useQueryHistoryStore((state) => state.items);
   const search = useQueryHistoryStore((state) => state.search);
@@ -60,6 +62,16 @@ export function QueryHistorySidebar({
           >
             <Maximize2 size={12} />
           </button>
+          {onClose ? (
+            <button
+              type="button"
+              aria-label="Close history"
+              title="Close history"
+              onClick={onClose}
+            >
+              <X size={12} />
+            </button>
+          ) : null}
         </div>
       </div>
       <label className="history-search">

@@ -1,4 +1,4 @@
-import { AlertTriangle, Columns3 } from "lucide-react";
+import { AlertTriangle, Columns3, X } from "lucide-react";
 import { QueryHistorySidebar } from "@/features/query-history";
 import type { WorkspaceConnection } from "@/features/connections";
 import type { DbEngine } from "@/generated/irodori-api";
@@ -19,6 +19,8 @@ type InspectorProps = {
   onInsertCompletionHint: (hint: CompletionHint) => void;
   onInsertSql: (sql: string) => void;
   onLoadHistorySql: (sql: string) => void;
+  onCloseCompletion?: () => void;
+  onCloseHistory?: () => void;
   side?: WorkbenchSide;
   showCompletion?: boolean;
   showHistory?: boolean;
@@ -34,6 +36,8 @@ export function Inspector({
   onInsertCompletionHint,
   onInsertSql,
   onLoadHistorySql,
+  onCloseCompletion,
+  onCloseHistory,
   side = "right",
   showCompletion = true,
   showHistory = true,
@@ -45,7 +49,19 @@ export function Inspector({
         <section>
           <div className="section-heading">
             <span>Vector Tools</span>
-            <Columns3 size={14} />
+            <div className="section-heading-actions">
+              <Columns3 size={14} />
+              {onCloseCompletion ? (
+                <button
+                  type="button"
+                  aria-label="Close completion"
+                  title="Close completion"
+                  onClick={onCloseCompletion}
+                >
+                  <X size={12} />
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className="completion-list">
             {vectorTemplates.map((template) => (
@@ -65,7 +81,19 @@ export function Inspector({
         <section>
           <div className="section-heading">
             <span>Completion</span>
-            <Columns3 size={14} />
+            <div className="section-heading-actions">
+              <Columns3 size={14} />
+              {onCloseCompletion ? (
+                <button
+                  type="button"
+                  aria-label="Close completion"
+                  title="Close completion"
+                  onClick={onCloseCompletion}
+                >
+                  <X size={12} />
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className="completion-list">
             {activeMetadataLoading ? (
@@ -99,6 +127,7 @@ export function Inspector({
           activeConnectionId={activeConnectionId}
           connectionById={connectionById}
           onLoad={(item) => onLoadHistorySql(item.sql)}
+          onClose={onCloseHistory}
         />
       ) : null}
     </aside>

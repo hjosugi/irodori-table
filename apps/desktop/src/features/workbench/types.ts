@@ -23,9 +23,18 @@ export type WorkbenchViewId = (typeof workbenchViewIds)[number];
 
 export type WorkbenchViewPlacements = Record<WorkbenchViewId, WorkbenchSide>;
 
+export type WorkbenchViewVisibility = Record<WorkbenchViewId, boolean>;
+
 export const defaultWorkbenchViewPlacements: WorkbenchViewPlacements = {
   objectBrowser: "left",
   completion: "right",
   queryHistory: "right",
   git: "right",
+};
+
+export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
+  objectBrowser: true,
+  completion: true,
+  queryHistory: true,
+  git: true,
 };

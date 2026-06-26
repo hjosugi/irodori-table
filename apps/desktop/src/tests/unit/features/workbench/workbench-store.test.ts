@@ -3,10 +3,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   defaultWorkbenchViewPlacements,
+  defaultWorkbenchViewVisibility,
   type WorkbenchViewPlacements,
+  type WorkbenchViewVisibility,
 } from "@/features/workbench/types";
 
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
+const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
 
 function installLocalStorage() {
   const values = new Map<string, string>();
@@ -114,5 +117,46 @@ describe("workbench store view placements", () => {
     expect(store.getState().viewPlacements).toEqual(
       defaultWorkbenchViewPlacements,
     );
+  });
+
+  it("loads default view visibility", async () => {
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().viewVisibility).toEqual(
+      defaultWorkbenchViewVisibility,
+    );
+  });
+
+  it("sets and persists a single view visibility", async () => {
+    const store = await loadWorkbenchStore();
+    const expected: WorkbenchViewVisibility = {
+      ...defaultWorkbenchViewVisibility,
+      queryHistory: false,
+    };
+
+    store.getState().setViewOpen("queryHistory", false);
+
+    expect(store.getState().viewVisibility).toEqual(expected);
+    expect(
+      JSON.parse(window.localStorage.getItem(viewVisibilityStorageKey) ?? "{}"),
+    ).toEqual(expected);
+  });
+
+  it("sanitizes stored view visibility", async () => {
+    window.localStorage.setItem(
+      viewVisibilityStorageKey,
+      JSON.stringify({
+        completion: false,
+        queryHistory: "closed",
+        unknownView: false,
+      }),
+    );
+
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().viewVisibility).toEqual({
+      ...defaultWorkbenchViewVisibility,
+      completion: false,
+    });
   });
 });

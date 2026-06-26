@@ -9,6 +9,7 @@ export {
 } from "./store/workbench-store";
 export {
   defaultWorkbenchViewPlacements,
+  defaultWorkbenchViewVisibility,
   workbenchViewIds,
 } from "./types";
 export type {
@@ -18,4 +19,5 @@ export type {
   WorkbenchSide,
   WorkbenchViewId,
   WorkbenchViewPlacements,
+  WorkbenchViewVisibility,
 } from "./types";
