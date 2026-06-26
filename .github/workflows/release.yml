@@ -24,14 +24,14 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout irodori-table
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # typeship is a sibling path dependency (see ../../../../typeship in the
       # desktop crate's Cargo.toml). actions/checkout refuses paths outside
       # $GITHUB_WORKSPACE, so check it out inside the workspace and move it
       # alongside the repo where Cargo expects it.
       - name: Checkout typeship
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: hjosugi/typeship
           path: _typeship
@@ -46,7 +46,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev mold
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
