@@ -566,6 +566,9 @@ function App() {
   });
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [openTabIds, setOpenTabIds] = useState(() =>
+    tabs.map((tab) => tab.id),
+  );
   const activeConnectionId = useConnectionStore(
     (state) => state.activeConnectionId,
   );
@@ -1012,8 +1015,12 @@ function App() {
     return profile?.engine ?? draft.engine ?? "postgres";
   }, [profiles, activeConnectionId, draft.engine]);
 
+  const openTabs = useMemo(
+    () => tabs.filter((tab) => openTabIds.includes(tab.id)),
+    [openTabIds],
+  );
   const activeTabLabel =
-    tabs.find((tab) => tab.id === activeTab)?.label ?? "Scratch";
+    openTabs.find((tab) => tab.id === activeTab)?.label ?? "Scratch";
   const selectedEditorSql = query
     .slice(editorSelection.from, editorSelection.to)
     .trim();
@@ -2077,6 +2084,35 @@ function App() {
     }
   }
 
+  function closeActiveSqlTab() {
+    const activeIndex = openTabs.findIndex((tab) => tab.id === activeTab);
+    if (openTabs.length <= 1 || activeIndex < 0) {
+      showActionNotice(
+        "info",
+        "Tab kept open",
+        "The last SQL tab stays open so Ctrl+W never closes the browser tab.",
+      );
+      return;
+    }
+    const closedTab = openTabs[activeIndex];
+    const nextTab =
+      openTabs[activeIndex + 1] ?? openTabs[activeIndex - 1] ?? openTabs[0];
+    setOpenTabIds((current) => current.filter((id) => id !== closedTab.id));
+    setActiveTab(nextTab.id);
+    showActionNotice("info", "Tab closed", closedTab.label);
+  }
+
+  function reopenSqlTab() {
+    const closedTab = tabs.find((tab) => !openTabIds.includes(tab.id));
+    if (!closedTab) {
+      showActionNotice("info", "Tabs already open");
+      return;
+    }
+    setOpenTabIds((current) => [...current, closedTab.id]);
+    setActiveTab(closedTab.id);
+    showActionNotice("success", "Tab restored", closedTab.label);
+  }
+
   const runCommand = createWorkbenchCommandHandler({
     editMode,
     openPalette: () => {
@@ -2089,6 +2125,7 @@ function App() {
     openHelp: () => setAboutOpen(true),
     openConnectionManager: () => setConnectionManagerOpen(true),
     openDiagram: () => setDiagramOpen(true),
+    closeActiveTab: closeActiveSqlTab,
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
     runCurrentQuery,
@@ -3862,9 +3899,9 @@ function App() {
           <div className="tab-strip">
             <div className="tab-folder">
               <Folder size={14} />
-              <span>{tabs.find((tab) => tab.id === activeTab)?.group}</span>
+              <span>{openTabs.find((tab) => tab.id === activeTab)?.group}</span>
             </div>
-            {tabs.map((tab) => (
+            {openTabs.map((tab) => (
               <button
                 className={tab.id === activeTab ? "tab active" : "tab"}
                 key={tab.id}
@@ -3877,8 +3914,10 @@ function App() {
             <button
               className="mini-button"
               type="button"
-              title="New tab"
-              aria-label="New tab"
+              title="Reopen closed tab"
+              aria-label="Reopen closed tab"
+              disabled={openTabs.length === tabs.length}
+              onClick={reopenSqlTab}
             >
               <Plus size={14} />
             </button>

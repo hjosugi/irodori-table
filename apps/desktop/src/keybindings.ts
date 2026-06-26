@@ -50,6 +50,12 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "tab.close",
+    title: "Close active SQL tab",
+    category: "Workspace",
+    scope: "global",
+  },
+  {
     id: "query.run",
     title: "Run selection or current statement",
     category: "Query",
@@ -164,6 +170,7 @@ export const commandCatalog: CommandMeta[] = [
 export const defaultKeymap: Keymap = {
   "palette.open": "Mod+Shift+P",
   "settings.open": "Mod+,",
+  "tab.close": "Mod+W",
   "diagram.show": "Mod+Shift+D",
   "query.run": "Mod+Enter",
   "query.runCurrent": "Mod+Shift+Enter",
