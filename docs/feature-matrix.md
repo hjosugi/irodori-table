@@ -93,7 +93,7 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 | Extensibility | Data-source adapter API for SQL, time-series, graph, document, KV, search, and warehouse sources | P1 | Avoid core-only support bottleneck |
 | Visualization | Schema ERD baseline: SVG/PNG image export, multi-schema bands, search/filter, deterministic layout pass | P1 | Implemented baseline; Beekeeper parity and schema comprehension, with visual QA/benchmark coverage still open |
 | Visualization | Query-result graph views | P1 | ADV-004D partial; desktop has a basic graph-shaped result renderer, but explicit mappings, saved specs, and usage-oriented graph presets remain open |
-| Visualization | Charts, worksheet visualizations, and dashboards from query results | P1 | ADV-004E partial; desktop has current-result bar/line/scatter charting plus an in-app chart window, while saved specs, dashboards, exports, and shared APIs remain open |
+| Visualization | Charts, worksheet visualizations, and dashboards from query results | P1 | ADV-004E partial; desktop has current-result bar/line/scatter charting, count/aggregate metrics, sort/limit controls, and an in-app chart window, while saved specs, dashboards, exports, and shared APIs remain open |
 | Visualization | Local visualization dataset cache (SPICE-like) | P1 | ADV-004F open; materialize query results into local DuckDB/SQLite/Arrow/Parquet-backed datasets for fast re-aggregation and dashboard reuse |
 
 ## Reference Projects In Workspace

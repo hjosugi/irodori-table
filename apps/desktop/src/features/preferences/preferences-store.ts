@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import {
+  cloneDefaultSqlSnippets,
+  sqlSnippetsFromJson,
+  type SqlSnippetDefinition,
+} from "../../sql/completion";
+import {
   isSqlFormatterId,
   type SqlFormatterId,
 } from "../../sql/formatter";
@@ -16,6 +21,7 @@ const legacyCustomThemeStorageKey = "irodori.theme.customJson.v1";
 const vimModeStorageKey = "irodori.editor.vimMode.v1";
 const formatterStorageKey = "irodori.editor.formatter.v1";
 const linterStorageKey = "irodori.editor.linter.v1";
+const snippetsStorageKey = "irodori.editor.snippets.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 
 type PreferencesState = {
@@ -25,6 +31,7 @@ type PreferencesState = {
   vimMode: boolean;
   formatter: SqlFormatterId;
   sqlLinter: SqlLinterId;
+  sqlSnippets: SqlSnippetDefinition[];
   autoCommit: boolean;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
   setActiveCustomThemeId: (value: ValueUpdater<string | null>) => void;
@@ -32,6 +39,7 @@ type PreferencesState = {
   setVimMode: (value: ValueUpdater<boolean>) => void;
   setFormatter: (value: ValueUpdater<SqlFormatterId>) => void;
   setSqlLinter: (value: ValueUpdater<SqlLinterId>) => void;
+  setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
 };
 
@@ -120,6 +128,18 @@ function loadLinter(): SqlLinterId {
   return isSqlLinterId(stored) ? stored : "gentle";
 }
 
+function loadSqlSnippets(): SqlSnippetDefinition[] {
+  const stored = window.localStorage.getItem(snippetsStorageKey);
+  if (!stored) {
+    return cloneDefaultSqlSnippets();
+  }
+  try {
+    return sqlSnippetsFromJson(JSON.parse(stored) as unknown);
+  } catch {
+    return cloneDefaultSqlSnippets();
+  }
+}
+
 function loadAutoCommit() {
   return window.localStorage.getItem(autoCommitStorageKey) !== "false";
 }
@@ -133,6 +153,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   vimMode: loadVimMode(),
   formatter: loadFormatter(),
   sqlLinter: loadLinter(),
+  sqlSnippets: loadSqlSnippets(),
   autoCommit: loadAutoCommit(),
   setThemeKind: (value) =>
     set((state) => ({ themeKind: resolveValue(state.themeKind, value) })),
@@ -156,6 +177,8 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({ formatter: resolveValue(state.formatter, value) })),
   setSqlLinter: (value) =>
     set((state) => ({ sqlLinter: resolveValue(state.sqlLinter, value) })),
+  setSqlSnippets: (value) =>
+    set((state) => ({ sqlSnippets: resolveValue(state.sqlSnippets, value) })),
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
 }));
@@ -178,5 +201,9 @@ usePreferencesStore.subscribe((state) => {
   window.localStorage.setItem(vimModeStorageKey, String(state.vimMode));
   window.localStorage.setItem(formatterStorageKey, state.formatter);
   window.localStorage.setItem(linterStorageKey, state.sqlLinter);
+  window.localStorage.setItem(
+    snippetsStorageKey,
+    JSON.stringify(state.sqlSnippets),
+  );
   window.localStorage.setItem(autoCommitStorageKey, String(state.autoCommit));
 });

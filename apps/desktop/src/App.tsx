@@ -186,6 +186,7 @@ import {
   type WorkspaceSnapshot,
 } from "./generated/irodori-api";
 import { type SqlEditorHandle } from "./SqlEditor";
+import { sqlSnippetsFromJson } from "./sql/completion";
 import { isSqlFormatterId } from "./sql/formatter";
 import { isSqlLinterId } from "./sql/linter";
 import type { SqlEditorTransformAction } from "./sql/editor-transforms";
@@ -596,6 +597,8 @@ function App() {
   const setFormatter = usePreferencesStore((state) => state.setFormatter);
   const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
   const setSqlLinter = usePreferencesStore((state) => state.setSqlLinter);
+  const sqlSnippets = usePreferencesStore((state) => state.sqlSnippets);
+  const setSqlSnippets = usePreferencesStore((state) => state.setSqlSnippets);
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
@@ -2149,6 +2152,7 @@ function App() {
           autoCommit,
           formatter,
           linter: sqlLinter,
+          snippets: sqlSnippets,
         },
         queryHistory: {
           maxItems: queryHistoryMaxItems,
@@ -2311,6 +2315,14 @@ function App() {
         ) {
           setSqlLinter(parsed.editor.linter);
         }
+        if ("snippets" in parsed.editor) {
+          const nextSnippets = sqlSnippetsFromJson(parsed.editor.snippets);
+          setSqlSnippets(nextSnippets);
+        }
+      }
+      if ("snippets" in parsed) {
+        const nextSnippets = sqlSnippetsFromJson(parsed.snippets);
+        setSqlSnippets(nextSnippets);
       }
       if (isRecord(parsed.queryHistory)) {
         const nextMaxItems = Number(parsed.queryHistory.maxItems);
@@ -3882,6 +3894,7 @@ function App() {
               onQueryChange={setQuery}
               editorEngine={editorEngine}
               activeMetadata={activeMetadata}
+              sqlSnippets={sqlSnippets}
               theme={theme}
               vimMode={vimMode}
               sqlLinter={sqlLinter}
@@ -4100,6 +4113,8 @@ function App() {
           setFormatter={setFormatter}
           sqlLinter={sqlLinter}
           setSqlLinter={setSqlLinter}
+          sqlSnippets={sqlSnippets}
+          setSqlSnippets={setSqlSnippets}
           resultOffloadEnabled={resultOffloadEnabled}
           setResultOffloadEnabled={setResultOffloadEnabled}
           resultMemoryBudget={resultMemoryBudget}

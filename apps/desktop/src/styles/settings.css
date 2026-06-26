@@ -145,6 +145,75 @@
   margin: 0;
 }
 
+.settings-snippets {
+  display: grid;
+  gap: 12px;
+}
+
+.snippet-editor-list {
+  display: grid;
+  gap: 10px;
+}
+
+.snippet-editor-item {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.snippet-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.7fr) 92px minmax(180px, 1.4fr);
+  gap: 8px;
+}
+
+.snippet-editor-grid label,
+.snippet-template-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.snippet-editor-grid input,
+.snippet-editor-grid select,
+.snippet-template-field textarea {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--input-bg);
+  font: inherit;
+  text-transform: none;
+}
+
+.snippet-editor-grid input,
+.snippet-editor-grid select {
+  height: var(--control-sm);
+  padding: 0 8px;
+}
+
+.snippet-template-field textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  padding: 8px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.snippet-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .settings-jobs {
   display: grid;
   gap: 12px;

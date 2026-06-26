@@ -17,7 +17,10 @@ import {
 } from "@codemirror/lang-sql";
 import type { Extension } from "@codemirror/state";
 import type { DatabaseMetadata, DbEngine } from "../generated/irodori-api";
-import { lightweightSqlCompletionLanguageData } from "./completion";
+import {
+  lightweightSqlCompletionLanguageData,
+  type SqlSnippetDefinition,
+} from "./completion";
 
 /** Map an Irodori engine onto a CodeMirror SQL dialect (Postgres-wire siblings share one). */
 export function cmDialect(engine: DbEngine): SQLDialect {
@@ -97,11 +100,12 @@ export function buildSqlConfig(
 export function buildSqlExtensions(
   engine: DbEngine,
   metadata: DatabaseMetadata | undefined,
+  snippets?: readonly SqlSnippetDefinition[],
 ): Extension {
   const config = buildSqlConfig(engine, metadata);
   const dialect = config.dialect ?? StandardSQL;
   return [
     dialect.extension,
-    lightweightSqlCompletionLanguageData(dialect, engine, metadata),
+    lightweightSqlCompletionLanguageData(dialect, engine, metadata, snippets),
   ];
 }

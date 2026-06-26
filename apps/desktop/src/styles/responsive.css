@@ -75,6 +75,10 @@
   .chart-result-toolbar select {
     max-width: 140px;
   }
+
+  .snippet-editor-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 720px) {
@@ -133,5 +137,9 @@
 
   .statusbar span:first-child {
     display: none;
+  }
+
+  .snippet-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

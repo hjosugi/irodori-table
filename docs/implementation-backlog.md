@@ -634,9 +634,11 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** CMPL-001, CMPL-002, EDIT-002
 - **Size:** M · **Priority:** P0
 
-### CMPL-003 — Context-aware completion (aliases, CTEs, subqueries)
+### CMPL-003 — Context-aware completion (aliases, CTEs, subqueries) ✅ (core done)
 - **Goal:** Understand query structure.
 - **Done when:** completion resolves table aliases, CTE columns, and subquery columns from the parsed statement; covered by parser tests.
+- **Landed:** `irodori-completion::context` adds a tolerant, dialect-agnostic statement analyzer — a quote/comment-aware tokenizer plus `analyze_statement` that extracts `FROM`/`JOIN` table references with their aliases (`from public.users u`, `join orders as o`), `WITH` CTE definitions with their output columns (explicit `(a, b)` list or inferred from the inner `select` projection), and derived subquery tables in `FROM` with their projected columns. `StatementContext::resolve(qualifier)` maps an alias / bare name to either a real table (`Table { schema, name }`) or a fixed column set (`Columns(..)` for a CTE/subquery), and `CompletionEngine::complete_qualified(cache, conn, ctx, qualifier, prefix, limit)` turns that into column suggestions — real-table columns come from the permission-aware `MetadataCache`, CTE/subquery columns from the inferred projection — with prefix filtering, ranking, and visibility honored. Covered by 14 unit tests: alias/multi-table/join extraction, schema-qualified + quoted identifiers + comments, keyword-vs-alias disambiguation, CTE (inferred + explicit), nested-subquery projection, derived tables, and end-to-end `complete_qualified` resolving `alias.`→table columns, `cte.`/`sub.`→projection columns, prefix narrowing, unknown qualifier, and permission-denied tables.
+- **Remaining:** thread the analyzer into the desktop autocomplete command (`db_autocomplete`) and the CodeMirror completion source so the editor passes the statement + cursor and qualified `alias.` popups use `complete_qualified`; broaden to nested CTE scoping and `UNION`/set-operation column inference.
 - **Depends on:** CMPL-002
 - **Size:** L · **Priority:** P1
 
@@ -1009,7 +1011,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### ADV-004E — Charts, worksheet visualizations, and dashboards
 - **Goal:** Cover Snowsight-style visual analysis from query results across platforms.
 - **Done when:** result sets can become charts with explicit x/y/series/type mappings; dashboards can save multiple visual tiles against queries; the visualization spec is serializable so desktop can render it now and the local API/future hosts can reuse it when those surfaces land; exports include image and data paths.
-- **Status:** Partial. Desktop current-result charting now has a first vertical slice: the result pane detects numeric/date/category columns, offers a `Chart` mode beside `Data`, supports bar/line/scatter x/y mappings, reflects current grid filters/sort, limits sampled/series rows defensively, and can open the chart in a larger in-app chart window. Remaining: saved visualization specs, series/color encodings, richer aggregations, dashboard tiles, image export, cross-platform API shape, and charting over spilled/local cached datasets.
+- **Status:** Partial. Desktop current-result charting now has a first vertical slice: the result pane detects numeric/date/category columns, offers a `Chart` mode beside `Data`, supports bar/line/scatter x/y mappings, sum/avg/min/max/count metrics, sort and limit controls, reflects current grid filters/sort, limits sampled/series rows defensively, and can open the chart in a larger in-app chart window. Remaining: saved visualization specs, series/color encodings, dashboard tiles, image export, cross-platform API shape, and charting over spilled/local cached datasets.
 - **Depends on:** EXEC-002, EXEC-005A, EXT-004, IO-001
 - **Size:** L · **Priority:** P1
 

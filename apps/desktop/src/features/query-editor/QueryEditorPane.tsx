@@ -23,6 +23,7 @@ import type {
   DatabaseMetadata,
   DbEngine,
 } from "../../generated/irodori-api";
+import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "../../theme";
@@ -44,6 +45,7 @@ export interface QueryEditorPaneProps {
   onQueryChange: (next: string) => void;
   editorEngine: DbEngine;
   activeMetadata?: DatabaseMetadata;
+  sqlSnippets: readonly SqlSnippetDefinition[];
   theme: IrodoriTheme;
   vimMode: boolean;
   sqlLinter: SqlLinterId;
@@ -90,6 +92,7 @@ export function QueryEditorPane({
   onQueryChange,
   editorEngine,
   activeMetadata,
+  sqlSnippets,
   theme,
   vimMode,
   sqlLinter,
@@ -187,6 +190,7 @@ export function QueryEditorPane({
             }}
             engine={editorEngine}
             metadata={activeMetadata}
+            snippets={sqlSnippets}
             theme={theme}
             vimMode={vimMode}
             formatter={formatter}
@@ -224,6 +228,7 @@ export function QueryEditorPane({
                 }}
                 engine={editorEngine}
                 metadata={activeMetadata}
+                snippets={sqlSnippets}
                 theme={theme}
                 vimMode={vimMode}
                 formatter={formatter}

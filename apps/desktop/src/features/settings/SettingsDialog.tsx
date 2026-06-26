@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Clock3,
+  Code2,
   Keyboard,
   Palette,
   Settings,
@@ -16,6 +17,12 @@ import {
   type KeymapConflicts,
 } from "../../keybindings";
 import {
+  cloneDefaultSqlSnippets,
+  isSqlSnippetScope,
+  type SqlSnippetDefinition,
+  type SqlSnippetScope,
+} from "../../sql/completion";
+import {
   formatterOptions,
   isSqlFormatterId,
   type SqlFormatterId,
@@ -27,9 +34,16 @@ import {
 } from "../../sql/linter";
 import type { ThemeKind } from "../../theme";
 
-export type SettingsTab = "general" | "theme" | "keymap" | "jobs" | "json";
+export type SettingsTab =
+  | "general"
+  | "theme"
+  | "keymap"
+  | "snippets"
+  | "jobs"
+  | "json";
 
-type BooleanUpdater = boolean | ((current: boolean) => boolean);
+type ValueUpdater<T> = T | ((current: T) => T);
+type BooleanUpdater = ValueUpdater<boolean>;
 
 export interface SettingsDialogProps {
   settingsTab: SettingsTab;
@@ -50,6 +64,8 @@ export interface SettingsDialogProps {
   setFormatter: (value: SqlFormatterId) => void;
   sqlLinter: SqlLinterId;
   setSqlLinter: (value: SqlLinterId) => void;
+  sqlSnippets: SqlSnippetDefinition[];
+  setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
   resultOffloadEnabled: boolean;
   setResultOffloadEnabled: (value: boolean) => void;
   resultMemoryBudget: number;
@@ -138,6 +154,24 @@ function isCancellableJob(job: JobSummary) {
   return job.status === "queued" || job.status === "running";
 }
 
+const snippetScopeOptions: SqlSnippetScope[] = [
+  "statement",
+  "clause",
+  "expression",
+];
+
+function copyDefaultSqlSnippets() {
+  return cloneDefaultSqlSnippets();
+}
+
+function uniqueSnippetLabel(snippets: readonly SqlSnippetDefinition[]) {
+  const used = new Set(snippets.map((snippet) => snippet.label));
+  if (!used.has("custom")) return "custom";
+  let index = 2;
+  while (used.has(`custom${index}`)) index += 1;
+  return `custom${index}`;
+}
+
 export function SettingsDialog({
   settingsTab,
   onOpenSection,
@@ -157,6 +191,8 @@ export function SettingsDialog({
   setFormatter,
   sqlLinter,
   setSqlLinter,
+  sqlSnippets,
+  setSqlSnippets,
   resultOffloadEnabled,
   setResultOffloadEnabled,
   resultMemoryBudget,
@@ -188,6 +224,36 @@ export function SettingsDialog({
   resetSettingsJsonDraft,
   applySettingsJson,
 }: SettingsDialogProps) {
+  function updateSnippet(
+    index: number,
+    patch: Partial<SqlSnippetDefinition>,
+  ) {
+    setSqlSnippets((current) =>
+      current.map((snippet, snippetIndex) =>
+        snippetIndex === index ? { ...snippet, ...patch } : snippet,
+      ),
+    );
+  }
+
+  function addSnippet() {
+    setSqlSnippets((current) => [
+      ...current,
+      {
+        label: uniqueSnippetLabel(current),
+        detail: "custom snippet",
+        template: "${1:statement}${0}",
+        scope: "statement",
+        rank: 500,
+      },
+    ]);
+  }
+
+  function removeSnippet(index: number) {
+    setSqlSnippets((current) =>
+      current.filter((_, snippetIndex) => snippetIndex !== index),
+    );
+  }
+
   return (
     <div className="palette-overlay" onClick={onClose} role="presentation">
       <div
@@ -228,6 +294,14 @@ export function SettingsDialog({
             >
               <Keyboard size={15} />
               Keymap
+            </button>
+            <button
+              type="button"
+              className={settingsTab === "snippets" ? "active" : undefined}
+              onClick={() => onOpenSection("snippets")}
+            >
+              <Code2 size={15} />
+              Snippets
             </button>
             <button
               type="button"
@@ -590,6 +664,128 @@ export function SettingsDialog({
                     </div>
                   );
                 })}
+              </div>
+            ) : settingsTab === "snippets" ? (
+              <div className="settings-snippets">
+                <div className="settings-json-toolbar">
+                  <span>
+                    <strong>SQL Snippets</strong>
+                    <small>
+                      Completion triggers can use CodeMirror snippet
+                      placeholders such as ${"{1:table}"} and ${"{0}"}.
+                    </small>
+                  </span>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => setSqlSnippets(copyDefaultSqlSnippets())}
+                  >
+                    Reset defaults
+                  </button>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={addSnippet}
+                  >
+                    Add snippet
+                  </button>
+                </div>
+                {sqlSnippets.length > 0 ? (
+                  <div className="snippet-editor-list">
+                    {sqlSnippets.map((snippet, index) => (
+                      <div
+                        className="snippet-editor-item"
+                        key={`${snippet.label}-${index}`}
+                      >
+                        <div className="snippet-editor-grid">
+                          <label>
+                            <span>Trigger</span>
+                            <input
+                              value={snippet.label}
+                              spellCheck={false}
+                              onChange={(event) =>
+                                updateSnippet(index, {
+                                  label: event.currentTarget.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label>
+                            <span>Scope</span>
+                            <select
+                              value={snippet.scope}
+                              onChange={(event) => {
+                                const next = event.currentTarget.value;
+                                if (isSqlSnippetScope(next)) {
+                                  updateSnippet(index, { scope: next });
+                                }
+                              }}
+                            >
+                              {snippetScopeOptions.map((scope) => (
+                                <option key={scope} value={scope}>
+                                  {scope}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span>Rank</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={999}
+                              step={5}
+                              value={snippet.rank ?? 500}
+                              onChange={(event) =>
+                                updateSnippet(index, {
+                                  rank: clampNumber(
+                                    Number(event.currentTarget.value),
+                                    0,
+                                    999,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="snippet-detail-field">
+                            <span>Detail</span>
+                            <input
+                              value={snippet.detail}
+                              onChange={(event) =>
+                                updateSnippet(index, {
+                                  detail: event.currentTarget.value,
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        <label className="snippet-template-field">
+                          <span>Template</span>
+                          <textarea
+                            value={snippet.template}
+                            spellCheck={false}
+                            onChange={(event) =>
+                              updateSnippet(index, {
+                                template: event.currentTarget.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <div className="snippet-editor-actions">
+                          <button
+                            className="text-button"
+                            type="button"
+                            onClick={() => removeSnippet(index)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-browser">No snippets configured</div>
+                )}
               </div>
             ) : settingsTab === "jobs" ? (
               <div className="settings-jobs">

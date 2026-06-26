@@ -23,6 +23,7 @@ import { indentWithTab, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
 import type { DatabaseMetadata, DbEngine } from "./generated/irodori-api";
+import type { SqlSnippetDefinition } from "./sql/completion";
 import { buildSqlExtensions } from "./sql/dialect";
 import { formatSqlDocument, type SqlFormatterId } from "./sql/formatter";
 import { sqlHighlightingExtensions } from "./sql/highlighting";
@@ -57,6 +58,7 @@ interface SqlEditorProps {
   engine: DbEngine;
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
+  snippets: readonly SqlSnippetDefinition[];
   theme: IrodoriTheme;
   vimMode: boolean;
   formatter: SqlFormatterId;
@@ -80,6 +82,7 @@ interface CreateSqlEditorViewOptions {
   };
   engine: DbEngine;
   metadata: DatabaseMetadata | undefined;
+  snippets: readonly SqlSnippetDefinition[];
   theme: IrodoriTheme;
   vimMode: boolean;
   linter: SqlLinterId;
@@ -114,6 +117,7 @@ function createSqlEditorState({
   onSelectionChangeRef,
   engine,
   metadata,
+  snippets,
   theme,
   vimMode,
   linter: linterId,
@@ -125,7 +129,7 @@ function createSqlEditorState({
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
       keymap.of([{ key: "Tab", run: acceptCompletionWithTab }, indentWithTab]),
-      compartments.sql.of(buildSqlExtensions(engine, metadata)),
+      compartments.sql.of(buildSqlExtensions(engine, metadata, snippets)),
       compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
       compartments.theme.of(editorThemeExtensions(theme)),
       compartments.highlight.of(sqlHighlightingExtensions(engine, theme.syntax)),
@@ -208,9 +212,12 @@ function reconfigureSqlExtensions(
   compartments: SqlEditorCompartments,
   engine: DbEngine,
   metadata: DatabaseMetadata | undefined,
+  snippets: readonly SqlSnippetDefinition[],
 ) {
   view?.dispatch({
-    effects: compartments.sql.reconfigure(buildSqlExtensions(engine, metadata)),
+    effects: compartments.sql.reconfigure(
+      buildSqlExtensions(engine, metadata, snippets),
+    ),
   });
 }
 
@@ -301,6 +308,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     onSelectionChange,
     engine,
     metadata,
+    snippets,
     theme,
     vimMode,
     formatter,
@@ -332,6 +340,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       onSelectionChangeRef,
       engine,
       metadata,
+      snippets,
       theme,
       vimMode,
       linter,
@@ -358,8 +367,14 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
 
   // Reconfigure dialect + metadata completion when the engine or metadata changes.
   useEffect(() => {
-    reconfigureSqlExtensions(viewRef.current, compartments, engine, metadata);
-  }, [engine, metadata, compartments]);
+    reconfigureSqlExtensions(
+      viewRef.current,
+      compartments,
+      engine,
+      metadata,
+      snippets,
+    );
+  }, [engine, metadata, snippets, compartments]);
 
   // Reconfigure the gentle SQL diagnostics without remounting the editor.
   useEffect(() => {

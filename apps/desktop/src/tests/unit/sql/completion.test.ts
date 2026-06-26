@@ -3,6 +3,8 @@ import type { Completion } from "@codemirror/autocomplete";
 import {
   buildSqlCompletionIndex,
   completeSqlLightweight,
+  sqlSnippetsFromJson,
+  type SqlSnippetDefinition,
 } from "@/sql/completion";
 import type {
   ColumnMetadata,
@@ -90,6 +92,7 @@ function completeWithEngine(
   completionMetadata: DatabaseMetadata,
   engine: DbEngine,
   explicit = false,
+  snippets?: readonly SqlSnippetDefinition[],
 ): readonly Completion[] {
   const cursor = withCursor(sql);
   return (
@@ -99,8 +102,16 @@ function completeWithEngine(
       explicit,
       index: buildSqlCompletionIndex(completionMetadata),
       pos: cursor.pos,
+      snippets,
     })?.options ?? []
   );
+}
+
+function completeWithSnippets(
+  sql: string,
+  snippets: readonly SqlSnippetDefinition[],
+): readonly Completion[] {
+  return completeWithEngine(sql, metadata, "postgres", false, snippets);
 }
 
 function labels(sql: string, explicit = false): string[] {
@@ -341,6 +352,27 @@ describe("completeSqlLightweight", () => {
   it("keeps SQL snippets out of relation and qualified contexts", () => {
     expect(labels("select * from sel")).not.toContain("sel");
     expect(labels("select c.sel from customers c")).not.toContain("sel");
+  });
+
+  it("uses snippet definitions loaded from JSON", () => {
+    const snippets = sqlSnippetsFromJson([
+      {
+        label: "sf",
+        detail: "select first rows",
+        template: "select ${1:*}\nfrom ${2:table}\nlimit ${3:10};\n${0}",
+        scope: "statement",
+        rank: 550,
+      },
+    ]);
+
+    const options = completeWithSnippets("sf", snippets);
+
+    expect(options.map((option) => option.label)).toEqual(["sf"]);
+    expect(options[0]?.detail).toBe("select first rows");
+    expect(typeof options[0]?.apply).toBe("function");
+    expect(completeWithSnippets("sel", snippets).map((option) => option.label)).not.toContain(
+      "sel",
+    );
   });
 
   it("falls back to cheap keyword completion without metadata matches", () => {

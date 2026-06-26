@@ -2,6 +2,10 @@ export type ChartKind = "bar" | "line" | "scatter";
 
 export type ChartColumnKind = "category" | "date" | "number";
 
+export type ChartAggregation = "sum" | "avg" | "min" | "max" | "count";
+
+export type ChartSort = "source" | "x" | "yDesc" | "yAsc";
+
 export type ChartResultColumn = {
   index: number;
   name: string;
@@ -25,7 +29,10 @@ export type ChartCellValue = {
 export type ChartResultSelection = {
   kind: ChartKind;
   xColumnIndex: number | null;
-  yColumnIndex: number;
+  yColumnIndex: number | null;
+  aggregation: ChartAggregation;
+  sort: ChartSort;
+  limit: number;
 };
 
 export type ChartResultModel = {
@@ -46,6 +53,7 @@ export type ChartResultPoint = {
 
 export type ChartResultSeries = {
   kind: ChartKind;
+  aggregation: ChartAggregation;
   xLabel: string;
   yLabel: string;
   points: ChartResultPoint[];
@@ -55,7 +63,8 @@ export type ChartResultSeries = {
 };
 
 const maxChartRows = 5_000;
-const maxSeriesPoints = 120;
+const maxSeriesPoints = 200;
+export const defaultChartLimit = 50;
 
 export function buildChartResultModel(
   columns: readonly string[],
@@ -113,20 +122,28 @@ export function buildChartResultSeries(
   model: ChartResultModel,
   selection: ChartResultSelection,
 ): ChartResultSeries {
-  const yColumn = model.columns[selection.yColumnIndex];
+  const yColumn =
+    selection.yColumnIndex === null ? null : model.columns[selection.yColumnIndex];
   const xColumn =
     selection.xColumnIndex === null ? null : model.columns[selection.xColumnIndex];
-  const points =
+  const rawPoints =
     selection.kind === "scatter"
       ? buildScatterPoints(model, selection, xColumn)
       : buildGroupedPoints(model, selection, xColumn);
-  const limitedPoints = points.slice(0, maxSeriesPoints);
+  const sortedPoints = sortChartPoints(rawPoints, selection.sort);
+  const ordinalX = selection.kind !== "scatter" && xColumn?.kind !== "date";
+  const points = ordinalX
+    ? sortedPoints.map((point, index) => ({ ...point, x: index }))
+    : sortedPoints;
+  const limit = clampLimit(selection.limit);
+  const limitedPoints = points.slice(0, limit);
   const xDomain = domain(limitedPoints.map((point) => point.x), selection.kind !== "scatter");
   const yDomain = domain(limitedPoints.map((point) => point.y), true);
   return {
     kind: selection.kind,
+    aggregation: selection.aggregation,
     xLabel: xColumn?.name ?? "Row",
-    yLabel: yColumn?.name ?? "",
+    yLabel: metricLabel(selection.aggregation, yColumn?.name),
     points: limitedPoints,
     xDomain,
     yDomain,
@@ -141,16 +158,23 @@ export function chartSelectionIsValid(
   if (!selection) {
     return false;
   }
-  const yColumn = model.columns[selection.yColumnIndex];
+  const yColumn =
+    selection.yColumnIndex === null ? null : model.columns[selection.yColumnIndex];
   const xColumn =
     selection.xColumnIndex === null ? null : model.columns[selection.xColumnIndex];
-  if (!yColumn || yColumn.kind !== "number") {
-    return false;
-  }
   if (selection.xColumnIndex !== null && !xColumn) {
     return false;
   }
-  if (selection.kind === "scatter" && xColumn && xColumn.kind !== "number") {
+  if (selection.kind === "scatter") {
+    if (!yColumn || yColumn.kind !== "number") {
+      return false;
+    }
+    if (xColumn && xColumn.kind !== "number") {
+      return false;
+    }
+    return true;
+  }
+  if (selection.aggregation !== "count" && (!yColumn || yColumn.kind !== "number")) {
     return false;
   }
   return true;
@@ -239,10 +263,10 @@ function inferColumnKind(stats: {
 function defaultSelection(
   columns: readonly ChartResultColumn[],
 ): ChartResultSelection | null {
-  const measures = columns.filter((column) => column.kind === "number");
-  if (measures.length === 0) {
+  if (columns.length === 0) {
     return null;
   }
+  const measures = columns.filter((column) => column.kind === "number");
   const timeDimension = columns.find((column) => column.kind === "date");
   const categoryDimension = columns.find(
     (column) => column.kind === "category" && column.distinctCount <= 80,
@@ -251,14 +275,20 @@ function defaultSelection(
     return {
       kind: "line",
       xColumnIndex: timeDimension.index,
-      yColumnIndex: measures[0].index,
+      yColumnIndex: measures[0]?.index ?? null,
+      aggregation: measures[0] ? "sum" : "count",
+      sort: "x",
+      limit: defaultChartLimit,
     };
   }
   if (categoryDimension) {
     return {
       kind: "bar",
       xColumnIndex: categoryDimension.index,
-      yColumnIndex: measures[0].index,
+      yColumnIndex: measures[0]?.index ?? null,
+      aggregation: measures[0] ? "sum" : "count",
+      sort: "yDesc",
+      limit: defaultChartLimit,
     };
   }
   if (measures.length > 1) {
@@ -266,12 +296,18 @@ function defaultSelection(
       kind: "scatter",
       xColumnIndex: measures[0].index,
       yColumnIndex: measures[1].index,
+      aggregation: "sum",
+      sort: "source",
+      limit: defaultChartLimit,
     };
   }
   return {
     kind: "bar",
     xColumnIndex: null,
-    yColumnIndex: measures[0].index,
+    yColumnIndex: measures[0]?.index ?? null,
+    aggregation: measures[0] ? "sum" : "count",
+    sort: "source",
+    limit: defaultChartLimit,
   };
 }
 
@@ -281,7 +317,10 @@ function buildScatterPoints(
   xColumn: ChartResultColumn | null,
 ): ChartResultPoint[] {
   return model.rows.flatMap((row, rowIndex): ChartResultPoint[] => {
-    const y = row.cells[selection.yColumnIndex]?.number;
+    const y =
+      selection.yColumnIndex === null
+        ? null
+        : row.cells[selection.yColumnIndex]?.number;
     const x = xColumn ? row.cells[xColumn.index]?.number : rowIndex + 1;
     if (x === null || x === undefined || y === null || y === undefined) {
       return [];
@@ -304,7 +343,7 @@ function buildGroupedPoints(
 ): ChartResultPoint[] {
   if (!xColumn) {
     return model.rows.flatMap((row, rowIndex): ChartResultPoint[] => {
-      const y = row.cells[selection.yColumnIndex]?.number;
+      const y = rowMetricValue(row, selection);
       if (y === null || y === undefined) {
         return [];
       }
@@ -321,10 +360,18 @@ function buildGroupedPoints(
 
   const groups = new Map<
     string,
-    { label: string; sortValue: number; sum: number; count: number }
+    {
+      label: string;
+      sortValue: number;
+      sourceIndex: number;
+      sum: number;
+      count: number;
+      min: number;
+      max: number;
+    }
   >();
   model.rows.forEach((row, rowIndex) => {
-    const y = row.cells[selection.yColumnIndex]?.number;
+    const y = rowMetricValue(row, selection);
     if (y === null || y === undefined) {
       return;
     }
@@ -338,24 +385,104 @@ function buildGroupedPoints(
     if (current) {
       current.sum += y;
       current.count += 1;
+      current.min = Math.min(current.min, y);
+      current.max = Math.max(current.max, y);
       return;
     }
     groups.set(label, {
       label,
       sortValue: xColumn.kind === "date" ? sortValue : rowIndex,
+      sourceIndex: rowIndex,
       sum: y,
       count: 1,
+      min: y,
+      max: y,
     });
   });
-  const points = [...groups.entries()].map(([key, group], index) => ({
+  return [...groups.entries()].map(([key, group], index) => ({
     key,
     label: group.label,
     x: xColumn.kind === "date" ? group.sortValue : index,
-    y: group.sum,
+    y: aggregateGroup(group, selection.aggregation),
+    sourceIndex: group.sourceIndex,
   }));
-  return xColumn.kind === "date"
-    ? points.sort((left, right) => left.x - right.x)
-    : points;
+}
+
+function rowMetricValue(
+  row: ChartResultRow,
+  selection: ChartResultSelection,
+): number | null {
+  if (selection.aggregation === "count") {
+    return 1;
+  }
+  if (selection.yColumnIndex === null) {
+    return null;
+  }
+  return row.cells[selection.yColumnIndex]?.number ?? null;
+}
+
+function aggregateGroup(
+  group: { sum: number; count: number; min: number; max: number },
+  aggregation: ChartAggregation,
+) {
+  switch (aggregation) {
+    case "avg":
+      return group.count === 0 ? 0 : group.sum / group.count;
+    case "min":
+      return group.min;
+    case "max":
+      return group.max;
+    case "count":
+      return group.count;
+    default:
+      return group.sum;
+  }
+}
+
+function sortChartPoints(
+  points: readonly (ChartResultPoint & { sourceIndex?: number })[],
+  sort: ChartSort,
+): ChartResultPoint[] {
+  const sorted = [...points];
+  switch (sort) {
+    case "x":
+      sorted.sort((left, right) => left.x - right.x);
+      break;
+    case "yDesc":
+      sorted.sort((left, right) => right.y - left.y);
+      break;
+    case "yAsc":
+      sorted.sort((left, right) => left.y - right.y);
+      break;
+    default:
+      sorted.sort((left, right) => (left.sourceIndex ?? 0) - (right.sourceIndex ?? 0));
+      break;
+  }
+  return sorted.map(({ sourceIndex: _sourceIndex, ...point }) => point);
+}
+
+function metricLabel(aggregation: ChartAggregation, columnName?: string) {
+  if (aggregation === "count") {
+    return "Count";
+  }
+  const name = columnName ?? "Value";
+  switch (aggregation) {
+    case "avg":
+      return `Avg ${name}`;
+    case "min":
+      return `Min ${name}`;
+    case "max":
+      return `Max ${name}`;
+    default:
+      return `Sum ${name}`;
+  }
+}
+
+function clampLimit(value: number) {
+  if (!Number.isFinite(value)) {
+    return defaultChartLimit;
+  }
+  return Math.min(maxSeriesPoints, Math.max(1, Math.floor(value)));
 }
 
 function domain(values: readonly number[], includeZero: boolean): [number, number] {

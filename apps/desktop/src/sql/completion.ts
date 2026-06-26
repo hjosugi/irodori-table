@@ -88,15 +88,20 @@ const ENGINE_KEYWORDS: Partial<Record<DbEngine, string[]>> = {
   redshift: ["distkey", "sortkey", "encode"],
 };
 
-interface SqlSnippetDefinition {
+export type SqlSnippetScope = "statement" | "expression" | "clause";
+
+export interface SqlSnippetDefinition {
   label: string;
   detail: string;
   template: string;
-  rank: number;
-  scope: "statement" | "expression" | "clause";
+  scope: SqlSnippetScope;
+  rank?: number;
 }
 
-const SQL_SNIPPETS: readonly SqlSnippetDefinition[] = [
+const DEFAULT_SNIPPET_RANK = 500;
+const SNIPPET_LABEL_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
+
+export const defaultSqlSnippets: readonly SqlSnippetDefinition[] = [
   {
     label: "sel",
     detail: "select statement",
@@ -190,6 +195,71 @@ const SQL_SNIPPETS: readonly SqlSnippetDefinition[] = [
     scope: "statement",
   },
 ];
+
+export function cloneDefaultSqlSnippets(): SqlSnippetDefinition[] {
+  return defaultSqlSnippets.map((snippet) => ({ ...snippet }));
+}
+
+export function isSqlSnippetScope(value: unknown): value is SqlSnippetScope {
+  return value === "statement" || value === "expression" || value === "clause";
+}
+
+export function sqlSnippetsFromJson(value: unknown): SqlSnippetDefinition[] {
+  if (!Array.isArray(value)) {
+    throw new Error("editor.snippets must be an array");
+  }
+  return value.map((entry, index) => sqlSnippetFromJson(entry, index));
+}
+
+function sqlSnippetFromJson(value: unknown, index: number): SqlSnippetDefinition {
+  if (!isRecord(value)) {
+    throw new Error(`editor.snippets[${index}] must be an object`);
+  }
+  const label = stringField(value, "label", index).trim();
+  if (!SNIPPET_LABEL_PATTERN.test(label)) {
+    throw new Error(
+      `editor.snippets[${index}].label must start with a letter and contain only letters, numbers, "_" or "-"`,
+    );
+  }
+  const detail = stringField(value, "detail", index).trim();
+  const template = stringField(value, "template", index);
+  const scope = value.scope;
+  if (!isSqlSnippetScope(scope)) {
+    throw new Error(
+      `editor.snippets[${index}].scope must be "statement", "clause", or "expression"`,
+    );
+  }
+  const rank = value.rank;
+  if (
+    rank !== undefined &&
+    (typeof rank !== "number" || !Number.isFinite(rank))
+  ) {
+    throw new Error(`editor.snippets[${index}].rank must be a number`);
+  }
+  return {
+    label,
+    detail,
+    template,
+    scope,
+    ...(typeof rank === "number" && Number.isFinite(rank) ? { rank } : {}),
+  };
+}
+
+function stringField(
+  value: Record<string, unknown>,
+  field: "label" | "detail" | "template",
+  index: number,
+): string {
+  const fieldValue = value[field];
+  if (typeof fieldValue !== "string" || fieldValue.length === 0) {
+    throw new Error(`editor.snippets[${index}].${field} must be a string`);
+  }
+  return fieldValue;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 const RELATION_START_KEYWORDS = new Set([
   "from",
@@ -344,22 +414,25 @@ interface LightweightCompletionInput {
   index: SqlCompletionIndex;
   limit?: number;
   pos?: number;
+  snippets?: readonly SqlSnippetDefinition[];
 }
 
 export function lightweightSqlCompletionLanguageData(
   dialect: SQLDialect,
   engine: DbEngine,
   metadata: DatabaseMetadata | undefined,
+  snippets: readonly SqlSnippetDefinition[] = defaultSqlSnippets,
 ): Extension {
   const index = buildSqlCompletionIndex(metadata);
   return dialect.language.data.of({
-    autocomplete: lightweightSqlCompletionSource(engine, index),
+    autocomplete: lightweightSqlCompletionSource(engine, index, snippets),
   });
 }
 
 export function lightweightSqlCompletionSource(
   engine: DbEngine,
   index: SqlCompletionIndex,
+  snippets: readonly SqlSnippetDefinition[] = defaultSqlSnippets,
 ): CompletionSource {
   return (context: CompletionContext) => {
     const windowStart = Math.max(0, context.pos - MAX_SCAN_CHARS);
@@ -371,6 +444,7 @@ export function lightweightSqlCompletionSource(
       explicit: context.explicit,
       index,
       pos: context.pos - windowStart,
+      snippets,
     });
     if (!result) return null;
     return {
@@ -450,6 +524,7 @@ export function completeSqlLightweight(
     input.index,
     context,
     input.explicit ?? false,
+    input.snippets ?? defaultSqlSnippets,
   );
   const options = rankedCompletionOptions(candidates, input.limit ?? DEFAULT_LIMIT);
   if (options.length === 0) return null;
@@ -493,6 +568,7 @@ function collectCompletionCandidates(
   index: SqlCompletionIndex,
   context: ParsedCompletionContext,
   explicit: boolean,
+  snippets: readonly SqlSnippetDefinition[],
 ): Candidate[] {
   const candidates: Candidate[] = [];
   switch (context.mode.kind) {
@@ -521,7 +597,7 @@ function collectCompletionCandidates(
         explicit,
       );
       addRoutineCandidates(candidates, index, context.prefix);
-      addSnippetCandidates(candidates, context.prefix, explicit, [
+      addSnippetCandidates(candidates, snippets, context.prefix, explicit, [
         "expression",
         "clause",
       ]);
@@ -539,7 +615,7 @@ function collectCompletionCandidates(
       addRelationCandidates(candidates, index, context.prefix);
       addSchemaCandidates(candidates, index, context.prefix);
       addRoutineCandidates(candidates, index, context.prefix);
-      addSnippetCandidates(candidates, context.prefix, explicit);
+      addSnippetCandidates(candidates, snippets, context.prefix, explicit);
       addKeywordCandidates(candidates, engine, context.prefix);
       break;
   }
@@ -766,16 +842,18 @@ function addRoutineCandidates(
 
 function addSnippetCandidates(
   candidates: Candidate[],
+  snippets: readonly SqlSnippetDefinition[],
   prefix: string,
   explicit: boolean,
   scopes?: readonly SqlSnippetDefinition["scope"][],
 ) {
   if (!explicit && prefix.length === 0) return;
-  for (const definition of SQL_SNIPPETS) {
+  for (const definition of snippets) {
     if (scopes && !scopes.includes(definition.scope)) continue;
     if (!matchesAny(prefix, [definition.label, definition.detail])) continue;
+    const baseRank = definition.rank ?? DEFAULT_SNIPPET_RANK;
     const rank =
-      definition.rank + matchBonus(prefix, definition.label, definition.detail);
+      baseRank + matchBonus(prefix, definition.label, definition.detail);
     candidates.push({
       key: `snippet:${definition.label}`,
       rank,

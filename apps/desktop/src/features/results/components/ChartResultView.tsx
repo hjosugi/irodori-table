@@ -3,12 +3,15 @@ import { Maximize2 } from "lucide-react";
 import {
   buildChartResultSeries,
   chartSelectionIsValid,
+  defaultChartLimit,
+  type ChartAggregation,
   type ChartResultColumn,
   type ChartKind,
   type ChartResultModel,
   type ChartResultPoint,
   type ChartResultSelection,
   type ChartResultSeries,
+  type ChartSort,
 } from "../chart-result";
 
 const svgWidth = 920;
@@ -41,7 +44,9 @@ export function ChartResultView({ model }: { model: ChartResultModel }) {
   const xColumns =
     effectiveSelection?.kind === "scatter"
       ? numericColumns
-      : model.columns.filter((column) => column.index !== effectiveSelection?.yColumnIndex);
+      : model.columns.filter(
+          (column) => column.index !== effectiveSelection?.yColumnIndex,
+        );
 
   function updateSelection(patch: Partial<ChartResultSelection>) {
     const base = effectiveSelection ?? model.defaultSelection;
@@ -124,7 +129,13 @@ function ChartToolbar({
   onCloseWindow?: () => void;
 }) {
   return (
-    <div className={windowed ? "chart-result-toolbar chart-window-toolbar" : "chart-result-toolbar"}>
+    <div
+      className={
+        windowed
+          ? "chart-result-toolbar chart-window-toolbar"
+          : "chart-result-toolbar"
+      }
+    >
       <strong>{windowed ? "Chart Window" : "Chart"}</strong>
       <div className="segmented-control chart-kind-toggle" aria-label="Chart type">
         {(["bar", "line", "scatter"] as const).map((kind) => (
@@ -132,6 +143,7 @@ function ChartToolbar({
             type="button"
             key={kind}
             className={selection.kind === kind ? "active" : undefined}
+            disabled={kind === "scatter" && numericColumns.length === 0}
             onClick={() => onUpdateSelection({ kind })}
           >
             {chartKindLabel(kind)}
@@ -160,16 +172,81 @@ function ChartToolbar({
         </select>
       </label>
       <label>
-        <span>Y</span>
+        <span>{selection.kind === "scatter" ? "Y" : "Metric"}</span>
         <select
-          value={selection.yColumnIndex}
+          value={
+            selection.aggregation === "count"
+              ? "count"
+              : (selection.yColumnIndex ?? "count")
+          }
           onChange={(event) =>
-            onUpdateSelection({ yColumnIndex: Number(event.currentTarget.value) })
+            onUpdateSelection(
+              event.currentTarget.value === "count"
+                ? { aggregation: "count", yColumnIndex: null }
+                : {
+                    aggregation:
+                      selection.aggregation === "count"
+                        ? "sum"
+                        : selection.aggregation,
+                    yColumnIndex: Number(event.currentTarget.value),
+                  },
+            )
           }
         >
+          {selection.kind !== "scatter" ? (
+            <option value="count">Count rows</option>
+          ) : null}
           {numericColumns.map((column) => (
             <option key={column.index} value={column.index}>
               {column.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {selection.kind !== "scatter" ? (
+        <label>
+          <span>Agg</span>
+          <select
+            value={selection.aggregation}
+            disabled={selection.aggregation === "count"}
+            onChange={(event) =>
+              onUpdateSelection({
+                aggregation: event.currentTarget.value as ChartAggregation,
+              })
+            }
+          >
+            <option value="sum">Sum</option>
+            <option value="avg">Avg</option>
+            <option value="min">Min</option>
+            <option value="max">Max</option>
+          </select>
+        </label>
+      ) : null}
+      <label>
+        <span>Sort</span>
+        <select
+          value={selection.sort}
+          onChange={(event) =>
+            onUpdateSelection({ sort: event.currentTarget.value as ChartSort })
+          }
+        >
+          <option value="source">Source</option>
+          <option value="x">X</option>
+          <option value="yDesc">Y desc</option>
+          <option value="yAsc">Y asc</option>
+        </select>
+      </label>
+      <label>
+        <span>Limit</span>
+        <select
+          value={selection.limit}
+          onChange={(event) =>
+            onUpdateSelection({ limit: Number(event.currentTarget.value) })
+          }
+        >
+          {[10, 25, 50, 100, 200].map((limit) => (
+            <option key={limit} value={limit}>
+              {limit}
             </option>
           ))}
         </select>
@@ -227,25 +304,52 @@ function normalizeSelection(
   selection: ChartResultSelection,
 ): ChartResultSelection {
   const numericColumns = model.columns.filter((column) => column.kind === "number");
-  const yColumn = numericColumns.some((column) => column.index === selection.yColumnIndex)
+  const limit = normalizeLimit(selection.limit);
+  const sort = selection.sort ?? defaultSort(selection.kind);
+  if (selection.kind === "scatter") {
+    const yColumn = numericColumns.some(
+      (column) => column.index === selection.yColumnIndex,
+    )
+      ? selection.yColumnIndex
+      : numericColumns[0]?.index;
+    if (yColumn === undefined) {
+      return { ...selection, aggregation: "sum", limit, sort };
+    }
+    const xColumn = model.columns[selection.xColumnIndex ?? -1];
+    return {
+      ...selection,
+      aggregation: "sum",
+      xColumnIndex: !xColumn || xColumn.kind === "number" ? selection.xColumnIndex : null,
+      yColumnIndex: yColumn,
+      limit,
+      sort,
+    };
+  }
+  if (selection.aggregation === "count") {
+    return { ...selection, yColumnIndex: null, limit, sort };
+  }
+  const yColumn = numericColumns.some(
+    (column) => column.index === selection.yColumnIndex,
+  )
     ? selection.yColumnIndex
     : numericColumns[0]?.index;
   if (yColumn === undefined) {
-    return selection;
-  }
-  if (selection.kind !== "scatter") {
-    return { ...selection, yColumnIndex: yColumn };
-  }
-  const xColumn = model.columns[selection.xColumnIndex ?? -1];
-  if (!xColumn || xColumn.kind === "number") {
-    return { ...selection, yColumnIndex: yColumn };
+    return { ...selection, aggregation: "count", yColumnIndex: null, limit, sort };
   }
   return {
     ...selection,
-    xColumnIndex:
-      numericColumns.find((column) => column.index !== yColumn)?.index ?? null,
     yColumnIndex: yColumn,
+    limit,
+    sort,
   };
+}
+
+function normalizeLimit(value: number) {
+  return [10, 25, 50, 100, 200].includes(value) ? value : defaultChartLimit;
+}
+
+function defaultSort(kind: ChartKind): ChartSort {
+  return kind === "line" ? "x" : "source";
 }
 
 function ChartAxes({ series }: { series: ChartResultSeries }) {

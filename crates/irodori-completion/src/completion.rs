@@ -1,3 +1,4 @@
+use crate::context::{ResolvedSource, StatementContext};
 use crate::metadata::{
     ForeignKeyMetadata, MetadataCache, MetadataObjectKind, MetadataPermissions, ObjectMetadata,
     RoutineKind, RoutineMetadata, SchemaMetadata,
@@ -286,6 +287,93 @@ impl CompletionEngine {
         });
         suggestions.dedup();
         suggestions
+    }
+
+    /// Context-aware column completion for a qualified name (`alias.`): resolve the
+    /// qualifier against the analyzed statement (CMPL-003) and suggest the columns
+    /// of the real table (from the metadata cache) or of a CTE / subquery (from its
+    /// inferred projection). Returns nothing when the qualifier is unknown.
+    pub fn complete_qualified(
+        &self,
+        cache: &MetadataCache,
+        connection_id: &str,
+        context: &StatementContext,
+        qualifier: &str,
+        prefix: &str,
+        limit: usize,
+    ) -> Vec<CompletionItem> {
+        let prefix = prefix.trim();
+        let mut items = Vec::new();
+        match context.resolve(qualifier) {
+            Some(ResolvedSource::Table { schema, name }) => {
+                self.push_resolved_table_columns(
+                    cache,
+                    connection_id,
+                    schema.as_deref(),
+                    &name,
+                    prefix,
+                    &mut items,
+                );
+            }
+            Some(ResolvedSource::Columns(columns)) => {
+                for column in &columns {
+                    if !matches_prefix(column, prefix) {
+                        continue;
+                    }
+                    items.push(item(
+                        column.clone(),
+                        column.clone(),
+                        CompletionItemKind::Column,
+                        format!("{qualifier}.{column}"),
+                        score(column, prefix, 100),
+                    ));
+                }
+            }
+            None => {}
+        }
+
+        items.sort_by(|left, right| {
+            right
+                .score
+                .cmp(&left.score)
+                .then_with(|| left.label.cmp(&right.label))
+        });
+        items.dedup_by(|left, right| left.kind == right.kind && left.label == right.label);
+        if limit > 0 && items.len() > limit {
+            items.truncate(limit);
+        }
+        items
+    }
+
+    fn push_resolved_table_columns(
+        &self,
+        cache: &MetadataCache,
+        connection_id: &str,
+        schema: Option<&str>,
+        name: &str,
+        prefix: &str,
+        items: &mut Vec<CompletionItem>,
+    ) {
+        if let Some(schema) = schema {
+            if let Some(object) = cache.lookup_object(connection_id, schema, name) {
+                push_columns(schema, object, prefix, items);
+            }
+            return;
+        }
+        // No schema qualifier: take the first matching object across visible schemas.
+        for schema in cache.list_schemas(connection_id) {
+            if !visible(schema.permissions) {
+                continue;
+            }
+            if let Some(object) = schema
+                .objects
+                .iter()
+                .find(|object| object.name.eq_ignore_ascii_case(name))
+            {
+                push_columns(&schema.name, object, prefix, items);
+                break;
+            }
+        }
     }
 
     fn push_schemas(
@@ -776,5 +864,71 @@ mod tests {
 
         assert_eq!(list.columns, vec!["id", "email"]);
         assert_eq!(list.insert_text, "id, email");
+    }
+
+    #[test]
+    fn qualified_completion_resolves_alias_to_table_columns() {
+        let engine = CompletionEngine::new();
+        let context = crate::context::analyze_statement(
+            "select a. from public.accounts a join orders o on a.id = o.account_id",
+        );
+        // `a.` → the accounts table's columns from the cache.
+        let labels = engine
+            .complete_qualified(&cache(), CONN, &context, "a", "", 50)
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        assert_eq!(labels, vec!["id", "email"]);
+
+        // `o.` → the orders table; a prefix narrows it.
+        let narrowed = engine
+            .complete_qualified(&cache(), CONN, &context, "o", "acc", 50)
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        assert_eq!(narrowed, vec!["account_id"]);
+
+        // An unknown qualifier yields nothing.
+        assert!(engine
+            .complete_qualified(&cache(), CONN, &context, "zzz", "", 50)
+            .is_empty());
+    }
+
+    #[test]
+    fn qualified_completion_resolves_cte_and_subquery_columns() {
+        let engine = CompletionEngine::new();
+
+        // CTE columns come from its inferred projection, not the cache.
+        let cte = crate::context::analyze_statement(
+            "with recent as (select id, email as mail from accounts) select r. from recent r",
+        );
+        let cte_cols = engine
+            .complete_qualified(&cache(), CONN, &cte, "r", "", 50)
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        assert_eq!(cte_cols, vec!["id", "mail"]);
+
+        // Derived (subquery) table columns likewise.
+        let derived = crate::context::analyze_statement(
+            "select s. from (select id, account_id from orders) s",
+        );
+        let derived_cols = engine
+            .complete_qualified(&cache(), CONN, &derived, "s", "", 50)
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        assert_eq!(derived_cols, vec!["account_id", "id"]);
+    }
+
+    #[test]
+    fn qualified_completion_respects_metadata_visibility() {
+        let engine = CompletionEngine::new();
+        // `audit_log` is permission-denied in the fixture, so a `FROM audit_log al`
+        // alias resolves to the table but exposes no columns.
+        let context = crate::context::analyze_statement("select al. from audit_log al");
+        assert!(engine
+            .complete_qualified(&cache(), CONN, &context, "al", "", 50)
+            .is_empty());
     }
 }
