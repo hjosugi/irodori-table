@@ -603,6 +603,7 @@
 }
 
 .editor-pane {
+  position: relative;
   display: grid;
   grid-template-rows: var(--bar-md) minmax(0, 1fr);
   min-width: 0;
@@ -667,6 +668,32 @@
   max-width: 128px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.editor-floating-run {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  z-index: 12;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.editor-floating-run .primary-action {
+  height: var(--control-md);
+}
+
+.editor-floating-run .run-main-button span {
+  max-width: 136px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-floating-run .run-menu-popover {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 6px);
+  left: auto;
 }
 
 .editor-split {
