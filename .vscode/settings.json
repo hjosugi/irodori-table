@@ -17,6 +17,7 @@
         "**/.codex": true,
         "**/.config": true,
         "**/.github": true,
+        "**/.irodori-local": true,
         "**/.irodori-dev": true,
         "**/.local": true,
         "**/.vscode": true,
@@ -32,6 +33,7 @@
         "**/.cache": true,
         "**/.claude": true,
         "**/.codex": true,
+        "**/.irodori-local": true,
         "**/.local": true,
         "**/dist": true,
         "**/node_modules": true,
@@ -42,6 +44,7 @@
     },
     "files.watcherExclude": {
         "**/.cache/**": true,
+        "**/.irodori-local/**": true,
         "**/.local/**": true,
         "**/dist/**": true,
         "**/node_modules/**": true,

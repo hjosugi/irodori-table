@@ -196,7 +196,7 @@ make check
 | `knowledge/` | Tracked schema/source registry for the generated local knowledge database. |
 | `docs/site/` | Static project site published by GitHub Pages. |
 | `docs/` | Architecture, status, planning, licensing, and runbook documents. |
-| `ref/` | Reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit. |
+| `.irodori-local/ref/` | Optional local reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit. |
 
 ## Important Docs
 

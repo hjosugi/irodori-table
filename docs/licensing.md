@@ -16,7 +16,7 @@ The intent is simple: anyone can use, copy, fork, sell, rewrite, embed, or compe
 
 - Dependencies keep their own licenses.
 - Extensions keep their own licenses unless their author chooses `MIT OR 0BSD`.
-- Reference repositories under `ref/` are not part of Irodori Table and keep their original licenses.
+- Reference repositories under `.irodori-local/ref/` are not part of Irodori Table and keep their original licenses.
 - GPL/AGPL code can be studied, but it must not be copied into the permissive core unless the project intentionally creates a separate license boundary.
 - Commercial or proprietary reference code is off-limits unless we have explicit rights.
 - Third-party adapted code keeps its original obligations; the `MIT OR 0BSD` choice applies to Irodori-authored code.

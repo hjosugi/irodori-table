@@ -76,7 +76,7 @@ start the dev server first, then launch the binary in a second terminal:
 # Terminal 1 - serve the frontend on :1420
 make desktop-vite
 # Terminal 2 - run the already-built debug binary
-./apps/desktop/src-tauri/target/debug/irodori-table-desktop
+./.irodori-local/target/debug/irodori-table-desktop
 ```
 
 To run a **standalone** binary that needs no dev server, build one with the

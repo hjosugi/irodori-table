@@ -4,7 +4,7 @@ Snapshot date: 2026-06-26.
 
 This audit summarizes the current line-count and complexity hotspots in the
 first-party code. The counts below exclude generated files, dependencies,
-`target/`, `ref/`, and static site build assets. Complexity values are approximate:
+`.irodori-local/target/`, `.irodori-local/ref/`, and static site build assets. Complexity values are approximate:
 TypeScript/TSX was scanned with the local TypeScript parser, while Rust was
 checked with a rough token pass because the repo does not yet have a committed
 complexity tool.

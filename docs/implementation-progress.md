@@ -232,7 +232,7 @@ Highlights:
 
 ## References studied (clean-room, license-aware)
 
-- DBeaver (Apache-2.0, vendored `ref/dbeaver-ce` — adaptable with attribution),
+- DBeaver (Apache-2.0, local `.irodori-local/ref/dbeaver-ce` — adaptable with attribution),
   Beekeeper (GPL — behavior only), Outerbase (AGPL — behavior), Zequel (Elastic
   License 2.0 — behavior), TablePlus / A5:SQL Mk-2 (behavior). Lessons (DatabaseClient
   trait + registry, wire⇄dialect split, precision-safe value handlers, lazy metadata,

@@ -98,15 +98,15 @@ Legend: P0 = first usable product, P1 = daily-driver quality, P2 = advanced/poli
 
 ## Reference Projects In Workspace
 
-- `ref/beekeeper-studio-master/`: use docs, public behavior, and license-aware OSS code review as a broad SQL GUI baseline. Local `LICENSE.md` says GPLv3-or-later for Community Edition and excludes `src-commercial` under a separate commercial license.
-- `ref/vscode-sqltools-dev/`: use docs, public behavior, and MIT-licensed code review for connection-bound sessions, command workflows, query params, and editor expectations.
-- `ref/vscode-mssql-main/`: use docs, public behavior, and MIT-licensed code review for SQL Server workflows and VS Code integration patterns.
-- `ref/budibase-master/`: lower-priority reference for app-builder style data browsing and admin UI patterns; verify license before code-level adaptation.
-- `ref/duckdb-ui-main/`: MIT-licensed DuckDB UI; reference for local-first analytical exploration and lightweight in-process data browsing. MIT permits code-level adaptation with attribution and license tracking.
-- `ref/kibana-main/`: source-available under Elastic License 2.0 / SSPL / AGPL-3.0; reference Discover and Dev Tools console behavior only — do not adapt code into the permissive core.
-- `zed-industries/zed` (GitHub, not in `ref/`): copyleft (GPL-3.0/AGPL-3.0 with some Apache-2.0 crates); study Rust desktop architecture, GPUI rendering, and input latency — learning only, no copyleft code in the core.
+- `.irodori-local/ref/beekeeper-studio-master/`: use docs, public behavior, and license-aware OSS code review as a broad SQL GUI baseline. Local `LICENSE.md` says GPLv3-or-later for Community Edition and excludes `src-commercial` under a separate commercial license.
+- `.irodori-local/ref/vscode-sqltools-dev/`: use docs, public behavior, and MIT-licensed code review for connection-bound sessions, command workflows, query params, and editor expectations.
+- `.irodori-local/ref/vscode-mssql-main/`: use docs, public behavior, and MIT-licensed code review for SQL Server workflows and VS Code integration patterns.
+- `.irodori-local/ref/budibase-master/`: lower-priority reference for app-builder style data browsing and admin UI patterns; verify license before code-level adaptation.
+- `.irodori-local/ref/duckdb-ui-main/`: MIT-licensed DuckDB UI; reference for local-first analytical exploration and lightweight in-process data browsing. MIT permits code-level adaptation with attribution and license tracking.
+- `.irodori-local/ref/kibana-main/`: source-available under Elastic License 2.0 / SSPL / AGPL-3.0; reference Discover and Dev Tools console behavior only — do not adapt code into the permissive core.
+- `zed-industries/zed` (GitHub, not in `.irodori-local/ref/`): copyleft (GPL-3.0/AGPL-3.0 with some Apache-2.0 crates); study Rust desktop architecture, GPUI rendering, and input latency — learning only, no copyleft code in the core.
 - `outerbase/studio` (GitHub, AGPL-3.0): lightweight web/Electron DB GUI (SQLite/Turso/D1, beta MySQL/PostgreSQL); reference for a staged-edit data grid, no-SQL schema editor, function-hint completion, and large-table rendering. Copyleft — behavior/architecture only, no code in the core.
-- `ref/dbeaver-ce` (Apache-2.0): the universal-DB benchmark (200+ engines); reference for a data-driven driver registry, generic+override metamodel, precision-safe value handlers, lazy metadata, and per-engine SQL dialects. Permissive — adaptable with attribution (avoid its 2 EPL files).
+- `.irodori-local/ref/dbeaver-ce` (Apache-2.0): the universal-DB benchmark (200+ engines); reference for a data-driven driver registry, generic+override metamodel, precision-safe value handlers, lazy metadata, and per-engine SQL dialects. Permissive — adaptable with attribution (avoid its 2 EPL files).
 - `zequel-labs/zequel` (Elastic License 2.0): Electron/Vue client; reference for a virtual-scrolled in-cell-edit grid, ER diagrams, and broad engine + import/export coverage. Source-available — behavior only.
 
 Do not copy implementation from these directories into Irodori Table unless license compatibility, attribution, and adaptation scope are explicit.

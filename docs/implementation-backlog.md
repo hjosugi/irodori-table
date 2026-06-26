@@ -721,7 +721,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Size:** L · **Priority:** P0
 
 ### SRC-001a — DatabaseClient trait + registry; split wire from dialect/metamodel
-- **Goal:** Reach DBeaver-scale extensibility — adding an engine means implementing a trait, not editing a `match` arm. (DBeaver study, Apache-2.0, `ref/dbeaver-ce`.)
+- **Goal:** Reach DBeaver-scale extensibility — adding an engine means implementing a trait, not editing a `match` arm. (DBeaver study, Apache-2.0, `.irodori-local/ref/dbeaver-ce`.)
 - **✅ Core done (verified):** the `EnginePool` enum is replaced by a `Connection` trait (`version`/`run_query`/`close`) implemented per engine, stored as `Arc<dyn Connection>`; `connect_engine` is the single connector/registry mapping wire → concrete client. `run_query`/`disconnect` no longer match on the engine. Engines are modeled as `wire protocol`, so a wire-compatible engine (Cockroach/Yugabyte/Redshift/Timescale on Postgres; MariaDB/TiDB on MySQL) is just a `DbEngine` variant. Verified: default suite green; SQLite and DuckDB round trips pass through the trait.
 - **Remaining:** a per-engine `SqlDialect` (identifier quoting/keywords); a generic `information_schema` metamodel base that engines override only where they differ; a two-tier lazy metadata cache loaded on navigator expand; a cancellation token threaded into fetch loops; and an extension-provided (Wasm) driver registry.
 - **Depends on:** SRC-001, EXEC-009
