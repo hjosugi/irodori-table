@@ -1,5 +1,6 @@
 //! Core workspace, command, error, and shared domain types for Irodori Table.
 
+pub mod batch;
 pub mod connection;
 pub mod jobs;
 pub mod security;
@@ -17,6 +18,7 @@ pub use connection::{
     SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
     CONNECTION_PROFILE_SCHEMA_VERSION,
 };
+pub use batch::{run_job, BatchOutcome, BatchResult, JobContext};
 pub use jobs::{
     JobArtifact, JobCheckpoint, JobConcurrencyPolicy, JobKind, JobList, JobLogEntry, JobLogLevel,
     JobProgress, JobRecord, JobResourceBudget, JobRetryPolicy, JobRuntime, JobRuntimeConfig,

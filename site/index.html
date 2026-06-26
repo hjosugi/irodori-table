@@ -28,13 +28,13 @@
           <span>Irodori Table</span>
         </a>
         <nav class="site-nav" aria-label="主要ナビゲーション">
-          <a href="try/">オンライン実行</a>
-          <a href="#features">特長</a>
-          <a href="#sources">対応予定</a>
-          <a href="#search">検索</a>
+          <a href="#features">Features</a>
+          <a href="#performance">Performance</a>
+          <a href="#sandbox">Sandbox</a>
           <a href="docs.html">ドキュメント</a>
-          <a href="#roadmap">ロードマップ</a>
+          <a href="blog.html">Blog</a>
           <a href="https://github.com/hjosugi/irodori-table">GitHub</a>
+          <a class="nav-download" href="#download">Download</a>
         </nav>
       </div>
     </header>
@@ -44,31 +44,32 @@
         <div class="container hero-grid">
           <div class="hero-copy">
             <p class="eyebrow">Open-source database workbench</p>
-            <h1>Irodori Table</h1>
+            <h1>複数 DB を、軽い作業台で扱う。</h1>
             <p class="lead">
-              毎日データベースに向き合う人のための、軽量で拡張しやすい SQL GUI。
-              Rust-first のコア、Tauri デスクトップ、キーボード中心の操作で、日々の
-              接続、実行、調査を速くします。
+              Rust / Tauri 製のオープンソース DB クライアント。
+              SQL 実行、スキーマ確認、大きな結果の閲覧を一つの作業面にまとめます。
             </p>
             <div class="hero-actions" aria-label="主要アクション">
-              <a class="button primary" href="try/">ブラウザで試す</a>
-              <a class="button secondary" href="docs.html">ドキュメントを見る</a>
+              <a class="button primary" href="https://github.com/hjosugi/irodori-table/releases">
+                Linux AppImage を入手
+              </a>
               <a class="button secondary" href="https://github.com/hjosugi/irodori-table">
                 GitHub で見る
               </a>
+              <a class="button secondary" href="try/">ブラウザで試す</a>
             </div>
             <dl class="hero-facts" aria-label="プロジェクト概要">
               <div>
-                <dt>License</dt>
-                <dd>MIT OR 0BSD</dd>
+                <dt>Runtime</dt>
+                <dd>Tauri v2 / System WebView</dd>
               </div>
               <div>
-                <dt>Stack</dt>
-                <dd>Rust / Tauri / React</dd>
+                <dt>Editor</dt>
+                <dd>CodeMirror 6 / Vim</dd>
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>Development preview</dd>
+                <dd>Preview / MIT OR 0BSD</dd>
               </div>
             </dl>
           </div>
@@ -86,55 +87,71 @@
               </div>
               <div class="workbench-body">
                 <aside class="mock-sidebar">
+                  <div class="mock-brand-row">
+                    <strong>Irodori</strong>
+                    <span>connected</span>
+                  </div>
                   <span class="sidebar-label">Connections</span>
                   <div class="connection active">
-                    <span>Local Warehouse</span>
+                    <span>Production</span>
                     <small>PostgreSQL 16</small>
                   </div>
                   <div class="connection">
-                    <span>Oracle Dev</span>
-                    <small>Oracle 23ai</small>
+                    <span>Local Lakehouse</span>
+                    <small>DuckDB</small>
                   </div>
                   <div class="object-list">
-                    <b>public</b>
-                    <span>orders</span>
-                    <span>customers</span>
-                    <span>recent_revenue</span>
+                    <b>Tables</b>
+                    <span>employees</span>
+                    <span>departments</span>
+                    <span>projects</span>
+                    <b>Views</b>
+                    <span>team_summary</span>
                   </div>
                 </aside>
                 <section class="mock-main" aria-label="SQL エディタと結果グリッド">
                   <div class="editor-tabs">
                     <span class="tab active">scratch.sql</span>
-                    <span class="tab">audit-window.sql</span>
+                    <span class="tab">explain.sql</span>
                   </div>
-                  <pre class="sql-preview"><code>select c.id, c.name, sum(o.total) as value
-from customers c
-join orders o on o.customer_id = c.id
-where o.created_at &gt;= now() - interval '90 days'
-group by c.id, c.name
-order by value desc;</code></pre>
+                  <div class="mock-toolbar" aria-hidden="true">
+                    <span>Run</span>
+                    <span>Format</span>
+                    <span>Explain</span>
+                  </div>
+                  <pre class="sql-preview"><code>select e.name, d.name as department, count(p.id) as projects
+from employees e
+join departments d on d.id = e.department_id
+left join projects p on p.owner_id = e.id
+group by e.name, d.name
+order by projects desc;</code></pre>
                   <div class="result-grid" role="table" aria-label="クエリ結果">
                     <div class="result-row result-head" role="row">
-                      <span role="columnheader">id</span>
                       <span role="columnheader">name</span>
-                      <span role="columnheader">value</span>
+                      <span role="columnheader">department</span>
+                      <span role="columnheader">projects</span>
+                      <span role="columnheader">status</span>
                     </div>
                     <div class="result-row" role="row">
-                      <span>1029</span>
-                      <span>Kawase Foods</span>
-                      <span>9,841,200</span>
+                      <span>Alice Chen</span>
+                      <span>Engineering</span>
+                      <span>4</span>
+                      <span>active</span>
                     </div>
                     <div class="result-row" role="row">
-                      <span>917</span>
-                      <span>Northwind Retail</span>
-                      <span>7,720,100</span>
+                      <span>Bob Park</span>
+                      <span>Engineering</span>
+                      <span>3</span>
+                      <span>active</span>
                     </div>
                     <div class="result-row" role="row">
-                      <span>1441</span>
-                      <span>Aster Works</span>
-                      <span>6,533,000</span>
+                      <span>Carol Wu</span>
+                      <span>Design</span>
+                      <span>2</span>
+                      <span>review</span>
                     </div>
                   </div>
+                  <p class="mock-statline">Windowed rows · Wide-column virtualization · Streaming updates</p>
                 </section>
               </div>
             </div>
@@ -145,16 +162,110 @@ order by value desc;</code></pre>
       <section class="status-band" aria-label="現在の開発状況">
         <div class="container status-grid">
           <div>
-            <strong>現在地</strong>
-            <span>Development preview。日常利用前の実装・検証段階</span>
+            <strong>Desktop</strong>
+            <span>Rust / Tauri v2 / React</span>
           </div>
           <div>
-            <strong>Verified</strong>
-            <span>PostgreSQL / MySQL / MariaDB / SQL Server / Oracle / DuckDB / MongoDB / SQLite など</span>
+            <strong>Verified paths</strong>
+            <span>PostgreSQL / MySQL / SQL Server / Oracle / SQLite / DuckDB / MongoDB</span>
           </div>
           <div>
-            <strong>Goal</strong>
-            <span>軽さ、広い接続範囲、深い補完、完全なキーバインド制御</span>
+            <strong>Browser sandbox</strong>
+            <span>SQLite / DuckDB をブラウザで試せます。</span>
+          </div>
+        </div>
+        <div class="container engine-strip" aria-label="対応エンジン">
+          <span>PostgreSQL</span>
+          <span>MySQL</span>
+          <span>MariaDB</span>
+          <span>SQL Server</span>
+          <span>Oracle</span>
+          <span>SQLite</span>
+          <span>DuckDB</span>
+          <span>MongoDB</span>
+          <span>Postgres-compatible</span>
+        </div>
+      </section>
+
+      <section id="features" class="section">
+        <div class="container section-heading">
+          <p class="eyebrow">Features</p>
+          <h2>SQL 作業に必要なものを、最初から近くに。</h2>
+          <p>エディタ、スキーマ、結果、履歴、ERD、export を一つの workbench にまとめます。</p>
+        </div>
+        <div class="container feature-grid">
+          <article class="feature-card accent-teal">
+            <h3>CodeMirror editor</h3>
+            <p>SQL 補完、format、lint、Vim mode。</p>
+          </article>
+          <article class="feature-card accent-coral">
+            <h3>Schema navigator</h3>
+            <p>tables、views、columns、indexes を素早く確認。</p>
+          </article>
+          <article class="feature-card accent-blue">
+            <h3>Virtualized grid</h3>
+            <p>大きな結果も表示範囲だけを描画。</p>
+          </article>
+          <article class="feature-card accent-gold">
+            <h3>Multi-engine</h3>
+            <p>主要 SQL DB と DuckDB / MongoDB を同じ UI で。</p>
+          </article>
+          <article class="feature-card accent-violet">
+            <h3>Local-first</h3>
+            <p>SQLite / DuckDB はローカル作業にすぐ使えます。</p>
+          </article>
+          <article class="feature-card accent-green">
+            <h3>Open source</h3>
+            <p>MIT OR 0BSD。設計と進捗も公開。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="performance" class="section">
+        <div class="container section-heading">
+          <p class="eyebrow">Performance</p>
+          <h2>大きな結果を、必要な分だけ描画。</h2>
+          <p>行・列仮想化、streaming、disk offload で UI 側の負荷を抑えます。</p>
+        </div>
+        <div class="container metric-grid">
+          <article class="metric-card">
+            <span>Rows + columns</span>
+            <h3>Virtualized</h3>
+            <p>表示範囲だけ描画。</p>
+          </article>
+          <article class="metric-card">
+            <span>Streaming</span>
+            <h3>Incremental</h3>
+            <p>結果を受け取りながら表示。</p>
+          </article>
+          <article class="metric-card">
+            <span>1,000 rows</span>
+            <h3>Window page</h3>
+            <p>必要なページだけ取得。</p>
+          </article>
+          <article class="metric-card">
+            <span>24</span>
+            <h3>resident pages</h3>
+            <p>フロント側の標準保持数。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="sandbox" class="section muted-section">
+        <div class="container sandbox-layout">
+          <div class="section-heading compact">
+            <p class="eyebrow">Sandbox</p>
+            <h2>インストール前に、ブラウザで触れる。</h2>
+            <p>SQLite / DuckDB をブラウザ内で実行できます。</p>
+            <div class="hero-actions">
+              <a class="button primary" href="try/">ブラウザで試す</a>
+              <a class="button secondary" href="docs.html">使い方を見る</a>
+            </div>
+          </div>
+          <div class="sandbox-card" aria-hidden="true">
+            <span>Starting local engine...</span>
+            <strong>SQLite / DuckDB WebAssembly sandbox</strong>
+            <p>Queries run in the browser. No account required.</p>
           </div>
         </div>
       </section>
@@ -196,84 +307,6 @@ order by value desc;</code></pre>
         </div>
       </section>
 
-      <section id="features" class="section">
-        <div class="container section-heading">
-          <p class="eyebrow">Why Irodori Table</p>
-          <h2>日常の DB 作業を速く、長く使える形で。</h2>
-          <p>
-            TablePlus の軽さ、DataGrip 級の編集力、DBeaver 級の接続範囲を、オープンな
-            Rust/Tauri アプリとして積み上げるプロジェクトです。
-          </p>
-        </div>
-        <div class="container feature-grid">
-          <article class="feature-card accent-teal">
-            <h3>軽量なデスクトップ</h3>
-            <p>Rust コアと Tauri シェルで、起動、接続、結果表示の待ち時間を抑えます。</p>
-          </article>
-          <article class="feature-card accent-coral">
-            <h3>広いデータソース</h3>
-            <p>SQL だけでなく、document、graph、time-series、lakehouse まで拡張できる設計です。</p>
-          </article>
-          <article class="feature-card accent-blue">
-            <h3>キーボード中心</h3>
-            <p>リマップ可能なショートカット、Vim モード、コマンドパレットを初期から重視します。</p>
-          </article>
-          <article class="feature-card accent-gold">
-            <h3>大きな結果に強い</h3>
-            <p>ストリーミング、上限付き取得、仮想化グリッドで巨大テーブルでも軽く扱います。</p>
-          </article>
-          <article class="feature-card accent-violet">
-            <h3>接続と安全性</h3>
-            <p>直接接続、SSH、SOCKS/HTTP、複数段プロキシ、OS キーチェーンを見据えます。</p>
-          </article>
-          <article class="feature-card accent-green">
-            <h3>拡張できる基盤</h3>
-            <p>拡張 manifest、typed API、ドライバ、テーマ、結果ビューを段階的に公開します。</p>
-          </article>
-        </div>
-      </section>
-
-      <section id="sources" class="section muted-section">
-        <div class="container split-section">
-          <div class="section-heading compact">
-            <p class="eyebrow">Data sources</p>
-            <h2>まず主要 DB、次にすべてのデータ作業へ。</h2>
-            <p>
-              最初の製品価値は SQL GUI としての速さです。内部の adapter contract は、
-              ドキュメントストアやグラフ DB も同じ作業台に載せられるように設計します。
-            </p>
-          </div>
-          <div class="source-columns">
-            <div class="source-panel">
-              <h3>実装・検証中</h3>
-              <ul class="tag-list">
-                <li>PostgreSQL</li>
-                <li>MySQL</li>
-                <li>MariaDB</li>
-                <li>SQL Server</li>
-                <li>Oracle</li>
-                <li>SQLite</li>
-                <li>DuckDB</li>
-                <li>MongoDB</li>
-              </ul>
-            </div>
-            <div class="source-panel">
-              <h3>拡張対象</h3>
-              <ul class="tag-list">
-                <li>YugabyteDB</li>
-                <li>CockroachDB</li>
-                <li>TiDB</li>
-                <li>Redshift</li>
-                <li>ClickHouse</li>
-                <li>InfluxDB</li>
-                <li>Neo4j</li>
-                <li>Iceberg</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="docs" class="section">
         <div class="container section-heading">
           <p class="eyebrow">Documentation</p>
@@ -288,8 +321,13 @@ order by value desc;</code></pre>
             <h3>Official Docs</h3>
             <p>起動、接続、エディタ、補完、結果表示。</p>
           </a>
-          <a class="doc-card" href="https://github.com/hjosugi/irodori-table/blob/main/ROADMAP.md">
+          <a class="doc-card" href="blog.html">
             <span>01</span>
+            <h3>DB Guide Blog</h3>
+            <p>DB別サンプル、固有機能、公式情報源。</p>
+          </a>
+          <a class="doc-card" href="https://github.com/hjosugi/irodori-table/blob/main/ROADMAP.md">
+            <span>02</span>
             <h3>Roadmap</h3>
             <p>方針、フェーズ、研究対象。</p>
           </a>
@@ -297,7 +335,7 @@ order by value desc;</code></pre>
             class="doc-card"
             href="https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-progress.md"
           >
-            <span>02</span>
+            <span>03</span>
             <h3>Implementation Progress</h3>
             <p>実装済み、検証状況、残タスク。</p>
           </a>
@@ -305,7 +343,7 @@ order by value desc;</code></pre>
             class="doc-card"
             href="https://github.com/hjosugi/irodori-table/blob/main/docs/feature-matrix.md"
           >
-            <span>03</span>
+            <span>04</span>
             <h3>Feature Matrix</h3>
             <p>機能、優先度、対応予定。</p>
           </a>
@@ -313,52 +351,27 @@ order by value desc;</code></pre>
             class="doc-card"
             href="https://github.com/hjosugi/irodori-table/blob/main/docs/extension-development.md"
           >
-            <span>04</span>
+            <span>05</span>
             <h3>Extension Development</h3>
             <p>Manifest、typed API、開発モード。</p>
           </a>
         </div>
       </section>
 
-      <section id="roadmap" class="section muted-section">
-        <div class="container section-heading">
-          <p class="eyebrow">Roadmap</p>
-          <h2>縦切りから daily-driver へ。</h2>
-        </div>
-        <div class="container roadmap-list">
-          <article>
-            <span>Phase 1</span>
-            <h3>Thin vertical slice</h3>
-            <p>SQLite / PostgreSQL 接続、SQL 実行、ストリーミング結果、オブジェクトブラウザ。</p>
-          </article>
-          <article>
-            <span>Phase 2</span>
-            <h3>Power-user editor</h3>
-            <p>Vim、キーバインド、複数ペイン、保存セッション、クエリ履歴、i18n。</p>
-          </article>
-          <article>
-            <span>Phase 3</span>
-            <h3>Completion and intelligence</h3>
-            <p>スキーマ認識補完、hover inspection、dialect-aware ranking、任意の AI provider。</p>
-          </article>
-          <article>
-            <span>Phase 4+</span>
-            <h3>Coverage, network, extensions</h3>
-            <p>Oracle、warehouse、graph、time-series、SSH/proxy、拡張 SDK、ローカル data API。</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section cta-section">
-        <div class="container cta-inner">
+      <section id="download" class="section cta-section">
+        <div class="container download-panel">
           <div>
-            <p class="eyebrow">Get involved</p>
-            <h2>開発中の今から、設計と実装を追えます。</h2>
-            <p>
-              まだ安定リリース前です。Issue、設計レビュー、接続エンジン検証、ドキュメント整備を歓迎します。
-            </p>
+            <p class="eyebrow">Download</p>
+            <h2>Irodori Table を試す。</h2>
+            <p>Preview release。Linux AppImage とソースコードを公開しています。</p>
           </div>
-          <a class="button primary" href="https://github.com/hjosugi/irodori-table">Repository</a>
+          <div class="download-actions">
+            <a class="button primary" href="https://github.com/hjosugi/irodori-table/releases">
+              Download for Linux
+            </a>
+            <a class="button secondary" href="https://github.com/hjosugi/irodori-table">View source</a>
+            <a class="button secondary" href="try/">Try in browser</a>
+          </div>
         </div>
       </section>
     </main>

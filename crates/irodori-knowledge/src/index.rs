@@ -17,7 +17,8 @@
 use std::path::Path;
 
 use irodori_core::{
-    IrodoriError, IrodoriErrorKind, JobArtifact, JobCheckpoint, JobLogLevel, JobRuntime,
+    run_job, BatchOutcome, BatchResult, IrodoriError, IrodoriErrorKind, JobArtifact, JobContext,
+    JobLogLevel, JobRuntime,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
@@ -27,7 +28,6 @@ use sqlx::{Row, SqlitePool};
 /// at 999; postings use 3 columns, so 256 rows stays well under the limit.
 const INSERT_CHUNK: usize = 256;
 const PROGRESS_UNIT: &str = "documents";
-const CHECKPOINT_VERSION: u16 = 1;
 
 /// A corpus document to index.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -211,15 +211,57 @@ impl IndexStore {
     }
 }
 
-/// Build (or resume building) the index for `job_id` over `corpus`, driving the
-/// shared job runtime for progress, cancellation, and checkpoint/resume.
+/// Build (or resume building) the index for `job_id` over `corpus` through the
+/// shared batch-job envelope (JOB-004): [`run_job`] owns the job's start and
+/// terminal transition while the operation drives progress, cancellation, and
+/// checkpoint/resume through its [`JobContext`].
 ///
-/// The job must already be submitted to `runtime`. The build starts the job (or
-/// continues it), and on success/cancel updates its terminal state. Returns the
-/// build report; a cancellation is a normal `Ok` outcome with `cancelled = true`.
+/// The job must already be submitted to `runtime`. Returns the build report; a
+/// cancellation is a normal `Ok` outcome with `cancelled = true`.
 pub async fn build_index<I>(
     runtime: &JobRuntime,
     job_id: &str,
+    store: &IndexStore,
+    corpus: I,
+    config: IndexBuildConfig,
+) -> Result<IndexBuildReport, IrodoriError>
+where
+    I: IntoIterator<Item = Document>,
+{
+    let (_record, report) = run_job(runtime, job_id, |ctx| async move {
+        let report = build_index_with(&ctx, store, corpus, config).await?;
+        let outcome = if report.cancelled {
+            BatchOutcome::cancelled(format!(
+                "cancelled after {} documents",
+                report.documents_indexed
+            ))
+        } else {
+            BatchOutcome::completed_with(
+                format!(
+                    "indexed {} documents ({} postings)",
+                    report.documents_indexed, report.postings_written
+                ),
+                vec![JobArtifact {
+                    id: "index".to_string(),
+                    name: "inverted-index".to_string(),
+                    path: "index_postings".to_string(),
+                    media_type: Some("application/x-sqlite3".to_string()),
+                    size_bytes: Some(report.postings_written),
+                }],
+            )
+        };
+        Ok(BatchResult::new(outcome, report))
+    })
+    .await?;
+    Ok(report)
+}
+
+/// The index-build operation itself, expressed against the batch [`JobContext`]
+/// contract: it reports progress, checkpoints for resume, and stops cooperatively
+/// on cancel — but leaves start/succeed/cancel/fail to [`run_job`]. Exposed so a
+/// caller already inside the batch envelope can compose it directly.
+pub async fn build_index_with<I>(
+    ctx: &JobContext<'_>,
     store: &IndexStore,
     corpus: I,
     config: IndexBuildConfig,
@@ -231,28 +273,15 @@ where
     let progress_every = config.progress_every_docs.max(1);
     let checkpoint_every = config.checkpoint_every_docs.max(1);
 
-    // Resume from the last durable checkpoint, if any. Checkpoints are only stored
-    // for jobs the caller marked resumable; a non-resumable job still builds, it
-    // just cannot resume a partial run.
-    let job_before = runtime.get(job_id);
-    let resumable = job_before.as_ref().map(|job| job.spec.resumable).unwrap_or(false);
-    let resumed_from = job_before
-        .and_then(|job| job.checkpoint)
-        .map(|checkpoint| checkpoint.cursor.parse::<u64>().unwrap_or(0))
-        .unwrap_or(0);
-
-    // `start` is idempotent enough for a fresh run; on resume the job is already
-    // running, so ignore a benign "already started" style error.
-    let _ = runtime.start(job_id);
-    let _ = runtime.append_log(
-        job_id,
+    // Resume from the checkpoint the runtime surfaced (0 for a fresh build).
+    let resumed_from = ctx.resume_cursor();
+    let _ = ctx.log(
         JobLogLevel::Info,
         if resumed_from > 0 {
             format!("resuming index build from document {resumed_from}")
         } else {
             "starting index build".to_string()
         },
-        Default::default(),
     );
 
     let started = std::time::Instant::now();
@@ -288,34 +317,33 @@ where
         }
 
         if documents_indexed % progress_every == 0 {
-            runtime.update_progress(
-                job_id,
+            ctx.report_progress(
                 processed,
                 None,
                 PROGRESS_UNIT,
-                Some(format!("{documents_indexed} indexed")),
+                format!("{documents_indexed} indexed"),
             )?;
-            if runtime.should_cancel(job_id) {
+            if ctx.should_cancel() {
                 cancelled = true;
                 break;
             }
         }
 
-        if resumable && documents_indexed % checkpoint_every == 0 {
+        if documents_indexed % checkpoint_every == 0 {
             postings_written += flush_batch(store, &mut doc_buffer, &mut posting_buffer).await?;
-            runtime.update_checkpoint(
-                job_id,
-                JobCheckpoint::new(CHECKPOINT_VERSION, processed.to_string(), "{}"),
-            )?;
+            ctx.save_checkpoint(processed)?;
         }
     }
 
     // Flush whatever is left and record a final checkpoint at the true cursor.
     postings_written += flush_batch(store, &mut doc_buffer, &mut posting_buffer).await?;
-    if resumable {
-        runtime.update_checkpoint(
-            job_id,
-            JobCheckpoint::new(CHECKPOINT_VERSION, processed.to_string(), "{}"),
+    ctx.save_checkpoint(processed)?;
+    if !cancelled {
+        ctx.report_progress(
+            processed,
+            Some(processed),
+            PROGRESS_UNIT,
+            "index build complete",
         )?;
     }
 
@@ -327,7 +355,7 @@ where
         documents_indexed
     };
 
-    let report = IndexBuildReport {
+    Ok(IndexBuildReport {
         documents_indexed,
         documents_skipped,
         postings_written,
@@ -336,38 +364,7 @@ where
         cancelled,
         elapsed_ms,
         throughput_docs_per_sec,
-    };
-
-    if cancelled {
-        runtime.mark_cancelled(
-            job_id,
-            format!("cancelled after {documents_indexed} documents"),
-        )?;
-    } else {
-        runtime.update_progress(
-            job_id,
-            processed,
-            Some(processed),
-            PROGRESS_UNIT,
-            Some("index build complete".to_string()),
-        )?;
-        runtime.add_artifact(
-            job_id,
-            JobArtifact {
-                id: "index".to_string(),
-                name: "inverted-index".to_string(),
-                path: "index_postings".to_string(),
-                media_type: Some("application/x-sqlite3".to_string()),
-                size_bytes: Some(postings_written),
-            },
-        )?;
-        runtime.succeed(
-            job_id,
-            format!("indexed {documents_indexed} documents ({postings_written} postings)"),
-        )?;
-    }
-
-    Ok(report)
+    })
 }
 
 /// Flush buffered documents and postings to disk in one transaction, clearing the
@@ -454,7 +451,7 @@ fn internal(error: impl std::fmt::Display) -> IrodoriError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use irodori_core::{JobKind, JobRuntime, JobSpec};
+    use irodori_core::{JobCheckpoint, JobKind, JobRuntime, JobSpec};
 
     fn resumable_spec(title: &str) -> JobSpec {
         JobSpec {
@@ -615,7 +612,7 @@ mod tests {
         runtime2
             .update_checkpoint(
                 "r2",
-                JobCheckpoint::new(CHECKPOINT_VERSION, partial.to_string(), "{}"),
+                JobCheckpoint::new(1, partial.to_string(), "{}"),
             )
             .unwrap();
 

@@ -27,6 +27,36 @@ window.IRODORI_SEARCH_INDEX = [
       "PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, DuckDB, MongoDB, ClickHouse, Snowflake, BigQuery, Redis, Cassandra. SQL, document, key-value, warehouse.",
   },
   {
+    title: "DB guide blog",
+    category: "Blog",
+    url: "blog.html",
+    summary: "Irodori Table intro, DB-specific samples, official resources, and coverage notes.",
+    tags: [
+      "blog",
+      "database",
+      "samples",
+      "postgres",
+      "mysql",
+      "oracle",
+      "mongodb",
+      "timescaledb",
+      "cockroachdb",
+      "tidb",
+      "duckdb",
+    ],
+    body:
+      "Irodori Table DB guide. Database-specific sample projects and official resources for PostgreSQL, MySQL, MariaDB, SQLite, DuckDB, SQL Server, Oracle, MongoDB, TimescaleDB, CockroachDB, YugabyteDB, TiDB, Redshift, Neon, Neo4j, Redis, Cassandra, ClickHouse, Snowflake, BigQuery, Bigtable, InfluxDB, Qdrant, Milvus, Pinecone. MySQL Forums. Beekeeper Studio Blog.",
+  },
+  {
+    title: "DB feature samples",
+    category: "Samples",
+    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/db-feature-samples.md",
+    summary: "Local DB-specific query projects and the catalog validation command.",
+    tags: ["samples", "db", "catalog", "docs-check", "verify-db", "feature"],
+    body:
+      "DB Feature Samples. samples/db-feature-samples.json. samples/projects. PostgreSQL JSONB GIN, MySQL JSON, MariaDB CTE, SQLite FTS5, DuckDB summarize, SQL Server JSON, Oracle DBMS_XPLAN, MongoDB collection filter, TimescaleDB hypertable, CockroachDB unique_rowid, YugabyteDB tablets, TiDB explain analyze.",
+  },
+  {
     title: "Query editor",
     category: "Editor",
     url: "docs.html#query-editor",

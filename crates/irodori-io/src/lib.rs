@@ -1,5 +1,8 @@
 //! Export, import, dump, and restore encoders for tabular data.
 
+/// JOB-004 — job-driven tabular export over the batch contract.
+pub mod export;
+
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 

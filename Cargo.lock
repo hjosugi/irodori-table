@@ -2996,6 +2996,7 @@ version = "0.2.12"
 dependencies = [
  "serde",
  "serde_json",
+ "tokio",
  "ts-rs",
 ]
 
@@ -3017,10 +3018,12 @@ dependencies = [
  "apache-avro",
  "arrow",
  "csv",
+ "irodori-core",
  "irodori-sql",
  "parquet",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
