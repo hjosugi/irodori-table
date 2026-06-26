@@ -27,6 +27,7 @@ import type {
 } from "../../generated/irodori-api";
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
+import type { SqlMetadataTarget } from "../../sql/metadata-inspection";
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "@/theme";
 import type { EditorSplitMode } from "../workbench";
@@ -87,6 +88,7 @@ export interface QueryEditorPaneProps {
   onSqlFileDrop?: (file: File) => void;
   onUnsupportedFileDrop?: () => void;
   sqlFileDropLabel?: string;
+  onMetadataJump?: (target: SqlMetadataTarget) => void;
 }
 
 export function QueryEditorPane({
@@ -133,6 +135,7 @@ export function QueryEditorPane({
   onSqlFileDrop,
   onUnsupportedFileDrop,
   sqlFileDropLabel = "Drop .sql file to load",
+  onMetadataJump,
 }: QueryEditorPaneProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -287,6 +290,7 @@ export function QueryEditorPane({
             vimMode={vimMode}
             formatter={formatter}
             linter={sqlLinter}
+            onMetadataJump={onMetadataJump}
           />
         </div>
         {editorSplitOpen ? (
@@ -325,6 +329,7 @@ export function QueryEditorPane({
                 vimMode={vimMode}
                 formatter={formatter}
                 linter={sqlLinter}
+                onMetadataJump={onMetadataJump}
               />
             </div>
           </>

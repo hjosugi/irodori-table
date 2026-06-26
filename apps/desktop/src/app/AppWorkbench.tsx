@@ -209,6 +209,7 @@ import { sqlSnippetsFromJson } from "@/sql/completion";
 import { isSqlFormatterId } from "@/sql/formatter";
 import { isSqlLinterId } from "@/sql/linter";
 import type { SqlEditorTransformAction } from "@/sql/editor-transforms";
+import type { SqlMetadataTarget } from "@/sql/metadata-inspection";
 import { selectedOrCurrentStatement } from "@/sql/statements";
 import {
   cssVariables,
@@ -2976,6 +2977,11 @@ export function AppWorkbench() {
     setObjectActionMenu(null);
   }
 
+  function jumpToSqlMetadata(target: SqlMetadataTarget) {
+    openObjectSchemaDesigner(target.object);
+    setObjectActionMenu(null);
+  }
+
   function putSchemaSqlInEditor() {
     setQuery(buildSchemaSql(schemaDraft));
     setSchemaDesignerOpen(false);
@@ -3795,6 +3801,7 @@ export function AppWorkbench() {
                 )
               }
               sqlFileDropLabel={t("editor.dropSqlFile")}
+              onMetadataJump={jumpToSqlMetadata}
             />
 
             {showRightInspector ? (

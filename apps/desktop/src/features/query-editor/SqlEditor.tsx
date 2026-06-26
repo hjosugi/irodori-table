@@ -10,7 +10,7 @@
 // a configurable hook.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, hoverTooltip, keymap } from "@codemirror/view";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { acceptCompletion, completionStatus } from "@codemirror/autocomplete";
 import {
@@ -28,6 +28,15 @@ import { buildSqlExtensions } from "@/sql/dialect";
 import { formatSqlDocument, type SqlFormatterId } from "@/sql/formatter";
 import { sqlHighlightingExtensions } from "@/sql/highlighting";
 import { lintSqlDocument, type SqlLinterId } from "@/sql/linter";
+import {
+  inspectSqlMetadataAt,
+  sqlColumnSampleValues,
+  sqlMetadataTargetSubtitle,
+  sqlMetadataTargetTitle,
+  sqlObjectDefinitionPreview,
+  sqlObjectSampleRows,
+  type SqlMetadataTarget,
+} from "@/sql/metadata-inspection";
 import {
   transformSqlEditorText,
   type SqlEditorTransformAction,
@@ -63,6 +72,7 @@ interface SqlEditorProps {
   vimMode: boolean;
   formatter: SqlFormatterId;
   linter: SqlLinterId;
+  onMetadataJump?: (target: SqlMetadataTarget) => void;
 }
 
 interface SqlEditorCompartments {
@@ -86,6 +96,7 @@ interface CreateSqlEditorViewOptions {
   theme: IrodoriTheme;
   vimMode: boolean;
   linter: SqlLinterId;
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
   compartments: SqlEditorCompartments;
 }
 
@@ -121,6 +132,7 @@ function createSqlEditorState({
   theme,
   vimMode,
   linter: linterId,
+  onMetadataJump,
   compartments,
 }: Omit<CreateSqlEditorViewOptions, "host">): EditorState {
   return EditorState.create({
@@ -129,7 +141,9 @@ function createSqlEditorState({
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
       keymap.of([{ key: "Tab", run: acceptCompletionWithTab }, indentWithTab]),
-      compartments.sql.of(buildSqlExtensions(engine, metadata, snippets)),
+      compartments.sql.of(
+        buildEditorSqlExtensions(engine, metadata, snippets, onMetadataJump),
+      ),
       compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
       compartments.theme.of(editorThemeExtensions(theme)),
       compartments.highlight.of(sqlHighlightingExtensions(engine, theme.syntax)),
@@ -181,6 +195,174 @@ function buildSqlLintExtensions(
   ];
 }
 
+function buildEditorSqlExtensions(
+  engine: DbEngine,
+  metadata: DatabaseMetadata | undefined,
+  snippets: readonly SqlSnippetDefinition[],
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+): Extension {
+  return [
+    buildSqlExtensions(engine, metadata, snippets),
+    sqlMetadataInsightExtensions(metadata, onMetadataJump),
+  ];
+}
+
+function sqlMetadataInsightExtensions(
+  metadata: DatabaseMetadata | undefined,
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+): Extension[] {
+  if (!metadata) {
+    return [];
+  }
+
+  return [
+    hoverTooltip(
+      (view, pos) => {
+        const target = inspectSqlMetadataAt(
+          view.state.doc.toString(),
+          pos,
+          metadata,
+        );
+        if (!target) {
+          return null;
+        }
+        return {
+          pos: target.range.from,
+          end: target.range.to,
+          above: true,
+          create() {
+            return { dom: renderSqlMetadataTooltip(target) };
+          },
+        };
+      },
+      { hideOnChange: true },
+    ),
+    EditorView.domEventHandlers({
+      mousedown(event, view) {
+        if (!onMetadataJump || !(event.metaKey || event.ctrlKey)) {
+          return false;
+        }
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos === null) {
+          return false;
+        }
+        const target = inspectSqlMetadataAt(
+          view.state.doc.toString(),
+          pos,
+          metadata,
+        );
+        if (!target) {
+          return false;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        view.dispatch({
+          selection: { anchor: target.range.from, head: target.range.to },
+          scrollIntoView: true,
+        });
+        onMetadataJump(target);
+        return true;
+      },
+    }),
+  ];
+}
+
+function renderSqlMetadataTooltip(target: SqlMetadataTarget): HTMLElement {
+  const root = document.createElement("div");
+  root.className = "sql-metadata-tooltip";
+  appendText(root, "div", "sql-metadata-title", sqlMetadataTargetTitle(target));
+  appendText(
+    root,
+    "div",
+    "sql-metadata-subtitle",
+    sqlMetadataTargetSubtitle(target),
+  );
+
+  if (target.kind === "column") {
+    appendColumnDetails(root, target);
+  } else {
+    appendObjectDetails(root, target.object);
+  }
+
+  return root;
+}
+
+function appendObjectDetails(
+  root: HTMLElement,
+  object: SqlMetadataTarget["object"],
+) {
+  const definition = document.createElement("pre");
+  definition.className = "sql-metadata-definition";
+  definition.textContent = truncateText(sqlObjectDefinitionPreview(object), 1_400);
+  root.appendChild(definition);
+
+  const sampleRows = sqlObjectSampleRows(object, 2);
+  if (!object.sample || sampleRows.length === 0) {
+    return;
+  }
+
+  const sample = document.createElement("div");
+  sample.className = "sql-metadata-sample";
+  appendText(sample, "div", "sql-metadata-section-title", "sample");
+  appendText(
+    sample,
+    "div",
+    "sql-metadata-sample-row",
+    object.sample.columns.slice(0, 4).join("  |  "),
+  );
+  for (const row of sampleRows) {
+    appendText(
+      sample,
+      "div",
+      "sql-metadata-sample-row",
+      row.slice(0, 4).join("  |  "),
+    );
+  }
+  root.appendChild(sample);
+}
+
+function appendColumnDetails(
+  root: HTMLElement,
+  target: Extract<SqlMetadataTarget, { kind: "column" }>,
+) {
+  const lines = [
+    target.column.comment,
+    target.column.defaultValue ? `default ${target.column.defaultValue}` : null,
+    ...sqlColumnSampleValues(target.object, target.column).map(
+      (value) => `sample ${value}`,
+    ),
+  ].filter((line): line is string => Boolean(line));
+
+  if (lines.length === 0) {
+    return;
+  }
+
+  const detail = document.createElement("div");
+  detail.className = "sql-metadata-column-detail";
+  for (const line of lines) {
+    appendText(detail, "div", "sql-metadata-detail-line", line);
+  }
+  root.appendChild(detail);
+}
+
+function appendText(
+  root: HTMLElement,
+  tag: "div" | "span",
+  className: string,
+  text: string,
+) {
+  const element = document.createElement(tag);
+  element.className = className;
+  element.textContent = text;
+  root.appendChild(element);
+}
+
+function truncateText(value: string, maxLength: number): string {
+  return value.length <= maxLength
+    ? value
+    : `${value.slice(0, maxLength).trimEnd()}\n...`;
+}
+
 function reconfigureVimMode(
   view: EditorView | null,
   compartments: SqlEditorCompartments,
@@ -213,10 +395,11 @@ function reconfigureSqlExtensions(
   engine: DbEngine,
   metadata: DatabaseMetadata | undefined,
   snippets: readonly SqlSnippetDefinition[],
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
 ) {
   view?.dispatch({
     effects: compartments.sql.reconfigure(
-      buildSqlExtensions(engine, metadata, snippets),
+      buildEditorSqlExtensions(engine, metadata, snippets, onMetadataJump),
     ),
   });
 }
@@ -313,6 +496,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     vimMode,
     formatter,
     linter,
+    onMetadataJump,
   },
   ref,
 ) {
@@ -344,6 +528,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       theme,
       vimMode,
       linter,
+      onMetadataJump,
       compartments,
     });
     viewRef.current = view;
@@ -373,8 +558,9 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       engine,
       metadata,
       snippets,
+      onMetadataJump,
     );
-  }, [engine, metadata, snippets, compartments]);
+  }, [engine, metadata, snippets, onMetadataJump, compartments]);
 
   // Reconfigure the gentle SQL diagnostics without remounting the editor.
   useEffect(() => {
