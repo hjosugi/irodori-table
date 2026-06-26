@@ -28,8 +28,8 @@ Extensions use `irodori.extension.json`:
 ## Local development
 
 ```sh
-node packages/extension-sdk/bin/irodori-extension-dev.mjs templates/extensions/typescript-basic --once
-node packages/extension-sdk/bin/irodori-extension-dev.mjs templates/extensions/typescript-basic
+node packages/extension-sdk/bin/irodori-extension-dev.mjs packages/extension-sdk/templates/typescript-basic --once
+node packages/extension-sdk/bin/irodori-extension-dev.mjs packages/extension-sdk/templates/typescript-basic
 ```
 
 The dev command reads `irodori.extension.json`, inspects permissions, loads fake

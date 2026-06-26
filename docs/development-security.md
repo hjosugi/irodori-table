@@ -40,7 +40,7 @@ Set `NPM_AUDIT_LEVEL=moderate` to make npm advisory checks stricter. CI sets
 `REQUIRE_CARGO_AUDIT=1` so missing RustSec coverage fails the workflow.
 New install scripts, Cargo git dependencies, or external Cargo path
 dependencies must be reviewed and documented in
-`security/dependency-review-allowlist.json`.
+`tools/security/dependency-review-allowlist.json`.
 
 ## Dependency Review Rules
 

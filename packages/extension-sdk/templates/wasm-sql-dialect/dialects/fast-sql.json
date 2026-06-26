@@ -1,0 +1,15 @@
+{
+  "id": "wasmSqlDialect.fastSql",
+  "name": "Fast SQL",
+  "aliases": ["fsql"],
+  "keywords": [
+    {
+      "word": "select",
+      "category": "keyword"
+    }
+  ],
+  "snippets": [],
+  "formatter": {
+    "keywordCase": "lower"
+  }
+}

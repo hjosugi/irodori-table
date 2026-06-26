@@ -1,4 +1,7 @@
 .local/
+.agents/
+.claude/
+.codex/
 .irodori-dev/
 .cache/
 .config/

@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const allowlistPath = resolve(root, "security/dependency-review-allowlist.json");
+const allowlistPath = resolve(root, "tools/security/dependency-review-allowlist.json");
 const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
 const npmLockfiles = [
   "apps/desktop/package-lock.json",
@@ -25,7 +25,7 @@ if (errors.length > 0) {
   for (const error of errors) {
     console.error(`dependency-review: ${error}`);
   }
-  console.error("\nUpdate security/dependency-review-allowlist.json only after review.");
+  console.error("\nUpdate tools/security/dependency-review-allowlist.json only after review.");
   process.exit(1);
 }
 

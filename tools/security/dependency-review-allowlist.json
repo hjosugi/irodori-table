@@ -1,0 +1,11 @@
+{
+  "npmInstallScripts": {
+    "esbuild": "Vite build dependency; install script selects platform package. Keep dev-only and covered by npm signatures.",
+    "fsevents": "Optional macOS file-watcher dependency from Vite/Rollup toolchain."
+  },
+  "cargoExternalPaths": {
+    "typeship": "Sibling checkout used only for generated TypeScript binding tests in local/CI typegen.",
+    "typeship-ts-rs": "Sibling checkout used only for generated TypeScript binding tests in local/CI typegen."
+  },
+  "cargoGitSources": {}
+}

@@ -187,12 +187,14 @@ make check
 | `apps/web/` | Browser-only Vite/React app with local SQLite/DuckDB and HTTP endpoint support. |
 | `crates/` | Shared Rust crates for core models, SQL/completion, proxy/secret handling, extension APIs, IO, server, and knowledge tooling. |
 | `packages/extension-sdk/` | TypeScript extension SDK package. |
-| `templates/extensions/` | Starter templates for extension authors. |
+| `packages/extension-sdk/templates/` | Starter templates for extension authors. |
 | `examples/extensions/` | Example extensions. |
 | `samples/` | Per-engine database compose files and sample schemas. |
 | `scripts/` | Developer scripts for DB verification and local seeded DBs. |
+| `tools/security/` | Local security automation config used by `make security`. |
 | `tools/knowledge/` | Local knowledge-base refresh, analysis, query, and cheatsheet generation tools. |
 | `knowledge/` | Tracked schema/source registry for the generated local knowledge database. |
+| `docs/site/` | Static project site published by GitHub Pages. |
 | `docs/` | Architecture, status, planning, licensing, and runbook documents. |
 | `ref/` | Reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit. |
 

@@ -1,4 +1,54 @@
 {
+    "explorer.compactFolders": true,
+    "explorer.excludeGitIgnore": true,
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+        "Cargo.toml": "Cargo.lock, .cargo",
+        "Makefile": "scripts, tools",
+        "README.md": "ROADMAP.md, CONTRIBUTING.md, SECURITY.md, LICENSE, extension.schema.json",
+        "package.json": "package-lock.json, tsconfig*.json, vite.config.*, index.html"
+    },
+    "files.exclude": {
+        "**/.agents": true,
+        "**/.cache": true,
+        "**/.cargo": true,
+        "**/.claude": true,
+        "**/.codex": true,
+        "**/.config": true,
+        "**/.github": true,
+        "**/.irodori-dev": true,
+        "**/.local": true,
+        "**/.vscode": true,
+        "**/dist": true,
+        "**/node_modules": true,
+        "**/target": true,
+        "docs/site/try/assets": true,
+        "knowledge/*.sqlite*": true,
+        "ref": true
+    },
+    "search.exclude": {
+        "**/.agents": true,
+        "**/.cache": true,
+        "**/.claude": true,
+        "**/.codex": true,
+        "**/.local": true,
+        "**/dist": true,
+        "**/node_modules": true,
+        "**/target": true,
+        "docs/site/try/assets": true,
+        "knowledge/*.sqlite*": true,
+        "ref": true
+    },
+    "files.watcherExclude": {
+        "**/.cache/**": true,
+        "**/.local/**": true,
+        "**/dist/**": true,
+        "**/node_modules/**": true,
+        "**/target/**": true,
+        "docs/site/try/assets/**": true,
+        "ref/**": true
+    },
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#80fbc4",
         "activityBar.background": "#80fbc4",

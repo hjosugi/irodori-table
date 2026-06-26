@@ -17,8 +17,8 @@ for high-performance drivers, parsers, renderers, and formatters.
 - Local dev CLI:
   [`packages/extension-sdk/bin/irodori-extension-dev.mjs`](../packages/extension-sdk/bin/irodori-extension-dev.mjs).
 - Templates:
-  [`templates/extensions/typescript-basic`](../templates/extensions/typescript-basic)
-  and [`templates/extensions/wasm-sql-dialect`](../templates/extensions/wasm-sql-dialect).
+  [`packages/extension-sdk/templates/typescript-basic`](../packages/extension-sdk/templates/typescript-basic)
+  and [`packages/extension-sdk/templates/wasm-sql-dialect`](../packages/extension-sdk/templates/wasm-sql-dialect).
 - Example:
   [`examples/extensions/markdown-result-export`](../examples/extensions/markdown-result-export).
 
@@ -129,7 +129,7 @@ database fixtures, writes JSON-line logs, and watches declared files for reload
 requests.
 
 ```sh
-node packages/extension-sdk/bin/irodori-extension-dev.mjs templates/extensions/typescript-basic --once
+node packages/extension-sdk/bin/irodori-extension-dev.mjs packages/extension-sdk/templates/typescript-basic --once
 node packages/extension-sdk/bin/irodori-extension-dev.mjs examples/extensions/markdown-result-export
 ```
 

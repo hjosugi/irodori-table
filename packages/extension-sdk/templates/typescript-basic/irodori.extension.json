@@ -1,0 +1,101 @@
+{
+  "$schema": "../../../../extension.schema.json",
+  "manifestVersion": 1,
+  "id": "example.typescript-basic",
+  "name": "TypeScript Basic Extension",
+  "version": "0.1.0",
+  "description": "A minimal Irodori Table extension with commands, keybindings, result-grid actions, theme, SQL dialect, and fake fixtures.",
+  "license": "MIT OR 0BSD",
+  "apiVersion": "0.1",
+  "runtime": "typescript",
+  "entry": "dist/main.js",
+  "permissions": [
+    "commands",
+    "keybindings",
+    "queryResults:read",
+    "resultRenderers",
+    "themes",
+    "sqlDialects",
+    "logs",
+    "dev:fixtures"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "typescriptBasic.copyResultAsMarkdown",
+        "title": "Copy Result as Markdown Table",
+        "category": "Result Grid",
+        "enablement": "resultGridFocus"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "typescriptBasic.copyResultAsMarkdown",
+        "key": "cmd+shift+m",
+        "windows": "ctrl+shift+m",
+        "linux": "ctrl+shift+m",
+        "when": "resultGridFocus"
+      }
+    ],
+    "resultGridActions": [
+      {
+        "id": "typescriptBasic.copyMarkdownAction",
+        "title": "Copy as Markdown",
+        "command": "typescriptBasic.copyResultAsMarkdown",
+        "when": "resultGridFocus"
+      }
+    ],
+    "themes": [
+      {
+        "id": "typescriptBasic.calmLight",
+        "label": "Calm Light",
+        "path": "themes/calm-light.json",
+        "kind": "light"
+      }
+    ],
+    "sqlDialects": [
+      {
+        "id": "typescriptBasic.acmeSql",
+        "name": "Acme SQL",
+        "path": "dialects/acme-sql.json",
+        "fileExtensions": [".acmesql"]
+      }
+    ]
+  },
+  "dev": {
+    "watch": ["src", "fixtures/fake-db.json"],
+    "fixtures": [
+      {
+        "id": "fixture-postgres",
+        "engine": "postgres",
+        "schemas": [
+          {
+            "name": "public",
+            "tables": [
+              {
+                "name": "customers",
+                "columns": [
+                  {
+                    "name": "id",
+                    "dataType": "integer"
+                  },
+                  {
+                    "name": "name",
+                    "dataType": "text"
+                  }
+                ],
+                "rows": [
+                  {
+                    "id": "1",
+                    "name": "Kawase Foods"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "logFile": ".irodori-dev/extension.log"
+  }
+}
