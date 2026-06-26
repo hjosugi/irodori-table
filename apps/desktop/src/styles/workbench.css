@@ -670,6 +670,18 @@
   text-overflow: ellipsis;
 }
 
+.editor-split-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.editor-split-controls .icon-button.active {
+  border-color: color-mix(in srgb, var(--blue) 55%, var(--border));
+  background: color-mix(in srgb, var(--blue) 11%, var(--surface-raised));
+  color: var(--blue);
+}
+
 .editor-floating-run {
   position: absolute;
   right: 14px;
@@ -733,10 +745,6 @@
   inset: 0;
   pointer-events: none;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 46%, transparent);
-}
-
-.editor-split-mode {
-  flex: 0 0 auto;
 }
 
 .panel-resizer {

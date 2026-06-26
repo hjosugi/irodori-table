@@ -6,9 +6,12 @@ import {
 import {
   AlignLeft,
   ChevronDown,
+  PanelBottomClose,
+  PanelRightClose,
   Play,
   Save,
   SplitSquareHorizontal,
+  SplitSquareVertical,
   Square,
   TerminalSquare,
 } from "lucide-react";
@@ -152,42 +155,55 @@ export function QueryEditorPane({
           >
             <Save size={15} />
           </button>
-          <button
-            className="icon-button"
-            type="button"
-            title={editorSplitOpen ? "Close editor split" : "Split editor"}
-            aria-label="Split editor"
-            aria-pressed={editorSplitOpen}
-            onClick={() => {
-              setEditorSplitMode((mode) =>
-                mode === "single" ? "right" : "single",
-              );
-            }}
+          <div
+            className="editor-split-controls"
+            role="group"
+            aria-label="Editor layout"
           >
-            <SplitSquareHorizontal size={15} />
-          </button>
-          {editorSplitOpen ? (
-            <div
-              className="segmented-control editor-split-mode"
-              role="group"
-              aria-label="Editor split direction"
+            <button
+              className={
+                editorSplitMode === "right"
+                  ? "icon-button active"
+                  : "icon-button"
+              }
+              type="button"
+              title="Split editor right"
+              aria-label="Split editor right"
+              aria-pressed={editorSplitMode === "right"}
+              onClick={() => setEditorSplitMode("right")}
             >
+              <SplitSquareHorizontal size={15} />
+            </button>
+            <button
+              className={
+                editorSplitMode === "down"
+                  ? "icon-button active"
+                  : "icon-button"
+              }
+              type="button"
+              title="Split editor down"
+              aria-label="Split editor down"
+              aria-pressed={editorSplitMode === "down"}
+              onClick={() => setEditorSplitMode("down")}
+            >
+              <SplitSquareVertical size={15} />
+            </button>
+            {editorSplitOpen ? (
               <button
+                className="icon-button"
                 type="button"
-                className={editorSplitMode === "right" ? "active" : undefined}
-                onClick={() => setEditorSplitMode("right")}
+                title="Close editor split"
+                aria-label="Close editor split"
+                onClick={() => setEditorSplitMode("single")}
               >
-                Right
+                {editorSplitMode === "down" ? (
+                  <PanelBottomClose size={15} />
+                ) : (
+                  <PanelRightClose size={15} />
+                )}
               </button>
-              <button
-                type="button"
-                className={editorSplitMode === "down" ? "active" : undefined}
-                onClick={() => setEditorSplitMode("down")}
-              >
-                Down
-              </button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
           <button
             className="icon-button"
             type="button"
