@@ -3,13 +3,15 @@ import react from "@vitejs/plugin-react";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const reactCompilerEnabled = process.env.IRODORI_REACT_COMPILER !== "0";
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [
     react({
       babel: {
-        plugins: ["babel-plugin-react-compiler"],
+        plugins: reactCompilerEnabled ? ["babel-plugin-react-compiler"] : [],
       },
     }),
   ],

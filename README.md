@@ -95,6 +95,14 @@ make desktop-build    # typegen + TypeScript + Vite production build
 make desktop-e2e      # Playwright
 ```
 
+The desktop frontend builds with React Compiler through Vite's Babel pipeline by
+default. To isolate a compiler-related rendering issue while developing, disable
+it for one command:
+
+```sh
+IRODORI_REACT_COMPILER=0 make desktop-vite
+```
+
 To build and install a local Linux AppImage from the repo root:
 
 ```sh
