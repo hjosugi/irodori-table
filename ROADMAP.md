@@ -46,6 +46,12 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - VS Code MSSQL extension: important replacement-path benchmark now that Azure Data Studio is retired.
 - VS Code SQLTools and vscode-mssql: session-to-connection binding, command-driven workflows, result handling, driver boundaries, and editor integration patterns.
 - Current DB clients broadly: DBeaver, DataGrip, VS Code MSSQL, SSMS, Oracle SQL Developer, pgAdmin, MySQL Workbench, HeidiSQL, DB Browser for SQLite.
+- RSQL (`rust-dd/rsql`, public README / behavior reference until license terms
+  are explicit): high-performance PostgreSQL client reference for Tauri v2 +
+  React + Rust, canvas/WebGL result grids, server-side cursor pagination,
+  packed IPC, dual query/metadata pools, query history, record view, result
+  diffing, PostGIS maps, EXPLAIN visualization, and database performance
+  dashboards. Do not copy code unless a compatible license is verified.
 - DuckDB and DuckDB UI (`ref/duckdb-ui-main`, MIT): embedded analytical SQL, local-first exploration, Parquet/Iceberg reads, and a lightweight in-process UI; MIT lets us adapt code with attribution and license tracking.
 - Kibana (`ref/kibana-main`, Elastic License 2.0 / SSPL / AGPL-3.0 — source-available): Discover data exploration and Dev Tools console as a search/observability query-and-browse reference; behavior-only, no code adaptation into the permissive core.
 - Zed (`zed-industries/zed`, GPL-3.0/AGPL-3.0 with some Apache-2.0 crates — copyleft): a fast Rust-native desktop editor; reference for GPUI rendering, input latency, multibuffer/pane models, and Rust app structure. Study architecture; do not copy copyleft code into the core.
@@ -186,6 +192,9 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Text-to-SQL and schema-linking papers for better completion ranking and optional AI assistance.
 - SQL issue debugging and query-repair research for explainable error assistance.
 - Large-result grid virtualization, streaming query results, cancellation semantics, and low-latency UI event loops.
+- RSQL-style PostgreSQL performance patterns: server-side cursor pagination,
+  fixed-size page caches, canvas/WebGL grids, packed result IPC, simple-query
+  text paths, dual query/metadata pools, and Rust-side result diffing.
 - GPU text/grid rendering, retained-mode vs immediate-mode UI tradeoffs, and frame pacing for large scrollback-like workloads.
 - Product market scans for DataGrip, DBeaver, DbVisualizer, TablePlus, VS Code MSSQL, and AI-assisted database workflows.
 - Source-specific GUI scans for Neo4j Browser/Workspace, InfluxDB UI/Data Explorer, MongoDB Compass, RedisInsight, Studio 3T, DbGate, ArangoDB Web UI, and Grafana data-source workflows.
@@ -239,7 +248,9 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   or knowledge refresh, onto `irodori-core::jobs` to prove the runtime contract.
 - Start `PERF-001` now that row, wide-column, and 1M-row virtualization gates are
   in place: compare WebView DOM, canvas/WebGPU-in-WebView, and native Rust GPU
-  paths for editor and result-grid hot surfaces.
+  paths for editor and result-grid hot surfaces. Include RSQL's canvas grid,
+  server-side cursor pagination, packed IPC, and dual-pool design as behavior
+  benchmarks for the PostgreSQL path.
 - Keep the crate layout conservative: add modules first, extract crates only when
   a stable shared API, independent test boundary, or multi-host release boundary
   is already visible.
