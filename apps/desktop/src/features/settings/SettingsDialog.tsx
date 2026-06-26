@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   Clock3,
   Keyboard,
+  Palette,
   Settings,
   TerminalSquare,
 } from "lucide-react";
@@ -26,7 +27,7 @@ import {
 } from "../../sql/linter";
 import type { ThemeKind } from "../../theme";
 
-export type SettingsTab = "general" | "keymap" | "jobs" | "json";
+export type SettingsTab = "general" | "theme" | "keymap" | "jobs" | "json";
 
 type BooleanUpdater = boolean | ((current: boolean) => boolean);
 
@@ -202,6 +203,14 @@ export function SettingsDialog({
             </button>
             <button
               type="button"
+              className={settingsTab === "theme" ? "active" : undefined}
+              onClick={() => onOpenSection("theme")}
+            >
+              <Palette size={15} />
+              Theme
+            </button>
+            <button
+              type="button"
               className={settingsTab === "keymap" ? "active" : undefined}
               onClick={() => onOpenSection("keymap")}
             >
@@ -250,66 +259,6 @@ export function SettingsDialog({
                     </button>
                   </div>
                 </label>
-                <label className="settings-row">
-                  <span>
-                    <strong>Theme</strong>
-                    <small>
-                      {activeCustomThemeName
-                        ? `Using custom: ${activeCustomThemeName}`
-                        : "Workbench color mode."}
-                    </small>
-                  </span>
-                  <div className="segmented-control">
-                    <button
-                      type="button"
-                      className={themeKind === "dark" ? "active" : undefined}
-                      onClick={() => setThemeKind("dark")}
-                    >
-                      Dark
-                    </button>
-                    <button
-                      type="button"
-                      className={themeKind === "light" ? "active" : undefined}
-                      onClick={() => setThemeKind("light")}
-                    >
-                      Light
-                    </button>
-                  </div>
-                </label>
-                <label className="settings-row">
-                  <span>
-                    <strong>Saved themes</strong>
-                    <small>Custom theme library.</small>
-                  </span>
-                  <select
-                    value={activeCustomThemeId ?? ""}
-                    onChange={(event) =>
-                      setActiveCustomThemeId(event.currentTarget.value || null)
-                    }
-                  >
-                    <option value="">Built-in theme</option>
-                    {customThemes.map((theme) => (
-                      <option key={theme.id} value={theme.id}>
-                        {theme.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {activeCustomThemeName ? (
-                  <div className="settings-row settings-row-alert">
-                    <span>
-                      <strong>Custom theme</strong>
-                      <small>Saved as {activeCustomThemeName}.</small>
-                    </span>
-                    <button
-                      className="text-button"
-                      type="button"
-                      onClick={clearCustomTheme}
-                    >
-                      Use Built-in
-                    </button>
-                  </div>
-                ) : null}
                 <label className="settings-row">
                   <span>
                     <strong>SQL formatter</strong>
@@ -414,6 +363,99 @@ export function SettingsDialog({
                     {sidebarOpen ? "Hide" : "Show"}
                   </button>
                 </label>
+              </div>
+            ) : settingsTab === "theme" ? (
+              <div className="settings-stack">
+                <label className="settings-row">
+                  <span>
+                    <strong>Color mode</strong>
+                    <small>
+                      {activeCustomThemeName
+                        ? `Using custom: ${activeCustomThemeName}`
+                        : "Built-in workbench theme."}
+                    </small>
+                  </span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={
+                        themeKind === "dark" && !activeCustomThemeId
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setThemeKind("dark")}
+                    >
+                      Dark
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        themeKind === "light" && !activeCustomThemeId
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setThemeKind("light")}
+                    >
+                      Light
+                    </button>
+                  </div>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>Saved themes</strong>
+                    <small>
+                      Choose a custom theme imported through Settings JSON.
+                    </small>
+                  </span>
+                  <select
+                    value={activeCustomThemeId ?? ""}
+                    onChange={(event) =>
+                      setActiveCustomThemeId(event.currentTarget.value || null)
+                    }
+                  >
+                    <option value="">Built-in theme</option>
+                    {customThemes.map((theme) => (
+                      <option key={theme.id} value={theme.id}>
+                        {theme.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="settings-row settings-row-alert">
+                  <span>
+                    <strong>Active theme</strong>
+                    <small>
+                      {activeCustomThemeName
+                        ? `Custom theme: ${activeCustomThemeName}`
+                        : `Built-in ${themeKind} theme`}
+                    </small>
+                  </span>
+                  {activeCustomThemeName ? (
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={clearCustomTheme}
+                    >
+                      Use Built-in
+                    </button>
+                  ) : null}
+                </div>
+                <div className="settings-row">
+                  <span>
+                    <strong>Import themes</strong>
+                    <small>
+                      Paste an Irodori or VS Code theme in the JSON section to
+                      save it here.
+                    </small>
+                  </span>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => onOpenSection("json")}
+                  >
+                    Open JSON
+                  </button>
+                </div>
               </div>
             ) : settingsTab === "keymap" ? (
               <div className="command-list settings-command-list">
