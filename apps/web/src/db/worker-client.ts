@@ -37,10 +37,25 @@ function seedFor(engine: LocalEngine) {
   return engine === "duckdb" ? duckDbSeedSql : sqliteSeedSql;
 }
 
+const fallbackMaxWorkers = 4;
+
+export function resolveMaxWorkerCount(
+  hardwareConcurrency = globalThis.navigator?.hardwareConcurrency,
+) {
+  const count = Number(hardwareConcurrency);
+  if (!Number.isFinite(count)) {
+    return fallbackMaxWorkers;
+  }
+  return Math.max(1, Math.floor(count));
+}
+
 export class LocalWorkerPool {
   private readonly handles = new Map<string, WorkerHandle>();
+  private readonly maxWorkers: number;
 
-  constructor(private readonly maxWorkers = 4) {}
+  constructor(maxWorkers = resolveMaxWorkerCount()) {
+    this.maxWorkers = resolveMaxWorkerCount(maxWorkers);
+  }
 
   async connect(profile: ConnectionProfile): Promise<void> {
     if (!isLocalEngine(profile.engine)) {
@@ -112,6 +127,7 @@ export class LocalWorkerPool {
 
   status(): RuntimeStatus {
     return {
+      maxWorkers: this.maxWorkers,
       workers: Array.from(this.handles.values()).map((handle) => ({
         connectionId: handle.connectionId,
         engine: handle.engine,
@@ -138,6 +154,9 @@ export class LocalWorkerPool {
       return existing;
     }
     this.evictIdleHandle();
+    if (this.handles.size >= this.maxWorkers) {
+      throw new Error(`All ${this.maxWorkers} local workers are busy`);
+    }
     const worker = createWorker(profile.engine);
     const handle: WorkerHandle = {
       connectionId: profile.id,

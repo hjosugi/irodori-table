@@ -13,7 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { LocalWorkerPool } from "./db/worker-client";
+import { LocalWorkerPool, resolveMaxWorkerCount } from "./db/worker-client";
 import { runOnlineQuery } from "./db/online-client";
 import { starterSql } from "./db/sample-data";
 import {
@@ -37,7 +37,7 @@ import type {
 } from "./types";
 
 const maxRows = 500;
-const workerPool = new LocalWorkerPool(4);
+const workerPool = new LocalWorkerPool(resolveMaxWorkerCount());
 
 const onlineEngines: OnlineEngine[] = [
   "postgres",
@@ -495,7 +495,10 @@ export default function App() {
           <div className="panel-heading compact">
             <div>
               <h2>Workers</h2>
-              <span>{activeWorkers.length.toLocaleString()} active</span>
+              <span>
+                {activeWorkers.length.toLocaleString()} /{" "}
+                {status.maxWorkers.toLocaleString()} active
+              </span>
             </div>
           </div>
           <div className="worker-list">

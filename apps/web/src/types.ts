@@ -37,6 +37,7 @@ export type QueryResult = QueryResultSet & {
 };
 
 export type RuntimeStatus = {
+  maxWorkers: number;
   workers: Array<{
     connectionId: string;
     engine: LocalEngine;
