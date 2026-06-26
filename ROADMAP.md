@@ -37,7 +37,10 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 ## Reference Surface
 
 - TablePlus: interaction speed, query/editor ergonomics, shortcut feel, object browser expectations, and lightweight mental model.
-- A5:SQL Mk-2: Oracle-aware workflows, SQL completion depth, explain plans, query design ideas, ERD as a later-stage reference.
+- A5:SQL Mk-2 (public site / behavior reference; see
+  `docs/reference-a5sql.md`): Oracle-aware workflows, SQL completion depth,
+  explain plans, SQL designer ideas, result comparison, Excel evidence export,
+  ERD/table-definition-document flows, and read-only / AI-disabled safety modes.
 - Beekeeper Studio: first client to beat quickly. Use it as an OSS baseline for feature coverage, but surpass it on speed, keyboard control, Vim depth, proxy chains, Oracle priority, and completion.
 - DataGrip: deep SQL IDE benchmark for inspections, refactoring, schema-aware completion, diff/compare, Git, keymaps, and optional AI.
 - DBeaver and DbVisualizer: broad database coverage, data transfer, admin/security, AI/MCP direction, CLI, and enterprise workflow benchmarks.
