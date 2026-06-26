@@ -20,6 +20,7 @@ type QueryHistoryDialogProps = {
   connectionById: ReadonlyMap<string, QueryHistoryConnection>;
   onLoad: (item: QueryHistoryItem) => void;
   onRun: (item: QueryHistoryItem) => void;
+  onRestoreResult: (item: QueryHistoryItem) => void;
 };
 
 export function QueryHistoryDialog({
@@ -29,6 +30,7 @@ export function QueryHistoryDialog({
   connectionById,
   onLoad,
   onRun,
+  onRestoreResult,
 }: QueryHistoryDialogProps) {
   const items = useQueryHistoryStore((state) => state.items);
   const search = useQueryHistoryStore((state) => state.search);
@@ -225,6 +227,19 @@ export function QueryHistoryDialog({
                       Load
                     </button>
                     <button
+                      className="text-button"
+                      type="button"
+                      disabled={!selectedHistoryItem.result}
+                      title={
+                        selectedHistoryItem.result
+                          ? "Restore the saved result preview into the grid"
+                          : "No result was retained for this history entry"
+                      }
+                      onClick={() => onRestoreResult(selectedHistoryItem)}
+                    >
+                      Restore result
+                    </button>
+                    <button
                       className="primary-button"
                       type="button"
                       disabled={
@@ -261,6 +276,13 @@ export function QueryHistoryDialog({
                     <span>{selectedHistoryItem.error}</span>
                   </div>
                 ) : null}
+                {selectedHistoryItem.result ? (
+                  <HistoryResultPreview item={selectedHistoryItem} />
+                ) : selectedHistoryItem.status === "ok" ? (
+                  <div className="history-result-empty">
+                    No result rows retained for this entry.
+                  </div>
+                ) : null}
               </>
             ) : (
               <div className="history-empty-detail">
@@ -273,4 +295,67 @@ export function QueryHistoryDialog({
       </div>
     </div>
   );
+}
+
+function HistoryResultPreview({ item }: { item: QueryHistoryItem }) {
+  const result = item.result;
+  if (!result) {
+    return null;
+  }
+  const displayRows = result.rows.slice(0, 8);
+  return (
+    <section className="history-result-preview" aria-label="Saved result preview">
+      <div className="history-result-preview-header">
+        <strong>Saved result</strong>
+        <span>
+          {toCount(result.retainedRows)} of {toCount(result.rowCount)} rows
+          {result.retentionTruncated ? " retained" : ""}
+        </span>
+      </div>
+      <div className="history-result-table-wrap">
+        <table className="history-result-table">
+          <thead>
+            <tr>
+              {result.columns.map((column) => (
+                <th key={column}>{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {displayRows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {result.columns.map((column, columnIndex) => (
+                  <td key={`${column}:${columnIndex}`}>
+                    {formatHistoryCell(row[columnIndex])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {result.retainedRows > displayRows.length ? (
+        <small>
+          Showing first {toCount(displayRows.length)} retained rows.
+        </small>
+      ) : null}
+    </section>
+  );
+}
+
+function formatHistoryCell(value: unknown) {
+  if (value === null || value === undefined) {
+    return "NULL";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }

@@ -211,6 +211,15 @@ Highlights:
   `INSERT OR IGNORE` keys make rebuilds/incremental runs idempotent. Verified by a
   50,000-document benchmark asserting the postings buffer never exceeds the flush
   budget while the index stays queryable, plus resume-after-cancel coverage.
+- **Batch operation contract (JOB-004)**: `irodori-core::batch` is the shared
+  envelope every heavy operation runs through — a `JobContext` (progress, cancel,
+  resume cursor, checkpoint, log, artifact) plus `run_job(...)` that owns start and
+  the single terminal transition (succeed / mark_cancelled / fail). Operations are
+  plain async fns decoupled from the state machine, so progress/cancel/logs/
+  artifacts/resume/headless are uniform. Two workflows are migrated onto it to
+  prove it: the index builder (`build_index_with`) and tabular export
+  (`irodori-io::export::run_export`, streaming any `TabularEncoder` with per-row
+  progress, cooperative cancel, and an output artifact).
 
 ## Test & sample infrastructure
 

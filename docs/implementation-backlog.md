@@ -178,9 +178,11 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** JOB-001, AI-001, AI-002, KNOW-004
 - **Size:** L · **Priority:** P1
 
-### JOB-004 — Batch operation contracts
+### JOB-004 — Batch operation contracts ✅ (core done)
 - **Goal:** Stop treating imports, exports, refreshes, index builds, ML runs, and bulk edits as unrelated one-off flows.
 - **Done when:** import/export, knowledge refresh, huge index builds, ML/eval runs, and safe bulk edits expose the same job envelope for progress, cancellation, logs, artifact paths, resumability, and headless/API execution; at least two existing workflows are migrated to prove the contract.
+- **Done:** `irodori-core::batch` defines the shared envelope: a `JobContext` (progress, `should_cancel`, resume-cursor, `save_checkpoint`, log, artifact) plus `run_job(runtime, job_id, op)` that owns the lifecycle — start (idempotent for resume), then map the operation's `BatchResult`/`BatchOutcome` to one terminal transition (`Completed` records artifacts + `succeed`; `Cancelled` → `mark_cancelled`; `Err` → `fail`) and return the job record + the operation's domain value. Operations are plain async fns that never touch the state machine, so progress/cancel/log/artifact/resume/headless are uniform across all of them. **Two existing workflows are migrated onto it to prove the contract:** the huge index builder (`irodori-knowledge::index::build_index` now runs through `run_job`/`build_index_with(ctx, …)`) and tabular export (`irodori-io::export::run_export` streams any `TabularEncoder` through the same envelope with per-row progress, cooperative cancel, and an output artifact). Verified by `irodori-core::batch` tests (complete-with-artifacts, cancel, fail, resume-cursor + checkpoint guard), the index-build suite (now contract-driven, incl. resume-after-cancel + 50k flat-memory benchmark), and `irodori-io::export` tests (full CSV export + cancel-flushes-partial).
+- **Remaining:** migrate the remaining flows (knowledge refresh, import, ML/eval, safe bulk edit) onto the envelope; expose batch ops through the desktop jobs dashboard and the headless/local API surface (`API-001/002`).
 - **Depends on:** JOB-001, IO-001
 - **Size:** L · **Priority:** P1
 
