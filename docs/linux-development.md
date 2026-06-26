@@ -93,16 +93,17 @@ A blank window with this message is **not** a database error - the webview could
 not reach the dev server URL baked into a debug build (`http://localhost:1420`).
 
 Checklist:
-- Use `npx tauri dev` instead of launching the debug binary directly - it starts
-  Vite (`beforeDevCommand`) and the app together.
+- Use `make desktop-dev` instead of launching the debug binary directly - it
+  starts Vite (`beforeDevCommand`) and the app together.
 - If you must run the binary directly, confirm Vite is up:
-  `ss -ltnp | grep 1420` should show a listener. If not, run `npm run dev` from
-  `apps/desktop` first.
+  `ss -ltnp | grep 1420` should show a listener. If not, run
+  `make desktop-vite` first.
 - The dev port is fixed and `strictPort: true`, so if `:1420` is already taken,
   Vite exits and the app has nothing to connect to. Free the port
   (`fuser -k 1420/tcp`) or stop the other process, then retry.
-- For a no-dev-server run, use an embedded-assets build (`npx tauri build --debug`
-  or `make run-linux`); a debug binary alone always expects `:1420`.
+- For a no-dev-server run, use an embedded-assets build
+  (`npm --prefix apps/desktop run tauri -- build --debug` or `make run-linux`);
+  a debug binary alone always expects `:1420`.
 
 ### Reading Console and Rust Logs
 - **Developer Tools**: Right-click anywhere in the app window during debug/dev runs and click **Inspect Element** to open the Web Inspector.

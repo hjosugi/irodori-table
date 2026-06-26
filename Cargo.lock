@@ -3000,10 +3000,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "irodori-data-sources"
-version = "0.2.5"
-
-[[package]]
 name = "irodori-extension"
 version = "0.2.5"
 dependencies = [
@@ -3013,10 +3009,6 @@ dependencies = [
  "typebridge",
  "typebridge-ts-rs",
 ]
-
-[[package]]
-name = "irodori-i18n"
-version = "0.2.5"
 
 [[package]]
 name = "irodori-io"

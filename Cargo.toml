@@ -2,7 +2,6 @@
 members = [
     "apps/desktop/src-tauri",
     "crates/irodori-core",
-    "crates/irodori-data-sources",
     "crates/irodori-proxy",
     "crates/irodori-secure-store",
     "crates/irodori-sql",
@@ -10,12 +9,10 @@ members = [
     "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
-    "crates/irodori-i18n",
     "crates/irodori-knowledge",
 ]
 default-members = [
     "crates/irodori-core",
-    "crates/irodori-data-sources",
     "crates/irodori-proxy",
     "crates/irodori-secure-store",
     "crates/irodori-sql",
@@ -23,7 +20,6 @@ default-members = [
     "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
-    "crates/irodori-i18n",
     "crates/irodori-knowledge",
 ]
 resolver = "2"

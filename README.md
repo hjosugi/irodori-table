@@ -165,7 +165,7 @@ make check
 | `apps/desktop/` | Main Tauri + React desktop application. |
 | `apps/desktop/src-tauri/` | Rust backend for the desktop app, including DB adapters and Tauri commands. |
 | `apps/web/` | Browser-only Vite/React app with local SQLite/DuckDB and HTTP endpoint support. |
-| `crates/` | Shared Rust crates for core models, data sources, SQL, completion, extension APIs, IO, server, i18n, and knowledge tooling. |
+| `crates/` | Shared Rust crates for core models, SQL/completion, proxy/secret handling, extension APIs, IO, server, and knowledge tooling. |
 | `packages/extension-sdk/` | TypeScript extension SDK package. |
 | `templates/extensions/` | Starter templates for extension authors. |
 | `examples/extensions/` | Example extensions. |
@@ -197,8 +197,8 @@ make check
 ## Common Gotchas
 
 - A debug desktop binary launched by itself expects Vite on
-  `http://localhost:1420`. Use `npm run tauri dev`, or start `npm run dev` before
-  launching the binary manually.
+  `http://localhost:1420`. Use `make desktop-dev`, or start
+  `make desktop-vite` before launching the binary manually.
 - If the Tauri window is blank on Linux, check
   [docs/linux-development.md](docs/linux-development.md) for WebKit DMA-BUF,
   compositing, and Wayland/X11 workarounds.

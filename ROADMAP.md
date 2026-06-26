@@ -8,6 +8,9 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Irodori-authored code is dual-licensed as `MIT OR 0BSD` by default so users can choose familiar MIT terms or the almost-no-conditions 0BSD path.
 - First-class SQL databases from the start: PostgreSQL, MySQL/MariaDB, SQLite, SQL Server, and Oracle Database.
 - Architecture must grow beyond classic SQL: YugabyteDB/distributed SQL, InfluxDB/time-series, Neo4j/graph, document, key-value, search, warehouse, and local embedded sources should fit through adapter contracts instead of one-off UI forks.
+- Keep crate boundaries earned by real implementation. Avoid placeholder crates
+  for future architecture; start new areas inside the owning app/crate and split
+  only when there is a stable shared API or independent release/test boundary.
 - A reference policy that separates proprietary clean-room study from license-compatible OSS code study. OSS code can inform implementation when license, attribution, and compatibility are explicit.
 - Rust types remain idiomatic `snake_case`, JSON/TypeScript boundaries use `camelCase`, and command/extension payloads are generated from Rust instead of duplicated by hand.
 - Fully remappable keybindings, plus preset maps for TablePlus-like, VS Code-like, JetBrains-like, and Vim-heavy workflows.
@@ -53,7 +56,6 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Desktop shell: Tauri v2, with Rust commands for privileged/local work and a web UI for editor and layout.
 - Core crates:
   - `irodori-core`: connection model, workspace model, command registry, keybinding resolver.
-  - `irodori-data-sources`: per-source adapters behind stable traits for SQL, time-series, graph, document, KV, search, cloud warehouse, and local embedded engines.
   - `irodori-proxy`: direct, SSH, SOCKS/HTTP, and multi-hop transport composition.
   - `irodori-secure-store`: OS keychain integration and encrypted local config.
 - Supporting crates:
@@ -68,7 +70,9 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   - `irodori-ml`: local-first ML dataset preparation, evaluation, ranking experiments, and provider/model benchmarking; user data never leaves the machine unless an explicit workspace policy allows that class of data.
   - `irodori-io`: shared export/import encoders — CSV/TSV (header toggle, delimiter/quote control), SQL INSERT/UPSERT, JSON/NDJSON, Avro, Parquet — plus dump/restore orchestration.
   - `irodori-server`: optional headless/local HTTP API exposing read and safe-write data operations over the same adapter, proxy, and security model (study PostgREST and DuckDB httpserver patterns, implement independently).
-  - `irodori-i18n`: ja/en message catalogs with a normalized localization model (ICU MessageFormat / Project Fluent style), wired through both Rust and the web UI.
+- Areas that do not yet have a real shared API, such as datasource contracts and
+  i18n catalogs, should remain modules or app-local code until the split pays for
+  itself.
 - UI: compact operational interface, no landing-page feel. Object browser, editor, results, inspector, and command palette are first-screen citizens.
 - Editor engine: evaluate Monaco, CodeMirror 6, and a native/Tree-sitter-backed path before committing. Vim quality and completion architecture decide.
 - Parsing: Tree-sitter for incremental structure where grammars are strong; dialect-specific fallbacks where they are not.

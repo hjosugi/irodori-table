@@ -35,7 +35,8 @@ connector/registry, with per-engine modules under
 | Redshift | sqlx (pg wire) | wire-compatible | AWS-only (no local container) |
 
 Every engine has a test in `tests/integration_db.rs` (or a unit test); run any
-with `scripts/verify-db.sh <engine>` (or `all`).
+container-backed engine with `make db-verify DB=<engine>` or the normal set with
+`make db-all`.
 
 Highlights:
 - **No vendor client needed for Oracle or SQL Server** — pure-Rust thin TNS
@@ -179,7 +180,7 @@ Highlights:
 ## Test & sample infrastructure
 
 - **Per-DB compose**: `samples/<engine>/compose.yaml` (one file per engine), plus
-  Oracle/MongoDB targets. `scripts/verify-db.sh <engine>|all` does up → test → down.
+  Oracle/MongoDB targets. `make db-verify DB=<engine>` does up -> test -> down.
 - **Scale/perf seed**: `scripts/dev-db.sh seed postgres` generates `ROWS` (default
   10M) rows + `TABLES` (default 100) tables.
 - **Syntax reference**: `docs/engine-syntax-reference.md` — connection + query syntax

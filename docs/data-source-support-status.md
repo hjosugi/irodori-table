@@ -18,7 +18,7 @@ Status legend:
 - **Wired** — has a production connect path and a dedicated adapter or a
   wire-compatible adapter it routes through.
 - **Verified** — Wired *and* exercised against a real instance in
-  `tests/integration_db.rs` / `scripts/verify-db.sh`.
+  `tests/integration_db.rs` through the sample harness (`make db-verify`).
 - **Pending** — recognized by the engine enum, adapter scaffolding exists, but the
   connector intentionally returns a "not ready" result.
 - **Recognized, no connector** — present in `DbEngine` but rejected at connect by

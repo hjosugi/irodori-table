@@ -69,8 +69,8 @@ These are explicit competitive gaps, not closed by nearby core-library work alon
 
 ### FND-002 — Cargo/Tauri workspace scaffold ✅
 - **Goal:** A buildable Rust workspace with the crate skeletons from the architecture section.
-- **Done when:** `cargo build` succeeds with empty `irodori-core`, `irodori-data-sources`, `irodori-proxy`, `irodori-secure-store`, `irodori-sql`, `irodori-completion`, `irodori-io`, `irodori-server`, `irodori-i18n`, `irodori-knowledge` crates; CI builds on Linux/macOS/Windows.
-- **Done:** root `Cargo.toml` defines the workspace, includes the existing Tauri crate plus the ten roadmap crates, and sets the empty crates as default members so root `cargo build` verifies the scaffold. `.github/workflows/ci.yml` runs the root scaffold build on Linux, macOS, and Windows.
+- **Done when:** `cargo build` succeeds for the desktop crate and real shared crates; CI builds on Linux/macOS/Windows.
+- **Done:** root `Cargo.toml` defines the workspace and keeps only implemented shared crates as default members. Empty future placeholders were removed so crate boundaries stay earned by code. `.github/workflows/ci.yml` runs the root scaffold build on Linux, macOS, and Windows.
 - **Depends on:** —
 - **Size:** M · **Priority:** P0
 
@@ -147,6 +147,12 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### JOB-001 — Long-running job runtime
 - **Goal:** One cancellable runtime for all large local/background work.
 - **Done when:** jobs have stable IDs, status, progress, cancellation, structured logs, artifacts, errors, retry policy, concurrency limits, CPU/memory/disk budgets, and checkpoint/resume hooks; the desktop can show active/history jobs and the same model is usable by the local API.
+- **Scope note:** Do not pick this as one implementation task. It is intentionally
+  the umbrella contract for `JOB-002`/`JOB-003`/`JOB-004`, and is too large to
+  finish cleanly in one pass. Split it into model-only, in-process runtime,
+  desktop history UI, and first-workflow migration slices before coding. Do not
+  create a new `irodori-jobs` crate until at least two real workflows need the
+  same API boundary.
 - **Depends on:** FND-006, SHELL-001
 - **Size:** L · **Priority:** P1
 
@@ -220,7 +226,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 
 ### SHELL-003 — i18n catalog scaffolding (ja/en)
 - **Goal:** All user-facing strings localizable from the start.
-- **Done when:** `irodori-i18n` exposes a message lookup; UI reads ja/en catalogs; a missing-key check runs in CI; language switch updates the UI.
+- **Done when:** the UI reads ja/en catalogs through a small message lookup; a missing-key check runs in CI; language switch updates the UI. Keep this app-local until a real shared Rust API is needed.
 - **Depends on:** SHELL-001
 - **Size:** M · **Priority:** P1
 
