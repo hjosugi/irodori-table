@@ -6,11 +6,11 @@ import {
   erdFileName,
   serializeSvgElement,
   svgMarkupToPngBlob,
-} from "./erd-export";
-import { buildErdModel, layoutErdModel } from "./erd";
-import { ErdSvg, erdSvgStyle } from "./erd-svg";
-import type { DatabaseMetadata, DbObjectMetadata } from "./generated/irodori-api";
-import { lightTheme } from "./theme";
+} from "@/erd-export";
+import { buildErdModel, layoutErdModel } from "@/erd";
+import { ErdSvg, erdSvgStyle } from "@/erd-svg";
+import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import { lightTheme } from "@/theme";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

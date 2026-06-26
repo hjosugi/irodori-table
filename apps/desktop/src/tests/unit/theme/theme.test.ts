@@ -9,7 +9,7 @@ import {
   lightTheme,
   themes,
   upsertCustomThemeEntry,
-} from "./theme";
+} from "@/theme";
 
 describe("theme model", () => {
   it("exposes distinct light and dark themes", () => {

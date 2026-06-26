@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSqlLinterId, lintSqlDocument } from "./linter";
+import { isSqlLinterId, lintSqlDocument } from "@/sql/linter";
 
 function messages(sql: string) {
   return lintSqlDocument(sql, "postgres").map((diagnostic) => diagnostic.message);

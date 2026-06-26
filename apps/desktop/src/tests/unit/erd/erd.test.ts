@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { DatabaseMetadata, DbObjectMetadata } from "./generated/irodori-api";
-import { buildErdModel, layoutErdModel, toMermaidErd } from "./erd";
+import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import { buildErdModel, layoutErdModel, toMermaidErd } from "@/erd";
 
 function table(
   schema: string,

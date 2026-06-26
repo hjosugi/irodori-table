@@ -4,7 +4,7 @@ import {
   WindowedRows,
   createWindowedRowsProxy,
   makePlaceholderRow,
-} from "./result-window";
+} from "@/result-window";
 
 function row(n: number): readonly unknown[] {
   return [n, `row_${n}`];

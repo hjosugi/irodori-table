@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { lightTheme, type SyntaxTokenRole } from "../theme";
+import { lightTheme, type SyntaxTokenRole } from "@/theme";
 import {
   lezerTokenRoleSpecs,
   sqlHighlightBackend,
   sqlHighlightingExtensions,
   tokenRoleForTreeSitterCapture,
   type TreeSitterSqlGrammar,
-} from "./highlighting";
+} from "@/sql/highlighting";
 
 describe("SQL highlighting roles", () => {
   it("maps every internal syntax role to Lezer tags", () => {

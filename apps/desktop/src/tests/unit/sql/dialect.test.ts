@@ -13,14 +13,14 @@ import {
   buildSqlConfig,
   cmDialect,
   formatterLanguage,
-} from "./dialect";
-import { buildSqlCompletionIndex, completeSqlLightweight } from "./completion";
+} from "@/sql/dialect";
+import { buildSqlCompletionIndex, completeSqlLightweight } from "@/sql/completion";
 import type {
   ColumnMetadata,
   DatabaseMetadata,
   DbEngine,
   DbObjectMetadata,
-} from "../generated/irodori-api";
+} from "@/generated/irodori-api";
 
 describe("cmDialect", () => {
   const engineExpectations: Record<

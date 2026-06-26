@@ -3,7 +3,7 @@ import {
   dollarTagAt,
   selectedOrCurrentStatement,
   statementDelimiters,
-} from "./statements";
+} from "@/sql/statements";
 
 describe("dollarTagAt", () => {
   it("matches $$ and $tag$ dollar quotes", () => {

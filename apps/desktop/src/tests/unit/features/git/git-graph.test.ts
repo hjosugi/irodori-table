@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { GitCommitSummary } from "../../generated/irodori-api";
-import { buildGitGraphRows, filterGraphCommits } from "./git-graph";
+import type { GitCommitSummary } from "@/generated/irodori-api";
+import { buildGitGraphRows, filterGraphCommits } from "@/features/git/git-graph";
 
 function commit(
   hash: string,

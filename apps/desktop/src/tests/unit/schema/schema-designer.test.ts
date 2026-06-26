@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { DbObjectMetadata } from "./generated/irodori-api";
+import type { DbObjectMetadata } from "@/generated/irodori-api";
 import {
   blankSchemaDraft,
   buildSchemaSql,
   schemaDraftFromObject,
   splitIdentifierList,
-} from "./schema-designer";
+} from "@/schema-designer";
 
 describe("schema designer SQL", () => {
   it("builds create table SQL with primary key, index, and foreign key", () => {

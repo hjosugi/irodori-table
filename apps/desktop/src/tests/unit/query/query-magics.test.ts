@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQueryMagic } from "./query-magics";
+import { parseQueryMagic } from "@/query-magics";
 
 describe("parseQueryMagic", () => {
   it("ignores normal SQL", () => {

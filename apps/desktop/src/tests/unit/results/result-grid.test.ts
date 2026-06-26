@@ -10,7 +10,7 @@ import {
   formatResultGridTsv,
   formatResultGridTsvRow,
   type ResultGridRowLike,
-} from "./result-grid";
+} from "@/result-grid";
 
 const rows: ResultGridRowLike[] = [
   { cells: ["2", "Aster", "Tokyo", "900"] },

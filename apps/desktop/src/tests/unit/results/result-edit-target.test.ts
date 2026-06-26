@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type {
   DatabaseMetadata,
   DbObjectMetadata,
-} from "./generated/irodori-api";
-import { deriveResultEditTarget } from "./result-edit-target";
+} from "@/generated/irodori-api";
+import { deriveResultEditTarget } from "@/result-edit-target";
 
 function table(overrides: Partial<DbObjectMetadata>): DbObjectMetadata {
   return {

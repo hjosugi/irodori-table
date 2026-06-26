@@ -3,14 +3,14 @@ import type { Completion } from "@codemirror/autocomplete";
 import {
   buildSqlCompletionIndex,
   completeSqlLightweight,
-} from "./completion";
+} from "@/sql/completion";
 import type {
   ColumnMetadata,
   DatabaseMetadata,
   DbEngine,
   DbObjectMetadata,
   ForeignKey,
-} from "../generated/irodori-api";
+} from "@/generated/irodori-api";
 
 function table(
   schema: string,

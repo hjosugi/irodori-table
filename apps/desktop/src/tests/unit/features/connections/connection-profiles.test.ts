@@ -6,7 +6,7 @@ import {
   validateDraft,
   withUniqueProfileIds,
   type ConnectionDraft,
-} from "./connection-profiles";
+} from "@/features/connections/connection-profiles";
 
 function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
   return {

@@ -4,7 +4,7 @@ import type {
   DatabaseMetadata,
   DbObjectMetadata,
   ForeignKey,
-} from "./generated/irodori-api";
+} from "@/generated/irodori-api";
 import {
   buildForeignKeyLookup,
   findTableByName,
@@ -13,7 +13,7 @@ import {
   formatDetailValue,
   parseSourceTable,
   quoteIdent,
-} from "./row-detail";
+} from "@/row-detail";
 
 function column(name: string, dataType = "text") {
   return { name, dataType, nullable: true, ordinal: 0 };

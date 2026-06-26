@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSqlDocument, isSqlFormatterId } from "./formatter";
+import { formatSqlDocument, isSqlFormatterId } from "@/sql/formatter";
 
 describe("SQL formatter hook", () => {
   it("formats through the configured sql-formatter hook", () => {

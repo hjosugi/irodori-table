@@ -7,7 +7,7 @@ import {
   formatKeySequence,
   resolveKeybinding,
   type Keymap,
-} from "./keybindings";
+} from "@/keybindings";
 
 describe("keybinding resolver", () => {
   it("resolves global commands everywhere and scoped commands only in scope", () => {
