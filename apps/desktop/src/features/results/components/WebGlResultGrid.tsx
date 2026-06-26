@@ -9,11 +9,11 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ResultSortRule } from "@/features/results/result-grid";
+import type { ResultSortRule } from "../result-grid";
 import type {
   ResultGridDisplayRow,
   ResultGridSortRuleView,
-} from "@/features/results/result-view-model";
+} from "../result-view-model";
 import { resultCellInRange } from "../result-selection";
 import type { ResultCellRangeBounds, SelectedCell } from "../types";
 import {

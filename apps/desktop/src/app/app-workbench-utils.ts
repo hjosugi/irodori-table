@@ -1,7 +1,10 @@
 import type { JobList } from "@/generated/irodori-api";
-import type { KeybindingScope } from "@/core/keybindings";
-import type { ResultFilterRule, ResultSortRule } from "@/features/results/result-grid";
-import type { ResultGridDraftCell as GridCellDraft } from "@/features/results/result-view-model";
+import type { KeybindingScope } from "@/core";
+import type {
+  ResultFilterRule,
+  ResultGridDraftCell as GridCellDraft,
+  ResultSortRule,
+} from "@/features/results";
 import { darkTheme, lightTheme, type ThemeKind } from "@/theme";
 
 export function clampNumber(value: number, min: number, max: number) {

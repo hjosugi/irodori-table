@@ -4,8 +4,8 @@ import type {
   ResultFilterJoin,
   ResultFilterRule,
   ResultSortRule,
-} from "@/features/results/result-grid";
-import type { ResultGridDraftCell as GridCellDraft } from "@/features/results/result-view-model";
+} from "../result-grid";
+import type { ResultGridDraftCell as GridCellDraft } from "../result-view-model";
 import type {
   EditingCell,
   ResultCellRange,

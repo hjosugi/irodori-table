@@ -2,7 +2,7 @@ import {
   commandCatalog,
   type CommandMeta,
   type Keymap,
-} from "../core/keybindings";
+} from "@/core";
 import type { WorkspaceSnapshot } from "../generated/irodori-api";
 
 export const APP_NAME = "Irodori Table";

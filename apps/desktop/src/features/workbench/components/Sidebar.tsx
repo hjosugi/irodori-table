@@ -19,7 +19,7 @@ import {
   TerminalSquare,
   X,
 } from "lucide-react";
-import { hasDiagram } from "@/features/erd/erd";
+import { hasDiagram } from "@/features/erd";
 import type {
   DatabaseMetadata,
   DbObjectMetadata,

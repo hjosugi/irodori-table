@@ -5,7 +5,7 @@ import {
   type ResultFilterJoin,
   type ResultFilterOperator,
   type ResultFilterRule,
-} from "@/features/results/result-grid";
+} from "../result-grid";
 
 type ResultFilterPanelProps = {
   filtersActive: boolean;

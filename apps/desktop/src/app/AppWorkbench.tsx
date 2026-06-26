@@ -41,17 +41,41 @@ import { CommandPalette } from "@/app/CommandPalette";
 import { GitDrawer, useGitStore } from "@/features/git";
 import {
   ResultsPane,
+  WindowedRows,
+  buildChartResultModel,
+  buildGraphResultModel,
+  buildResultExport,
+  buildResultGridViewModel,
+  calculateResultGridVirtualColumnWindow,
+  calculateResultGridVirtualRowWindow,
+  createWindowedRowsProxy,
+  cycleResultSortRules,
+  deriveResultEditTarget,
+  findTableMetadata,
   formatResultSelectionStatus,
+  formatResultGridCell as formatCell,
+  formatResultGridTsv,
+  formatResultGridTsvRow,
   historySnapshotToQueryResult,
   normalizeResultCellRange,
+  parseSourceTable,
   readResultCellRangeRows,
+  resultExportFileName,
+  resultGridRowKey,
   summarizeResultCellRange,
   toCount,
   useResultGridStore,
   useResultsStore,
+  type ResultEditTarget,
+  type ResultExportFormat,
+  type ResultFilterRule,
   type ResultGridEditDraft,
+  type ResultGridDraftCell as GridCellDraft,
+  type ResultGridRowLike,
+  type ResultGridRowOrigin,
 } from "@/features/results";
 import {
+  ConnectionManagerDialog,
   defaultConnectionColor,
   describeConnection,
   engineLabel,
@@ -68,10 +92,10 @@ import {
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "@/features/connections";
-import { ConnectionManagerDialog } from "@/features/connections/ConnectionManagerDialog";
 import {
   QueryEditorPane,
   QueryParameterDialog,
+  parseQueryMagic,
   buildParameterInputs,
   loadQueryParameterMemory,
   queryParameterMemoryStorageKey,
@@ -79,10 +103,37 @@ import {
   type EditorGroup,
   type EditorSelection,
   type QueryParameterMemory,
+  type QueryMagicAction,
+  type SqlEditorHandle,
 } from "@/features/query-editor";
-import { ImportDialog, type ImportPreview } from "@/features/import/ImportDialog";
-import { ErdDialog } from "@/features/erd/ErdDialog";
-import { SchemaDesignerDialog } from "@/features/schema-designer/SchemaDesignerDialog";
+import {
+  ImportDialog,
+  detectImportFileKind,
+  generateImportSql,
+  inferImportTableName,
+  parseImportText,
+  type ImportPreview,
+} from "@/features/import";
+import {
+  ErdDialog,
+  buildErdModel,
+  downloadBlob,
+  erdFileName,
+  erdSvgStyle,
+  hasDiagram,
+  layoutErdModel,
+  serializeSvgElement,
+  svgMarkupToPngBlob,
+  toMermaidErd,
+  writePngBlobToClipboard,
+  writeTextToClipboard,
+  type ErdLayout,
+} from "@/features/erd";
+import {
+  SchemaDesignerDialog,
+  buildSchemaSql,
+  useSchemaDesignerStore,
+} from "@/features/schema-designer";
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import {
   UI_ZOOM_DEFAULT,
@@ -115,34 +166,8 @@ import {
   type WorkbenchViewVisibility,
 } from "@/features/workbench";
 import {
-  WindowedRows,
-  createWindowedRowsProxy,
-} from "@/features/results/result-window";
-import {
-  buildErdModel,
-  hasDiagram,
-  layoutErdModel,
-  toMermaidErd,
-  type ErdLayout,
-} from "@/features/erd/erd";
-import {
-  downloadBlob,
-  erdFileName,
-  serializeSvgElement,
-  svgMarkupToPngBlob,
-  writePngBlobToClipboard,
-  writeTextToClipboard,
-} from "@/features/erd/erd-export";
-import { erdSvgStyle } from "@/features/erd/erd-svg";
-import { errorMessage } from "@/core/errors";
-import {
-  detectImportFileKind,
-  generateImportSql,
-  inferImportTableName,
-  parseImportText,
-} from "@/features/import/importers";
-import {
   KEY_SEQUENCE_TIMEOUT_MS,
+  errorMessage,
   effectiveKeymap,
   eventToChord,
   findConflicts,
@@ -152,36 +177,7 @@ import {
   loadOverrides,
   resolveKeybinding,
   saveOverrides,
-} from "@/core/keybindings";
-import {
-  buildResultExport,
-  resultExportFileName,
-  type ResultExportFormat,
-} from "@/features/results/result-export";
-import {
-  calculateResultGridVirtualColumnWindow,
-  calculateResultGridVirtualRowWindow,
-  cycleResultSortRules,
-  formatResultGridTsv,
-  formatResultGridTsvRow,
-  type ResultFilterRule,
-  type ResultGridRowLike,
-} from "@/features/results/result-grid";
-import {
-  buildResultGridViewModel,
-  formatResultGridCell as formatCell,
-  resultGridRowKey,
-  type ResultGridDraftCell as GridCellDraft,
-  type ResultGridRowOrigin,
-} from "@/features/results/result-view-model";
-import { buildChartResultModel } from "@/features/results/chart-result";
-import { buildGraphResultModel } from "@/features/results/graph-result";
-import {
-  deriveResultEditTarget,
-  type ResultEditTarget,
-} from "@/features/results/result-edit-target";
-import { useSchemaDesignerStore } from "@/features/schema-designer/schema-designer-store";
-import { buildSchemaSql } from "@/features/schema-designer/schema-designer";
+} from "@/core";
 import {
   dbApplyEdits,
   dbCancel,
@@ -209,7 +205,6 @@ import {
   workspaceSnapshot,
   type WorkspaceSnapshot,
 } from "@/generated/irodori-api";
-import { type SqlEditorHandle } from "@/features/query-editor/SqlEditor";
 import { sqlSnippetsFromJson } from "@/sql/completion";
 import { isSqlFormatterId } from "@/sql/formatter";
 import { isSqlLinterId } from "@/sql/linter";
@@ -222,8 +217,6 @@ import {
   upsertCustomThemeEntry,
   type ThemeKind,
 } from "@/theme";
-import { findTableMetadata, parseSourceTable } from "@/features/results/row-detail";
-import { parseQueryMagic, type QueryMagicAction } from "@/features/query-editor/query-magics";
 import {
   EMPTY_CELL_EDITS,
   EMPTY_DELETED_ROWS,

@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { ImportTextFormat, ParsedImport } from "@/features/import/importers";
+import type { ImportTextFormat, ParsedImport } from "./importers";
 
 export type ImportPreview = ParsedImport & {
   fileName: string;

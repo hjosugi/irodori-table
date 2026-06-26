@@ -26,18 +26,18 @@ import {
   buildResultExport,
   resultExportFormats,
   type ResultExportFormat,
-} from "@/features/results/result-export";
+} from "../result-export";
 import {
   type ResultFilterJoin,
   type ResultFilterRule,
   type ResultSortRule,
-} from "@/features/results/result-grid";
+} from "../result-grid";
 import type {
   ResultGridDisplayRow,
   ResultGridDraftCell as GridCellDraft,
   ResultGridRowOrigin,
   ResultGridSortRuleView,
-} from "@/features/results/result-view-model";
+} from "../result-view-model";
 import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { ResultBody } from "./ResultBody";

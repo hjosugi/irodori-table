@@ -12,14 +12,14 @@ import type {
   DbEngine,
   DbObjectMetadata,
 } from "@/generated/irodori-api";
-import type { ResultSortRule } from "@/features/results/result-grid";
+import type { ResultSortRule } from "../result-grid";
 import {
   type ResultGridDisplayRow,
   type ResultGridDraftCell as GridCellDraft,
   type ResultGridRowOrigin,
   type ResultGridSortRuleView,
-} from "@/features/results/result-view-model";
-import { RowDetailSidebar } from "@/features/results/components/RowDetailSidebar";
+} from "../result-view-model";
+import { RowDetailSidebar } from "./RowDetailSidebar";
 import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { resultCellInRange } from "../result-selection";

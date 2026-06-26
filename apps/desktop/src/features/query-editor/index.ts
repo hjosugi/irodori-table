@@ -1,4 +1,8 @@
 export {
+  default as SqlEditor,
+  type SqlEditorHandle,
+} from "./SqlEditor";
+export {
   QueryEditorPane,
   type EditorGroup,
   type EditorSelection,
@@ -13,3 +17,7 @@ export {
   queryParameterMemoryStorageKey,
   type QueryParameterMemory,
 } from "./query-parameters";
+export {
+  parseQueryMagic,
+  type QueryMagicAction,
+} from "./query-magics";

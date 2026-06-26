@@ -20,4 +20,5 @@ export {
   type ConnectionInputMode,
   type WorkspaceConnection,
 } from "./connection-profiles";
+export { ConnectionManagerDialog } from "./ConnectionManagerDialog";
 export { useConnectionStore } from "./connection-store";

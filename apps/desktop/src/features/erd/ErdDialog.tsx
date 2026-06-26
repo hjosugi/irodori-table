@@ -9,8 +9,8 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import type { ErdLayout, ErdModel } from "@/features/erd/erd";
-import { ErdSvg } from "@/features/erd/erd-svg";
+import type { ErdLayout, ErdModel } from "./erd";
+import { ErdSvg } from "./erd-svg";
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
