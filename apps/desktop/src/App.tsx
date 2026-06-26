@@ -3,7 +3,6 @@ import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type UIEvent,
   useEffect,
   useMemo,
@@ -22,7 +21,6 @@ import {
   queryHistoryResultRowsHardLimit,
   useQueryHistoryStore,
   type QueryHistoryItem,
-  type QueryHistoryResultSnapshot,
 } from "./features/query-history";
 import {
   APP_IDENTIFIER,
@@ -42,13 +40,15 @@ import { CommandPalette } from "./app/CommandPalette";
 import { GitDrawer, useGitStore } from "./features/git";
 import {
   ResultsPane,
+  formatResultSelectionStatus,
+  historySnapshotToQueryResult,
   normalizeResultCellRange,
   readResultCellRangeRows,
   summarizeResultCellRange,
+  toCount,
   useResultGridStore,
   useResultsStore,
   type ResultGridEditDraft,
-  type ResultSelectionSummary,
 } from "./features/results";
 import {
   defaultConnectionColor,
@@ -71,9 +71,13 @@ import { ConnectionManagerDialog } from "./features/connections/ConnectionManage
 import {
   QueryEditorPane,
   QueryParameterDialog,
+  buildParameterInputs,
+  loadQueryParameterMemory,
+  queryParameterMemoryStorageKey,
   type PendingQueryParameters,
   type EditorGroup,
   type EditorSelection,
+  type QueryParameterMemory,
 } from "./features/query-editor";
 import { ImportDialog, type ImportPreview } from "./features/import/ImportDialog";
 import { ErdDialog } from "./features/erd/ErdDialog";
@@ -84,10 +88,23 @@ import { createTranslator, normalizeLocale } from "./i18n";
 import {
   createWorkbenchCommandHandler,
   Inspector,
+  INSPECTOR_WIDTH_MAX,
+  INSPECTOR_WIDTH_MIN,
+  RESULTS_HEIGHT_MAX,
+  RESULTS_HEIGHT_MIN,
   Sidebar,
+  SIDEBAR_WIDTH_MAX,
+  SIDEBAR_WIDTH_MIN,
   WorkbenchShell,
+  completionHintsFromMetadata,
+  createPanelResizeController,
+  objectKindLabel,
+  qualifiedObjectName,
+  quoteSqlIdentifier,
+  tablePreviewSql,
   useWorkbenchStore,
   workbenchViewIds,
+  type CompletionHint,
   type WorkbenchViewPlacements,
   type WorkbenchViewVisibility,
 } from "./features/workbench";
@@ -173,14 +190,12 @@ import {
   jobsCancel,
   jobsList,
   type CellValue,
-  type DatabaseMetadata,
   type DbEngine,
   type DbObjectMetadata,
   type JobList,
+  type QueryParameterInput,
   type QueryResult,
   type QueryResultSet,
-  type QueryParameterInput,
-  type QueryParameterPromptSet,
   type RowDelete,
   type RowInsert,
   type RowUpdate,
@@ -207,8 +222,6 @@ import {
 import { findTableMetadata, parseSourceTable } from "./row-detail";
 import { parseQueryMagic, type QueryMagicAction } from "./query-magics";
 import "./App.css";
-
-const queryParameterMemoryStorageKey = "irodori.queryParameters.v1";
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -254,8 +267,6 @@ function isCellEditorClipboardShortcut(
   );
 }
 
-type QueryParameterMemory = Record<string, Record<string, string>>;
-
 // Parse pasted clipboard text (TSV, or CSV as a fallback) into a grid of strings.
 function parseClipboardTable(text: string): string[][] {
   const rows = text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
@@ -263,152 +274,7 @@ function parseClipboardTable(text: string): string[][] {
   return rows.map((row) => row.split(delimiter));
 }
 
-function toCount(value: bigint | number) {
-  return Number(value).toLocaleString();
-}
-
-function formatSelectionNumber(value: number) {
-  return value.toLocaleString(undefined, {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 6,
-  });
-}
-
-function formatResultSelectionStatus(summary: ResultSelectionSummary) {
-  const parts = [
-    `${toCount(summary.cellCount)} cells`,
-    `${toCount(summary.rowCount)}x${toCount(summary.columnCount)}`,
-  ];
-  if (summary.numericCount > 0) {
-    parts.push(`sum ${formatSelectionNumber(summary.sum ?? 0)}`);
-    parts.push(`avg ${formatSelectionNumber(summary.average ?? 0)}`);
-    parts.push(`min ${formatSelectionNumber(summary.min ?? 0)}`);
-    parts.push(`max ${formatSelectionNumber(summary.max ?? 0)}`);
-  }
-  if (summary.nullCount > 0) {
-    parts.push(`null ${toCount(summary.nullCount)}`);
-  }
-  if (summary.textCount > 0 && summary.numericCount === 0) {
-    parts.push(`text ${toCount(summary.textCount)}`);
-  }
-  if (summary.truncated) {
-    parts.push(`sampled ${toCount(summary.sampledCellCount)}`);
-  }
-  return parts.join(" · ");
-}
-
 const emptyJobList: JobList = { active: [], history: [] };
-
-function historySnapshotToQueryResult(
-  snapshot: QueryHistoryResultSnapshot,
-): QueryResult {
-  const message = snapshot.retentionTruncated
-    ? `history preview retained ${toCount(snapshot.retainedRows)} of ${toCount(
-        snapshot.rowCount,
-      )} rows`
-    : snapshot.message;
-  const resultSets =
-    snapshot.resultSets && snapshot.resultSets.length > 1
-      ? snapshot.resultSets.map((set) => ({
-          statementIndex: set.statementIndex,
-          statement: set.statement,
-          columns: set.columns,
-          rows: set.rows,
-          rowCount: BigInt(set.retainedRows),
-          elapsedMs: BigInt(set.elapsedMs),
-          truncated: set.truncated || set.retentionTruncated,
-          message: set.retentionTruncated
-            ? `history preview retained ${toCount(set.retainedRows)} of ${toCount(
-                set.rowCount,
-              )} rows`
-            : set.message,
-        }))
-      : undefined;
-  return {
-    columns: snapshot.columns,
-    rows: snapshot.rows,
-    rowCount: BigInt(snapshot.retainedRows),
-    elapsedMs: BigInt(snapshot.elapsedMs),
-    truncated: snapshot.truncated || snapshot.retentionTruncated,
-    message,
-    resultSets,
-  };
-}
-
-function objectKindLabel(object: DbObjectMetadata) {
-  switch (object.kind) {
-    case "view":
-      return "view";
-    case "function":
-      return "function";
-    case "procedure":
-      return "procedure";
-    case "index":
-      return "index";
-    default:
-      return "table";
-  }
-}
-
-function quoteSqlIdentifier(engine: DbEngine, name: string) {
-  const quote = engine === "mysql" || engine === "mariadb" || engine === "tidb" ? "`" : '"';
-  return `${quote}${name.split(quote).join(quote + quote)}${quote}`;
-}
-
-function qualifiedObjectName(engine: DbEngine, object: DbObjectMetadata) {
-  const parts = [object.schema, object.name].filter(Boolean);
-  return parts.map((part) => quoteSqlIdentifier(engine, part)).join(".");
-}
-
-function tablePreviewSql(engine: DbEngine, object: DbObjectMetadata) {
-  const table = qualifiedObjectName(engine, object);
-  if (engine === "sqlserver") {
-    return `select top (200) * from ${table};`;
-  }
-  return `select * from ${table} limit 200;`;
-}
-
-type CompletionHint = {
-  label: string;
-  detail: string;
-  insertText: string;
-};
-
-function completionHintsFromMetadata(
-  metadata: DatabaseMetadata | undefined,
-): CompletionHint[] {
-  if (!metadata) {
-    return [];
-  }
-  const relationHints = metadata.schemas.flatMap((schema) =>
-    schema.objects
-      .filter((object) => object.kind !== "index")
-      .map((object) => {
-        const qualifiedName = schema.name
-          ? `${schema.name}.${object.name}`
-          : object.name;
-        return {
-          label: object.name,
-          detail: `${schema.name || "default"} ${objectKindLabel(object)}`,
-          insertText:
-            object.kind === "function" || object.kind === "procedure"
-              ? `${qualifiedName}()`
-              : qualifiedName,
-        };
-      }),
-  );
-  const columnHints = metadata.schemas.flatMap((schema) =>
-    schema.objects
-      .filter((object) => object.kind === "table" || object.kind === "view")
-      .flatMap((object) =>
-        object.columns.slice(0, 4).map((column) => ({
-          label: `${object.name}.${column.name}`,
-          detail: `${column.dataType}${column.nullable ? "" : " not null"}`,
-          insertText: `${object.name}.${column.name}`,
-        })),
-      ),
-  );
-  return [...relationHints, ...columnHints].slice(0, 8);
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -416,81 +282,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function builtInTheme(kind: ThemeKind) {
   return kind === "dark" ? darkTheme : lightTheme;
-}
-
-function loadQueryParameterMemory(): QueryParameterMemory {
-  try {
-    const raw = window.localStorage.getItem(queryParameterMemoryStorageKey);
-    if (!raw) {
-      return {};
-    }
-    const parsed = JSON.parse(raw) as unknown;
-    if (!isRecord(parsed)) {
-      return {};
-    }
-    const memory: QueryParameterMemory = {};
-    for (const [signature, values] of Object.entries(parsed)) {
-      if (!isRecord(values)) {
-        continue;
-      }
-      const entry: Record<string, string> = {};
-      for (const [key, value] of Object.entries(values)) {
-        if (typeof value === "string") {
-          entry[key] = value;
-        }
-      }
-      memory[signature] = entry;
-    }
-    return memory;
-  } catch {
-    return {};
-  }
-}
-
-function parseParameterValue(input: string): unknown {
-  const trimmed = input.trim();
-  if (trimmed === "null") {
-    return null;
-  }
-  if (trimmed === "true") {
-    return true;
-  }
-  if (trimmed === "false") {
-    return false;
-  }
-  if (/^-?\d+$/.test(trimmed)) {
-    const value = Number(trimmed);
-    if (Number.isSafeInteger(value)) {
-      return value;
-    }
-  }
-  if (/^-?(?:\d+\.\d+|\d+e[+-]?\d+|\d+\.\d+e[+-]?\d+)$/i.test(trimmed)) {
-    const value = Number(trimmed);
-    if (Number.isFinite(value)) {
-      return value;
-    }
-  }
-  if (
-    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-    (trimmed.startsWith("[") && trimmed.endsWith("]"))
-  ) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return input;
-    }
-  }
-  return input;
-}
-
-function buildParameterInputs(
-  promptSet: QueryParameterPromptSet,
-  values: Record<string, string>,
-): QueryParameterInput[] {
-  return promptSet.prompts.map((prompt) => ({
-    key: prompt.key,
-    value: parseParameterValue(values[prompt.id] ?? ""),
-  }));
 }
 
 function tauriRuntimeError() {
@@ -527,14 +318,6 @@ const EMPTY_DELETED_ROWS: ReadonlySet<number> = new Set();
 const EMPTY_FILTER_RULES: readonly ResultFilterRule[] = [];
 const EMPTY_SORT_RULES: readonly ResultSortRule[] = [];
 const GRID_COPY_ROW_LIMIT = 50_000;
-const SIDEBAR_WIDTH_MIN = 220;
-const SIDEBAR_WIDTH_MAX = 420;
-const INSPECTOR_WIDTH_MIN = 220;
-const INSPECTOR_WIDTH_MAX = 420;
-const RESULTS_HEIGHT_MIN = 220;
-const RESULTS_HEIGHT_MAX = 560;
-const EDITOR_SPLIT_MIN = 28;
-const EDITOR_SPLIT_MAX = 72;
 
 function App() {
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -647,6 +430,18 @@ function App() {
   const setEditorSplitPercent = useWorkbenchStore(
     (state) => state.setEditorSplitPercent,
   );
+  const { beginPanelResize, onPanelResizeKey } = createPanelResizeController({
+    sidebarSide,
+    sidebarWidth,
+    inspectorWidth,
+    resultsHeight,
+    editorSplitMode,
+    editorSplitRef,
+    setSidebarWidth,
+    setInspectorWidth,
+    setResultsHeight,
+    setEditorSplitPercent,
+  });
   const [preferredEditorGroup, setActiveEditorGroup] =
     useState<EditorGroup>("primary");
   const activeEditorGroup: EditorGroup =
@@ -1385,166 +1180,6 @@ function App() {
   function clearQuickFilter() {
     setQuickFilter("");
     resetGridScrollPosition(true);
-  }
-
-  type PanelResizeKind =
-    | "sidebar"
-    | "leftInspector"
-    | "inspector"
-    | "results"
-    | "editorSplit";
-
-  function resizePanel(kind: PanelResizeKind, delta: number) {
-    switch (kind) {
-      case "sidebar":
-        setSidebarWidth((current) =>
-          clampNumber(current + delta, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX),
-        );
-        break;
-      case "leftInspector":
-      case "inspector":
-        setInspectorWidth((current) =>
-          clampNumber(
-            current + delta,
-            INSPECTOR_WIDTH_MIN,
-            INSPECTOR_WIDTH_MAX,
-          ),
-        );
-        break;
-      case "results":
-        setResultsHeight((current) =>
-          clampNumber(current + delta, RESULTS_HEIGHT_MIN, RESULTS_HEIGHT_MAX),
-        );
-        break;
-      case "editorSplit":
-        setEditorSplitPercent((current) =>
-          clampNumber(current + delta, EDITOR_SPLIT_MIN, EDITOR_SPLIT_MAX),
-        );
-        break;
-    }
-  }
-
-  function beginPanelResize(
-    kind: PanelResizeKind,
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const startSidebarWidth = sidebarWidth;
-    const startInspectorWidth = inspectorWidth;
-    const startResultsHeight = resultsHeight;
-    const editorSplitBounds = editorSplitRef.current?.getBoundingClientRect();
-    document.body.classList.add("panel-resizing");
-
-    const onMove = (moveEvent: PointerEvent) => {
-      if (kind === "editorSplit") {
-        if (!editorSplitBounds) {
-          return;
-        }
-        const next =
-          editorSplitMode === "down"
-            ? ((moveEvent.clientY - editorSplitBounds.top) /
-                Math.max(1, editorSplitBounds.height)) *
-              100
-            : ((moveEvent.clientX - editorSplitBounds.left) /
-                Math.max(1, editorSplitBounds.width)) *
-              100;
-        setEditorSplitPercent(
-          clampNumber(next, EDITOR_SPLIT_MIN, EDITOR_SPLIT_MAX),
-        );
-        return;
-      }
-      if (kind === "sidebar") {
-        // When the sidebar sits on the right its resize handle is on its left
-        // edge, so dragging left should widen it — invert the delta.
-        const delta = moveEvent.clientX - startX;
-        setSidebarWidth(
-          clampNumber(
-            startSidebarWidth + (sidebarSide === "right" ? -delta : delta),
-            SIDEBAR_WIDTH_MIN,
-            SIDEBAR_WIDTH_MAX,
-          ),
-        );
-        return;
-      }
-      if (kind === "inspector") {
-        setInspectorWidth(
-          clampNumber(
-            startInspectorWidth - (moveEvent.clientX - startX),
-            INSPECTOR_WIDTH_MIN,
-            INSPECTOR_WIDTH_MAX,
-          ),
-        );
-        return;
-      }
-      if (kind === "leftInspector") {
-        setInspectorWidth(
-          clampNumber(
-            startInspectorWidth + (moveEvent.clientX - startX),
-            INSPECTOR_WIDTH_MIN,
-            INSPECTOR_WIDTH_MAX,
-          ),
-        );
-        return;
-      }
-      setResultsHeight(
-        clampNumber(
-          startResultsHeight - (moveEvent.clientY - startY),
-          RESULTS_HEIGHT_MIN,
-          RESULTS_HEIGHT_MAX,
-        ),
-      );
-    };
-
-    const onEnd = () => {
-      document.body.classList.remove("panel-resizing");
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onEnd);
-      window.removeEventListener("pointercancel", onEnd);
-    };
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onEnd, { once: true });
-    window.addEventListener("pointercancel", onEnd, { once: true });
-  }
-
-  function onPanelResizeKey(
-    kind: PanelResizeKind,
-    event: ReactKeyboardEvent<HTMLDivElement>,
-  ) {
-    if (
-      event.key !== "ArrowLeft" &&
-      event.key !== "ArrowRight" &&
-      event.key !== "ArrowUp" &&
-      event.key !== "ArrowDown"
-    ) {
-      return;
-    }
-    event.preventDefault();
-    const step = event.shiftKey ? 32 : 16;
-    if (kind === "editorSplit") {
-      if (editorSplitMode === "down") {
-        resizePanel(kind, event.key === "ArrowDown" ? 4 : -4);
-      } else {
-        resizePanel(kind, event.key === "ArrowRight" ? 4 : -4);
-      }
-      return;
-    }
-    if (kind === "results") {
-      resizePanel(kind, event.key === "ArrowUp" ? step : -step);
-      return;
-    }
-    if (kind === "sidebar") {
-      const direction = sidebarSide === "right" ? -1 : 1;
-      resizePanel(kind, (event.key === "ArrowRight" ? step : -step) * direction);
-      return;
-    }
-    if (kind === "leftInspector") {
-      resizePanel(kind, event.key === "ArrowRight" ? step : -step);
-      return;
-    }
-    resizePanel(kind, event.key === "ArrowLeft" ? step : -step);
   }
 
   // Drop every staged edit (called on a new run and after a successful commit).

@@ -148,6 +148,7 @@ async function replaceEditorText(page: Page, text: string) {
   await editor.click();
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.type(text);
+  await page.keyboard.press("Escape");
 }
 
 async function connectMockDatabase(page: Page) {

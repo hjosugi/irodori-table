@@ -6,8 +6,6 @@ export type CompletionHint = {
   insertText: string;
 };
 
-export type PanelResizeKind = "sidebar" | "inspector" | "results" | "editorSplit";
-
 export type WorkbenchKeyScope = KeybindingScope;
 
 export type WorkbenchSide = "left" | "right";

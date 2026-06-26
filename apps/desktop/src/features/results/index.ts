@@ -1,11 +1,15 @@
 export { ResultBody } from "./components/ResultBody";
 export { ResultsPane } from "./components/ResultsPane";
 export {
+  formatResultSelectionStatus,
+  historySnapshotToQueryResult,
+  toCount,
+} from "./result-format";
+export {
   normalizeResultCellRange,
   readResultCellRangeRows,
   resultCellInRange,
   summarizeResultCellRange,
-  type ResultSelectionSummary,
 } from "./result-selection";
 export { useResultGridStore } from "./store/result-grid-store";
 export type { ResultGridEditDraft } from "./store/result-grid-store";
