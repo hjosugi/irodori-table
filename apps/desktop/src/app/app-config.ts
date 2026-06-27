@@ -225,6 +225,16 @@ export const menuBarSections: AppMenuSection[] = [
     ],
   },
   {
+    label: "Run",
+    items: [
+      { commandId: "query.run" },
+      { commandId: "query.runCurrent" },
+      { commandId: "query.runFromStart" },
+      { commandId: "query.runAll" },
+      { commandId: "query.cancel" },
+    ],
+  },
+  {
     label: "Tools",
     items: [
       { commandId: "palette.open" },
