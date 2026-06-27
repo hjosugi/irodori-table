@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   appCommandCatalog,
   appMenuCommandCatalog,
+  fallbackSnapshot,
   initialQuery,
   loadSavedQuery,
   resultCopyDefaultKeymap,
@@ -74,7 +75,13 @@ describe("app command config", () => {
   });
 });
 
-describe("scratch query defaults", () => {
+describe("debug startup defaults", () => {
+  it("uses a clean fallback snapshot without demo objects", () => {
+    expect(fallbackSnapshot.activeConnectionId).toBe("local-pg");
+    expect(fallbackSnapshot.connections).toHaveLength(1);
+    expect(fallbackSnapshot.connections[0]?.objects).toEqual([]);
+  });
+
   it("starts with an empty editor when no query was saved", () => {
     window.localStorage.removeItem(savedQueryStorageKey);
 
@@ -88,9 +95,15 @@ describe("scratch query defaults", () => {
     expect(loadSavedQuery()).toBe("");
   });
 
-  it("keeps a real user-saved query", () => {
+  it("starts clean in dev even when a real query was saved", () => {
     window.localStorage.setItem(savedQueryStorageKey, "select 1;");
 
-    expect(loadSavedQuery()).toBe("select 1;");
+    expect(loadSavedQuery()).toBe("");
+  });
+
+  it("can restore a real user-saved query when requested", () => {
+    window.localStorage.setItem(savedQueryStorageKey, "select 1;");
+
+    expect(loadSavedQuery({ restoreSaved: true })).toBe("select 1;");
   });
 });

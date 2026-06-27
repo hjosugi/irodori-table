@@ -279,33 +279,11 @@ export const fallbackSnapshot: WorkspaceSnapshot = {
     {
       id: "local-pg",
       name: "Local Postgres",
-      engine: "PostgreSQL 16",
+      engine: "PostgreSQL",
       status: "idle",
       latencyMs: 0,
       proxy: "direct",
-      objects: [
-        { name: "cheeses", kind: "table", rows: "5" },
-        { name: "countries", kind: "table", rows: "5" },
-        { name: "orders", kind: "table", rows: "1.2M" },
-        { name: "customers", kind: "table", rows: "83K" },
-        { name: "invoice_lines", kind: "table", rows: "4.8M" },
-        { name: "cheese_summary", kind: "view" },
-        { name: "recent_revenue", kind: "view" },
-        { name: "refresh_rollups", kind: "procedure" },
-      ],
-    },
-    {
-      id: "oracle-dev",
-      name: "Oracle Dev",
-      engine: "Oracle 23ai",
-      status: "idle",
-      latencyMs: 18,
-      proxy: "ssh > socks5",
-      objects: [
-        { name: "APP_USERS", kind: "table", rows: "42K" },
-        { name: "LEDGER_ENTRY", kind: "table", rows: "9.1M" },
-        { name: "PKG_BILLING", kind: "procedure" },
-      ],
+      objects: [],
     },
   ],
 };
@@ -332,19 +310,12 @@ limit 200;`;
 
 export const initialQuery = "";
 
-export const resultRows = [
-  ["1029", "Kawase Foods", "9841200", "2026-06-20 18:34"],
-  ["917", "Northwind Retail", "7720100", "2026-06-20 11:12"],
-  ["1441", "Aster Works", "6533000", "2026-06-19 23:41"],
-  ["447", "Minato Labs", "5128800", "2026-06-19 08:03"],
-  ["620", "Higashi Market", "4889100", "2026-06-18 19:27"],
-  ["233", "Shiro Systems", "4412200", "2026-06-18 16:15"],
-  ["1104", "Iris Trading", "3824000", "2026-06-17 21:06"],
-];
-
-export function loadSavedQuery(): string {
+export function loadSavedQuery(
+  options: { restoreSaved?: boolean } = {},
+): string {
+  const restoreSaved = options.restoreSaved ?? !import.meta.env.DEV;
   const stored = window.localStorage.getItem(savedQueryStorageKey);
-  if (!stored || stored === legacySeedQuery) {
+  if (!restoreSaved || !stored || stored === legacySeedQuery) {
     return initialQuery;
   }
   return stored;
