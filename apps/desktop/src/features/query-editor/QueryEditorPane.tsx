@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
+import type { CSSProperties } from "react";
 import {
   AlignLeft,
   ChevronDown,
@@ -67,6 +68,8 @@ export interface QueryEditorPaneProps {
   editorEngine: DbEngine;
   activeMetadata?: DatabaseMetadata;
   sqlSnippets: readonly SqlSnippetDefinition[];
+  editorBackgroundImage: string;
+  editorBackgroundOpacity: number;
   theme: IrodoriTheme;
   vimMode: boolean;
   sqlLinter: SqlLinterId;
@@ -119,6 +122,8 @@ export function QueryEditorPane({
   editorEngine,
   activeMetadata,
   sqlSnippets,
+  editorBackgroundImage,
+  editorBackgroundOpacity,
   theme,
   vimMode,
   sqlLinter,
@@ -165,6 +170,10 @@ export function QueryEditorPane({
   const [sqlFileDragOver, setSqlFileDragOver] = useState(false);
   const runControlRef = useRef<HTMLDivElement | null>(null);
   const sqlFileDragDepthRef = useRef(0);
+  const editorBackgroundStyle = editorShellBackgroundStyle(
+    editorBackgroundImage,
+    editorBackgroundOpacity,
+  );
   const showShortcutTips = query.trim().length === 0;
 
   useEffect(() => {
@@ -330,11 +339,15 @@ export function QueryEditorPane({
         <div
           className={`editor-shell editor-group${
             activeEditorGroup === "primary" ? " active" : ""
-          }`}
+          }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
+          style={editorBackgroundStyle}
           onFocusCapture={() => setActiveEditorGroup("primary")}
           onPointerDown={() => setActiveEditorGroup("primary")}
           onContextMenu={(event) => openEditorContextMenu(event, "primary")}
         >
+          {editorBackgroundStyle ? (
+            <div className="editor-background-image" aria-hidden="true" />
+          ) : null}
           <SqlEditor
             ref={editorApiRef}
             value={query}
@@ -376,11 +389,15 @@ export function QueryEditorPane({
             <div
               className={`editor-shell editor-group${
                 activeEditorGroup === "secondary" ? " active" : ""
-              }`}
+              }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
+              style={editorBackgroundStyle}
               onFocusCapture={() => setActiveEditorGroup("secondary")}
               onPointerDown={() => setActiveEditorGroup("secondary")}
               onContextMenu={(event) => openEditorContextMenu(event, "secondary")}
             >
+              {editorBackgroundStyle ? (
+                <div className="editor-background-image" aria-hidden="true" />
+              ) : null}
               <SqlEditor
                 ref={secondaryEditorApiRef}
                 value={query}
@@ -707,6 +724,29 @@ export function QueryEditorPane({
       ) : null}
     </section>
   );
+}
+
+function editorShellBackgroundStyle(
+  image: string,
+  opacity: number,
+): CSSProperties | undefined {
+  const trimmed = image.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return {
+    "--editor-background-image": `url("${escapeCssUrl(trimmed)}")`,
+    "--editor-background-image-opacity": String(opacity),
+  } as CSSProperties;
+}
+
+function escapeCssUrl(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "")
+    .replace(/\r/g, "")
+    .replace(/\f/g, "");
 }
 
 type MetadataUsage = {

@@ -152,6 +152,7 @@ import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import {
   UI_ZOOM_DEFAULT,
   UI_ZOOM_STEP,
+  normalizeEditorBackgroundOpacity,
   normalizeUiZoom,
   usePreferencesStore,
   type ThemePreference,
@@ -412,6 +413,18 @@ export function AppWorkbench() {
   const setSqlLinter = usePreferencesStore((state) => state.setSqlLinter);
   const sqlSnippets = usePreferencesStore((state) => state.sqlSnippets);
   const setSqlSnippets = usePreferencesStore((state) => state.setSqlSnippets);
+  const editorBackgroundImage = usePreferencesStore(
+    (state) => state.editorBackgroundImage,
+  );
+  const setEditorBackgroundImage = usePreferencesStore(
+    (state) => state.setEditorBackgroundImage,
+  );
+  const editorBackgroundOpacity = usePreferencesStore(
+    (state) => state.editorBackgroundOpacity,
+  );
+  const setEditorBackgroundOpacity = usePreferencesStore(
+    (state) => state.setEditorBackgroundOpacity,
+  );
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const uiZoom = usePreferencesStore((state) => state.uiZoom);
@@ -707,6 +720,8 @@ export function AppWorkbench() {
   const closeQueryHistoryDialog = useQueryHistoryStore(
     (state) => state.closeDialog,
   );
+  const queryHistoryDialogOpen = useQueryHistoryStore((state) => state.open);
+  const gitDrawerOpen = useGitStore((state) => state.open);
   const openGitDrawer = useGitStore((state) => state.openDrawer);
   const [queryParameterMemory, setQueryParameterMemory] =
     useState<QueryParameterMemory>(loadQueryParameterMemory);
@@ -933,6 +948,28 @@ export function AppWorkbench() {
     keymap["query.runFromStart"] ?? "",
   );
   const runAllShortcutLabel = formatKeySequence(keymap["query.runAll"] ?? "");
+  const shortcutTip = (label: string, commandId: string) => ({
+    label,
+    shortcut: formatKeySequence(keymap[commandId] ?? "") || null,
+  });
+  const editorShortcutTips = [
+    shortcutTip("Show Commands", "palette.open"),
+    shortcutTip("Format SQL", "editor.format"),
+    shortcutTip("Toggle Comment", "editor.comment.toggle"),
+    shortcutTip("Quick Definition", "editor.quickDefinition"),
+    shortcutTip("Run Selection / Current", "query.run"),
+    shortcutTip("Run Current", "query.runCurrent"),
+    shortcutTip("Run From Top", "query.runFromStart"),
+    shortcutTip("Run All", "query.runAll"),
+    shortcutTip("Close Tab", "tab.close"),
+  ];
+  const resultShortcutTips = [
+    shortcutTip("Export CSV", "result.export"),
+    shortcutTip("Toggle Edit Data", "edit.toggle"),
+    shortcutTip("Add Row", "edit.addRow"),
+    shortcutTip("Undo Edit", "edit.undo"),
+    shortcutTip("Commit Edits", "edit.commit"),
+  ];
 
   const resultSets = useMemo<QueryResultSet[]>(() => {
     if (!result) {
@@ -2021,6 +2058,8 @@ export function AppWorkbench() {
           formatter,
           linter: sqlLinter,
           snippets: sqlSnippets,
+          backgroundImage: editorBackgroundImage,
+          backgroundOpacity: editorBackgroundOpacity,
         },
         queryHistory: {
           maxItems: queryHistoryMaxItems,
@@ -2227,6 +2266,17 @@ export function AppWorkbench() {
         if ("snippets" in parsed.editor) {
           const nextSnippets = sqlSnippetsFromJson(parsed.editor.snippets);
           setSqlSnippets(nextSnippets);
+        }
+        if (typeof parsed.editor.backgroundImage === "string") {
+          setEditorBackgroundImage(parsed.editor.backgroundImage);
+        }
+        if ("backgroundOpacity" in parsed.editor) {
+          const nextOpacity = Number(parsed.editor.backgroundOpacity);
+          if (Number.isFinite(nextOpacity)) {
+            setEditorBackgroundOpacity(nextOpacity);
+            parsed.editor.backgroundOpacity =
+              normalizeEditorBackgroundOpacity(nextOpacity);
+          }
         }
       }
       if ("snippets" in parsed) {
@@ -4126,6 +4176,8 @@ export function AppWorkbench() {
               editorEngine={editorEngine}
               activeMetadata={activeMetadata}
               sqlSnippets={sqlSnippets}
+              editorBackgroundImage={editorBackgroundImage}
+              editorBackgroundOpacity={editorBackgroundOpacity}
               theme={theme}
               vimMode={vimMode}
               sqlLinter={sqlLinter}
@@ -4143,6 +4195,7 @@ export function AppWorkbench() {
               runCurrentShortcutLabel={runCurrentShortcutLabel}
               runFromStartShortcutLabel={runFromStartShortcutLabel}
               runAllShortcutLabel={runAllShortcutLabel}
+              shortcutTips={editorShortcutTips}
               runMenuOpen={runMenuOpen}
               hasSelectedEditorSql={hasSelectedEditorSql}
               resultActionsAvailable={Boolean(activeResult)}
@@ -4208,6 +4261,7 @@ export function AppWorkbench() {
             filterRules={filterRules}
             resultColumns={resultColumns}
             exportMenuOpen={exportMenuOpen}
+            shortcutTips={resultShortcutTips}
             editMode={editMode}
             editUndoDepth={editUndoDepth}
             committing={committing}
@@ -4255,6 +4309,8 @@ export function AppWorkbench() {
             onClearResultFilters={clearResultFilters}
             onExportActiveResult={exportActiveResult}
             onToggleExportMenu={() => setExportMenuOpen((open) => !open)}
+            onCloseExportMenu={() => setExportMenuOpen(false)}
+            onCloseFilters={() => setFiltersOpen(false)}
             onCopyVisibleResult={() => void copyVisibleResult()}
             onImportFile={(file) => void handleImportFile(file)}
             onAddNewRow={addNewRow}
@@ -4334,6 +4390,10 @@ export function AppWorkbench() {
           setLocale={setLocale}
           vimMode={vimMode}
           setVimMode={setVimMode}
+          editorBackgroundImage={editorBackgroundImage}
+          setEditorBackgroundImage={setEditorBackgroundImage}
+          editorBackgroundOpacity={editorBackgroundOpacity}
+          setEditorBackgroundOpacity={setEditorBackgroundOpacity}
           autoCommit={autoCommit}
           setAutoCommit={setAutoCommit}
           uiZoom={uiZoom}
@@ -4409,17 +4469,25 @@ export function AppWorkbench() {
         />
       ) : null}
 
-      <GitDrawer />
+      {gitDrawerOpen ? (
+        <Suspense fallback={null}>
+          <GitDrawer />
+        </Suspense>
+      ) : null}
 
-      <QueryHistoryDialog
-        activeConnectionId={activeConnectionId}
-        activeConnectionOpen={activeConnectionOpen}
-        running={running}
-        connectionById={connectionById}
-        onLoad={loadHistoryItem}
-        onRun={(item) => void runHistoryItem(item)}
-        onRestoreResult={restoreHistoryResult}
-      />
+      {queryHistoryDialogOpen ? (
+        <Suspense fallback={null}>
+          <QueryHistoryDialog
+            activeConnectionId={activeConnectionId}
+            activeConnectionOpen={activeConnectionOpen}
+            running={running}
+            connectionById={connectionById}
+            onLoad={loadHistoryItem}
+            onRun={(item) => void runHistoryItem(item)}
+            onRestoreResult={restoreHistoryResult}
+          />
+        </Suspense>
+      ) : null}
 
       {pendingQueryParameters ? (
         <QueryParameterDialog

@@ -243,6 +243,65 @@ textarea:disabled {
   margin-left: auto;
 }
 
+.workspace-menu-host {
+  position: relative;
+  display: inline-flex;
+}
+
+.shortcut-tips {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  color: color-mix(in srgb, var(--muted) 92%, transparent);
+  font-size: var(--font-ui-sm);
+}
+
+.shortcut-tip {
+  display: grid;
+  grid-template-columns: minmax(108px, max-content) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.shortcut-tip dt {
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-tip dd {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+
+.shortcut-chord {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.shortcut-tips kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--border);
+  font: inherit;
+  font-size: var(--font-ui-xs);
+  line-height: 1;
+}
+
 .result-quick-filter:focus-within,
 .diagram-search:focus-within,
 .settings-json textarea:focus {
@@ -380,13 +439,12 @@ textarea:disabled {
 }
 
 .connection-toolbar {
-  flex: 0 1 calc(50px + var(--sidebar-width, 220px) - 14px);
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 31px minmax(0, 1fr);
+  grid-template-columns: 31px;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  max-width: 420px;
 }
 
 .connection-select,
@@ -463,6 +521,22 @@ textarea:disabled {
   justify-content: flex-start;
   padding: 0 10px;
   font-size: var(--font-ui-md);
+}
+
+.titlebar-connection {
+  flex: 0 1 min(420px, 38vw);
+  width: min(420px, 38vw);
+  max-width: min(420px, 38vw);
+  margin-left: 4px;
+  height: var(--control-xs);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface-raised));
+  font-size: var(--font-ui-sm);
+}
+
+.titlebar-connection .connection-color-dot {
+  width: 8px;
+  height: 8px;
 }
 
 .connection-color-dot {

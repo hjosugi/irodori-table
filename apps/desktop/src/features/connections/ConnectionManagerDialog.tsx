@@ -135,6 +135,7 @@ export function ConnectionManagerDialog({
   onConnect: FormEventHandler<HTMLFormElement>;
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const transferMenuRef = useRef<HTMLDivElement | null>(null);
   const [transferMenuOpen, setTransferMenuOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
@@ -155,8 +156,22 @@ export function ConnectionManagerDialog({
       event.preventDefault();
       setTransferMenuOpen(false);
     };
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && transferMenuRef.current?.contains(target)) {
+        return;
+      }
+      setTransferMenuOpen(false);
+    };
+    const closeOnBlur = () => setTransferMenuOpen(false);
+    window.addEventListener("pointerdown", closeOnPointerDown);
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", closeOnBlur);
+    };
   }, [transferMenuOpen]);
 
   function toggleGroup(groupId: string) {
@@ -259,7 +274,7 @@ export function ConnectionManagerDialog({
             >
               <Plus size={16} />
             </button>
-            <div className="connection-action-menu-wrap">
+            <div className="connection-action-menu-wrap" ref={transferMenuRef}>
               <button
                 className={transferMenuOpen ? "icon-button active" : "icon-button"}
                 type="button"

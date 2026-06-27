@@ -102,6 +102,10 @@
   text-overflow: ellipsis;
 }
 
+.settings-row-wide {
+  grid-template-columns: minmax(0, 0.8fr) minmax(280px, 1.2fr);
+}
+
 .ui-zoom-control {
   display: grid;
   grid-template-columns: var(--control-md) minmax(120px, 180px) 48px var(--control-md) auto;
@@ -118,6 +122,65 @@
 }
 
 .ui-zoom-control output {
+  color: var(--text);
+  font-size: var(--font-ui-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.editor-background-control {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto minmax(90px, 130px) 42px;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.editor-background-input {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: var(--control-sm);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--input-bg);
+}
+
+.settings-row .editor-background-input input {
+  width: 100%;
+  min-width: 0;
+  height: calc(var(--control-sm) - 2px);
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+
+.editor-background-file {
+  position: relative;
+  overflow: hidden;
+}
+
+.editor-background-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.editor-background-control input[type="range"] {
+  width: 100%;
+  height: var(--control-sm);
+  padding: 0;
+  accent-color: var(--blue);
+}
+
+.editor-background-control output {
   color: var(--text);
   font-size: var(--font-ui-sm);
   font-variant-numeric: tabular-nums;

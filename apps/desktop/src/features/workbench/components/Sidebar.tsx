@@ -4,7 +4,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Columns3,
@@ -116,6 +116,7 @@ export function Sidebar({
 }: SidebarProps) {
   const [objectActionMenuPosition, setObjectActionMenuPosition] =
     useState<ObjectActionMenuPosition>(null);
+  const objectActionMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!objectActionMenu) {
@@ -132,8 +133,31 @@ export function Sidebar({
         onSetObjectActionMenu(null);
       }
     };
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(".object-menu-button")
+      ) {
+        return;
+      }
+      if (
+        target instanceof Node &&
+        objectActionMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      onSetObjectActionMenu(null);
+    };
+    const closeOnBlur = () => onSetObjectActionMenu(null);
+    window.addEventListener("pointerdown", closeOnPointerDown);
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", closeOnBlur);
+    };
   }, [objectActionMenu, onSetObjectActionMenu]);
 
   function openObjectContextMenu(
@@ -368,6 +392,7 @@ export function Sidebar({
                               </button>
                               {objectActionMenu === objectKey ? (
                                 <div
+                                  ref={objectActionMenuRef}
                                   className={
                                     objectActionMenuPosition?.key === objectKey
                                       ? "object-action-menu object-action-menu-context"

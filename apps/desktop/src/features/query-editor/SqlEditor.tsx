@@ -26,7 +26,6 @@ import {
   StateField,
   type Extension,
   type SelectionRange,
-  type StateEffectType,
 } from "@codemirror/state";
 import { acceptCompletion, completionStatus } from "@codemirror/autocomplete";
 import {
@@ -283,11 +282,37 @@ function buildEditorSqlExtensions(
 
 type QuickDefinitionPopupState = {
   target: SqlMetadataTarget;
+  metadata: DatabaseMetadata;
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined;
   anchor: number;
   range: SqlEditorSelection;
   history: readonly SqlMetadataTarget[];
   historyIndex: number;
 };
+
+const setQuickDefinitionEffect =
+  StateEffect.define<QuickDefinitionPopupState | null>();
+
+const quickDefinitionField: StateField<QuickDefinitionPopupState | null> =
+  StateField.define<QuickDefinitionPopupState | null>({
+    create: () => null,
+    update(value, transaction) {
+      for (const effect of transaction.effects) {
+        if (effect.is(setQuickDefinitionEffect)) {
+          return effect.value;
+        }
+      }
+      return transaction.docChanged ? null : value;
+    },
+    provide: (field): Extension =>
+      showTooltip.computeN([field], (state) => {
+        const popup = state.field(field);
+        return popup ? [quickDefinitionTooltip(popup)] : [];
+      }),
+  });
 
 function sqlMetadataInsightExtensions(
   metadata: DatabaseMetadata | undefined,
@@ -299,37 +324,6 @@ function sqlMetadataInsightExtensions(
   if (!metadata) {
     return [];
   }
-
-  const setQuickDefinitionEffect =
-    StateEffect.define<QuickDefinitionPopupState | null>();
-  const quickDefinitionField: StateField<QuickDefinitionPopupState | null> =
-    StateField.define<QuickDefinitionPopupState | null>({
-      create: () => null,
-      update(value, transaction) {
-        for (const effect of transaction.effects) {
-          if (effect.is(setQuickDefinitionEffect)) {
-            return effect.value;
-          }
-        }
-        return transaction.docChanged ? null : value;
-      },
-      provide: (field): Extension =>
-        showTooltip.computeN([field], (state) => {
-          const popup = state.field(field);
-          return popup
-            ? [
-                quickDefinitionTooltip({
-                  popup,
-                  metadata,
-                  onMetadataJump,
-                  onMetadataToolWindow,
-                  setQuickDefinitionEffect,
-                  quickDefinitionField: field,
-                }),
-              ]
-            : [];
-        }),
-    });
 
   return [
     quickDefinitionField,
@@ -368,7 +362,8 @@ function sqlMetadataInsightExtensions(
           openQuickDefinitionAtSelection(
             view,
             metadata,
-            setQuickDefinitionEffect,
+            onMetadataJump,
+            onMetadataToolWindow,
           ),
       },
       {
@@ -377,7 +372,8 @@ function sqlMetadataInsightExtensions(
           openQuickDefinitionAtSelection(
             view,
             metadata,
-            setQuickDefinitionEffect,
+            onMetadataJump,
+            onMetadataToolWindow,
           ),
       },
       {
@@ -392,7 +388,6 @@ function sqlMetadataInsightExtensions(
             quickDefinitionField,
             metadata,
             onMetadataJump,
-            setQuickDefinitionEffect,
           ),
       },
       {
@@ -410,7 +405,6 @@ function sqlMetadataInsightExtensions(
           navigateQuickDefinitionHistory(
             view,
             quickDefinitionField,
-            setQuickDefinitionEffect,
             -1,
           ),
       },
@@ -420,7 +414,6 @@ function sqlMetadataInsightExtensions(
           navigateQuickDefinitionHistory(
             view,
             quickDefinitionField,
-            setQuickDefinitionEffect,
             1,
           ),
       },
@@ -455,25 +448,12 @@ function sqlMetadataInsightExtensions(
   ];
 }
 
-type QuickDefinitionTooltipOptions = {
-  popup: QuickDefinitionPopupState;
-  metadata: DatabaseMetadata;
-  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
-  onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined;
-  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>;
-  quickDefinitionField: StateField<QuickDefinitionPopupState | null>;
-};
-
-function quickDefinitionTooltip({
-  popup,
-  metadata,
-  onMetadataJump,
-  onMetadataToolWindow,
-  setQuickDefinitionEffect,
-  quickDefinitionField,
-}: QuickDefinitionTooltipOptions): Tooltip {
+function quickDefinitionTooltip(popup: QuickDefinitionPopupState): Tooltip {
+  const {
+    metadata,
+    onMetadataJump,
+    onMetadataToolWindow,
+  } = popup;
   return {
     pos: popup.anchor,
     end: popup.range.to,
@@ -502,7 +482,6 @@ function quickDefinitionTooltip({
             navigateQuickDefinitionHistory(
               view,
               quickDefinitionField,
-              setQuickDefinitionEffect,
               -1,
             ),
         }),
@@ -514,7 +493,6 @@ function quickDefinitionTooltip({
             navigateQuickDefinitionHistory(
               view,
               quickDefinitionField,
-              setQuickDefinitionEffect,
               1,
             ),
         }),
@@ -662,7 +640,10 @@ function toolbarSeparator() {
 function openQuickDefinitionAtSelection(
   view: EditorView,
   metadata: DatabaseMetadata,
-  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>,
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ): boolean {
   const target = inspectSqlMetadataAt(
     view.state.doc.toString(),
@@ -678,6 +659,9 @@ function openQuickDefinitionAtSelection(
     scrollIntoView: true,
     effects: setQuickDefinitionEffect.of({
       target,
+      metadata,
+      onMetadataJump,
+      onMetadataToolWindow,
       anchor: target.range.from,
       range: target.range,
       history: [target],
@@ -724,7 +708,6 @@ function editQuickDefinitionSource(
   field: StateField<QuickDefinitionPopupState | null>,
   metadata: DatabaseMetadata,
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
-  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>,
 ): boolean {
   if (!onMetadataJump) {
     return false;
@@ -741,7 +724,6 @@ function editQuickDefinitionSource(
 function navigateQuickDefinitionHistory(
   view: EditorView,
   field: StateField<QuickDefinitionPopupState | null>,
-  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>,
   delta: -1 | 1,
 ): boolean {
   const popup = view.state.field(field, false);

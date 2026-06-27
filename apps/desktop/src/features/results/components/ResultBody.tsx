@@ -32,6 +32,10 @@ import type {
 import { ChartResultView } from "./ChartResultView";
 import { GraphResultView } from "./GraphResultView";
 import { WebGlResultGrid } from "./WebGlResultGrid";
+import {
+  ShortcutTips,
+  type ShortcutTip,
+} from "@/features/workbench/components/ShortcutTips";
 
 function isGridCellTarget(event: ReactFocusEvent | ReactMouseEvent) {
   return (
@@ -89,6 +93,7 @@ export function ResultBody({
   onPasteTableAt,
   onEndCellEdit,
   onCloseRowDetail,
+  shortcutTips,
 }: {
   structureObject: DbObjectMetadata | null;
   resultMode: ResultMode;
@@ -147,6 +152,7 @@ export function ResultBody({
   ) => void;
   onEndCellEdit: () => void;
   onCloseRowDetail: () => void;
+  shortcutTips: readonly ShortcutTip[];
 }) {
   if (structureObject) {
     return (
@@ -272,7 +278,7 @@ export function ResultBody({
           <div
             className="grid-state loading"
             role="status"
-            style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
+            style={{ minWidth: gridTotalWidth, width: "100%" }}
           >
             Running query...
           </div>
@@ -281,11 +287,21 @@ export function ResultBody({
           <div
             className="grid-state"
             role="row"
-            style={{ minWidth: gridTotalWidth, width: gridTotalWidth }}
+            style={{ minWidth: gridTotalWidth, width: "100%" }}
           >
-            {filtersActive && unfilteredRowCount > 0
-              ? "No rows match filters"
-              : "No rows returned"}
+            <div className="grid-empty-content">
+              <span>
+                {filtersActive && unfilteredRowCount > 0
+                  ? "No rows match filters"
+                  : "No rows returned"}
+              </span>
+              {!filtersActive ? (
+                <ShortcutTips
+                  className="result-shortcut-tips"
+                  items={shortcutTips}
+                />
+              ) : null}
+            </div>
           </div>
         ) : null}
         {visibleRows.map((row, visibleRowIndex) => (

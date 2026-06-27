@@ -1,8 +1,12 @@
 export {
+  EDITOR_BACKGROUND_OPACITY_MAX,
+  EDITOR_BACKGROUND_OPACITY_MIN,
+  EDITOR_BACKGROUND_OPACITY_STEP,
   UI_ZOOM_DEFAULT,
   UI_ZOOM_MAX,
   UI_ZOOM_MIN,
   UI_ZOOM_STEP,
+  normalizeEditorBackgroundOpacity,
   normalizeUiZoom,
   usePreferencesStore,
   type CustomThemeEntry,

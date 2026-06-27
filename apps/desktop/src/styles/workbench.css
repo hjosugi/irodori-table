@@ -742,7 +742,7 @@
 .editor-pane {
   position: relative;
   display: grid;
-  grid-template-rows: var(--bar-md) minmax(0, 1fr);
+  grid-template-rows: var(--bar-md) minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
@@ -954,6 +954,43 @@
 
 .editor-group {
   position: relative;
+}
+
+.editor-background-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--editor-background-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: var(--editor-background-image-opacity, 0.08);
+  pointer-events: none;
+}
+
+.editor-shell-has-background .cm-host {
+  position: relative;
+  z-index: 1;
+}
+
+.editor-shell-has-background .cm-editor,
+.editor-shell-has-background .cm-scroller {
+  background: transparent !important;
+}
+
+.editor-shell-has-background .cm-gutters {
+  background: color-mix(in srgb, var(--gutter-bg) 84%, transparent) !important;
+}
+
+.editor-shortcut-tips {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: max-content;
+  max-width: min(430px, calc(100% - 48px));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .editor-group.active::after {

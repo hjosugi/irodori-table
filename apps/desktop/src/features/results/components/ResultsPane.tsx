@@ -5,6 +5,7 @@ import type {
   RefObject,
   UIEvent,
 } from "react";
+import { useEffect, useRef } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -42,6 +43,7 @@ import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { ResultBody } from "./ResultBody";
 import { ResultFilterPanel } from "./ResultFilterPanel";
+import type { ShortcutTip } from "@/features/workbench/components/ShortcutTips";
 import type {
   EditingCell,
   ResultCellRangeBounds,
@@ -74,6 +76,7 @@ type ResultsPaneProps = {
   filterRules: readonly ResultFilterRule[];
   resultColumns: string[];
   exportMenuOpen: boolean;
+  shortcutTips: readonly ShortcutTip[];
   editMode: boolean;
   editUndoDepth: number;
   committing: boolean;
@@ -121,6 +124,8 @@ type ResultsPaneProps = {
   onClearResultFilters: () => void;
   onExportActiveResult: (format: ResultExportFormat) => void;
   onToggleExportMenu: () => void;
+  onCloseExportMenu: () => void;
+  onCloseFilters: () => void;
   onCopyVisibleResult: () => void;
   onImportFile: (file: File) => void;
   onAddNewRow: () => void;
@@ -176,6 +181,7 @@ export function ResultsPane({
   filterRules,
   resultColumns,
   exportMenuOpen,
+  shortcutTips,
   editMode,
   editUndoDepth,
   committing,
@@ -223,6 +229,8 @@ export function ResultsPane({
   onClearResultFilters,
   onExportActiveResult,
   onToggleExportMenu,
+  onCloseExportMenu,
+  onCloseFilters,
   onCopyVisibleResult,
   onImportFile,
   onAddNewRow,
@@ -244,6 +252,54 @@ export function ResultsPane({
   onEndCellEdit,
   onCloseRowDetail,
 }: ResultsPaneProps) {
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
+  const filterToggleRef = useRef<HTMLButtonElement | null>(null);
+  const filterPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) {
+      return;
+    }
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && exportMenuRef.current?.contains(target)) {
+        return;
+      }
+      onCloseExportMenu();
+    };
+    const closeOnBlur = () => onCloseExportMenu();
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("blur", closeOnBlur);
+    };
+  }, [exportMenuOpen, onCloseExportMenu]);
+
+  useEffect(() => {
+    if (!filtersOpen) {
+      return;
+    }
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        (filterToggleRef.current?.contains(target) ||
+          filterPanelRef.current?.contains(target))
+      ) {
+        return;
+      }
+      onCloseFilters();
+    };
+    const closeOnBlur = () => onCloseFilters();
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("blur", closeOnBlur);
+    };
+  }, [filtersOpen, onCloseFilters]);
+
   return (
     <section className={running ? "results-pane is-running" : "results-pane"}>
       <div className="results-header">
@@ -352,6 +408,7 @@ export function ResultsPane({
             ) : null}
           </label>
           <button
+            ref={filterToggleRef}
             className={`text-button${filtersOpen || filtersActive ? " active" : ""}`}
             type="button"
             disabled={!activeResult || showingStructure}
@@ -364,7 +421,7 @@ export function ResultsPane({
                 : "Filter"}
             </span>
           </button>
-          <div className="action-split">
+          <div className="action-split" ref={exportMenuRef}>
             <button
               className="text-button"
               type="button"
@@ -498,19 +555,21 @@ export function ResultsPane({
         </div>
       ) : null}
       {filtersOpen || filterRules.length > 0 ? (
-        <ResultFilterPanel
-          filtersActive={filtersActive}
-          filteredOutCount={filteredOutCount}
-          filterJoin={filterJoin}
-          filterRules={filterRules}
-          resultColumns={resultColumns}
-          formatCount={formatCount}
-          onSetFilterJoin={onSetFilterJoin}
-          onAddFilterRule={onAddFilterRule}
-          onUpdateFilterRule={onUpdateFilterRule}
-          onRemoveFilterRule={onRemoveFilterRule}
-          onClearResultFilters={onClearResultFilters}
-        />
+        <div ref={filterPanelRef}>
+          <ResultFilterPanel
+            filtersActive={filtersActive}
+            filteredOutCount={filteredOutCount}
+            filterJoin={filterJoin}
+            filterRules={filterRules}
+            resultColumns={resultColumns}
+            formatCount={formatCount}
+            onSetFilterJoin={onSetFilterJoin}
+            onAddFilterRule={onAddFilterRule}
+            onUpdateFilterRule={onUpdateFilterRule}
+            onRemoveFilterRule={onRemoveFilterRule}
+            onClearResultFilters={onClearResultFilters}
+          />
+        </div>
       ) : null}
       <ResultBody
         structureObject={structureObject}
@@ -562,6 +621,7 @@ export function ResultsPane({
         onPasteTableAt={onPasteTableAt}
         onEndCellEdit={onEndCellEdit}
         onCloseRowDetail={onCloseRowDetail}
+        shortcutTips={shortcutTips}
       />
     </section>
   );

@@ -314,6 +314,20 @@ export function WorkbenchShell({
             </div>
           ))}
         </nav>
+        <button
+          className="connection-select titlebar-connection"
+          type="button"
+          onClick={onOpenConnectionManager}
+        >
+          <span
+            className="connection-color-dot"
+            style={{ background: activeConnectionColor }}
+            aria-hidden="true"
+          />
+          <span>{activeConnectionName}</span>
+          <small>{activeConnectionEngine}</small>
+          <ChevronDown size={15} />
+        </button>
         <div className="titlebar-actions">
           <button
             className="theme-toggle"
@@ -397,20 +411,6 @@ export function WorkbenchShell({
             ) : (
               <PanelLeftOpen size={15} />
             )}
-          </button>
-          <button
-            className="connection-select"
-            type="button"
-            onClick={onOpenConnectionManager}
-          >
-            <span
-              className="connection-color-dot"
-              style={{ background: activeConnectionColor }}
-              aria-hidden="true"
-            />
-            <span>{activeConnectionName}</span>
-            <small>{activeConnectionEngine}</small>
-            <ChevronDown size={15} />
           </button>
         </div>
         <div className="toolbar-spacer" />
