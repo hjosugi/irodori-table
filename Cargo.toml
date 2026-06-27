@@ -1,8 +1,6 @@
 [workspace]
 members = [
     "apps/desktop/src-tauri",
-    "crates/irodori-error",
-    "crates/irodori-jobs",
     "crates/irodori-connection",
     "crates/irodori-security",
     "crates/irodori-core",
@@ -15,8 +13,6 @@ members = [
     "crates/irodori-knowledge",
 ]
 default-members = [
-    "crates/irodori-error",
-    "crates/irodori-jobs",
     "crates/irodori-connection",
     "crates/irodori-security",
     "crates/irodori-core",

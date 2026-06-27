@@ -297,6 +297,16 @@ async fn exercise_mssql(url: String) {
     run_query_impl(
         &state,
         "it".into(),
+        "if object_id('dbo.irodori_meta_orders', 'U') is not null \
+         drop table dbo.irodori_meta_orders"
+            .into(),
+        None,
+    )
+    .await
+    .expect("drop old metadata child fixture");
+    run_query_impl(
+        &state,
+        "it".into(),
         "if object_id('dbo.irodori_meta_customers', 'U') is not null \
          drop table dbo.irodori_meta_customers"
             .into(),
@@ -314,6 +324,18 @@ async fn exercise_mssql(url: String) {
     )
     .await
     .expect("create metadata fixture");
+    run_query_impl(
+        &state,
+        "it".into(),
+        "create table dbo.irodori_meta_orders \
+         (id int not null primary key, customer_id int not null, \
+          constraint fk_irodori_meta_orders_customer foreign key (customer_id) \
+          references dbo.irodori_meta_customers(id))"
+            .into(),
+        None,
+    )
+    .await
+    .expect("create metadata child fixture");
     run_query_impl(
         &state,
         "it".into(),
@@ -343,6 +365,31 @@ async fn exercise_mssql(url: String) {
         "SQL Server metadata should include fixture table: {:?}",
         metadata
     );
+    let order = metadata
+        .schemas
+        .iter()
+        .flat_map(|schema| schema.objects.iter())
+        .find(|object| object.name == "irodori_meta_orders")
+        .expect("SQL Server metadata should include child table");
+    assert_eq!(order.foreign_keys.len(), 1, "SQL Server FK metadata: {order:?}");
+    assert_eq!(order.foreign_keys[0].columns, vec!["customer_id"]);
+    assert_eq!(
+        order.foreign_keys[0].references_schema.as_deref(),
+        Some("dbo")
+    );
+    assert_eq!(
+        order.foreign_keys[0].references_table,
+        "irodori_meta_customers"
+    );
+    assert_eq!(order.foreign_keys[0].references_columns, vec!["id"]);
+    run_query_impl(
+        &state,
+        "it".into(),
+        "drop table dbo.irodori_meta_orders".into(),
+        None,
+    )
+    .await
+    .expect("drop metadata child fixture");
     run_query_impl(
         &state,
         "it".into(),
@@ -568,6 +615,33 @@ async fn exercise_oracle(profile: ConnectionProfile) {
             }),
         "Oracle metadata should include CUSTOMERS.NAME: {:?}",
         metadata
+    );
+    let order = metadata
+        .schemas
+        .iter()
+        .flat_map(|schema| schema.objects.iter())
+        .find(|object| object.name.eq_ignore_ascii_case("ORDERS"))
+        .expect("Oracle metadata should include ORDERS");
+    assert_eq!(order.foreign_keys.len(), 1, "Oracle FK metadata: {order:?}");
+    assert_eq!(
+        order.foreign_keys[0]
+            .columns
+            .iter()
+            .map(|column| column.to_ascii_uppercase())
+            .collect::<Vec<_>>(),
+        vec!["CUSTOMER_ID"]
+    );
+    assert_eq!(
+        order.foreign_keys[0].references_table.to_ascii_uppercase(),
+        "CUSTOMERS"
+    );
+    assert_eq!(
+        order.foreign_keys[0]
+            .references_columns
+            .iter()
+            .map(|column| column.to_ascii_uppercase())
+            .collect::<Vec<_>>(),
+        vec!["ID"]
     );
 }
 
