@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { GitCommitSummary } from "@/generated/irodori-api";
-import { buildGitGraphRows, filterGraphCommits } from "@/features/git/git-graph";
+import {
+  buildGitGraphRows,
+  filterGraphCommits,
+  nextGraphCommitHash,
+} from "@/features/git/git-graph";
 import {
   gitAccentColor,
   normalizeHexColor,
@@ -58,6 +62,37 @@ describe("git graph lane layout", () => {
     expect(filterGraphCommits(commits, "graph")).toHaveLength(1);
     expect(filterGraphCommits(commits, "v1.0.0")[0].hash).toBe("def4567");
     expect(filterGraphCommits(commits, "hiro")).toHaveLength(2);
+  });
+
+  it("filters by branch remote and tag refs", () => {
+    const commits = [
+      commit("a111111", [], "Main tip", ["HEAD -> main", "origin/main"]),
+      commit("b222222", [], "Feature tip", ["feature"]),
+      commit("c333333", [], "Release", ["tag: v1.0.0"]),
+      commit("d444444", [], "Plain"),
+    ];
+
+    expect(filterGraphCommits(commits, "", "branches").map((item) => item.hash))
+      .toEqual(["a111111", "b222222"]);
+    expect(filterGraphCommits(commits, "", "remotes").map((item) => item.hash))
+      .toEqual(["a111111"]);
+    expect(filterGraphCommits(commits, "", "tags").map((item) => item.hash))
+      .toEqual(["c333333"]);
+  });
+
+  it("navigates filtered commits predictably", () => {
+    const commits = [
+      commit("a111111", []),
+      commit("b222222", []),
+      commit("c333333", []),
+    ];
+
+    expect(nextGraphCommitHash(commits, "b222222", "previous")).toBe("a111111");
+    expect(nextGraphCommitHash(commits, "b222222", "next")).toBe("c333333");
+    expect(nextGraphCommitHash(commits, "b222222", "first")).toBe("a111111");
+    expect(nextGraphCommitHash(commits, "b222222", "last")).toBe("c333333");
+    expect(nextGraphCommitHash(commits, "missing", "next")).toBe("b222222");
+    expect(nextGraphCommitHash([], "missing", "next")).toBeNull();
   });
 });
 

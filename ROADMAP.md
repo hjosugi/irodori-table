@@ -228,8 +228,11 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Editor controls were tightened: Run Current sits at the editor corner, split
   controls are icon-only, and the user-facing pane split is capped to the simple
   two-pane workflow.
-- Git graph baseline is present and should be hardened as a workbench view, not a
-  detached experiment.
+- Git graph hardening has moved past the baseline: commit search, branch/remote/tag
+  ref filters, selection details, keyboard navigation, provider badges, and repo
+  accent colors are wired as a workbench view.
+- SQL hover-to-inspect is live in the editor: object/column hovers expose
+  definitions, keys, indexes, comments, row counts, samples, and metadata jump.
 - `JOB-001` is no longer a blank crate-sized task: the shared runtime foundation
   lives in `irodori-core::jobs` with progress, cancellation, logs, artifacts,
   retry/concurrency fields, budgets, checkpoints, desktop commands, and server
@@ -248,8 +251,9 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   shell, not just the editor and chrome.
 - Finish `THEME-002`: wire file import, custom theme naming, save/delete, and
   Settings-based switching on top of the normalized VS Code importer.
-- Harden the Git graph workbench view: commit search/filter, branch/remote
-  context, selection details, and keyboard navigation.
+- Continue Git graph hardening with commit-specific actions: copy hash/subject,
+  open remote commit URLs, show per-commit file summaries/diffs, and expose branch
+  checkout/create/delete affordances from the selected ref context.
 - Close the workspace basics before adding more pane complexity: query tab CRUD,
   per-tab connection binding, saved queries, history search, and a drawer/modal
   detail view with full SQL, rerun, delete, and save actions.

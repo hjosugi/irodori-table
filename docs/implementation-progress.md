@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-06-26 JST. A status snapshot of what is built and verified —
+Last updated: 2026-06-27 JST. A status snapshot of what is built and verified —
 focused on the database engine layer. Pairs with `ROADMAP.md` (themes) and
 `docs/implementation-backlog.md` (tickets). Production release gates are tracked
 in `docs/production-readiness.md`.
@@ -167,6 +167,17 @@ Highlights:
   suggestions, and Playwright verifies that the editor popup receives table and
   alias-column suggestions after metadata is loaded from `dbListObjects`. Shared
   completion service/API parity for future hosts remains open.
+- SQL hover inspection is live in the editor: table/view hovers show DDL or a
+  generated definition, comments, columns, foreign keys, indexes, row estimates,
+  and quick samples; column hovers show type/nullability/key/default/reference
+  details and sample values. `F12` plus `Ctrl`/`Cmd` click jump from the SQL token
+  to the metadata/object-browser target. Unit coverage exercises object and
+  column inspection.
+- The Git drawer graph is now a real workbench view rather than a detached
+  experiment: commits can be searched by subject/hash/author/ref, filtered by
+  branch/remote/tag refs, selected with mouse or `ArrowUp`/`ArrowDown`/`Home`/
+  `End`, and inspected in a detail pane with refs, hash, author, date, and
+  parents. Provider badges and per-repo accent colors are wired.
 - Deterministic Query Magics are wired in the desktop run path: `\describe`
   expands to dialect-aware column-inspection SQL, `\explain` expands to visible
   explain SQL, `\erd` opens a filtered ERD, `\export <format>` exports the current
@@ -188,8 +199,8 @@ Highlights:
 - Vim mode is wired through `@replit/codemirror-vim` behind a persisted header
   toggle; Playwright covers toggling, insert-mode editing, and a normal-mode delete
   flow. Deeper Vim behavior parity remains open.
-- Linux AppImage v0.2.22 has been released; the desktop package/Tauri version and
-  local Git tag are `0.2.22`/`v0.2.22`. Cross-platform installer/signing/update
+- Linux AppImage v0.2.23 has been released; the desktop package/Tauri version and
+  local Git tag are `0.2.23`/`v0.2.23`. Cross-platform installer/signing/update
   channel hardening remains tracked in the backlog.
 - In-memory databases are first-class for local work: SQLite `:memory:` is wired
   through structured profiles and verified by a unit test; DuckDB `:memory:` is
@@ -210,7 +221,9 @@ Highlights:
   checkpoint cursor so an interrupted run resumes from the last durable document;
   `INSERT OR IGNORE` keys make rebuilds/incremental runs idempotent. Verified by a
   50,000-document benchmark asserting the postings buffer never exceeds the flush
-  budget while the index stays queryable, plus resume-after-cancel coverage.
+  budget while the index stays queryable, plus resume-after-cancel coverage. The
+  flush path now uses `sqlx::QueryBuilder`, matching SQLx 0.9's dynamic-SQL audit
+  model without hand-built placeholder strings.
 - **Batch operation contract (JOB-004)**: `irodori-core::batch` is the shared
   envelope every heavy operation runs through — a `JobContext` (progress, cancel,
   resume cursor, checkpoint, log, artifact) plus `run_job(...)` that owns start and

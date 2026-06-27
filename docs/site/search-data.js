@@ -69,10 +69,10 @@ window.IRODORI_SEARCH_INDEX = [
     title: "Lightweight schema-aware completion",
     category: "Completion",
     url: "docs.html#completion",
-    summary: "Offline completion for schemas, tables, columns, aliases, and joins.",
-    tags: ["completion", "autocomplete", "schema", "alias", "join", "keyword", "offline"],
+    summary: "Offline completion plus metadata hover and jump.",
+    tags: ["completion", "autocomplete", "schema", "alias", "join", "keyword", "offline", "hover", "jump"],
     body:
-      "Offline completion. schema, table, view, column, routine, keyword, alias, foreign-key join snippet. schema dot, alias dot, JOIN.",
+      "Offline completion. schema, table, view, column, routine, keyword, alias, foreign-key join snippet. schema dot, alias dot, JOIN. Hover inspection shows DDL, keys, indexes, comments, samples. F12, Ctrl click, Cmd click metadata jump.",
   },
   {
     title: "Result grid and export",
@@ -82,6 +82,15 @@ window.IRODORI_SEARCH_INDEX = [
     tags: ["results", "grid", "streaming", "virtualization", "csv", "json", "markdown", "export", "offload"],
     body:
       "Results use streaming, capped pages, truncated flag, row virtualization, disk offload, windowed paging, CSV, TSV, JSON, JSONL, SQL INSERT, Excel HTML, Markdown export.",
+  },
+  {
+    title: "Git graph workbench",
+    category: "Git",
+    url: "docs.html#git",
+    summary: "Commit graph with ref filters, detail pane, and keyboard navigation.",
+    tags: ["git", "graph", "branch", "remote", "tag", "keyboard", "commit"],
+    body:
+      "Git drawer graph. Commit search by subject hash author ref. Branch remote tag filters. Commit detail pane with refs hash author date parents. ArrowUp ArrowDown Home End keyboard navigation. Provider badges and repository colors.",
   },
   {
     title: "Security and transports",

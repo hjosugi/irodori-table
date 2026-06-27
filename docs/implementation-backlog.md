@@ -252,7 +252,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### SHELL-005 — Packaging + auto-update channel decision
 - **Goal:** Shippable installers per OS.
 - **Done when:** CI produces installers for each OS; an ADR records the update channel approach.
-- **Status:** Partial. Linux AppImage v0.2.22 has been released (`v0.2.22` tag; desktop/Tauri package version `0.2.22`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
+- **Status:** Partial. Linux AppImage v0.2.23 has been released (`v0.2.23` tag; desktop/Tauri package version `0.2.23`; Linux/AppImage release scripts present). Cross-OS installer coverage, signing/notarization policy, and the update-channel ADR remain open.
 - **Depends on:** SHELL-001
 - **Size:** L · **Priority:** P2
 
@@ -480,9 +480,10 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Depends on:** BROWSE-001
 - **Size:** M · **Priority:** P1
 
-### BROWSE-003 — Hover inspection cards
+### BROWSE-003 — Hover inspection cards ✅
 - **Goal:** See content without leaving the editor.
 - **Done when:** hovering an object/column shows type, nullability, keys, indexes, DDL, comment, row-count estimate, and a quick sample, sourced from the metadata cache.
+- **Done:** SQL editor hovers now resolve table/view/column tokens through the metadata cache and render object/column cards with DDL or generated definitions, type/nullability/key/default/reference detail, comments, row estimates, foreign keys, indexes, and quick samples. `F12` and `Ctrl`/`Cmd` click call the metadata jump hook so users can move from SQL text to the matching object-browser metadata. Covered by `metadata-inspection` unit tests and desktop TypeScript/build checks.
 - **Depends on:** BROWSE-001, CMPL-001
 - **Size:** M · **Priority:** P1
 

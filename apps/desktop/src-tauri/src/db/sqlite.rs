@@ -27,7 +27,12 @@ pub async fn version(pool: &SqlitePool) -> Option<String> {
 }
 
 pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> Result<RowSet, String> {
-    super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
+    super::stream::collect_capped(
+        sqlx::query(super::audited_sql(sql)).fetch(pool),
+        cap,
+        cell_to_json,
+    )
+    .await
 }
 
 pub async fn run_prepared_query(
@@ -70,7 +75,12 @@ pub async fn stream_query(
     sql: &str,
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
-    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+    super::stream::stream_capped(
+        sqlx::query(super::audited_sql(sql)).fetch(pool),
+        ctx,
+        cell_to_json,
+    )
+    .await
 }
 
 pub async fn stream_prepared_query(
@@ -150,7 +160,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
 
     for (schema, table) in builder.object_keys() {
         let column_sql = format!("pragma table_xinfo({})", quote_string(&table));
-        let column_rows = sqlx::query(&column_sql)
+        let column_rows = sqlx::query(super::audited_sql(&column_sql))
             .fetch_all(pool)
             .await
             .map_err(|e| format!("metadata columns failed for {table}: {e}"))?;
@@ -188,7 +198,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
             object.primary_key = primary_key.into_iter().map(|(_, name)| name).collect();
 
             let fk_sql = format!("pragma foreign_key_list({})", quote_string(&table));
-            let fk_rows = sqlx::query(&fk_sql)
+            let fk_rows = sqlx::query(super::audited_sql(&fk_sql))
                 .fetch_all(pool)
                 .await
                 .map_err(|e| format!("metadata foreign keys failed for {table}: {e}"))?;
@@ -213,7 +223,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
             object.foreign_keys = by_id.into_values().collect();
 
             let index_sql = format!("pragma index_list({})", quote_string(&table));
-            let index_rows = sqlx::query(&index_sql)
+            let index_rows = sqlx::query(super::audited_sql(&index_sql))
                 .fetch_all(pool)
                 .await
                 .map_err(|e| format!("metadata indexes failed for {table}: {e}"))?;
@@ -225,7 +235,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
                 }
                 let unique = row.try_get::<i64, _>("unique").unwrap_or(0) == 1;
                 let info_sql = format!("pragma index_info({})", quote_string(&name));
-                let info_rows = sqlx::query(&info_sql)
+                let info_rows = sqlx::query(super::audited_sql(&info_sql))
                     .fetch_all(pool)
                     .await
                     .map_err(|e| format!("metadata index columns failed for {name}: {e}"))?;
@@ -262,7 +272,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
 
 async fn row_count(pool: &SqlitePool, schema: &str, table: &str) -> Option<u64> {
     let sql = format!("select count(*) from {}", qualified_ident(schema, table));
-    let count = sqlx::query_scalar::<_, i64>(&sql)
+    let count = sqlx::query_scalar::<_, i64>(super::audited_sql(&sql))
         .fetch_one(pool)
         .await
         .ok()?;
@@ -276,7 +286,10 @@ async fn quick_sample(
     columns: &[ColumnMetadata],
 ) -> Option<DbQuickSample> {
     let sample_sql = format!("select * from {} limit 6", qualified_ident(schema, table));
-    let mut rows = sqlx::query(&sample_sql).fetch_all(pool).await.ok()?;
+    let mut rows = sqlx::query(super::audited_sql(&sample_sql))
+        .fetch_all(pool)
+        .await
+        .ok()?;
     let truncated = rows.len() > 5;
     rows.truncate(5);
     Some(DbQuickSample {
@@ -355,9 +368,9 @@ pub async fn apply_edits(
 /// typed, so text/int/real/null all bind cleanly).
 fn bind(
     stmt: &super::edit::Statement,
-) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>> {
+) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments> {
     use serde_json::Value;
-    let mut q = sqlx::query(&stmt.sql);
+    let mut q = sqlx::query(super::audited_sql(&stmt.sql));
     for value in &stmt.params {
         q = match value {
             Value::Null => q.bind(Option::<String>::None),
@@ -380,14 +393,14 @@ fn bind(
 
 fn bind_query(
     query: &PreparedQuery,
-) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>> {
-    bind_json(sqlx::query(&query.sql), &query.params)
+) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments> {
+    bind_json(sqlx::query(super::audited_sql(&query.sql)), &query.params)
 }
 
 fn bind_json<'q>(
-    mut q: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>>,
+    mut q: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments>,
     params: &'q [serde_json::Value],
-) -> sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>> {
+) -> sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments> {
     use serde_json::Value;
     for value in params {
         q = match value {

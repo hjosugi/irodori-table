@@ -44,6 +44,7 @@ export function GitDrawer() {
   const graphCommits = useGitStore((state) => state.graphCommits);
   const selectedCommitHash = useGitStore((state) => state.selectedCommitHash);
   const graphQuery = useGitStore((state) => state.graphQuery);
+  const graphRefFilter = useGitStore((state) => state.graphRefFilter);
   const diff = useGitStore((state) => state.diff);
   const selectedPath = useGitStore((state) => state.selectedPath);
   const branchDraft = useGitStore((state) => state.branchDraft);
@@ -60,6 +61,7 @@ export function GitDrawer() {
   const setRepoPathDraft = useGitStore((state) => state.setRepoPathDraft);
   const setRepoColor = useGitStore((state) => state.setRepoColor);
   const setGraphQuery = useGitStore((state) => state.setGraphQuery);
+  const setGraphRefFilter = useGitStore((state) => state.setGraphRefFilter);
   const selectCommit = useGitStore((state) => state.selectCommit);
   const selectFile = useGitStore((state) => state.selectFile);
   const setCommitMessage = useGitStore((state) => state.setCommitMessage);
@@ -318,9 +320,11 @@ export function GitDrawer() {
           <GitGraphView
             commits={graphCommits}
             query={graphQuery}
+            refFilter={graphRefFilter}
             selectedCommitHash={selectedCommitHash}
             loading={logLoading}
             onQueryChange={setGraphQuery}
+            onRefFilterChange={setGraphRefFilter}
             onSelectCommit={selectCommit}
           />
         ) : (

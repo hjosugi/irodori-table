@@ -22,7 +22,7 @@ use irodori_core::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
-use sqlx::{Row, SqlitePool};
+use sqlx::{QueryBuilder, Row, Sqlite, SqlitePool};
 
 /// Rows per multi-row `INSERT` when flushing a batch. SQLite caps bound parameters
 /// at 999; postings use 3 columns, so 256 rows stays well under the limit.
@@ -387,42 +387,24 @@ async fn flush_batch(
 
     let mut tx = store.pool.begin().await.map_err(internal)?;
     for chunk in docs.chunks(INSERT_CHUNK) {
-        let mut sql = String::from("INSERT OR IGNORE INTO index_docs(doc_id, source, ord) VALUES ");
-        push_placeholders(&mut sql, chunk.len(), 3);
-        let mut query = sqlx::query(&sql);
-        for (doc_id, source, ord) in chunk {
-            query = query.bind(doc_id).bind(source).bind(ord);
-        }
-        query.execute(&mut *tx).await.map_err(internal)?;
+        let mut query =
+            QueryBuilder::<Sqlite>::new("INSERT OR IGNORE INTO index_docs(doc_id, source, ord) ");
+        query.push_values(chunk, |mut row, (doc_id, source, ord)| {
+            row.push_bind(doc_id).push_bind(source).push_bind(*ord);
+        });
+        query.build().execute(&mut *tx).await.map_err(internal)?;
     }
     for chunk in postings.chunks(INSERT_CHUNK) {
-        let mut sql =
-            String::from("INSERT OR IGNORE INTO index_postings(term, doc_id, frequency) VALUES ");
-        push_placeholders(&mut sql, chunk.len(), 3);
-        let mut query = sqlx::query(&sql);
-        for (term, doc_id, frequency) in chunk {
-            query = query.bind(term).bind(doc_id).bind(frequency);
-        }
-        query.execute(&mut *tx).await.map_err(internal)?;
+        let mut query = QueryBuilder::<Sqlite>::new(
+            "INSERT OR IGNORE INTO index_postings(term, doc_id, frequency) ",
+        );
+        query.push_values(chunk, |mut row, (term, doc_id, frequency)| {
+            row.push_bind(term).push_bind(doc_id).push_bind(*frequency);
+        });
+        query.build().execute(&mut *tx).await.map_err(internal)?;
     }
     tx.commit().await.map_err(internal)?;
     Ok(written)
-}
-
-fn push_placeholders(sql: &mut String, rows: usize, cols: usize) {
-    for row in 0..rows {
-        if row > 0 {
-            sql.push(',');
-        }
-        sql.push('(');
-        for col in 0..cols {
-            if col > 0 {
-                sql.push(',');
-            }
-            sql.push('?');
-        }
-        sql.push(')');
-    }
 }
 
 /// Tokenize text into `(term, frequency)` pairs. Terms are lowercased ASCII

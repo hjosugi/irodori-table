@@ -14,17 +14,17 @@ complexity tool.
 | Rank | File | Lines | Main risk | Suggested next move |
 | ---: | --- | ---: | --- | --- |
 | 1 | `apps/desktop/src/app/AppWorkbench.tsx` | 4,157 | The former `App.tsx` controller still owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `apps/desktop/src/App.tsx` is now a 4-line entrypoint. | Split this controller into feature hooks; start with query execution and result-grid control. |
-| 2 | `apps/desktop/src-tauri/src/db/mod.rs` | 2,527 | Backend DB facade still mixes connection registry, state, command wrappers, stream/spill handling, and tests. Profile, connection registry, transport resolution, and metadata/cache conversion are now split out. | Split command surface and shared runtime state next. |
-| 3 | `crates/irodori-io/src/tabular.rs` | 1,889 | Export encoders, import preview, schema inference, and tests share one module. | Move format-specific encoders/importers into submodules. |
-| 4 | `apps/desktop/src/sql/completion.ts` | 1,408 | Completion scanning, parsing helpers, and suggestion ranking are still dense; snippet parsing is now split out. | Split parser/scanner from metadata ranking next. |
-| 5 | `crates/irodori-core/src/connection.rs` | 1,364 | Connection profile schemas and validation cover many transport/auth variants. | Split transport/auth/portable model sections once external shape is stable. |
-| 6 | `apps/desktop/src/styles/results.css` | 1,318 | Result-grid, editing, detail, and mode-specific styles are coupled. | Split by results subcomponent after component extraction lands. |
-| 7 | `apps/desktop/src/styles/workbench.css` | 1,192 | Workbench layout, chrome, panes, inspectors, editor hover styles, and responsive rules share one stylesheet. | Split along `WorkbenchShell`, sidebar, inspector, and editor concerns. |
-| 8 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 1,150 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
-| 9 | `apps/desktop/src/theme/index.ts` | 1,123 | Theme conversion and TextMate scope mapping are broad; `syntaxRolesForTextMateScope` is a complexity hotspot. | Isolate VS Code import normalization and syntax-role mapping. |
-| 10 | `crates/irodori-core/src/jobs.rs` | 1,088 | Job DTOs, runtime state, retry/cancellation, artifacts, and tests sit together. | Separate public job model from executor/runtime internals. |
-| 11 | `apps/desktop/src-tauri/src/git/mod.rs` | 1,046 | Git command state, graph formatting, diff/status parsing, and tests are in one module. | Split parsing/model helpers from Tauri command surface. |
-| 12 | `crates/irodori-completion/src/completion.rs` | 934 | Completion logic is dense and algorithmic. | Keep unit coverage high before module splitting. |
+| 2 | `apps/desktop/src/sql/completion.ts` | 1,408 | Completion scanning, parsing helpers, and suggestion ranking are still dense; snippet parsing is now split out. | Split parser/scanner from metadata ranking next. |
+| 3 | `crates/irodori-io/src/tabular.rs` | 1,379 | Export encoders still share one module, but import preview/schema inference/tests are now split out. | Move format-specific export encoders into submodules. |
+| 4 | `apps/desktop/src/styles/results.css` | 1,318 | Result-grid, editing, detail, and mode-specific styles are coupled. | Split by results subcomponent after component extraction lands. |
+| 5 | `apps/desktop/src/styles/workbench.css` | 1,209 | Workbench layout, chrome, panes, inspectors, editor hover styles, and responsive rules share one stylesheet. | Split along `WorkbenchShell`, sidebar, inspector, and editor concerns. |
+| 6 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 1,150 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
+| 7 | `apps/desktop/src/theme/index.ts` | 1,123 | Theme conversion and TextMate scope mapping are broad; `syntaxRolesForTextMateScope` is a complexity hotspot. | Isolate VS Code import normalization and syntax-role mapping. |
+| 8 | `crates/irodori-core/src/jobs.rs` | 1,088 | Job DTOs, runtime state, retry/cancellation, artifacts, and tests sit together. | Separate public job model from executor/runtime internals. |
+| 9 | `apps/desktop/src-tauri/src/db/tests.rs` | 1,065 | Desktop DB tests cover many behaviors in one module, making focused failures harder to navigate. | Split tests by concern alongside the newly modularized DB backend. |
+| 10 | `apps/desktop/src-tauri/src/git/mod.rs` | 1,046 | Git command state, graph formatting, diff/status parsing, and tests are in one module. | Split parsing/model helpers from Tauri command surface. |
+| 11 | `crates/irodori-completion/src/completion.rs` | 934 | Completion logic is dense and algorithmic. | Keep unit coverage high before module splitting. |
+| 12 | `apps/desktop/src-tauri/src/db/mod.rs` | 929 | Backend DB facade is now much smaller, but still owns shared state, command orchestration, and retained result-store bookkeeping. | Split shared runtime state from command orchestration next. |
 
 ## App Workbench Split Plan
 
@@ -67,8 +67,8 @@ controller, not the final architecture. The goal is to reduce it below roughly
 ## Backend DB Facade Split Progress
 
 Current status: the old single `apps/desktop/src-tauri/src/db.rs` has been
-modularized under `apps/desktop/src-tauri/src/db/`. The facade is still large,
-but it no longer owns every support concern directly.
+modularized under `apps/desktop/src-tauri/src/db/`. The facade is now under
+1,000 lines, but it still coordinates shared state and command-level flow.
 
 - `db/profile.rs` owns `ConnectionProfile`, profile normalization, unsupported
   wire rejection, and secret redaction.
@@ -86,6 +86,17 @@ Next backend split: move Tauri command wrappers and command DTOs into a command
 surface module, then move `DbState` runtime bookkeeping into a state/runtime
 module. Keep each step behavior-preserving and gated by `cargo check`,
 `typegen:check`, and focused metadata/query tests.
+
+## Tabular IO Split Progress
+
+Current status: import preview, CSV schema inference, CSV-to-SQL generation, and
+tabular tests moved out of `crates/irodori-io/src/tabular.rs` into
+`tabular/import.rs` and `tabular/tests.rs`. The remaining `tabular.rs` file now
+focuses on export encoders and shared cell/options types.
+
+Next IO split: move each format family (`DelimitedEncoder`, `JsonEncoder`,
+`SqlScriptEncoder`, optional Avro/Parquet encoders) into focused modules while
+preserving the existing public re-exports from `irodori_io::tabular`.
 
 ## SQL Completion Split Progress
 

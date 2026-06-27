@@ -1,4 +1,9 @@
 import type { GitCommitSummary } from "../../generated/irodori-api";
+import { refKind } from "./git-format";
+
+export type GitGraphRefFilter = "all" | "branches" | "remotes" | "tags";
+
+export type GitGraphNavigation = "previous" | "next" | "first" | "last";
 
 export type GitGraphRow = {
   commit: GitCommitSummary;
@@ -58,23 +63,80 @@ export function buildGitGraphRows(commits: GitCommitSummary[]): GitGraphRow[] {
 export function filterGraphCommits(
   commits: GitCommitSummary[],
   query: string,
+  refFilter: GitGraphRefFilter = "all",
 ): GitCommitSummary[] {
   const normalized = query.trim().toLowerCase();
-  if (!normalized) {
-    return commits;
-  }
-  return commits.filter((commit) =>
-    [
-      commit.hash,
-      commit.shortHash,
-      commit.author,
-      commit.subject,
-      ...(commit.refs ?? []),
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalized),
+  return commits.filter(
+    (commit) =>
+      matchesRefFilter(commit, refFilter) &&
+      (!normalized || searchableCommitText(commit).includes(normalized)),
   );
+}
+
+export function nextGraphCommitHash(
+  commits: readonly GitCommitSummary[],
+  selectedHash: string | null,
+  navigation: GitGraphNavigation,
+): string | null {
+  if (commits.length === 0) {
+    return null;
+  }
+
+  const selectedIndex = commits.findIndex((commit) => commit.hash === selectedHash);
+  const currentIndex = selectedIndex < 0 ? 0 : selectedIndex;
+  const nextIndex = graphNavigationIndex(
+    currentIndex,
+    commits.length,
+    navigation,
+  );
+  return commits[nextIndex]?.hash ?? null;
+}
+
+function graphNavigationIndex(
+  currentIndex: number,
+  count: number,
+  navigation: GitGraphNavigation,
+): number {
+  switch (navigation) {
+    case "first":
+      return 0;
+    case "last":
+      return count - 1;
+    case "previous":
+      return Math.max(0, currentIndex - 1);
+    case "next":
+      return Math.min(count - 1, currentIndex + 1);
+  }
+}
+
+function searchableCommitText(commit: GitCommitSummary): string {
+  return [
+    commit.hash,
+    commit.shortHash,
+    commit.author,
+    commit.subject,
+    ...(commit.refs ?? []),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function matchesRefFilter(
+  commit: GitCommitSummary,
+  refFilter: GitGraphRefFilter,
+): boolean {
+  if (refFilter === "all") {
+    return true;
+  }
+
+  const kinds = (commit.refs ?? []).map(refKind);
+  if (refFilter === "branches") {
+    return kinds.some((kind) => kind === "head" || kind === "branch");
+  }
+  if (refFilter === "remotes") {
+    return kinds.includes("remote");
+  }
+  return kinds.includes("tag");
 }
 
 function dedupeLanes(lanes: string[]) {

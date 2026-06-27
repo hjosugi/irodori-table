@@ -1,10 +1,11 @@
 //! Cassandra and ScyllaDB database adapter.
 
-use scylla::{Session, SessionBuilder};
+use scylla::client::session::Session;
+use scylla::client::session_builder::SessionBuilder;
+use scylla::value::{CqlValue, Row};
 use serde_json::Value as JValue;
 
 use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
-use scylla::frame::response::result::Row;
 
 pub struct CassandraConn {
     session: Session,
@@ -153,8 +154,7 @@ pub async fn metadata(conn: &CassandraConn) -> Result<DatabaseMetadata, String> 
     Ok(builder.finish())
 }
 
-fn format_cell_value(val: &scylla::frame::response::result::CqlValue) -> JValue {
-    use scylla::frame::response::result::CqlValue;
+fn format_cell_value(val: &CqlValue) -> JValue {
     match val {
         CqlValue::Ascii(s) | CqlValue::Text(s) => JValue::String(s.clone()),
         CqlValue::Int(i) => JValue::Number((*i).into()),
@@ -170,8 +170,7 @@ fn format_cell_value(val: &scylla::frame::response::result::CqlValue) -> JValue 
     }
 }
 
-fn get_string_value(val: &scylla::frame::response::result::CqlValue) -> String {
-    use scylla::frame::response::result::CqlValue;
+fn get_string_value(val: &CqlValue) -> String {
     match val {
         CqlValue::Ascii(s) | CqlValue::Text(s) => s.clone(),
         CqlValue::Int(i) => i.to_string(),

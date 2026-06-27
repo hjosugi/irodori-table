@@ -27,7 +27,12 @@ pub async fn version(pool: &MySqlPool) -> Option<String> {
 }
 
 pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> Result<RowSet, String> {
-    super::stream::collect_capped(sqlx::query(sql).fetch(pool), cap, cell_to_json).await
+    super::stream::collect_capped(
+        sqlx::query(super::audited_sql(sql)).fetch(pool),
+        cap,
+        cell_to_json,
+    )
+    .await
 }
 
 pub async fn run_prepared_query(
@@ -43,7 +48,12 @@ pub async fn stream_query(
     sql: &str,
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
-    super::stream::stream_capped(sqlx::query(sql).fetch(pool), ctx, cell_to_json).await
+    super::stream::stream_capped(
+        sqlx::query(super::audited_sql(sql)).fetch(pool),
+        ctx,
+        cell_to_json,
+    )
+    .await
 }
 
 pub async fn stream_prepared_query(
@@ -96,7 +106,7 @@ fn bind(
     stmt: &super::edit::Statement,
 ) -> sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments> {
     use serde_json::Value;
-    let mut q = sqlx::query(&stmt.sql);
+    let mut q = sqlx::query(super::audited_sql(&stmt.sql));
     for value in &stmt.params {
         q = match value {
             Value::Null => q.bind(Option::<String>::None),
@@ -120,7 +130,7 @@ fn bind(
 fn bind_query(
     query: &PreparedQuery,
 ) -> sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments> {
-    bind_json(sqlx::query(&query.sql), &query.params)
+    bind_json(sqlx::query(super::audited_sql(&query.sql)), &query.params)
 }
 
 fn bind_json<'q>(
@@ -378,7 +388,10 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
 
 async fn show_create_table(pool: &MySqlPool, schema: &str, table: &str) -> Option<String> {
     let sql = format!("show create table {}", qualified_ident(schema, table));
-    let row = sqlx::query(&sql).fetch_one(pool).await.ok()?;
+    let row = sqlx::query(super::audited_sql(&sql))
+        .fetch_one(pool)
+        .await
+        .ok()?;
     row.try_get::<String, _>(1).ok()
 }
 
@@ -389,7 +402,10 @@ async fn quick_sample(
     columns: &[ColumnMetadata],
 ) -> Option<DbQuickSample> {
     let sample_sql = format!("select * from {} limit 6", qualified_ident(schema, table));
-    let mut rows = sqlx::query(&sample_sql).fetch_all(pool).await.ok()?;
+    let mut rows = sqlx::query(super::audited_sql(&sample_sql))
+        .fetch_all(pool)
+        .await
+        .ok()?;
     let truncated = rows.len() > 5;
     rows.truncate(5);
     Some(DbQuickSample {

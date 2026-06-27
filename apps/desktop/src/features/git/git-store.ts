@@ -18,6 +18,7 @@ import {
   type GitDiffResult,
   type GitStatusSummary,
 } from "../../generated/irodori-api";
+import type { GitGraphRefFilter } from "./git-graph";
 import { normalizeHexColor } from "./git-format";
 
 export type GitDrawerView = "graph" | "changes";
@@ -35,6 +36,7 @@ type GitState = {
   graphCommits: GitCommitSummary[];
   selectedCommitHash: string | null;
   graphQuery: string;
+  graphRefFilter: GitGraphRefFilter;
   diff: GitDiffResult | null;
   selectedPath: string | null;
   branchDraft: string;
@@ -51,6 +53,7 @@ type GitState = {
   setRepoPath: (repoPath: string) => void;
   setRepoColor: (repoRoot: string, color: string) => void;
   setGraphQuery: (query: string) => void;
+  setGraphRefFilter: (refFilter: GitGraphRefFilter) => void;
   selectCommit: (hash: string) => void;
   setCommitMessage: (message: string) => void;
   setBranchDraft: (branchDraft: string) => void;
@@ -125,6 +128,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   graphCommits: [],
   selectedCommitHash: null,
   graphQuery: "",
+  graphRefFilter: "all",
   diff: null,
   selectedPath: null,
   branchDraft: "",
@@ -150,6 +154,7 @@ export const useGitStore = create<GitState>((set, get) => ({
       status: null,
       graphCommits: [],
       selectedPath: null,
+      graphRefFilter: "all",
       diff: null,
       error: null,
     });
@@ -165,6 +170,7 @@ export const useGitStore = create<GitState>((set, get) => ({
       return { repoColors: next };
     }),
   setGraphQuery: (graphQuery) => set({ graphQuery }),
+  setGraphRefFilter: (graphRefFilter) => set({ graphRefFilter }),
   selectCommit: (selectedCommitHash) => set({ selectedCommitHash }),
   setCommitMessage: (commitMessage) => set({ commitMessage }),
   setBranchDraft: (branchDraft) => set({ branchDraft }),

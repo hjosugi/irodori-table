@@ -20,7 +20,7 @@ use serde_json::Value;
 use sqlx::sqlite::{
     SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteSynchronous,
 };
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row, Sqlite};
 
 /// Rows buffered in RAM before a flush to the spill file. Keeps append latency low
 /// while keeping the pending buffer bounded, so memory stays flat while streaming.
@@ -172,18 +172,12 @@ impl ResultStore {
             .await
             .map_err(|e| format!("spill begin failed: {e}"))?;
         for chunk in pending.chunks(SPILL_INSERT_CHUNK) {
-            let mut sql = String::from("INSERT INTO rows(idx, cells) VALUES ");
-            for i in 0..chunk.len() {
-                if i > 0 {
-                    sql.push(',');
-                }
-                sql.push_str("(?,?)");
-            }
-            let mut query = sqlx::query(&sql);
-            for (idx, cells) in chunk {
-                query = query.bind(*idx as i64).bind(cells);
-            }
+            let mut query = QueryBuilder::<Sqlite>::new("INSERT INTO rows(idx, cells) ");
+            query.push_values(chunk, |mut row, (idx, cells)| {
+                row.push_bind(*idx as i64).push_bind(cells);
+            });
             query
+                .build()
                 .execute(&mut *tx)
                 .await
                 .map_err(|e| format!("spill write failed: {e}"))?;

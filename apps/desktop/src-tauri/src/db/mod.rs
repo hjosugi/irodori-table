@@ -109,6 +109,10 @@ pub(crate) fn hex_encode(bytes: &[u8]) -> String {
     s
 }
 
+pub(crate) fn audited_sql(sql: &str) -> sqlx::AssertSqlSafe<&str> {
+    sqlx::AssertSqlSafe(sql)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]

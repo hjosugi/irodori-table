@@ -1,6 +1,13 @@
-import { Search, X } from "lucide-react";
+import type { KeyboardEvent } from "react";
+import { GitBranch, GitFork, Search, Tag, X } from "lucide-react";
 import type { GitCommitSummary } from "../../generated/irodori-api";
-import { buildGitGraphRows, filterGraphCommits, type GitGraphRow } from "./git-graph";
+import {
+  buildGitGraphRows,
+  filterGraphCommits,
+  nextGraphCommitHash,
+  type GitGraphRefFilter,
+  type GitGraphRow,
+} from "./git-graph";
 import { commitRefs, formatCommitTime, refKind, refLabel } from "./git-format";
 
 function GraphSvg({ row }: { row: GitGraphRow }) {
@@ -69,8 +76,11 @@ function GraphCommitRow({
   const { commit } = row;
   return (
     <button
+      id={`git-commit-${commit.hash}`}
       className={`git-graph-row ${selected ? "active" : ""}`}
       type="button"
+      role="option"
+      aria-selected={selected}
       onClick={onSelect}
       title={commit.hash}
     >
@@ -137,27 +147,69 @@ function CommitDetail({ commit }: { commit: GitCommitSummary | null }) {
   );
 }
 
+const refFilterOptions: Array<{
+  value: GitGraphRefFilter;
+  label: string;
+  icon: typeof GitFork;
+}> = [
+  { value: "all", label: "All", icon: GitFork },
+  { value: "branches", label: "Branches", icon: GitBranch },
+  { value: "remotes", label: "Remotes", icon: GitFork },
+  { value: "tags", label: "Tags", icon: Tag },
+];
+
 export function GitGraphView({
   commits,
   query,
+  refFilter,
   selectedCommitHash,
   loading,
   onQueryChange,
+  onRefFilterChange,
   onSelectCommit,
 }: {
   commits: GitCommitSummary[];
   query: string;
+  refFilter: GitGraphRefFilter;
   selectedCommitHash: string | null;
   loading: boolean;
   onQueryChange: (query: string) => void;
+  onRefFilterChange: (refFilter: GitGraphRefFilter) => void;
   onSelectCommit: (hash: string) => void;
 }) {
-  const filteredCommits = filterGraphCommits(commits, query);
+  const filteredCommits = filterGraphCommits(commits, query, refFilter);
   const graphRows = buildGitGraphRows(filteredCommits);
   const selectedCommit =
     filteredCommits.find((commit) => commit.hash === selectedCommitHash) ??
     filteredCommits[0] ??
     null;
+  const activeCommitHash = selectedCommit?.hash ?? null;
+
+  function onGraphKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const navigation =
+      event.key === "ArrowUp"
+        ? "previous"
+        : event.key === "ArrowDown"
+          ? "next"
+          : event.key === "Home"
+            ? "first"
+            : event.key === "End"
+              ? "last"
+              : null;
+    if (!navigation) {
+      return;
+    }
+    const nextHash = nextGraphCommitHash(
+      filteredCommits,
+      activeCommitHash,
+      navigation,
+    );
+    if (!nextHash) {
+      return;
+    }
+    event.preventDefault();
+    onSelectCommit(nextHash);
+  }
 
   return (
     <section className="git-section git-graph-section">
@@ -182,14 +234,41 @@ export function GitGraphView({
           </button>
         ) : null}
       </label>
+      <div className="segmented-control git-ref-filter" aria-label="Git ref filter">
+        {refFilterOptions.map((option) => {
+          const Icon = option.icon;
+          return (
+            <button
+              key={option.value}
+              className={refFilter === option.value ? "active" : undefined}
+              type="button"
+              title={`Show ${option.label.toLowerCase()} commits`}
+              aria-pressed={refFilter === option.value}
+              onClick={() => onRefFilterChange(option.value)}
+            >
+              <Icon size={13} />
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
       <div className="git-graph-layout">
-        <div className="git-graph-list">
+        <div
+          className="git-graph-list"
+          tabIndex={0}
+          role="listbox"
+          aria-label="Git commit graph"
+          aria-activedescendant={
+            activeCommitHash ? `git-commit-${activeCommitHash}` : undefined
+          }
+          onKeyDown={onGraphKeyDown}
+        >
           {graphRows.length ? (
             graphRows.map((row) => (
               <GraphCommitRow
                 key={row.commit.hash}
                 row={row}
-                selected={selectedCommitHash === row.commit.hash}
+                selected={activeCommitHash === row.commit.hash}
                 onSelect={() => onSelectCommit(row.commit.hash)}
               />
             ))

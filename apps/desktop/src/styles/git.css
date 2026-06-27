@@ -357,9 +357,21 @@
 }
 
 .git-graph-section {
-  grid-template-rows: auto var(--control-sm) minmax(0, 1fr);
+  grid-template-rows: auto var(--control-sm) var(--control-sm) minmax(0, 1fr);
   min-height: 0;
   border-bottom: 0;
+}
+
+.git-ref-filter {
+  justify-self: start;
+  max-width: 100%;
+}
+
+.git-ref-filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .git-graph-search {
@@ -418,6 +430,11 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
+}
+
+.git-graph-list:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 .git-graph-row {

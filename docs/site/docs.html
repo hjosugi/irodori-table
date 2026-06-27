@@ -113,6 +113,7 @@
             <a href="#query-editor">クエリエディタ</a>
             <a href="#completion">補完</a>
             <a href="#results">結果グリッド</a>
+            <a href="#git">Git graph</a>
             <a href="#security">セキュリティ</a>
             <a href="#extensions">拡張 SDK</a>
             <a href="#project-docs">設計ドキュメント</a>
@@ -201,6 +202,9 @@ group by c.id, c.name;</code></pre>
                 <strong>現在できること</strong>
                 <p>
                   <code>schema.</code>、<code>alias.</code>、<code>JOIN</code> 位置の候補を出します。
+                  table / view / column hover は DDL、keys、indexes、comments、
+                  quick sample を表示し、<code>F12</code> または <code>Ctrl</code>/<code>Cmd</code>
+                  click で metadata へ移動できます。
                 </p>
               </div>
             </section>
@@ -213,6 +217,23 @@ group by c.id, c.name;</code></pre>
                 export は CSV、TSV、JSON、JSONL、SQL INSERT、Excel互換HTML、Markdown を提供します。
                 大きい結果はディスク offload と windowed paging で保持できます。
               </p>
+            </section>
+
+            <section class="doc-section" id="git">
+              <p class="eyebrow">Git</p>
+              <h2>workbench 内の Git graph</h2>
+              <p>
+                Git drawer は commit graph、changes、branch 操作を一つのパネルにまとめます。
+                graph は subject/hash/author/ref 検索、branch / remote / tag filter、
+                commit detail、provider badge、repository color を表示します。
+              </p>
+              <div class="callout">
+                <strong>Keyboard navigation</strong>
+                <p>
+                  graph list に focus すると <code>ArrowUp</code> / <code>ArrowDown</code> /
+                  <code>Home</code> / <code>End</code> で選択 commit を移動できます。
+                </p>
+              </div>
             </section>
 
             <section class="doc-section" id="security">
