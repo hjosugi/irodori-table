@@ -13,17 +13,17 @@ complexity tool.
 
 | Rank | File | Lines | Main risk | Suggested next move |
 | ---: | --- | ---: | --- | --- |
-| 1 | `apps/desktop/src/app/AppWorkbench.tsx` | 4,090 | The former `App.tsx` controller still owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `apps/desktop/src/App.tsx` is now a 4-line entrypoint. | Split this controller into feature hooks; start with query execution and result-grid control. |
-| 2 | `apps/desktop/src-tauri/src/db/mod.rs` | 3,248 | Backend DB facade still mixes connection registry, state, command wrappers, stream/spill handling, and tests. Profile validation and metadata/cache conversion are now split out. | Split command surface and shared runtime state next. |
-| 3 | `crates/irodori-io/src/lib.rs` | 1,896 | Export encoders, import preview, schema inference, and tests share one module. | Move format-specific encoders/importers into submodules. |
-| 4 | `crates/irodori-proxy/src/lib.rs` | 1,786 | Transport planning, auth resolution, handshakes, stream forwarding, and tests are tightly packed. | Separate planning/diagnostics from IO handshakes and forwarder runtime. |
-| 5 | `apps/desktop/src/sql/completion.ts` | 1,567 | Completion scanning, parsing helpers, and suggestion ranking are hard to review as one file. | Keep parser/scanner, metadata ranking, and UI-facing conversion in separate modules. |
-| 6 | `crates/irodori-core/src/connection.rs` | 1,364 | Connection profile schemas and validation cover many transport/auth variants. | Split transport/auth/portable model sections once external shape is stable. |
-| 7 | `apps/desktop/src/styles/results.css` | 1,318 | Result-grid, editing, detail, and mode-specific styles are coupled. | Split by results subcomponent after component extraction lands. |
-| 8 | `apps/desktop/src/styles/workbench.css` | 1,130 | Workbench layout, chrome, panes, inspectors, and responsive rules share one stylesheet. | Split along `WorkbenchShell`, sidebar, inspector, and layout concerns. |
-| 9 | `apps/desktop/src/theme.ts` | 1,123 | Theme conversion and TextMate scope mapping are broad; `syntaxRolesForTextMateScope` is a complexity hotspot. | Isolate VS Code import normalization and syntax-role mapping. |
+| 1 | `apps/desktop/src/app/AppWorkbench.tsx` | 4,157 | The former `App.tsx` controller still owns query execution, result-grid state, connection actions, settings JSON, keybindings, ERD/import/export, and modal orchestration. `apps/desktop/src/App.tsx` is now a 4-line entrypoint. | Split this controller into feature hooks; start with query execution and result-grid control. |
+| 2 | `apps/desktop/src-tauri/src/db/mod.rs` | 2,527 | Backend DB facade still mixes connection registry, state, command wrappers, stream/spill handling, and tests. Profile, connection registry, transport resolution, and metadata/cache conversion are now split out. | Split command surface and shared runtime state next. |
+| 3 | `crates/irodori-io/src/tabular.rs` | 1,889 | Export encoders, import preview, schema inference, and tests share one module. | Move format-specific encoders/importers into submodules. |
+| 4 | `apps/desktop/src/sql/completion.ts` | 1,408 | Completion scanning, parsing helpers, and suggestion ranking are still dense; snippet parsing is now split out. | Split parser/scanner from metadata ranking next. |
+| 5 | `crates/irodori-core/src/connection.rs` | 1,364 | Connection profile schemas and validation cover many transport/auth variants. | Split transport/auth/portable model sections once external shape is stable. |
+| 6 | `apps/desktop/src/styles/results.css` | 1,318 | Result-grid, editing, detail, and mode-specific styles are coupled. | Split by results subcomponent after component extraction lands. |
+| 7 | `apps/desktop/src/styles/workbench.css` | 1,192 | Workbench layout, chrome, panes, inspectors, editor hover styles, and responsive rules share one stylesheet. | Split along `WorkbenchShell`, sidebar, inspector, and editor concerns. |
+| 8 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 1,150 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
+| 9 | `apps/desktop/src/theme/index.ts` | 1,123 | Theme conversion and TextMate scope mapping are broad; `syntaxRolesForTextMateScope` is a complexity hotspot. | Isolate VS Code import normalization and syntax-role mapping. |
 | 10 | `crates/irodori-core/src/jobs.rs` | 1,088 | Job DTOs, runtime state, retry/cancellation, artifacts, and tests sit together. | Separate public job model from executor/runtime internals. |
-| 11 | `apps/desktop/src/features/settings/SettingsDialog.tsx` | 1,086 | The dialog is already extracted but still has many tabs and high branch count. | Split tabs into local child components after `App.tsx` stops owning settings JSON parsing. |
+| 11 | `apps/desktop/src-tauri/src/git/mod.rs` | 1,046 | Git command state, graph formatting, diff/status parsing, and tests are in one module. | Split parsing/model helpers from Tauri command surface. |
 | 12 | `crates/irodori-completion/src/completion.rs` | 934 | Completion logic is dense and algorithmic. | Keep unit coverage high before module splitting. |
 
 ## App Workbench Split Plan
@@ -72,6 +72,10 @@ but it no longer owns every support concern directly.
 
 - `db/profile.rs` owns `ConnectionProfile`, profile normalization, unsupported
   wire rejection, and secret redaction.
+- `db/connection.rs` owns the `Connection` trait, per-engine wrappers, and the
+  connector registry.
+- `db/transport.rs` owns proxy/SSH transport secret resolution before a local
+  forwarder is started.
 - `db/meta.rs` owns relational metadata accumulation plus the bridge between
   desktop `DatabaseMetadata`, the completion `MetadataSnapshot`, and inspection
   DTOs used by autocomplete/hover commands.
@@ -82,6 +86,17 @@ Next backend split: move Tauri command wrappers and command DTOs into a command
 surface module, then move `DbState` runtime bookkeeping into a state/runtime
 module. Keep each step behavior-preserving and gated by `cargo check`,
 `typegen:check`, and focused metadata/query tests.
+
+## SQL Completion Split Progress
+
+Current status: `apps/desktop/src/sql/completion.ts` remains the main
+lightweight SQL completion engine, but snippet defaults and JSON validation now
+live in `apps/desktop/src/sql/snippets.ts` and are re-exported from
+`completion.ts` for source compatibility.
+
+Next completion split: move tokenization/current-statement parsing into a
+scanner module, then keep ranking and CodeMirror option conversion in the
+completion module.
 
 ## Current Tooling Gaps
 
