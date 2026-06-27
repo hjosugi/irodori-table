@@ -20,7 +20,7 @@ read first.
 
 1. Read this file for the repo map and first setup commands.
 2. For Linux desktop setup and WebKit/Tauri troubleshooting, read
-   [docs/linux-development.md](docs/linux-development.md).
+   [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html).
 3. For what databases work today, read
    [docs/data-source-support-status.md](docs/data-source-support-status.md).
 4. For product direction, read [ROADMAP.md](ROADMAP.md).
@@ -36,7 +36,7 @@ read first.
 - Docker or Podman if you want to run sample databases.
 
 On Arch Linux / CachyOS, the desktop app needs the Tauri/WebKit packages listed
-in [docs/linux-development.md](docs/linux-development.md):
+in [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html):
 
 ```sh
 sudo pacman -S --needed base-devel webkit2gtk-4.1 libsoup3 openssl
@@ -78,7 +78,7 @@ Recommended editor setup:
 - rust-analyzer.
 
 Security workflow notes are in [SECURITY.md](SECURITY.md) and
-[docs/development-security.md](docs/development-security.md).
+[development-security](https://hjosugi.github.io/irodori-docs/development-security.html).
 
 ## Quick Start: Desktop App
 
@@ -194,20 +194,20 @@ make check
 
 | Need | Read |
 | --- | --- |
-| Linux setup, WebKit crashes, blank Tauri window | [docs/linux-development.md](docs/linux-development.md) |
+| Linux setup, WebKit crashes, blank Tauri window | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) |
 | Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
-| Connection syntax and engine quirks | [docs/engine-syntax-reference.md](docs/engine-syntax-reference.md) |
+| Connection syntax and engine quirks | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html) |
 | Sample database containers | [samples/README.md](samples/README.md) |
-| Product capability matrix | [docs/feature-matrix.md](docs/feature-matrix.md) |
-| Current implementation snapshot | [docs/implementation-progress.md](docs/implementation-progress.md) |
-| Backlog and task IDs | [docs/implementation-backlog.md](docs/implementation-backlog.md) |
-| UI language switching and translation keys | [docs/i18n.md](docs/i18n.md) |
-| Release-readiness checklist | [docs/production-readiness.md](docs/production-readiness.md) |
-| Maintainability audit | [docs/maintainability-audit.md](docs/maintainability-audit.md) |
-| Extension development | [docs/extension-development.md](docs/extension-development.md) and [packages/extension-sdk/README.md](packages/extension-sdk/README.md) |
-| Clean-room rules | [docs/clean-room.md](docs/clean-room.md) |
-| License policy | [docs/licensing.md](docs/licensing.md) |
-| Local knowledge base | [docs/knowledge-base.md](docs/knowledge-base.md) |
+| Product capability matrix | [feature-matrix](https://hjosugi.github.io/irodori-docs/feature-matrix.html) |
+| Current implementation snapshot | [implementation-progress](https://hjosugi.github.io/irodori-docs/implementation-progress.html) |
+| Backlog and task IDs | [implementation-backlog](https://hjosugi.github.io/irodori-docs/implementation-backlog.html) |
+| UI language switching and translation keys | [i18n](https://hjosugi.github.io/irodori-docs/i18n.html) |
+| Release-readiness checklist | [production-readiness](https://hjosugi.github.io/irodori-docs/production-readiness.html) |
+| Maintainability audit | [maintainability-audit](https://hjosugi.github.io/irodori-docs/maintainability-audit.html) |
+| Extension development | [extension-development](https://hjosugi.github.io/irodori-docs/extension-development.html) and [packages/extension-sdk/README.md](packages/extension-sdk/README.md) |
+| Clean-room rules | [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html) |
+| License policy | [licensing](https://hjosugi.github.io/irodori-docs/licensing.html) |
+| Local knowledge base | [knowledge-base](https://hjosugi.github.io/irodori-docs/knowledge-base.html) |
 
 ## Common Gotchas
 
@@ -215,7 +215,7 @@ make check
   `http://localhost:1420`. Use `make desktop-dev`, or start
   `make desktop-vite` before launching the binary manually.
 - If the Tauri window is blank on Linux, check
-  [docs/linux-development.md](docs/linux-development.md) for WebKit DMA-BUF,
+  [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) for WebKit DMA-BUF,
   compositing, and Wayland/X11 workarounds.
 - DuckDB's bundled build can be heavy because it compiles libduckdb. Link a
   system or prebuilt libduckdb if this becomes slow for your machine.
@@ -226,4 +226,4 @@ make check
 
 Project-authored code, official examples, and official templates are licensed
 under `MIT OR 0BSD` by default. See [LICENSE](LICENSE) and
-[docs/licensing.md](docs/licensing.md).
+[licensing](https://hjosugi.github.io/irodori-docs/licensing.html).

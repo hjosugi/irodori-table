@@ -38,7 +38,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 
 - TablePlus: interaction speed, query/editor ergonomics, shortcut feel, object browser expectations, and lightweight mental model.
 - A5:SQL Mk-2 (public site / behavior reference; see
-  `docs/reference-a5sql.md`): Oracle-aware workflows, SQL completion depth,
+  `https://hjosugi.github.io/irodori-docs/reference-a5sql.html`): Oracle-aware workflows, SQL completion depth,
   explain plans, SQL designer ideas, result comparison, Excel evidence export,
   ERD/table-definition-document flows, and read-only / AI-disabled safety modes.
 - Beekeeper Studio: first client to beat quickly. Use it as an OSS baseline for feature coverage, but surpass it on speed, keyboard control, Vim depth, proxy chains, Oracle priority, and completion.
@@ -50,7 +50,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - VS Code SQLTools and vscode-mssql: session-to-connection binding, command-driven workflows, result handling, driver boundaries, and editor integration patterns.
 - Current DB clients broadly: DBeaver, DataGrip, VS Code MSSQL, SSMS, Oracle SQL Developer, pgAdmin, MySQL Workbench, HeidiSQL, DB Browser for SQLite.
 - RSQL (`rust-dd/rsql`, public README / behavior reference until license terms
-  are explicit; see `docs/reference-rsql.md`): high-performance PostgreSQL
+  are explicit; see `https://hjosugi.github.io/irodori-docs/reference-rsql.html`): high-performance PostgreSQL
   client reference for Tauri v2 + React + Rust, canvas/WebGL result grids,
   server-side cursor pagination, packed IPC, dual query/metadata pools, query
   history, record view, result diffing, PostGIS maps, EXPLAIN visualization, and
@@ -112,7 +112,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Seed `knowledge/sources.json` with official DB docs, release notes, DB client docs, and AI/Copilot/MCP references.
 - Decide initial driver strategy for Oracle thin/thick modes and platform packaging.
 - Pick the first Rust/TypeScript type generation path and document command payload rules.
-- Keep `docs/data-source-coverage-strategy.md` current as the source-family expansion plan.
+- Keep `https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html` current as the source-family expansion plan.
 
 ### Phase 1: Thin Vertical Slice
 
@@ -248,8 +248,8 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 
 ## Immediate Next Steps
 
-- Keep `docs/clean-room.md`, `docs/feature-matrix.md`,
-  `docs/production-readiness.md`, and `docs/implementation-backlog.md` aligned,
+- Keep `https://hjosugi.github.io/irodori-docs/clean-room.html`, `https://hjosugi.github.io/irodori-docs/feature-matrix.html`,
+  `https://hjosugi.github.io/irodori-docs/production-readiness.html`, and `https://hjosugi.github.io/irodori-docs/implementation-backlog.html` aligned,
   but avoid mixing unrelated parallel edits into release commits.
 - Finish `THEME-001b`: convert remaining hardcoded workbench/result/sidebar
   colors to normalized theme variables so imported/saved themes affect the whole

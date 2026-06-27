@@ -50,7 +50,7 @@ window.IRODORI_SEARCH_INDEX = [
   {
     title: "DB feature samples",
     category: "Samples",
-    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/db-feature-samples.md",
+    url: "https://hjosugi.github.io/irodori-docs/db-feature-samples.html",
     summary: "Local DB-specific query projects and the catalog validation command.",
     tags: ["samples", "db", "catalog", "docs-check", "verify-db", "feature"],
     body:
@@ -131,7 +131,7 @@ window.IRODORI_SEARCH_INDEX = [
   {
     title: "Implementation progress",
     category: "Project docs",
-    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/implementation-progress.md",
+    url: "https://hjosugi.github.io/irodori-docs/implementation-progress.html",
     summary: "Built pieces, verified engines, tests, and remaining work.",
     tags: ["progress", "verified", "engine", "desktop", "tests"],
     body:
@@ -149,7 +149,7 @@ window.IRODORI_SEARCH_INDEX = [
   {
     title: "Feature matrix",
     category: "Project docs",
-    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/feature-matrix.md",
+    url: "https://hjosugi.github.io/irodori-docs/feature-matrix.html",
     summary: "Capabilities, priorities, backlog status, and coverage.",
     tags: ["feature matrix", "priority", "coverage", "backlog"],
     body:
@@ -158,7 +158,7 @@ window.IRODORI_SEARCH_INDEX = [
   {
     title: "Completion and AI strategy",
     category: "Project docs",
-    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/completion-and-ai-strategy.md",
+    url: "https://hjosugi.github.io/irodori-docs/completion-and-ai-strategy.html",
     summary: "Deterministic completion, optional AI, privacy, and MCP.",
     tags: ["completion", "ai", "mcp", "privacy", "offline"],
     body:

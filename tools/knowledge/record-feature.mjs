@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Records an Irodori feature event into the knowledge base so product changes
 // accumulate in one ledger (the implementation_notes table that already backs
-// docs/implementation-progress.md). This is the "ACCUMULATE" half of the auto-doc
+// https://hjosugi.github.io/irodori-docs/implementation-progress.html). This is the "ACCUMULATE" half of the auto-doc
 // plan: feature lands -> note recorded -> doc generators can fold it in.
 //
 //   node tools/knowledge/record-feature.mjs \

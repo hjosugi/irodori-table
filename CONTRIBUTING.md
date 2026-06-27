@@ -6,7 +6,7 @@ be easy for downstream users to copy, fork, embed, or compete with under
 
 ## Clean-Room Rules
 
-Read and follow [docs/clean-room.md](docs/clean-room.md) before using any
+Read and follow [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html) before using any
 reference product, repository, docs, issue, screenshot, icon, theme, snippet, or
 sample code for implementation work.
 
@@ -23,7 +23,7 @@ The short version:
 
 Project-authored code, official examples, and official templates use
 `MIT OR 0BSD` by default. Asset and dependency rules are documented in
-[docs/licensing.md](docs/licensing.md).
+[licensing](https://hjosugi.github.io/irodori-docs/licensing.html).
 
 Run the license check before opening a PR:
 
@@ -32,7 +32,7 @@ scripts/check-licenses.sh
 ```
 
 For dependency, build, CI, release, extension, or credential-handling changes,
-also read [docs/development-security.md](docs/development-security.md) and run:
+also read [development-security](https://hjosugi.github.io/irodori-docs/development-security.html) and run:
 
 ```sh
 make security
@@ -43,7 +43,7 @@ make security
 The root workspace contains the Rust crate skeletons used by the roadmap. The
 desktop app remains in `apps/desktop`.
 
-For system packages, troubleshooting webview rendering bugs on Wayland/NVIDIA, and debugging procedures on Linux (particularly Arch Linux or CachyOS), please refer to [docs/linux-development.md](docs/linux-development.md).
+For system packages, troubleshooting webview rendering bugs on Wayland/NVIDIA, and debugging procedures on Linux (particularly Arch Linux or CachyOS), please refer to [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html).
 
 ```sh
 make setup

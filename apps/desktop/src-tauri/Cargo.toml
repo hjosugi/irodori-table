@@ -36,7 +36,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 # No TLS feature yet (local-dev first); TLS lands with the network/security work.
 # Oracle is intentionally NOT here: the plan is a pure-Rust thin TNS driver
 # (no Instant Client, like A5:SQL Mk-2's direct mode) built by inheriting the
-# permissive `oracle-rs` crate. See docs/data-source-coverage-strategy.md (SRC-004).
+# permissive `oracle-rs` crate. See https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html (SRC-004).
 sqlx = { version = "0.9", default-features = false, features = [
     "runtime-tokio",
     "postgres",

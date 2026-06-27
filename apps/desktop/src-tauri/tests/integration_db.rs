@@ -6,7 +6,7 @@
 //!
 //! Queries stay within sqlx `Any`'s supported types (int, bigint, text). Rich
 //! type coverage (decimal, timestamp, json, bytea) needs the per-engine native
-//! pools tracked as EXEC-009/SRC-001 — see docs/implementation-backlog.md.
+//! pools tracked as EXEC-009/SRC-001 — see https://hjosugi.github.io/irodori-docs/implementation-backlog.html.
 
 use desktop_lib::db::{
     connect_impl, list_objects_impl, run_query_impl, ConnectionProfile, DbEngine, DbState,
