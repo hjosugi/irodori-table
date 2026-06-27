@@ -340,7 +340,365 @@ describe("ERD model", () => {
 
     for (const edge of layout.edges) {
       expectEdgePathToBeSane(edge, layout);
+      expect(labelRect(edge)).toEqual(expect.objectContaining({
+        width: 84,
+        height: 17,
+      }));
+      expect(rectInside(labelRect(edge), {
+        x: 0,
+        y: 0,
+        width: layout.width,
+        height: layout.height,
+      })).toBe(true);
+      expect(
+        layout.tables.some((tableLayout) =>
+          rectsOverlap(labelRect(edge), tableLayout),
+        ),
+      ).toBe(false);
     }
+    expect(new Set(layout.edges.map((edge) => edge.path)).size).toBe(layout.edges.length);
+  });
+
+  it("keeps small, medium, and wide schema visual signatures stable", () => {
+    const cases = [
+      {
+        name: "small",
+        metadata: {
+          schemas: [
+            {
+              name: "public",
+              objects: [
+                table("public", "customers", ["id", "name"]),
+                table("public", "orders", ["id", "customer_id"], [
+                  {
+                    columns: ["customer_id"],
+                    referencesTable: "customers",
+                    referencesColumns: ["id"],
+                  },
+                ]),
+              ],
+            },
+          ],
+        },
+      },
+      {
+        name: "medium",
+        metadata: {
+          schemas: [
+            {
+              name: "sales",
+              objects: Array.from({ length: 12 }, (_, index) =>
+                denseWarehouseTable(index, "sales"),
+              ),
+            },
+            {
+              name: "audit",
+              objects: Array.from({ length: 8 }, (_, index) =>
+                table("audit", `event_${index + 1}`, [
+                  "id",
+                  "subject_id",
+                  "payload",
+                ]),
+              ),
+            },
+          ],
+        },
+      },
+      {
+        name: "wide",
+        metadata: {
+          schemas: [
+            {
+              name: "warehouse",
+              objects: Array.from({ length: 40 }, (_, index) =>
+                denseWarehouseTable(index),
+              ),
+            },
+          ],
+        },
+      },
+    ] satisfies Array<{ name: string; metadata: DatabaseMetadata }>;
+
+    expect(
+      cases.map(({ name, metadata }) => ({
+        name,
+        ...visualSignature(layoutErdModel(buildErdModel(metadata))),
+      })),
+    ).toMatchInlineSnapshot(`
+      [
+        {
+          "counts": {
+            "edges": 1,
+            "tables": 2,
+          },
+          "firstEdges": [
+            {
+              "id": "public.orders->public.customers:customer_id",
+              "label": [
+                360,
+                116,
+                84,
+                17,
+              ],
+              "path": "M 412 122 C 342 122, 366 140, 296 140",
+            },
+          ],
+          "firstTables": [
+            {
+              "box": [
+                44,
+                78,
+                252,
+                78,
+              ],
+              "id": "public.customers",
+            },
+            {
+              "box": [
+                412,
+                78,
+                252,
+                78,
+              ],
+              "id": "public.orders",
+            },
+          ],
+          "name": "small",
+          "schemas": [
+            {
+              "box": [
+                24,
+                24,
+                660,
+                152,
+              ],
+              "name": "public",
+              "tables": 2,
+            },
+          ],
+          "size": [
+            760,
+            420,
+          ],
+        },
+        {
+          "counts": {
+            "edges": 23,
+            "tables": 20,
+          },
+          "firstEdges": [
+            {
+              "id": "sales.table_2->sales.table_1:parent_id",
+              "label": [
+                360,
+                116,
+                84,
+                17,
+              ],
+              "path": "M 412 122 C 342 122, 366 162, 296 162",
+            },
+            {
+              "id": "sales.table_3->sales.table_2:parent_id",
+              "label": [
+                728,
+                136,
+                84,
+                17,
+              ],
+              "path": "M 780 142 C 710 142, 734 182, 664 182",
+            },
+            {
+              "id": "sales.table_3->sales.table_1:prior_id",
+              "label": [
+                728,
+                156,
+                84,
+                17,
+              ],
+              "path": "M 780 162 C 576.72 162, 499.28 122, 296 122",
+            },
+            {
+              "id": "sales.table_4->sales.table_3:parent_id",
+              "label": [
+                1096,
+                176,
+                84,
+                17,
+              ],
+              "path": "M 1148 182 C 1078 182, 1102 142, 1032 142",
+            },
+          ],
+          "firstTables": [
+            {
+              "box": [
+                44,
+                78,
+                252,
+                138,
+              ],
+              "id": "sales.table_1",
+            },
+            {
+              "box": [
+                412,
+                78,
+                252,
+                138,
+              ],
+              "id": "sales.table_2",
+            },
+            {
+              "box": [
+                780,
+                78,
+                252,
+                138,
+              ],
+              "id": "sales.table_3",
+            },
+            {
+              "box": [
+                1148,
+                78,
+                252,
+                138,
+              ],
+              "id": "sales.table_4",
+            },
+          ],
+          "name": "medium",
+          "schemas": [
+            {
+              "box": [
+                24,
+                24,
+                1396,
+                560,
+              ],
+              "name": "sales",
+              "tables": 12,
+            },
+            {
+              "box": [
+                24,
+                618,
+                1028,
+                440,
+              ],
+              "name": "audit",
+              "tables": 8,
+            },
+          ],
+          "size": [
+            1444,
+            1082,
+          ],
+        },
+        {
+          "counts": {
+            "edges": 107,
+            "tables": 40,
+          },
+          "firstEdges": [
+            {
+              "id": "warehouse.table_2->warehouse.table_1:parent_id",
+              "label": [
+                360,
+                116,
+                84,
+                17,
+              ],
+              "path": "M 412 122 C 342 122, 366 162, 296 162",
+            },
+            {
+              "id": "warehouse.table_3->warehouse.table_2:parent_id",
+              "label": [
+                728,
+                136,
+                84,
+                17,
+              ],
+              "path": "M 780 142 C 710 142, 734 182, 664 182",
+            },
+            {
+              "id": "warehouse.table_3->warehouse.table_1:prior_id",
+              "label": [
+                728,
+                156,
+                84,
+                17,
+              ],
+              "path": "M 780 162 C 576.72 162, 499.28 122, 296 122",
+            },
+            {
+              "id": "warehouse.table_4->warehouse.table_3:parent_id",
+              "label": [
+                1096,
+                176,
+                84,
+                17,
+              ],
+              "path": "M 1148 182 C 1078 182, 1102 142, 1032 142",
+            },
+          ],
+          "firstTables": [
+            {
+              "box": [
+                44,
+                78,
+                252,
+                138,
+              ],
+              "id": "warehouse.table_1",
+            },
+            {
+              "box": [
+                412,
+                78,
+                252,
+                138,
+              ],
+              "id": "warehouse.table_2",
+            },
+            {
+              "box": [
+                780,
+                78,
+                252,
+                138,
+              ],
+              "id": "warehouse.table_3",
+            },
+            {
+              "box": [
+                1148,
+                78,
+                252,
+                138,
+              ],
+              "id": "warehouse.table_4",
+            },
+          ],
+          "name": "wide",
+          "schemas": [
+            {
+              "box": [
+                24,
+                24,
+                1396,
+                1778,
+              ],
+              "name": "warehouse",
+              "tables": 40,
+            },
+          ],
+          "size": [
+            1444,
+            1826,
+          ],
+        },
+      ]
+    `);
   });
 
   it("keeps multi-schema groups separated and tables inside their group bounds", () => {
@@ -404,7 +762,7 @@ describe("ERD model", () => {
   });
 });
 
-function denseWarehouseTable(index: number) {
+function denseWarehouseTable(index: number, schema = "warehouse") {
   const tableNumber = index + 1;
   const foreignKeys: DbObjectMetadata["foreignKeys"] = [];
   if (tableNumber > 1) {
@@ -429,7 +787,7 @@ function denseWarehouseTable(index: number) {
     });
   }
   return table(
-    "warehouse",
+    schema,
     `table_${tableNumber}`,
     ["id", "parent_id", "prior_id", "anchor_id", "name"],
     foreignKeys,
@@ -446,6 +804,61 @@ function rectsOverlap(
     a.y < b.y + b.height &&
     a.y + a.height > b.y
   );
+}
+
+function rectInside(
+  inner: { x: number; y: number; width: number; height: number },
+  outer: { x: number; y: number; width: number; height: number },
+) {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}
+
+function labelRect(edge: {
+  labelX: number;
+  labelY: number;
+  labelWidth: number;
+  labelHeight: number;
+}) {
+  return {
+    x: edge.labelX - edge.labelWidth / 2,
+    y: edge.labelY - 12,
+    width: edge.labelWidth,
+    height: edge.labelHeight,
+  };
+}
+
+function visualSignature(layout: ReturnType<typeof layoutErdModel>) {
+  return {
+    size: [layout.width, layout.height],
+    schemas: layout.schemas.map((schema) => ({
+      name: schema.name,
+      box: [schema.x, schema.y, schema.width, schema.height],
+      tables: schema.tableCount,
+    })),
+    counts: {
+      tables: layout.tables.length,
+      edges: layout.edges.length,
+    },
+    firstTables: layout.tables.slice(0, 4).map((tableLayout) => ({
+      id: tableLayout.table.id,
+      box: [
+        tableLayout.x,
+        tableLayout.y,
+        tableLayout.width,
+        tableLayout.height,
+      ],
+    })),
+    firstEdges: layout.edges.slice(0, 4).map((edge) => ({
+      id: edge.id,
+      label: [edge.labelX, edge.labelY, edge.labelWidth, edge.labelHeight],
+      path: edge.path,
+    })),
+  };
 }
 
 function expectEdgePathToBeSane(

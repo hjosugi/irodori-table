@@ -11,6 +11,6 @@ pub use row::snapshot_hash;
 pub use store::KnowledgeStore;
 
 pub const CRATE_NAME: &str = "irodori-knowledge";
-pub const SCHEMA_SQL: &str = include_str!("../../../knowledge/schema.sql");
+pub const SCHEMA_SQL: &str = include_str!("../schema.sql");
 
 pub type Result<T> = std::result::Result<T, sqlx::Error>;

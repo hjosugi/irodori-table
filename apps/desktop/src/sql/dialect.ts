@@ -43,6 +43,7 @@ export function cmDialect(engine: DbEngine): SQLDialect {
     case "timescaledb":
     case "neon":
     case "h2":
+    case "questdb":
     case "duckdb":
       return PostgreSQL;
     default:
@@ -81,6 +82,7 @@ export function formatterLanguage(engine: DbEngine): string {
     case "timescaledb":
     case "neon":
     case "h2":
+    case "questdb":
       return "postgresql";
     default:
       return "sql";

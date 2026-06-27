@@ -70,6 +70,8 @@ export type ErdLayoutEdge = ErdEdge & {
   path: string;
   labelX: number;
   labelY: number;
+  labelWidth: number;
+  labelHeight: number;
 };
 
 export type ErdLayout = {
@@ -88,10 +90,13 @@ const TABLE_FOOTER_HEIGHT = 22;
 const TABLE_PADDING_BOTTOM = 8;
 const SCHEMA_PADDING = 20;
 const SCHEMA_HEADER_HEIGHT = 34;
-const TABLE_GAP_X = 38;
-const TABLE_GAP_Y = 24;
+const TABLE_GAP_X = 116;
+const TABLE_GAP_Y = 36;
 const SCHEMA_GAP_Y = 34;
 const DIAGRAM_PADDING = 24;
+const EDGE_LABEL_WIDTH = 84;
+const EDGE_LABEL_HEIGHT = 17;
+const EDGE_LABEL_GAP = 10;
 
 function tableId(schema: string, name: string) {
   return `${schema}.${name}`;
@@ -311,6 +316,13 @@ export function layoutErdModel(model: ErdModel): ErdLayout {
     }
     return [layoutEdge(edge, source, target, index)];
   });
+  for (const edge of edges) {
+    width = Math.max(
+      width,
+      edge.labelX + edge.labelWidth / 2 + DIAGRAM_PADDING,
+    );
+    y = Math.max(y, edge.labelY + edge.labelHeight / 2 + DIAGRAM_PADDING);
+  }
 
   return {
     width,
@@ -341,24 +353,32 @@ function layoutEdge(
     return {
       ...edge,
       path: `M ${x} ${y} C ${x + 54} ${y - 34}, ${x + 54} ${y + 52}, ${x} ${y + 24}`,
-      labelX: x + 58,
+      labelX: x + EDGE_LABEL_WIDTH / 2 + EDGE_LABEL_GAP,
       labelY: y + 18,
+      labelWidth: EDGE_LABEL_WIDTH,
+      labelHeight: EDGE_LABEL_HEIGHT,
     };
   }
-  const sourceRight = source.x + source.width;
-  const targetRight = target.x + target.width;
-  const leftToRight = source.x < target.x;
-  const sx = leftToRight ? sourceRight : source.x;
-  const tx = leftToRight ? target.x : targetRight;
-  const sy = source.y + Math.min(source.height - 16, 44 + (index % 5) * 13);
-  const ty = target.y + Math.min(target.height - 16, 44 + ((index + 2) % 5) * 13);
-  const dir = leftToRight ? 1 : -1;
+  const sourceCenterX = source.x + source.width / 2;
+  const targetCenterX = target.x + target.width / 2;
+  const sameColumn = Math.abs(sourceCenterX - targetCenterX) < source.width / 2;
+  const dir = sameColumn || targetCenterX >= sourceCenterX ? 1 : -1;
+  const sx = dir > 0 ? source.x + source.width : source.x;
+  const tx = sameColumn
+    ? target.x + target.width
+    : dir > 0
+      ? target.x
+      : target.x + target.width;
+  const sy = source.y + Math.min(source.height - 16, 44 + (index % 4) * 20);
+  const ty = target.y + Math.min(target.height - 16, 44 + ((index + 2) % 4) * 20);
   const curve = Math.max(70, Math.abs(tx - sx) * 0.42);
   return {
     ...edge,
     path: `M ${sx} ${sy} C ${sx + dir * curve} ${sy}, ${tx - dir * curve} ${ty}, ${tx} ${ty}`,
-    labelX: (sx + tx) / 2,
-    labelY: (sy + ty) / 2 - 8,
+    labelX: sx + dir * (EDGE_LABEL_WIDTH / 2 + EDGE_LABEL_GAP),
+    labelY: sy - 6,
+    labelWidth: EDGE_LABEL_WIDTH,
+    labelHeight: EDGE_LABEL_HEIGHT,
   };
 }
 

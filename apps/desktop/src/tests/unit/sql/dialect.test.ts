@@ -54,6 +54,22 @@ describe("cmDialect", () => {
     redis: { dialect: StandardSQL, formatter: "sql" },
     cassandra: { dialect: StandardSQL, formatter: "sql" },
     bigtable: { dialect: StandardSQL, formatter: "sql" },
+    trinoPresto: { dialect: StandardSQL, formatter: "sql" },
+    firebird: { dialect: StandardSQL, formatter: "sql" },
+    databricks: { dialect: StandardSQL, formatter: "sql" },
+    elasticsearch: { dialect: StandardSQL, formatter: "sql" },
+    couchbase: { dialect: StandardSQL, formatter: "sql" },
+    dynamodb: { dialect: StandardSQL, formatter: "sql" },
+    scylladb: { dialect: StandardSQL, formatter: "sql" },
+    arangodb: { dialect: StandardSQL, formatter: "sql" },
+    questdb: { dialect: PostgreSQL, formatter: "postgresql" },
+    iotdb: { dialect: StandardSQL, formatter: "sql" },
+    hive: { dialect: StandardSQL, formatter: "sql" },
+    iceberg: { dialect: StandardSQL, formatter: "sql" },
+    s3Tables: { dialect: StandardSQL, formatter: "sql" },
+    objectStore: { dialect: StandardSQL, formatter: "sql" },
+    deltaLake: { dialect: StandardSQL, formatter: "sql" },
+    hudi: { dialect: StandardSQL, formatter: "sql" },
   };
 
   it("maps every engine to the expected CodeMirror SQL dialect", () => {

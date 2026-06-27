@@ -94,10 +94,10 @@ export function ErdSvg({
           />
           <rect
             className="erd-edge-label-bg"
-            x={edge.labelX - 42}
+            x={edge.labelX - edge.labelWidth / 2}
             y={edge.labelY - 12}
-            width="84"
-            height="17"
+            width={edge.labelWidth}
+            height={edge.labelHeight}
             rx="3"
           />
           <text className="erd-edge-label" x={edge.labelX} y={edge.labelY} textAnchor="middle">

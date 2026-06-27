@@ -117,6 +117,8 @@ export function ErdDialog({
           <button
             className="text-button"
             type="button"
+            aria-label="Copy ERD SVG"
+            title="Copy ERD SVG"
             onClick={onCopySvg}
             disabled={!layout}
           >
@@ -126,6 +128,8 @@ export function ErdDialog({
           <button
             className="text-button"
             type="button"
+            aria-label="Copy ERD PNG"
+            title="Copy ERD PNG"
             onClick={onCopyPng}
             disabled={!layout}
           >
@@ -135,6 +139,8 @@ export function ErdDialog({
           <button
             className="text-button"
             type="button"
+            aria-label="Download ERD SVG"
+            title="Download ERD SVG"
             onClick={onDownloadSvg}
             disabled={!layout}
           >
@@ -144,6 +150,8 @@ export function ErdDialog({
           <button
             className="text-button"
             type="button"
+            aria-label="Download ERD PNG"
+            title="Download ERD PNG"
             onClick={onDownloadPng}
             disabled={!layout}
           >
