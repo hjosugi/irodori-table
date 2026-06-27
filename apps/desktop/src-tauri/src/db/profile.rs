@@ -99,7 +99,18 @@ pub(super) fn normalize_profile(
                 return Err("host is required when URL/DSN is not provided".into());
             }
         }
-        Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {
+        Wire::Memgraph
+        | Wire::Qdrant
+        | Wire::Milvus
+        | Wire::Pinecone
+        | Wire::Jdbc
+        | Wire::Search
+        | Wire::Document
+        | Wire::KeyValue
+        | Wire::Graph
+        | Wire::TimeSeries
+        | Wire::Lakehouse
+        | Wire::ObjectStore => {
             unreachable!("unimplemented wires are rejected above")
         }
     }
@@ -131,7 +142,18 @@ fn normalize_optional_text(value: &mut Option<String>) {
 fn is_unimplemented_wire(wire: Wire) -> bool {
     matches!(
         wire,
-        Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone
+        Wire::Memgraph
+            | Wire::Qdrant
+            | Wire::Milvus
+            | Wire::Pinecone
+            | Wire::Jdbc
+            | Wire::Search
+            | Wire::Document
+            | Wire::KeyValue
+            | Wire::Graph
+            | Wire::TimeSeries
+            | Wire::Lakehouse
+            | Wire::ObjectStore
     )
 }
 

@@ -395,7 +395,15 @@ fn bind_placeholder(wire: Wire, index: usize) -> String {
         | Wire::InfluxDb
         | Wire::Qdrant
         | Wire::Milvus
-        | Wire::Pinecone => "?".to_string(),
+        | Wire::Pinecone
+        | Wire::Jdbc
+        | Wire::Search
+        | Wire::Document
+        | Wire::KeyValue
+        | Wire::Graph
+        | Wire::TimeSeries
+        | Wire::Lakehouse
+        | Wire::ObjectStore => "?".to_string(),
     }
 }
 

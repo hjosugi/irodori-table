@@ -226,7 +226,7 @@ function tableSpecTable(table: DbObjectMetadata, visibleIds: Set<string>): Table
       .map((foreignKey, index) => ({
         name: defaultForeignKeyName(table.name, foreignKey.columns, index),
         columns: foreignKey.columns,
-        referencesSchema: foreignKey.referencesSchema,
+        referencesSchema: foreignKey.referencesSchema ?? table.schema,
         referencesTable: foreignKey.referencesTable,
         referencesColumns: foreignKey.referencesColumns,
       })),
