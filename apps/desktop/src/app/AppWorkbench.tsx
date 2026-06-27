@@ -145,6 +145,7 @@ import {
 } from "@/features/schema-designer";
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
+import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import {
   UI_ZOOM_DEFAULT,
   UI_ZOOM_STEP,
@@ -198,12 +199,10 @@ import {
   dbCancel,
   dbConnect,
   dbDisconnect,
-  dbIndexSchema,
   dbListObjects,
   dbQueryParameters,
   dbReleaseResult,
   dbResultWindow,
-  jobsCancel,
   jobsList,
   openDeveloperTools,
   type CellValue,
@@ -687,6 +686,7 @@ export function AppWorkbench() {
   // ER diagram modal (rendered from metadata through our SVG layout).
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const [diagramError, setDiagramError] = useState<string | null>(null);
   const [diagramSearch, setDiagramSearch] = useState("");
   const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
@@ -1892,30 +1892,6 @@ export function AppWorkbench() {
   }
 
   // Run a command by id (the keybinding handler and the Commands list share this).
-  // JOB-002/004: start a background schema-index job; it streams into the jobs
-  // dashboard (progress / cancel / artifact) which we open so the user can watch it.
-  async function buildSchemaIndexJob() {
-    if (!activeConnectionOpen) {
-      showActionNotice(
-        "error",
-        "Index failed",
-        `not connected: ${activeConnectionId}`,
-      );
-      return;
-    }
-    try {
-      const jobId = await dbIndexSchema(activeConnectionId);
-      showActionNotice(
-        "success",
-        "Indexing schema",
-        `Job ${jobId} started — track it in Jobs`,
-      );
-      openSettingsSection("jobs");
-    } catch (error) {
-      showActionNotice("error", "Index failed", errorMessage(error));
-    }
-  }
-
   function closeActiveSqlTab() {
     const activeIndex = openTabs.findIndex((tab) => tab.id === activeTab);
     if (openTabs.length <= 1 || activeIndex < 0) {
@@ -1979,7 +1955,6 @@ export function AppWorkbench() {
     saveQuery: saveCurrentQuery,
     saveQueryAs: saveCurrentQueryAsFile,
     exitApp: exitApplication,
-    buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
     runCurrentQuery,
     runFromStartQuery,
@@ -2005,6 +1980,7 @@ export function AppWorkbench() {
     undoLastEdit,
     commitEdits,
     generateSql: () => setAiGenerateOpen(true),
+    toggleTerminal: () => setTerminalOpen((open) => !open),
   });
 
   const keymapConflicts = findConflicts(keymap, appCommandCatalog);
@@ -2123,19 +2099,6 @@ export function AppWorkbench() {
       setJobs(emptyJobList);
     } finally {
       setJobsLoading(false);
-    }
-  }
-
-  async function cancelJob(jobId: string) {
-    setJobsError(null);
-    try {
-      await jobsCancel(jobId);
-      await refreshJobs();
-      showActionNotice("info", "Job cancellation requested", jobId);
-    } catch (error) {
-      const message = errorMessage(error);
-      setJobsError(message);
-      showActionNotice("error", "Job cancellation failed", message);
     }
   }
 
@@ -4496,6 +4459,12 @@ export function AppWorkbench() {
         notify={showActionNotice}
       />
 
+      {terminalOpen && (
+        <div className="terminal-dock">
+          <TerminalPanel onClose={() => setTerminalOpen(false)} />
+        </div>
+      )}
+
       {settingsOpen ? (
         <SettingsDialog
           settingsTab={settingsTab}
@@ -4556,7 +4525,6 @@ export function AppWorkbench() {
           jobsLoading={jobsLoading}
           jobsError={jobsError}
           refreshJobs={refreshJobs}
-          cancelJob={cancelJob}
           settingsJsonDraft={settingsJsonDraft}
           setSettingsJsonDraft={setSettingsJsonDraft}
           settingsJsonError={settingsJsonError}
@@ -4576,10 +4544,6 @@ export function AppWorkbench() {
             activeConnectionOpen ? "connected" : "closed"
           }`}
           onClose={() => setAboutOpen(false)}
-          onOpenSettings={() => {
-            setAboutOpen(false);
-            openSettingsSection("general");
-          }}
           onCopyDiagnostics={() => void copyAppDiagnostics()}
         />
       ) : null}

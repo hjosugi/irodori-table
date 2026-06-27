@@ -20,6 +20,10 @@ A small model is unreliable on its own. The design removes that risk:
 - **事前の調整 (planning)** — tables and foreign-key joins are resolved
   deterministically before the model runs, shrinking its job so a 0.5B model
   suffices.
+- **Scoped grammar** — on large schemas the GBNF is projected down to just the
+  planned tables (+ their FK neighbors), so the grammar a big DB produces stays
+  small: faster decode, lower memory, and the model can't even mention an
+  irrelevant table.
 - **Validate + repair** — output is parsed and every identifier is proven to
   exist; anything else is rejected, not returned.
 
@@ -54,6 +58,35 @@ NL prompt + connection schema
 - Lightness: mmapped weights, model loaded once and reused, a fresh context per
   request (KV cache freed between calls), small `n_ctx`, capped threads, and the
   grammar prunes the token space so fewer decode steps are needed.
+
+## Providers — connect any model (extensibility)
+
+Everything talks to one trait, `GrammarModel` (`runtime.rs`), so backends are
+fully pluggable. The **verify gate is what makes every provider safe**: output is
+parsed and schema-validated regardless of source, so a backend that can't honor
+the GBNF grammar just gets its mistakes *rejected* instead of *prevented* — never
+returned as invalid/hallucinated SQL.
+
+Built-in providers:
+
+| Provider | Crate item | Feature | Notes |
+| --- | --- | --- | --- |
+| Embedded llama.cpp | `LlamaSqlModel` | `llama` | GBNF-constrained, fully local/offline |
+| Ollama | `OllamaModel` | `http` | any local Ollama model (7B/14B/32B…) |
+| OpenAI-compatible API | `OpenAiCompatModel` | `http` | OpenAI, Azure, OpenRouter, gateways, many self-hosted/Anthropic-compatible |
+| External CLI | `CommandModel` | *(none)* | Claude Code, Codex, Copilot, or any command — reuses your subscription |
+| Echo (tests) | `EchoModel` | *(none)* | deterministic stand-in |
+
+The desktop selects a provider at runtime via `ai_set_provider` /
+`ai_get_provider` (`AiProviderConfig` { kind, model, endpoint, apiKey, program,
+args }), surfaced in the generate dialog's "Model provider" section. The `http`
+and CLI providers are compiled in by default, so **external/subscription models
+work without the heavy `llama` build**; the embedded model stays opt-in. API keys
+are held in memory only (persist via the OS keychain through
+`security_store_secret`).
+
+Adding another provider (e.g. Anthropic-native, a local server, a queue) is a new
+`impl GrammarModel` plus one `AiProviderKind` arm — no pipeline changes.
 
 ## Build & use
 

@@ -139,7 +139,6 @@ export interface SettingsDialogProps {
   jobsLoading: boolean;
   jobsError: string | null;
   refreshJobs: () => Promise<void>;
-  cancelJob: (jobId: string) => Promise<void>;
   settingsJsonDraft: string;
   setSettingsJsonDraft: (value: string) => void;
   settingsJsonError: string | null;
@@ -198,10 +197,6 @@ function formatJobProgress(job: JobSummary) {
     return `${toCount(progress.completed)} ${progress.unit}`;
   }
   return progress.message ?? "Waiting";
-}
-
-function isCancellableJob(job: JobSummary) {
-  return job.status === "queued" || job.status === "running";
 }
 
 function openExternalUrl(url: string) {
@@ -349,7 +344,6 @@ export function SettingsDialog({
   jobsLoading,
   jobsError,
   refreshJobs,
-  cancelJob,
   settingsJsonDraft,
   setSettingsJsonDraft,
   settingsJsonError,
@@ -1324,15 +1318,6 @@ export function SettingsDialog({
                                 attempt: job.attempt,
                               })}
                             </small>
-                            {isCancellableJob(job) ? (
-                              <button
-                                className="text-button"
-                                type="button"
-                                onClick={() => void cancelJob(job.id)}
-                              >
-                                {t("common.cancel")}
-                              </button>
-                            ) : null}
                           </div>
                         </div>
                       ))}

@@ -21,6 +21,10 @@ Status legend:
   `tests/integration_db.rs` through the sample harness (`make db-verify`).
 - **Pending** — recognized by the engine enum, adapter scaffolding exists, but the
   connector intentionally returns a "not ready" result.
+- **Extension** — recognized by the engine enum and published through the
+  extension marketplace; the production connector is expected to be installed
+  from `docs/extension-marketplace/index.json` instead of compiled into the core
+  desktop build.
 - **Recognized, no connector** — present in `DbEngine` but rejected at connect by
   `is_unimplemented_wire()` (`"recognized but does not have a production connector
   yet"`).
@@ -38,6 +42,7 @@ Status legend:
 | Oracle | `oracle` | Thin TNS / `oracle-rs` | `db/oracle.rs` | 1521 | Verified |
 | SQL Server | `sqlserver` | TDS / tiberius | `db/mssql.rs` | 1433 | Verified |
 | DuckDB | `duckdb` | embedded libduckdb | `db/duck.rs` | — | Verified |
+| MotherDuck | `motherduck` | DuckDB service / extension | `irodori.motherduck` | 443 | Extension |
 | CockroachDB | `cockroachdb` | Postgres wire / sqlx | (via `postgres.rs`) | 26257 | Verified |
 | YugabyteDB (YSQL) | `yugabytedb` | Postgres wire / sqlx | (via `postgres.rs`) | 5433 | Wired |
 | Redshift | `redshift` | Postgres wire / sqlx | (via `postgres.rs`) | 5439 | Wired (AWS, no local container) |
@@ -77,15 +82,19 @@ These appear in `DbEngine` but `is_unimplemented_wire()` rejects them with
 | Qdrant | `qdrant` | Vector | — | Vector family has no adapter yet. |
 | Milvus | `milvus` | Vector | — | Vector family has no adapter yet. |
 | Pinecone | `pinecone` | Vector (HTTP) | — | Vector family has no adapter yet. |
+| Cloud Spanner | `cloudSpanner` | Distributed SQL / Google API | `CloudSpanner` | Installable connector; Spanner SQL/catalog handling is separate from Postgres wire. |
+| Generic KV Store | `kvStore` | Key-value | `KeyValue` | Provider-neutral extension contract for KV systems. |
 | Trino / Presto | `trinoPresto` | Federated SQL | `Jdbc` | JDBC-style connector not implemented yet. |
 | Firebird | `firebird` | Relational | `Jdbc` | JDBC-style connector not implemented yet. |
 | Databricks / Spark SQL | `databricks` | Warehouse | `Jdbc` | JDBC-style connector not implemented yet. |
-| Elasticsearch / OpenSearch | `elasticsearch` | Search | `Search` | Search connector and index/data-stream browser are not implemented yet. |
+| Elasticsearch | `elasticsearch` | Search | `Search` | Search connector and index/data-stream browser are not implemented yet. |
+| OpenSearch | `openSearch` | Search | `Search` | Search connector and index/data-stream browser are modeled as a separate extension. |
 | Couchbase | `couchbase` | Document | `Document` | Document connector not implemented yet. |
 | DynamoDB | `dynamodb` | Key-value | `KeyValue` | Key-value connector not implemented yet. |
 | ArangoDB | `arangodb` | Graph / multi-model | `Graph` | Graph/multi-model connector not implemented yet. |
 | Apache IoTDB | `iotdb` | Time-series | `TimeSeries` | Time-series connector not implemented yet. |
 | Apache Hive | `hive` | Lakehouse / catalog | `Jdbc` | Catalog/metastore model is still pending. |
+| Amazon Athena | `athena` | Lakehouse / query-engine | `Lakehouse` | Athena/Glue/workgroup/output-location behavior is separate from Iceberg and S3 Tables. |
 | Apache Iceberg | `iceberg` | Lakehouse | `Lakehouse` | Priority lakehouse target; catalog-backed model is still pending. |
 | AWS S3 Tables | `s3Tables` | Lakehouse | `Lakehouse` | Managed Iceberg connector not implemented yet. |
 | Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | Object browser/source connector not implemented yet. |

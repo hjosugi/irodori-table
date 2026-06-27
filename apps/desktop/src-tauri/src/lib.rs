@@ -7,6 +7,7 @@ pub mod db;
 pub mod git;
 pub mod indexing;
 pub mod jobs;
+pub mod pty;
 pub mod security;
 
 #[derive(Serialize, Deserialize, TS)]
@@ -181,6 +182,7 @@ pub fn run() {
         .manage(indexing::SchemaIndexState::default())
         .manage(security::SecurityState::default())
         .manage(ai::AiState::default())
+        .manage(pty::PtyState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
             open_developer_tools,
@@ -230,7 +232,11 @@ pub fn run() {
             ai::ai_engine_status,
             ai::ai_download_model,
             ai::ai_set_provider,
-            ai::ai_get_provider
+            ai::ai_get_provider,
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

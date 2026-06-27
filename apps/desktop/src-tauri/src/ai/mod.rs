@@ -156,7 +156,12 @@ pub async fn ai_generate_sql(
         generate(model.as_ref(), &request, dialect.as_ref())
     })
     .await
-    .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("generation task failed: {e}")))??;
+    .map_err(|e| {
+        IrodoriError::new(
+            IrodoriErrorKind::Internal,
+            format!("generation task failed: {e}"),
+        )
+    })??;
 
     Ok(AiGenerateResult {
         sql: outcome.sql,
@@ -190,10 +195,7 @@ pub fn ai_engine_status(ai: State<'_, AiState>, app: AppHandle) -> IrodoriResult
 /// Download the default model in the background; returns the job id to watch in
 /// the jobs dashboard.
 #[tauri::command]
-pub async fn ai_download_model(
-    jobs: State<'_, JobState>,
-    app: AppHandle,
-) -> IrodoriResult<String> {
+pub async fn ai_download_model(jobs: State<'_, JobState>, app: AppHandle) -> IrodoriResult<String> {
     let path = model_path(&app)?;
     if path.exists() {
         return Err(IrodoriError::validation("the model is already downloaded"));
@@ -202,7 +204,10 @@ pub async fn ai_download_model(
     let spec = JobSpec {
         source: Some(url.clone()),
         tags: vec!["ai".to_string(), "model".to_string()],
-        ..JobSpec::new(JobKind::Other, format!("download model: {DEFAULT_MODEL_FILE}"))
+        ..JobSpec::new(
+            JobKind::Other,
+            format!("download model: {DEFAULT_MODEL_FILE}"),
+        )
     };
     let record = jobs.runtime().submit(spec)?;
     let job_id = record.id.clone();
@@ -283,12 +288,11 @@ fn build_provider(ai: &AiState, app: &AppHandle) -> IrodoriResult<Arc<dyn Gramma
                 return Err(IrodoriError::validation("a command program is required"));
             }
             let label = config.program.clone();
-            let model: Arc<dyn GrammarModel> =
-                Arc::new(CommandModel::new(CommandConfig::new(
-                    config.program,
-                    config.args,
-                    label,
-                )));
+            let model: Arc<dyn GrammarModel> = Arc::new(CommandModel::new(CommandConfig::new(
+                config.program,
+                config.args,
+                label,
+            )));
             Ok(model)
         }
     }
@@ -419,9 +423,9 @@ async fn download_model_job(
         use tokio::io::AsyncWriteExt;
 
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("create dir: {e}")))?;
+            tokio::fs::create_dir_all(parent).await.map_err(|e| {
+                IrodoriError::new(IrodoriErrorKind::Internal, format!("create dir: {e}"))
+            })?;
         }
         ctx.log(JobLogLevel::Info, format!("downloading {url}"))?;
 
@@ -437,9 +441,9 @@ async fn download_model_job(
         let total = response.content_length();
 
         let tmp = path.with_extension("part");
-        let mut file = tokio::fs::File::create(&tmp)
-            .await
-            .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("create file: {e}")))?;
+        let mut file = tokio::fs::File::create(&tmp).await.map_err(|e| {
+            IrodoriError::new(IrodoriErrorKind::Internal, format!("create file: {e}"))
+        })?;
 
         let mut downloaded: u64 = 0;
         let mut stream = response.bytes_stream();
@@ -452,11 +456,11 @@ async fn download_model_job(
                     (),
                 ));
             }
-            let chunk = chunk
-                .map_err(|e| IrodoriError::transport(format!("download error: {e}")))?;
-            file.write_all(&chunk)
-                .await
-                .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("write: {e}")))?;
+            let chunk =
+                chunk.map_err(|e| IrodoriError::transport(format!("download error: {e}")))?;
+            file.write_all(&chunk).await.map_err(|e| {
+                IrodoriError::new(IrodoriErrorKind::Internal, format!("write: {e}"))
+            })?;
             downloaded += chunk.len() as u64;
             ctx.report_progress(downloaded, total, "bytes", "downloading model")?;
         }

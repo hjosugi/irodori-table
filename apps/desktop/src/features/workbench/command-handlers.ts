@@ -24,7 +24,6 @@ type WorkbenchCommandHandlerDeps = {
   saveQuery: () => void;
   saveQueryAs: () => void;
   exitApp: () => Promise<void>;
-  buildSchemaIndex: () => void;
   runQuery: () => Promise<void>;
   runCurrentQuery: () => Promise<void>;
   runFromStartQuery: () => Promise<void>;
@@ -50,6 +49,7 @@ type WorkbenchCommandHandlerDeps = {
   undoLastEdit: () => void;
   commitEdits: () => Promise<void>;
   generateSql: () => void;
+  toggleTerminal: () => void;
 };
 
 export function createWorkbenchCommandHandler({
@@ -76,7 +76,6 @@ export function createWorkbenchCommandHandler({
   saveQuery,
   saveQueryAs,
   exitApp,
-  buildSchemaIndex,
   runQuery,
   runCurrentQuery,
   runFromStartQuery,
@@ -102,6 +101,7 @@ export function createWorkbenchCommandHandler({
   undoLastEdit,
   commitEdits,
   generateSql,
+  toggleTerminal,
 }: WorkbenchCommandHandlerDeps) {
   return (id: string) => {
     switch (id) {
@@ -171,9 +171,6 @@ export function createWorkbenchCommandHandler({
         break;
       case "app.exit":
         void exitApp();
-        break;
-      case "schema.indexBuild":
-        buildSchemaIndex();
         break;
       case "query.run":
         void runQuery();
@@ -261,6 +258,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "editor.generateSql":
         generateSql();
+        break;
+      case "terminal.toggle":
+        toggleTerminal();
         break;
     }
   };

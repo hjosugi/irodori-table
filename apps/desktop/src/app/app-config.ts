@@ -141,6 +141,12 @@ const aiCommands: CommandMeta[] = [
     category: "Editor",
     scope: "editor",
   },
+  {
+    id: "terminal.toggle",
+    title: "Toggle Terminal",
+    category: "View",
+    scope: "global",
+  },
 ];
 
 export const appCommandCatalog: CommandMeta[] = [
@@ -263,7 +269,6 @@ export const menuBarSections: AppMenuSection[] = [
     label: "Tools",
     items: [
       { commandId: "migration.studio" },
-      { commandId: "schema.indexBuild" },
       { commandId: "editor.cleanup" },
       { commandId: "settings.keymap" },
       { commandId: "theme.toggle" },

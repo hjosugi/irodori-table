@@ -30,8 +30,11 @@ use ts_rs::TS;
 use crate::security::SecurityState;
 use irodori_completion::metadata::MetadataCache;
 
+#[cfg(feature = "bigquery")]
 mod bigquery;
+#[cfg(feature = "bigtable")]
 mod bigtable;
+#[cfg(feature = "cassandra")]
 mod cassandra;
 mod clickhouse;
 mod commands;
@@ -42,14 +45,19 @@ mod edit;
 mod engine;
 mod influx;
 mod meta;
+#[cfg(feature = "mongo")]
 mod mongo;
+#[cfg(feature = "sqlserver")]
 mod mssql;
 mod mysql;
+#[cfg(feature = "neo4j")]
 mod neo4j;
+#[cfg(feature = "oracle")]
 mod oracle;
 mod postgres;
 mod profile;
 mod query;
+#[cfg(feature = "redis-connector")]
 mod redis;
 mod snowflake;
 mod spill;

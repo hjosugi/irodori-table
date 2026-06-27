@@ -2,19 +2,33 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use async_trait::async_trait;
+#[cfg(feature = "sqlserver")]
 use tokio::sync::Mutex;
 
+#[cfg(feature = "bigquery")]
+use super::bigquery;
+#[cfg(feature = "bigtable")]
+use super::bigtable;
+#[cfg(feature = "cassandra")]
+use super::cassandra;
 #[cfg(feature = "duckdb")]
 use super::duck;
 use super::edit::{AppliedEdits, TableEdits};
 use super::engine::{self, Wire};
+#[cfg(feature = "mongo")]
+use super::mongo;
+#[cfg(feature = "sqlserver")]
+use super::mssql;
+#[cfg(feature = "neo4j")]
+use super::neo4j;
+#[cfg(feature = "oracle")]
+use super::oracle;
 use super::profile::ConnectionProfile;
 use super::query::{PreparedQuery, RawResultSet, RowSet};
+#[cfg(feature = "redis-connector")]
+use super::redis;
 use super::stream;
-use super::{
-    bigquery, bigtable, cassandra, clickhouse, influx, mongo, mssql, mysql, neo4j, oracle,
-    postgres, redis, snowflake, sqlite, DatabaseMetadata, DbEngine,
-};
+use super::{clickhouse, influx, mysql, postgres, snowflake, sqlite, DatabaseMetadata, DbEngine};
 
 // ---- The per-engine connection abstraction ------------------------------------
 
@@ -160,7 +174,9 @@ impl Connection for PgConn {
     }
 }
 
+#[cfg(feature = "neo4j")]
 struct Neo4jConnection(neo4j::Neo4jConn);
+#[cfg(feature = "neo4j")]
 #[async_trait]
 impl Connection for Neo4jConnection {
     fn wire(&self) -> Wire {
@@ -298,7 +314,9 @@ impl Connection for SqliteConn {
     }
 }
 
+#[cfg(feature = "sqlserver")]
 struct MssqlConn(Arc<Mutex<mssql::MssqlClient>>);
+#[cfg(feature = "sqlserver")]
 #[async_trait]
 impl Connection for MssqlConn {
     fn wire(&self) -> Wire {
@@ -341,7 +359,9 @@ impl Connection for MssqlConn {
     async fn close(&self) {} // tiberius closes when its last handle drops
 }
 
+#[cfg(feature = "mongo")]
 struct MongoConn(mongo::MongoHandle);
+#[cfg(feature = "mongo")]
 #[async_trait]
 impl Connection for MongoConn {
     fn wire(&self) -> Wire {
@@ -360,7 +380,9 @@ impl Connection for MongoConn {
     async fn close(&self) {} // mongodb client closes when its last handle drops
 }
 
+#[cfg(feature = "oracle")]
 struct OracleConn(oracle::OracleHandle);
+#[cfg(feature = "oracle")]
 #[async_trait]
 impl Connection for OracleConn {
     fn wire(&self) -> Wire {
@@ -436,7 +458,9 @@ impl Connection for SnowflakeConnection {
     async fn close(&self) {}
 }
 
+#[cfg(feature = "bigquery")]
 struct BigQueryConnection(bigquery::BigQueryConn);
+#[cfg(feature = "bigquery")]
 #[async_trait]
 impl Connection for BigQueryConnection {
     fn wire(&self) -> Wire {
@@ -454,7 +478,9 @@ impl Connection for BigQueryConnection {
     async fn close(&self) {}
 }
 
+#[cfg(feature = "bigtable")]
 struct BigtableConnection(bigtable::BigtableConn);
+#[cfg(feature = "bigtable")]
 #[async_trait]
 impl Connection for BigtableConnection {
     fn wire(&self) -> Wire {
@@ -472,7 +498,9 @@ impl Connection for BigtableConnection {
     async fn close(&self) {}
 }
 
+#[cfg(feature = "redis-connector")]
 struct RedisConnection(redis::RedisConn);
+#[cfg(feature = "redis-connector")]
 #[async_trait]
 impl Connection for RedisConnection {
     fn wire(&self) -> Wire {
@@ -490,7 +518,9 @@ impl Connection for RedisConnection {
     async fn close(&self) {}
 }
 
+#[cfg(feature = "cassandra")]
 struct CassandraConnection(cassandra::CassandraConn);
+#[cfg(feature = "cassandra")]
 #[async_trait]
 impl Connection for CassandraConnection {
     fn wire(&self) -> Wire {
@@ -528,10 +558,28 @@ pub(crate) async fn connect_engine(
             }
             Arc::new(SqliteConn(pool))
         }
-        Wire::SqlServer => Arc::new(MssqlConn(Arc::new(Mutex::new(
-            mssql::connect(profile).await?,
-        )))),
-        Wire::Mongo => Arc::new(MongoConn(mongo::connect(profile).await?)),
+        Wire::SqlServer => {
+            #[cfg(feature = "sqlserver")]
+            {
+                Arc::new(MssqlConn(Arc::new(Mutex::new(
+                    mssql::connect(profile).await?,
+                ))))
+            }
+            #[cfg(not(feature = "sqlserver"))]
+            {
+                return Err(feature_required("SQL Server", "sqlserver"));
+            }
+        }
+        Wire::Mongo => {
+            #[cfg(feature = "mongo")]
+            {
+                Arc::new(MongoConn(mongo::connect(profile).await?))
+            }
+            #[cfg(not(feature = "mongo"))]
+            {
+                return Err(feature_required("MongoDB", "mongo"));
+            }
+        }
         Wire::DuckDb => {
             #[cfg(feature = "duckdb")]
             {
@@ -548,15 +596,69 @@ pub(crate) async fn connect_engine(
                 );
             }
         }
-        Wire::Oracle => Arc::new(OracleConn(oracle::connect(profile).await?)),
-        Wire::Neo4j => Arc::new(Neo4jConnection(neo4j::connect(profile).await?)),
+        Wire::Oracle => {
+            #[cfg(feature = "oracle")]
+            {
+                Arc::new(OracleConn(oracle::connect(profile).await?))
+            }
+            #[cfg(not(feature = "oracle"))]
+            {
+                return Err(feature_required("Oracle", "oracle"));
+            }
+        }
+        Wire::Neo4j => {
+            #[cfg(feature = "neo4j")]
+            {
+                Arc::new(Neo4jConnection(neo4j::connect(profile).await?))
+            }
+            #[cfg(not(feature = "neo4j"))]
+            {
+                return Err(feature_required("Neo4j", "neo4j"));
+            }
+        }
         Wire::InfluxDb => Arc::new(InfluxConnection(influx::connect(profile).await?)),
         Wire::ClickHouse => Arc::new(ClickHouseConnection(clickhouse::connect(profile).await?)),
         Wire::Snowflake => Arc::new(SnowflakeConnection(snowflake::connect(profile).await?)),
-        Wire::BigQuery => Arc::new(BigQueryConnection(bigquery::connect(profile).await?)),
-        Wire::Bigtable => Arc::new(BigtableConnection(bigtable::connect(profile).await?)),
-        Wire::Redis => Arc::new(RedisConnection(redis::connect(profile).await?)),
-        Wire::Cassandra => Arc::new(CassandraConnection(cassandra::connect(profile).await?)),
+        Wire::BigQuery => {
+            #[cfg(feature = "bigquery")]
+            {
+                Arc::new(BigQueryConnection(bigquery::connect(profile).await?))
+            }
+            #[cfg(not(feature = "bigquery"))]
+            {
+                return Err(feature_required("BigQuery", "bigquery"));
+            }
+        }
+        Wire::Bigtable => {
+            #[cfg(feature = "bigtable")]
+            {
+                Arc::new(BigtableConnection(bigtable::connect(profile).await?))
+            }
+            #[cfg(not(feature = "bigtable"))]
+            {
+                return Err(feature_required("Bigtable", "bigtable"));
+            }
+        }
+        Wire::Redis => {
+            #[cfg(feature = "redis-connector")]
+            {
+                Arc::new(RedisConnection(redis::connect(profile).await?))
+            }
+            #[cfg(not(feature = "redis-connector"))]
+            {
+                return Err(feature_required("Redis", "redis-connector"));
+            }
+        }
+        Wire::Cassandra => {
+            #[cfg(feature = "cassandra")]
+            {
+                Arc::new(CassandraConnection(cassandra::connect(profile).await?))
+            }
+            #[cfg(not(feature = "cassandra"))]
+            {
+                return Err(feature_required("Cassandra/ScyllaDB", "cassandra"));
+            }
+        }
         Wire::Memgraph
         | Wire::Qdrant
         | Wire::Milvus
@@ -577,6 +679,10 @@ pub(crate) async fn connect_engine(
         }
     };
     Ok(conn)
+}
+
+fn feature_required(engine: &str, feature: &str) -> String {
+    format!("{engine} support is not built in. Rebuild with `--features {feature}`.")
 }
 
 fn should_seed_builtin_sample(profile: &ConnectionProfile) -> bool {

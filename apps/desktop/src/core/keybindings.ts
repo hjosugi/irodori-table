@@ -44,12 +44,6 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
-    id: "schema.indexBuild",
-    title: "Build schema search index",
-    category: "General",
-    scope: "global",
-  },
-  {
     id: "migration.studio",
     title: "Open Migration Studio",
     category: "General",
@@ -221,6 +215,7 @@ export const defaultKeymap: Keymap = {
   "view.zoomOut": "Mod+-",
   "view.zoomReset": "Mod+0",
   "diagram.show": "Mod+Shift+D",
+  "terminal.toggle": "Ctrl+`",
   "query.run": "Mod+Enter",
   "query.runCurrent": "Mod+Shift+Enter",
   "query.runFromStart": "Mod+Alt+Shift+Enter",

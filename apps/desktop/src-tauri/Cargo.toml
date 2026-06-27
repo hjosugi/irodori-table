@@ -57,6 +57,10 @@ sqlx = { version = "0.9", default-features = false, features = [
 futures-util = "0.3"
 # Object-safe async trait for the per-engine `Connection` abstraction + registry.
 async-trait = "0.1"
+# Integrated terminal: cross-platform PTY (wezterm's crate). Output is base64'd
+# over a Tauri channel to preserve bytes across chunk boundaries.
+portable-pty = "0.9"
+base64 = "0.22"
 # Optional connector implementations. Long-term these move to installable
 # extensions; keeping them feature-gated here avoids compiling them in normal
 # desktop builds while preserving a local escape hatch.

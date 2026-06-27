@@ -122,6 +122,8 @@ const ENGINE_KEYWORDS: Partial<Record<DbEngine, string[]>> = {
   s3Tables: ["create table", "table bucket", "namespace", "format = 'iceberg'"],
   deltaLake: ["merge into", "optimize", "vacuum", "time travel"],
   hudi: ["merge into", "compaction", "incremental query", "recordkey"],
+  elasticsearch: ["_search", "query", "aggs", "mappings", "bulk"],
+  openSearch: ["_search", "query", "aggs", "mappings", "bulk"],
 };
 
 const RELATION_START_KEYWORDS = new Set([

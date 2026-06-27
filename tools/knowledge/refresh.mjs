@@ -23,9 +23,11 @@ async function main(argv) {
     process.exit(0);
   }
 
-  for (const source of selectSourcesForRefresh(sources, args)) {
-    await refreshSource(db, source, Boolean(args.force));
-  }
+  await refreshSources(db, selectSourcesForRefresh(sources, args), {
+    concurrency: parseIntegerOption(args.concurrency, 6),
+    force: Boolean(args.force),
+    timeoutMs: parseIntegerOption(args["timeout-ms"], 20_000)
+  });
 
   printSummary(db, paths.dbPath);
 }
@@ -49,20 +51,42 @@ function selectSourcesForRefresh(sources, args) {
   return selectedSources.slice(0, limit);
 }
 
-async function refreshSource(database, source, force) {
+async function refreshSources(database, sources, options) {
+  const concurrency = Math.max(1, Math.min(options.concurrency, sources.length || 1));
+  let cursor = 0;
+  const workers = Array.from({ length: concurrency }, async () => {
+    while (cursor < sources.length) {
+      const source = sources[cursor];
+      cursor += 1;
+      const line = await refreshSource(database, source, options);
+      console.log(line);
+    }
+  });
+  await Promise.all(workers);
+}
+
+async function refreshSource(database, source, options) {
   const checkedAt = new Date().toISOString();
-  process.stdout.write(`fetch ${source.id} ... `);
+  const prefix = `fetch ${source.id} ... `;
 
   try {
-    const response = await fetch(source.url, {
-      redirect: "follow",
-      headers: {
-        "accept": "text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.8",
-        "user-agent": "IrodoriTableKnowledgeBot/0.1 (+https://irodori.dev)"
-      }
-    });
-
-    const body = await response.text();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+    let response;
+    let body;
+    try {
+      response = await fetch(source.url, {
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          "accept": "text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.8",
+          "user-agent": "IrodoriTableKnowledgeBot/0.1 (+https://irodori.dev)"
+        }
+      });
+      body = await response.text();
+    } finally {
+      clearTimeout(timeout);
+    }
     const text = normalizeText(stripHtml(body));
     const title = extractTitle(body) ?? source.name;
     const contentHash = hash(`${response.url}\n${text}`);
@@ -70,7 +94,7 @@ async function refreshSource(database, source, force) {
       .prepare("select id from source_snapshots where source_id = ? and content_hash = ?")
       .get(source.id, contentHash);
 
-    if (!existing || force) {
+    if (!existing || options.force) {
       database
         .prepare(`
           insert into source_snapshots (
@@ -98,18 +122,18 @@ async function refreshSource(database, source, force) {
           where id = ?
         `)
         .run(checkedAt, checkedAt, contentHash, source.id);
-      console.log(`stored ${response.status}`);
+      return `${prefix}stored ${response.status}`;
     } else {
       database
         .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
         .run(checkedAt, source.id);
-      console.log(`unchanged ${response.status}`);
+      return `${prefix}unchanged ${response.status}`;
     }
   } catch (error) {
     database
       .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
       .run(checkedAt, source.id);
-    console.log(`failed: ${error.message}`);
+    return `${prefix}failed: ${error.message}`;
   }
 }
 

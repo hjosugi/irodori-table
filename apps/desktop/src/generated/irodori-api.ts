@@ -112,6 +112,10 @@ modelPresent: boolean,
  */
 loaded: boolean, modelFile: string, modelPath: string, downloadUrl: string, };
 
+export type AiProviderKind = "local" | "ollama" | "openaiCompat" | "command";
+
+export type AiProviderConfig = { kind: AiProviderKind, model: string, endpoint?: string, apiKey?: string, program: string, args: Array<string>, };
+
 export type DbObjectKind = "table" | "view" | "procedure";
 
 export type ConnectionStatus = "connected" | "idle";
@@ -122,7 +126,7 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "cloudSpanner" | "kvStore" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "cloudSpanner" | "kvStore" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "openSearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**
@@ -433,4 +437,12 @@ export function aiEngineStatus(): Promise<AiEngineStatus> {
 
 export function aiDownloadModel(): Promise<string> {
   return invoke<string>("ai_download_model");
+}
+
+export function aiSetProvider(config: AiProviderConfig): Promise<void> {
+  return invoke<void>("ai_set_provider", { config });
+}
+
+export function aiGetProvider(): Promise<AiProviderConfig> {
+  return invoke<AiProviderConfig>("ai_get_provider");
 }

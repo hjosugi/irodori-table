@@ -109,7 +109,8 @@ const engineAliasRules: Array<[DbEngine, RegExp]> = [
   ["trinoPresto", /trino|presto/i],
   ["firebird", /firebird/i],
   ["databricks", /databricks|spark\s*sql/i],
-  ["elasticsearch", /elastic(?:search)?|opensearch/i],
+  ["openSearch", /opensearch/i],
+  ["elasticsearch", /elastic(?:search)?/i],
   ["couchbase", /couchbase/i],
   ["dynamodb", /dynamo\s*db/i],
   ["arangodb", /arangodb|arango/i],
@@ -1236,6 +1237,7 @@ function urlScheme(engine: DbEngine) {
     case "trinoPresto":
       return "trino";
     case "elasticsearch":
+    case "openSearch":
       return "http";
     case "dynamodb":
       return "https";

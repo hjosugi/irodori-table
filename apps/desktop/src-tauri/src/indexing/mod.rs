@@ -11,9 +11,15 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
-use irodori_core::{IrodoriError, IrodoriErrorKind, JobKind, JobRuntime, JobSpec};
-use irodori_knowledge::index::{build_index, Document, IndexBuildConfig, IndexStore};
+use irodori_core::{
+    run_job, BatchOutcome, BatchResult, IrodoriError, IrodoriErrorKind, JobArtifact, JobKind,
+    JobRuntime, JobSpec,
+};
+use irodori_knowledge::index::{
+    build_index_with, Document, IndexBuildConfig, IndexBuildReport, IndexStore,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use ts_rs::TS;
@@ -23,11 +29,11 @@ use crate::jobs::JobState;
 
 /// Retains the most recent schema index per connection so searches can read it
 /// after the build job finishes.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SchemaIndexState {
-    stores: Mutex<HashMap<String, IndexStore>>,
-    active_jobs: Mutex<HashMap<String, String>>,
-    seq: AtomicU64,
+    stores: Arc<Mutex<HashMap<String, IndexStore>>>,
+    active_jobs: Arc<Mutex<HashMap<String, String>>>,
+    seq: Arc<AtomicU64>,
 }
 
 enum SchemaIndexReservation {
@@ -52,11 +58,7 @@ impl SchemaIndexState {
         format!("schema-index-{connection_id}-{sequence}")
     }
 
-    async fn reserve_job(
-        &self,
-        jobs: &JobRuntime,
-        connection_id: &str,
-    ) -> SchemaIndexReservation {
+    async fn reserve_job(&self, jobs: &JobRuntime, connection_id: &str) -> SchemaIndexReservation {
         let mut active_jobs = self.active_jobs.lock().await;
         if let Some(job_id) = active_jobs.get(connection_id).cloned() {
             match jobs.get(&job_id) {
@@ -132,6 +134,14 @@ fn schema_index_spec(connection_id: &str) -> JobSpec {
     }
 }
 
+fn schema_index_config() -> IndexBuildConfig {
+    IndexBuildConfig {
+        flush_postings: 100_000,
+        progress_every_docs: 2_500,
+        checkpoint_every_docs: 25_000,
+    }
+}
+
 /// Load metadata, build documents, open + register an index store, and submit the
 /// job. The actual build is run separately so the command can background it while
 /// tests await it deterministically.
@@ -152,6 +162,56 @@ async fn prepare_schema_index(
     Ok((job_id, store, documents))
 }
 
+async fn run_schema_index_job(
+    db: DbState,
+    runtime: Arc<JobRuntime>,
+    index: SchemaIndexState,
+    connection_id: String,
+    job_id: String,
+    store: IndexStore,
+) -> Result<IndexBuildReport, IrodoriError> {
+    let job_connection_id = connection_id.clone();
+    let result = run_job(&runtime, &job_id, |ctx| async move {
+        ctx.report_progress(0, None, "metadata", "loading schema metadata")?;
+        let metadata = list_objects_impl(&db, job_connection_id.clone())
+            .await
+            .map_err(|message| IrodoriError::new(IrodoriErrorKind::Metadata, message))?;
+        let documents = schema_documents(&metadata);
+        ctx.report_progress(
+            0,
+            Some(documents.len() as u64),
+            "documents",
+            "schema metadata loaded",
+        )?;
+        let report = build_index_with(&ctx, &store, documents, schema_index_config()).await?;
+        let outcome = if report.cancelled {
+            BatchOutcome::cancelled(format!(
+                "cancelled after {} documents",
+                report.documents_indexed
+            ))
+        } else {
+            BatchOutcome::completed_with(
+                format!(
+                    "indexed {} documents ({} postings)",
+                    report.documents_indexed, report.postings_written
+                ),
+                vec![JobArtifact {
+                    id: "index".to_string(),
+                    name: "inverted-index".to_string(),
+                    path: "index_postings".to_string(),
+                    media_type: Some("application/x-sqlite3".to_string()),
+                    size_bytes: Some(report.postings_written),
+                }],
+            )
+        };
+        Ok(BatchResult::new(outcome, report))
+    })
+    .await
+    .map(|(_record, report)| report);
+    index.clear_reserved_job(&connection_id, &job_id).await;
+    result
+}
+
 /// Index a connection's schema in the background. Returns the job id immediately;
 /// progress, cancellation, and the output artifact are visible in the jobs
 /// dashboard while the build runs.
@@ -165,32 +225,28 @@ pub async fn index_schema_impl(
         SchemaIndexReservation::Existing(job_id) => return Ok(job_id),
         SchemaIndexReservation::Reserved(job_id) => job_id,
     };
-    let (job_id, store, documents) = match prepare_schema_index(
-        db,
-        jobs.runtime(),
-        index,
-        connection_id.clone(),
-        job_id.clone(),
-    )
-    .await
-    {
-        Ok(prepared) => prepared,
+    let store = match IndexStore::open_in_memory().await {
+        Ok(store) => store,
         Err(error) => {
             index.clear_reserved_job(&connection_id, &job_id).await;
             return Err(error);
         }
     };
+    if let Err(error) = jobs
+        .runtime()
+        .submit_with_id(&job_id, schema_index_spec(&connection_id))
+    {
+        index.clear_reserved_job(&connection_id, &job_id).await;
+        return Err(error);
+    }
+    index.register(&connection_id, store.clone()).await;
+
     let runtime = jobs.runtime_arc();
     let spawned_id = job_id.clone();
+    let db = db.clone();
+    let index = index.clone();
     tokio::spawn(async move {
-        let _ = build_index(
-            &runtime,
-            &spawned_id,
-            &store,
-            documents,
-            IndexBuildConfig::default(),
-        )
-        .await;
+        let _ = run_schema_index_job(db, runtime, index, connection_id, spawned_id, store).await;
     });
     Ok(job_id)
 }
@@ -250,6 +306,7 @@ mod tests {
     use crate::db::{connect_impl, run_query_impl, ConnectionProfile, DbEngine};
     use crate::security::SecurityState;
     use irodori_core::JobStatus;
+    use tokio::time::{sleep, Duration};
 
     fn memory_profile(id: &str) -> ConnectionProfile {
         ConnectionProfile {
@@ -292,29 +349,13 @@ mod tests {
         let jobs = JobState::default();
         let index = SchemaIndexState::default();
 
-        // Run the build inline (no spawn) so the test is deterministic.
-        let job_id = match index.reserve_job(jobs.runtime(), "idx").await {
-            SchemaIndexReservation::Reserved(job_id) => job_id,
-            SchemaIndexReservation::Existing(_) => panic!("unexpected existing schema index job"),
-        };
-        let (job_id, store, documents) =
-            prepare_schema_index(&db, jobs.runtime(), &index, "idx".into(), job_id)
-                .await
-                .expect("prepare");
-        assert!(documents.len() >= 2, "indexed both tables");
-        build_index(
-            jobs.runtime(),
-            &job_id,
-            &store,
-            documents,
-            IndexBuildConfig::default(),
-        )
-        .await
-        .expect("build");
+        let job_id = index_schema_impl(&db, &jobs, &index, "idx".into())
+            .await
+            .expect("start index");
+        let job = wait_for_terminal_job(jobs.runtime(), &job_id).await;
 
         // The job ran through the batch envelope to a successful terminal state
         // with an output artifact — exactly what the dashboard renders.
-        let job = jobs.runtime().get(&job_id).expect("job");
         assert_eq!(job.status, JobStatus::Succeeded);
         assert!(!job.artifacts.is_empty());
 
@@ -367,5 +408,16 @@ mod tests {
             .await
             .expect_err("no index");
         assert_eq!(error.kind, IrodoriErrorKind::NotFound);
+    }
+
+    async fn wait_for_terminal_job(runtime: &JobRuntime, job_id: &str) -> irodori_core::JobRecord {
+        for _ in 0..100 {
+            let job = runtime.get(job_id).expect("job");
+            if job.status.is_terminal() {
+                return job;
+            }
+            sleep(Duration::from_millis(10)).await;
+        }
+        runtime.get(job_id).expect("job")
     }
 }

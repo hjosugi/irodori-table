@@ -122,6 +122,9 @@ pub enum DbEngine {
     #[serde(rename = "elasticsearch")]
     #[ts(rename = "elasticsearch")]
     Elasticsearch,
+    #[serde(rename = "openSearch")]
+    #[ts(rename = "openSearch")]
+    OpenSearch,
     Couchbase,
     #[serde(rename = "dynamodb")]
     #[ts(rename = "dynamodb")]
@@ -220,15 +223,14 @@ impl DbEngine {
             DbEngine::TrinoPresto | DbEngine::Firebird | DbEngine::Databricks | DbEngine::Hive => {
                 Wire::Jdbc
             }
-            DbEngine::Elasticsearch => Wire::Search,
+            DbEngine::Elasticsearch | DbEngine::OpenSearch => Wire::Search,
             DbEngine::Couchbase => Wire::Document,
             DbEngine::DynamoDb => Wire::KeyValue,
             DbEngine::ArangoDb => Wire::Graph,
             DbEngine::IoTDb => Wire::TimeSeries,
-            DbEngine::Athena
-            | DbEngine::S3Tables
-            | DbEngine::DeltaLake
-            | DbEngine::Hudi => Wire::Lakehouse,
+            DbEngine::Athena | DbEngine::S3Tables | DbEngine::DeltaLake | DbEngine::Hudi => {
+                Wire::Lakehouse
+            }
             DbEngine::ObjectStore => Wire::ObjectStore,
         }
     }
@@ -258,7 +260,7 @@ impl DbEngine {
             DbEngine::TrinoPresto => 8080,
             DbEngine::Firebird => 3050,
             DbEngine::Databricks => 443,
-            DbEngine::Elasticsearch => 9200,
+            DbEngine::Elasticsearch | DbEngine::OpenSearch => 9200,
             DbEngine::Couchbase => 8091,
             DbEngine::DynamoDb => 443,
             DbEngine::ArangoDb => 8529,
@@ -451,6 +453,7 @@ mod tests {
         (DbEngine::Firebird, Wire::Jdbc, 3050),
         (DbEngine::Databricks, Wire::Jdbc, 443),
         (DbEngine::Elasticsearch, Wire::Search, 9200),
+        (DbEngine::OpenSearch, Wire::Search, 9200),
         (DbEngine::Couchbase, Wire::Document, 8091),
         (DbEngine::DynamoDb, Wire::KeyValue, 443),
         (DbEngine::CloudSpanner, Wire::CloudSpanner, 443),

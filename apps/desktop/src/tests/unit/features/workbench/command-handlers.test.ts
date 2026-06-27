@@ -76,6 +76,7 @@ function createHandler(calls: string[]) {
       calls.push("commit-edits");
     },
     generateSql: () => calls.push("generate-sql"),
+    toggleTerminal: () => calls.push("toggle-terminal"),
   });
 }
 

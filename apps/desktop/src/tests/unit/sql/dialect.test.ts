@@ -60,6 +60,7 @@ describe("cmDialect", () => {
     firebird: { dialect: StandardSQL, formatter: "sql" },
     databricks: { dialect: StandardSQL, formatter: "sql" },
     elasticsearch: { dialect: StandardSQL, formatter: "sql" },
+    openSearch: { dialect: StandardSQL, formatter: "sql" },
     couchbase: { dialect: StandardSQL, formatter: "sql" },
     dynamodb: { dialect: StandardSQL, formatter: "sql" },
     scylladb: { dialect: StandardSQL, formatter: "sql" },
@@ -72,6 +73,8 @@ describe("cmDialect", () => {
     objectStore: { dialect: StandardSQL, formatter: "sql" },
     deltaLake: { dialect: StandardSQL, formatter: "sql" },
     hudi: { dialect: StandardSQL, formatter: "sql" },
+    cloudSpanner: { dialect: StandardSQL, formatter: "sql" },
+    kvStore: { dialect: StandardSQL, formatter: "sql" },
   };
 
   it("maps every engine to the expected CodeMirror SQL dialect", () => {

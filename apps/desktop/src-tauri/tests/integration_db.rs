@@ -371,7 +371,11 @@ async fn exercise_mssql(url: String) {
         .flat_map(|schema| schema.objects.iter())
         .find(|object| object.name == "irodori_meta_orders")
         .expect("SQL Server metadata should include child table");
-    assert_eq!(order.foreign_keys.len(), 1, "SQL Server FK metadata: {order:?}");
+    assert_eq!(
+        order.foreign_keys.len(),
+        1,
+        "SQL Server FK metadata: {order:?}"
+    );
     assert_eq!(order.foreign_keys[0].columns, vec!["customer_id"]);
     assert_eq!(
         order.foreign_keys[0].references_schema.as_deref(),

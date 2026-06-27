@@ -418,5 +418,495 @@
     "url": "https://docs.github.com/en/copilot/concepts/context/mcp",
     "cadence": "monthly",
     "notes": "Track Copilot-compatible MCP integration path for Irodori."
+  },
+  {
+    "id": "irodori-extension-marketplace-index",
+    "name": "Irodori extension marketplace index",
+    "product": "Irodori Extensions",
+    "category": "extension_registry",
+    "sourceType": "marketplace_index",
+    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/index.json",
+    "cadence": "daily",
+    "notes": "Track published connector extensions, engine ids, install sources, permissions, and verified repository links."
+  },
+  {
+    "id": "irodori-extension-repository-index",
+    "name": "Irodori connector repository index",
+    "product": "Irodori Extensions",
+    "category": "extension_registry",
+    "sourceType": "repository_index",
+    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/connector-repositories.json",
+    "cadence": "daily",
+    "notes": "Track the per-connector GitHub repositories that back the public extension marketplace."
+  },
+  {
+    "id": "motherduck-docs",
+    "name": "MotherDuck documentation",
+    "product": "MotherDuck",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://motherduck.com/docs/",
+    "cadence": "weekly",
+    "notes": "Track MotherDuck connection, authentication, DuckDB compatibility, sharing, and cloud warehouse behavior."
+  },
+  {
+    "id": "redshift-docs",
+    "name": "Amazon Redshift documentation",
+    "product": "Redshift",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.aws.amazon.com/redshift/latest/dg/welcome.html",
+    "cadence": "weekly",
+    "notes": "Reference for Redshift SQL, PostgreSQL compatibility, system catalogs, and cluster/serverless behavior."
+  },
+  {
+    "id": "redshift-release-notes",
+    "name": "Amazon Redshift release notes",
+    "product": "Redshift",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://docs.aws.amazon.com/redshift/latest/mgmt/cluster-versions.html",
+    "cadence": "weekly",
+    "notes": "Track Redshift engine version and service changes relevant to SQL compatibility and metadata."
+  },
+  {
+    "id": "timescaledb-docs",
+    "name": "TimescaleDB documentation",
+    "product": "TimescaleDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.tigerdata.com/",
+    "cadence": "weekly",
+    "notes": "Reference for hypertables, time_bucket, compression, continuous aggregates, and PostgreSQL compatibility."
+  },
+  {
+    "id": "neon-docs",
+    "name": "Neon documentation",
+    "product": "Neon",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://neon.com/docs",
+    "cadence": "weekly",
+    "notes": "Track Neon connection strings, branching, pooling, serverless behavior, and PostgreSQL compatibility."
+  },
+  {
+    "id": "h2-docs",
+    "name": "H2 database documentation",
+    "product": "H2",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://h2database.com/html/main.html",
+    "cadence": "monthly",
+    "notes": "Reference for H2 SQL syntax, PostgreSQL mode, JDBC URLs, and compatibility behavior."
+  },
+  {
+    "id": "mariadb-docs",
+    "name": "MariaDB documentation",
+    "product": "MariaDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://mariadb.com/docs/server/",
+    "cadence": "weekly",
+    "notes": "Reference for MariaDB SQL, information_schema, authentication, and MySQL compatibility."
+  },
+  {
+    "id": "tidb-docs",
+    "name": "TiDB documentation",
+    "product": "TiDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.pingcap.com/tidb/stable/",
+    "cadence": "weekly",
+    "notes": "Reference for TiDB SQL, MySQL compatibility, distributed execution, and system tables."
+  },
+  {
+    "id": "mongodb-manual",
+    "name": "MongoDB manual",
+    "product": "MongoDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://www.mongodb.com/docs/manual/",
+    "cadence": "weekly",
+    "notes": "Reference for MongoDB query language, aggregation, indexes, explain, and server behavior."
+  },
+  {
+    "id": "redis-commands",
+    "name": "Redis command reference",
+    "product": "Redis",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://redis.io/docs/latest/commands/",
+    "cadence": "weekly",
+    "notes": "Reference for Redis command syntax, data types, modules, ACL behavior, and compatibility notes."
+  },
+  {
+    "id": "cassandra-docs",
+    "name": "Apache Cassandra documentation",
+    "product": "Apache Cassandra",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://cassandra.apache.org/doc/latest/",
+    "cadence": "weekly",
+    "notes": "Reference for Cassandra CQL, keyspaces, tables, indexes, system schema, and driver behavior."
+  },
+  {
+    "id": "cassandra-release-notes",
+    "name": "Apache Cassandra release notes",
+    "product": "Apache Cassandra",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://cassandra.apache.org/_/download.html",
+    "cadence": "weekly",
+    "notes": "Track Cassandra release lines and CQL/storage behavior changes."
+  },
+  {
+    "id": "clickhouse-changelog",
+    "name": "ClickHouse changelog",
+    "product": "ClickHouse",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://clickhouse.com/docs/whats-new/changelog",
+    "cadence": "weekly",
+    "notes": "Track ClickHouse SQL, function, table-engine, and system-table changes."
+  },
+  {
+    "id": "snowflake-docs",
+    "name": "Snowflake documentation",
+    "product": "Snowflake",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.snowflake.com/",
+    "cadence": "weekly",
+    "notes": "Reference for Snowflake SQL, information schema, account usage, authentication, and SQL API behavior."
+  },
+  {
+    "id": "bigquery-google-sql",
+    "name": "BigQuery GoogleSQL reference",
+    "product": "BigQuery",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
+    "cadence": "weekly",
+    "notes": "Reference for GoogleSQL syntax, types, functions, table metadata, and query behavior."
+  },
+  {
+    "id": "athena-docs",
+    "name": "Amazon Athena documentation",
+    "product": "Amazon Athena",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+    "cadence": "weekly",
+    "notes": "Reference for Athena SQL, Glue catalog, Iceberg tables, S3 query result locations, and workgroups."
+  },
+  {
+    "id": "bigtable-docs",
+    "name": "Cloud Bigtable documentation",
+    "product": "Bigtable",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://cloud.google.com/bigtable/docs",
+    "cadence": "weekly",
+    "notes": "Reference for Bigtable tables, column families, app profiles, SQL/query APIs, and authentication."
+  },
+  {
+    "id": "bigtable-release-notes",
+    "name": "Cloud Bigtable release notes",
+    "product": "Bigtable",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://cloud.google.com/bigtable/docs/release-notes",
+    "cadence": "weekly",
+    "notes": "Track Bigtable API, SQL, and operational behavior changes."
+  },
+  {
+    "id": "cloud-spanner-docs",
+    "name": "Cloud Spanner documentation",
+    "product": "Cloud Spanner",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://cloud.google.com/spanner/docs",
+    "cadence": "weekly",
+    "notes": "Reference for Spanner SQL dialects, information schema, sessions, transactions, and authentication."
+  },
+  {
+    "id": "cloud-spanner-release-notes",
+    "name": "Cloud Spanner release notes",
+    "product": "Cloud Spanner",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://cloud.google.com/spanner/docs/release-notes",
+    "cadence": "weekly",
+    "notes": "Track Spanner SQL, API, and managed-service behavior changes."
+  },
+  {
+    "id": "memgraph-docs",
+    "name": "Memgraph documentation",
+    "product": "Memgraph",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://memgraph.com/docs",
+    "cadence": "weekly",
+    "notes": "Reference for Memgraph Cypher, Bolt compatibility, metadata, and graph workflows."
+  },
+  {
+    "id": "qdrant-docs",
+    "name": "Qdrant documentation",
+    "product": "Qdrant",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://qdrant.tech/documentation/",
+    "cadence": "weekly",
+    "notes": "Reference for Qdrant collections, vector search, filtering, payloads, and API behavior."
+  },
+  {
+    "id": "milvus-docs",
+    "name": "Milvus documentation",
+    "product": "Milvus",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://milvus.io/docs",
+    "cadence": "weekly",
+    "notes": "Reference for Milvus collections, indexes, vector search, scalar filtering, and API behavior."
+  },
+  {
+    "id": "pinecone-docs",
+    "name": "Pinecone documentation",
+    "product": "Pinecone",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.pinecone.io/",
+    "cadence": "weekly",
+    "notes": "Reference for Pinecone indexes, namespaces, vector upsert/query, metadata filtering, and API behavior."
+  },
+  {
+    "id": "trino-docs",
+    "name": "Trino documentation",
+    "product": "Trino",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://trino.io/docs/current/",
+    "cadence": "weekly",
+    "notes": "Reference for Trino SQL, catalogs, connectors, types, functions, and system metadata."
+  },
+  {
+    "id": "presto-docs",
+    "name": "Presto documentation",
+    "product": "Presto",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://prestodb.io/docs/current/",
+    "cadence": "weekly",
+    "notes": "Reference for Presto SQL, catalogs, connectors, functions, and metadata behavior."
+  },
+  {
+    "id": "firebird-docs",
+    "name": "Firebird documentation",
+    "product": "Firebird",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://firebirdsql.org/en/documentation/",
+    "cadence": "weekly",
+    "notes": "Reference for Firebird SQL, system tables, connection behavior, and release-specific syntax."
+  },
+  {
+    "id": "databricks-sql-docs",
+    "name": "Databricks SQL documentation",
+    "product": "Databricks",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.databricks.com/en/sql/index.html",
+    "cadence": "weekly",
+    "notes": "Reference for Databricks SQL, warehouses, catalogs, Unity Catalog metadata, and JDBC/HTTP behavior."
+  },
+  {
+    "id": "elasticsearch-docs",
+    "name": "Elasticsearch documentation",
+    "product": "Elasticsearch",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://www.elastic.co/docs",
+    "cadence": "weekly",
+    "notes": "Reference for Elasticsearch indices, mappings, search, aggregations, bulk APIs, and security."
+  },
+  {
+    "id": "elasticsearch-release-notes",
+    "name": "Elasticsearch release notes",
+    "product": "Elasticsearch",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://www.elastic.co/docs/release-notes/elasticsearch",
+    "cadence": "weekly",
+    "notes": "Track Elasticsearch API, query DSL, mapping, security, and compatibility changes."
+  },
+  {
+    "id": "opensearch-docs",
+    "name": "OpenSearch documentation",
+    "product": "OpenSearch",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.opensearch.org/latest/",
+    "cadence": "weekly",
+    "notes": "Reference for OpenSearch indices, mappings, query DSL, aggregations, plugins, and security."
+  },
+  {
+    "id": "opensearch-release-notes",
+    "name": "OpenSearch release notes",
+    "product": "OpenSearch",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://docs.opensearch.org/latest/version-history/",
+    "cadence": "weekly",
+    "notes": "Track OpenSearch API, plugin, query, and compatibility changes."
+  },
+  {
+    "id": "couchbase-docs",
+    "name": "Couchbase documentation",
+    "product": "Couchbase",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.couchbase.com/",
+    "cadence": "weekly",
+    "notes": "Reference for Couchbase buckets, scopes, collections, SQL++, indexes, and SDK behavior."
+  },
+  {
+    "id": "dynamodb-docs",
+    "name": "DynamoDB documentation",
+    "product": "DynamoDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+    "cadence": "weekly",
+    "notes": "Reference for DynamoDB tables, keys, indexes, PartiQL, streams, and API behavior."
+  },
+  {
+    "id": "dynamodb-release-notes",
+    "name": "DynamoDB release notes",
+    "product": "DynamoDB",
+    "category": "database",
+    "sourceType": "release_notes",
+    "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DocumentHistory.html",
+    "cadence": "weekly",
+    "notes": "Track DynamoDB documentation and service behavior changes."
+  },
+  {
+    "id": "scylladb-docs",
+    "name": "ScyllaDB documentation",
+    "product": "ScyllaDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://opensource.docs.scylladb.com/stable/",
+    "cadence": "weekly",
+    "notes": "Reference for ScyllaDB CQL compatibility, schema, drivers, and operational behavior."
+  },
+  {
+    "id": "arangodb-docs",
+    "name": "ArangoDB documentation",
+    "product": "ArangoDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.arangodb.com/stable/",
+    "cadence": "weekly",
+    "notes": "Reference for ArangoDB AQL, graphs, documents, indexes, and API behavior."
+  },
+  {
+    "id": "questdb-docs",
+    "name": "QuestDB documentation",
+    "product": "QuestDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://questdb.com/docs/",
+    "cadence": "weekly",
+    "notes": "Reference for QuestDB SQL, PostgreSQL wire compatibility, time-series functions, and system tables."
+  },
+  {
+    "id": "iotdb-docs",
+    "name": "Apache IoTDB documentation",
+    "product": "Apache IoTDB",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://iotdb.apache.org/UserGuide/latest/",
+    "cadence": "weekly",
+    "notes": "Reference for IoTDB SQL dialect, storage groups, time-series metadata, and protocol behavior."
+  },
+  {
+    "id": "hive-docs",
+    "name": "Apache Hive documentation",
+    "product": "Apache Hive",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://hive.apache.org/docs/latest/",
+    "cadence": "weekly",
+    "notes": "Reference for Hive SQL, metastore, catalogs, storage formats, and JDBC/Thrift behavior."
+  },
+  {
+    "id": "iceberg-docs",
+    "name": "Apache Iceberg documentation",
+    "product": "Apache Iceberg",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://iceberg.apache.org/docs/latest/",
+    "cadence": "weekly",
+    "notes": "Reference for Iceberg catalogs, REST catalog, table metadata, snapshots, partitioning, and maintenance."
+  },
+  {
+    "id": "s3-tables-docs",
+    "name": "Amazon S3 Tables documentation",
+    "product": "AWS S3 Tables",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html",
+    "cadence": "weekly",
+    "notes": "Reference for managed Iceberg table buckets, namespaces, maintenance, and AWS integration."
+  },
+  {
+    "id": "amazon-s3-docs",
+    "name": "Amazon S3 documentation",
+    "product": "Amazon S3",
+    "category": "object_store",
+    "sourceType": "spec",
+    "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+    "cadence": "weekly",
+    "notes": "Reference for S3 buckets, objects, listing, permissions, storage classes, and object metadata."
+  },
+  {
+    "id": "gcs-docs",
+    "name": "Google Cloud Storage documentation",
+    "product": "Google Cloud Storage",
+    "category": "object_store",
+    "sourceType": "spec",
+    "url": "https://cloud.google.com/storage/docs",
+    "cadence": "weekly",
+    "notes": "Reference for GCS buckets, objects, IAM, metadata, and listing behavior."
+  },
+  {
+    "id": "azure-blob-docs",
+    "name": "Azure Blob Storage documentation",
+    "product": "Azure Blob Storage",
+    "category": "object_store",
+    "sourceType": "spec",
+    "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
+    "cadence": "weekly",
+    "notes": "Reference for Azure Blob containers, blobs, access tiers, authentication, and listing behavior."
+  },
+  {
+    "id": "delta-lake-docs",
+    "name": "Delta Lake documentation",
+    "product": "Delta Lake",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://docs.delta.io/latest/index.html",
+    "cadence": "weekly",
+    "notes": "Reference for Delta Lake tables, transaction logs, time travel, schema evolution, and maintenance."
+  },
+  {
+    "id": "hudi-docs",
+    "name": "Apache Hudi documentation",
+    "product": "Apache Hudi",
+    "category": "database",
+    "sourceType": "spec",
+    "url": "https://hudi.apache.org/docs/overview/",
+    "cadence": "weekly",
+    "notes": "Reference for Hudi tables, record keys, timelines, incremental queries, compaction, and metadata."
   }
 ]

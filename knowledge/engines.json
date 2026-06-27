@@ -53,6 +53,17 @@
       "notes": "embedded libduckdb"
     },
     {
+      "id": "motherduck",
+      "label": "MotherDuck",
+      "family": "analytical / lakehouse",
+      "wire": "duckdb",
+      "defaultPort": 443,
+      "routesThrough": "db/duck.rs",
+      "status": "extension",
+      "extensionId": "irodori.motherduck",
+      "notes": "installable connector; DuckDB/MotherDuck service workflow"
+    },
+    {
       "id": "cockroachdb",
       "label": "CockroachDB",
       "family": "distributed-sql",
@@ -64,6 +75,7 @@
     {
       "id": "yugabytedb",
       "label": "YugabyteDB (YSQL)",
+      "sourceProducts": ["YugabyteDB"],
       "family": "distributed-sql",
       "wire": "postgres",
       "defaultPort": 5433,
@@ -155,8 +167,20 @@
       "status": "wired"
     },
     {
+      "id": "kvStore",
+      "label": "Generic KV Store",
+      "sourceProducts": ["Irodori Extensions"],
+      "family": "key-value",
+      "wire": "keyValue",
+      "defaultPort": 0,
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.kv-store",
+      "notes": "provider-neutral key-value connector contract"
+    },
+    {
       "id": "cassandra",
       "label": "Cassandra",
+      "sourceProducts": ["Apache Cassandra"],
       "family": "wide-column",
       "wire": "cassandra",
       "defaultPort": 9042,
@@ -201,6 +225,16 @@
       "defaultPort": 443,
       "adapter": "db/bigtable.rs",
       "status": "wired"
+    },
+    {
+      "id": "cloudSpanner",
+      "label": "Cloud Spanner",
+      "family": "distributed-sql",
+      "wire": "cloudSpanner",
+      "defaultPort": 443,
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.cloud-spanner",
+      "notes": "Google Cloud Spanner connector is provided as an installable extension"
     },
     {
       "id": "influxdb",
@@ -258,6 +292,7 @@
     {
       "id": "trinoPresto",
       "label": "Trino / Presto",
+      "sourceProducts": ["Trino", "Presto"],
       "family": "federated-sql",
       "wire": "jdbc",
       "defaultPort": 8080,
@@ -275,6 +310,7 @@
     {
       "id": "databricks",
       "label": "Databricks / Spark SQL",
+      "sourceProducts": ["Databricks"],
       "family": "warehouse",
       "wire": "jdbc",
       "defaultPort": 443,
@@ -282,12 +318,22 @@
     },
     {
       "id": "elasticsearch",
-      "label": "Elasticsearch / OpenSearch",
+      "label": "Elasticsearch",
       "family": "search",
       "wire": "search",
       "defaultPort": 9200,
       "status": "recognized_no_connector",
       "notes": "Search connector and index/data-stream browser not implemented yet"
+    },
+    {
+      "id": "openSearch",
+      "label": "OpenSearch",
+      "family": "search",
+      "wire": "search",
+      "defaultPort": 9200,
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.opensearch",
+      "notes": "OpenSearch connector and index/data-stream browser are extension-provided"
     },
     {
       "id": "couchbase",
@@ -351,6 +397,16 @@
       "notes": "catalog/metastore shape still pending"
     },
     {
+      "id": "athena",
+      "label": "Amazon Athena",
+      "family": "lakehouse / query-engine",
+      "wire": "lakehouse",
+      "defaultPort": 443,
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.athena",
+      "notes": "AWS Athena connector is modeled separately from Iceberg and S3 Tables"
+    },
+    {
       "id": "iceberg",
       "label": "Apache Iceberg",
       "family": "lakehouse",
@@ -371,6 +427,7 @@
     {
       "id": "objectStore",
       "label": "Object stores: S3 / GCS / Azure Blob",
+      "sourceProducts": ["Amazon S3", "Google Cloud Storage", "Azure Blob Storage"],
       "family": "object-store",
       "wire": "objectStore",
       "defaultPort": 443,

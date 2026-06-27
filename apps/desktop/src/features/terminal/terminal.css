@@ -1,0 +1,86 @@
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #1a1b1e;
+  color: #e6e6e6;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+}
+
+.terminal-tabbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 8px;
+  background: var(--surface, #202024);
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+.terminal-tab.is-active {
+  background: #1a1b1e;
+  opacity: 1;
+}
+
+.terminal-tab-close,
+.terminal-action {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.terminal-tab-close:hover,
+.terminal-action:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.terminal-bodies {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.terminal-body {
+  height: 100%;
+}
+.terminal-view {
+  height: 100%;
+  width: 100%;
+  padding: 4px 6px;
+  box-sizing: border-box;
+}
+
+/* Bottom-docked panel placed by the workbench (above content, below modals). */
+.terminal-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(340px, 50vh);
+  z-index: 50;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+}

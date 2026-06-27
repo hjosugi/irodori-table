@@ -6,17 +6,35 @@ const root = resolve(import.meta.dirname, "../..");
 const engineRegistryPath = resolve(root, "apps/desktop/src-tauri/src/db/engine.rs");
 const dbProfilePath = resolve(root, "apps/desktop/src-tauri/src/db/profile.rs");
 const enginesJsonPath = resolve(root, "knowledge/engines.json");
+const sourcesJsonPath = resolve(root, "knowledge/sources.json");
+const marketplaceIndexPath = resolve(root, "docs/extension-marketplace/index.json");
+const connectorRepositoriesPath = resolve(
+  root,
+  "docs/extension-marketplace/connector-repositories.json",
+);
 const supportStatusPath = resolve(root, "docs/data-source-support-status.md");
 
 function main() {
   const engineSource = read(engineRegistryPath);
   const dbProfileSource = read(dbProfilePath);
   const enginesJson = JSON.parse(read(enginesJsonPath));
+  const sourcesJson = JSON.parse(read(sourcesJsonPath));
+  const marketplaceIndex = JSON.parse(read(marketplaceIndexPath));
+  const connectorRepositories = JSON.parse(read(connectorRepositoriesPath));
   const supportStatus = read(supportStatusPath);
 
   const registryIds = parseDbEngineIds(engineSource);
   const engineRows = enginesJson.engines ?? [];
   const jsonIds = new Set(engineRows.map((engine) => engine.id));
+  const sourceProducts = new Set(sourcesJson.map((source) => sourceProductKey(source.product)));
+  const marketplaceExtensions = marketplaceIndex.extensions ?? [];
+  const marketplaceEngineIds = new Set(
+    marketplaceExtensions.flatMap((extension) => extension.engines ?? []),
+  );
+  const marketplaceExtensionIds = new Set(marketplaceExtensions.map((extension) => extension.id));
+  const repositoryExtensionIds = new Set(
+    (connectorRepositories.repositories ?? []).map((repository) => repository.extensionId),
+  );
   const recognizedNoConnectorIds = new Set(
     engineRows
       .filter((engine) => engine.status === "recognized_no_connector")
@@ -36,6 +54,18 @@ function main() {
     ...setDiff(jsonIds, registryIds).map(
       (id) => `knowledge/engines.json lists unknown engine '${id}'`,
     ),
+    ...setDiff(marketplaceEngineIds, jsonIds).map(
+      (id) => `docs/extension-marketplace/index.json lists engine '${id}' missing from knowledge/engines.json`,
+    ),
+    ...setDiff(marketplaceExtensionIds, repositoryExtensionIds).map(
+      (id) => `docs/extension-marketplace/connector-repositories.json is missing extension '${id}'`,
+    ),
+    ...engineRows
+      .filter((engine) => !hasSourceCoverage(engine, sourceProducts))
+      .map(
+        (engine) =>
+          `knowledge/sources.json has no source coverage for engine '${engine.id}' (${engine.label})`,
+      ),
     ...setDiff(expectedNoConnectorIds, recognizedNoConnectorIds).map(
       (id) => `engine '${id}' is rejected by is_unimplemented_wire() but is not marked recognized_no_connector`,
     ),
@@ -102,6 +132,15 @@ function parseUnimplementedWires(source) {
 
 function camelId(value) {
   return value[0].toLowerCase() + value.slice(1);
+}
+
+function hasSourceCoverage(engine, sourceProducts) {
+  const products = [engine.label, ...(engine.sourceProducts ?? [])];
+  return products.some((product) => sourceProducts.has(sourceProductKey(product)));
+}
+
+function sourceProductKey(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function setDiff(left, right) {

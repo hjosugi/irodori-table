@@ -1,4 +1,4 @@
-import { Copy, Info, Settings } from "lucide-react";
+import { Copy, Info } from "lucide-react";
 
 export function AboutDialog({
   appName,
@@ -7,7 +7,6 @@ export function AboutDialog({
   runtimeLabel,
   activeConnectionLabel,
   onClose,
-  onOpenSettings,
   onCopyDiagnostics,
 }: {
   appName: string;
@@ -16,7 +15,6 @@ export function AboutDialog({
   runtimeLabel: string;
   activeConnectionLabel: string;
   onClose: () => void;
-  onOpenSettings: () => void;
   onCopyDiagnostics: () => void;
 }) {
   return (
@@ -63,17 +61,12 @@ export function AboutDialog({
           <div className="about-help">
             <Info size={16} />
             <span>
-              Use Connection Manager for saved database profiles, Settings for
-              editor/keymap/JSON configuration, and the workspace menu for
-              support diagnostics.
+              Use Connection Manager for saved database profiles, and copy
+              diagnostics when sharing runtime details for support.
             </span>
           </div>
         </div>
         <div className="dialog-footer">
-          <button className="text-button" type="button" onClick={onOpenSettings}>
-            <Settings size={13} />
-            Settings
-          </button>
           <button
             className="text-button"
             type="button"

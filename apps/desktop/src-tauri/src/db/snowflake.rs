@@ -18,7 +18,11 @@ pub struct SnowflakeConn {
 }
 
 pub async fn connect(profile: &ConnectionProfile) -> Result<SnowflakeConn, String> {
-    let raw_url = profile.url.as_deref().map(str::trim).filter(|url| !url.is_empty());
+    let raw_url = profile
+        .url
+        .as_deref()
+        .map(str::trim)
+        .filter(|url| !url.is_empty());
     let parsed_url = raw_url.and_then(|url| Url::parse(url).ok());
     let host_input = profile
         .host
@@ -287,13 +291,10 @@ pub async fn metadata(conn: &SnowflakeConn) -> Result<DatabaseMetadata, String> 
     let mut builder = super::meta::MetaBuilder::default();
     let database = sql_string_literal(&conn.database);
     let schema_filter = metadata_schema_filter("TABLE_SCHEMA", conn.schema.as_deref());
-    let constraint_schema_filter =
-        metadata_schema_filter("t.TABLE_SCHEMA", conn.schema.as_deref());
+    let constraint_schema_filter = metadata_schema_filter("t.TABLE_SCHEMA", conn.schema.as_deref());
     let fk_schema_filter = metadata_schema_filter("fk.TABLE_SCHEMA", conn.schema.as_deref());
-    let routine_schema_filter =
-        metadata_schema_filter("PROCEDURE_SCHEMA", conn.schema.as_deref());
-    let function_schema_filter =
-        metadata_schema_filter("FUNCTION_SCHEMA", conn.schema.as_deref());
+    let routine_schema_filter = metadata_schema_filter("PROCEDURE_SCHEMA", conn.schema.as_deref());
+    let function_schema_filter = metadata_schema_filter("FUNCTION_SCHEMA", conn.schema.as_deref());
 
     let object_sql = format!(
         "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, COMMENT, ROW_COUNT, NULL AS VIEW_DEFINITION \
@@ -335,16 +336,17 @@ pub async fn metadata(conn: &SnowflakeConn) -> Result<DatabaseMetadata, String> 
                 .and_then(|idx| value_as_u64(row.get(idx)))
                 .filter(|value| *value > 0);
             if kind == DbObjectMetadataKind::View {
-                object.ddl = ddl_idx
-                    .and_then(|idx| non_empty_string(row.get(idx)))
-                    .map(|definition| {
-                        format!(
-                            "CREATE VIEW {}.{} AS\n{}",
-                            quote_ident(&schema),
-                            quote_ident(&table),
-                            definition
-                        )
-                    });
+                object.ddl =
+                    ddl_idx
+                        .and_then(|idx| non_empty_string(row.get(idx)))
+                        .map(|definition| {
+                            format!(
+                                "CREATE VIEW {}.{} AS\n{}",
+                                quote_ident(&schema),
+                                quote_ident(&table),
+                                definition
+                            )
+                        });
             }
         }
     }
@@ -610,22 +612,14 @@ fn attach_foreign_keys(
     let ref_column_idx = cols.iter().position(|c| c == "REFERENCED_COLUMN");
 
     for row in rows {
-        let (
-            Some(s_idx),
-            Some(t_idx),
-            Some(c_idx),
-            Some(rs_idx),
-            Some(rt_idx),
-            Some(rc_idx),
-        ) = (
+        let (Some(s_idx), Some(t_idx), Some(c_idx), Some(rs_idx), Some(rt_idx), Some(rc_idx)) = (
             schema_idx,
             table_idx,
             column_idx,
             ref_schema_idx,
             ref_table_idx,
             ref_column_idx,
-        )
-        else {
+        ) else {
             continue;
         };
         let schema = value_as_string(row.get(s_idx));

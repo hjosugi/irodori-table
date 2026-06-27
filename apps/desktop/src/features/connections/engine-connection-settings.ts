@@ -278,6 +278,7 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         transportLabel: "Vector API",
       };
     case "elasticsearch":
+    case "openSearch":
     case "couchbase":
     case "arangodb":
       return {
@@ -414,6 +415,7 @@ export function defaultPort(engine: DbEngine) {
     case "hudi":
       return "443";
     case "elasticsearch":
+    case "openSearch":
       return "9200";
     case "couchbase":
       return "8091";

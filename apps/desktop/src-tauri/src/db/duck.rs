@@ -55,7 +55,9 @@ pub fn seed_sample(conn: &duckdb::Connection) -> Result<(), String> {
     .map_err(|e| format!("duckdb sample schema failed: {e}"))?;
 
     let existing = conn
-        .query_row("select count(*) from customers", [], |row| row.get::<_, i64>(0))
+        .query_row("select count(*) from customers", [], |row| {
+            row.get::<_, i64>(0)
+        })
         .unwrap_or(0);
     if existing > 0 {
         return Ok(());
