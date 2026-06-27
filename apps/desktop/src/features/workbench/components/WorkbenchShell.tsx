@@ -11,6 +11,7 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
   PanelRightOpen,
 } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
@@ -178,6 +179,19 @@ export function WorkbenchShell({
     onCloseWorkspaceMenu();
     onRunCommand(commandId);
   };
+  const SidebarToggleIcon =
+    sidebarSide === "right"
+      ? sidebarOpen
+        ? PanelRightClose
+        : PanelRightOpen
+      : sidebarOpen
+        ? PanelLeftClose
+        : PanelLeftOpen;
+  const sidebarToggleTitle = sidebarOpen
+    ? `Hide ${sidebarSide} sidebar`
+    : `Show ${sidebarSide} sidebar`;
+  const SidebarMoveIcon =
+    sidebarSide === "left" ? PanelRightOpen : PanelLeftOpen;
 
   const renderMenuButtons = (section: AppMenuSection) =>
     section.items.map((item) => {
@@ -310,21 +324,31 @@ export function WorkbenchShell({
         </button>
         <div className="titlebar-control-zone" aria-label="Layout controls">
           <button
-            className={sidebarOpen ? "icon-button active" : "icon-button"}
+            className={[
+              "icon-button",
+              "layout-toggle-button",
+              sidebarOpen ? "active" : null,
+              `sidebar-${sidebarSide}`,
+            ]
+              .filter(Boolean)
+              .join(" ")}
             type="button"
-            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            title={sidebarToggleTitle}
             aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             aria-pressed={sidebarOpen}
+            data-sidebar-toggle="visibility"
+            data-sidebar-side={sidebarSide}
             onClick={onToggleSidebar}
           >
-            {sidebarOpen ? (
-              <PanelLeftClose size={15} />
-            ) : (
-              <PanelLeftOpen size={15} />
-            )}
+            <SidebarToggleIcon size={15} />
           </button>
           <button
-            className="icon-button"
+            className={[
+              "icon-button",
+              "layout-toggle-button",
+              "sidebar-move-button",
+              `sidebar-${sidebarSide}`,
+            ].join(" ")}
             type="button"
             title={
               sidebarSide === "left"
@@ -337,13 +361,11 @@ export function WorkbenchShell({
                 : "Move sidebar left"
             }
             aria-pressed={sidebarSide === "right"}
+            data-sidebar-toggle="side"
+            data-sidebar-side={sidebarSide}
             onClick={onToggleSidebarSide}
           >
-            {sidebarSide === "left" ? (
-              <PanelRightOpen size={15} />
-            ) : (
-              <PanelLeftOpen size={15} />
-            )}
+            <SidebarMoveIcon size={15} />
           </button>
         </div>
       </header>

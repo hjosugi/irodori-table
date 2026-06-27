@@ -222,6 +222,38 @@ textarea:disabled {
   background: var(--hover);
 }
 
+.titlebar-control-zone .layout-toggle-button {
+  color: var(--muted);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.titlebar-control-zone .layout-toggle-button.active {
+  color: color-mix(in srgb, var(--accent) 74%, var(--text));
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+  background: color-mix(in srgb, var(--accent) 19%, var(--surface-raised));
+}
+
+.titlebar-control-zone .layout-toggle-button.active:hover,
+.titlebar-control-zone .layout-toggle-button.active:focus-visible {
+  color: color-mix(in srgb, var(--accent-hover) 72%, var(--text));
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border-strong));
+  background: color-mix(in srgb, var(--accent) 26%, var(--surface-raised));
+}
+
+.titlebar-control-zone .layout-toggle-button.active.sidebar-left {
+  border-left-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.titlebar-control-zone .layout-toggle-button.active.sidebar-right {
+  border-right-color: var(--accent);
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+
 .menubar {
   display: inline-flex;
   align-items: center;

@@ -91,6 +91,38 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(page.locator(".sidebar")).toHaveCount(0);
   await page.getByRole("button", { name: "Show sidebar" }).click();
   await expect(page.locator(".sidebar")).toBeVisible();
+  const sidebarVisibilityButton = page.locator(
+    '.titlebar-control-zone [data-sidebar-toggle="visibility"]',
+  );
+  const sidebarMoveButton = page.locator(
+    '.titlebar-control-zone [data-sidebar-toggle="side"]',
+  );
+  await expect(sidebarVisibilityButton).toHaveClass(/active/);
+  await expect(sidebarVisibilityButton).toHaveAttribute(
+    "data-sidebar-side",
+    "left",
+  );
+  const activeLayoutBackground = await sidebarVisibilityButton.evaluate(
+    (node) => getComputedStyle(node).backgroundColor,
+  );
+  const inactiveLayoutBackground = await sidebarMoveButton.evaluate(
+    (node) => getComputedStyle(node).backgroundColor,
+  );
+  expect(activeLayoutBackground).not.toEqual(inactiveLayoutBackground);
+  await sidebarMoveButton.click();
+  await expect(sidebarVisibilityButton).toHaveAttribute(
+    "data-sidebar-side",
+    "right",
+  );
+  await expect(sidebarVisibilityButton).toHaveAttribute(
+    "title",
+    "Hide right sidebar",
+  );
+  await sidebarMoveButton.click();
+  await expect(sidebarVisibilityButton).toHaveAttribute(
+    "data-sidebar-side",
+    "left",
+  );
   await page.getByRole("button", { name: "Close sidebar" }).click();
   await expect(page.locator(".sidebar")).toHaveCount(0);
   await page.getByRole("button", { name: "Show sidebar" }).click();
