@@ -59,6 +59,29 @@ describe("migration studio plan generation", () => {
     expect(plan.diffSql).toContain("Row-level diff needs a stable business key");
   });
 
+  it("builds a DuckDB-backed Iceberg/S3 Tables plan", () => {
+    const plan = buildMigrationPlan(
+      draft({
+        sourceEngine: "s3Tables",
+        targetEngine: "iceberg",
+        sourceVersion: "S3 Tables",
+        targetVersion: "Iceberg REST",
+        sourceTable: "irodori_iceberg.sales.orders",
+        targetTable: "irodori_iceberg.analytics.orders",
+      }),
+    );
+
+    expect(plan.sourceSql).toContain("INSTALL iceberg");
+    expect(plan.sourceSql).toContain("ATTACH '${ICEBERG_WAREHOUSE}'");
+    expect(plan.sourceSql).toContain("DuckDB-Wasm runs this shape inside a browser tab");
+    expect(plan.targetSql).toContain("CREATE OR REPLACE TABLE irodori_iceberg.analytics.orders AS");
+    expect(plan.targetSql).toContain("read_parquet('${EXPORT_PATH}/*.parquet')");
+    expect(plan.warnings).toContain(
+      "Browser DuckDB/Iceberg flows must keep credentials out of shareable URLs and exported runbooks.",
+    );
+    expect(plan.pairNotes.join("\n")).toContain("client-is-the-server compute layer");
+  });
+
   it("parses comma and newline column lists with case-insensitive de-dupe", () => {
     expect(parseColumnList("id, name\nID\nupdated_at")).toEqual([
       "id",

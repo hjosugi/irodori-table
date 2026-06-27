@@ -134,10 +134,20 @@ const shellCommands: CommandMeta[] = [
   },
 ];
 
+const aiCommands: CommandMeta[] = [
+  {
+    id: "editor.generateSql",
+    title: "Generate SQL with AI",
+    category: "Editor",
+    scope: "editor",
+  },
+];
+
 export const appCommandCatalog: CommandMeta[] = [
   ...commandCatalog,
   ...shellCommands,
   ...resultCopyCommands,
+  ...aiCommands,
 ];
 
 export const appMenuCommandCatalog: CommandMeta[] = [

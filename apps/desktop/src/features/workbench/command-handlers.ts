@@ -49,6 +49,7 @@ type WorkbenchCommandHandlerDeps = {
   addNewRow: () => void;
   undoLastEdit: () => void;
   commitEdits: () => Promise<void>;
+  generateSql: () => void;
 };
 
 export function createWorkbenchCommandHandler({
@@ -100,6 +101,7 @@ export function createWorkbenchCommandHandler({
   addNewRow,
   undoLastEdit,
   commitEdits,
+  generateSql,
 }: WorkbenchCommandHandlerDeps) {
   return (id: string) => {
     switch (id) {
@@ -192,7 +194,7 @@ export function createWorkbenchCommandHandler({
         focusEditor();
         break;
       case "editor.format":
-        formatQuery();
+        void formatQuery();
         break;
       case "editor.quickDefinition":
         quickDefinition();
@@ -201,7 +203,7 @@ export function createWorkbenchCommandHandler({
         showEditorQuickFix();
         break;
       case "editor.cleanup":
-        cleanupQuery();
+        void cleanupQuery();
         break;
       case "editor.comment.toggle":
         toggleEditorComment();
@@ -256,6 +258,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "edit.commit":
         void commitEdits();
+        break;
+      case "editor.generateSql":
+        generateSql();
         break;
     }
   };

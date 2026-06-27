@@ -89,6 +89,7 @@ const engineAliasRules: Array<[DbEngine, RegExp]> = [
   ["mysql", /mysql/i],
   ["sqlite", /sqlite/i],
   ["duckdb", /duckdb/i],
+  ["motherduck", /mother\s*duck|motherduck|\bmd:/i],
   ["mongodb", /mongo/i],
   ["oracle", /oracle|thin/i],
   ["clickhouse", /clickhouse/i],
@@ -100,6 +101,7 @@ const engineAliasRules: Array<[DbEngine, RegExp]> = [
   ["pinecone", /pinecone/i],
   ["snowflake", /snowflake/i],
   ["bigquery", /bigquery|googlebigquery/i],
+  ["athena", /athena|awsathena/i],
   ["redis", /redis/i],
   ["scylladb", /scylla/i],
   ["cassandra", /cassandra/i],
@@ -114,7 +116,7 @@ const engineAliasRules: Array<[DbEngine, RegExp]> = [
   ["questdb", /questdb/i],
   ["iotdb", /iotdb/i],
   ["hive", /hive|metastore/i],
-  ["iceberg", /iceberg|glue\s*catalog|rest\s*catalog/i],
+  ["iceberg", /iceberg|glue\s*catalog|rest\s*catalog|nessie/i],
   ["s3Tables", /s3\s*tables/i],
   ["objectStore", /s3|gcs|azure\s*blob|object\s*store/i],
   ["deltaLake", /delta\s*lake/i],
@@ -1180,6 +1182,9 @@ function standardUrlFor(
   if (engine === "sqlite" || engine === "duckdb") {
     return database;
   }
+  if (engine === "motherduck") {
+    return database ? `md:${database}` : "md:";
+  }
   if (!host) {
     return "";
   }
@@ -1234,6 +1239,10 @@ function urlScheme(engine: DbEngine) {
       return "http";
     case "dynamodb":
       return "https";
+    case "athena":
+      return "athena";
+    case "motherduck":
+      return "motherduck";
     case "scylladb":
       return "cassandra";
     case "questdb":

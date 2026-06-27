@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import { formatSqlDocument, isSqlFormatterId } from "@/sql/formatter";
 
 describe("SQL formatter hook", () => {
-  it("formats through the configured sql-formatter hook", () => {
-    expect(
+  it("formats through the configured sql-formatter hook", async () => {
+    await expect(
       formatSqlDocument("select * from customers", "postgres", "sql-formatter"),
-    ).toBe("select\n  *\nfrom\n  customers");
+    ).resolves.toBe("select\n  *\nfrom\n  customers");
   });
 
-  it("can disable formatting through configuration", () => {
-    expect(() => formatSqlDocument("select 1", "postgres", "disabled")).toThrow(
+  it("can disable formatting through configuration", async () => {
+    await expect(
+      formatSqlDocument("select 1", "postgres", "disabled"),
+    ).rejects.toThrow(
       "SQL formatter is disabled",
     );
   });

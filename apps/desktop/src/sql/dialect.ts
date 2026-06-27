@@ -45,6 +45,8 @@ export function cmDialect(engine: DbEngine): SQLDialect {
     case "h2":
     case "questdb":
     case "duckdb":
+    case "motherduck":
+    case "iceberg":
       return PostgreSQL;
     default:
       return StandardSQL;
@@ -69,6 +71,8 @@ export function formatterLanguage(engine: DbEngine): string {
     case "redshift":
       return "redshift";
     case "duckdb":
+    case "motherduck":
+    case "iceberg":
       return "duckdb";
     case "clickhouse":
       return "clickhouse";

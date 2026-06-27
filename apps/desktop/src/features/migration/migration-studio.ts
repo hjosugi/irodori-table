@@ -8,6 +8,9 @@ export type MigrationEngine = Extract<
   | "oracle"
   | "snowflake"
   | "hive"
+  | "duckdb"
+  | "iceberg"
+  | "s3Tables"
   | "redshift"
   | "databricks"
   | "trinoPresto"
@@ -69,6 +72,9 @@ export const migrationEngineOptions: Array<{
 }> = [
   { value: "hive", label: "Apache Hive" },
   { value: "snowflake", label: "Snowflake" },
+  { value: "duckdb", label: "DuckDB / DuckDB-Wasm" },
+  { value: "iceberg", label: "Apache Iceberg REST" },
+  { value: "s3Tables", label: "AWS S3 Tables" },
   { value: "postgres", label: "PostgreSQL" },
   { value: "oracle", label: "Oracle" },
   { value: "mysql", label: "MySQL" },
@@ -254,6 +260,13 @@ function sourceExtractionSql(
   if (draft.sourceEngine === "hive") {
     return statement(buildHiveExportSql(draft, keys, hashColumns));
   }
+  if (isDuckDbLakehouseEngine(draft.sourceEngine)) {
+    return statement(
+      [buildDuckDbIcebergBootstrapSql(draft.sourceEngine), sourceHashSql]
+        .filter(Boolean)
+        .join("\n\n"),
+    );
+  }
   return statement(sourceHashSql);
 }
 
@@ -261,9 +274,55 @@ function targetLoadSql(draft: MigrationDraft) {
   if (draft.targetEngine === "snowflake") {
     return buildSnowflakeLoadSql(draft);
   }
+  if (isDuckDbLakehouseEngine(draft.targetEngine)) {
+    return buildDuckDbIcebergLoadSql(draft);
+  }
   return [
     "-- Load the exported files with the target engine's bulk loader.",
     "-- Keep the irodori_row_hash column in a staging or manifest table until validation passes.",
+  ].join("\n");
+}
+
+function buildDuckDbIcebergBootstrapSql(engine: MigrationEngine) {
+  const label = migrationEngineLabel(engine);
+  return [
+    `-- ${label} via DuckDB: local/browser compute with Iceberg REST Catalog access.`,
+    "-- DuckDB-Wasm runs this shape inside a browser tab; desktop DuckDB runs the same SQL locally.",
+    "INSTALL httpfs;",
+    "LOAD httpfs;",
+    "INSTALL iceberg;",
+    "LOAD iceberg;",
+    "",
+    "CREATE OR REPLACE SECRET irodori_s3_secret (",
+    "  TYPE S3,",
+    "  KEY_ID '${AWS_ACCESS_KEY_ID}',",
+    "  SECRET '${AWS_SECRET_ACCESS_KEY}',",
+    "  REGION '${AWS_REGION}'",
+    ");",
+    "",
+    "ATTACH '${ICEBERG_WAREHOUSE}' AS irodori_iceberg (",
+    "  TYPE ICEBERG,",
+    "  ENDPOINT_URL '${ICEBERG_REST_ENDPOINT}'",
+    ");",
+    "",
+    "-- For AWS S3 Tables, use the S3 Tables bucket ARN as ICEBERG_WAREHOUSE.",
+    "-- Browser caution: never put real credentials into a shareable URL.",
+  ].join("\n");
+}
+
+function buildDuckDbIcebergLoadSql(draft: MigrationDraft) {
+  const scan =
+    draft.exportFormat === "parquet"
+      ? "read_parquet('${EXPORT_PATH}/*.parquet')"
+      : "read_csv_auto('${EXPORT_PATH}/*.csv')";
+  return [
+    buildDuckDbIcebergBootstrapSql(draft.targetEngine),
+    "",
+    "-- First-load pattern. For incremental loads, INSERT/MERGE after DDL and partition mapping are validated.",
+    `CREATE OR REPLACE TABLE ${tableRef(draft.targetEngine, draft.targetTable)} AS`,
+    `SELECT * FROM ${scan};`,
+    "",
+    "-- Keep source/target hash manifests available until row count, key count, fingerprint, and row-level diff pass.",
   ].join("\n");
 }
 
@@ -491,6 +550,10 @@ function buildRowHashExpression(
   }
 }
 
+function isDuckDbLakehouseEngine(engine: MigrationEngine) {
+  return engine === "iceberg" || engine === "s3Tables";
+}
+
 function normalizedColumnValue(
   engine: MigrationEngine,
   column: string,
@@ -515,6 +578,11 @@ function normalizedColumnValue(
     case "mysql":
     case "mariadb":
       value = `CAST(${ref} AS CHAR)`;
+      break;
+    case "duckdb":
+    case "iceberg":
+    case "s3Tables":
+      value = `CAST(${ref} AS VARCHAR)`;
       break;
     case "hive":
     case "databricks":
@@ -581,6 +649,13 @@ function buildWarnings(
   if (draft.targetEngine === "snowflake") {
     warnings.push("Snowflake quoted identifiers are case-sensitive. Keep generated identifiers aligned with table DDL.");
   }
+  if (
+    isDuckDbLakehouseEngine(draft.sourceEngine) ||
+    isDuckDbLakehouseEngine(draft.targetEngine)
+  ) {
+    warnings.push("Browser DuckDB/Iceberg flows must keep credentials out of shareable URLs and exported runbooks.");
+    warnings.push("Iceberg REST Catalog and object-store endpoints must be reachable from the browser/runtime, including CORS where applicable.");
+  }
   return warnings;
 }
 
@@ -607,6 +682,15 @@ function buildPairNotes(draft: MigrationDraft) {
       "MySQL -> Oracle: map AUTO_INCREMENT, unsigned integers, zero dates, text/blob limits, and case/collation before hash validation.",
     );
   }
+  if (
+    isDuckDbLakehouseEngine(draft.sourceEngine) ||
+    isDuckDbLakehouseEngine(draft.targetEngine)
+  ) {
+    notes.unshift(
+      "DuckDB/Iceberg: use DuckDB as the client-is-the-server compute layer, attaching the Iceberg REST Catalog directly and keeping validation local.",
+      "For S3 Tables, treat the bucket ARN as the Iceberg warehouse and keep catalog credentials in a secure connection profile, not in URL fragments.",
+    );
+  }
   if (draft.targetEngine === "snowflake") {
     notes.push(
       "For very large tables, compare by partition or hash bucket first, then run row-level diff only for failed buckets.",
@@ -631,7 +715,9 @@ function buildTasks(
       detail:
         draft.sourceEngine === "hive"
           ? `${draft.exportFormat.toUpperCase()} export with pushed-down row hash and partition predicate.`
-          : "Run the source row hash query and persist the result as a manifest.",
+          : isDuckDbLakehouseEngine(draft.sourceEngine)
+            ? "Attach the Iceberg REST Catalog in DuckDB and materialize a source hash manifest locally."
+            : "Run the source row hash query and persist the result as a manifest.",
       level: "manual",
     },
     {
@@ -749,6 +835,10 @@ function stringType(engine: MigrationEngine) {
     case "mysql":
     case "mariadb":
       return "VARCHAR(4000)";
+    case "duckdb":
+    case "iceberg":
+    case "s3Tables":
+      return "VARCHAR";
     case "snowflake":
       return "STRING";
     default:

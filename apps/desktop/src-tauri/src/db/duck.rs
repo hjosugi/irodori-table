@@ -6,18 +6,89 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use super::{
-    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
-    DbObjectMetadataKind, RowSet, SchemaMetadata,
+    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbEngine, DbObjectMetadata,
+    DbObjectMetadataKind, DbQuickSample, RowSet, SchemaMetadata,
 };
 
 pub fn connect(profile: &ConnectionProfile) -> Result<duckdb::Connection, String> {
     let path = profile.database.clone().or_else(|| profile.url.clone());
     let conn = match path.as_deref() {
+        _ if matches!(profile.engine, DbEngine::MotherDuck | DbEngine::Iceberg) => {
+            duckdb::Connection::open_in_memory()
+        }
         None | Some("") | Some(":memory:") => duckdb::Connection::open_in_memory(),
         Some(p) => duckdb::Connection::open(p),
     }
     .map_err(|e| format!("connect failed: {e}"))?;
     Ok(conn)
+}
+
+pub fn seed_sample(conn: &duckdb::Connection) -> Result<(), String> {
+    conn.execute_batch(
+        r#"
+        create table if not exists countries (
+            id integer primary key,
+            iso_code varchar not null,
+            name varchar not null
+        );
+        create table if not exists customers (
+            id integer primary key,
+            name varchar not null,
+            country_id integer,
+            lifetime_value bigint not null,
+            last_order_at timestamp
+        );
+        create table if not exists orders (
+            id integer primary key,
+            customer_id integer not null,
+            ordered_at timestamp not null,
+            total bigint not null,
+            status varchar not null
+        );
+        create or replace view customer_revenue as
+        select c.id, c.name, coalesce(sum(o.total), 0) as total_revenue
+        from customers c
+        left join orders o on o.customer_id = c.id
+        group by c.id, c.name;
+        "#,
+    )
+    .map_err(|e| format!("duckdb sample schema failed: {e}"))?;
+
+    let existing = conn
+        .query_row("select count(*) from customers", [], |row| row.get::<_, i64>(0))
+        .unwrap_or(0);
+    if existing > 0 {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        r#"
+        insert into countries values
+            (1, 'JP', 'Japan'),
+            (2, 'US', 'United States'),
+            (3, 'NL', 'Netherlands');
+
+        insert into customers values
+            (233, 'Shiro Systems', 1, 4412200, timestamp '2026-06-18 16:15:00'),
+            (447, 'Minato Labs', 1, 5128800, timestamp '2026-06-19 08:03:00'),
+            (620, 'Higashi Market', 1, 4889100, timestamp '2026-06-18 19:27:00'),
+            (917, 'Northwind Retail', 2, 7720100, timestamp '2026-06-20 11:12:00'),
+            (1029, 'Kawase Foods', 1, 9841200, timestamp '2026-06-20 18:34:00'),
+            (1104, 'Iris Trading', 3, 3824000, timestamp '2026-06-17 21:06:00'),
+            (1441, 'Aster Works', 2, 6533000, timestamp '2026-06-19 23:41:00');
+
+        insert into orders values
+            (1, 1029, timestamp '2026-06-20 18:34:00', 9841200, 'paid'),
+            (2, 917, timestamp '2026-06-20 11:12:00', 7720100, 'paid'),
+            (3, 1441, timestamp '2026-06-19 23:41:00', 6533000, 'paid'),
+            (4, 447, timestamp '2026-06-19 08:03:00', 5128800, 'processing'),
+            (5, 620, timestamp '2026-06-18 19:27:00', 4889100, 'paid'),
+            (6, 233, timestamp '2026-06-18 16:15:00', 4412200, 'paid'),
+            (7, 1104, timestamp '2026-06-17 21:06:00', 3824000, 'refunded');
+        "#,
+    )
+    .map_err(|e| format!("duckdb sample data failed: {e}"))?;
+    Ok(())
 }
 
 pub fn version(conn: &Arc<Mutex<duckdb::Connection>>) -> Option<String> {
@@ -178,6 +249,13 @@ pub async fn metadata(conn: &Arc<Mutex<duckdb::Connection>>) -> Result<DatabaseM
             }
         }
 
+        for schema in schemas.values_mut() {
+            for object in schema.values_mut() {
+                object.row_estimate = row_count(&guard, &object.schema, &object.name);
+                object.sample = quick_sample(&guard, &object.schema, &object.name, &object.columns);
+            }
+        }
+
         Ok(DatabaseMetadata {
             schemas: schemas
                 .into_iter()
@@ -190,6 +268,57 @@ pub async fn metadata(conn: &Arc<Mutex<duckdb::Connection>>) -> Result<DatabaseM
     })
     .await
     .map_err(|e| format!("duckdb task failed: {e}"))?
+}
+
+fn row_count(conn: &duckdb::Connection, schema: &str, table: &str) -> Option<u64> {
+    let sql = format!("select count(*) from {}", qualified_ident(schema, table));
+    let count = conn.query_row(&sql, [], |row| row.get::<_, i64>(0)).ok()?;
+    (count >= 0).then_some(count as u64)
+}
+
+fn quick_sample(
+    conn: &duckdb::Connection,
+    schema: &str,
+    table: &str,
+    columns: &[ColumnMetadata],
+) -> Option<DbQuickSample> {
+    let sql = format!("select * from {} limit 6", qualified_ident(schema, table));
+    let mut stmt = conn.prepare(&sql).ok()?;
+    let mut rows = stmt.query([]).ok()?;
+    let mut sample_rows = Vec::new();
+    let mut truncated = false;
+    while let Some(row) = rows.next().ok()? {
+        if sample_rows.len() >= 5 {
+            truncated = true;
+            break;
+        }
+        sample_rows.push(
+            (0..columns.len())
+                .map(|index| sample_cell(cell_to_json(row, index)))
+                .collect(),
+        );
+    }
+    Some(DbQuickSample {
+        columns: columns.iter().map(|column| column.name.clone()).collect(),
+        rows: sample_rows,
+        truncated,
+    })
+}
+
+fn qualified_ident(schema: &str, table: &str) -> String {
+    format!("{}.{}", quote_ident(schema), quote_ident(table))
+}
+
+fn quote_ident(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+fn sample_cell(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "NULL".to_string(),
+        serde_json::Value::String(value) => value,
+        other => other.to_string(),
+    }
 }
 
 fn cell_to_json(row: &duckdb::Row, i: usize) -> serde_json::Value {

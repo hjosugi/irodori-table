@@ -80,9 +80,9 @@ export interface SqlEditorHandle {
    * Pretty-print the whole buffer with the engine's dialect, in place.
    * Returns `null` on success, or an error message when formatting fails.
    */
-  format: () => string | null;
+  format: () => Promise<string | null>;
   /** Run deterministic cleanup across the whole buffer. */
-  cleanup: () => string | null;
+  cleanup: () => Promise<string | null>;
   /** Focus the editor and show diagnostics/quick-fix actions near the caret. */
   showQuickFix: () => boolean;
   /** Toggle SQL line/block comments around the current selection. */
@@ -921,15 +921,15 @@ function reconfigureThemeExtensions(
   });
 }
 
-function formatEditorDocument(
+async function formatEditorDocument(
   view: EditorView,
   engine: DbEngine,
   formatter: SqlFormatterId,
-): FormatEditorResult {
+): Promise<FormatEditorResult> {
   const doc = view.state.doc.toString();
   if (!doc.trim()) return { error: null };
   try {
-    const formatted = formatSqlDocument(doc, engine, formatter);
+    const formatted = await formatSqlDocument(doc, engine, formatter);
     if (formatted !== doc) {
       replaceEditorDocument(view, doc, formatted);
       return { error: null, formatted };
@@ -942,12 +942,12 @@ function formatEditorDocument(
   }
 }
 
-function cleanupEditorDocument(
+async function cleanupEditorDocument(
   view: EditorView,
   engine: DbEngine,
   formatter: SqlFormatterId,
-): FormatEditorResult {
-  const formatted = formatEditorDocument(view, engine, formatter);
+): Promise<FormatEditorResult> {
+  const formatted = await formatEditorDocument(view, engine, formatter);
   if (formatted.error) {
     return formatted;
   }
@@ -1174,19 +1174,19 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         });
         view.focus();
       },
-      format() {
+      async format() {
         const view = viewRef.current;
         if (!view) return null;
-        const result = formatEditorDocument(view, engine, formatter);
+        const result = await formatEditorDocument(view, engine, formatter);
         if (result.formatted !== undefined) {
           onChangeRef.current(result.formatted);
         }
         return result.error;
       },
-      cleanup() {
+      async cleanup() {
         const view = viewRef.current;
         if (!view) return null;
-        const result = cleanupEditorDocument(view, engine, formatter);
+        const result = await cleanupEditorDocument(view, engine, formatter);
         if (result.formatted !== undefined) {
           onChangeRef.current(result.formatted);
         }

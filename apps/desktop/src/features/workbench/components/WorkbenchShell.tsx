@@ -9,12 +9,9 @@ import {
 } from "react";
 import {
   ChevronDown,
-  GitBranch,
-  History,
-  ListPlus,
   PanelLeftClose,
   PanelLeftOpen,
-  Table2,
+  PanelRightOpen,
 } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
 import {
@@ -43,7 +40,6 @@ type WorkbenchShellProps = {
   sidebarOpen: boolean;
   completionOpen: boolean;
   historyOpen: boolean;
-  gitOpen: boolean;
   sidebarSide: WorkbenchSide;
   sidebarWidth: number;
   inspectorWidth: number;
@@ -71,14 +67,11 @@ type WorkbenchShellProps = {
   onScopeFocus: (event: FocusEvent<HTMLElement>) => void;
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
   onToggleSidebar: () => void;
-  onShowObjectBrowser: () => void;
-  onToggleCompletion: () => void;
-  onToggleHistory: () => void;
+  onToggleSidebarSide: () => void;
   onToggleTheme?: () => void;
   onToggleWorkspaceMenu?: () => void;
   onOpenSettings?: () => void;
   onOpenConnectionManager: () => void;
-  onOpenGit: () => void;
   onOpenHelp?: () => void;
   onRunCommand: (commandId: string) => void;
   onCloseWorkspaceMenu: () => void;
@@ -91,7 +84,6 @@ export function WorkbenchShell({
   sidebarOpen,
   completionOpen,
   historyOpen,
-  gitOpen,
   sidebarSide,
   sidebarWidth,
   inspectorWidth,
@@ -117,11 +109,8 @@ export function WorkbenchShell({
   onScopeFocus,
   onScopeMouseDown,
   onToggleSidebar,
-  onShowObjectBrowser,
-  onToggleCompletion,
-  onToggleHistory,
+  onToggleSidebarSide,
   onOpenConnectionManager,
-  onOpenGit,
   onRunCommand,
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
@@ -165,9 +154,12 @@ export function WorkbenchShell({
   };
 
   const titleFor = (command: CommandMeta) => {
+    const sidebarSideTarget = sidebarSide === "left" ? "Right" : "Left";
     switch (command.id) {
       case "view.sidebar.toggle":
         return sidebarOpen ? "Hide Sidebar" : "Show Sidebar";
+      case "view.sidebar.swap":
+        return `Move Sidebar ${sidebarSideTarget}`;
       case "view.completion.toggle":
         return completionOpen ? "Hide Completion" : "Show Completion";
       case "view.history.toggle":
@@ -314,16 +306,14 @@ export function WorkbenchShell({
           <small>{activeConnectionEngine}</small>
           <ChevronDown size={15} />
         </button>
-      </header>
-
-      <section className="toolbar" aria-label="Workspace toolbar">
-        <div className="connection-toolbar">
+        <div className="titlebar-spacer" />
+        <div className="titlebar-layout-controls" aria-label="Layout controls">
           <button
-            className="icon-button sidebar-toggle"
+            className={sidebarOpen ? "icon-button active" : "icon-button"}
             type="button"
             title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-            aria-pressed={!sidebarOpen}
+            aria-pressed={sidebarOpen}
             onClick={onToggleSidebar}
           >
             {sidebarOpen ? (
@@ -332,53 +322,30 @@ export function WorkbenchShell({
               <PanelLeftOpen size={15} />
             )}
           </button>
+          <button
+            className="icon-button"
+            type="button"
+            title={
+              sidebarSide === "left"
+                ? "Move sidebar right"
+                : "Move sidebar left"
+            }
+            aria-label={
+              sidebarSide === "left"
+                ? "Move sidebar right"
+                : "Move sidebar left"
+            }
+            aria-pressed={sidebarSide === "right"}
+            onClick={onToggleSidebarSide}
+          >
+            {sidebarSide === "left" ? (
+              <PanelRightOpen size={15} />
+            ) : (
+              <PanelLeftOpen size={15} />
+            )}
+          </button>
         </div>
-        <div className="toolbar-spacer" />
-        <button
-          className={
-            sidebarOpen && !completionOpen && !historyOpen && !gitOpen
-              ? "icon-button active"
-              : "icon-button"
-          }
-          type="button"
-          title="Tables"
-          aria-label="Tables"
-          aria-pressed={sidebarOpen && !completionOpen && !historyOpen && !gitOpen}
-          onClick={onShowObjectBrowser}
-        >
-          <Table2 size={15} />
-        </button>
-        <button
-          className={completionOpen ? "icon-button active" : "icon-button"}
-          type="button"
-          title={completionOpen ? "Hide completion" : "Show completion"}
-          aria-label={completionOpen ? "Hide completion" : "Show completion"}
-          aria-pressed={completionOpen}
-          onClick={onToggleCompletion}
-        >
-          <ListPlus size={15} />
-        </button>
-        <button
-          className={historyOpen ? "icon-button active" : "icon-button"}
-          type="button"
-          title={historyOpen ? "Hide history" : "Show history"}
-          aria-label={historyOpen ? "Hide history" : "Show history"}
-          aria-pressed={historyOpen}
-          onClick={onToggleHistory}
-        >
-          <History size={15} />
-        </button>
-        <button
-          className={gitOpen ? "icon-button active" : "icon-button"}
-          type="button"
-          title={gitOpen ? "Hide Git panel" : "Show Git panel"}
-          aria-label={gitOpen ? "Hide Git panel" : "Show Git panel"}
-          aria-pressed={gitOpen}
-          onClick={onOpenGit}
-        >
-          <GitBranch size={15} />
-        </button>
-      </section>
+      </header>
 
       <div
         className={[

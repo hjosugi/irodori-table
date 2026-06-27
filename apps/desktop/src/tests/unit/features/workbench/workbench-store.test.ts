@@ -10,6 +10,7 @@ import {
 
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
+const sidebarSideStorageKey = "irodori.sidebar.side.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v2";
 const resultsHeightStorageKey = "irodori.results.height.v2";
 
@@ -64,10 +65,10 @@ describe("workbench store view placements", () => {
     const store = await loadWorkbenchStore();
     const expected: WorkbenchViewPlacements = {
       ...defaultWorkbenchViewPlacements,
-      queryHistory: "left",
+      queryHistory: "right",
     };
 
-    store.getState().setViewPlacement("queryHistory", "left");
+    store.getState().setViewPlacement("queryHistory", "right");
 
     expect(store.getState().viewPlacements).toEqual(expected);
     expect(
@@ -75,7 +76,7 @@ describe("workbench store view placements", () => {
     ).toEqual(expected);
   });
 
-  it("normalizes all view placements to the left sidebar", async () => {
+  it("accepts left and right view placements", async () => {
     const store = await loadWorkbenchStore();
     const requested: WorkbenchViewPlacements = {
       ...defaultWorkbenchViewPlacements,
@@ -85,10 +86,10 @@ describe("workbench store view placements", () => {
 
     store.getState().setViewPlacements(requested);
 
-    expect(store.getState().viewPlacements).toEqual(defaultWorkbenchViewPlacements);
+    expect(store.getState().viewPlacements).toEqual(requested);
     expect(
       JSON.parse(window.localStorage.getItem(viewPlacementsStorageKey) ?? "{}"),
-    ).toEqual(defaultWorkbenchViewPlacements);
+    ).toEqual(requested);
   });
 
   it("sanitizes stored view placements", async () => {
@@ -104,7 +105,10 @@ describe("workbench store view placements", () => {
 
     const store = await loadWorkbenchStore();
 
-    expect(store.getState().viewPlacements).toEqual(defaultWorkbenchViewPlacements);
+    expect(store.getState().viewPlacements).toEqual({
+      ...defaultWorkbenchViewPlacements,
+      objectBrowser: "right",
+    });
   });
 
   it("falls back to default placements for invalid stored JSON", async () => {
@@ -165,7 +169,18 @@ describe("workbench store view placements", () => {
   it("defaults the sidebar to a compact working width", async () => {
     const store = await loadWorkbenchStore();
 
-    expect(store.getState().sidebarWidth).toBe(220);
+    expect(store.getState().sidebarWidth).toBe(200);
+  });
+
+  it("loads and persists the sidebar side", async () => {
+    window.localStorage.setItem(sidebarSideStorageKey, "right");
+
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().sidebarSide).toBe("right");
+    store.getState().setSidebarSide("left");
+    expect(store.getState().sidebarSide).toBe("left");
+    expect(window.localStorage.getItem(sidebarSideStorageKey)).toBe("left");
   });
 
   it("clamps and persists the sidebar width", async () => {

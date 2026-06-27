@@ -28,10 +28,12 @@ irodori-proxy = { path = "../../../crates/irodori-proxy" }
 irodori-secure-store = { path = "../../../crates/irodori-secure-store" }
 irodori-sql.workspace = true
 irodori-completion = { path = "../../../crates/irodori-completion" }
+irodori-generate = { path = "../../../crates/irodori-generate" }
 irodori-knowledge.workspace = true
+sql-dialect-fmt-formatter = { path = "../../../../../snowflake-formatter/crates/sql-dialect-fmt-formatter" }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
 
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util"] }
 # Real connectivity for PostgreSQL, MySQL, and SQLite through one Any-driver path.
 # No TLS feature yet (local-dev first); TLS lands with the network/security work.
 # Oracle is intentionally NOT here: the plan is a pure-Rust thin TNS driver
@@ -69,7 +71,7 @@ tokio-util = { version = "0.7", features = ["compat"] }
 # default: build with `--features duckdb`.
 duckdb = { version = "1", optional = true, features = ["bundled"] }
 oracle-rs = "0.1.7"
-reqwest = { version = "0.13.4", features = ["json"] }
+reqwest = { version = "0.13.4", features = ["json", "stream"] }
 neo4rs = "0.8.0"
 tauri-plugin-dialog = "2.7.1"
 redis = { version = "1.2.4", default-features = false, features = ["tokio-comp"] }
@@ -77,7 +79,11 @@ scylla = { version = "1.7" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
+default = ["duckdb"]
 duckdb = ["dep:duckdb"]
+# Embedded local SQL generation (compiles llama.cpp). Off by default so standard
+# builds stay light; the `ai_generate_sql` command returns `unsupported` without it.
+llama = ["irodori-generate/llama"]
 
 [dev-dependencies]
 # Integration tests (tests/integration_db.rs) drive a real DB through a runtime.

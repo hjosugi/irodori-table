@@ -26,7 +26,13 @@ use crate::jobs::JobState;
 #[derive(Default)]
 pub struct SchemaIndexState {
     stores: Mutex<HashMap<String, IndexStore>>,
+    active_jobs: Mutex<HashMap<String, String>>,
     seq: AtomicU64,
+}
+
+enum SchemaIndexReservation {
+    Existing(String),
+    Reserved(String),
 }
 
 impl SchemaIndexState {
@@ -44,6 +50,39 @@ impl SchemaIndexState {
     fn next_job_id(&self, connection_id: &str) -> String {
         let sequence = self.seq.fetch_add(1, Ordering::Relaxed);
         format!("schema-index-{connection_id}-{sequence}")
+    }
+
+    async fn reserve_job(
+        &self,
+        jobs: &JobRuntime,
+        connection_id: &str,
+    ) -> SchemaIndexReservation {
+        let mut active_jobs = self.active_jobs.lock().await;
+        if let Some(job_id) = active_jobs.get(connection_id).cloned() {
+            match jobs.get(&job_id) {
+                Some(job) if job.status.is_active() => {
+                    return SchemaIndexReservation::Existing(job_id);
+                }
+                _ => {
+                    active_jobs.remove(connection_id);
+                }
+            }
+        }
+
+        let job_id = self.next_job_id(connection_id);
+        active_jobs.insert(connection_id.to_string(), job_id.clone());
+        SchemaIndexReservation::Reserved(job_id)
+    }
+
+    async fn clear_reserved_job(&self, connection_id: &str, job_id: &str) {
+        let mut active_jobs = self.active_jobs.lock().await;
+        if active_jobs
+            .get(connection_id)
+            .map(|active_job_id| active_job_id == job_id)
+            .unwrap_or(false)
+        {
+            active_jobs.remove(connection_id);
+        }
     }
 }
 
@@ -101,6 +140,7 @@ async fn prepare_schema_index(
     jobs: &JobRuntime,
     index: &SchemaIndexState,
     connection_id: String,
+    job_id: String,
 ) -> Result<(String, IndexStore, Vec<Document>), IrodoriError> {
     let metadata = list_objects_impl(db, connection_id.clone())
         .await
@@ -108,7 +148,6 @@ async fn prepare_schema_index(
     let documents = schema_documents(&metadata);
     let store = IndexStore::open_in_memory().await?;
     index.register(&connection_id, store.clone()).await;
-    let job_id = index.next_job_id(&connection_id);
     jobs.submit_with_id(&job_id, schema_index_spec(&connection_id))?;
     Ok((job_id, store, documents))
 }
@@ -122,8 +161,25 @@ pub async fn index_schema_impl(
     index: &SchemaIndexState,
     connection_id: String,
 ) -> Result<String, IrodoriError> {
-    let (job_id, store, documents) =
-        prepare_schema_index(db, jobs.runtime(), index, connection_id).await?;
+    let job_id = match index.reserve_job(jobs.runtime(), &connection_id).await {
+        SchemaIndexReservation::Existing(job_id) => return Ok(job_id),
+        SchemaIndexReservation::Reserved(job_id) => job_id,
+    };
+    let (job_id, store, documents) = match prepare_schema_index(
+        db,
+        jobs.runtime(),
+        index,
+        connection_id.clone(),
+        job_id.clone(),
+    )
+    .await
+    {
+        Ok(prepared) => prepared,
+        Err(error) => {
+            index.clear_reserved_job(&connection_id, &job_id).await;
+            return Err(error);
+        }
+    };
     let runtime = jobs.runtime_arc();
     let spawned_id = job_id.clone();
     tokio::spawn(async move {
@@ -237,8 +293,12 @@ mod tests {
         let index = SchemaIndexState::default();
 
         // Run the build inline (no spawn) so the test is deterministic.
+        let job_id = match index.reserve_job(jobs.runtime(), "idx").await {
+            SchemaIndexReservation::Reserved(job_id) => job_id,
+            SchemaIndexReservation::Existing(_) => panic!("unexpected existing schema index job"),
+        };
         let (job_id, store, documents) =
-            prepare_schema_index(&db, jobs.runtime(), &index, "idx".into())
+            prepare_schema_index(&db, jobs.runtime(), &index, "idx".into(), job_id)
                 .await
                 .expect("prepare");
         assert!(documents.len() >= 2, "indexed both tables");
@@ -276,6 +336,28 @@ mod tests {
                 .expect("search")
                 .is_empty()
         );
+    }
+
+    #[tokio::test]
+    async fn repeated_schema_index_requests_reuse_active_job() {
+        let jobs = JobState::default();
+        let index = SchemaIndexState::default();
+
+        let job_id = match index.reserve_job(jobs.runtime(), "idx").await {
+            SchemaIndexReservation::Reserved(job_id) => job_id,
+            SchemaIndexReservation::Existing(_) => panic!("unexpected existing schema index job"),
+        };
+        jobs.runtime()
+            .submit_with_id(&job_id, schema_index_spec("idx"))
+            .expect("submit");
+
+        let repeated = index.reserve_job(jobs.runtime(), "idx").await;
+        match repeated {
+            SchemaIndexReservation::Existing(existing_id) => assert_eq!(existing_id, job_id),
+            SchemaIndexReservation::Reserved(new_id) => {
+                panic!("expected existing active job, got new reservation {new_id}")
+            }
+        }
     }
 
     #[tokio::test]

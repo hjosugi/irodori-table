@@ -33,6 +33,9 @@ pub enum DbEngine {
     #[serde(rename = "duckdb")]
     #[ts(rename = "duckdb")]
     DuckDb,
+    #[serde(rename = "motherduck")]
+    #[ts(rename = "motherduck")]
+    MotherDuck,
     // Document store — not SQL; its own driver and query model.
     #[serde(rename = "mongodb")]
     #[ts(rename = "mongodb")]
@@ -93,6 +96,9 @@ pub enum DbEngine {
     #[serde(rename = "bigquery")]
     #[ts(rename = "bigquery")]
     BigQuery,
+    #[serde(rename = "athena")]
+    #[ts(rename = "athena")]
+    Athena,
     #[serde(rename = "redis")]
     #[ts(rename = "redis")]
     Redis,
@@ -185,7 +191,7 @@ impl DbEngine {
             DbEngine::Mysql | DbEngine::MariaDb | DbEngine::TiDb => Wire::Mysql,
             DbEngine::Sqlite => Wire::Sqlite,
             DbEngine::SqlServer => Wire::SqlServer,
-            DbEngine::DuckDb => Wire::DuckDb,
+            DbEngine::DuckDb | DbEngine::MotherDuck | DbEngine::Iceberg => Wire::DuckDb,
             DbEngine::Mongo => Wire::Mongo,
             DbEngine::Oracle => Wire::Oracle,
             DbEngine::ClickHouse => Wire::ClickHouse,
@@ -210,9 +216,10 @@ impl DbEngine {
             DbEngine::DynamoDb => Wire::KeyValue,
             DbEngine::ArangoDb => Wire::Graph,
             DbEngine::IoTDb => Wire::TimeSeries,
-            DbEngine::Iceberg | DbEngine::S3Tables | DbEngine::DeltaLake | DbEngine::Hudi => {
-                Wire::Lakehouse
-            }
+            DbEngine::Athena
+            | DbEngine::S3Tables
+            | DbEngine::DeltaLake
+            | DbEngine::Hudi => Wire::Lakehouse,
             DbEngine::ObjectStore => Wire::ObjectStore,
         }
     }
@@ -248,7 +255,9 @@ impl DbEngine {
             DbEngine::QuestDb => 8812,
             DbEngine::IoTDb => 6667,
             DbEngine::Hive => 10000,
-            DbEngine::Iceberg
+            DbEngine::Athena
+            | DbEngine::Iceberg
+            | DbEngine::MotherDuck
             | DbEngine::S3Tables
             | DbEngine::ObjectStore
             | DbEngine::DeltaLake
@@ -408,6 +417,7 @@ mod tests {
         (DbEngine::Oracle, Wire::Oracle, 1521),
         (DbEngine::SqlServer, Wire::SqlServer, 1433),
         (DbEngine::DuckDb, Wire::DuckDb, 0),
+        (DbEngine::MotherDuck, Wire::DuckDb, 443),
         (DbEngine::Mongo, Wire::Mongo, 27017),
         (DbEngine::CockroachDb, Wire::Postgres, 26257),
         (DbEngine::YugabyteDb, Wire::Postgres, 5433),
@@ -435,7 +445,8 @@ mod tests {
         (DbEngine::QuestDb, Wire::Postgres, 8812),
         (DbEngine::IoTDb, Wire::TimeSeries, 6667),
         (DbEngine::Hive, Wire::Jdbc, 10000),
-        (DbEngine::Iceberg, Wire::Lakehouse, 443),
+        (DbEngine::Athena, Wire::Lakehouse, 443),
+        (DbEngine::Iceberg, Wire::DuckDb, 443),
         (DbEngine::S3Tables, Wire::Lakehouse, 443),
         (DbEngine::ObjectStore, Wire::ObjectStore, 443),
         (DbEngine::DeltaLake, Wire::Lakehouse, 443),

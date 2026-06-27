@@ -7,6 +7,7 @@ members = [
     "crates/irodori-proxy",
     "crates/irodori-secure-store",
     "crates/irodori-completion",
+    "crates/irodori-generate",
     "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
@@ -18,6 +19,7 @@ default-members = [
     "crates/irodori-proxy",
     "crates/irodori-secure-store",
     "crates/irodori-completion",
+    "crates/irodori-generate",
     "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
@@ -35,3 +37,9 @@ irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", tag = "v0.2.23" 
 irodori-error = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
 irodori-jobs = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
 irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
+
+# Development patch: consume the local irodori-sql checkout (the SELECT AST /
+# parser / GBNF grammar for local SQL generation is built here before being cut
+# as tag v0.2.24). Remove once the tag is published and the version is bumped.
+[patch."https://github.com/hjosugi/irodori-sql"]
+irodori-sql = { path = "../irodori-sql" }

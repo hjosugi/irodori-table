@@ -98,7 +98,7 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "redis" | "cassandra" | "bigtable" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**
@@ -249,6 +249,10 @@ export function jobsGet(jobId: string): Promise<JobRecord | null> {
 
 export function jobsCancel(jobId: string): Promise<JobRecord> {
   return invoke<JobRecord>("jobs_cancel", { jobId });
+}
+
+export function sqlFormatSnowflake(sql: string, lineWidth?: number, indentWidth?: number, uppercaseKeywords?: boolean): Promise<string> {
+  return invoke<string>("sql_format_snowflake", { sql, lineWidth, indentWidth, uppercaseKeywords });
 }
 
 export function dbIndexSchema(connectionId: string): Promise<string> {

@@ -1,5 +1,8 @@
 import { format as formatSql } from "sql-formatter";
-import type { DbEngine } from "../generated/irodori-api";
+import {
+  sqlFormatSnowflake,
+  type DbEngine,
+} from "../generated/irodori-api";
 import { formatterLanguage } from "./dialect";
 
 export type SqlFormatterId = "sql-formatter" | "disabled";
@@ -13,13 +16,17 @@ export function isSqlFormatterId(value: string | null): value is SqlFormatterId 
   return value === "sql-formatter" || value === "disabled";
 }
 
-export function formatSqlDocument(
+export async function formatSqlDocument(
   sql: string,
   engine: DbEngine,
   formatter: SqlFormatterId,
-): string {
+): Promise<string> {
   if (formatter === "disabled") {
     throw new Error("SQL formatter is disabled");
+  }
+
+  if (engine === "snowflake") {
+    return sqlFormatSnowflake(sql, 100, 4, true);
   }
 
   return formatSql(sql, {

@@ -521,9 +521,13 @@ pub(crate) async fn connect_engine(
         Wire::Mysql => Arc::new(MysqlConn(
             mysql::connect(&engine::build_url(profile)?).await?,
         )),
-        Wire::Sqlite => Arc::new(SqliteConn(
-            sqlite::connect(&engine::build_url(profile)?).await?,
-        )),
+        Wire::Sqlite => {
+            let pool = sqlite::connect(&engine::build_url(profile)?).await?;
+            if should_seed_builtin_sample(profile) {
+                sqlite::seed_sample(&pool).await?;
+            }
+            Arc::new(SqliteConn(pool))
+        }
         Wire::SqlServer => Arc::new(MssqlConn(Arc::new(Mutex::new(
             mssql::connect(profile).await?,
         )))),
@@ -531,9 +535,11 @@ pub(crate) async fn connect_engine(
         Wire::DuckDb => {
             #[cfg(feature = "duckdb")]
             {
-                Arc::new(DuckConn(Arc::new(std::sync::Mutex::new(duck::connect(
-                    profile,
-                )?))))
+                let conn = duck::connect(profile)?;
+                if should_seed_builtin_sample(profile) {
+                    duck::seed_sample(&conn)?;
+                }
+                Arc::new(DuckConn(Arc::new(std::sync::Mutex::new(conn))))
             }
             #[cfg(not(feature = "duckdb"))]
             {
@@ -570,4 +576,14 @@ pub(crate) async fn connect_engine(
         }
     };
     Ok(conn)
+}
+
+fn should_seed_builtin_sample(profile: &ConnectionProfile) -> bool {
+    if !matches!(profile.id.as_str(), "sqlite-memory" | "duckdb-memory") {
+        return false;
+    }
+    match profile.database.as_deref().map(str::trim) {
+        None | Some("") | Some(":memory:") => true,
+        Some(_) => false,
+    }
 }

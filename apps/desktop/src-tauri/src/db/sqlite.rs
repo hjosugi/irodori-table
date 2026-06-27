@@ -19,6 +19,93 @@ pub async fn connect(url: &str) -> Result<SqlitePool, String> {
         .map_err(|e| format!("connect failed: {e}"))
 }
 
+pub async fn seed_sample(pool: &SqlitePool) -> Result<(), String> {
+    let statements = [
+        r#"
+        create table if not exists countries (
+            id integer primary key,
+            iso_code text not null unique,
+            name text not null
+        )
+        "#,
+        r#"
+        create table if not exists customers (
+            id integer primary key,
+            name text not null,
+            country_id integer references countries(id),
+            lifetime_value integer not null,
+            last_order_at text
+        )
+        "#,
+        r#"
+        create table if not exists orders (
+            id integer primary key,
+            customer_id integer not null references customers(id),
+            ordered_at text not null,
+            total integer not null,
+            status text not null
+        )
+        "#,
+        r#"
+        create view if not exists customer_revenue as
+        select c.id, c.name, coalesce(sum(o.total), 0) as total_revenue
+        from customers c
+        left join orders o on o.customer_id = c.id
+        group by c.id, c.name
+        "#,
+    ];
+    for statement in statements {
+        sqlx::query(super::audited_sql(statement))
+            .execute(pool)
+            .await
+            .map_err(|e| format!("sqlite sample schema failed: {e}"))?;
+    }
+
+    let existing = sqlx::query_scalar::<_, i64>("select count(*) from customers")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+    if existing > 0 {
+        return Ok(());
+    }
+
+    let inserts = [
+        r#"
+        insert into countries (id, iso_code, name) values
+            (1, 'JP', 'Japan'),
+            (2, 'US', 'United States'),
+            (3, 'NL', 'Netherlands')
+        "#,
+        r#"
+        insert into customers (id, name, country_id, lifetime_value, last_order_at) values
+            (233, 'Shiro Systems', 1, 4412200, '2026-06-18 16:15'),
+            (447, 'Minato Labs', 1, 5128800, '2026-06-19 08:03'),
+            (620, 'Higashi Market', 1, 4889100, '2026-06-18 19:27'),
+            (917, 'Northwind Retail', 2, 7720100, '2026-06-20 11:12'),
+            (1029, 'Kawase Foods', 1, 9841200, '2026-06-20 18:34'),
+            (1104, 'Iris Trading', 3, 3824000, '2026-06-17 21:06'),
+            (1441, 'Aster Works', 2, 6533000, '2026-06-19 23:41')
+        "#,
+        r#"
+        insert into orders (id, customer_id, ordered_at, total, status) values
+            (1, 1029, '2026-06-20 18:34', 9841200, 'paid'),
+            (2, 917, '2026-06-20 11:12', 7720100, 'paid'),
+            (3, 1441, '2026-06-19 23:41', 6533000, 'paid'),
+            (4, 447, '2026-06-19 08:03', 5128800, 'processing'),
+            (5, 620, '2026-06-18 19:27', 4889100, 'paid'),
+            (6, 233, '2026-06-18 16:15', 4412200, 'paid'),
+            (7, 1104, '2026-06-17 21:06', 3824000, 'refunded')
+        "#,
+    ];
+    for statement in inserts {
+        sqlx::query(super::audited_sql(statement))
+            .execute(pool)
+            .await
+            .map_err(|e| format!("sqlite sample data failed: {e}"))?;
+    }
+    Ok(())
+}
+
 pub async fn version(pool: &SqlitePool) -> Option<String> {
     sqlx::query_scalar::<_, String>("select sqlite_version()")
         .fetch_one(pool)

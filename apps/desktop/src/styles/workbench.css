@@ -142,7 +142,7 @@
 
 .sidebar-view-switcher {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) 27px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 1px;
   min-width: 0;
@@ -186,10 +186,6 @@
   .sidebar-view-switcher button span {
     display: inline;
   }
-}
-
-.sidebar-view-switcher .sidebar-side-button span {
-  display: none;
 }
 
 .sidebar-view-switcher button:hover,

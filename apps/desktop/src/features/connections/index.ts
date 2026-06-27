@@ -23,6 +23,12 @@ export {
   type WorkspaceConnection,
 } from "./connection-profiles";
 export {
+  defaultPort,
+  engineConnectionSettings,
+  type EngineConnectionSettings,
+  type EngineConnectionInputMode,
+} from "./engine-connection-settings";
+export {
   connectionTransferFormatOptions,
   exportConnectionProfiles,
   importConnectionProfiles,

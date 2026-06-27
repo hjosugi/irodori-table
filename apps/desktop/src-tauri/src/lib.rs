@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use sql_dialect_fmt_formatter::{format as format_snowflake_sql, Dialect, FormatOptions};
 use ts_rs::TS;
 
+pub mod ai;
 pub mod db;
 pub mod git;
 pub mod indexing;
@@ -154,6 +156,21 @@ fn open_developer_tools(window: tauri::WebviewWindow) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+fn sql_format_snowflake(
+    sql: String,
+    line_width: Option<usize>,
+    indent_width: Option<usize>,
+    uppercase_keywords: Option<bool>,
+) -> Result<String, String> {
+    let options = FormatOptions::default()
+        .with_dialect(Dialect::Snowflake)
+        .with_line_width(line_width.unwrap_or(100))
+        .with_indent_width(indent_width.unwrap_or(4))
+        .with_uppercase_keywords(uppercase_keywords.unwrap_or(true));
+    Ok(format_snowflake_sql(&sql, &options))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -163,9 +180,11 @@ pub fn run() {
         .manage(jobs::JobState::default())
         .manage(indexing::SchemaIndexState::default())
         .manage(security::SecurityState::default())
+        .manage(ai::AiState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
             open_developer_tools,
+            sql_format_snowflake,
             jobs::jobs_list,
             jobs::jobs_get,
             jobs::jobs_cancel,
@@ -206,7 +225,10 @@ pub fn run() {
             security::security_store_secret,
             security::security_delete_secret,
             security::network_transport_plan,
-            security::network_diagnose_transport
+            security::network_diagnose_transport,
+            ai::ai_generate_sql,
+            ai::ai_engine_status,
+            ai::ai_download_model
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -274,6 +296,8 @@ mod typegen {
             .decl(&decl::<irodori_proxy::DiagnosticStage>())
             .decl(&decl::<irodori_proxy::ConnectionDiagnostics>())
             .decl(&decl::<security::DesktopSecretPurpose>())
+            .decl(&decl::<ai::AiGenerateResult>())
+            .decl(&decl::<ai::AiEngineStatus>())
             .decl(&decl::<DbObjectKind>())
             .decl(&decl::<ConnectionStatus>())
             .decl(&decl::<DbObject>())
@@ -322,6 +346,13 @@ mod typegen {
             .decl(&decl::<git::GitCommandOutput>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
             .command(Command::returning("open_developer_tools", TsType::void()))
+            .command(
+                Command::new("sql_format_snowflake", "string")
+                    .arg(Arg::new("sql", TsType::string()))
+                    .arg(Arg::rust("line_width", TsType::number()).optional())
+                    .arg(Arg::rust("indent_width", TsType::number()).optional())
+                    .arg(Arg::rust("uppercase_keywords", TsType::boolean()).optional()),
+            )
             .command(Command::new("jobs_list", "JobList"))
             .command(
                 Command::new("jobs_get", "JobRecord | null")
@@ -510,6 +541,14 @@ mod typegen {
                 Command::new("network_diagnose_transport", "ConnectionDiagnostics")
                     .arg(Arg::new("transport", TsType::named("TransportConfig"))),
             )
+            .command(
+                Command::new("ai_generate_sql", "AiGenerateResult")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("prompt", TsType::string()))
+                    .arg(Arg::new("engine", TsType::named("DbEngine"))),
+            )
+            .command(Command::new("ai_engine_status", "AiEngineStatus"))
+            .command(Command::returning("ai_download_model", TsType::string()))
     }
 
     /// Locally (and through `npm run typegen`) this regenerates the committed

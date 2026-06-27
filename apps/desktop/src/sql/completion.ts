@@ -96,10 +96,32 @@ const ENGINE_KEYWORDS: Partial<Record<DbEngine, string[]>> = {
   sqlserver: ["top", "cross apply", "outer apply", "with (nolock)"],
   oracle: ["fetch first", "connect by", "merge into", "nvl"],
   duckdb: ["sample", "qualify", "read_csv", "read_parquet"],
+  motherduck: ["attach 'md:'", "show all tables", "sample", "qualify"],
   clickhouse: ["prewhere", "array join", "limit by"],
   snowflake: ["qualify", "try_cast", "flatten"],
   bigquery: ["qualify", "unnest", "safe_cast"],
+  athena: [
+    "show partitions",
+    "msck repair table",
+    "create table",
+    "external_location",
+    "format = 'iceberg'",
+    "vacuum",
+    "optimize",
+  ],
   redshift: ["distkey", "sortkey", "encode"],
+  iceberg: [
+    "merge into",
+    "create table",
+    "partitioned by",
+    "table properties",
+    "snapshot_id",
+    "expire_snapshots",
+    "rewrite_data_files",
+  ],
+  s3Tables: ["create table", "table bucket", "namespace", "format = 'iceberg'"],
+  deltaLake: ["merge into", "optimize", "vacuum", "time travel"],
+  hudi: ["merge into", "compaction", "incremental query", "recordkey"],
 };
 
 const RELATION_START_KEYWORDS = new Set([

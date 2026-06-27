@@ -144,7 +144,7 @@ textarea:disabled {
   --scrim: color-mix(in srgb, var(--text) 32%, transparent);
   --focus-ring: 0 0 0 2px color-mix(in srgb, var(--focus) 24%, transparent);
   display: grid;
-  grid-template-rows: var(--bar-sm) var(--bar-md) minmax(0, 1fr) var(--status-height);
+  grid-template-rows: var(--bar-sm) minmax(0, 1fr) var(--status-height);
   height: 100vh;
   color: var(--text);
   background: var(--surface);
@@ -165,6 +165,33 @@ textarea:disabled {
 .titlebar {
   gap: 8px;
   padding: 0 8px;
+}
+
+.titlebar-spacer {
+  flex: 1 1 auto;
+  min-width: 12px;
+}
+
+.titlebar-layout-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.titlebar-layout-controls .icon-button {
+  width: var(--control-xs);
+  height: var(--control-xs);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.titlebar-layout-controls .icon-button:hover,
+.titlebar-layout-controls .icon-button:focus-visible,
+.titlebar-layout-controls .icon-button.active {
+  border-color: var(--border);
+  background: var(--hover);
 }
 
 .menubar {

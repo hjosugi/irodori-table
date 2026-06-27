@@ -47,7 +47,7 @@ const resultsHeightStorageKey = "irodori.results.height.v2";
 const editorSplitModeStorageKey = "irodori.editor.splitMode.v1";
 const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
 
-const sidebarWidthDefault = 220;
+const sidebarWidthDefault = 200;
 const sidebarWidthMin = 180;
 const sidebarWidthMax = 420;
 const inspectorWidthDefault = 300;
@@ -89,11 +89,12 @@ function loadSidebarOpen() {
 }
 
 function loadSidebarSide(): SidebarSide {
-  return "left";
+  const stored = window.localStorage.getItem(sidebarSideStorageKey);
+  return stored === "right" ? "right" : "left";
 }
 
 function isWorkbenchSide(value: unknown): value is WorkbenchSide {
-  return value === "left";
+  return value === "left" || value === "right";
 }
 
 function defaultViewPlacements(): WorkbenchViewPlacements {
@@ -197,7 +198,11 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   ),
   setSidebarOpen: (value) =>
     set((state) => ({ sidebarOpen: resolveValue(state.sidebarOpen, value) })),
-  setSidebarSide: () => set({ sidebarSide: "left" }),
+  setSidebarSide: (value) =>
+    set((state) => {
+      const next = resolveValue(state.sidebarSide, value);
+      return { sidebarSide: next === "right" ? "right" : "left" };
+    }),
   setViewPlacement: (viewId, side) =>
     set((state) => ({
       viewPlacements: normalizeViewPlacements({

@@ -12,10 +12,9 @@ import {
   Folder,
   GitBranch,
   History,
+  Layers3,
   ListPlus,
   MoreHorizontal,
-  PanelLeftOpen,
-  PanelRightOpen,
   Plus,
   RefreshCw,
   Share2,
@@ -34,7 +33,6 @@ import {
   type WorkspaceConnection,
 } from "@/features/connections";
 import type { WorkbenchViewId } from "../types";
-import type { WorkbenchSide } from "../types";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
@@ -43,9 +41,9 @@ type SidebarViewId = WorkbenchViewId;
 type SidebarProps = {
   sidebarOpen: boolean;
   activeView: SidebarViewId;
-  sidebarSide: WorkbenchSide;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
+  lakehousePanel: ReactNode;
   gitPanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
@@ -75,7 +73,6 @@ type SidebarProps = {
   onShowObjectInDiagram: (object: DbObjectMetadata) => void;
   onSetObjectActionMenu: (value: string | null | ((current: string | null) => string | null)) => void;
   onSelectView: (viewId: SidebarViewId) => void;
-  onToggleSidebarSide: () => void;
   onCloseSidebar: () => void;
   onBeginResize: (
     event: ReactPointerEvent<HTMLDivElement>,
@@ -86,9 +83,9 @@ type SidebarProps = {
 export function Sidebar({
   sidebarOpen,
   activeView,
-  sidebarSide,
   completionPanel,
   historyPanel,
+  lakehousePanel,
   gitPanel,
   connections,
   profileById,
@@ -115,7 +112,6 @@ export function Sidebar({
   onShowObjectInDiagram,
   onSetObjectActionMenu,
   onSelectView,
-  onToggleSidebarSide,
   onCloseSidebar,
   onBeginResize,
   onResizeKey,
@@ -291,6 +287,18 @@ export function Sidebar({
             <button
               type="button"
               role="tab"
+              className={activeView === "lakehouse" ? "active" : undefined}
+              aria-selected={activeView === "lakehouse"}
+              title="Lakehouse"
+              aria-label="Lakehouse"
+              onClick={() => onSelectView("lakehouse")}
+            >
+              <Layers3 size={14} />
+              <span>Lake</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
               className={activeView === "git" ? "active" : undefined}
               aria-selected={activeView === "git"}
               title="Git"
@@ -299,28 +307,6 @@ export function Sidebar({
             >
               <GitBranch size={14} />
               <span>Git</span>
-            </button>
-            <button
-              type="button"
-              className="sidebar-side-button"
-              title={
-                sidebarSide === "left"
-                  ? "Move this sidebar right"
-                  : "Move this sidebar left"
-              }
-              aria-label={
-                sidebarSide === "left"
-                  ? "Move this sidebar right"
-                  : "Move this sidebar left"
-              }
-              onClick={onToggleSidebarSide}
-            >
-              {sidebarSide === "left" ? (
-                <PanelRightOpen size={14} />
-              ) : (
-                <PanelLeftOpen size={14} />
-              )}
-              <span>Move</span>
             </button>
           </div>
           {activeView === "objectBrowser" ? (
@@ -599,7 +585,9 @@ export function Sidebar({
                 ? completionPanel
                 : activeView === "queryHistory"
                   ? historyPanel
-                  : gitPanel}
+                  : activeView === "lakehouse"
+                    ? lakehousePanel
+                    : gitPanel}
             </div>
           )}
           <div
