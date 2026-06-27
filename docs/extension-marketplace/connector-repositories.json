@@ -1,0 +1,76 @@
+{
+  "publisher": "irodori",
+  "visibility": "public",
+  "repositories": [
+    {
+      "name": "irodori-extension-duckdb",
+      "extensionId": "irodori.duckdb",
+      "engines": ["duckdb", "motherduck"]
+    },
+    {
+      "name": "irodori-extension-hive",
+      "extensionId": "irodori.hive",
+      "engines": ["hive"]
+    },
+    {
+      "name": "irodori-extension-iceberg",
+      "extensionId": "irodori.iceberg",
+      "engines": ["iceberg", "s3Tables", "athena"]
+    },
+    {
+      "name": "irodori-extension-cloud-spanner",
+      "extensionId": "irodori.cloud-spanner",
+      "engines": ["cloudSpanner"]
+    },
+    {
+      "name": "irodori-extension-kv-store",
+      "extensionId": "irodori.kv-store",
+      "engines": ["redis", "kvStore", "dynamodb"]
+    },
+    {
+      "name": "irodori-extension-snowflake",
+      "extensionId": "irodori.snowflake",
+      "engines": ["snowflake"]
+    },
+    {
+      "name": "irodori-extension-bigquery",
+      "extensionId": "irodori.bigquery",
+      "engines": ["bigquery"]
+    },
+    {
+      "name": "irodori-extension-mongodb",
+      "extensionId": "irodori.mongodb",
+      "engines": ["mongodb"]
+    },
+    {
+      "name": "irodori-extension-clickhouse",
+      "extensionId": "irodori.clickhouse",
+      "engines": ["clickhouse"]
+    },
+    {
+      "name": "irodori-extension-cassandra",
+      "extensionId": "irodori.cassandra",
+      "engines": ["cassandra", "scylladb"]
+    },
+    {
+      "name": "irodori-extension-neo4j",
+      "extensionId": "irodori.neo4j",
+      "engines": ["neo4j", "memgraph"]
+    },
+    {
+      "name": "irodori-extension-sqlserver",
+      "extensionId": "irodori.sqlserver",
+      "engines": ["sqlserver"]
+    },
+    {
+      "name": "irodori-extension-oracle",
+      "extensionId": "irodori.oracle",
+      "engines": ["oracle"]
+    },
+    {
+      "name": "irodori-extension-object-store",
+      "extensionId": "irodori.object-store",
+      "engines": ["objectStore", "deltaLake", "hudi"]
+    }
+  ]
+}

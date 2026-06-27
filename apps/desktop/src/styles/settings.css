@@ -250,6 +250,165 @@
   gap: 12px;
 }
 
+.settings-extensions {
+  display: grid;
+  gap: 10px;
+}
+
+.extension-search {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  height: var(--control-md);
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--input-bg);
+}
+
+.extension-search input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+}
+
+.extension-store-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+}
+
+.extension-section {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.extension-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  padding: 0 8px;
+  color: var(--text);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px 4px 0 0;
+  font-weight: 600;
+}
+
+.extension-section-header small {
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+  text-align: center;
+  font-weight: 500;
+}
+
+.extension-list {
+  display: grid;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+}
+
+.extension-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.extension-item:first-child {
+  border-top: 0;
+}
+
+.extension-item:hover,
+.extension-item:focus-within {
+  background: var(--surface-muted);
+}
+
+.extension-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  color: #fff;
+  background: var(--blue);
+  font-weight: 700;
+}
+
+.extension-main {
+  min-width: 0;
+}
+
+.extension-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.extension-title-row strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extension-title-row span,
+.extension-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.extension-main p {
+  margin: 2px 0 4px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extension-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.extension-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.extension-empty {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: var(--font-ui-sm);
+}
+
 .snippet-editor-list {
   display: grid;
   gap: 10px;

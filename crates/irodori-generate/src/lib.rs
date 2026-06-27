@@ -16,6 +16,7 @@
 //! The deterministic completion in `irodori-completion` remains the always-on
 //! default; this is the opt-in generation path.
 
+pub mod command;
 pub mod plan;
 pub mod project;
 pub mod runtime;
@@ -25,10 +26,17 @@ pub mod verify;
 #[cfg(feature = "llama")]
 pub mod llama;
 
+#[cfg(feature = "http")]
+pub mod http;
+
+pub use command::{CommandConfig, CommandModel};
 pub use plan::QueryPlan;
 pub use runtime::{DecodeOptions, EchoModel, GrammarModel, ModelDescription, ModelOutput};
 pub use schema::{GenColumn, GenForeignKey, GenSchema, GenTable, RelationKind, SchemaIndex};
 pub use verify::Verified;
+
+#[cfg(feature = "http")]
+pub use http::{HttpConfig, OllamaModel, OpenAiCompatModel};
 
 use irodori_error::Result;
 use irodori_sql::dialect::SqlDialect;
@@ -70,11 +78,23 @@ pub fn generate(
     request: &GenerateRequest,
     dialect: &dyn SqlDialect,
 ) -> Result<GenerateOutcome> {
-    let grammar_schema = project::grammar_schema(&request.schema);
-    let gbnf = select_grammar(Some(&grammar_schema));
     let index = project::schema_index(&request.schema);
-
     let plan = plan::plan(&request.prompt, &request.schema);
+
+    // Scope the grammar to the planned tables (+ FK neighbors) when the schema is
+    // large enough that the full grammar would be costly. Small schemas keep the
+    // full grammar for maximum recall. A smaller grammar decodes faster, lets a
+    // tinier model suffice, and can't emit irrelevant relations.
+    const GRAMMAR_SCOPE_THRESHOLD: usize = 16;
+    let relevant = plan::relevant_tables(&plan, &request.schema);
+    let grammar_schema = if relevant.is_empty() || request.schema.tables.len() <= GRAMMAR_SCOPE_THRESHOLD
+    {
+        project::grammar_schema(&request.schema)
+    } else {
+        project::grammar_schema_scoped(&request.schema, &relevant)
+    };
+    let gbnf = select_grammar(Some(&grammar_schema));
+
     let prompt = plan::build_prompt(&request.prompt, &plan, &request.schema, dialect);
 
     let output = model.complete(&prompt, &gbnf, &request.options)?;

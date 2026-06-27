@@ -198,16 +198,21 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         transportLabel: "AWS Athena API",
       };
     case "bigtable":
+    case "cloudSpanner":
       return {
         ...tcpDatabaseSettings,
         preferredMode: "url",
         urlLabel: "Project / instance / credentials",
-        urlPlaceholder: "bigtable://project/instance or credentials JSON path",
+        urlPlaceholder:
+          engine === "cloudSpanner"
+            ? "spanner://project/instance/database or credentials JSON path"
+            : "bigtable://project/instance or credentials JSON path",
         hostLabel: "Project / instance",
         hostPlaceholder: "project/instance",
         userLabel: "Service account",
         passwordLabel: "Token / key",
-        databaseLabel: "Table / app profile",
+        databaseLabel:
+          engine === "cloudSpanner" ? "Database" : "Table / app profile",
         showPort: false,
         transportLabel: "Google API",
       };
@@ -282,12 +287,16 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         transportLabel: "HTTP API",
       };
     case "dynamodb":
+    case "kvStore":
     case "s3Tables":
     case "objectStore":
       return {
         ...tcpDatabaseSettings,
         preferredMode: "url",
-        urlPlaceholder: "aws://profile/region/resource",
+        urlPlaceholder:
+          engine === "kvStore"
+            ? "kv://provider/profile/namespace"
+            : "aws://profile/region/resource",
         hostLabel: "Region",
         hostPlaceholder: "us-east-1",
         userLabel: "Access key",
@@ -364,6 +373,7 @@ export function defaultPort(engine: DbEngine) {
       return "8123";
     case "snowflake":
     case "bigquery":
+    case "cloudSpanner":
     case "athena":
     case "motherduck":
       return "443";
@@ -396,6 +406,7 @@ export function defaultPort(engine: DbEngine) {
       return "3050";
     case "databricks":
     case "dynamodb":
+    case "kvStore":
     case "iceberg":
     case "s3Tables":
     case "objectStore":

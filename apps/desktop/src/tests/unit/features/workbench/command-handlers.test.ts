@@ -75,6 +75,7 @@ function createHandler(calls: string[]) {
     commitEdits: async () => {
       calls.push("commit-edits");
     },
+    generateSql: () => calls.push("generate-sql"),
   });
 }
 

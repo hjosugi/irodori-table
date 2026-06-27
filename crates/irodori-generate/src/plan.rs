@@ -41,6 +41,63 @@ pub struct QueryPlan {
     pub joins: Vec<PlannedJoin>,
 }
 
+/// Cap so a hub table with many referrers can't re-expand the grammar to the
+/// whole schema; beyond this we just keep the planned tables.
+const MAX_RELEVANT_TABLES: usize = 12;
+
+/// Tables the grammar should expose for this query: the planned tables plus their
+/// direct foreign-key neighbors (so closely-related tables the prompt didn't name
+/// stay joinable). Returns empty when planning found nothing — callers then fall
+/// back to the full schema. Scoping the grammar to these makes decoding lighter
+/// and keeps the model from emitting irrelevant relations.
+pub fn relevant_tables(plan: &QueryPlan, schema: &GenSchema) -> Vec<String> {
+    if plan.tables.is_empty() {
+        return Vec::new();
+    }
+    let by_name: HashMap<String, &GenTable> = schema
+        .tables
+        .iter()
+        .map(|t| (t.name.to_ascii_lowercase(), t))
+        .collect();
+
+    let planned: HashSet<String> = plan
+        .tables
+        .iter()
+        .map(|t| t.name.to_ascii_lowercase())
+        .collect();
+    let mut keep = planned.clone();
+
+    // Outgoing: tables a planned table points at.
+    for name in &planned {
+        if let Some(table) = by_name.get(name) {
+            for fk in &table.foreign_keys {
+                keep.insert(fk.ref_table.to_ascii_lowercase());
+            }
+        }
+    }
+    // Incoming: tables that point at a planned table.
+    for table in &schema.tables {
+        if table
+            .foreign_keys
+            .iter()
+            .any(|fk| planned.contains(&fk.ref_table.to_ascii_lowercase()))
+        {
+            keep.insert(table.name.to_ascii_lowercase());
+        }
+    }
+
+    if keep.len() > MAX_RELEVANT_TABLES {
+        return plan.tables.iter().map(|t| t.name.clone()).collect();
+    }
+    // Preserve schema order and original casing.
+    schema
+        .tables
+        .iter()
+        .filter(|t| keep.contains(&t.name.to_ascii_lowercase()))
+        .map(|t| t.name.clone())
+        .collect()
+}
+
 /// Resolve the tables the prompt mentions and the joins that connect them.
 pub fn plan(prompt: &str, schema: &GenSchema) -> QueryPlan {
     let by_name: HashMap<String, &GenTable> = schema
@@ -295,6 +352,23 @@ mod tests {
         // orders.customer_id = customers.id, with generated aliases.
         assert!(predicate.left.ends_with(".customer_id"));
         assert!(predicate.right.ends_with(".id"));
+    }
+
+    #[test]
+    fn relevant_tables_include_planned_and_fk_neighbors() {
+        let schema = shop_schema();
+        let plan = plan("orders", &schema);
+        let relevant = relevant_tables(&plan, &schema);
+        // `orders` was named; `customers` is pulled in as its FK neighbor.
+        assert!(relevant.iter().any(|t| t == "orders"));
+        assert!(relevant.iter().any(|t| t == "customers"));
+    }
+
+    #[test]
+    fn relevant_tables_empty_when_nothing_matched() {
+        let schema = shop_schema();
+        let plan = plan("how is the weather", &schema);
+        assert!(relevant_tables(&plan, &schema).is_empty());
     }
 
     #[test]

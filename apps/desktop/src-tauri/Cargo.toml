@@ -79,7 +79,9 @@ scylla = { version = "1.7" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
-default = ["duckdb"]
+default = []
+# Connector extensions should provide DuckDB long-term. This feature remains as
+# a local escape hatch while the extension host grows native-driver support.
 duckdb = ["dep:duckdb"]
 # Embedded local SQL generation (compiles llama.cpp). Off by default so standard
 # builds stay light; the `ai_generate_sql` command returns `unsupported` without it.

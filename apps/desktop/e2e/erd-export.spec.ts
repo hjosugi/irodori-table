@@ -231,3 +231,15 @@ test("ERD downloads SVG and PNG from the rendered diagram", async ({
   );
   expect(png.bytes.length).toBeGreaterThan(1_000);
 });
+
+test("ERD opens from the keyboard shortcut", async ({ page }) => {
+  await installErdMock(page);
+  await connect(page);
+
+  await page.keyboard.press("Control+Shift+D");
+
+  const dialog = page.getByRole("dialog", { name: "ER diagram" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("5/5 tables · 4 edges")).toBeVisible();
+  await expect(page.locator("svg.erd-svg path.erd-edge")).toHaveCount(4);
+});

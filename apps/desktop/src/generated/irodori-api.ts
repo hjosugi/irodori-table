@@ -88,6 +88,30 @@ export type ConnectionDiagnostics = { target: DialTarget, stages: Array<Diagnost
 
 export type DesktopSecretPurpose = "password" | "token" | "privateKey" | "privateKeyPassphrase" | "sshPassword" | "proxyPassword";
 
+export type AiGenerateResult = { sql: string, model: string, tokensIn: number, tokensOut: number, 
+/**
+ * True when validation canonicalized the model's output.
+ */
+repaired: boolean, 
+/**
+ * Tables the planner selected from the prompt.
+ */
+tables: Array<string>, };
+
+export type AiEngineStatus = { 
+/**
+ * Built with the `llama` feature.
+ */
+compiled: boolean, 
+/**
+ * The model file is present on disk.
+ */
+modelPresent: boolean, 
+/**
+ * The model is loaded in memory.
+ */
+loaded: boolean, modelFile: string, modelPath: string, downloadUrl: string, };
+
 export type DbObjectKind = "table" | "view" | "procedure";
 
 export type ConnectionStatus = "connected" | "idle";
@@ -98,7 +122,7 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
-export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
+export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "cloudSpanner" | "kvStore" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
 
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
 /**
@@ -239,6 +263,10 @@ export function openDeveloperTools(): Promise<void> {
   return invoke<void>("open_developer_tools");
 }
 
+export function sqlFormatSnowflake(sql: string, lineWidth?: number, indentWidth?: number, uppercaseKeywords?: boolean): Promise<string> {
+  return invoke<string>("sql_format_snowflake", { sql, lineWidth, indentWidth, uppercaseKeywords });
+}
+
 export function jobsList(): Promise<JobList> {
   return invoke<JobList>("jobs_list");
 }
@@ -249,10 +277,6 @@ export function jobsGet(jobId: string): Promise<JobRecord | null> {
 
 export function jobsCancel(jobId: string): Promise<JobRecord> {
   return invoke<JobRecord>("jobs_cancel", { jobId });
-}
-
-export function sqlFormatSnowflake(sql: string, lineWidth?: number, indentWidth?: number, uppercaseKeywords?: boolean): Promise<string> {
-  return invoke<string>("sql_format_snowflake", { sql, lineWidth, indentWidth, uppercaseKeywords });
 }
 
 export function dbIndexSchema(connectionId: string): Promise<string> {
@@ -397,4 +421,16 @@ export function networkTransportPlan(transport: TransportConfig): Promise<Transp
 
 export function networkDiagnoseTransport(transport: TransportConfig): Promise<ConnectionDiagnostics> {
   return invoke<ConnectionDiagnostics>("network_diagnose_transport", { transport });
+}
+
+export function aiGenerateSql(connectionId: string, prompt: string, engine: DbEngine): Promise<AiGenerateResult> {
+  return invoke<AiGenerateResult>("ai_generate_sql", { connectionId, prompt, engine });
+}
+
+export function aiEngineStatus(): Promise<AiEngineStatus> {
+  return invoke<AiEngineStatus>("ai_engine_status");
+}
+
+export function aiDownloadModel(): Promise<string> {
+  return invoke<string>("ai_download_model");
 }

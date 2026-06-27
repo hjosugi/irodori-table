@@ -12,13 +12,6 @@ import {
   useState,
 } from "react";
 import { Plus } from "lucide-react";
-import {
-  connectDuckDbWasm,
-  disconnectDuckDbWasm,
-  listDuckDbWasmObjects,
-  runDuckDbWasmQuery,
-  shouldUseDuckDbWasm,
-} from "@/lib/duckdb-wasm";
 import { runQuerySpill, runQueryStream } from "@/lib/tauri/db-stream";
 import {
   createQueryHistoryResultSnapshot,
@@ -848,10 +841,6 @@ export function AppWorkbench() {
     () => completionHintsFromMetadata(activeMetadata),
     [activeMetadata],
   );
-
-  function usesDuckDbWasm(profile = activeProfile) {
-    return Boolean(tauriRuntimeError() && shouldUseDuckDbWasm(profile));
-  }
 
   function activeEditorApi() {
     if (editorSplitOpen && activeEditorGroup === "secondary") {
@@ -2855,11 +2844,7 @@ export function AppWorkbench() {
   async function deleteProfile() {
     const id = draft.id;
     if (connectedIds.has(id)) {
-      if (usesDuckDbWasm(draft)) {
-        await disconnectDuckDbWasm(id).catch(() => undefined);
-      } else {
-        await dbDisconnect(id).catch(() => undefined);
-      }
+      await dbDisconnect(id).catch(() => undefined);
     }
     setConnectedIds((current) => {
       const next = new Set(current);
@@ -2885,31 +2870,6 @@ export function AppWorkbench() {
     }
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
-      if (shouldUseDuckDbWasm(draft)) {
-        setTestingConnection(true);
-        setConnectionError(null);
-        const testId = `__test_${draft.id}_${Date.now()}`;
-        try {
-          await connectDuckDbWasm({
-            ...profileFromDraft(draft),
-            id: testId,
-          });
-          await disconnectDuckDbWasm(testId);
-          setConnectionError(null);
-          showActionNotice(
-            "success",
-            "Connection test succeeded",
-            `${draft.name.trim()} (${engineLabel(draft.engine)} WASM)`,
-          );
-        } catch (error) {
-          const message = errorMessage(error);
-          setConnectionError(message);
-          showActionNotice("error", "Connection test failed", message);
-        } finally {
-          setTestingConnection(false);
-        }
-        return;
-      }
       setConnectionError(runtimeError);
       showActionNotice("error", "Connection test failed", runtimeError);
       return;
@@ -2945,43 +2905,6 @@ export function AppWorkbench() {
     }
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
-      if (shouldUseDuckDbWasm(draft)) {
-        setConnecting(true);
-        setConnectionError(null);
-        try {
-          const started = performance.now();
-          const info = await connectDuckDbWasm(profileFromDraft(draft));
-          const elapsedMs = Math.max(1, Math.round(performance.now() - started));
-          const nextConnection = describeConnection(
-            info,
-            elapsedMs,
-            draft.name.trim(),
-          );
-          setLiveConnections((current) => ({
-            ...current,
-            [nextConnection.id]: {
-              ...nextConnection,
-              proxy: "browser wasm",
-            },
-          }));
-          setConnectedIds((current) => new Set(current).add(nextConnection.id));
-          setActiveConnectionId(nextConnection.id);
-          void refreshObjects(nextConnection.id, true);
-          setConnectionManagerOpen(false);
-          showActionNotice(
-            "success",
-            "Connected",
-            `${draft.name.trim()} · DuckDB-WASM · ${elapsedMs} ms`,
-          );
-        } catch (error) {
-          const message = errorMessage(error);
-          setConnectionError(message);
-          showActionNotice("error", "Connect failed", message);
-        } finally {
-          setConnecting(false);
-        }
-        return;
-      }
       setConnectionError(runtimeError);
       showActionNotice("error", "Connect failed", runtimeError);
       return;
@@ -3024,11 +2947,7 @@ export function AppWorkbench() {
     if (!connectedIds.has(id)) {
       return;
     }
-    if (usesDuckDbWasm(profileById.get(id))) {
-      await disconnectDuckDbWasm(id).catch(() => undefined);
-    } else {
-      await dbDisconnect(id).catch(() => undefined);
-    }
+    await dbDisconnect(id).catch(() => undefined);
     setConnectedIds((current) => {
       const next = new Set(current);
       next.delete(id);
@@ -3054,10 +2973,7 @@ export function AppWorkbench() {
       return;
     }
     const runtimeError = tauriRuntimeError();
-    const useDuckDbWasm = Boolean(
-      runtimeError && shouldUseDuckDbWasm(profileById.get(connectionId)),
-    );
-    if (runtimeError && !useDuckDbWasm) {
+    if (runtimeError) {
       setMetadataErrors((current) => ({
         ...current,
         [connectionId]: runtimeError,
@@ -3073,9 +2989,7 @@ export function AppWorkbench() {
       return next;
     });
     try {
-      const metadata = useDuckDbWasm
-        ? await listDuckDbWasmObjects(connectionId)
-        : await dbListObjects(connectionId);
+      const metadata = await dbListObjects(connectionId);
       setMetadataByConnection((current) => ({
         ...current,
         [connectionId]: metadata,
@@ -3678,7 +3592,7 @@ export function AppWorkbench() {
       return;
     }
     const runtimeError = tauriRuntimeError();
-    if (runtimeError && !usesDuckDbWasm()) {
+    if (runtimeError) {
       setQueryError(runtimeError);
       showActionNotice("error", "Run failed", runtimeError);
       return;
@@ -3747,9 +3661,6 @@ export function AppWorkbench() {
   ) {
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
-      if (usesDuckDbWasm()) {
-        return false;
-      }
       setQueryError(runtimeError);
       showActionNotice("error", "Parameter scan failed", runtimeError);
       return true;
@@ -3796,7 +3707,7 @@ export function AppWorkbench() {
       return;
     }
     const runtimeError = tauriRuntimeError();
-    if (runtimeError && !usesDuckDbWasm()) {
+    if (runtimeError) {
       setQueryError(runtimeError);
       showActionNotice("error", "Run failed", runtimeError);
       return;
@@ -3838,40 +3749,6 @@ export function AppWorkbench() {
     };
     let publishRaf: number | null = null;
     try {
-      if (runtimeError && usesDuckDbWasm()) {
-        const wasmResult = await runDuckDbWasmQuery(
-          activeConnectionId,
-          sqlToRun,
-          10_000,
-        );
-        setResult(wasmResult);
-        appendHistory({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          connectionId: activeConnectionId,
-          connectionName: activeConnection.name,
-          engine: activeConnection.engine,
-          sql: sqlToRun,
-          status: "ok",
-          rowCount: Number(wasmResult.rowCount),
-          elapsedMs: Number(wasmResult.elapsedMs),
-          truncated: wasmResult.truncated,
-          result: createQueryHistoryResultSnapshot(
-            wasmResult,
-            queryHistoryResultRows,
-          ),
-          ranAt,
-        });
-        if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
-          void refreshObjects(activeConnectionId, true);
-        }
-        showActionNotice(
-          "success",
-          "Query finished",
-          `${toCount(wasmResult.rowCount)} rows in ${toCount(wasmResult.elapsedMs)} ms`,
-        );
-        return;
-      }
-
       // Stream the run so the grid fills as batches arrive instead of waiting for
       // the whole result. Query errors surface as an "error" event (the command
       // itself resolves); the catch below only handles invoke-level failures.
@@ -4180,10 +4057,6 @@ export function AppWorkbench() {
   // Ask the backend to stop the in-flight query; the pending run then rejects with
   // "query cancelled" and the runQuery catch/finally resets the UI.
   async function cancelQuery() {
-    if (usesDuckDbWasm()) {
-      showActionNotice("info", "Cancel is not available for DuckDB-WASM yet");
-      return;
-    }
     const id = runningQueryIdRef.current;
     if (!id) {
       return;

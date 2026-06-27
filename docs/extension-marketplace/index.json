@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-27T00:00:00Z",
+  "source": "https://github.com/hjosugi/irodori-table/tree/main/docs/extension-marketplace",
+  "extensions": [
+    {
+      "id": "irodori.duckdb",
+      "name": "DuckDB Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds DuckDB and MotherDuck connectivity as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-duckdb",
+      "categories": ["connector", "database"],
+      "engines": ["duckdb", "motherduck"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-duckdb/releases/latest",
+        "assetName": "irodori-extension-duckdb.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.hive",
+      "name": "Hive Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds Apache Hive and Hive Metastore connectivity as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-hive",
+      "categories": ["connector", "lakehouse", "catalog"],
+      "engines": ["hive"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-hive/releases/latest",
+        "assetName": "irodori-extension-hive.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.iceberg",
+      "name": "Iceberg / S3 Tables Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds Apache Iceberg REST catalog, Glue catalog, Athena, and AWS S3 Tables workflows as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-iceberg",
+      "categories": ["connector", "lakehouse", "catalog", "aws"],
+      "engines": ["iceberg", "s3Tables", "athena"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-iceberg/releases/latest",
+        "assetName": "irodori-extension-iceberg.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.cloud-spanner",
+      "name": "Cloud Spanner Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds Google Cloud Spanner connectivity as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-cloud-spanner",
+      "categories": ["connector", "database", "google-cloud"],
+      "engines": ["cloudSpanner"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-cloud-spanner/releases/latest",
+        "assetName": "irodori-extension-cloud-spanner.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.kv-store",
+      "name": "KV Store Connector Pack",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds Redis-compatible and generic key-value store connectivity as an installable extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-kv-store",
+      "categories": ["connector", "key-value"],
+      "engines": ["redis", "kvStore", "dynamodb"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-kv-store/releases/latest",
+        "assetName": "irodori-extension-kv-store.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.snowflake",
+      "name": "Snowflake Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds Snowflake SQL API connectivity as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-snowflake",
+      "categories": ["connector", "warehouse"],
+      "engines": ["snowflake"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-snowflake/releases/latest",
+        "assetName": "irodori-extension-snowflake.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.cassandra",
+      "name": "Cassandra / ScyllaDB Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds Apache Cassandra and ScyllaDB connectivity as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-cassandra",
+      "categories": ["connector", "wide-column"],
+      "engines": ["cassandra", "scylladb"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-cassandra/releases/latest",
+        "assetName": "irodori-extension-cassandra.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    },
+    {
+      "id": "irodori.bigquery",
+      "name": "BigQuery Connector",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds BigQuery connectivity as an installable connector extension.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-bigquery",
+      "categories": ["connector", "warehouse", "google-cloud"],
+      "engines": ["bigquery"],
+      "permissions": ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+      "runtime": "native",
+      "verified": true,
+      "publishedAt": "2026-06-27T00:00:00Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-bigquery/releases/latest",
+        "assetName": "irodori-extension-bigquery.tar.gz",
+        "manifestPath": "irodori.extension.json"
+      }
+    }
+  ]
+}

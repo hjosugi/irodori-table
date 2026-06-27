@@ -6,24 +6,24 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
 const repoRoot = resolve(desktopRoot, "../..");
 
-const generatedFiles = [
-  "apps/desktop/src/generated/irodori-api.ts",
-  "packages/extension-sdk/src/generated/irodori-extension-api.ts",
-];
-
 const generators = [
   {
+    id: "desktop",
     label: "desktop Tauri bindings",
+    generatedFiles: ["apps/desktop/src/generated/irodori-api.ts"],
     command: "cargo",
     args: [
       "test",
       "--manifest-path",
       "apps/desktop/src-tauri/Cargo.toml",
+      "--no-default-features",
       "export_typescript_bindings",
     ],
   },
   {
+    id: "extension",
     label: "extension SDK bindings",
+    generatedFiles: ["packages/extension-sdk/src/generated/irodori-extension-api.ts"],
     command: "cargo",
     args: ["test", "-p", "irodori-extension", "export_typescript_bindings"],
   },
@@ -42,7 +42,11 @@ main().catch((error) => {
 });
 
 async function main() {
-  for (const generator of generators) {
+  const selectedGenerators = generators.filter(
+    (generator) => options.only === "all" || generator.id === options.only,
+  );
+
+  for (const generator of selectedGenerators) {
     console.log(`Generating ${generator.label}...`);
     await run(generator.command, generator.args, {
       cwd: repoRoot,
@@ -51,6 +55,7 @@ async function main() {
   }
 
   if (options.check) {
+    const generatedFiles = selectedGenerators.flatMap((generator) => generator.generatedFiles);
     const diff = await runCapture("git", [
       "diff",
       "--no-ext-diff",
@@ -91,11 +96,25 @@ function parseArgs(argv) {
   const parsed = {
     check: false,
     help: false,
+    only: "all",
   };
 
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
     if (arg === "--check" || arg === "-c") {
       parsed.check = true;
+      continue;
+    }
+
+    if (arg === "--only") {
+      const value = argv[i + 1];
+      if (!["desktop", "extension"].includes(value)) {
+        console.error("--only must be one of: desktop, extension");
+        printHelp();
+        process.exit(1);
+      }
+      parsed.only = value;
+      i += 1;
       continue;
     }
 
@@ -115,12 +134,13 @@ function parseArgs(argv) {
 function printHelp() {
   console.log(
     [
-      "Usage: node tools/typegen.mjs [--check]",
+      "Usage: node tools/typegen.mjs [--check] [--only desktop|extension]",
       "",
       "Regenerates the desktop and extension SDK TypeScript bindings.",
       "",
       "Options:",
       "  --check, -c   Regenerate, then fail if generated files differ from git.",
+      "  --only <id>   Generate only one binding set: desktop or extension.",
       "  --help, -h    Show this help.",
     ].join("\n"),
   );

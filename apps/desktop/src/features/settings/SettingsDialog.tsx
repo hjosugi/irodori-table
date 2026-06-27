@@ -1,10 +1,14 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Clock3,
   Code2,
+  Download,
   Image as ImageIcon,
   Keyboard,
   Palette,
+  Package,
+  Search,
   RotateCcw,
   Settings,
   TerminalSquare,
@@ -56,12 +60,20 @@ import {
   type Locale,
 } from "../../i18n";
 import { defaultThemeEntries, type ThemeKind } from "@/theme";
+import {
+  bundledPluginStoreIndex,
+  defaultPluginStoreUrl,
+  fetchPluginStoreIndex,
+  type PluginStoreExtension,
+  type PluginStoreIndex,
+} from "@/features/extensions/plugin-store";
 
 export type SettingsTab =
   | "general"
   | "theme"
   | "keymap"
   | "snippets"
+  | "extensions"
   | "jobs"
   | "json";
 
@@ -192,6 +204,10 @@ function isCancellableJob(job: JobSummary) {
   return job.status === "queued" || job.status === "running";
 }
 
+function openExternalUrl(url: string) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 const snippetScopeOptions: SqlSnippetScope[] = [
   "statement",
   "clause",
@@ -208,6 +224,70 @@ function uniqueSnippetLabel(snippets: readonly SqlSnippetDefinition[]) {
   let index = 2;
   while (used.has(`custom${index}`)) index += 1;
   return `custom${index}`;
+}
+
+function ExtensionSection({
+  title,
+  count,
+  empty,
+  extensions,
+}: {
+  title: string;
+  count: number;
+  empty: string;
+  extensions: readonly PluginStoreExtension[];
+}) {
+  return (
+    <section className="extension-section">
+      <div className="extension-section-header">
+        <span>{title}</span>
+        <small>{count}</small>
+      </div>
+      {extensions.length === 0 ? (
+        <div className="extension-empty">{empty}</div>
+      ) : (
+        <div className="extension-list">
+          {extensions.map((extension) => (
+            <article className="extension-item" key={extension.id}>
+              <div className="extension-icon" aria-hidden="true">
+                {extension.name.slice(0, 1)}
+              </div>
+              <div className="extension-main">
+                <div className="extension-title-row">
+                  <strong>{extension.name}</strong>
+                  <span>{extension.version}</span>
+                </div>
+                <p>{extension.summary}</p>
+                <div className="extension-meta">
+                  <span>{extension.publisher}</span>
+                  <span>{extension.runtime}</span>
+                  <span>{extension.engines.join(", ")}</span>
+                </div>
+              </div>
+              <div className="extension-actions">
+                <button
+                  type="button"
+                  className="icon-button"
+                  title="Open release"
+                  aria-label={`Open ${extension.name} release`}
+                  onClick={() => openExternalUrl(extension.install.url)}
+                >
+                  <Download size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => openExternalUrl(extension.repository)}
+                >
+                  GitHub
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function SettingsDialog({
@@ -279,6 +359,71 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const { t } = createTranslator(locale);
   const uiZoomPercent = `${Math.round(uiZoom * 100)}%`;
+  const [pluginStore, setPluginStore] = useState<PluginStoreIndex>(
+    bundledPluginStoreIndex,
+  );
+  const [pluginStoreLoading, setPluginStoreLoading] = useState(false);
+  const [pluginStoreError, setPluginStoreError] = useState<string | null>(null);
+  const [pluginSearch, setPluginSearch] = useState("");
+  const filteredPluginStoreExtensions = useMemo(() => {
+    const term = pluginSearch.trim().toLowerCase();
+    if (!term) {
+      return pluginStore.extensions;
+    }
+    return pluginStore.extensions.filter((extension) =>
+      [
+        extension.name,
+        extension.id,
+        extension.publisher,
+        extension.summary,
+        extension.engines.join(" "),
+        extension.categories.join(" "),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [pluginSearch, pluginStore.extensions]);
+  const recommendedPluginStoreExtensions = useMemo(
+    () =>
+      pluginStore.extensions.filter((extension) =>
+        ["duckdb", "snowflake", "bigquery", "cloudSpanner", "kvStore"].some(
+          (engine) => extension.engines.includes(engine),
+        ),
+      ),
+    [pluginStore.extensions],
+  );
+
+  useEffect(() => {
+    if (settingsTab !== "extensions") {
+      return;
+    }
+    let cancelled = false;
+    setPluginStoreLoading(true);
+    setPluginStoreError(null);
+    fetchPluginStoreIndex(defaultPluginStoreUrl)
+      .then((index) => {
+        if (!cancelled) {
+          setPluginStore(index);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setPluginStore(bundledPluginStoreIndex);
+          setPluginStoreError(
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPluginStoreLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsTab]);
 
   function updateSnippet(
     index: number,
@@ -371,6 +516,14 @@ export function SettingsDialog({
             >
               <Code2 size={15} />
               {t("settings.nav.snippets")}
+            </button>
+            <button
+              type="button"
+              className={settingsTab === "extensions" ? "active" : undefined}
+              onClick={() => onOpenSection("extensions")}
+            >
+              <Package size={15} />
+              {t("settings.nav.extensions")}
             </button>
             <button
               type="button"
@@ -1065,6 +1218,58 @@ export function SettingsDialog({
                     {t("settings.snippets.empty")}
                   </div>
                 )}
+              </div>
+            ) : settingsTab === "extensions" ? (
+              <div className="settings-extensions">
+                <div className="extension-search">
+                  <Search size={15} />
+                  <input
+                    type="search"
+                    value={pluginSearch}
+                    placeholder={t("settings.extensions.search")}
+                    onChange={(event) => setPluginSearch(event.currentTarget.value)}
+                  />
+                </div>
+                <div className="extension-store-note">
+                  <span>
+                    {pluginStoreLoading
+                      ? t("settings.extensions.loading")
+                      : t("settings.extensions.source", {
+                          source: pluginStore.source,
+                        })}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => openExternalUrl(defaultPluginStoreUrl)}
+                  >
+                    {t("settings.extensions.openStore")}
+                  </button>
+                </div>
+                {pluginStoreError ? (
+                  <div className="inline-error settings-json-error">
+                    <AlertTriangle size={15} />
+                    <span>{pluginStoreError}</span>
+                  </div>
+                ) : null}
+                <ExtensionSection
+                  title={t("settings.extensions.installed")}
+                  count={0}
+                  empty={t("settings.extensions.noInstalled")}
+                  extensions={[]}
+                />
+                <ExtensionSection
+                  title={t("settings.extensions.marketplace")}
+                  count={filteredPluginStoreExtensions.length}
+                  empty={t("settings.extensions.noMatches")}
+                  extensions={filteredPluginStoreExtensions}
+                />
+                <ExtensionSection
+                  title={t("settings.extensions.recommended")}
+                  count={recommendedPluginStoreExtensions.length}
+                  empty={t("settings.extensions.noRecommended")}
+                  extensions={recommendedPluginStoreExtensions}
+                />
               </div>
             ) : settingsTab === "jobs" ? (
               <div className="settings-jobs">

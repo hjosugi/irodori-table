@@ -565,6 +565,7 @@ pub(crate) async fn connect_engine(
         | Wire::Search
         | Wire::Document
         | Wire::KeyValue
+        | Wire::CloudSpanner
         | Wire::Graph
         | Wire::TimeSeries
         | Wire::Lakehouse

@@ -108,6 +108,12 @@ pub enum DbEngine {
     #[serde(rename = "bigtable")]
     #[ts(rename = "bigtable")]
     Bigtable,
+    #[serde(rename = "cloudSpanner")]
+    #[ts(rename = "cloudSpanner")]
+    CloudSpanner,
+    #[serde(rename = "kvStore")]
+    #[ts(rename = "kvStore")]
+    KvStore,
     #[serde(rename = "trinoPresto")]
     #[ts(rename = "trinoPresto")]
     TrinoPresto,
@@ -168,6 +174,7 @@ pub(crate) enum Wire {
     Redis,
     Cassandra,
     Bigtable,
+    CloudSpanner,
     Jdbc,
     Search,
     Document,
@@ -207,6 +214,8 @@ impl DbEngine {
             DbEngine::Cassandra => Wire::Cassandra,
             DbEngine::ScyllaDb => Wire::Cassandra,
             DbEngine::Bigtable => Wire::Bigtable,
+            DbEngine::CloudSpanner => Wire::CloudSpanner,
+            DbEngine::KvStore => Wire::KeyValue,
             DbEngine::QuestDb => Wire::Postgres,
             DbEngine::TrinoPresto | DbEngine::Firebird | DbEngine::Databricks | DbEngine::Hive => {
                 Wire::Jdbc
@@ -245,6 +254,7 @@ impl DbEngine {
             DbEngine::Redis => 6379,
             DbEngine::Cassandra | DbEngine::ScyllaDb => 9042,
             DbEngine::Bigtable => 443,
+            DbEngine::CloudSpanner => 443,
             DbEngine::TrinoPresto => 8080,
             DbEngine::Firebird => 3050,
             DbEngine::Databricks => 443,
@@ -262,7 +272,7 @@ impl DbEngine {
             | DbEngine::ObjectStore
             | DbEngine::DeltaLake
             | DbEngine::Hudi => 443,
-            DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
+            DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone | DbEngine::KvStore => 0,
         }
     }
 
@@ -285,6 +295,7 @@ impl DbEngine {
             | Wire::Qdrant
             | Wire::Milvus
             | Wire::Bigtable
+            | Wire::CloudSpanner
             | Wire::Pinecone
             | Wire::Jdbc
             | Wire::Search
@@ -318,6 +329,7 @@ impl DbEngine {
             | Wire::Qdrant
             | Wire::Milvus
             | Wire::Bigtable
+            | Wire::CloudSpanner
             | Wire::Pinecone
             | Wire::Jdbc
             | Wire::Search
@@ -380,6 +392,7 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         | Wire::Qdrant
         | Wire::Milvus
         | Wire::Bigtable
+        | Wire::CloudSpanner
         | Wire::Pinecone
         | Wire::Jdbc
         | Wire::Search
@@ -440,6 +453,8 @@ mod tests {
         (DbEngine::Elasticsearch, Wire::Search, 9200),
         (DbEngine::Couchbase, Wire::Document, 8091),
         (DbEngine::DynamoDb, Wire::KeyValue, 443),
+        (DbEngine::CloudSpanner, Wire::CloudSpanner, 443),
+        (DbEngine::KvStore, Wire::KeyValue, 0),
         (DbEngine::ScyllaDb, Wire::Cassandra, 9042),
         (DbEngine::ArangoDb, Wire::Graph, 8529),
         (DbEngine::QuestDb, Wire::Postgres, 8812),

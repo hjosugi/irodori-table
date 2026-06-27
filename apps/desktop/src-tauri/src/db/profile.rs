@@ -107,6 +107,7 @@ pub(super) fn normalize_profile(
         | Wire::Search
         | Wire::Document
         | Wire::KeyValue
+        | Wire::CloudSpanner
         | Wire::Graph
         | Wire::TimeSeries
         | Wire::Lakehouse
@@ -150,6 +151,7 @@ fn is_unimplemented_wire(wire: Wire) -> bool {
             | Wire::Search
             | Wire::Document
             | Wire::KeyValue
+            | Wire::CloudSpanner
             | Wire::Graph
             | Wire::TimeSeries
             | Wire::Lakehouse

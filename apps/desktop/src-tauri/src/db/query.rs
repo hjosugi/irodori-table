@@ -400,6 +400,7 @@ fn bind_placeholder(wire: Wire, index: usize) -> String {
         | Wire::Search
         | Wire::Document
         | Wire::KeyValue
+        | Wire::CloudSpanner
         | Wire::Graph
         | Wire::TimeSeries
         | Wire::Lakehouse

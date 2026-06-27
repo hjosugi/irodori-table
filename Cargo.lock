@@ -3931,6 +3931,8 @@ dependencies = [
  "irodori-error",
  "irodori-sql",
  "llama-cpp-2",
+ "reqwest 0.13.4",
+ "serde_json",
 ]
 
 [[package]]
@@ -6220,6 +6222,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",

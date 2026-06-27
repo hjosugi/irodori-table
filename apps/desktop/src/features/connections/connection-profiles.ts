@@ -92,6 +92,8 @@ export const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "redis", label: "Redis" },
   { value: "cassandra", label: "Cassandra/ScyllaDB" },
   { value: "bigtable", label: "Google Cloud Bigtable" },
+  { value: "cloudSpanner", label: "Google Cloud Spanner" },
+  { value: "kvStore", label: "Generic KV Store" },
   { value: "trinoPresto", label: "Trino / Presto" },
   { value: "firebird", label: "Firebird" },
   { value: "databricks", label: "Databricks / Spark SQL" },
