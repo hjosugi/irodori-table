@@ -81,6 +81,22 @@ export const engineOptions: Array<{ value: DbEngine; label: string }> = [
   { value: "redis", label: "Redis" },
   { value: "cassandra", label: "Cassandra/ScyllaDB" },
   { value: "bigtable", label: "Google Cloud Bigtable" },
+  { value: "trinoPresto", label: "Trino / Presto" },
+  { value: "firebird", label: "Firebird" },
+  { value: "databricks", label: "Databricks / Spark SQL" },
+  { value: "elasticsearch", label: "Elasticsearch / OpenSearch" },
+  { value: "couchbase", label: "Couchbase" },
+  { value: "dynamodb", label: "DynamoDB" },
+  { value: "scylladb", label: "ScyllaDB" },
+  { value: "arangodb", label: "ArangoDB" },
+  { value: "questdb", label: "QuestDB" },
+  { value: "iotdb", label: "Apache IoTDB" },
+  { value: "hive", label: "Apache Hive" },
+  { value: "iceberg", label: "Apache Iceberg" },
+  { value: "s3Tables", label: "AWS S3 Tables" },
+  { value: "objectStore", label: "Object Store (S3/GCS/Azure Blob)" },
+  { value: "deltaLake", label: "Delta Lake" },
+  { value: "hudi", label: "Apache Hudi" },
 ];
 
 const localPostgresSampleUrl =
@@ -184,6 +200,7 @@ export function defaultPort(engine: DbEngine) {
     case "redis":
       return "6379";
     case "cassandra":
+    case "scylladb":
       return "9042";
     case "neo4j":
     case "memgraph":
@@ -203,6 +220,30 @@ export function defaultPort(engine: DbEngine) {
       return "1433";
     case "mongodb":
       return "27017";
+    case "trinoPresto":
+      return "8080";
+    case "firebird":
+      return "3050";
+    case "databricks":
+    case "dynamodb":
+    case "iceberg":
+    case "s3Tables":
+    case "objectStore":
+    case "deltaLake":
+    case "hudi":
+      return "443";
+    case "elasticsearch":
+      return "9200";
+    case "couchbase":
+      return "8091";
+    case "arangodb":
+      return "8529";
+    case "questdb":
+      return "8812";
+    case "iotdb":
+      return "6667";
+    case "hive":
+      return "10000";
     case "oracle":
       return "1521";
     default:

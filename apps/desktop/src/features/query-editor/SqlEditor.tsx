@@ -231,7 +231,7 @@ function sqlMetadataInsightExtensions(
           },
         };
       },
-      { hideOnChange: true },
+      { hideOnChange: true, hoverTime: 150 },
     ),
     keymap.of([
       {

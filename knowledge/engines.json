@@ -37,7 +37,7 @@
     { "label": "Trino / Presto", "family": "federated-sql", "notes": "federated SQL" },
     { "label": "Firebird", "family": "relational" },
     { "label": "Databricks / Spark SQL", "family": "warehouse" },
-    { "label": "Elasticsearch / OpenSearch", "family": "search" },
+    { "label": "Elasticsearch / OpenSearch", "family": "search", "notes": "search source priority; use Kibana Discover and Dev Tools as behavior references, because current general DB clients are weak here" },
     { "label": "Couchbase", "family": "document" },
     { "label": "DynamoDB", "family": "key-value" },
     { "label": "ScyllaDB", "family": "wide-column", "notes": "could route through the existing CQL/db/cassandra.rs path" },

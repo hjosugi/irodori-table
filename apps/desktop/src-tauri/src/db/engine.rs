@@ -102,6 +102,42 @@ pub enum DbEngine {
     #[serde(rename = "bigtable")]
     #[ts(rename = "bigtable")]
     Bigtable,
+    #[serde(rename = "trinoPresto")]
+    #[ts(rename = "trinoPresto")]
+    TrinoPresto,
+    Firebird,
+    Databricks,
+    #[serde(rename = "elasticsearch")]
+    #[ts(rename = "elasticsearch")]
+    Elasticsearch,
+    Couchbase,
+    #[serde(rename = "dynamodb")]
+    #[ts(rename = "dynamodb")]
+    DynamoDb,
+    #[serde(rename = "scylladb")]
+    #[ts(rename = "scylladb")]
+    ScyllaDb,
+    #[serde(rename = "arangodb")]
+    #[ts(rename = "arangodb")]
+    ArangoDb,
+    #[serde(rename = "questdb")]
+    #[ts(rename = "questdb")]
+    QuestDb,
+    #[serde(rename = "iotdb")]
+    #[ts(rename = "iotdb")]
+    IoTDb,
+    Hive,
+    Iceberg,
+    #[serde(rename = "s3Tables")]
+    #[ts(rename = "s3Tables")]
+    S3Tables,
+    #[serde(rename = "objectStore")]
+    #[ts(rename = "objectStore")]
+    ObjectStore,
+    #[serde(rename = "deltaLake")]
+    #[ts(rename = "deltaLake")]
+    DeltaLake,
+    Hudi,
 }
 
 /// The wire protocol an engine speaks — i.e. which connector handles it.
@@ -126,6 +162,14 @@ pub(crate) enum Wire {
     Redis,
     Cassandra,
     Bigtable,
+    Jdbc,
+    Search,
+    Document,
+    KeyValue,
+    Graph,
+    TimeSeries,
+    Lakehouse,
+    ObjectStore,
 }
 
 impl DbEngine {
@@ -155,7 +199,21 @@ impl DbEngine {
             DbEngine::BigQuery => Wire::BigQuery,
             DbEngine::Redis => Wire::Redis,
             DbEngine::Cassandra => Wire::Cassandra,
+            DbEngine::ScyllaDb => Wire::Cassandra,
             DbEngine::Bigtable => Wire::Bigtable,
+            DbEngine::QuestDb => Wire::Postgres,
+            DbEngine::TrinoPresto | DbEngine::Firebird | DbEngine::Databricks | DbEngine::Hive => {
+                Wire::Jdbc
+            }
+            DbEngine::Elasticsearch => Wire::Search,
+            DbEngine::Couchbase => Wire::Document,
+            DbEngine::DynamoDb => Wire::KeyValue,
+            DbEngine::ArangoDb => Wire::Graph,
+            DbEngine::IoTDb => Wire::TimeSeries,
+            DbEngine::Iceberg | DbEngine::S3Tables | DbEngine::DeltaLake | DbEngine::Hudi => {
+                Wire::Lakehouse
+            }
+            DbEngine::ObjectStore => Wire::ObjectStore,
         }
     }
 
@@ -178,8 +236,23 @@ impl DbEngine {
             DbEngine::Milvus => 19530,
             DbEngine::Snowflake | DbEngine::BigQuery => 443,
             DbEngine::Redis => 6379,
-            DbEngine::Cassandra => 9042,
+            DbEngine::Cassandra | DbEngine::ScyllaDb => 9042,
             DbEngine::Bigtable => 443,
+            DbEngine::TrinoPresto => 8080,
+            DbEngine::Firebird => 3050,
+            DbEngine::Databricks => 443,
+            DbEngine::Elasticsearch => 9200,
+            DbEngine::Couchbase => 8091,
+            DbEngine::DynamoDb => 443,
+            DbEngine::ArangoDb => 8529,
+            DbEngine::QuestDb => 8812,
+            DbEngine::IoTDb => 6667,
+            DbEngine::Hive => 10000,
+            DbEngine::Iceberg
+            | DbEngine::S3Tables
+            | DbEngine::ObjectStore
+            | DbEngine::DeltaLake
+            | DbEngine::Hudi => 443,
             DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
         }
     }
@@ -203,7 +276,15 @@ impl DbEngine {
             | Wire::Qdrant
             | Wire::Milvus
             | Wire::Bigtable
-            | Wire::Pinecone => Box::new(PostgresDialect),
+            | Wire::Pinecone
+            | Wire::Jdbc
+            | Wire::Search
+            | Wire::Document
+            | Wire::KeyValue
+            | Wire::Graph
+            | Wire::TimeSeries
+            | Wire::Lakehouse
+            | Wire::ObjectStore => Box::new(PostgresDialect),
             Wire::Snowflake => Box::new(SnowflakeDialect),
         }
     }
@@ -228,7 +309,15 @@ impl DbEngine {
             | Wire::Qdrant
             | Wire::Milvus
             | Wire::Bigtable
-            | Wire::Pinecone => Box::new(StandardInformationSchema),
+            | Wire::Pinecone
+            | Wire::Jdbc
+            | Wire::Search
+            | Wire::Document
+            | Wire::KeyValue
+            | Wire::Graph
+            | Wire::TimeSeries
+            | Wire::Lakehouse
+            | Wire::ObjectStore => Box::new(StandardInformationSchema),
         }
     }
 }
@@ -282,7 +371,15 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         | Wire::Qdrant
         | Wire::Milvus
         | Wire::Bigtable
-        | Wire::Pinecone => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
+        | Wire::Pinecone
+        | Wire::Jdbc
+        | Wire::Search
+        | Wire::Document
+        | Wire::KeyValue
+        | Wire::Graph
+        | Wire::TimeSeries
+        | Wire::Lakehouse
+        | Wire::ObjectStore => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
     }
 }
 
@@ -327,6 +424,22 @@ mod tests {
         (DbEngine::Qdrant, Wire::Qdrant, 6333),
         (DbEngine::Milvus, Wire::Milvus, 19530),
         (DbEngine::Pinecone, Wire::Pinecone, 0),
+        (DbEngine::TrinoPresto, Wire::Jdbc, 8080),
+        (DbEngine::Firebird, Wire::Jdbc, 3050),
+        (DbEngine::Databricks, Wire::Jdbc, 443),
+        (DbEngine::Elasticsearch, Wire::Search, 9200),
+        (DbEngine::Couchbase, Wire::Document, 8091),
+        (DbEngine::DynamoDb, Wire::KeyValue, 443),
+        (DbEngine::ScyllaDb, Wire::Cassandra, 9042),
+        (DbEngine::ArangoDb, Wire::Graph, 8529),
+        (DbEngine::QuestDb, Wire::Postgres, 8812),
+        (DbEngine::IoTDb, Wire::TimeSeries, 6667),
+        (DbEngine::Hive, Wire::Jdbc, 10000),
+        (DbEngine::Iceberg, Wire::Lakehouse, 443),
+        (DbEngine::S3Tables, Wire::Lakehouse, 443),
+        (DbEngine::ObjectStore, Wire::ObjectStore, 443),
+        (DbEngine::DeltaLake, Wire::Lakehouse, 443),
+        (DbEngine::Hudi, Wire::Lakehouse, 443),
     ];
 
     fn profile(engine: DbEngine) -> ConnectionProfile {

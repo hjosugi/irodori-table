@@ -89,6 +89,10 @@ variant + `Wire` + adapter.
 
 **Search**
 - Elasticsearch / OpenSearch
+  - Priority search target; current general DB clients are not a strong benchmark,
+    so use Kibana Discover and Dev Tools as behavior references for a deep
+    index/data-stream browser, mapping/field inspection, filter/query authoring,
+    saved searches, request history, explain/profile, and health/status cues.
 
 **Document / KV / wide-column**
 - Couchbase

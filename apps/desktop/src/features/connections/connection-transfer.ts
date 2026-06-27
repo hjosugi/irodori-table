@@ -101,8 +101,24 @@ const engineAliasRules: Array<[DbEngine, RegExp]> = [
   ["snowflake", /snowflake/i],
   ["bigquery", /bigquery|googlebigquery/i],
   ["redis", /redis/i],
-  ["cassandra", /cassandra|scylla/i],
+  ["scylladb", /scylla/i],
+  ["cassandra", /cassandra/i],
   ["bigtable", /bigtable/i],
+  ["trinoPresto", /trino|presto/i],
+  ["firebird", /firebird/i],
+  ["databricks", /databricks|spark\s*sql/i],
+  ["elasticsearch", /elastic(?:search)?|opensearch/i],
+  ["couchbase", /couchbase/i],
+  ["dynamodb", /dynamo\s*db/i],
+  ["arangodb", /arangodb|arango/i],
+  ["questdb", /questdb/i],
+  ["iotdb", /iotdb/i],
+  ["hive", /hive|metastore/i],
+  ["iceberg", /iceberg|glue\s*catalog|rest\s*catalog/i],
+  ["s3Tables", /s3\s*tables/i],
+  ["objectStore", /s3|gcs|azure\s*blob|object\s*store/i],
+  ["deltaLake", /delta\s*lake/i],
+  ["hudi", /hudi/i],
   ["h2", /\bh2\b/i],
 ];
 
@@ -1212,6 +1228,16 @@ function urlScheme(engine: DbEngine) {
       return "sqlserver";
     case "mongodb":
       return "mongodb";
+    case "trinoPresto":
+      return "trino";
+    case "elasticsearch":
+      return "http";
+    case "dynamodb":
+      return "https";
+    case "scylladb":
+      return "cassandra";
+    case "questdb":
+      return "postgres";
     case "redis":
       return "redis";
     case "neo4j":

@@ -187,7 +187,6 @@ export const workspaceMenuSections: AppMenuSection[] = [
     label: "Help",
     items: [
       { commandId: "help.open" },
-      ...developerCommands.map((command) => ({ commandId: command.id })),
       { commandId: "about.open" },
     ],
   },

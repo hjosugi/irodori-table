@@ -551,7 +551,18 @@ pub(crate) async fn connect_engine(
         Wire::Bigtable => Arc::new(BigtableConnection(bigtable::connect(profile).await?)),
         Wire::Redis => Arc::new(RedisConnection(redis::connect(profile).await?)),
         Wire::Cassandra => Arc::new(CassandraConnection(cassandra::connect(profile).await?)),
-        Wire::Memgraph | Wire::Qdrant | Wire::Milvus | Wire::Pinecone => {
+        Wire::Memgraph
+        | Wire::Qdrant
+        | Wire::Milvus
+        | Wire::Pinecone
+        | Wire::Jdbc
+        | Wire::Search
+        | Wire::Document
+        | Wire::KeyValue
+        | Wire::Graph
+        | Wire::TimeSeries
+        | Wire::Lakehouse
+        | Wire::ObjectStore => {
             return Err(format!(
                 "{:?} driver is not yet fully implemented",
                 profile.engine

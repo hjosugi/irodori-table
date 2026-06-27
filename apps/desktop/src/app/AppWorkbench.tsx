@@ -288,6 +288,19 @@ function formatUiZoom(zoom: number) {
 }
 
 export function AppWorkbench() {
+  useEffect(() => {
+    const preventNativeContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("contextmenu", preventNativeContextMenu, {
+      capture: true,
+    });
+    return () => {
+      window.removeEventListener("contextmenu", preventNativeContextMenu, {
+        capture: true,
+      });
+    };
+  }, []);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const diagramSvgRef = useRef<SVGSVGElement | null>(null);

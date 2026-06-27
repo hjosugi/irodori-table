@@ -83,7 +83,7 @@ MongoDB, Redis, Cassandra, CockroachDB, ClickHouse, BigQuery, Snowflake, and wir
 - Execution options: embeddable engines (DuckDB, Apache DataFusion) for local reads, or Trino/Presto and warehouse-native engines for pushdown. Add Delta Lake and Apache Hudi after Iceberg.
 - Snowflake needs full authentication coverage, not just password: key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens, with warehouse/role/database context switching.
 - Apache Hive stays in scope mainly as a catalog/metastore source for Iceberg and legacy warehouses.
-- Elasticsearch/OpenSearch are the first search sources; study Kibana Discover and Dev Tools console for query-and-browse expectations (behavior only — Kibana is source-available under Elastic License 2.0 / SSPL / AGPL).
+- Elasticsearch/OpenSearch are the first search sources. Treat them as a deep source family, not a thin REST endpoint, because current general DB clients are weak here. Study Kibana Discover and Dev Tools console for behavior: data views, index/data-stream browsing, mappings and field capabilities, filter/query composition, saved searches, request history, explain/profile, shard/index health cues, and JSON/ES|QL-style authoring. Kibana is a behavior-only reference because it is source-available under Elastic License 2.0 / SSPL / AGPL.
 
 ### Managed Wire-Compatible Targets
 
