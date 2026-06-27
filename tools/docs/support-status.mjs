@@ -4,13 +4,13 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const engineRegistryPath = resolve(root, "apps/desktop/src-tauri/src/db/engine.rs");
-const dbRegistryPath = resolve(root, "apps/desktop/src-tauri/src/db.rs");
+const dbProfilePath = resolve(root, "apps/desktop/src-tauri/src/db/profile.rs");
 const enginesJsonPath = resolve(root, "knowledge/engines.json");
 const supportStatusPath = resolve(root, "docs/data-source-support-status.md");
 
 function main() {
   const engineSource = read(engineRegistryPath);
-  const dbSource = read(dbRegistryPath);
+  const dbProfileSource = read(dbProfilePath);
   const enginesJson = JSON.parse(read(enginesJsonPath));
   const supportStatus = read(supportStatusPath);
 
@@ -22,7 +22,7 @@ function main() {
       .filter((engine) => engine.status === "recognized_no_connector")
       .map((engine) => engine.id),
   );
-  const unimplementedWireIds = parseUnimplementedWires(dbSource).map(camelId);
+  const unimplementedWireIds = parseUnimplementedWires(dbProfileSource).map(camelId);
   const expectedNoConnectorIds = new Set(
     engineRows
       .filter((engine) => unimplementedWireIds.includes(engine.wire))

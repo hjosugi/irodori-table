@@ -11,6 +11,7 @@ document instead of adding another near-duplicate status page.
 | Start local development | [../README.md](../README.md), [linux-development.md](linux-development.md) |
 | Check what is implemented today | [implementation-progress.md](implementation-progress.md) |
 | Pick the next ticket | [implementation-backlog.md](implementation-backlog.md) |
+| Mirror a ticket into GitHub Issues | [implementation-backlog.md#github-issues](implementation-backlog.md#github-issues) |
 | Check engine support | [data-source-support-status.md](data-source-support-status.md) |
 | Add DB-specific samples or links | [db-feature-samples.md](db-feature-samples.md), [../samples/db-feature-samples.json](../samples/db-feature-samples.json) |
 | Update public website copy | [site/](site/) |
@@ -23,6 +24,7 @@ document instead of adding another near-duplicate status page.
 | --- | --- |
 | Phase-level product direction | [../ROADMAP.md](../ROADMAP.md) |
 | Ticket IDs, dependencies, and done criteria | [implementation-backlog.md](implementation-backlog.md) |
+| GitHub Issue mirror policy | [implementation-backlog.md#github-issues](implementation-backlog.md#github-issues) |
 | Built-and-verified snapshot | [implementation-progress.md](implementation-progress.md) |
 | Release gates before daily-driver use | [production-readiness.md](production-readiness.md) |
 | Engine registry status | [data-source-support-status.md](data-source-support-status.md) |

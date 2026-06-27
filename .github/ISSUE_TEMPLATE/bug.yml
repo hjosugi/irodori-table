@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible problem in Irodori Table.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What broke, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Keep this concrete enough for a local repro.
+      placeholder: "1. Open ...\n2. Run ...\n3. See ..."
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, app version/commit, database engine/version, and relevant settings.
+      placeholder: "OS: ...\nIrodori commit/version: ...\nDB: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove secrets before attaching logs, screenshots, SQL, or connection details.
+    validations:
+      required: false

@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-Last updated: 2026-06-26 JST.
+Last updated: 2026-06-27 JST.
 
 This is the ticket-level breakdown of `ROADMAP.md`. Each item is sized to be picked
 up and finished on its own, one at a time, with a testable "Done when" line. Work
@@ -14,6 +14,26 @@ top to bottom within an epic unless a dependency says otherwise.
   a headless UI smoke test — whichever fits). See the `QA` epic.
 - Keep this file in sync with `ROADMAP.md`. If a ticket changes scope, edit it here
   and reflect the theme change in the roadmap.
+
+## GitHub Issues
+
+Git-tracked docs are the source of truth for product planning:
+
+- `ROADMAP.md` owns phase-level direction and the current immediate-next list.
+- `docs/implementation-backlog.md` owns stable ticket IDs, dependencies, and done
+  criteria.
+- `docs/implementation-progress.md` owns the built-and-verified snapshot.
+
+GitHub Issues are optional coordination mirrors, not the canonical backlog. Use
+an issue when a ticket needs discussion, screenshots/logs, outside reporting, or a
+lightweight public task handle. Every mirrored issue should include the backlog
+ticket ID (for example `CMPL-007`) and link back to this file. Closing a GitHub
+Issue does not close the ticket until this file has its status updated and the
+verification is recorded.
+
+New bugs can start as GitHub Issues. If a bug turns into planned product work,
+convert it into a stable backlog ticket before implementation so task IDs remain
+available in commits, docs, and release notes.
 
 ## Legend
 

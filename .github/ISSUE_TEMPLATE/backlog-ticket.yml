@@ -1,0 +1,66 @@
+name: Backlog ticket mirror
+description: Mirror a git-tracked backlog ticket into GitHub Issues for coordination.
+title: "[BACKLOG] "
+labels: ["backlog", "task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        GitHub Issues are coordination mirrors. The canonical ticket remains in `docs/implementation-backlog.md`.
+  - type: input
+    id: ticket
+    attributes:
+      label: Backlog ticket ID
+      description: Stable ID from docs/implementation-backlog.md, such as CMPL-007 or EXEC-008.
+      placeholder: CMPL-007
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+        - Later
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - frontend
+        - backend
+        - desktop
+        - docs
+        - release
+        - devex
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What part of the backlog ticket is this issue coordinating?
+      placeholder: Link the backlog section and describe the exact slice.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Copy or narrow the backlog ticket's done criteria.
+      placeholder: "- Implementation lands\n- Tests cover the behavior\n- docs/implementation-backlog.md is updated"
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Tests, builds, smoke checks, or manual evidence expected before closing.
+      placeholder: "npm test, cargo test, make docs-check, Playwright smoke, etc."
+    validations:
+      required: true
