@@ -28,7 +28,7 @@ irodori-proxy = { path = "../../../crates/irodori-proxy" }
 irodori-secure-store = { path = "../../../crates/irodori-secure-store" }
 irodori-sql.workspace = true
 irodori-completion = { path = "../../../crates/irodori-completion" }
-irodori-knowledge = { path = "../../../crates/irodori-knowledge" }
+irodori-knowledge.workspace = true
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }

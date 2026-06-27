@@ -3247,9 +3247,9 @@ dependencies = [
 [[package]]
 name = "irodori-error"
 version = "0.2.23"
+source = "git+https://github.com/hjosugi/irodori-knowledge?tag=v0.2.23#e842ceda35738ce61d30e416cba4e1de3f7d5361"
 dependencies = [
  "serde",
- "serde_json",
  "ts-rs",
 ]
 
@@ -3282,24 +3282,23 @@ dependencies = [
 [[package]]
 name = "irodori-jobs"
 version = "0.2.23"
+source = "git+https://github.com/hjosugi/irodori-knowledge?tag=v0.2.23#e842ceda35738ce61d30e416cba4e1de3f7d5361"
 dependencies = [
  "irodori-error",
  "serde",
- "serde_json",
- "tokio",
  "ts-rs",
 ]
 
 [[package]]
 name = "irodori-knowledge"
 version = "0.2.23"
+source = "git+https://github.com/hjosugi/irodori-knowledge?tag=v0.2.23#e842ceda35738ce61d30e416cba4e1de3f7d5361"
 dependencies = [
  "irodori-error",
  "irodori-jobs",
  "serde",
  "sha2 0.11.0",
  "sqlx",
- "tokio",
 ]
 
 [[package]]
