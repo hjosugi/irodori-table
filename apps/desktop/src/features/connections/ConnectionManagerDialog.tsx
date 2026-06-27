@@ -1,4 +1,10 @@
-import { useMemo, useRef, useState, type FormEventHandler } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEventHandler,
+} from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -137,6 +143,21 @@ export function ConnectionManagerDialog({
     () => groupConnectionProfiles(profiles),
     [profiles],
   );
+
+  useEffect(() => {
+    if (!transferMenuOpen) {
+      return;
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setTransferMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [transferMenuOpen]);
 
   function toggleGroup(groupId: string) {
     setCollapsedGroups((current) => {

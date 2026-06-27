@@ -41,14 +41,14 @@ const sidebarStorageKey = "irodori.sidebar.open.v1";
 const sidebarSideStorageKey = "irodori.sidebar.side.v1";
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
-const sidebarWidthStorageKey = "irodori.sidebar.width.v1";
+const sidebarWidthStorageKey = "irodori.sidebar.width.v2";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
 const resultsHeightStorageKey = "irodori.results.height.v2";
 const editorSplitModeStorageKey = "irodori.editor.splitMode.v1";
 const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
 
-const sidebarWidthDefault = 300;
-const sidebarWidthMin = 220;
+const sidebarWidthDefault = 220;
+const sidebarWidthMin = 180;
 const sidebarWidthMax = 420;
 const inspectorWidthDefault = 300;
 const inspectorWidthMin = 220;

@@ -6,6 +6,7 @@ export {
   QueryEditorPane,
   type EditorGroup,
   type EditorSelection,
+  type EditorSelections,
 } from "./QueryEditorPane";
 export {
   QueryParameterDialog,

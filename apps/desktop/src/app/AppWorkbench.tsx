@@ -4,6 +4,8 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type UIEvent,
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -16,12 +18,11 @@ import {
 import { runQuerySpill, runQueryStream } from "@/lib/tauri/db-stream";
 import {
   createQueryHistoryResultSnapshot,
-  QueryHistoryDialog,
   queryHistoryMaxItemsHardLimit,
   queryHistoryResultRowsHardLimit,
   useQueryHistoryStore,
   type QueryHistoryItem,
-} from "@/features/query-history";
+} from "@/features/query-history/query-history-store";
 import {
   APP_IDENTIFIER,
   APP_NAME,
@@ -40,7 +41,7 @@ import {
 import { AboutDialog } from "@/app/AboutDialog";
 import { ActionToast, type ActionNotice } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
-import { GitDrawer, useGitStore } from "@/features/git";
+import { useGitStore } from "@/features/git/git-store";
 import {
   ResultsPane,
   WindowedRows,
@@ -108,6 +109,7 @@ import {
   type PendingQueryParameters,
   type EditorGroup,
   type EditorSelection,
+  type EditorSelections,
   type QueryParameterMemory,
   type QueryMagicAction,
   type SqlEditorHandle,
@@ -293,6 +295,22 @@ function formatUiZoom(zoom: number) {
   return `${Math.round(normalizeUiZoom(zoom) * 100)}%`;
 }
 
+const MigrationStudioDialog = lazy(() =>
+  import("@/features/migration").then((module) => ({
+    default: module.MigrationStudioDialog,
+  })),
+);
+const GitDrawer = lazy(() =>
+  import("@/features/git/GitDrawer").then((module) => ({
+    default: module.GitDrawer,
+  })),
+);
+const QueryHistoryDialog = lazy(() =>
+  import("@/features/query-history/QueryHistoryDialog").then((module) => ({
+    default: module.QueryHistoryDialog,
+  })),
+);
+
 export function AppWorkbench() {
   useEffect(() => {
     const preventNativeContextMenu = (event: MouseEvent) => {
@@ -335,10 +353,9 @@ export function AppWorkbench() {
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
-  const [editorSelection, setEditorSelection] = useState<EditorSelection>({
-    from: 0,
-    to: 0,
-  });
+  const [editorSelections, setEditorSelections] = useState<EditorSelections>([
+    { from: 0, to: 0 },
+  ]);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [openTabIds, setOpenTabIds] = useState(() =>
@@ -628,6 +645,7 @@ export function AppWorkbench() {
   const [runMenuOpen, setRunMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [migrationStudioOpen, setMigrationStudioOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
   const [settingsJsonDraft, setSettingsJsonDraft] = useState("");
   const [settingsJsonError, setSettingsJsonError] = useState<string | null>(
@@ -643,6 +661,20 @@ export function AppWorkbench() {
   const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
   const [diagramZoom, setDiagramZoom] = useState(1);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const transientOverlayStateRef = useRef({
+    workspaceMenuOpen: false,
+    runMenuOpen: false,
+    exportMenuOpen: false,
+    filtersOpen: false,
+    objectActionMenu: null as string | null,
+  });
+  transientOverlayStateRef.current = {
+    workspaceMenuOpen,
+    runMenuOpen,
+    exportMenuOpen,
+    filtersOpen,
+    objectActionMenu,
+  };
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(
     null,
   );
@@ -785,6 +817,36 @@ export function AppWorkbench() {
     }
     return editorApiRef.current;
   }
+
+  function activeEditorSelections() {
+    return activeEditorApi()?.getSelections() ?? [...editorSelections];
+  }
+
+  function activeMainEditorSelection(): EditorSelection {
+    return (
+      activeEditorApi()?.getSelection() ??
+      editorSelections[0] ?? { from: 0, to: 0 }
+    );
+  }
+
+  function selectedSqlFromSelections(
+    sql: string,
+    selections: readonly EditorSelection[],
+  ) {
+    return selections
+      .filter((selection) => selection.from !== selection.to)
+      .map((selection) =>
+        sql
+          .slice(
+            Math.min(selection.from, selection.to),
+            Math.max(selection.from, selection.to),
+          )
+          .trim(),
+      )
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
   const availableDiagramSchemas = useMemo(
     () =>
       activeMetadata?.schemas
@@ -860,9 +922,7 @@ export function AppWorkbench() {
   );
   const activeTabLabel =
     openTabs.find((tab) => tab.id === activeTab)?.label ?? "Scratch";
-  const selectedEditorSql = query
-    .slice(editorSelection.from, editorSelection.to)
-    .trim();
+  const selectedEditorSql = selectedSqlFromSelections(query, editorSelections);
   const hasSelectedEditorSql = selectedEditorSql.length > 0;
   const runPrimaryLabel = hasSelectedEditorSql ? "Run Selection" : "Run Current";
   const runShortcutLabel = formatKeySequence(keymap["query.run"] ?? "");
@@ -1857,6 +1917,7 @@ export function AppWorkbench() {
     openHelp: () => setAboutOpen(true),
     openDeveloperTools: () => void openAppDeveloperTools(),
     openConnectionManager: () => setConnectionManagerOpen(true),
+    openMigrationStudio: () => setMigrationStudioOpen(true),
     openDiagram: () => setDiagramOpen(true),
     toggleTheme: () =>
       activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark")),
@@ -1877,6 +1938,9 @@ export function AppWorkbench() {
     cancelQuery,
     focusEditor: () => activeEditorApi()?.focus(),
     formatQuery,
+    quickDefinition: () => activeEditorApi()?.quickDefinition(),
+    showEditorQuickFix,
+    cleanupQuery,
     toggleEditorComment: () => activeEditorApi()?.toggleComment(),
     transformEditorSelection,
     exportCsv: () => exportActiveResult("csv"),
@@ -2385,6 +2449,25 @@ export function AppWorkbench() {
     setRecordingSequence([]);
   }
 
+  function closeTransientOverlaysFromEscape() {
+    const open = transientOverlayStateRef.current;
+    if (
+      !open.workspaceMenuOpen &&
+      !open.runMenuOpen &&
+      !open.exportMenuOpen &&
+      !open.filtersOpen &&
+      !open.objectActionMenu
+    ) {
+      return false;
+    }
+    setWorkspaceMenuOpen(false);
+    setRunMenuOpen(false);
+    setExportMenuOpen(false);
+    setFiltersOpen(false);
+    setObjectActionMenu(null);
+    return true;
+  }
+
   function commitRecordedKeybinding(
     commandId: string,
     sequence: readonly string[],
@@ -2444,6 +2527,12 @@ export function AppWorkbench() {
             commitRecordedKeybinding(recording, recordingSequenceRef.current);
           }, KEY_SEQUENCE_TIMEOUT_MS);
         }
+        return;
+      }
+      if (event.key === "Escape" && closeTransientOverlaysFromEscape()) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearPendingKeySequence();
         return;
       }
       const target = event.target as HTMLElement | null;
@@ -3187,6 +3276,21 @@ export function AppWorkbench() {
     showActionNotice("success", "Import SQL generated", importPreview.tableName);
   }
 
+  function putMigrationTextInEditor(text: string) {
+    setQuery(text);
+    setMigrationStudioOpen(false);
+    showActionNotice("success", "Migration output loaded");
+  }
+
+  async function copyMigrationText(text: string, label: string) {
+    try {
+      await writeTextToClipboard(text);
+      showActionNotice("success", `${label} copied`);
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
+  }
+
   async function openTableData(object: DbObjectMetadata) {
     if (object.kind !== "table" && object.kind !== "view") {
       return;
@@ -3285,6 +3389,23 @@ export function AppWorkbench() {
     }
   }
 
+  function showEditorQuickFix() {
+    const opened = activeEditorApi()?.showQuickFix() ?? false;
+    if (!opened) {
+      showActionNotice("info", "No problems to show");
+    }
+  }
+
+  function cleanupQuery() {
+    const error = activeEditorApi()?.cleanup();
+    setQueryError(error ?? null);
+    if (error) {
+      showActionNotice("error", "Cleanup failed", error);
+    } else {
+      showActionNotice("success", "Code cleanup complete");
+    }
+  }
+
   function transformEditorSelection(action: SqlEditorTransformAction) {
     const changed = activeEditorApi()?.transformSelection(action) ?? false;
     if (!changed) {
@@ -3302,7 +3423,12 @@ export function AppWorkbench() {
 
   async function runQuery() {
     setRunMenuOpen(false);
-    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
+    const selectedSql = selectedSqlFromSelections(query, activeEditorSelections());
+    if (selectedSql) {
+      await runEditorSql(selectedSql, { allowMagic: true });
+      return;
+    }
+    const selection = activeMainEditorSelection();
     const sqlToRun = selectedOrCurrentStatement(
       selection.from,
       selection.to,
@@ -3313,8 +3439,7 @@ export function AppWorkbench() {
 
   async function runSelectionQuery() {
     setRunMenuOpen(false);
-    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
-    const sqlToRun = query.slice(selection.from, selection.to).trim();
+    const sqlToRun = selectedSqlFromSelections(query, activeEditorSelections());
     if (!sqlToRun) {
       showActionNotice("info", "No selection to run");
       return;
@@ -3324,7 +3449,7 @@ export function AppWorkbench() {
 
   async function runCurrentQuery() {
     setRunMenuOpen(false);
-    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
+    const selection = activeMainEditorSelection();
     const cursor = selection.to;
     const sqlToRun = selectedOrCurrentStatement(cursor, cursor, query);
     await runEditorSql(sqlToRun, { allowMagic: true });
@@ -3332,7 +3457,7 @@ export function AppWorkbench() {
 
   async function runFromStartQuery() {
     setRunMenuOpen(false);
-    const selection = activeEditorApi()?.getSelection() ?? editorSelection;
+    const selection = activeMainEditorSelection();
     const cursor = Math.max(selection.from, selection.to);
     const sqlToRun = query.slice(0, cursor).trim();
     await runEditorSql(sqlToRun, { allowMagic: false });
@@ -4012,7 +4137,7 @@ export function AppWorkbench() {
               setEditorSplitMode={setEditorSplitMode}
               activeEditorGroup={activeEditorGroup}
               setActiveEditorGroup={setActiveEditorGroup}
-              setEditorSelection={setEditorSelection}
+              setEditorSelection={setEditorSelections}
               runPrimaryLabel={runPrimaryLabel}
               runShortcutLabel={runShortcutLabel}
               runCurrentShortcutLabel={runCurrentShortcutLabel}
@@ -4188,6 +4313,16 @@ export function AppWorkbench() {
           onTest={() => void testActiveProfile()}
           onConnect={connectActiveProfile}
         />
+      ) : null}
+
+      {migrationStudioOpen ? (
+        <Suspense fallback={null}>
+          <MigrationStudioDialog
+            onClose={() => setMigrationStudioOpen(false)}
+            onCopyText={(text, label) => void copyMigrationText(text, label)}
+            onPutTextInEditor={putMigrationTextInEditor}
+          />
+        </Suspense>
       ) : null}
 
       {settingsOpen ? (

@@ -2,20 +2,26 @@ import {
   AlertTriangle,
   Clock3,
   Code2,
+  Image as ImageIcon,
   Keyboard,
   Palette,
   RotateCcw,
   Settings,
   TerminalSquare,
+  Upload,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import type { JobList, JobSummary } from "../../generated/irodori-api";
 import {
+  EDITOR_BACKGROUND_OPACITY_MAX,
+  EDITOR_BACKGROUND_OPACITY_MIN,
+  EDITOR_BACKGROUND_OPACITY_STEP,
   UI_ZOOM_DEFAULT,
   UI_ZOOM_MAX,
   UI_ZOOM_MIN,
   UI_ZOOM_STEP,
+  normalizeEditorBackgroundOpacity,
   normalizeUiZoom,
   type CustomThemeEntry,
   type ThemePreference,
@@ -93,6 +99,10 @@ export interface SettingsDialogProps {
   setSqlLinter: (value: SqlLinterId) => void;
   sqlSnippets: SqlSnippetDefinition[];
   setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
+  editorBackgroundImage: string;
+  setEditorBackgroundImage: (value: string) => void;
+  editorBackgroundOpacity: number;
+  setEditorBackgroundOpacity: (value: number) => void;
   resultOffloadEnabled: boolean;
   setResultOffloadEnabled: (value: boolean) => void;
   resultMemoryBudget: number;
@@ -231,6 +241,10 @@ export function SettingsDialog({
   setSqlLinter,
   sqlSnippets,
   setSqlSnippets,
+  editorBackgroundImage,
+  setEditorBackgroundImage,
+  editorBackgroundOpacity,
+  setEditorBackgroundOpacity,
   resultOffloadEnabled,
   setResultOffloadEnabled,
   resultMemoryBudget,
@@ -295,6 +309,19 @@ export function SettingsDialog({
     setSqlSnippets((current) =>
       current.filter((_, snippetIndex) => snippetIndex !== index),
     );
+  }
+
+  function chooseEditorBackgroundImage(file: File | undefined) {
+    if (!file || !file.type.startsWith("image/")) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result === "string") {
+        setEditorBackgroundImage(reader.result);
+      }
+    });
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -455,6 +482,76 @@ export function SettingsDialog({
                     >
                       {t("settings.general.editorMode.vim")}
                     </button>
+                  </div>
+                </label>
+                <label className="settings-row settings-row-wide">
+                  <span>
+                    <strong>
+                      {t("settings.general.editorBackground.title")}
+                    </strong>
+                    <small>
+                      {t("settings.general.editorBackground.description")}
+                    </small>
+                  </span>
+                  <div className="editor-background-control">
+                    <div className="editor-background-input">
+                      <ImageIcon size={14} />
+                      <input
+                        type="text"
+                        value={editorBackgroundImage}
+                        placeholder={t(
+                          "settings.general.editorBackground.placeholder",
+                        )}
+                        onChange={(event) =>
+                          setEditorBackgroundImage(event.currentTarget.value)
+                        }
+                      />
+                    </div>
+                    <label className="text-button editor-background-file">
+                      <Upload size={14} />
+                      <span>
+                        {t("settings.general.editorBackground.choose")}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => {
+                          chooseEditorBackgroundImage(
+                            event.currentTarget.files?.[0],
+                          );
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={!editorBackgroundImage}
+                      onClick={() => setEditorBackgroundImage("")}
+                    >
+                      <RotateCcw size={14} />
+                      <span>{t("common.reset")}</span>
+                    </button>
+                    <input
+                      type="range"
+                      min={EDITOR_BACKGROUND_OPACITY_MIN}
+                      max={EDITOR_BACKGROUND_OPACITY_MAX}
+                      step={EDITOR_BACKGROUND_OPACITY_STEP}
+                      value={editorBackgroundOpacity}
+                      aria-label={t(
+                        "settings.general.editorBackground.opacity",
+                      )}
+                      onChange={(event) =>
+                        setEditorBackgroundOpacity(
+                          normalizeEditorBackgroundOpacity(
+                            event.currentTarget.value,
+                          ),
+                        )
+                      }
+                    />
+                    <output>
+                      {Math.round(editorBackgroundOpacity * 100)}%
+                    </output>
                   </div>
                 </label>
                 <label className="settings-row">

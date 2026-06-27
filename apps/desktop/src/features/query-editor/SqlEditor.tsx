@@ -10,16 +10,34 @@
 // a configurable hook.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorView, hoverTooltip, keymap } from "@codemirror/view";
-import { Compartment, EditorState, type Extension } from "@codemirror/state";
+import {
+  EditorView,
+  hoverTooltip,
+  keymap,
+  showTooltip,
+  type Tooltip,
+} from "@codemirror/view";
+import {
+  Compartment,
+  EditorSelection,
+  EditorState,
+  Prec,
+  StateEffect,
+  StateField,
+  type Extension,
+  type SelectionRange,
+  type StateEffectType,
+} from "@codemirror/state";
 import { acceptCompletion, completionStatus } from "@codemirror/autocomplete";
 import {
   linter,
   lintGutter,
   lintKeymap,
+  forceLinting,
+  openLintPanel,
   type Diagnostic,
 } from "@codemirror/lint";
-import { indentWithTab, toggleComment } from "@codemirror/commands";
+import { indentWithTab, selectAll, toggleComment } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
@@ -30,6 +48,7 @@ import { sqlHighlightingExtensions } from "@/sql/highlighting";
 import { lintSqlDocument, type SqlLinterId } from "@/sql/linter";
 import {
   inspectSqlMetadataAt,
+  sqlMetadataTargetTitle,
   type SqlMetadataTarget,
 } from "@/sql/metadata-inspection";
 import {
@@ -37,16 +56,36 @@ import {
   type SqlEditorTransformAction,
 } from "@/sql/editor-transforms";
 import { editorThemeExtensions, type IrodoriTheme } from "@/theme";
-import { renderSqlMetadataTooltip } from "./sql-metadata-tooltip";
+import {
+  renderSqlMetadataTooltip,
+  type SqlMetadataTooltipLink,
+} from "./sql-metadata-tooltip";
+
+export type SqlEditorSelection = { from: number; to: number };
+export type SqlMetadataToolWindowMode = "definition" | "usages";
+export type SqlMetadataToolWindowRequest = {
+  target: SqlMetadataTarget;
+  mode: SqlMetadataToolWindowMode;
+};
 
 export interface SqlEditorHandle {
   /** Document offsets of the current selection (collapsed range = caret). */
-  getSelection: () => { from: number; to: number };
+  getSelection: () => SqlEditorSelection;
+  /** Document offsets for every selection/cursor range. */
+  getSelections: () => SqlEditorSelection[];
+  /** Open the Quick Definition popup for the symbol under the main caret. */
+  quickDefinition: () => boolean;
+  /** Select and scroll a document range into view. */
+  revealRange: (selection: SqlEditorSelection) => void;
   /**
    * Pretty-print the whole buffer with the engine's dialect, in place.
    * Returns `null` on success, or an error message when formatting fails.
    */
   format: () => string | null;
+  /** Run deterministic cleanup across the whole buffer. */
+  cleanup: () => string | null;
+  /** Focus the editor and show diagnostics/quick-fix actions near the caret. */
+  showQuickFix: () => boolean;
   /** Toggle SQL line/block comments around the current selection. */
   toggleComment: () => boolean;
   /** Transform the current selection, or the current line when nothing is selected. */
@@ -59,7 +98,7 @@ export interface SqlEditorHandle {
 interface SqlEditorProps {
   value: string;
   onChange: (next: string) => void;
-  onSelectionChange?: (selection: { from: number; to: number }) => void;
+  onSelectionChange?: (selection: SqlEditorSelection[]) => void;
   engine: DbEngine;
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
@@ -69,6 +108,7 @@ interface SqlEditorProps {
   formatter: SqlFormatterId;
   linter: SqlLinterId;
   onMetadataJump?: (target: SqlMetadataTarget) => void;
+  onMetadataToolWindow?: (request: SqlMetadataToolWindowRequest) => void;
 }
 
 interface SqlEditorCompartments {
@@ -84,7 +124,7 @@ interface CreateSqlEditorViewOptions {
   value: string;
   onChangeRef: { current: (next: string) => void };
   onSelectionChangeRef: {
-    current: ((selection: { from: number; to: number }) => void) | undefined;
+    current: ((selection: SqlEditorSelection[]) => void) | undefined;
   };
   engine: DbEngine;
   metadata: DatabaseMetadata | undefined;
@@ -93,6 +133,9 @@ interface CreateSqlEditorViewOptions {
   vimMode: boolean;
   linter: SqlLinterId;
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined;
   compartments: SqlEditorCompartments;
 }
 
@@ -129,16 +172,24 @@ function createSqlEditorState({
   vimMode,
   linter: linterId,
   onMetadataJump,
+  onMetadataToolWindow,
   compartments,
 }: Omit<CreateSqlEditorViewOptions, "host">): EditorState {
   return EditorState.create({
     doc: value,
     extensions: [
+      editorSelectAllShortcut(),
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
       keymap.of([{ key: "Tab", run: acceptCompletionWithTab }, indentWithTab]),
       compartments.sql.of(
-        buildEditorSqlExtensions(engine, metadata, snippets, onMetadataJump),
+        buildEditorSqlExtensions(
+          engine,
+          metadata,
+          snippets,
+          onMetadataJump,
+          onMetadataToolWindow,
+        ),
       ),
       compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
       compartments.theme.of(editorThemeExtensions(theme)),
@@ -148,15 +199,39 @@ function createSqlEditorState({
           onChangeRef.current(update.state.doc.toString());
         }
         if (update.selectionSet || update.docChanged) {
-          const selection = update.state.selection.main;
-          onSelectionChangeRef.current?.({
-            from: selection.from,
-            to: selection.to,
-          });
+          onSelectionChangeRef.current?.(
+            editorSelectionRanges(update.state.selection.ranges),
+          );
         }
       }),
     ],
   });
+}
+
+function editorSelectAllShortcut(): Extension {
+  return Prec.highest(
+    EditorView.domEventHandlers({
+      keydown(event, view) {
+        if (!isPrimarySelectAllShortcut(event)) {
+          return false;
+        }
+        return selectAll(view);
+      },
+    }),
+  );
+}
+
+function isPrimarySelectAllShortcut(event: KeyboardEvent): boolean {
+  const isAKey = event.key.toLowerCase() === "a" || event.code === "KeyA";
+  if (!isAKey || event.altKey || event.shiftKey) {
+    return false;
+  }
+  const mac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  return mac
+    ? event.metaKey && !event.ctrlKey
+    : event.ctrlKey && !event.metaKey;
 }
 
 function acceptCompletionWithTab(view: EditorView): boolean {
@@ -196,22 +271,68 @@ function buildEditorSqlExtensions(
   metadata: DatabaseMetadata | undefined,
   snippets: readonly SqlSnippetDefinition[],
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ): Extension {
   return [
     buildSqlExtensions(engine, metadata, snippets),
-    sqlMetadataInsightExtensions(metadata, onMetadataJump),
+    sqlMetadataInsightExtensions(metadata, onMetadataJump, onMetadataToolWindow),
   ];
 }
+
+type QuickDefinitionPopupState = {
+  target: SqlMetadataTarget;
+  anchor: number;
+  range: SqlEditorSelection;
+  history: readonly SqlMetadataTarget[];
+  historyIndex: number;
+};
 
 function sqlMetadataInsightExtensions(
   metadata: DatabaseMetadata | undefined,
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ): Extension[] {
   if (!metadata) {
     return [];
   }
 
+  const setQuickDefinitionEffect =
+    StateEffect.define<QuickDefinitionPopupState | null>();
+  const quickDefinitionField: StateField<QuickDefinitionPopupState | null> =
+    StateField.define<QuickDefinitionPopupState | null>({
+      create: () => null,
+      update(value, transaction) {
+        for (const effect of transaction.effects) {
+          if (effect.is(setQuickDefinitionEffect)) {
+            return effect.value;
+          }
+        }
+        return transaction.docChanged ? null : value;
+      },
+      provide: (field): Extension =>
+        showTooltip.computeN([field], (state) => {
+          const popup = state.field(field);
+          return popup
+            ? [
+                quickDefinitionTooltip({
+                  popup,
+                  metadata,
+                  onMetadataJump,
+                  onMetadataToolWindow,
+                  setQuickDefinitionEffect,
+                  quickDefinitionField: field,
+                }),
+              ]
+            : [];
+        }),
+    });
+
   return [
+    quickDefinitionField,
     hoverTooltip(
       (view, pos) => {
         const target = inspectSqlMetadataAt(
@@ -227,7 +348,14 @@ function sqlMetadataInsightExtensions(
           end: target.range.to,
           above: true,
           create() {
-            return { dom: renderSqlMetadataTooltip(target) };
+            return {
+              dom: renderSqlMetadataTooltip(target, {
+                className: "sql-metadata-tooltip-hover",
+                links: metadataTargetLinks(metadata, target),
+                onLinkClick: onMetadataJump,
+                onTitleClick: onMetadataJump,
+              }),
+            };
           },
         };
       },
@@ -235,8 +363,66 @@ function sqlMetadataInsightExtensions(
     ),
     keymap.of([
       {
+        key: "Ctrl-Shift-i",
+        run: (view) =>
+          openQuickDefinitionAtSelection(
+            view,
+            metadata,
+            setQuickDefinitionEffect,
+          ),
+      },
+      {
+        key: "Mod-Shift-i",
+        run: (view) =>
+          openQuickDefinitionAtSelection(
+            view,
+            metadata,
+            setQuickDefinitionEffect,
+          ),
+      },
+      {
         key: "F12",
         run: (view) => jumpToMetadataAtSelection(view, metadata, onMetadataJump),
+      },
+      {
+        key: "F4",
+        run: (view) =>
+          editQuickDefinitionSource(
+            view,
+            quickDefinitionField,
+            metadata,
+            onMetadataJump,
+            setQuickDefinitionEffect,
+          ),
+      },
+      {
+        key: "Ctrl-Enter",
+        run: (view) =>
+          openQuickDefinitionSource(
+            view,
+            quickDefinitionField,
+            onMetadataJump,
+          ),
+      },
+      {
+        key: "Alt-Shift-ArrowLeft",
+        run: (view) =>
+          navigateQuickDefinitionHistory(
+            view,
+            quickDefinitionField,
+            setQuickDefinitionEffect,
+            -1,
+          ),
+      },
+      {
+        key: "Alt-Shift-ArrowRight",
+        run: (view) =>
+          navigateQuickDefinitionHistory(
+            view,
+            quickDefinitionField,
+            setQuickDefinitionEffect,
+            1,
+          ),
       },
     ]),
     EditorView.domEventHandlers({
@@ -267,6 +453,385 @@ function sqlMetadataInsightExtensions(
       },
     }),
   ];
+}
+
+type QuickDefinitionTooltipOptions = {
+  popup: QuickDefinitionPopupState;
+  metadata: DatabaseMetadata;
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined;
+  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>;
+  quickDefinitionField: StateField<QuickDefinitionPopupState | null>;
+};
+
+function quickDefinitionTooltip({
+  popup,
+  metadata,
+  onMetadataJump,
+  onMetadataToolWindow,
+  setQuickDefinitionEffect,
+  quickDefinitionField,
+}: QuickDefinitionTooltipOptions): Tooltip {
+  return {
+    pos: popup.anchor,
+    end: popup.range.to,
+    above: true,
+    arrow: true,
+    create(view) {
+      const root = document.createElement("div");
+      root.className = "sql-quick-definition-popup";
+      root.setAttribute("role", "dialog");
+      root.setAttribute(
+        "aria-label",
+        `Quick Definition ${sqlMetadataTargetTitle(popup.target)}`,
+      );
+
+      const toolbar = document.createElement("div");
+      toolbar.className = "sql-quick-definition-toolbar";
+      toolbar.setAttribute("role", "toolbar");
+      toolbar.setAttribute("aria-label", "Quick Definition actions");
+
+      toolbar.append(
+        toolbarButton({
+          label: "Back",
+          text: "<",
+          disabled: popup.historyIndex <= 0,
+          onClick: () =>
+            navigateQuickDefinitionHistory(
+              view,
+              quickDefinitionField,
+              setQuickDefinitionEffect,
+              -1,
+            ),
+        }),
+        toolbarButton({
+          label: "Forward",
+          text: ">",
+          disabled: popup.historyIndex >= popup.history.length - 1,
+          onClick: () =>
+            navigateQuickDefinitionHistory(
+              view,
+              quickDefinitionField,
+              setQuickDefinitionEffect,
+              1,
+            ),
+        }),
+        toolbarSeparator(),
+        toolbarButton({
+          label: "Open Source (Ctrl+Enter)",
+          text: "Open",
+          disabled: !onMetadataJump,
+          onClick: () => onMetadataJump?.(popup.target),
+        }),
+        toolbarButton({
+          label: "Edit Source (F4)",
+          text: "Edit",
+          disabled: !onMetadataJump,
+          onClick: () => {
+            onMetadataJump?.(popup.target);
+            view.dispatch({ effects: setQuickDefinitionEffect.of(null) });
+          },
+        }),
+        toolbarButton({
+          label: "View Usages",
+          text: "Uses",
+          disabled: !onMetadataToolWindow,
+          onClick: () =>
+            onMetadataToolWindow?.({ target: popup.target, mode: "usages" }),
+        }),
+      );
+
+      const options = document.createElement("details");
+      options.className = "sql-quick-definition-options";
+      const summary = document.createElement("summary");
+      summary.title = "Options";
+      summary.setAttribute("aria-label", "Quick Definition options");
+      summary.textContent = "...";
+      const menu = document.createElement("div");
+      menu.className = "sql-quick-definition-options-menu";
+      menu.setAttribute("role", "menu");
+      menu.append(
+        menuButton({
+          label: "Open in Find tool window",
+          disabled: !onMetadataToolWindow,
+          onClick: () => {
+            onMetadataToolWindow?.({
+              target: popup.target,
+              mode: "definition",
+            });
+            view.dispatch({ effects: setQuickDefinitionEffect.of(null) });
+          },
+        }),
+        menuButton({
+          label: "Edit Source",
+          disabled: !onMetadataJump,
+          onClick: () => {
+            onMetadataJump?.(popup.target);
+            view.dispatch({ effects: setQuickDefinitionEffect.of(null) });
+          },
+        }),
+      );
+      options.append(summary, menu);
+      toolbar.append(options);
+
+      const close = toolbarButton({
+        label: "Close",
+        text: "x",
+        onClick: () =>
+          view.dispatch({ effects: setQuickDefinitionEffect.of(null) }),
+      });
+      close.classList.add("sql-quick-definition-close");
+      toolbar.append(close);
+
+      const body = renderSqlMetadataTooltip(popup.target, {
+        className: "sql-metadata-tooltip-quick-definition",
+        links: metadataTargetLinks(metadata, popup.target),
+        onLinkClick: (target) =>
+          view.dispatch({
+            effects: setQuickDefinitionEffect.of(
+              pushQuickDefinitionTarget(popup, target),
+            ),
+          }),
+        onTitleClick: onMetadataJump,
+      });
+
+      root.append(toolbar, body);
+      root.addEventListener("mousedown", (event) => event.stopPropagation());
+      return { dom: root };
+    },
+  };
+}
+
+function toolbarButton({
+  label,
+  text,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  text: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const button = document.createElement("button");
+  button.className = "sql-quick-definition-button";
+  button.type = "button";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.disabled = disabled;
+  button.textContent = text;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClick();
+  });
+  return button;
+}
+
+function menuButton({
+  label,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.role = "menuitem";
+  button.disabled = disabled;
+  button.textContent = label;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClick();
+  });
+  return button;
+}
+
+function toolbarSeparator() {
+  const separator = document.createElement("span");
+  separator.className = "sql-quick-definition-separator";
+  separator.setAttribute("aria-hidden", "true");
+  return separator;
+}
+
+function openQuickDefinitionAtSelection(
+  view: EditorView,
+  metadata: DatabaseMetadata,
+  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>,
+): boolean {
+  const target = inspectSqlMetadataAt(
+    view.state.doc.toString(),
+    view.state.selection.main.head,
+    metadata,
+  );
+  if (!target) {
+    return false;
+  }
+
+  view.dispatch({
+    selection: { anchor: target.range.from, head: target.range.to },
+    scrollIntoView: true,
+    effects: setQuickDefinitionEffect.of({
+      target,
+      anchor: target.range.from,
+      range: target.range,
+      history: [target],
+      historyIndex: 0,
+    }),
+  });
+  return true;
+}
+
+function currentQuickDefinitionTarget(
+  view: EditorView,
+  field: StateField<QuickDefinitionPopupState | null>,
+  metadata: DatabaseMetadata,
+): SqlMetadataTarget | null {
+  const popup = view.state.field(field, false);
+  if (popup) {
+    return popup.target;
+  }
+  return inspectSqlMetadataAt(
+    view.state.doc.toString(),
+    view.state.selection.main.head,
+    metadata,
+  );
+}
+
+function openQuickDefinitionSource(
+  view: EditorView,
+  field: StateField<QuickDefinitionPopupState | null>,
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+): boolean {
+  if (!onMetadataJump) {
+    return false;
+  }
+  const popup = view.state.field(field, false);
+  if (!popup) {
+    return false;
+  }
+  onMetadataJump(popup.target);
+  return true;
+}
+
+function editQuickDefinitionSource(
+  view: EditorView,
+  field: StateField<QuickDefinitionPopupState | null>,
+  metadata: DatabaseMetadata,
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>,
+): boolean {
+  if (!onMetadataJump) {
+    return false;
+  }
+  const target = currentQuickDefinitionTarget(view, field, metadata);
+  if (!target) {
+    return false;
+  }
+  onMetadataJump(target);
+  view.dispatch({ effects: setQuickDefinitionEffect.of(null) });
+  return true;
+}
+
+function navigateQuickDefinitionHistory(
+  view: EditorView,
+  field: StateField<QuickDefinitionPopupState | null>,
+  setQuickDefinitionEffect: StateEffectType<QuickDefinitionPopupState | null>,
+  delta: -1 | 1,
+): boolean {
+  const popup = view.state.field(field, false);
+  if (!popup) {
+    return false;
+  }
+  const nextIndex = popup.historyIndex + delta;
+  if (nextIndex < 0 || nextIndex >= popup.history.length) {
+    return false;
+  }
+  view.dispatch({
+    effects: setQuickDefinitionEffect.of({
+      ...popup,
+      target: popup.history[nextIndex],
+      historyIndex: nextIndex,
+    }),
+  });
+  return true;
+}
+
+function pushQuickDefinitionTarget(
+  popup: QuickDefinitionPopupState,
+  target: SqlMetadataTarget,
+): QuickDefinitionPopupState {
+  const history = [...popup.history.slice(0, popup.historyIndex + 1), target];
+  return {
+    ...popup,
+    target,
+    history,
+    historyIndex: history.length - 1,
+  };
+}
+
+function metadataTargetLinks(
+  metadata: DatabaseMetadata,
+  target: SqlMetadataTarget,
+): SqlMetadataTooltipLink[] {
+  if (target.kind === "column") {
+    return target.object.foreignKeys
+      .filter((foreignKey) =>
+        foreignKey.columns.some((column) =>
+          sameIdentifier(column, target.column.name),
+        ),
+      )
+      .map((foreignKey) => metadataForeignKeyLink(metadata, target, foreignKey))
+      .filter((link): link is SqlMetadataTooltipLink => Boolean(link));
+  }
+
+  return target.object.foreignKeys
+    .map((foreignKey) => metadataForeignKeyLink(metadata, target, foreignKey))
+    .filter((link): link is SqlMetadataTooltipLink => Boolean(link));
+}
+
+function metadataForeignKeyLink(
+  metadata: DatabaseMetadata,
+  target: SqlMetadataTarget,
+  foreignKey: SqlMetadataTarget["object"]["foreignKeys"][number],
+): SqlMetadataTooltipLink | null {
+  const schema = foreignKey.referencesSchema ?? target.object.schema;
+  const object = findMetadataObject(metadata, schema, foreignKey.referencesTable);
+  if (!object) {
+    return null;
+  }
+  return {
+    label: `references ${object.schema}.${object.name}`,
+    target: { kind: "object", range: target.range, object },
+  };
+}
+
+function findMetadataObject(
+  metadata: DatabaseMetadata,
+  schema: string,
+  name: string,
+) {
+  for (const schemaEntry of metadata.schemas) {
+    if (!sameIdentifier(schemaEntry.name, schema)) {
+      continue;
+    }
+    const object = schemaEntry.objects.find((candidate) =>
+      sameIdentifier(candidate.name, name),
+    );
+    if (object) {
+      return object;
+    }
+  }
+  return null;
+}
+
+function sameIdentifier(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
 }
 
 function jumpToMetadataAtSelection(
@@ -326,10 +891,19 @@ function reconfigureSqlExtensions(
   metadata: DatabaseMetadata | undefined,
   snippets: readonly SqlSnippetDefinition[],
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ) {
   view?.dispatch({
     effects: compartments.sql.reconfigure(
-      buildEditorSqlExtensions(engine, metadata, snippets, onMetadataJump),
+      buildEditorSqlExtensions(
+        engine,
+        metadata,
+        snippets,
+        onMetadataJump,
+        onMetadataToolWindow,
+      ),
     ),
   });
 }
@@ -384,11 +958,55 @@ function formatEditorDocument(
   }
 }
 
+function cleanupEditorDocument(
+  view: EditorView,
+  engine: DbEngine,
+  formatter: SqlFormatterId,
+): FormatEditorResult {
+  const formatted = formatEditorDocument(view, engine, formatter);
+  if (formatted.error) {
+    return formatted;
+  }
+  const current = view.state.doc.toString();
+  const cleaned = current.replace(/[ \t]+$/gm, "").replace(/\s*$/, "\n");
+  if (cleaned !== current) {
+    replaceEditorDocument(view, current, cleaned);
+    return { error: null, formatted: cleaned };
+  }
+  return formatted;
+}
+
+function showEditorQuickFix(view: EditorView): boolean {
+  forceLinting(view);
+  view.focus();
+  return openLintPanel(view);
+}
+
+function editorSelectionRanges(
+  ranges: readonly SelectionRange[],
+): SqlEditorSelection[] {
+  return ranges.map((range) => ({ from: range.from, to: range.to }));
+}
+
 function insertEditorText(view: EditorView, text: string) {
-  const selection = view.state.selection.main;
+  const ranges = view.state.selection.ranges;
+  let offset = 0;
+  const nextRanges = ranges.map((range) => {
+    const from = range.from + offset;
+    const head = from + text.length;
+    offset += text.length - (range.to - range.from);
+    return EditorSelection.cursor(head);
+  });
   view.dispatch({
-    changes: { from: selection.from, to: selection.to, insert: text },
-    selection: { anchor: selection.from + text.length },
+    changes: ranges.map((range) => ({
+      from: range.from,
+      to: range.to,
+      insert: text,
+    })),
+    selection: EditorSelection.create(
+      nextRanges,
+      view.state.selection.mainIndex,
+    ),
     scrollIntoView: true,
   });
 }
@@ -397,21 +1015,48 @@ function transformEditorSelection(
   view: EditorView,
   action: SqlEditorTransformAction,
 ) {
-  const selection = view.state.selection.main;
-  const range = selection.empty
-    ? view.state.doc.lineAt(selection.from)
-    : selection;
-  const current = view.state.doc.sliceString(range.from, range.to);
-  const next = transformSqlEditorText(current, action);
-  if (next === current) {
+  const targetRanges = uniqueTransformRanges(view);
+  const changes: Array<{ from: number; to: number; insert: string }> = [];
+  const nextRanges: SelectionRange[] = [];
+  let offset = 0;
+  for (const range of targetRanges) {
+    const current = view.state.doc.sliceString(range.from, range.to);
+    const next = transformSqlEditorText(current, action);
+    if (next === current) {
+      continue;
+    }
+    changes.push({ from: range.from, to: range.to, insert: next });
+    const from = range.from + offset;
+    const to = from + next.length;
+    nextRanges.push(EditorSelection.range(from, to));
+    offset += next.length - (range.to - range.from);
+  }
+  if (changes.length === 0) {
     return false;
   }
   view.dispatch({
-    changes: { from: range.from, to: range.to, insert: next },
-    selection: { anchor: range.from, head: range.from + next.length },
+    changes,
+    selection: EditorSelection.create(nextRanges),
     scrollIntoView: true,
   });
   return true;
+}
+
+function uniqueTransformRanges(view: EditorView): SqlEditorSelection[] {
+  const seen = new Set<string>();
+  const ranges: SqlEditorSelection[] = [];
+  for (const selection of view.state.selection.ranges) {
+    const range = selection.empty
+      ? view.state.doc.lineAt(selection.from)
+      : selection;
+    const key = `${range.from}:${range.to}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    ranges.push({ from: range.from, to: range.to });
+  }
+  return ranges;
 }
 
 const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
@@ -427,6 +1072,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
     formatter,
     linter,
     onMetadataJump,
+    onMetadataToolWindow,
   },
   ref,
 ) {
@@ -459,6 +1105,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       vimMode,
       linter,
       onMetadataJump,
+      onMetadataToolWindow,
       compartments,
     });
     viewRef.current = view;
@@ -489,8 +1136,16 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       metadata,
       snippets,
       onMetadataJump,
+      onMetadataToolWindow,
     );
-  }, [engine, metadata, snippets, onMetadataJump, compartments]);
+  }, [
+    engine,
+    metadata,
+    snippets,
+    onMetadataJump,
+    onMetadataToolWindow,
+    compartments,
+  ]);
 
   // Reconfigure the gentle SQL diagnostics without remounting the editor.
   useEffect(() => {
@@ -509,6 +1164,36 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
         const main = viewRef.current?.state.selection.main;
         return { from: main?.from ?? 0, to: main?.to ?? 0 };
       },
+      getSelections() {
+        const ranges = viewRef.current?.state.selection.ranges;
+        return ranges ? editorSelectionRanges(ranges) : [{ from: 0, to: 0 }];
+      },
+      quickDefinition() {
+        const view = viewRef.current;
+        if (!view) return false;
+        const event = new KeyboardEvent("keydown", {
+          key: "I",
+          code: "KeyI",
+          ctrlKey: true,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        });
+        view.contentDOM.dispatchEvent(event);
+        return event.defaultPrevented;
+      },
+      revealRange(selection) {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch({
+          selection: {
+            anchor: selection.from,
+            head: selection.to,
+          },
+          scrollIntoView: true,
+        });
+        view.focus();
+      },
       format() {
         const view = viewRef.current;
         if (!view) return null;
@@ -517,6 +1202,19 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
           onChangeRef.current(result.formatted);
         }
         return result.error;
+      },
+      cleanup() {
+        const view = viewRef.current;
+        if (!view) return null;
+        const result = cleanupEditorDocument(view, engine, formatter);
+        if (result.formatted !== undefined) {
+          onChangeRef.current(result.formatted);
+        }
+        return result.error;
+      },
+      showQuickFix() {
+        const view = viewRef.current;
+        return view ? showEditorQuickFix(view) : false;
       },
       toggleComment() {
         const view = viewRef.current;

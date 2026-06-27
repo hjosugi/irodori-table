@@ -10,6 +10,7 @@ type WorkbenchCommandHandlerDeps = {
   openHelp: () => void;
   openDeveloperTools: () => void;
   openConnectionManager: () => void;
+  openMigrationStudio: () => void;
   openDiagram: () => void;
   toggleTheme: () => void;
   toggleSidebar: () => void;
@@ -28,6 +29,9 @@ type WorkbenchCommandHandlerDeps = {
   cancelQuery: () => Promise<void>;
   focusEditor: () => void;
   formatQuery: () => void;
+  quickDefinition: () => void;
+  showEditorQuickFix: () => void;
+  cleanupQuery: () => void;
   toggleEditorComment: () => void;
   transformEditorSelection: (action: SqlEditorTransformAction) => void;
   exportCsv: () => void;
@@ -54,6 +58,7 @@ export function createWorkbenchCommandHandler({
   openHelp,
   openDeveloperTools,
   openConnectionManager,
+  openMigrationStudio,
   openDiagram,
   toggleTheme,
   toggleSidebar,
@@ -72,6 +77,9 @@ export function createWorkbenchCommandHandler({
   cancelQuery,
   focusEditor,
   formatQuery,
+  quickDefinition,
+  showEditorQuickFix,
+  cleanupQuery,
   toggleEditorComment,
   transformEditorSelection,
   exportCsv,
@@ -138,6 +146,9 @@ export function createWorkbenchCommandHandler({
       case "connection.manager":
         openConnectionManager();
         break;
+      case "migration.studio":
+        openMigrationStudio();
+        break;
       case "diagram.show":
         openDiagram();
         break;
@@ -167,6 +178,15 @@ export function createWorkbenchCommandHandler({
         break;
       case "editor.format":
         formatQuery();
+        break;
+      case "editor.quickDefinition":
+        quickDefinition();
+        break;
+      case "editor.quickFix":
+        showEditorQuickFix();
+        break;
+      case "editor.cleanup":
+        cleanupQuery();
         break;
       case "editor.comment.toggle":
         toggleEditorComment();

@@ -30,6 +30,9 @@ const vimModeStorageKey = "irodori.editor.vimMode.v1";
 const formatterStorageKey = "irodori.editor.formatter.v1";
 const linterStorageKey = "irodori.editor.linter.v1";
 const snippetsStorageKey = "irodori.editor.snippets.v1";
+const editorBackgroundImageStorageKey = "irodori.editor.backgroundImage.v1";
+const editorBackgroundOpacityStorageKey =
+  "irodori.editor.backgroundOpacity.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const localeStorageKey = "irodori.locale.v1";
 const uiZoomStorageKey = "irodori.ui.zoom.v1";
@@ -38,6 +41,10 @@ export const UI_ZOOM_DEFAULT = 1;
 export const UI_ZOOM_MIN = 0.75;
 export const UI_ZOOM_MAX = 1.5;
 export const UI_ZOOM_STEP = 0.1;
+export const EDITOR_BACKGROUND_OPACITY_DEFAULT = 0.08;
+export const EDITOR_BACKGROUND_OPACITY_MIN = 0;
+export const EDITOR_BACKGROUND_OPACITY_MAX = 0.35;
+export const EDITOR_BACKGROUND_OPACITY_STEP = 0.01;
 
 type PreferencesState = {
   locale: Locale;
@@ -50,6 +57,8 @@ type PreferencesState = {
   formatter: SqlFormatterId;
   sqlLinter: SqlLinterId;
   sqlSnippets: SqlSnippetDefinition[];
+  editorBackgroundImage: string;
+  editorBackgroundOpacity: number;
   autoCommit: boolean;
   uiZoom: number;
   setLocale: (value: ValueUpdater<Locale>) => void;
@@ -62,6 +71,8 @@ type PreferencesState = {
   setFormatter: (value: ValueUpdater<SqlFormatterId>) => void;
   setSqlLinter: (value: ValueUpdater<SqlLinterId>) => void;
   setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
+  setEditorBackgroundImage: (value: ValueUpdater<string>) => void;
+  setEditorBackgroundOpacity: (value: ValueUpdater<number>) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
   setUiZoom: (value: ValueUpdater<number>) => void;
 };
@@ -228,6 +239,37 @@ function loadAutoCommit() {
   return readStorage(autoCommitStorageKey) !== "false";
 }
 
+function normalizeEditorBackgroundImage(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function normalizeEditorBackgroundOpacity(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return EDITOR_BACKGROUND_OPACITY_DEFAULT;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return EDITOR_BACKGROUND_OPACITY_DEFAULT;
+  }
+  const clamped = Math.min(
+    EDITOR_BACKGROUND_OPACITY_MAX,
+    Math.max(EDITOR_BACKGROUND_OPACITY_MIN, parsed),
+  );
+  return Math.round(clamped * 100) / 100;
+}
+
+function loadEditorBackgroundImage() {
+  return normalizeEditorBackgroundImage(
+    readStorage(editorBackgroundImageStorageKey),
+  );
+}
+
+function loadEditorBackgroundOpacity() {
+  return normalizeEditorBackgroundOpacity(
+    readStorage(editorBackgroundOpacityStorageKey),
+  );
+}
+
 export function normalizeUiZoom(value: unknown) {
   if (value === null || value === undefined || value === "") {
     return UI_ZOOM_DEFAULT;
@@ -259,6 +301,8 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   formatter: loadFormatter(),
   sqlLinter: loadLinter(),
   sqlSnippets: loadSqlSnippets(),
+  editorBackgroundImage: loadEditorBackgroundImage(),
+  editorBackgroundOpacity: loadEditorBackgroundOpacity(),
   autoCommit: loadAutoCommit(),
   uiZoom: loadUiZoom(),
   setLocale: (value) =>
@@ -319,6 +363,18 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({ sqlLinter: resolveValue(state.sqlLinter, value) })),
   setSqlSnippets: (value) =>
     set((state) => ({ sqlSnippets: resolveValue(state.sqlSnippets, value) })),
+  setEditorBackgroundImage: (value) =>
+    set((state) => ({
+      editorBackgroundImage: normalizeEditorBackgroundImage(
+        resolveValue(state.editorBackgroundImage, value),
+      ),
+    })),
+  setEditorBackgroundOpacity: (value) =>
+    set((state) => ({
+      editorBackgroundOpacity: normalizeEditorBackgroundOpacity(
+        resolveValue(state.editorBackgroundOpacity, value),
+      ),
+    })),
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
   setUiZoom: (value) =>
@@ -352,6 +408,15 @@ usePreferencesStore.subscribe((state) => {
   writeStorage(
     snippetsStorageKey,
     JSON.stringify(state.sqlSnippets),
+  );
+  if (state.editorBackgroundImage) {
+    writeStorage(editorBackgroundImageStorageKey, state.editorBackgroundImage);
+  } else {
+    removeStorage(editorBackgroundImageStorageKey);
+  }
+  writeStorage(
+    editorBackgroundOpacityStorageKey,
+    String(state.editorBackgroundOpacity),
   );
   writeStorage(autoCommitStorageKey, String(state.autoCommit));
   writeStorage(uiZoomStorageKey, String(state.uiZoom));

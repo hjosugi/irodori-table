@@ -13,6 +13,7 @@ function createHandler(calls: string[]) {
     openHelp: () => calls.push("help"),
     openDeveloperTools: () => calls.push("devtools"),
     openConnectionManager: () => calls.push("connections"),
+    openMigrationStudio: () => calls.push("migration"),
     openDiagram: () => calls.push("diagram"),
     toggleTheme: () => calls.push("theme"),
     toggleSidebar: () => calls.push("sidebar"),
@@ -41,6 +42,9 @@ function createHandler(calls: string[]) {
     },
     focusEditor: () => calls.push("editor-focus"),
     formatQuery: () => calls.push("editor-format"),
+    quickDefinition: () => calls.push("editor-definition"),
+    showEditorQuickFix: () => calls.push("editor-quick-fix"),
+    cleanupQuery: () => calls.push("editor-cleanup"),
     toggleEditorComment: () => calls.push("editor-comment"),
     transformEditorSelection: (action: SqlEditorTransformAction) =>
       calls.push(`transform:${action}`),
@@ -84,6 +88,7 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
     runCommand("developer.openDevtools");
+    runCommand("migration.studio");
 
     expect(calls).toEqual([
       "keymap",
@@ -96,6 +101,7 @@ describe("createWorkbenchCommandHandler", () => {
       "zoom-out",
       "zoom-reset",
       "devtools",
+      "migration",
     ]);
   });
 });

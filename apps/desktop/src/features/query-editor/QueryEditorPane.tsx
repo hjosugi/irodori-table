@@ -11,30 +11,47 @@ import {
 import {
   AlignLeft,
   ChevronDown,
+  FileSearch,
+  Pencil,
   PanelBottomClose,
   PanelRightClose,
   Play,
   Save,
+  Search,
   SplitSquareHorizontal,
   SplitSquareVertical,
   Square,
   TerminalSquare,
+  X,
 } from "lucide-react";
-import SqlEditor, { type SqlEditorHandle } from "./SqlEditor";
+import SqlEditor, {
+  type SqlEditorHandle,
+  type SqlEditorSelection,
+  type SqlMetadataToolWindowRequest,
+} from "./SqlEditor";
 import type {
   DatabaseMetadata,
   DbEngine,
 } from "../../generated/irodori-api";
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
-import type { SqlMetadataTarget } from "../../sql/metadata-inspection";
+import {
+  sqlMetadataTargetTitle,
+  type SqlMetadataTarget,
+} from "../../sql/metadata-inspection";
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "@/theme";
 import type { EditorSplitMode } from "../workbench";
+import {
+  ShortcutTips,
+  type ShortcutTip,
+} from "../workbench/components/ShortcutTips";
 import { findSqlFile, hasDraggedFiles } from "./drag-drop";
+import { renderSqlMetadataTooltip } from "./sql-metadata-tooltip";
 
 export type EditorGroup = "primary" | "secondary";
-export type EditorSelection = { from: number; to: number };
+export type EditorSelection = SqlEditorSelection;
+export type EditorSelections = readonly EditorSelection[];
 
 type EditorSplitModeUpdater =
   | EditorSplitMode
@@ -61,12 +78,13 @@ export interface QueryEditorPaneProps {
   setEditorSplitMode: (value: EditorSplitModeUpdater) => void;
   activeEditorGroup: EditorGroup;
   setActiveEditorGroup: (group: EditorGroup) => void;
-  setEditorSelection: (selection: EditorSelection) => void;
+  setEditorSelection: (selection: EditorSelections) => void;
   runPrimaryLabel: string;
   runShortcutLabel: string;
   runCurrentShortcutLabel: string;
   runFromStartShortcutLabel: string;
   runAllShortcutLabel: string;
+  shortcutTips: readonly ShortcutTip[];
   runMenuOpen: boolean;
   hasSelectedEditorSql: boolean;
   resultActionsAvailable: boolean;
@@ -118,6 +136,7 @@ export function QueryEditorPane({
   runCurrentShortcutLabel,
   runFromStartShortcutLabel,
   runAllShortcutLabel,
+  shortcutTips,
   runMenuOpen,
   hasSelectedEditorSql,
   resultActionsAvailable,
@@ -141,21 +160,54 @@ export function QueryEditorPane({
     x: number;
     y: number;
   } | null>(null);
+  const [metadataToolWindow, setMetadataToolWindow] =
+    useState<SqlMetadataToolWindowRequest | null>(null);
   const [sqlFileDragOver, setSqlFileDragOver] = useState(false);
+  const runControlRef = useRef<HTMLDivElement | null>(null);
   const sqlFileDragDepthRef = useRef(0);
+  const showShortcutTips = query.trim().length === 0;
 
   useEffect(() => {
     if (!contextMenu) {
       return;
     }
     const close = () => setContextMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setContextMenu(null);
+    };
     window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("blur", close);
     return () => {
       window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("blur", close);
     };
   }, [contextMenu]);
+
+  useEffect(() => {
+    if (!runMenuOpen) {
+      return;
+    }
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && runControlRef.current?.contains(target)) {
+        return;
+      }
+      setRunMenuOpen(false);
+    };
+    const closeOnBlur = () => setRunMenuOpen(false);
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("blur", closeOnBlur);
+    };
+  }, [runMenuOpen, setRunMenuOpen]);
 
   useEffect(() => {
     if (onSqlFileDrop) {
@@ -179,6 +231,14 @@ export function QueryEditorPane({
   const runContextCommand = (commandId: string) => {
     setContextMenu(null);
     runCommand(commandId);
+  };
+
+  const revealMetadataUsage = (selection: EditorSelection) => {
+    const primary = editorApiRef.current;
+    const secondary = secondaryEditorApiRef.current;
+    const active =
+      activeEditorGroup === "secondary" ? secondary ?? primary : primary ?? secondary;
+    active?.revealRange(selection);
   };
 
   const resetSqlFileDragState = () => {
@@ -291,7 +351,14 @@ export function QueryEditorPane({
             formatter={formatter}
             linter={sqlLinter}
             onMetadataJump={onMetadataJump}
+            onMetadataToolWindow={setMetadataToolWindow}
           />
+          {showShortcutTips ? (
+            <ShortcutTips
+              className="editor-shortcut-tips"
+              items={shortcutTips}
+            />
+          ) : null}
         </div>
         {editorSplitOpen ? (
           <>
@@ -330,11 +397,24 @@ export function QueryEditorPane({
                 formatter={formatter}
                 linter={sqlLinter}
                 onMetadataJump={onMetadataJump}
+                onMetadataToolWindow={setMetadataToolWindow}
               />
             </div>
           </>
         ) : null}
       </div>
+      {metadataToolWindow ? (
+        <MetadataToolWindow
+          request={metadataToolWindow}
+          query={query}
+          onClose={() => setMetadataToolWindow(null)}
+          onEdit={() => {
+            onMetadataJump?.(metadataToolWindow.target);
+            setMetadataToolWindow(null);
+          }}
+          onRevealUsage={revealMetadataUsage}
+        />
+      ) : null}
       <div className="editor-floating-actions">
         <div
           className="editor-action-dock"
@@ -445,7 +525,7 @@ export function QueryEditorPane({
               <Play size={15} />
               <span>Run All</span>
             </button>
-            <div className="run-control editor-floating-run">
+            <div className="run-control editor-floating-run" ref={runControlRef}>
               <button
                 className="primary-action run-main-button"
                 type="button"
@@ -543,6 +623,20 @@ export function QueryEditorPane({
           <button
             type="button"
             role="menuitem"
+            onClick={() => runContextCommand("editor.quickFix")}
+          >
+            <span>Show Problems and Quick Fixes</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.cleanup")}
+          >
+            <span>Code Cleanup</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
             onClick={() => runContextCommand("editor.format")}
           >
             <span>Format SQL</span>
@@ -553,6 +647,13 @@ export function QueryEditorPane({
             onClick={() => runContextCommand("editor.comment.toggle")}
           >
             <span>Toggle Comment</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.quickDefinition")}
+          >
+            <span>Quick Definition</span>
           </button>
           <span className="menu-separator" aria-hidden="true" />
           <button
@@ -606,4 +707,187 @@ export function QueryEditorPane({
       ) : null}
     </section>
   );
+}
+
+type MetadataUsage = {
+  from: number;
+  to: number;
+  line: number;
+  column: number;
+  preview: string;
+};
+
+function MetadataToolWindow({
+  request,
+  query,
+  onClose,
+  onEdit,
+  onRevealUsage,
+}: {
+  request: SqlMetadataToolWindowRequest;
+  query: string;
+  onClose: () => void;
+  onEdit: () => void;
+  onRevealUsage: (selection: EditorSelection) => void;
+}) {
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const title = sqlMetadataTargetTitle(request.target);
+  const usages =
+    request.mode === "usages" ? findMetadataUsages(query, request.target) : [];
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || request.mode !== "definition") {
+      return;
+    }
+    content.replaceChildren(
+      renderSqlMetadataTooltip(request.target, {
+        className: "sql-metadata-tooltip-tool-window",
+      }),
+    );
+    return () => content.replaceChildren();
+  }, [request]);
+
+  return (
+    <section
+      className="metadata-tool-window"
+      aria-label="Find tool window"
+    >
+      <div className="metadata-tool-window-header">
+        <div className="metadata-tool-window-title">
+          {request.mode === "usages" ? (
+            <Search size={15} />
+          ) : (
+            <FileSearch size={15} />
+          )}
+          <span>{request.mode === "usages" ? "Usages" : "Definition"}</span>
+          <strong>{title}</strong>
+        </div>
+        <div className="metadata-tool-window-actions">
+          <button
+            className="icon-button"
+            type="button"
+            title="Edit Source"
+            aria-label="Edit Source"
+            onClick={onEdit}
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            title="Close"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+      {request.mode === "definition" ? (
+        <div ref={contentRef} className="metadata-tool-window-body" />
+      ) : (
+        <div className="metadata-tool-window-body metadata-usages-list">
+          {usages.length === 0 ? (
+            <div className="metadata-tool-window-empty">
+              No usages in the current SQL buffer
+            </div>
+          ) : (
+            usages.map((usage) => (
+              <button
+                key={`${usage.from}:${usage.to}`}
+                className="metadata-usage-row"
+                type="button"
+                onClick={() =>
+                  onRevealUsage({ from: usage.from, to: usage.to })
+                }
+              >
+                <span>
+                  {usage.line}:{usage.column}
+                </span>
+                <code>{usage.preview}</code>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function findMetadataUsages(
+  query: string,
+  target: SqlMetadataTarget,
+): MetadataUsage[] {
+  const ranges = new Map<string, MetadataUsage>();
+  for (const needle of metadataUsageNeedles(target)) {
+    for (const usage of findIdentifierOccurrences(query, needle)) {
+      ranges.set(`${usage.from}:${usage.to}`, usage);
+    }
+  }
+  return Array.from(ranges.values()).sort((left, right) => left.from - right.from);
+}
+
+function metadataUsageNeedles(target: SqlMetadataTarget): string[] {
+  const object = target.object;
+  const values =
+    target.kind === "column"
+      ? [
+          `${object.schema}.${object.name}.${target.column.name}`,
+          `${object.name}.${target.column.name}`,
+          target.column.name,
+        ]
+      : [`${object.schema}.${object.name}`, object.name];
+  return [...new Set(values.map((value) => value.toLowerCase()))].sort(
+    (left, right) => right.length - left.length,
+  );
+}
+
+function findIdentifierOccurrences(
+  query: string,
+  needle: string,
+): MetadataUsage[] {
+  const lowerQuery = query.toLowerCase();
+  const usages: MetadataUsage[] = [];
+  let index = lowerQuery.indexOf(needle);
+  while (index >= 0) {
+    const to = index + needle.length;
+    if (isIdentifierBoundary(query[index - 1]) && isIdentifierBoundary(query[to])) {
+      const { line, column } = lineColumnAt(query, index);
+      usages.push({
+        from: index,
+        to,
+        line,
+        column,
+        preview: linePreviewAt(query, index),
+      });
+    }
+    index = lowerQuery.indexOf(needle, index + Math.max(needle.length, 1));
+  }
+  return usages;
+}
+
+function lineColumnAt(query: string, index: number) {
+  let line = 1;
+  let lineStart = 0;
+  for (let cursor = 0; cursor < index; cursor += 1) {
+    if (query[cursor] === "\n") {
+      line += 1;
+      lineStart = cursor + 1;
+    }
+  }
+  return { line, column: index - lineStart + 1 };
+}
+
+function linePreviewAt(query: string, index: number): string {
+  const lineStart = query.lastIndexOf("\n", index - 1) + 1;
+  const lineEnd = query.indexOf("\n", index);
+  return query
+    .slice(lineStart, lineEnd < 0 ? query.length : lineEnd)
+    .trim()
+    .slice(0, 180);
+}
+
+function isIdentifierBoundary(char: string | undefined): boolean {
+  return !char || !/[A-Za-z0-9_$]/.test(char);
 }

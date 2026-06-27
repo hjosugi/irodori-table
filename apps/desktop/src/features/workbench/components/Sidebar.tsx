@@ -12,6 +12,7 @@ import {
   Folder,
   History,
   KeyRound,
+  ListPlus,
   MoreHorizontal,
   PanelLeftOpen,
   PanelRightOpen,
@@ -216,7 +217,7 @@ export function Sidebar({
               aria-label="Completion"
               onClick={() => onSelectView("completion")}
             >
-              <Columns3 size={14} />
+              <ListPlus size={14} />
               <span>Completion</span>
             </button>
             <button

@@ -116,6 +116,9 @@ textarea:disabled {
   --green: #2e7a56;
   --teal: #157f85;
   --blue: #3367a5;
+  --accent: color-mix(in srgb, var(--teal) 68%, var(--blue));
+  --accent-hover: color-mix(in srgb, var(--teal) 58%, var(--green));
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, var(--surface-raised));
   --amber: #b56b1d;
   --red: #bd4b4b;
   --purple: #6c5cae;
@@ -377,7 +380,7 @@ textarea:disabled {
 }
 
 .connection-toolbar {
-  flex: 0 1 calc(50px + var(--sidebar-width, 276px) - 14px);
+  flex: 0 1 calc(50px + var(--sidebar-width, 220px) - 14px);
   display: grid;
   grid-template-columns: 31px minmax(0, 1fr);
   align-items: center;
@@ -479,17 +482,17 @@ textarea:disabled {
 .primary-action,
 .primary-button {
   padding: 0 12px;
-  border-color: var(--blue);
+  border-color: var(--accent);
   color: var(--accent-text);
-  background: var(--blue);
+  background: var(--accent);
   font-weight: 650;
   white-space: nowrap;
 }
 
 .primary-action:hover:not(:disabled),
 .primary-button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--blue) 76%, var(--text));
-  background: color-mix(in srgb, var(--blue) 88%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--accent) 76%, var(--text));
+  background: color-mix(in srgb, var(--accent-hover) 86%, var(--surface-raised));
 }
 
 .primary-action.compact {
@@ -527,7 +530,7 @@ textarea:disabled {
 .text-button {
   height: var(--control-sm);
   padding: 0 10px;
-  color: var(--blue);
+  color: var(--accent);
   background: var(--surface-raised);
 }
 
@@ -537,8 +540,8 @@ textarea:disabled {
 }
 
 .text-button.active {
-  border-color: color-mix(in srgb, var(--blue) 55%, var(--border));
-  background: color-mix(in srgb, var(--blue) 11%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-soft);
 }
 
 .toolbar-command {

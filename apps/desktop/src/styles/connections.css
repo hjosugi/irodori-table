@@ -1,6 +1,6 @@
 .connection-dialog {
   display: grid;
-  grid-template-columns: minmax(360px, 0.34fr) minmax(720px, 1fr);
+  grid-template-columns: minmax(236px, 252px) minmax(0, 1fr);
   width: min(1440px, calc(100vw - 24px));
   min-height: min(720px, calc(100vh - 24px));
   max-height: min(860px, calc(100vh - 24px));
@@ -14,7 +14,7 @@
 .connection-picker {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 42px minmax(0, 1fr) auto;
+  grid-template-rows: 36px minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
@@ -24,8 +24,8 @@
 .connection-picker-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 5px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -99,9 +99,9 @@
   align-items: center;
   flex: 1;
   min-width: 0;
-  gap: 7px;
-  height: 29px;
-  padding: 0 9px;
+  gap: 5px;
+  height: 27px;
+  padding: 0 7px;
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--muted);
@@ -120,29 +120,29 @@
 .connection-profile-list {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 5px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
   min-height: 0;
   overflow: auto;
-  padding: 7px;
+  padding: 5px;
 }
 
 .connection-profile-group {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
 .connection-profile-group-header {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 14px minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   width: 100%;
-  min-height: 30px;
-  padding: 4px 8px;
+  min-height: 25px;
+  padding: 2px 6px;
   border: 0;
   border-radius: 5px;
   color: var(--muted);
@@ -179,21 +179,21 @@
 
 .connection-profile-group-items {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  padding-left: 14px;
+  padding-left: 0;
 }
 
 .connection-profile {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 10px;
+  grid-template-columns: 13px minmax(0, 1fr) 8px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  min-height: 42px;
-  padding: 6px 8px;
+  min-height: 33px;
+  padding: 4px 6px;
   border: 0;
   border-radius: 5px;
   color: var(--text);
@@ -218,18 +218,18 @@
 }
 
 .connection-profile strong {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .connection-profile small,
 .connection-picker-empty {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .connection-profile i {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--neutral-dot);
 }

@@ -160,12 +160,23 @@ export const workspaceMenuSections: AppMenuSection[] = [
     items: [
       { commandId: "palette.open" },
       { commandId: "connection.manager" },
+      { commandId: "migration.studio" },
       { commandId: "git.open" },
+    ],
+  },
+  {
+    label: "Edit",
+    items: [
+      { commandId: "editor.quickFix" },
+      { commandId: "editor.cleanup" },
+      { commandId: "editor.format" },
+      { commandId: "editor.comment.toggle" },
     ],
   },
   {
     label: "View",
     items: [
+      { commandId: "editor.quickDefinition" },
       { commandId: "view.sidebar.toggle" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
@@ -203,6 +214,7 @@ export const menuBarSections: AppMenuSection[] = [
   {
     label: "View",
     items: [
+      { commandId: "editor.quickDefinition" },
       { commandId: "view.sidebar.toggle" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
@@ -216,6 +228,8 @@ export const menuBarSections: AppMenuSection[] = [
     label: "Tools",
     items: [
       { commandId: "palette.open" },
+      { commandId: "migration.studio" },
+      { commandId: "editor.cleanup" },
       { commandId: "settings.keymap" },
       { commandId: "theme.toggle" },
       { commandId: "git.open" },

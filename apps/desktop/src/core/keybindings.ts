@@ -50,6 +50,12 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "migration.studio",
+    title: "Open Migration Studio",
+    category: "General",
+    scope: "global",
+  },
+  {
     id: "tab.close",
     title: "Close active SQL tab",
     category: "Workspace",
@@ -94,6 +100,24 @@ export const commandCatalog: CommandMeta[] = [
   {
     id: "editor.format",
     title: "Format SQL",
+    category: "Editor",
+    scope: "editor",
+  },
+  {
+    id: "editor.quickDefinition",
+    title: "Quick Definition",
+    category: "Editor",
+    scope: "editor",
+  },
+  {
+    id: "editor.quickFix",
+    title: "Show Problems and Quick Fixes",
+    category: "Editor",
+    scope: "editor",
+  },
+  {
+    id: "editor.cleanup",
+    title: "Code Cleanup",
     category: "Editor",
     scope: "editor",
   },
@@ -182,6 +206,9 @@ export const defaultKeymap: Keymap = {
   "query.cancel": "Mod+Shift+Backspace",
   "editor.focus": "Mod+1",
   "editor.format": "Alt+Shift+F",
+  "editor.quickDefinition": "Ctrl+Shift+I",
+  "editor.quickFix": "Alt+Enter",
+  "editor.cleanup": "",
   "editor.comment.toggle": "Mod+/",
   "result.export": "Mod+Shift+S",
   "edit.toggle": "Mod+E",

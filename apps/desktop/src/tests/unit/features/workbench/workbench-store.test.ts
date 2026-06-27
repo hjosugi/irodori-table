@@ -10,6 +10,7 @@ import {
 
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
+const sidebarWidthStorageKey = "irodori.sidebar.width.v2";
 const resultsHeightStorageKey = "irodori.results.height.v2";
 
 function installLocalStorage() {
@@ -163,6 +164,24 @@ describe("workbench store view placements", () => {
       ...defaultWorkbenchViewVisibility,
       completion: false,
     });
+  });
+
+  it("defaults the sidebar to a compact working width", async () => {
+    const store = await loadWorkbenchStore();
+
+    expect(store.getState().sidebarWidth).toBe(220);
+  });
+
+  it("clamps and persists the sidebar width", async () => {
+    const store = await loadWorkbenchStore();
+
+    store.getState().setSidebarWidth(80);
+    expect(store.getState().sidebarWidth).toBe(180);
+    expect(window.localStorage.getItem(sidebarWidthStorageKey)).toBe("180");
+
+    store.getState().setSidebarWidth(900);
+    expect(store.getState().sidebarWidth).toBe(420);
+    expect(window.localStorage.getItem(sidebarWidthStorageKey)).toBe("420");
   });
 
   it("defaults the results pane to a practical working height", async () => {

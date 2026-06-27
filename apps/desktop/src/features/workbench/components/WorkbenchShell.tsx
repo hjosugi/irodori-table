@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type FocusEvent,
@@ -7,10 +9,10 @@ import {
 } from "react";
 import {
   ChevronDown,
-  Columns3,
   GitBranch,
   HelpCircle,
   History,
+  ListPlus,
   Menu,
   Moon,
   PanelLeftClose,
@@ -131,7 +133,43 @@ export function WorkbenchShell({
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
   const [activeMenuLabel, setActiveMenuLabel] = useState<string | null>(null);
+  const menubarRef = useRef<HTMLElement | null>(null);
+  const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
   const commandById = new Map(commandCatalog.map((command) => [command.id, command]));
+
+  useEffect(() => {
+    if (!activeMenuLabel && !workspaceMenuOpen) {
+      return;
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setActiveMenuLabel(null);
+      onCloseWorkspaceMenu();
+    };
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        setActiveMenuLabel(null);
+        onCloseWorkspaceMenu();
+        return;
+      }
+      if (activeMenuLabel && !menubarRef.current?.contains(target)) {
+        setActiveMenuLabel(null);
+      }
+      if (workspaceMenuOpen && !workspaceMenuRef.current?.contains(target)) {
+        onCloseWorkspaceMenu();
+      }
+    };
+    window.addEventListener("pointerdown", closeOnOutsidePointerDown);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnOutsidePointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [activeMenuLabel, workspaceMenuOpen, onCloseWorkspaceMenu]);
 
   const shortcutFor = (commandId: string) => {
     const shortcut = keymap[commandId];
@@ -248,7 +286,7 @@ export function WorkbenchShell({
         <div className="brand" title={appName} aria-label={appName}>
           <img className="brand-icon" src="/irodori-icon.svg" alt="" />
         </div>
-        <nav className="menubar" aria-label="Application menu">
+        <nav className="menubar" aria-label="Application menu" ref={menubarRef}>
           {menuBarSections.map((section) => (
             <div className="menubar-item" key={section.label}>
               <button
@@ -308,37 +346,39 @@ export function WorkbenchShell({
           >
             <HelpCircle size={15} />
           </button>
-          <button
-            className="theme-toggle"
-            type="button"
-            title="Workspace menu"
-            aria-label="Workspace menu"
-            aria-expanded={workspaceMenuOpen}
-            onClick={onToggleWorkspaceMenu}
-          >
-            <Menu size={15} />
-          </button>
-          {workspaceMenuOpen ? (
-            <div className="app-menu-popover" role="menu">
-              {workspaceMenuSections.map((section, sectionIndex) => (
-                <div
-                  className="app-menu-section"
-                  role="group"
-                  aria-label={section.label}
-                  key={section.label}
-                >
-                  {sectionIndex > 0 ? (
-                    <span className="menu-separator" role="separator" />
-                  ) : null}
-                  <div className="app-menu-section-title">{section.label}</div>
-                  {renderMenuButtons(section)}
-                </div>
-              ))}
-              <span className="app-menu-version" aria-label="Application version">
-                v{appVersion}
-              </span>
+          <div className="workspace-menu-host" ref={workspaceMenuRef}>
+            <button
+              className="theme-toggle"
+              type="button"
+              title="Workspace menu"
+              aria-label="Workspace menu"
+              aria-expanded={workspaceMenuOpen}
+              onClick={onToggleWorkspaceMenu}
+            >
+              <Menu size={15} />
+            </button>
+            {workspaceMenuOpen ? (
+              <div className="app-menu-popover" role="menu">
+                {workspaceMenuSections.map((section, sectionIndex) => (
+                  <div
+                    className="app-menu-section"
+                    role="group"
+                    aria-label={section.label}
+                    key={section.label}
+                  >
+                    {sectionIndex > 0 ? (
+                      <span className="menu-separator" role="separator" />
+                    ) : null}
+                    <div className="app-menu-section-title">{section.label}</div>
+                    {renderMenuButtons(section)}
+                  </div>
+                ))}
+                <span className="app-menu-version" aria-label="Application version">
+                  v{appVersion}
+                </span>
             </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -382,7 +422,7 @@ export function WorkbenchShell({
           aria-pressed={completionOpen}
           onClick={onToggleCompletion}
         >
-          <Columns3 size={15} />
+          <ListPlus size={15} />
         </button>
         <button
           className={historyOpen ? "icon-button active" : "icon-button"}

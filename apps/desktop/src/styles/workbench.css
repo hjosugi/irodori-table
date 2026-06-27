@@ -1,6 +1,6 @@
 .workspace {
   display: grid;
-  grid-template-columns: 50px var(--sidebar-width, 276px) minmax(0, 1fr);
+  grid-template-columns: 50px var(--sidebar-width, 220px) minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -12,7 +12,7 @@
    (activity bar) stays on the left; only the object-browser sidebar moves, via
    grid column order. */
 .workspace.sidebar-right:not(.sidebar-collapsed) {
-  grid-template-columns: 50px minmax(0, 1fr) var(--sidebar-width, 276px);
+  grid-template-columns: 50px minmax(0, 1fr) var(--sidebar-width, 220px);
 }
 
 .workspace.sidebar-right .connection-rail {
@@ -120,6 +120,7 @@
 }
 
 .sidebar {
+  container-type: inline-size;
   position: relative;
   display: grid;
   grid-template-rows: 32px minmax(0, 1fr);
@@ -144,10 +145,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0;
   min-width: 0;
   height: 25px;
-  padding: 0 5px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 3px;
   color: var(--muted);
@@ -159,9 +160,21 @@
 }
 
 .sidebar-view-switcher button span {
+  display: none;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@container (min-width: 280px) {
+  .sidebar-view-switcher button {
+    gap: 4px;
+    padding: 0 5px;
+  }
+
+  .sidebar-view-switcher button span {
+    display: inline;
+  }
 }
 
 .sidebar-view-switcher button:hover,
@@ -211,7 +224,7 @@
   align-items: center;
   justify-content: space-between;
   height: var(--bar-md);
-  padding: 0 10px 0 11px;
+  padding: 0 7px 0 8px;
   color: var(--muted);
   font-size: var(--font-ui-sm);
   font-weight: 800;
@@ -508,10 +521,10 @@
 }
 
 .schema-tree summary {
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  gap: 7px;
-  min-height: 29px;
-  padding: 0 8px;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  gap: 5px;
+  min-height: 27px;
+  padding: 0 6px;
   cursor: pointer;
   font-weight: 800;
 }
@@ -523,15 +536,15 @@
 }
 
 .object-tree {
-  margin-left: 10px;
+  margin-left: 5px;
 }
 
 .object-tree summary {
   position: relative;
-  grid-template-columns: 22px minmax(0, 1fr) auto 26px;
-  gap: 7px;
-  min-height: 28px;
-  padding: 0 8px;
+  grid-template-columns: 17px minmax(0, 1fr) auto 22px;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 6px;
   cursor: pointer;
 }
 
@@ -595,14 +608,14 @@
 .metadata-children {
   display: grid;
   gap: 2px;
-  margin: 0 0 4px 22px;
+  margin: 0 0 4px 17px;
 }
 
 .metadata-row {
-  grid-template-columns: 22px minmax(0, 1fr) minmax(76px, auto);
-  gap: 7px;
-  min-height: 25px;
-  padding: 0 8px;
+  grid-template-columns: 17px minmax(0, 1fr) minmax(68px, auto);
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 6px;
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -1081,6 +1094,24 @@ body.panel-resizing .result-grid {
   font-weight: 700;
 }
 
+.sql-metadata-title-link {
+  display: inline-flex;
+  justify-self: start;
+  width: fit-content;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--blue);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sql-metadata-title-link:hover,
+.sql-metadata-link:hover {
+  text-decoration: underline;
+}
+
 .sql-metadata-subtitle,
 .sql-metadata-section-title {
   color: var(--muted);
@@ -1116,14 +1147,251 @@ body.panel-resizing .result-grid {
 
 .sql-metadata-columns,
 .sql-metadata-keys,
-.sql-metadata-indexes {
+.sql-metadata-indexes,
+.sql-metadata-links {
   display: grid;
   gap: 4px;
+}
+
+.sql-metadata-link {
+  justify-self: start;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--blue);
+  background: transparent;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: var(--font-code);
+  cursor: pointer;
+  text-align: left;
 }
 
 .sql-metadata-sample {
   display: grid;
   gap: 4px;
+}
+
+.sql-quick-definition-popup {
+  display: grid;
+  min-width: min(560px, 82vw);
+  max-width: min(760px, 86vw);
+  max-height: min(680px, 82vh);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 16px 36px var(--shadow);
+}
+
+.sql-quick-definition-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 5px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.sql-quick-definition-button,
+.sql-quick-definition-options summary {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+  font-size: var(--font-ui-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sql-quick-definition-button:hover:not(:disabled),
+.sql-quick-definition-options summary:hover {
+  border-color: var(--border);
+  background: var(--hover);
+}
+
+.sql-quick-definition-button:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.sql-quick-definition-separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--border);
+}
+
+.sql-quick-definition-options {
+  position: relative;
+  margin-left: auto;
+}
+
+.sql-quick-definition-options summary {
+  list-style: none;
+}
+
+.sql-quick-definition-options summary::-webkit-details-marker {
+  display: none;
+}
+
+.sql-quick-definition-options-menu {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-raised);
+  box-shadow: 0 10px 24px var(--shadow);
+}
+
+.sql-quick-definition-options-menu button {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+  font-size: var(--font-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sql-quick-definition-options-menu button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.sql-quick-definition-options-menu button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.sql-quick-definition-close {
+  margin-left: 0;
+}
+
+.sql-quick-definition-popup .sql-metadata-tooltip {
+  max-width: none;
+  max-height: min(610px, 74vh);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.metadata-tool-window {
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr);
+  min-height: 170px;
+  max-height: 300px;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.metadata-tool-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.metadata-tool-window-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--font-small);
+}
+
+.metadata-tool-window-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: var(--font-code);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metadata-tool-window-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.metadata-tool-window-body {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+
+.metadata-tool-window-body .sql-metadata-tooltip {
+  max-width: none;
+  max-height: none;
+  box-shadow: none;
+}
+
+.metadata-usages-list {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+}
+
+.metadata-usage-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.metadata-usage-row:hover,
+.metadata-usage-row:focus-visible {
+  background: var(--hover);
+}
+
+.metadata-usage-row span {
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+}
+
+.metadata-usage-row code {
+  min-width: 0;
+  overflow: hidden;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: var(--font-code);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metadata-tool-window-empty {
+  padding: 12px 8px;
+  color: var(--muted);
+  font-size: var(--font-small);
 }
 
 .line-numbers,

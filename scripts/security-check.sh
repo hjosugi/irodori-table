@@ -31,8 +31,21 @@ for dir in "${npm_dirs[@]}"; do
     --package-lock-only
 
   step "npm registry signature verification: $dir"
-  npm --prefix "$root/$dir" audit signatures \
-    --package-lock-only
+  signature_output="$(
+    npm --prefix "$root/$dir" audit signatures \
+      --package-lock-only 2>&1
+  )" || {
+    if grep -q "found no dependencies to audit that were installed from a supported registry" <<<"$signature_output"; then
+      printf '%s\n' "$signature_output"
+      echo "npm registry signature verification skipped: no supported registry-installed dependencies"
+    else
+      printf '%s\n' "$signature_output" >&2
+      exit 1
+    fi
+  }
+  if [[ -n "${signature_output:-}" ]]; then
+    printf '%s\n' "$signature_output"
+  fi
 done
 
 step "RustSec advisory audit"

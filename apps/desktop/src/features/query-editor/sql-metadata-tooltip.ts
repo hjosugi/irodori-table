@@ -13,10 +13,31 @@ type MetadataObject = SqlMetadataTarget["object"];
 type MetadataForeignKey = MetadataObject["foreignKeys"][number];
 type MetadataIndex = MetadataObject["indexes"][number];
 
-export function renderSqlMetadataTooltip(target: SqlMetadataTarget): HTMLElement {
+export type SqlMetadataTooltipLink = {
+  label: string;
+  target: SqlMetadataTarget;
+};
+
+export type SqlMetadataTooltipOptions = {
+  className?: string;
+  links?: readonly SqlMetadataTooltipLink[];
+  onLinkClick?: (target: SqlMetadataTarget) => void;
+  onTitleClick?: (target: SqlMetadataTarget) => void;
+};
+
+export function renderSqlMetadataTooltip(
+  target: SqlMetadataTarget,
+  options: SqlMetadataTooltipOptions = {},
+): HTMLElement {
   const root = document.createElement("div");
-  root.className = `sql-metadata-tooltip sql-metadata-tooltip-${target.kind}`;
-  appendText(root, "div", "sql-metadata-title", sqlMetadataTargetTitle(target));
+  root.className = [
+    "sql-metadata-tooltip",
+    `sql-metadata-tooltip-${target.kind}`,
+    options.className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  appendTitle(root, target, options.onTitleClick);
   appendText(
     root,
     "div",
@@ -30,6 +51,7 @@ export function renderSqlMetadataTooltip(target: SqlMetadataTarget): HTMLElement
     appendObjectDetails(root, target.object);
   }
 
+  appendMetadataLinks(root, options.links ?? [], options.onLinkClick);
   return root;
 }
 
@@ -226,6 +248,56 @@ function appendLimitedDetailSection(
     );
   }
   root.appendChild(section);
+}
+
+function appendMetadataLinks(
+  root: HTMLElement,
+  links: readonly SqlMetadataTooltipLink[],
+  onLinkClick: ((target: SqlMetadataTarget) => void) | undefined,
+) {
+  if (links.length === 0) {
+    return;
+  }
+
+  const section = document.createElement("div");
+  section.className = "sql-metadata-links";
+  appendText(section, "div", "sql-metadata-section-title", "links");
+  for (const link of links) {
+    const button = document.createElement("button");
+    button.className = "sql-metadata-link";
+    button.type = "button";
+    button.textContent = link.label;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onLinkClick?.(link.target);
+    });
+    section.appendChild(button);
+  }
+  root.appendChild(section);
+}
+
+function appendTitle(
+  root: HTMLElement,
+  target: SqlMetadataTarget,
+  onTitleClick: ((target: SqlMetadataTarget) => void) | undefined,
+) {
+  const title = sqlMetadataTargetTitle(target);
+  if (!onTitleClick) {
+    appendText(root, "div", "sql-metadata-title", title);
+    return;
+  }
+
+  const button = document.createElement("button");
+  button.className = "sql-metadata-title sql-metadata-title-link";
+  button.type = "button";
+  button.textContent = title;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onTitleClick(target);
+  });
+  root.appendChild(button);
 }
 
 function appendText(

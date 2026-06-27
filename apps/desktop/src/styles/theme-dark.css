@@ -54,20 +54,20 @@
 
 .app-shell[data-theme="dark"] .primary-action,
 .app-shell[data-theme="dark"] .primary-button {
-  border-color: var(--blue);
+  border-color: var(--accent);
   color: var(--accent-text);
-  background: var(--blue);
+  background: var(--accent);
 }
 
 .app-shell[data-theme="dark"] .primary-action:hover:not(:disabled),
 .app-shell[data-theme="dark"] .primary-button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--blue) 82%, var(--text));
-  background: color-mix(in srgb, var(--blue) 88%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--accent) 82%, var(--text));
+  background: color-mix(in srgb, var(--accent-hover) 86%, var(--surface-raised));
 }
 
 .app-shell[data-theme="dark"] .text-button,
 .app-shell[data-theme="dark"] .mode-toggle button.active {
-  color: color-mix(in srgb, var(--blue) 72%, var(--text));
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
   background: var(--selected-strong);
 }
 

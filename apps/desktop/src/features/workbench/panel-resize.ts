@@ -15,7 +15,7 @@ export type PanelResizeKind =
   | "results"
   | "editorSplit";
 
-export const SIDEBAR_WIDTH_MIN = 220;
+export const SIDEBAR_WIDTH_MIN = 180;
 export const SIDEBAR_WIDTH_MAX = 420;
 export const INSPECTOR_WIDTH_MIN = 220;
 export const INSPECTOR_WIDTH_MAX = 420;
