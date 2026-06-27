@@ -2088,7 +2088,7 @@ export function AppWorkbench() {
           uiZoom,
           sidebarOpen,
           sidebarSide,
-          viewPlacements,
+          viewPlacements: effectiveViewPlacements,
           viewVisibility,
           sidebarWidth,
           inspectorWidth,
@@ -4111,7 +4111,6 @@ export function AppWorkbench() {
         sidebarOpen={sidebarOpen}
         completionOpen={completionOpen}
         historyOpen={historyOpen}
-        sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
         resultsHeight={resultsHeight}
@@ -4150,7 +4149,6 @@ export function AppWorkbench() {
         sidebar={
           <Sidebar
             sidebarOpen={sidebarOpen}
-            sidebarSide={sidebarSide}
             activeView={activeSidebarView}
             completionPanel={
               <InspectorContent
