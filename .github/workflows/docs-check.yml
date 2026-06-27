@@ -28,12 +28,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # DB sample fixtures + catalog live in the sibling irodori-samples repo.
+      - name: Check out sample fixtures
+        uses: actions/checkout@v4
+        with:
+          repository: hjosugi/irodori-samples
+          path: irodori-samples
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
 
       - name: Support-status registry guard
         run: node tools/docs/support-status.mjs
+
+      - name: DB feature-sample catalog guard
+        run: node tools/docs/db-feature-samples.mjs
+        env:
+          IRODORI_SAMPLES: ${{ github.workspace }}/irodori-samples
 
       - name: Cheatsheets up to date
         run: node tools/knowledge/cheatsheet.mjs --check
