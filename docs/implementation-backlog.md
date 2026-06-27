@@ -204,7 +204,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 ### TB-002 — `typegen` command + CI drift check ✅
 - **Goal:** Make stale bindings a CI failure.
 - **Done when:** a friendly `typegen` command regenerates bindings; `typegen --check` fails CI on drift with a readable diff.
-- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typeship tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI runs that check in the Rust job using the published `typeship` crates.
+- **Done:** `apps/desktop/tools/typegen.mjs` regenerates both desktop Tauri and extension SDK bindings through the existing Rust typeship tests. `npm run typegen:check` reruns generation and fails with a scoped `git diff HEAD -- apps/desktop/src/generated/irodori-api.ts packages/extension-sdk/src/generated/irodori-extension-api.ts`; CI and `npm run build:verified` run that check using the published `typeship` crates, while everyday `npm run build` stays frontend-only so Vite builds do not pay the Rust typegen cost.
 - **Depends on:** TB-001
 - **Size:** M · **Priority:** P0
 

@@ -56,9 +56,9 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
-      - name: Build frontend and generate types
+      - name: Verify generated bindings and build frontend
         working-directory: apps/desktop
-        run: npm run build
+        run: npm run build:verified
 
       - name: Build and Publish Tauri App
         uses: tauri-apps/tauri-action@v0.6.2

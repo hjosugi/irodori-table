@@ -99,9 +99,15 @@ Useful desktop commands:
 make desktop-vite     # Vite only, useful when launching a debug binary manually
 make desktop-typegen  # regenerate Rust -> TypeScript bindings
 make desktop-test     # Vitest
-make desktop-build    # typegen + TypeScript + Vite production build
+make desktop-build    # TypeScript + Vite production build (fast, no Rust typegen)
+make desktop-build-verified # typegen drift check + TypeScript + Vite build
 make desktop-e2e      # Playwright
 ```
+
+`desktop-build` intentionally skips Rust type generation so everyday frontend
+builds stay fast. Run `make desktop-typegen-check` or `make
+desktop-build-verified` before release-style validation; CI enforces the same
+generated-binding drift check.
 
 The desktop frontend builds with React Compiler through Vite's Babel pipeline by
 default. To isolate a compiler-related rendering issue while developing, disable

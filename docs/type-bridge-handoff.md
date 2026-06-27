@@ -60,7 +60,9 @@ Done for the first prototype:
 2. `DbObjectKind` and `ConnectionStatus` are Rust enums that generate TypeScript string unions.
 3. TypeScript is generated into `apps/desktop/src/generated/irodori-api.ts`.
 4. `App.tsx` imports the generated `WorkspaceSnapshot` type and `workspaceSnapshot()` wrapper.
-5. `apps/desktop/package.json` exposes `npm run typegen`, and `npm run build` runs type generation before TypeScript compilation.
+5. `apps/desktop/package.json` exposes `npm run typegen`; `npm run build`
+   stays frontend-only for speed, while `npm run build:verified` runs the
+   generated-binding drift check before TypeScript compilation.
 
 Still needed:
 
