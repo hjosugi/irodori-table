@@ -18,6 +18,37 @@
   grid-template-rows: auto auto auto minmax(0, 1fr);
 }
 
+.git-panel-sidebar {
+  position: static;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  border-left: 0;
+  border-right: 0;
+  box-shadow: none;
+}
+
+.git-panel-sidebar .git-drawer-header {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 0 6px;
+}
+
+.git-panel-sidebar .git-branch-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 7px;
+}
+
+.git-panel-sidebar .git-provider-row,
+.git-panel-sidebar .git-repo-row,
+.git-panel-sidebar .git-branch-row {
+  display: none;
+}
+
+.git-panel-sidebar .git-drawer-body {
+  min-width: 0;
+}
+
 .git-drawer-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;

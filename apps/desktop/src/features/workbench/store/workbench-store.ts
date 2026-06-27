@@ -89,13 +89,11 @@ function loadSidebarOpen() {
 }
 
 function loadSidebarSide(): SidebarSide {
-  return window.localStorage.getItem(sidebarSideStorageKey) === "right"
-    ? "right"
-    : "left";
+  return "left";
 }
 
 function isWorkbenchSide(value: unknown): value is WorkbenchSide {
-  return value === "left" || value === "right";
+  return value === "left";
 }
 
 function defaultViewPlacements(): WorkbenchViewPlacements {
@@ -199,8 +197,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   ),
   setSidebarOpen: (value) =>
     set((state) => ({ sidebarOpen: resolveValue(state.sidebarOpen, value) })),
-  setSidebarSide: (value) =>
-    set((state) => ({ sidebarSide: resolveValue(state.sidebarSide, value) })),
+  setSidebarSide: () => set({ sidebarSide: "left" }),
   setViewPlacement: (viewId, side) =>
     set((state) => ({
       viewPlacements: normalizeViewPlacements({

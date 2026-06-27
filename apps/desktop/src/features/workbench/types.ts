@@ -25,9 +25,9 @@ export type WorkbenchViewVisibility = Record<WorkbenchViewId, boolean>;
 
 export const defaultWorkbenchViewPlacements: WorkbenchViewPlacements = {
   objectBrowser: "left",
-  completion: "right",
-  queryHistory: "right",
-  git: "right",
+  completion: "left",
+  queryHistory: "left",
+  git: "left",
 };
 
 export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {

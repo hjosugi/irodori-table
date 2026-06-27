@@ -214,6 +214,8 @@ function editorSelectAllShortcut(): Extension {
         if (!isPrimarySelectAllShortcut(event)) {
           return false;
         }
+        event.preventDefault();
+        event.stopPropagation();
         return selectAll(view);
       },
     }),

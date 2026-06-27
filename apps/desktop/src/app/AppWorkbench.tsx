@@ -11,10 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  Folder,
-  Plus,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { runQuerySpill, runQueryStream } from "@/lib/tauri/db-stream";
 import {
   createQueryHistoryResultSnapshot,
@@ -39,7 +36,7 @@ import {
 import { AboutDialog } from "@/app/AboutDialog";
 import { ActionToast, type ActionNotice } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
-import { useGitStore } from "@/features/git/git-store";
+import { GitPanel, useGitStore } from "@/features/git";
 import {
   ResultsPane,
   WindowedRows,
@@ -176,6 +173,8 @@ import {
   useWorkbenchStore,
   workbenchViewIds,
   type CompletionHint,
+  type WorkbenchSide,
+  type WorkbenchViewId,
   type WorkbenchViewPlacements,
   type WorkbenchViewVisibility,
 } from "@/features/workbench";
@@ -314,11 +313,6 @@ const MigrationStudioDialog = lazy(() =>
     default: module.MigrationStudioDialog,
   })),
 );
-const GitDrawer = lazy(() =>
-  import("@/features/git/GitDrawer").then((module) => ({
-    default: module.GitDrawer,
-  })),
-);
 const QueryHistoryDialog = lazy(() =>
   import("@/features/query-history/QueryHistoryDialog").then((module) => ({
     default: module.QueryHistoryDialog,
@@ -437,6 +431,10 @@ export function AppWorkbench() {
   const setEditorBackgroundOpacity = usePreferencesStore(
     (state) => state.setEditorBackgroundOpacity,
   );
+  const animationsEnabled = usePreferencesStore((state) => state.animationsEnabled);
+  const setAnimationsEnabled = usePreferencesStore(
+    (state) => state.setAnimationsEnabled,
+  );
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const uiZoom = usePreferencesStore((state) => state.uiZoom);
@@ -494,25 +492,29 @@ export function AppWorkbench() {
     editorSplitMode === "single" ? "primary" : preferredEditorGroup;
   const [running, setRunning] = useState(false);
 
-  function setPrimarySidebarSide(side: "left" | "right") {
+  function setPrimarySidebarSide(side: WorkbenchSide) {
     setSidebarSide(side);
     setViewPlacement("objectBrowser", side);
   }
 
-  function setActiveSidebarView(
-    viewId: "objectBrowser" | "completion" | "queryHistory",
-  ) {
+  function setActiveSidebarView(viewId: WorkbenchViewId) {
+    setSidebarSide(viewPlacements[viewId] ?? "left");
     setSidebarOpen(true);
-    setViewVisibility((current) => ({
-      ...current,
-      objectBrowser: viewId === "objectBrowser",
-      completion: viewId === "completion",
-      queryHistory: viewId === "queryHistory",
-    }));
+    setViewVisibility(() =>
+      workbenchViewIds.reduce(
+        (next, id) => ({ ...next, [id]: id === viewId }),
+        {} as WorkbenchViewVisibility,
+      ),
+    );
   }
 
-  function toggleSidebarView(viewId: "completion" | "queryHistory") {
+  function toggleSidebarView(viewId: "completion" | "queryHistory" | "git") {
     setActiveSidebarView(activeSidebarView === viewId ? "objectBrowser" : viewId);
+  }
+
+  function openGitPanel() {
+    setActiveSidebarView("git");
+    void useGitStore.getState().refresh();
   }
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -734,8 +736,6 @@ export function AppWorkbench() {
     (state) => state.closeDialog,
   );
   const queryHistoryDialogOpen = useQueryHistoryStore((state) => state.open);
-  const gitDrawerOpen = useGitStore((state) => state.open);
-  const openGitDrawer = useGitStore((state) => state.openDrawer);
   const [queryParameterMemory, setQueryParameterMemory] =
     useState<QueryParameterMemory>(loadQueryParameterMemory);
   const [pendingQueryParameters, setPendingQueryParameters] =
@@ -1957,7 +1957,7 @@ export function AppWorkbench() {
     openSettings: () => openSettingsSection("general"),
     openKeymap: () => openSettingsSection("keymap"),
     openHistory: openQueryHistoryDialog,
-    openGit: openGitDrawer,
+    openGit: openGitPanel,
     openHelp: () => setAboutOpen(true),
     openDeveloperTools: () => void openAppDeveloperTools(),
     openConnectionManager: () => setConnectionManagerOpen(true),
@@ -2062,6 +2062,7 @@ export function AppWorkbench() {
         activeCustomThemeId,
         customThemes,
         editor: {
+          animationsEnabled,
           vimMode,
           autoCommit,
           formatter,
@@ -2254,6 +2255,9 @@ export function AppWorkbench() {
         setActiveCustomThemeId(null);
       }
       if (isRecord(parsed.editor)) {
+        if (typeof parsed.editor.animationsEnabled === "boolean") {
+          setAnimationsEnabled(parsed.editor.animationsEnabled);
+        }
         if (typeof parsed.editor.vimMode === "boolean") {
           setVimMode(parsed.editor.vimMode);
         }
@@ -4080,9 +4084,12 @@ export function AppWorkbench() {
     ? "completion"
     : viewVisibility.queryHistory
       ? "queryHistory"
-      : "objectBrowser";
+      : viewVisibility.git
+        ? "git"
+        : "objectBrowser";
   const completionOpen = activeSidebarView === "completion";
   const historyOpen = activeSidebarView === "queryHistory";
+  const gitOpen = activeSidebarView === "git";
   const appStyle = useMemo(
     () =>
       ({
@@ -4096,6 +4103,7 @@ export function AppWorkbench() {
     <div
       className="app-root"
       data-theme={theme.kind}
+      data-animations={animationsEnabled ? "on" : "off"}
       style={appStyle}
     >
       <WorkbenchShell
@@ -4105,6 +4113,7 @@ export function AppWorkbench() {
         sidebarOpen={sidebarOpen}
         completionOpen={completionOpen}
         historyOpen={historyOpen}
+        gitOpen={gitOpen}
         sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
@@ -4135,16 +4144,27 @@ export function AppWorkbench() {
           setActiveKeyScope(scope);
         }}
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        onShowObjectBrowser={() => {
+          setSidebarOpen(true);
+          setActiveSidebarView("objectBrowser");
+        }}
         onToggleCompletion={() => toggleSidebarView("completion")}
         onToggleHistory={() => toggleSidebarView("queryHistory")}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
-        onOpenGit={openGitDrawer}
+        onOpenGit={() => {
+          if (gitOpen) {
+            setActiveSidebarView("objectBrowser");
+            return;
+          }
+          openGitPanel();
+        }}
         onRunCommand={runCommand}
         onCloseWorkspaceMenu={() => setWorkspaceMenuOpen(false)}
         sidebar={
           <Sidebar
             sidebarOpen={sidebarOpen}
             activeView={activeSidebarView}
+            sidebarSide={sidebarSide}
             completionPanel={
               <InspectorContent
                 activeConnectionId={activeConnectionId}
@@ -4177,6 +4197,12 @@ export function AppWorkbench() {
                 showHistory
               />
             }
+            gitPanel={
+              <GitPanel
+                variant="sidebar"
+                onClose={() => setActiveSidebarView("objectBrowser")}
+              />
+            }
             connections={connections}
             profileById={profileById}
             activeConnectionId={activeConnectionId}
@@ -4196,6 +4222,7 @@ export function AppWorkbench() {
             onOpenConnectionManager={() => setConnectionManagerOpen(true)}
             onSelectConnection={selectSidebarConnection}
             onOpenBlankSchemaDesigner={openBlankSchemaDesigner}
+            onNewTableFromFile={() => importFileRef.current?.click()}
             onOpenObjectSchemaDesigner={openObjectSchemaDesigner}
             onOpenDiagram={() => setDiagramOpen(true)}
             onRefreshObjects={() => refreshObjects(activeConnectionId, true, true)}
@@ -4204,6 +4231,13 @@ export function AppWorkbench() {
             onShowObjectInDiagram={showObjectInDiagram}
             onSetObjectActionMenu={setObjectActionMenu}
             onSelectView={setActiveSidebarView}
+            onToggleSidebarSide={() => {
+              const nextSide: WorkbenchSide =
+                sidebarSide === "left" ? "right" : "left";
+              setSidebarSide(nextSide);
+              setViewPlacement(activeSidebarView, nextSide);
+              setSidebarOpen(true);
+            }}
             onCloseSidebar={() => setSidebarOpen(false)}
             onBeginResize={(event) => beginPanelResize("sidebar", event)}
             onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
@@ -4212,10 +4246,6 @@ export function AppWorkbench() {
       >
         <section className="main-pane">
           <div className="tab-strip">
-            <div className="tab-folder">
-              <Folder size={14} />
-              <span>{openTabs.find((tab) => tab.id === activeTab)?.group}</span>
-            </div>
             {openTabs.map((tab) => (
               <button
                 className={tab.id === activeTab ? "tab active" : "tab"}
@@ -4469,6 +4499,8 @@ export function AppWorkbench() {
           setEditorBackgroundImage={setEditorBackgroundImage}
           editorBackgroundOpacity={editorBackgroundOpacity}
           setEditorBackgroundOpacity={setEditorBackgroundOpacity}
+          animationsEnabled={animationsEnabled}
+          setAnimationsEnabled={setAnimationsEnabled}
           autoCommit={autoCommit}
           setAutoCommit={setAutoCommit}
           uiZoom={uiZoom}
@@ -4542,11 +4574,6 @@ export function AppWorkbench() {
         />
       ) : null}
 
-      {gitDrawerOpen ? (
-        <Suspense fallback={null}>
-          <GitDrawer />
-        </Suspense>
-      ) : null}
 
       {queryHistoryDialogOpen ? (
         <Suspense fallback={null}>

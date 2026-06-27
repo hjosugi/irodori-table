@@ -556,9 +556,9 @@ textarea:disabled {
 .primary-action,
 .primary-button {
   padding: 0 12px;
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
   color: var(--accent-text);
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 86%, var(--surface-raised));
   font-weight: 650;
   white-space: nowrap;
 }
@@ -632,14 +632,18 @@ textarea:disabled {
 
 .run-main-button {
   border-radius: 3px 0 0 3px;
+  border-color: color-mix(in srgb, var(--green) 44%, var(--blue) 42%);
+  background: color-mix(in srgb, var(--green) 48%, var(--blue) 42%);
 }
 
 .run-menu-toggle {
   width: 30px;
   min-width: 30px;
   padding: 0;
-  border-left-color: color-mix(in srgb, var(--text) 16%, transparent);
+  border-color: color-mix(in srgb, var(--green) 44%, var(--blue) 42%);
+  border-left-color: color-mix(in srgb, var(--text) 18%, transparent);
   border-radius: 0 3px 3px 0;
+  background: color-mix(in srgb, var(--green) 43%, var(--blue) 42%);
 }
 
 .run-menu-popover {
@@ -741,4 +745,71 @@ textarea:disabled {
 
 .toolbar-spacer {
   flex: 1;
+}
+
+.connection-select,
+.primary-action,
+.primary-button,
+.icon-button,
+.mini-button,
+.text-button,
+.tab,
+.sidebar-view-switcher button,
+.rail-action,
+.rail-connection,
+.object-name-button,
+.object-menu-button,
+.metadata-row,
+.schema-tree summary,
+.object-tree summary,
+.action-toast {
+  transition:
+    background-color 90ms ease,
+    border-color 90ms ease,
+    color 90ms ease,
+    box-shadow 90ms ease;
+}
+
+.app-menu-popover,
+.object-action-menu,
+.schema-create-menu,
+.run-menu-popover,
+.action-menu,
+.connection-action-menu,
+.command-palette,
+.action-toast {
+  animation: irodori-pop-in 110ms ease-out;
+  transform-origin: top right;
+}
+
+@keyframes irodori-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-root[data-animations="off"] *,
+.app-root[data-animations="off"] *::before,
+.app-root[data-animations="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-root *,
+  .app-root *::before,
+  .app-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

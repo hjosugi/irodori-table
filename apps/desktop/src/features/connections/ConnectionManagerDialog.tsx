@@ -20,6 +20,7 @@ import {
 import type { DbEngine } from "@/generated/irodori-api";
 import {
   connectionColorOptions,
+  engineConnectionSettings,
   engineLabel,
   engineOptions,
   normalizeConnectionColor,
@@ -136,6 +137,7 @@ export function ConnectionManagerDialog({
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const transferMenuRef = useRef<HTMLDivElement | null>(null);
+  const engineSettings = engineConnectionSettings(draft.engine);
   const [transferMenuOpen, setTransferMenuOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
@@ -451,16 +453,16 @@ export function ConnectionManagerDialog({
                   type="button"
                   onClick={() => onUpdateDraft({ mode: "fields" })}
                 >
-                  Fields
+                  {engineSettings.fieldsLabel}
                 </button>
               </div>
             </div>
             {draft.mode === "url" ? (
               <label className="full-row">
-                <span>URL / DSN</span>
+                <span>{engineSettings.urlLabel}</span>
                 <input
                   value={draft.url}
-                  placeholder="postgres://user:password@host:5432/database"
+                  placeholder={engineSettings.urlPlaceholder}
                   onChange={(event) =>
                     onUpdateDraft({ url: event.currentTarget.value })
                   }
@@ -468,50 +470,60 @@ export function ConnectionManagerDialog({
               </label>
             ) : (
               <div className="connection-form-grid">
-                <label>
-                  <span>Host / socket</span>
-                  <input
-                    value={draft.host}
-                    placeholder="localhost"
-                    onChange={(event) =>
-                      onUpdateDraft({ host: event.currentTarget.value })
-                    }
-                  />
-                </label>
-                <label>
-                  <span>Port</span>
-                  <input
-                    inputMode="numeric"
-                    value={draft.port}
-                    onChange={(event) =>
-                      onUpdateDraft({ port: event.currentTarget.value })
-                    }
-                  />
-                </label>
-                <label>
-                  <span>User</span>
-                  <input
-                    value={draft.user}
-                    onChange={(event) =>
-                      onUpdateDraft({ user: event.currentTarget.value })
-                    }
-                  />
-                </label>
-                <label>
-                  <span>Password</span>
-                  <input
-                    type="password"
-                    value={draft.password}
-                    placeholder="Session only"
-                    onChange={(event) =>
-                      onUpdateDraft({ password: event.currentTarget.value })
-                    }
-                  />
-                </label>
+                {engineSettings.showHost ? (
+                  <label>
+                    <span>{engineSettings.hostLabel}</span>
+                    <input
+                      value={draft.host}
+                      placeholder={engineSettings.hostPlaceholder}
+                      onChange={(event) =>
+                        onUpdateDraft({ host: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : null}
+                {engineSettings.showPort ? (
+                  <label>
+                    <span>{engineSettings.portLabel}</span>
+                    <input
+                      inputMode="numeric"
+                      value={draft.port}
+                      onChange={(event) =>
+                        onUpdateDraft({ port: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : null}
+                {engineSettings.showUser ? (
+                  <label>
+                    <span>{engineSettings.userLabel}</span>
+                    <input
+                      value={draft.user}
+                      placeholder={engineSettings.userPlaceholder}
+                      onChange={(event) =>
+                        onUpdateDraft({ user: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : null}
+                {engineSettings.showPassword ? (
+                  <label>
+                    <span>{engineSettings.passwordLabel}</span>
+                    <input
+                      type="password"
+                      value={draft.password}
+                      placeholder={engineSettings.passwordPlaceholder}
+                      onChange={(event) =>
+                        onUpdateDraft({ password: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : null}
                 <label className="full-row">
-                  <span>Database / service / path</span>
+                  <span>{engineSettings.databaseLabel}</span>
                   <input
                     value={draft.database}
+                    placeholder={engineSettings.databasePlaceholder}
                     onChange={(event) =>
                       onUpdateDraft({ database: event.currentTarget.value })
                     }
@@ -522,7 +534,7 @@ export function ConnectionManagerDialog({
             <div className="connection-transport full-row">
               <ShieldCheck size={15} />
               <span>Transport</span>
-              <strong>Direct TCP / local file</strong>
+              <strong>{engineSettings.transportLabel}</strong>
             </div>
             {error ? (
               <p className="inline-error full-row">

@@ -33,7 +33,8 @@ import {
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "@/features/connections";
-import type { WorkbenchSide, WorkbenchViewId } from "../types";
+import type { WorkbenchViewId } from "../types";
+import type { WorkbenchSide } from "../types";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
@@ -41,8 +42,8 @@ type SidebarViewId = WorkbenchViewId;
 
 type SidebarProps = {
   sidebarOpen: boolean;
-  sidebarSide: WorkbenchSide;
   activeView: SidebarViewId;
+  sidebarSide: WorkbenchSide;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
   gitPanel: ReactNode;
@@ -65,6 +66,7 @@ type SidebarProps = {
     profile: ConnectionDraft | undefined,
   ) => void;
   onOpenBlankSchemaDesigner: () => void;
+  onNewTableFromFile: () => void;
   onOpenObjectSchemaDesigner: (object: DbObjectMetadata) => void;
   onOpenDiagram: () => void;
   onRefreshObjects: () => void;
@@ -73,8 +75,8 @@ type SidebarProps = {
   onShowObjectInDiagram: (object: DbObjectMetadata) => void;
   onSetObjectActionMenu: (value: string | null | ((current: string | null) => string | null)) => void;
   onSelectView: (viewId: SidebarViewId) => void;
-  onCloseSidebar: () => void;
   onToggleSidebarSide: () => void;
+  onCloseSidebar: () => void;
   onBeginResize: (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => void;
@@ -83,8 +85,8 @@ type SidebarProps = {
 
 export function Sidebar({
   sidebarOpen,
-  sidebarSide,
   activeView,
+  sidebarSide,
   completionPanel,
   historyPanel,
   gitPanel,
@@ -104,6 +106,7 @@ export function Sidebar({
   onOpenConnectionManager,
   onSelectConnection,
   onOpenBlankSchemaDesigner,
+  onNewTableFromFile,
   onOpenObjectSchemaDesigner,
   onOpenDiagram,
   onRefreshObjects,
@@ -112,20 +115,46 @@ export function Sidebar({
   onShowObjectInDiagram,
   onSetObjectActionMenu,
   onSelectView,
-  onCloseSidebar,
   onToggleSidebarSide,
+  onCloseSidebar,
   onBeginResize,
   onResizeKey,
 }: SidebarProps) {
   const [objectActionMenuPosition, setObjectActionMenuPosition] =
     useState<ObjectActionMenuPosition>(null);
   const objectActionMenuRef = useRef<HTMLDivElement | null>(null);
+  const createMenuRef = useRef<HTMLDivElement | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!objectActionMenu) {
       setObjectActionMenuPosition(null);
     }
   }, [objectActionMenu]);
+
+  useEffect(() => {
+    if (!createMenuOpen) {
+      return;
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setCreateMenuOpen(false);
+      }
+    };
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && createMenuRef.current?.contains(target)) {
+        return;
+      }
+      setCreateMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+    };
+  }, [createMenuOpen]);
 
   useEffect(() => {
     if (!objectActionMenu) {
@@ -272,10 +301,18 @@ export function Sidebar({
               <span>Git</span>
             </button>
             <button
-              className="sidebar-side-button"
               type="button"
-              title={sidebarSide === "left" ? "Move sidebar right" : "Move sidebar left"}
-              aria-label={sidebarSide === "left" ? "Move sidebar right" : "Move sidebar left"}
+              className="sidebar-side-button"
+              title={
+                sidebarSide === "left"
+                  ? "Move this sidebar right"
+                  : "Move this sidebar left"
+              }
+              aria-label={
+                sidebarSide === "left"
+                  ? "Move this sidebar right"
+                  : "Move this sidebar left"
+              }
               onClick={onToggleSidebarSide}
             >
               {sidebarSide === "left" ? (
@@ -283,6 +320,7 @@ export function Sidebar({
               ) : (
                 <PanelLeftOpen size={14} />
               )}
+              <span>Move</span>
             </button>
           </div>
           {activeView === "objectBrowser" ? (
@@ -294,14 +332,41 @@ export function Sidebar({
                   : "public"}
               </span>
               <div className="section-heading-actions">
-                <button
-                  type="button"
-                  title="Schema designer"
-                  aria-label="Schema designer"
-                  onClick={onOpenBlankSchemaDesigner}
-                >
-                  <Plus size={14} />
-                </button>
+                <div className="schema-create-menu-wrap" ref={createMenuRef}>
+                  <button
+                    type="button"
+                    title="New table"
+                    aria-label="New table"
+                    aria-expanded={createMenuOpen}
+                    onClick={() => setCreateMenuOpen((open) => !open)}
+                  >
+                    <Plus size={14} />
+                  </button>
+                  {createMenuOpen ? (
+                    <div className="schema-create-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setCreateMenuOpen(false);
+                          onOpenBlankSchemaDesigner();
+                        }}
+                      >
+                        New Table
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setCreateMenuOpen(false);
+                          onNewTableFromFile();
+                        }}
+                      >
+                        New Table from File
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   title="ER diagram"

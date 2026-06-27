@@ -228,7 +228,7 @@ export const defaultKeymap: Keymap = {
   "query.cancel": "Mod+Shift+Backspace",
   "editor.focus": "Mod+1",
   "editor.format": "Alt+Shift+F",
-  "editor.quickDefinition": "Alt+F12",
+  "editor.quickDefinition": "Ctrl+Shift+I",
   "editor.quickFix": "Alt+Enter",
   "editor.cleanup": "",
   "editor.comment.toggle": "Mod+/",

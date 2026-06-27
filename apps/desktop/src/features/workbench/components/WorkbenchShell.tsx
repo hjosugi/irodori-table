@@ -24,6 +24,7 @@ import {
   type Keymap,
 } from "@/core/keybindings";
 import type { ThemeKind } from "@/theme";
+import type { WorkbenchSide } from "../types";
 
 export type WorkbenchStatusBarItem = {
   id: string;
@@ -43,7 +44,7 @@ type WorkbenchShellProps = {
   completionOpen: boolean;
   historyOpen: boolean;
   gitOpen: boolean;
-  sidebarSide: "left" | "right";
+  sidebarSide: WorkbenchSide;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;

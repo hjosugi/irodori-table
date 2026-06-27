@@ -311,9 +311,9 @@ export const fallbackSnapshot: WorkspaceSnapshot = {
 };
 
 export const tabs = [
-  { id: "scratch", label: "scratch.sql", group: "Daily work" },
-  { id: "audit", label: "audit-window.sql", group: "Revenue" },
-  { id: "explain", label: "explain-plan.sql", group: "Tuning" },
+  { id: "scratch", label: "scratch.sql" },
+  { id: "audit", label: "audit-window.sql" },
+  { id: "explain", label: "explain-plan.sql" },
 ];
 
 export const savedQueryStorageKey = "irodori.savedScratchQuery.v1";

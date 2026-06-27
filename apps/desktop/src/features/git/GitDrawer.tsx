@@ -34,8 +34,12 @@ function ViewButton({
   );
 }
 
-export function GitDrawer() {
-  const open = useGitStore((state) => state.open);
+type GitPanelProps = {
+  variant?: "drawer" | "sidebar";
+  onClose?: () => void;
+};
+
+export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   const view = useGitStore((state) => state.view);
   const repoPath = useGitStore((state) => state.repoPath);
   const repoPathDraft = useGitStore((state) => state.repoPathDraft);
@@ -55,6 +59,7 @@ export function GitDrawer() {
   const commandOutput = useGitStore((state) => state.commandOutput);
   const commitMessage = useGitStore((state) => state.commitMessage);
   const closeDrawer = useGitStore((state) => state.closeDrawer);
+  const closePanel = onClose ?? closeDrawer;
   const refresh = useGitStore((state) => state.refresh);
   const setView = useGitStore((state) => state.setView);
   const setRepoPath = useGitStore((state) => state.setRepoPath);
@@ -77,10 +82,6 @@ export function GitDrawer() {
   const checkoutBranch = useGitStore((state) => state.checkoutBranch);
   const createBranch = useGitStore((state) => state.createBranch);
   const deleteBranch = useGitStore((state) => state.deleteBranch);
-
-  if (!open) {
-    return null;
-  }
 
   const files = status?.files ?? [];
   const hasChanges = files.length > 0;
@@ -174,8 +175,8 @@ export function GitDrawer() {
 
   return (
     <div
-      className={`git-drawer ${error ? "has-error" : ""}`}
-      role="dialog"
+      className={`git-drawer git-panel-${variant} ${error ? "has-error" : ""}`}
+      role={variant === "drawer" ? "dialog" : "region"}
       aria-label="Git integration"
       style={drawerStyle}
     >
@@ -211,7 +212,7 @@ export function GitDrawer() {
           type="button"
           title="Close Git panel"
           aria-label="Close Git panel"
-          onClick={closeDrawer}
+          onClick={closePanel}
         >
           <X size={14} />
         </button>
@@ -353,4 +354,12 @@ export function GitDrawer() {
       </div>
     </div>
   );
+}
+
+export function GitDrawer() {
+  const open = useGitStore((state) => state.open);
+  if (!open) {
+    return null;
+  }
+  return <GitPanel variant="drawer" />;
 }

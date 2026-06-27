@@ -205,6 +205,14 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         urlPlaceholder: "sqlserver://user:password@host:1433;databaseName=database",
         hostLabel: "Server",
       };
+    case "h2":
+      return {
+        ...tcpDatabaseSettings,
+        urlPlaceholder: "jdbc:h2:tcp://host:5435/~/database or jdbc:h2:file:./database",
+        databaseLabel: "Database path / name",
+        databasePlaceholder: "~/database",
+        transportLabel: "JDBC / TCP",
+      };
     case "mongodb":
       return {
         ...tcpDatabaseSettings,
@@ -245,6 +253,20 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         showPort: false,
         transportLabel: "Google API",
       };
+    case "bigtable":
+      return {
+        ...tcpDatabaseSettings,
+        preferredMode: "url",
+        urlLabel: "Project / instance / credentials",
+        urlPlaceholder: "bigtable://project/instance or credentials JSON path",
+        hostLabel: "Project / instance",
+        hostPlaceholder: "project/instance",
+        userLabel: "Service account",
+        passwordLabel: "Token / key",
+        databaseLabel: "Table / app profile",
+        showPort: false,
+        transportLabel: "Google API",
+      };
     case "databricks":
       return {
         ...tcpDatabaseSettings,
@@ -260,6 +282,21 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         ...tcpDatabaseSettings,
         urlPlaceholder: "clickhouse://user:password@host:8123/database",
         transportLabel: "HTTP / Native",
+      };
+    case "questdb":
+      return {
+        ...tcpDatabaseSettings,
+        urlPlaceholder: "postgres://user:password@host:8812/qdb",
+        databaseLabel: "Database",
+        transportLabel: "PostgreSQL wire / HTTP",
+      };
+    case "iotdb":
+      return {
+        ...tcpDatabaseSettings,
+        urlPlaceholder: "iotdb://user:password@host:6667/root",
+        databaseLabel: "Storage group / database",
+        databasePlaceholder: "root",
+        transportLabel: "IoTDB native",
       };
     case "neo4j":
     case "memgraph":
@@ -343,6 +380,7 @@ export function engineConnectionSettings(engine: DbEngine): EngineConnectionSett
         preferredMode: "url",
         urlPlaceholder: "file:///lake/table or s3://bucket/table",
         databaseLabel: "Catalog / table path",
+        showHost: false,
         showPort: false,
         showUser: false,
         showPassword: false,
@@ -404,8 +442,8 @@ export const starterProfiles: ConnectionDraft[] = [
     name: "DuckDB Memory",
     color: "#9333ea",
     engine: "duckdb",
-    mode: "url",
-    url: ":memory:",
+    mode: "fields",
+    url: "",
     host: "",
     port: "",
     user: "",
@@ -509,9 +547,10 @@ export function defaultPort(engine: DbEngine) {
 }
 
 export function memoryDefaults(engine: DbEngine): Partial<ConnectionDraft> {
+  const settings = engineConnectionSettings(engine);
   if (engine === "sqlite") {
     return {
-      mode: "fields",
+      mode: settings.preferredMode,
       url: "",
       host: "",
       port: "",
@@ -522,8 +561,8 @@ export function memoryDefaults(engine: DbEngine): Partial<ConnectionDraft> {
   }
   if (engine === "duckdb") {
     return {
-      mode: "url",
-      url: ":memory:",
+      mode: settings.preferredMode,
+      url: "",
       host: "",
       port: "",
       user: "",
@@ -532,6 +571,7 @@ export function memoryDefaults(engine: DbEngine): Partial<ConnectionDraft> {
     };
   }
   return {
+    mode: settings.preferredMode,
     port: defaultPort(engine),
   };
 }
@@ -542,7 +582,7 @@ export function newDraft(seed: number): ConnectionDraft {
     name: `Connection ${seed}`,
     color: defaultConnectionColor,
     engine: "postgres",
-    mode: "url",
+    mode: "fields",
     url: "",
     host: "127.0.0.1",
     port: "5432",
@@ -705,7 +745,7 @@ export function settingsProfileFromJson(
     ...memoryDefaults(engine),
   };
   const mode: ConnectionInputMode =
-    value.mode === "fields" || value.mode === "url" ? value.mode : "url";
+    value.mode === "fields" || value.mode === "url" ? value.mode : defaults.mode;
   return portableProfile(
     repairBuiltinSampleProfile({
       ...defaults,
@@ -741,6 +781,7 @@ export function withUniqueProfileIds(profiles: ConnectionDraft[]) {
 
 export function validateDraft(draft: ConnectionDraft): string | null {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
+  const settings = engineConnectionSettings(resolvedDraft.engine);
   if (!resolvedDraft.id.trim()) {
     return "connection id is required";
   }
@@ -759,14 +800,21 @@ export function validateDraft(draft: ConnectionDraft): string | null {
   }
   if (
     resolvedDraft.mode === "fields" &&
+    resolvedDraft.engine === "duckdb" &&
+    !resolvedDraft.database.trim()
+  ) {
+    return "DuckDB needs a file path or :memory:";
+  }
+  if (
+    resolvedDraft.mode === "fields" &&
     resolvedDraft.engine !== "sqlite" &&
     resolvedDraft.engine !== "duckdb"
   ) {
-    if (!resolvedDraft.host.trim()) {
-      return "host is required";
-    }
     if (resolvedDraft.engine === "pinecone") {
       return "Pinecone is selectable as a placeholder; a driver is not implemented yet";
+    }
+    if (settings.showHost && !resolvedDraft.host.trim()) {
+      return `${settings.hostLabel.toLowerCase()} is required`;
     }
   }
   if (

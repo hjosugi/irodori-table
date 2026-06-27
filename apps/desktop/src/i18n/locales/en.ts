@@ -51,6 +51,8 @@ export const en = {
   "settings.general.editorBackground.placeholder": "Image URL or data URL",
   "settings.general.editorBackground.choose": "Choose",
   "settings.general.editorBackground.opacity": "Background image opacity",
+  "settings.general.animations.title": "Animations",
+  "settings.general.animations.description": "Use short transitions for menus, panes, and controls. Reduced-motion system settings are still respected.",
   "settings.general.autoCommit.title": "Auto Commit",
   "settings.general.autoCommit.description": "Commit each statement automatically after it runs.",
   "settings.general.formatter.title": "SQL formatter",

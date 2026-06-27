@@ -75,20 +75,20 @@ describe("workbench store view placements", () => {
     ).toEqual(expected);
   });
 
-  it("sets and persists all view placements", async () => {
+  it("normalizes all view placements to the left sidebar", async () => {
     const store = await loadWorkbenchStore();
-    const next: WorkbenchViewPlacements = {
+    const requested: WorkbenchViewPlacements = {
       ...defaultWorkbenchViewPlacements,
       objectBrowser: "right",
       git: "left",
     };
 
-    store.getState().setViewPlacements(next);
+    store.getState().setViewPlacements(requested);
 
-    expect(store.getState().viewPlacements).toEqual(next);
+    expect(store.getState().viewPlacements).toEqual(defaultWorkbenchViewPlacements);
     expect(
       JSON.parse(window.localStorage.getItem(viewPlacementsStorageKey) ?? "{}"),
-    ).toEqual(next);
+    ).toEqual(defaultWorkbenchViewPlacements);
   });
 
   it("sanitizes stored view placements", async () => {
@@ -104,11 +104,7 @@ describe("workbench store view placements", () => {
 
     const store = await loadWorkbenchStore();
 
-    expect(store.getState().viewPlacements).toEqual({
-      ...defaultWorkbenchViewPlacements,
-      objectBrowser: "right",
-      queryHistory: "left",
-    });
+    expect(store.getState().viewPlacements).toEqual(defaultWorkbenchViewPlacements);
   });
 
   it("falls back to default placements for invalid stored JSON", async () => {

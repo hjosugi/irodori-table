@@ -88,7 +88,6 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.sidebar.toggle");
     runCommand("view.completion.toggle");
     runCommand("view.history.toggle");
-    runCommand("view.sidebar.swap");
     runCommand("view.zoomIn");
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
@@ -106,7 +105,6 @@ describe("createWorkbenchCommandHandler", () => {
       "sidebar",
       "completion",
       "history-toggle",
-      "sidebar-side",
       "zoom-in",
       "zoom-out",
       "zoom-reset",

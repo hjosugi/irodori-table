@@ -53,6 +53,8 @@ export const ja = {
   "settings.general.editorBackground.placeholder": "画像 URL または data URL",
   "settings.general.editorBackground.choose": "選択",
   "settings.general.editorBackground.opacity": "背景画像の濃さ",
+  "settings.general.animations.title": "アニメーション",
+  "settings.general.animations.description": "メニュー、ペイン、操作部品に短い動きを付けます。OS の視差効果を減らす設定は優先します。",
   "settings.general.autoCommit.title": "Auto Commit",
   "settings.general.autoCommit.description": "各ステートメントの実行後に自動でコミットします。",
   "settings.general.formatter.title": "SQL フォーマッタ",

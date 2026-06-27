@@ -102,6 +102,8 @@ export interface SettingsDialogProps {
   setEditorBackgroundImage: (value: string) => void;
   editorBackgroundOpacity: number;
   setEditorBackgroundOpacity: (value: number) => void;
+  animationsEnabled: boolean;
+  setAnimationsEnabled: (value: BooleanUpdater) => void;
   resultOffloadEnabled: boolean;
   setResultOffloadEnabled: (value: boolean) => void;
   resultMemoryBudget: number;
@@ -242,6 +244,8 @@ export function SettingsDialog({
   setEditorBackgroundImage,
   editorBackgroundOpacity,
   setEditorBackgroundOpacity,
+  animationsEnabled,
+  setAnimationsEnabled,
   resultOffloadEnabled,
   setResultOffloadEnabled,
   resultMemoryBudget,
@@ -547,6 +551,30 @@ export function SettingsDialog({
                     <output>
                       {Math.round(editorBackgroundOpacity * 100)}%
                     </output>
+                  </div>
+                </label>
+                <label className="settings-row">
+                  <span>
+                    <strong>{t("settings.general.animations.title")}</strong>
+                    <small>
+                      {t("settings.general.animations.description")}
+                    </small>
+                  </span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={animationsEnabled ? "active" : undefined}
+                      onClick={() => setAnimationsEnabled(true)}
+                    >
+                      {t("common.on")}
+                    </button>
+                    <button
+                      type="button"
+                      className={!animationsEnabled ? "active" : undefined}
+                      onClick={() => setAnimationsEnabled(false)}
+                    >
+                      {t("common.off")}
+                    </button>
                   </div>
                 </label>
                 <label className="settings-row">
