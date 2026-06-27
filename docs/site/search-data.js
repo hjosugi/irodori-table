@@ -87,10 +87,10 @@ window.IRODORI_SEARCH_INDEX = [
     title: "BI and movable sidebar",
     category: "Workbench",
     url: "docs.html#bi-sidebar",
-    summary: "Chart view plus movable sidebar panels for Tables, Completion, History, Lakehouse, BI, and Git.",
+    summary: "Chart view, result summary, field roles, and movable sidebar panels.",
     tags: ["bi", "chart", "sidebar", "workspace", "completion", "history", "git", "lakehouse"],
     body:
-      "BI uses the same model as result chart view. Bar line scatter, X, metric, aggregation, sort, limit. Tables Completion History Lakehouse BI Git sidebar views can move left or right like VS Code view containers.",
+      "BI uses the same model as result chart view and shows active result rows columns elapsed sample state plus dimension measure time field roles. Bar line scatter, X, metric, aggregation, sort, limit. Tables Completion History Lakehouse BI Git sidebar views can move left or right like VS Code view containers.",
   },
   {
     title: "Git graph workbench",

@@ -224,15 +224,18 @@ group by c.id, c.name;</code></pre>
               <p class="eyebrow">BI / Sidebar</p>
               <h2>結果からすぐ chart を作る</h2>
               <p>
-                BI は結果グリッドの Chart view と同じモデルを使います。
-                数値列を含む tabular result から bar / line / scatter を切り替え、
+                BI は結果グリッドの Chart view と同じモデルを使いながら、active result の
+                rows、columns、elapsed、sample 状態を sidebar 上で確認できます。
+                列は dimension / measure / time / field の role として整理されるため、
+                数値列や日付列を含む tabular result から bar / line / scatter を切り替え、
                 X、metric、aggregation、sort、limit をその場で調整できます。
               </p>
               <div class="callout">
                 <strong>Movable workbench views</strong>
                 <p>
                   Tables、Completion、History、Lakehouse、BI、Git は sidebar view として切り替えられます。
-                  sidebar header の移動ボタンで左/右に寄せられるため、VS Code の view container に近い作業配置を作れます。
+                  BI も他の view と同じように sidebar header の移動ボタンで左/右に寄せられるため、
+                  VS Code の view container に近い作業配置を作れます。
                 </p>
               </div>
             </section>
