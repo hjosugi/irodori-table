@@ -317,13 +317,12 @@ export function AppWorkbench() {
     const preventNativeContextMenu = (event: MouseEvent) => {
       event.preventDefault();
     };
-    window.addEventListener("contextmenu", preventNativeContextMenu, {
-      capture: true,
-    });
+    const options = { capture: true } as AddEventListenerOptions;
+    window.addEventListener("contextmenu", preventNativeContextMenu, options);
+    document.addEventListener("contextmenu", preventNativeContextMenu, options);
     return () => {
-      window.removeEventListener("contextmenu", preventNativeContextMenu, {
-        capture: true,
-      });
+      window.removeEventListener("contextmenu", preventNativeContextMenu, options);
+      document.removeEventListener("contextmenu", preventNativeContextMenu, options);
     };
   }, []);
   const gridRef = useRef<HTMLDivElement | null>(null);

@@ -280,7 +280,7 @@ export function WorkbenchShell({
       data-key-scope={activeKeyScope}
       onFocusCapture={onScopeFocus}
       onMouseDownCapture={onScopeMouseDown}
-      onContextMenu={(event) => event.preventDefault()}
+      onContextMenuCapture={(event) => event.preventDefault()}
     >
       <header className="titlebar">
         <div className="brand" title={appName} aria-label={appName}>
