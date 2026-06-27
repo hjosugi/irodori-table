@@ -13,6 +13,11 @@ Some reusable foundations are intentionally split out like standalone products:
   and is consumed from the `v0.2.23` Git tag for SQL dialect, parameter,
   metamodel, and schema-diff helpers.
 
+Application UX stays here unless it has a stable standalone contract. BI panels,
+ERD layout, query editor behavior, movable sidebars, connection UI, and result
+grid interactions belong to `apps/desktop`; `typeship` stays focused on reusable
+Rust/TypeScript API generation and drift checks.
+
 This root README is the starting point when you do not know which document to
 read first.
 
@@ -24,7 +29,9 @@ read first.
 3. For what databases work today, read
    [docs/data-source-support-status.md](docs/data-source-support-status.md).
 4. For product direction, read [ROADMAP.md](ROADMAP.md).
-5. For contribution rules, especially clean-room and licensing rules, read
+5. For implementation architecture, read
+   [docs/implementation-architecture.md](docs/implementation-architecture.md).
+6. For contribution rules, especially clean-room and licensing rules, read
    [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Prerequisites
@@ -194,6 +201,7 @@ make check
 
 | Need | Read |
 | --- | --- |
+| Implementation architecture and module boundaries | [docs/implementation-architecture.md](docs/implementation-architecture.md) |
 | Linux setup, WebKit crashes, blank Tauri window | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) |
 | Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
 | Connection syntax and engine quirks | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html) |

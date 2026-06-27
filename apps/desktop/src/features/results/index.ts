@@ -1,5 +1,6 @@
 export { ResultBody } from "./components/ResultBody";
 export { ResultsPane } from "./components/ResultsPane";
+export { BiPanel } from "./components/BiPanel";
 export {
   buildResultExport,
   resultExportFileName,
@@ -7,6 +8,13 @@ export {
   type ResultExportFormat,
 } from "./result-export";
 export { buildChartResultModel } from "./chart-result";
+export {
+  biColumnRoles,
+  buildBiResultSummary,
+  type BiColumnProfile,
+  type BiColumnRole,
+  type BiResultSummary,
+} from "./bi-result";
 export { buildGraphResultModel } from "./graph-result";
 export {
   calculateResultGridVirtualColumnWindow,

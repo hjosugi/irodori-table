@@ -38,6 +38,7 @@ import { ActionToast, type ActionNotice } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
 import { GitPanel, useGitStore } from "@/features/git";
 import {
+  BiPanel,
   ResultsPane,
   WindowedRows,
   buildChartResultModel,
@@ -156,6 +157,7 @@ import {
 } from "@/features/preferences";
 import { createTranslator, normalizeLocale } from "@/i18n";
 import {
+  activeWorkbenchView,
   createWorkbenchCommandHandler,
   InspectorContent,
   INSPECTOR_WIDTH_MAX,
@@ -453,6 +455,7 @@ export function AppWorkbench() {
   const setViewVisibility = useWorkbenchStore(
     (state) => state.setViewVisibility,
   );
+  const activeSidebarView = activeWorkbenchView(viewVisibility);
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
   const inspectorWidth = useWorkbenchStore((state) => state.inspectorWidth);
@@ -509,7 +512,7 @@ export function AppWorkbench() {
     );
   }
 
-  function toggleSidebarView(viewId: "completion" | "queryHistory" | "git") {
+  function toggleSidebarView(viewId: Exclude<WorkbenchViewId, "objectBrowser">) {
     setActiveSidebarView(activeSidebarView === viewId ? "objectBrowser" : viewId);
   }
 
@@ -1156,7 +1159,11 @@ export function AppWorkbench() {
     if (!chartCandidateAvailable || !activeResult || spillInfo) {
       return null;
     }
-    if (resultGridView.windowed && resultMode !== "chart") {
+    if (
+      resultGridView.windowed &&
+      resultMode !== "chart" &&
+      activeSidebarView !== "bi"
+    ) {
       return null;
     }
     const rows = resultGridView
@@ -1169,6 +1176,7 @@ export function AppWorkbench() {
     return model.defaultSelection ? model : null;
   }, [
     activeResult,
+    activeSidebarView,
     chartCandidateAvailable,
     resultColumns,
     resultGridView,
@@ -1947,6 +1955,7 @@ export function AppWorkbench() {
     toggleSidebar: () => setSidebarOpen((open) => !open),
     toggleCompletion: () => toggleSidebarView("completion"),
     toggleHistory: () => toggleSidebarView("queryHistory"),
+    toggleBi: () => toggleSidebarView("bi"),
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
     zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
@@ -4047,15 +4056,6 @@ export function AppWorkbench() {
     }
   }
 
-  const activeSidebarView = viewVisibility.completion
-    ? "completion"
-    : viewVisibility.queryHistory
-      ? "queryHistory"
-      : viewVisibility.lakehouse
-        ? "lakehouse"
-        : viewVisibility.git
-          ? "git"
-          : "objectBrowser";
   const completionOpen = activeSidebarView === "completion";
   const historyOpen = activeSidebarView === "queryHistory";
   const appStyle = useMemo(
@@ -4165,6 +4165,15 @@ export function AppWorkbench() {
                 activeMetadata={activeMetadata}
                 onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
                 onLoadSql={setQuery}
+                onClose={() => setActiveSidebarView("objectBrowser")}
+              />
+            }
+            biPanel={
+              <BiPanel
+                result={activeResult}
+                chartModel={chartResultModel}
+                chartAvailable={chartAvailable}
+                onOpenChartMode={() => setResultMode("chart")}
                 onClose={() => setActiveSidebarView("objectBrowser")}
               />
             }

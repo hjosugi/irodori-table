@@ -32,7 +32,7 @@ irodori-completion = { path = "../../../crates/irodori-completion" }
 # external/subscription models work without the heavy embedded `llama` build.
 irodori-generate = { path = "../../../crates/irodori-generate", features = ["http"] }
 irodori-knowledge.workspace = true
-sql-dialect-fmt-formatter = { path = "../../../../../snowflake-formatter/crates/sql-dialect-fmt-formatter" }
+sql-dialect-fmt-formatter = { path = "../../../../../sql-dialect-fmt/crates/sql-dialect-fmt-formatter" }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util"] }

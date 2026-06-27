@@ -15,6 +15,7 @@ export const workbenchViewIds = [
   "completion",
   "queryHistory",
   "lakehouse",
+  "bi",
   "git",
 ] as const;
 
@@ -29,6 +30,7 @@ export const defaultWorkbenchViewPlacements: WorkbenchViewPlacements = {
   completion: "left",
   queryHistory: "left",
   lakehouse: "right",
+  bi: "right",
   git: "left",
 };
 
@@ -37,5 +39,16 @@ export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
   completion: false,
   queryHistory: false,
   lakehouse: false,
+  bi: false,
   git: false,
 };
+
+export function activeWorkbenchView(
+  visibility: WorkbenchViewVisibility,
+): WorkbenchViewId {
+  return (
+    workbenchViewIds.find(
+      (viewId) => viewId !== "objectBrowser" && visibility[viewId],
+    ) ?? "objectBrowser"
+  );
+}

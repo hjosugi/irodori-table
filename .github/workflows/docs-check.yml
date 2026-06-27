@@ -26,16 +26,16 @@ jobs:
     name: Validate data-source docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # DB sample fixtures + catalog live in the sibling irodori-samples repo.
       - name: Check out sample fixtures
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: hjosugi/irodori-samples
           path: irodori-samples
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
 

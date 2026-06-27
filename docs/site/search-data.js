@@ -84,6 +84,15 @@ window.IRODORI_SEARCH_INDEX = [
       "Results use streaming, capped pages, truncated flag, row virtualization, disk offload, windowed paging, CSV, TSV, JSON, JSONL, SQL INSERT, Excel HTML, Markdown export.",
   },
   {
+    title: "BI and movable sidebar",
+    category: "Workbench",
+    url: "docs.html#bi-sidebar",
+    summary: "Chart view plus movable sidebar panels for Tables, Completion, History, Lakehouse, BI, and Git.",
+    tags: ["bi", "chart", "sidebar", "workspace", "completion", "history", "git", "lakehouse"],
+    body:
+      "BI uses the same model as result chart view. Bar line scatter, X, metric, aggregation, sort, limit. Tables Completion History Lakehouse BI Git sidebar views can move left or right like VS Code view containers.",
+  },
+  {
     title: "Git graph workbench",
     category: "Git",
     url: "docs.html#git",

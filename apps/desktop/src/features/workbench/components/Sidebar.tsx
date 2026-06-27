@@ -7,6 +7,7 @@ import type {
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
+  BarChart3,
   Columns3,
   Database,
   Folder,
@@ -44,6 +45,7 @@ type SidebarProps = {
   completionPanel: ReactNode;
   historyPanel: ReactNode;
   lakehousePanel: ReactNode;
+  biPanel: ReactNode;
   gitPanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
@@ -86,6 +88,7 @@ export function Sidebar({
   completionPanel,
   historyPanel,
   lakehousePanel,
+  biPanel,
   gitPanel,
   connections,
   profileById,
@@ -201,6 +204,23 @@ export function Sidebar({
     });
   }
 
+  function renderActivePanel() {
+    switch (activeView) {
+      case "completion":
+        return completionPanel;
+      case "queryHistory":
+        return historyPanel;
+      case "lakehouse":
+        return lakehousePanel;
+      case "bi":
+        return biPanel;
+      case "git":
+        return gitPanel;
+      case "objectBrowser":
+        return null;
+    }
+  }
+
   return (
     <>
       <nav className="connection-rail" aria-label="Connections">
@@ -295,6 +315,18 @@ export function Sidebar({
             >
               <Layers3 size={14} />
               <span>Lake</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={activeView === "bi" ? "active" : undefined}
+              aria-selected={activeView === "bi"}
+              title="BI"
+              aria-label="BI"
+              onClick={() => onSelectView("bi")}
+            >
+              <BarChart3 size={14} />
+              <span>BI</span>
             </button>
             <button
               type="button"
@@ -581,13 +613,7 @@ export function Sidebar({
           </section>
           ) : (
             <div className="sidebar-panel">
-              {activeView === "completion"
-                ? completionPanel
-                : activeView === "queryHistory"
-                  ? historyPanel
-                  : activeView === "lakehouse"
-                    ? lakehousePanel
-                    : gitPanel}
+              {renderActivePanel()}
             </div>
           )}
           <div

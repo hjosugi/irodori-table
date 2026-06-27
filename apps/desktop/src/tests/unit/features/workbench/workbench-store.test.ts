@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  activeWorkbenchView,
   defaultWorkbenchViewPlacements,
   defaultWorkbenchViewVisibility,
   type WorkbenchViewPlacements,
@@ -81,6 +82,7 @@ describe("workbench store view placements", () => {
     const requested: WorkbenchViewPlacements = {
       ...defaultWorkbenchViewPlacements,
       objectBrowser: "right",
+      bi: "left",
       git: "left",
     };
 
@@ -124,12 +126,6 @@ describe("workbench store view placements", () => {
   it("loads default view visibility", async () => {
     const store = await loadWorkbenchStore();
 
-    expect(store.getState().viewVisibility).toEqual({
-      objectBrowser: true,
-      completion: false,
-      queryHistory: false,
-      git: false,
-    });
     expect(store.getState().viewVisibility).toEqual(defaultWorkbenchViewVisibility);
   });
 
@@ -137,10 +133,10 @@ describe("workbench store view placements", () => {
     const store = await loadWorkbenchStore();
     const expected: WorkbenchViewVisibility = {
       ...defaultWorkbenchViewVisibility,
-      queryHistory: true,
+      bi: true,
     };
 
-    store.getState().setViewOpen("queryHistory", true);
+    store.getState().setViewOpen("bi", true);
 
     expect(store.getState().viewVisibility).toEqual(expected);
     expect(
@@ -164,6 +160,18 @@ describe("workbench store view placements", () => {
       ...defaultWorkbenchViewVisibility,
       completion: false,
     });
+  });
+
+  it("derives the active visible workbench view from the shared view list", () => {
+    expect(activeWorkbenchView(defaultWorkbenchViewVisibility)).toBe(
+      "objectBrowser",
+    );
+    expect(
+      activeWorkbenchView({
+        ...defaultWorkbenchViewVisibility,
+        bi: true,
+      }),
+    ).toBe("bi");
   });
 
   it("defaults the sidebar to a compact working width", async () => {

@@ -91,6 +91,12 @@ const shellCommands: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "view.bi.toggle",
+    title: "Toggle BI Panel",
+    category: "View",
+    scope: "global",
+  },
+  {
     id: "view.zoomIn",
     title: "Zoom In",
     category: "View",
@@ -196,6 +202,7 @@ export const workspaceMenuSections: AppMenuSection[] = [
       { commandId: "view.sidebar.toggle" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
+      { commandId: "view.bi.toggle" },
       { commandId: "view.zoomIn" },
       { commandId: "view.zoomOut" },
       { commandId: "view.zoomReset" },
@@ -248,6 +255,7 @@ export const menuBarSections: AppMenuSection[] = [
       { commandId: "view.sidebar.toggle" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
+      { commandId: "view.bi.toggle" },
       { commandId: "history.open" },
       { commandId: "git.open" },
       { commandId: "view.zoomIn" },

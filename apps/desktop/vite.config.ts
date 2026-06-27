@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -9,11 +10,10 @@ const reactCompilerEnabled = process.env.IRODORI_REACT_COMPILER !== "0";
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [
-    react({
-      babel: {
-        plugins: reactCompilerEnabled ? ["babel-plugin-react-compiler"] : [],
-      },
-    }),
+    react(),
+    ...(reactCompilerEnabled
+      ? [babel({ presets: [reactCompilerPreset()] })]
+      : []),
   ],
 
   resolve: {

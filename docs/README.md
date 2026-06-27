@@ -7,6 +7,11 @@ mdBook:
 - **Markdown source:** <https://github.com/hjosugi/irodori-docs> (under `src/`)
 - **PDF:** open the book and use the print icon → *Save as PDF*
 
+## Still local in this repo
+
+- [implementation-architecture.md](implementation-architecture.md) — current
+  codebase map, module boundaries, Tauri/API flow, and implementation diagrams.
+
 ## Still generated in this repo
 
 These reference pages are produced from this repo's tooling and mirrored into

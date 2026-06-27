@@ -1,4 +1,3 @@
-export { QueryHistoryDialog } from "./QueryHistoryDialog";
 export { QueryHistorySidebar } from "./QueryHistorySidebar";
 export {
   createQueryHistoryResultSnapshot,

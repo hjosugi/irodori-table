@@ -29,6 +29,7 @@ export {
   type SidebarSide,
 } from "./store/workbench-store";
 export {
+  activeWorkbenchView,
   defaultWorkbenchViewPlacements,
   defaultWorkbenchViewVisibility,
   workbenchViewIds,
