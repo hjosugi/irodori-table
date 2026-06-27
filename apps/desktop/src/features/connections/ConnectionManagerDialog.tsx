@@ -32,9 +32,9 @@ type ConnectionProfileGroup = {
 
 const environmentOrder = ["prod", "stg", "dev", "local", "other"] as const;
 const environmentLabels: Record<(typeof environmentOrder)[number], string> = {
-  prod: "Production",
-  stg: "Staging",
-  dev: "Development",
+  prod: "PRD / Production",
+  stg: "STG / Staging",
+  dev: "DEV / Development",
   local: "Local",
   other: "Other",
 };
