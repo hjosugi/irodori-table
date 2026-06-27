@@ -53,6 +53,7 @@ export function ResultBody({
   formatCount,
   editMode,
   running,
+  hasResult,
   filtersActive,
   unfilteredRowCount,
   totalRows,
@@ -104,6 +105,7 @@ export function ResultBody({
   formatCount: (value: bigint | number) => string;
   editMode: boolean;
   running: boolean;
+  hasResult: boolean;
   filtersActive: boolean;
   unfilteredRowCount: number;
   totalRows: number;
@@ -283,7 +285,7 @@ export function ResultBody({
             Running query...
           </div>
         ) : null}
-        {!running && totalRows === 0 ? (
+        {!running && hasResult && totalRows === 0 ? (
           <div
             className="grid-state"
             role="row"

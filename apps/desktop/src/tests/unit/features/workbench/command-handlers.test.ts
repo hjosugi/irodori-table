@@ -88,6 +88,7 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.zoomIn");
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
+    runCommand("tab.new");
     runCommand("developer.openDevtools");
     runCommand("migration.studio");
     runCommand("query.cancel");
@@ -102,6 +103,7 @@ describe("createWorkbenchCommandHandler", () => {
       "zoom-in",
       "zoom-out",
       "zoom-reset",
+      "tab-new",
       "devtools",
       "migration",
       "query-cancel",

@@ -33,6 +33,7 @@ const snippetsStorageKey = "irodori.editor.snippets.v1";
 const editorBackgroundImageStorageKey = "irodori.editor.backgroundImage.v1";
 const editorBackgroundOpacityStorageKey =
   "irodori.editor.backgroundOpacity.v1";
+const animationsEnabledStorageKey = "irodori.ui.animationsEnabled.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const localeStorageKey = "irodori.locale.v1";
 const uiZoomStorageKey = "irodori.ui.zoom.v1";
@@ -59,6 +60,7 @@ type PreferencesState = {
   sqlSnippets: SqlSnippetDefinition[];
   editorBackgroundImage: string;
   editorBackgroundOpacity: number;
+  animationsEnabled: boolean;
   autoCommit: boolean;
   uiZoom: number;
   setLocale: (value: ValueUpdater<Locale>) => void;
@@ -73,6 +75,7 @@ type PreferencesState = {
   setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
   setEditorBackgroundImage: (value: ValueUpdater<string>) => void;
   setEditorBackgroundOpacity: (value: ValueUpdater<number>) => void;
+  setAnimationsEnabled: (value: ValueUpdater<boolean>) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
   setUiZoom: (value: ValueUpdater<number>) => void;
 };
@@ -239,6 +242,10 @@ function loadAutoCommit() {
   return readStorage(autoCommitStorageKey) !== "false";
 }
 
+function loadAnimationsEnabled() {
+  return readStorage(animationsEnabledStorageKey) !== "false";
+}
+
 function normalizeEditorBackgroundImage(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -303,6 +310,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   sqlSnippets: loadSqlSnippets(),
   editorBackgroundImage: loadEditorBackgroundImage(),
   editorBackgroundOpacity: loadEditorBackgroundOpacity(),
+  animationsEnabled: loadAnimationsEnabled(),
   autoCommit: loadAutoCommit(),
   uiZoom: loadUiZoom(),
   setLocale: (value) =>
@@ -375,6 +383,10 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
         resolveValue(state.editorBackgroundOpacity, value),
       ),
     })),
+  setAnimationsEnabled: (value) =>
+    set((state) => ({
+      animationsEnabled: resolveValue(state.animationsEnabled, value),
+    })),
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
   setUiZoom: (value) =>
@@ -418,6 +430,7 @@ usePreferencesStore.subscribe((state) => {
     editorBackgroundOpacityStorageKey,
     String(state.editorBackgroundOpacity),
   );
+  writeStorage(animationsEnabledStorageKey, String(state.animationsEnabled));
   writeStorage(autoCommitStorageKey, String(state.autoCommit));
   writeStorage(uiZoomStorageKey, String(state.uiZoom));
 });

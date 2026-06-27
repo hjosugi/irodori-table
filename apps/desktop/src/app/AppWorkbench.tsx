@@ -33,7 +33,6 @@ import {
   loadSavedQuery,
   menuBarSections,
   resultCopyDefaultKeymap,
-  resultRows,
   savedQueryStorageKey,
   tabs,
   workspaceMenuSections,
@@ -299,6 +298,16 @@ function formatUiZoom(zoom: number) {
 function isQueryCancelledMessage(message: string) {
   const normalized = message.trim().toLowerCase();
   return normalized === "cancelled" || normalized.includes("query cancelled");
+}
+
+function sqlDownloadFileName(label: string) {
+  const base = label
+    .replace(/\.sql$/i, "")
+    .trim()
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return `${base || "query"}.sql`;
 }
 
 const MigrationStudioDialog = lazy(() =>
@@ -1006,12 +1015,7 @@ export function AppWorkbench() {
     setSelectedRange(null);
   }, [activeResultIndexView, result]);
 
-  const resultColumns = activeResult?.columns ?? [
-    "id",
-    "name",
-    "lifetime_value",
-    "last_order_at",
-  ];
+  const resultColumns = activeResult?.columns ?? [];
   const graphResultModel = useMemo(() => {
     if (
       (editorEngine !== "neo4j" && editorEngine !== "memgraph") ||
@@ -1094,7 +1098,7 @@ export function AppWorkbench() {
     () =>
       buildResultGridViewModel(
         {
-          rows: activeResult?.rows ?? resultRows,
+          rows: activeResult?.rows ?? [],
           cellEdits: spilled ? EMPTY_CELL_EDITS : cellEdits,
           newRows: spilled ? EMPTY_NEW_ROWS : newRows,
           deletedRows: spilled ? EMPTY_DELETED_ROWS : deletedRows,
@@ -1683,6 +1687,13 @@ export function AppWorkbench() {
   }
 
   async function copyVisibleResult() {
+    const errorResult = activeResult ? null : errorResultSetForExport();
+    if (errorResult) {
+      await copyGridText(formatResultGridTsv(errorResult.columns, [
+        { cells: errorResult.rows[0]?.map((cell) => String(cell ?? "")) ?? [] },
+      ]));
+      return;
+    }
     if (editingCell || resultColumns.length === 0) {
       return;
     }
@@ -1958,13 +1969,14 @@ export function AppWorkbench() {
     toggleSidebar: () => setSidebarOpen((open) => !open),
     toggleCompletion: () => toggleSidebarView("completion"),
     toggleHistory: () => toggleSidebarView("queryHistory"),
-    toggleSidebarSide: () =>
-      setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left"),
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
     zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
     newSqlTab: reopenSqlTab,
     closeActiveTab: closeActiveSqlTab,
+    saveQuery: saveCurrentQuery,
+    saveQueryAs: saveCurrentQueryAsFile,
+    exitApp: exitApplication,
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
     runCurrentQuery,
@@ -2688,7 +2700,7 @@ export function AppWorkbench() {
     ? `${toCount(activeResult.rowCount)} rows${activeResult.truncated ? " capped" : ""} in ${toCount(
         activeResult.elapsedMs,
       )} ms`
-    : "sample preview";
+    : "no result";
   const displayedResultSummary =
     activeResult && filtersActive
       ? `${toCount(totalRows)} / ${toCount(unfilteredRowCount)} shown · ${resultSummary}`
@@ -3059,14 +3071,16 @@ export function AppWorkbench() {
   }
 
   function errorResultSetForExport(): QueryResultSet | null {
-    if (!queryError) {
+    const message = queryError ?? commitError;
+    if (!message) {
       return null;
     }
+    const kind = queryError ? "query" : "edit";
     return {
       statementIndex: 0,
       statement: lastRunSql || "query",
-      columns: ["error"],
-      rows: [[queryError]],
+      columns: ["type", "message", "sql"],
+      rows: [[kind, message, lastRunSql || query]],
       rowCount: 1n,
       elapsedMs: 0n,
       truncated: false,
@@ -3422,6 +3436,33 @@ export function AppWorkbench() {
       showActionNotice("success", "Query saved", activeTabLabel ?? "scratch");
     } catch (error) {
       showActionNotice("error", "Query save failed", errorMessage(error));
+    }
+  }
+
+  function saveCurrentQueryAsFile() {
+    const fileName = sqlDownloadFileName(activeTabLabel ?? "query.sql");
+    downloadBlob(
+      new Blob([query], { type: "application/sql;charset=utf-8" }),
+      fileName,
+    );
+    showActionNotice("success", "SQL export started", fileName);
+  }
+
+  async function exitApplication() {
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      showActionNotice(
+        "info",
+        "Exit unavailable",
+        "Close the browser preview tab or open the Tauri desktop window.",
+      );
+      return;
+    }
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().close();
+    } catch (error) {
+      showActionNotice("error", "Exit failed", errorMessage(error));
     }
   }
 
@@ -4175,9 +4216,6 @@ export function AppWorkbench() {
             onSetObjectActionMenu={setObjectActionMenu}
             onSelectView={setActiveSidebarView}
             onCloseSidebar={() => setSidebarOpen(false)}
-            onToggleSidebarSide={() =>
-              setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
-            }
             onBeginResize={(event) => beginPanelResize("sidebar", event)}
             onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
           />
@@ -4294,6 +4332,7 @@ export function AppWorkbench() {
             webGlAvailable={webGlAvailable}
             resultSets={resultSets}
             activeResult={activeResult}
+            hasResult={Boolean(activeResult)}
             activeResultIndex={activeResultIndexView}
             queryError={queryError}
             commitError={commitError}

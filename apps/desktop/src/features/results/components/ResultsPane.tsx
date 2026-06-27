@@ -62,6 +62,7 @@ type ResultsPaneProps = {
   webGlAvailable: boolean;
   resultSets: QueryResultSet[];
   activeResult: QueryResultSet | null;
+  hasResult: boolean;
   activeResultIndex: number;
   queryError: string | null;
   commitError: string | null;
@@ -167,6 +168,7 @@ export function ResultsPane({
   webGlAvailable,
   resultSets,
   activeResult,
+  hasResult,
   activeResultIndex,
   queryError,
   commitError,
@@ -583,6 +585,7 @@ export function ResultsPane({
         formatCount={formatCount}
         editMode={editMode}
         running={running}
+        hasResult={hasResult}
         filtersActive={filtersActive}
         unfilteredRowCount={unfilteredRowCount}
         totalRows={totalRows}

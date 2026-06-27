@@ -68,6 +68,18 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "file.save",
+    title: "Save",
+    category: "File",
+    scope: "editor",
+  },
+  {
+    id: "file.saveAs",
+    title: "Save As...",
+    category: "File",
+    scope: "editor",
+  },
+  {
     id: "query.run",
     title: "Run selection or current statement",
     category: "Query",
@@ -200,8 +212,11 @@ export const commandCatalog: CommandMeta[] = [
 export const defaultKeymap: Keymap = {
   "palette.open": "Mod+Shift+P",
   "settings.open": "Mod+,",
+  "app.exit": "Mod+Q",
   "tab.new": "Mod+T",
   "tab.close": "Mod+W",
+  "file.save": "Mod+S",
+  "file.saveAs": "Mod+Shift+S",
   "view.zoomIn": "Mod+=",
   "view.zoomOut": "Mod+-",
   "view.zoomReset": "Mod+0",

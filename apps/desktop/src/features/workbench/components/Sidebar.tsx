@@ -14,8 +14,6 @@ import {
   KeyRound,
   ListPlus,
   MoreHorizontal,
-  PanelLeftOpen,
-  PanelRightOpen,
   Plus,
   RefreshCw,
   Share2,
@@ -40,7 +38,6 @@ type SidebarViewId = "objectBrowser" | "completion" | "queryHistory";
 
 type SidebarProps = {
   sidebarOpen: boolean;
-  sidebarSide: "left" | "right";
   activeView: SidebarViewId;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
@@ -72,7 +69,6 @@ type SidebarProps = {
   onSetObjectActionMenu: (value: string | null | ((current: string | null) => string | null)) => void;
   onSelectView: (viewId: SidebarViewId) => void;
   onCloseSidebar: () => void;
-  onToggleSidebarSide: () => void;
   onBeginResize: (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => void;
@@ -81,7 +77,6 @@ type SidebarProps = {
 
 export function Sidebar({
   sidebarOpen,
-  sidebarSide,
   activeView,
   completionPanel,
   historyPanel,
@@ -110,7 +105,6 @@ export function Sidebar({
   onSetObjectActionMenu,
   onSelectView,
   onCloseSidebar,
-  onToggleSidebarSide,
   onBeginResize,
   onResizeKey,
 }: SidebarProps) {
@@ -255,19 +249,6 @@ export function Sidebar({
             >
               <History size={14} />
               <span>History</span>
-            </button>
-            <button
-              className="sidebar-side-button"
-              type="button"
-              title={sidebarSide === "left" ? "Move sidebar right" : "Move sidebar left"}
-              aria-label={sidebarSide === "left" ? "Move sidebar right" : "Move sidebar left"}
-              onClick={onToggleSidebarSide}
-            >
-              {sidebarSide === "left" ? (
-                <PanelRightOpen size={14} />
-              ) : (
-                <PanelLeftOpen size={14} />
-              )}
             </button>
           </div>
           {activeView === "objectBrowser" ? (

@@ -16,12 +16,14 @@ type WorkbenchCommandHandlerDeps = {
   toggleSidebar: () => void;
   toggleCompletion: () => void;
   toggleHistory: () => void;
-  toggleSidebarSide: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   zoomReset: () => void;
   newSqlTab: () => void;
   closeActiveTab: () => void;
+  saveQuery: () => void;
+  saveQueryAs: () => void;
+  exitApp: () => Promise<void>;
   buildSchemaIndex: () => void;
   runQuery: () => Promise<void>;
   runCurrentQuery: () => Promise<void>;
@@ -65,12 +67,14 @@ export function createWorkbenchCommandHandler({
   toggleSidebar,
   toggleCompletion,
   toggleHistory,
-  toggleSidebarSide,
   zoomIn,
   zoomOut,
   zoomReset,
   newSqlTab,
   closeActiveTab,
+  saveQuery,
+  saveQueryAs,
+  exitApp,
   buildSchemaIndex,
   runQuery,
   runCurrentQuery,
@@ -120,9 +124,6 @@ export function createWorkbenchCommandHandler({
       case "view.history.toggle":
         toggleHistory();
         break;
-      case "view.sidebar.swap":
-        toggleSidebarSide();
-        break;
       case "view.zoomIn":
         zoomIn();
         break;
@@ -159,6 +160,15 @@ export function createWorkbenchCommandHandler({
         break;
       case "tab.close":
         closeActiveTab();
+        break;
+      case "file.save":
+        saveQuery();
+        break;
+      case "file.saveAs":
+        saveQueryAs();
+        break;
+      case "app.exit":
+        void exitApp();
         break;
       case "schema.indexBuild":
         buildSchemaIndex();

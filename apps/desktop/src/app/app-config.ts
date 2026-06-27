@@ -61,6 +61,12 @@ const shellCommands: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "app.exit",
+    title: "Exit",
+    category: "File",
+    scope: "global",
+  },
+  {
     id: "theme.toggle",
     title: "Toggle Color Theme",
     category: "Preferences",
@@ -81,12 +87,6 @@ const shellCommands: CommandMeta[] = [
   {
     id: "view.history.toggle",
     title: "Toggle History Panel",
-    category: "View",
-    scope: "global",
-  },
-  {
-    id: "view.sidebar.swap",
-    title: "Move Sidebar Left/Right",
     category: "View",
     scope: "global",
   },
@@ -180,7 +180,6 @@ export const workspaceMenuSections: AppMenuSection[] = [
       { commandId: "view.sidebar.toggle" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
-      { commandId: "view.sidebar.swap" },
       { commandId: "view.zoomIn" },
       { commandId: "view.zoomOut" },
       { commandId: "view.zoomReset" },
@@ -207,18 +206,34 @@ export const menuBarSections: AppMenuSection[] = [
   {
     label: "File",
     items: [
+      { commandId: "tab.new" },
+      { commandId: "tab.close" },
+      { commandId: "file.save" },
+      { commandId: "file.saveAs" },
       { commandId: "connection.manager" },
       { commandId: "settings.open" },
+      { commandId: "app.exit" },
+    ],
+  },
+  {
+    label: "Edit",
+    items: [
+      { commandId: "editor.quickFix" },
+      { commandId: "editor.cleanup" },
+      { commandId: "editor.format" },
+      { commandId: "editor.comment.toggle" },
     ],
   },
   {
     label: "View",
     items: [
+      { commandId: "palette.open" },
       { commandId: "editor.quickDefinition" },
       { commandId: "view.sidebar.toggle" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
-      { commandId: "view.sidebar.swap" },
+      { commandId: "history.open" },
+      { commandId: "git.open" },
       { commandId: "view.zoomIn" },
       { commandId: "view.zoomOut" },
       { commandId: "view.zoomReset" },
@@ -237,12 +252,11 @@ export const menuBarSections: AppMenuSection[] = [
   {
     label: "Tools",
     items: [
-      { commandId: "palette.open" },
       { commandId: "migration.studio" },
+      { commandId: "schema.indexBuild" },
       { commandId: "editor.cleanup" },
       { commandId: "settings.keymap" },
       { commandId: "theme.toggle" },
-      { commandId: "git.open" },
     ],
   },
   {

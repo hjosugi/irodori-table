@@ -184,8 +184,6 @@ export function WorkbenchShell({
         return completionOpen ? "Hide Completion" : "Show Completion";
       case "view.history.toggle":
         return historyOpen ? "Hide History" : "Show History";
-      case "view.sidebar.swap":
-        return sidebarSide === "left" ? "Move Sidebar Right" : "Move Sidebar Left";
       case "theme.toggle":
         return themeKind === "dark" ? "Light Theme" : "Dark Theme";
       case "about.open":
