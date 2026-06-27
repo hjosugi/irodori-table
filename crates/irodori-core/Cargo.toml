@@ -11,8 +11,8 @@ path = "src/lib.rs"
 
 [dependencies]
 irodori-connection = { path = "../irodori-connection" }
-irodori-error = { path = "../irodori-error" }
-irodori-jobs = { path = "../irodori-jobs" }
+irodori-error = { workspace = true }
+irodori-jobs = { workspace = true }
 irodori-security = { path = "../irodori-security" }
 serde = { version = "1", features = ["derive"] }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }

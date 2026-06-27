@@ -10,7 +10,6 @@ members = [
     "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
-    "crates/irodori-knowledge",
 ]
 default-members = [
     "crates/irodori-connection",
@@ -22,7 +21,6 @@ default-members = [
     "crates/irodori-extension",
     "crates/irodori-io",
     "crates/irodori-server",
-    "crates/irodori-knowledge",
 ]
 resolver = "2"
 
@@ -34,3 +32,6 @@ authors = ["Irodori Table contributors"]
 
 [workspace.dependencies]
 irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", tag = "v0.2.23" }
+irodori-error = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
+irodori-jobs = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
+irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
