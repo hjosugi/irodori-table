@@ -97,6 +97,7 @@ const DIAGRAM_PADDING = 24;
 const EDGE_LABEL_WIDTH = 84;
 const EDGE_LABEL_HEIGHT = 17;
 const EDGE_LABEL_GAP = 10;
+const EDGE_LABEL_COLLISION_GAP = 4;
 
 function tableId(schema: string, name: string) {
   return `${schema}.${name}`;
@@ -308,14 +309,14 @@ export function layoutErdModel(model: ErdModel): ErdLayout {
   }
 
   const tableLayout = new Map(layoutTables.map((table) => [table.table.id, table]));
-  const edges = model.edges.flatMap((edge, index): ErdLayoutEdge[] => {
+  const edges = avoidEdgeLabelOverlaps(model.edges.flatMap((edge, index): ErdLayoutEdge[] => {
     const source = tableLayout.get(edge.sourceId);
     const target = tableLayout.get(edge.targetId);
     if (!source || !target) {
       return [];
     }
     return [layoutEdge(edge, source, target, index)];
-  });
+  }));
   for (const edge of edges) {
     width = Math.max(
       width,
@@ -331,6 +332,63 @@ export function layoutErdModel(model: ErdModel): ErdLayout {
     tables: layoutTables,
     edges,
   };
+}
+
+function avoidEdgeLabelOverlaps(edges: ErdLayoutEdge[]): ErdLayoutEdge[] {
+  const resolved = [...edges].sort(
+    (a, b) => a.labelY - b.labelY || a.labelX - b.labelX || a.id.localeCompare(b.id),
+  );
+
+  for (let pass = 0; pass < resolved.length * resolved.length; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < resolved.length; i += 1) {
+      for (let j = i + 1; j < resolved.length; j += 1) {
+        if (!labelRectsOverlap(resolved[i], resolved[j], EDGE_LABEL_COLLISION_GAP)) {
+          continue;
+        }
+        resolved[j] = {
+          ...resolved[j],
+          labelY: Math.max(
+            resolved[j].labelY + 1,
+            labelRectBottom(resolved[i]) + EDGE_LABEL_COLLISION_GAP + 12,
+          ),
+        };
+        moved = true;
+      }
+    }
+    if (!moved) {
+      break;
+    }
+    resolved.sort(
+      (a, b) => a.labelY - b.labelY || a.labelX - b.labelX || a.id.localeCompare(b.id),
+    );
+  }
+
+  const byId = new Map(resolved.map((edge) => [edge.id, edge]));
+  return edges.map((edge) => byId.get(edge.id) ?? edge);
+}
+
+function labelRectBottom(
+  edge: Pick<ErdLayoutEdge, "labelY" | "labelHeight">,
+) {
+  return edge.labelY - 12 + edge.labelHeight;
+}
+
+function labelRectsOverlap(
+  a: Pick<ErdLayoutEdge, "labelX" | "labelY" | "labelWidth" | "labelHeight">,
+  b: Pick<ErdLayoutEdge, "labelX" | "labelY" | "labelWidth" | "labelHeight">,
+  gap: number,
+) {
+  const ax = a.labelX - a.labelWidth / 2 - gap;
+  const ay = a.labelY - 12 - gap;
+  const bx = b.labelX - b.labelWidth / 2 - gap;
+  const by = b.labelY - 12 - gap;
+  return (
+    ax < bx + b.labelWidth + gap * 2 &&
+    ax + a.labelWidth + gap * 2 > bx &&
+    ay < by + b.labelHeight + gap * 2 &&
+    ay + a.labelHeight + gap * 2 > by
+  );
 }
 
 function tableHeight(table: ErdTable) {
