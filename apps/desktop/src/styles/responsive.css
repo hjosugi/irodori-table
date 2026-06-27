@@ -149,7 +149,7 @@
     overflow-x: auto;
   }
 
-  .statusbar span:first-child {
+  .statusbar-connection {
     display: none;
   }
 

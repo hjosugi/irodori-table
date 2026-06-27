@@ -2,6 +2,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
 } from "react";
 import { useEffect, useState } from "react";
 import {
@@ -9,11 +10,13 @@ import {
   Columns3,
   Database,
   Folder,
+  History,
   KeyRound,
   MoreHorizontal,
+  PanelLeftOpen,
+  PanelRightOpen,
   Plus,
   RefreshCw,
-  Settings,
   Share2,
   Table2,
   TerminalSquare,
@@ -32,9 +35,14 @@ import {
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
+type SidebarViewId = "objectBrowser" | "completion" | "queryHistory";
 
 type SidebarProps = {
   sidebarOpen: boolean;
+  sidebarSide: "left" | "right";
+  activeView: SidebarViewId;
+  completionPanel: ReactNode;
+  historyPanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
   activeConnectionId: string;
@@ -61,7 +69,9 @@ type SidebarProps = {
   onOpenSnapshotObject: (object: SnapshotObject) => void;
   onShowObjectInDiagram: (object: DbObjectMetadata) => void;
   onSetObjectActionMenu: (value: string | null | ((current: string | null) => string | null)) => void;
+  onSelectView: (viewId: SidebarViewId) => void;
   onCloseSidebar: () => void;
+  onToggleSidebarSide: () => void;
   onBeginResize: (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => void;
@@ -70,6 +80,10 @@ type SidebarProps = {
 
 export function Sidebar({
   sidebarOpen,
+  sidebarSide,
+  activeView,
+  completionPanel,
+  historyPanel,
   connections,
   profileById,
   activeConnectionId,
@@ -93,7 +107,9 @@ export function Sidebar({
   onOpenSnapshotObject,
   onShowObjectInDiagram,
   onSetObjectActionMenu,
+  onSelectView,
   onCloseSidebar,
+  onToggleSidebarSide,
   onBeginResize,
   onResizeKey,
 }: SidebarProps) {
@@ -175,18 +191,61 @@ export function Sidebar({
             );
           })}
         </div>
-        <button
-          className="rail-action"
-          type="button"
-          title="Connection manager"
-          aria-label="Connection manager"
-          onClick={onOpenConnectionManager}
-        >
-          <Settings size={16} />
-        </button>
       </nav>
       {sidebarOpen ? (
         <aside className="sidebar">
+          <div className="sidebar-view-switcher" role="tablist" aria-label="Sidebar views">
+            <button
+              type="button"
+              role="tab"
+              className={activeView === "objectBrowser" ? "active" : undefined}
+              aria-selected={activeView === "objectBrowser"}
+              title="Tables"
+              aria-label="Tables"
+              onClick={() => onSelectView("objectBrowser")}
+            >
+              <Table2 size={14} />
+              <span>Tables</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={activeView === "completion" ? "active" : undefined}
+              aria-selected={activeView === "completion"}
+              title="Completion"
+              aria-label="Completion"
+              onClick={() => onSelectView("completion")}
+            >
+              <Columns3 size={14} />
+              <span>Completion</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={activeView === "queryHistory" ? "active" : undefined}
+              aria-selected={activeView === "queryHistory"}
+              title="History"
+              aria-label="History"
+              onClick={() => onSelectView("queryHistory")}
+            >
+              <History size={14} />
+              <span>History</span>
+            </button>
+            <button
+              className="sidebar-side-button"
+              type="button"
+              title={sidebarSide === "left" ? "Move sidebar right" : "Move sidebar left"}
+              aria-label={sidebarSide === "left" ? "Move sidebar right" : "Move sidebar left"}
+              onClick={onToggleSidebarSide}
+            >
+              {sidebarSide === "left" ? (
+                <PanelRightOpen size={14} />
+              ) : (
+                <PanelLeftOpen size={14} />
+              )}
+            </button>
+          </div>
+          {activeView === "objectBrowser" ? (
           <section className="sidebar-section browser-section">
             <div className="section-heading">
               <span>
@@ -453,6 +512,11 @@ export function Sidebar({
               )}
             </div>
           </section>
+          ) : (
+            <div className="sidebar-panel">
+              {activeView === "completion" ? completionPanel : historyPanel}
+            </div>
+          )}
           <div
             className="panel-resizer sidebar-resizer"
             role="separator"

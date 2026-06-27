@@ -1309,10 +1309,46 @@
 }
 
 .statusbar {
-  justify-content: space-between;
-  padding: 0 10px;
+  gap: 10px;
+  justify-content: stretch;
+  padding: 0 8px;
   border-top: 1px solid var(--border);
   border-bottom: 0;
   color: var(--muted);
   font-size: var(--font-ui-sm);
+}
+
+.statusbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.statusbar-left {
+  flex: 0 1 auto;
+}
+
+.statusbar-right {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.statusbar-button {
+  height: calc(var(--status-height) - 2px);
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.statusbar-button:hover,
+.statusbar-button:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+  outline: none;
 }

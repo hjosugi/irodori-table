@@ -1,0 +1,4 @@
+name,type,host,port,database,url,user,password
+"Analytics Warehouse",postgresql,pg.example.test,5432,analytics,jdbc:postgresql://pg.example.test:5432/analytics,analyst,should-not-import
+"Operations MySQL",mysql,mysql.example.test,3306,ops,jdbc:mysql://mysql.example.test:3306/ops,ops_user,should-not-import
+"Finance SQL Server",sqlserver,mssql.example.test,1433,finance,jdbc:sqlserver://mssql.example.test:1433;databaseName=finance;user=sa;password=should-not-import,sa,should-not-import

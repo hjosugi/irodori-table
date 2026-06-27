@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<data>
+  <value type="object" struct-name="db.mgmt.Connection" id="local-mysql-workbench">
+    <value type="string" key="name">Local MySQL Workbench</value>
+    <value type="string" key="driver">MysqlNative</value>
+    <value type="string" key="hostIdentifier">root@127.0.0.1:3306</value>
+    <value type="dict" key="parameterValues">
+      <value type="string" key="hostName">127.0.0.1</value>
+      <value type="int" key="port">3306</value>
+      <value type="string" key="userName">root</value>
+      <value type="string" key="schema">sakila</value>
+      <value type="string" key="password">should-not-import</value>
+    </value>
+  </value>
+  <value type="object" struct-name="db.mgmt.Connection" id="team-mysql-workbench">
+    <value type="string" key="name">Team MySQL</value>
+    <value type="string" key="driver">MysqlNative</value>
+    <value type="dict" key="parameterValues">
+      <value type="string" key="hostName">team-mysql.example.test</value>
+      <value type="int" key="port">3306</value>
+      <value type="string" key="userName">team_app</value>
+      <value type="string" key="schema">team_app</value>
+    </value>
+  </value>
+</data>

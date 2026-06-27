@@ -1,0 +1,22 @@
+{
+  "sqltools.connections": [
+    {
+      "name": "SQLTools Postgres",
+      "driver": "PostgreSQL",
+      "server": "sqltools-pg.example.test",
+      "port": 5432,
+      "database": "app",
+      "username": "app_user",
+      "password": "should-not-import"
+    },
+    {
+      "name": "SQLTools MSSQL",
+      "driver": "MSSQL",
+      "server": "sqltools-mssql.example.test",
+      "port": 1433,
+      "database": "warehouse",
+      "username": "warehouse_user",
+      "password": "should-not-import"
+    }
+  ]
+}

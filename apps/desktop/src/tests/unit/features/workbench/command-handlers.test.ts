@@ -11,6 +11,7 @@ function createHandler(calls: string[]) {
     openHistory: () => calls.push("history"),
     openGit: () => calls.push("git"),
     openHelp: () => calls.push("help"),
+    openDeveloperTools: () => calls.push("devtools"),
     openConnectionManager: () => calls.push("connections"),
     openDiagram: () => calls.push("diagram"),
     toggleTheme: () => calls.push("theme"),
@@ -82,6 +83,7 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.zoomIn");
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
+    runCommand("developer.openDevtools");
 
     expect(calls).toEqual([
       "keymap",
@@ -93,6 +95,7 @@ describe("createWorkbenchCommandHandler", () => {
       "zoom-in",
       "zoom-out",
       "zoom-reset",
+      "devtools",
     ]);
   });
 });

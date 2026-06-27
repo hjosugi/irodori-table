@@ -58,6 +58,15 @@ export async function activate(context: ExtensionContext): Promise<void> {
 
   context.subscriptions.push(context.themes.registerTheme(theme));
   context.subscriptions.push(context.sqlDialects.registerDialect(dialect));
+  context.subscriptions.push(
+    context.statusBar.registerItem({
+      id: "typescriptBasic.runtimeStatus",
+      label: "Acme fixture ready",
+      alignment: "left",
+      priority: 20,
+      tooltip: "Registered by the TypeScript basic extension",
+    }),
+  );
 
   context.subscriptions.push(
     context.commands.registerCommand("typescriptBasic.copyResultAsMarkdown", async () => {

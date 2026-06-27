@@ -1,0 +1,23 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Production Postgres",
+      "Group": "Servers",
+      "Host": "prod-postgres.example.test",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "require",
+      "Password": "should-not-import"
+    },
+    "2": {
+      "Name": "Analytics Read Replica",
+      "Group": "Servers",
+      "Host": "analytics-replica.example.test",
+      "Port": "5432",
+      "MaintenanceDB": "analytics",
+      "Username": "analyst",
+      "SSLMode": "prefer"
+    }
+  }
+}

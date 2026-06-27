@@ -15,6 +15,7 @@ import type {
   ResultGridSelection,
   ResultGridSnapshot,
   SqlDialectDefinition,
+  StatusBarItemContribution,
   ThemeDefinition,
 } from "./generated/irodori-extension-api";
 
@@ -54,6 +55,10 @@ export interface SqlDialectRegistry {
   registerDialect(dialect: SqlDialectDefinition): Disposable;
 }
 
+export interface StatusBarRegistry {
+  registerItem(item: StatusBarItemContribution): Disposable;
+}
+
 export interface PermissionApi {
   has(scope: PermissionScope): boolean;
   require(scope: PermissionScope): void;
@@ -76,6 +81,7 @@ export interface ExtensionContext {
   readonly resultGrid: ResultGridApi;
   readonly themes: ThemeRegistry;
   readonly sqlDialects: SqlDialectRegistry;
+  readonly statusBar: StatusBarRegistry;
   readonly permissions: PermissionApi;
   readonly log: ExtensionLogger;
 }

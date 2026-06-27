@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<References>
+  <Reference name="Oracle Sales">
+    <StringRefAddr addrType="hostname">
+      <Contents>oracle-sales.example.test</Contents>
+    </StringRefAddr>
+    <StringRefAddr addrType="port">
+      <Contents>1521</Contents>
+    </StringRefAddr>
+    <StringRefAddr addrType="serviceName">
+      <Contents>salespdb</Contents>
+    </StringRefAddr>
+    <StringRefAddr addrType="user">
+      <Contents>sales_reader</Contents>
+    </StringRefAddr>
+    <StringRefAddr addrType="password">
+      <Contents>should-not-import</Contents>
+    </StringRefAddr>
+  </Reference>
+</References>

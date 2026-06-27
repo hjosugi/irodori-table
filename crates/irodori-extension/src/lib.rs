@@ -73,6 +73,9 @@ pub enum PermissionScope {
     #[serde(rename = "sqlDialects")]
     #[ts(rename = "sqlDialects")]
     SqlDialects,
+    #[serde(rename = "statusBar")]
+    #[ts(rename = "statusBar")]
+    StatusBar,
     #[serde(rename = "resultRenderers")]
     #[ts(rename = "resultRenderers")]
     ResultRenderers,
@@ -134,6 +137,8 @@ pub struct ExtensionContributions {
     pub result_grid_actions: Vec<ResultGridActionContribution>,
     #[serde(default)]
     pub result_grid_renderers: Vec<ResultGridRendererContribution>,
+    #[serde(default)]
+    pub status_bar_items: Vec<StatusBarItemContribution>,
     #[serde(default)]
     pub themes: Vec<ThemeContribution>,
     #[serde(default)]
@@ -205,6 +210,37 @@ pub struct ResultGridRendererContribution {
     pub path: String,
     #[serde(default)]
     pub media_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum StatusBarAlignment {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct StatusBarItemContribution {
+    pub id: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub alignment: Option<StatusBarAlignment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub priority: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub tooltip: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub when: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -556,6 +592,7 @@ mod tests {
                     "keybindings": [],
                     "resultGridActions": [],
                     "resultGridRenderers": [],
+                    "statusBarItems": [],
                     "themes": [],
                     "sqlDialects": []
                 },
@@ -608,6 +645,8 @@ mod typegen {
             .decl(&decl::<KeybindingContribution>())
             .decl(&decl::<ResultGridActionContribution>())
             .decl(&decl::<ResultGridRendererContribution>())
+            .decl(&decl::<StatusBarAlignment>())
+            .decl(&decl::<StatusBarItemContribution>())
             .decl(&decl::<ThemeContribution>())
             .decl(&decl::<ThemeKind>())
             .decl(&decl::<ThemeDefinition>())

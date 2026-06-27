@@ -26,7 +26,7 @@ type InspectorProps = {
   showHistory?: boolean;
 };
 
-export function Inspector({
+export function InspectorContent({
   activeConnectionId,
   editorEngine,
   connectionById,
@@ -38,13 +38,12 @@ export function Inspector({
   onLoadHistorySql,
   onCloseCompletion,
   onCloseHistory,
-  side = "right",
   showCompletion = true,
   showHistory = true,
 }: InspectorProps) {
   const vectorTemplates = vectorHelperTemplates(editorEngine);
   return (
-    <aside className={`inspector inspector-${side}`}>
+    <>
       {showCompletion && isVectorEngine(editorEngine) ? (
         <section>
           <div className="section-heading">
@@ -130,6 +129,14 @@ export function Inspector({
           onClose={onCloseHistory}
         />
       ) : null}
+    </>
+  );
+}
+
+export function Inspector({ side = "right", ...props }: InspectorProps) {
+  return (
+    <aside className={`inspector inspector-${side}`}>
+      <InspectorContent {...props} />
     </aside>
   );
 }

@@ -178,7 +178,7 @@ export const defaultKeymap: Keymap = {
   "query.run": "Mod+Enter",
   "query.runCurrent": "Mod+Shift+Enter",
   "query.runFromStart": "Mod+Alt+Shift+Enter",
-  "query.runAll": "Mod+Alt+Enter",
+  "query.runAll": "",
   "query.cancel": "Mod+Shift+Backspace",
   "editor.focus": "Mod+1",
   "editor.format": "Alt+Shift+F",

@@ -1329,11 +1329,13 @@ INSERT INTO \"users\" (\"id\", \"name\") VALUES (3, NULL);\n"
     #[cfg(feature = "avro")]
     fn avro_round_trip() {
         let mut out = Vec::new();
-        let mut encoder = AvroEncoder::new(&mut out, &["id", "name"]).unwrap();
-        encoder
-            .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
-            .unwrap();
-        encoder.finish().unwrap();
+        {
+            let mut encoder = AvroEncoder::new(&mut out, &["id", "name"]).unwrap();
+            encoder
+                .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
+                .unwrap();
+            encoder.finish().unwrap();
+        }
         assert!(!out.is_empty());
     }
 
@@ -1341,11 +1343,13 @@ INSERT INTO \"users\" (\"id\", \"name\") VALUES (3, NULL);\n"
     #[cfg(feature = "parquet")]
     fn parquet_round_trip() {
         let mut out = Vec::new();
-        let mut encoder = ParquetEncoder::new(&mut out, &["id", "name"]);
-        encoder
-            .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
-            .unwrap();
-        encoder.finish().unwrap();
+        {
+            let mut encoder = ParquetEncoder::new(&mut out, &["id", "name"]);
+            encoder
+                .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
+                .unwrap();
+            encoder.finish().unwrap();
+        }
         assert!(!out.is_empty());
     }
 

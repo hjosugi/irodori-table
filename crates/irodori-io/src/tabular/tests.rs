@@ -311,11 +311,13 @@ fn tsv_preview_without_header_generates_columns_and_nulls() {
 #[cfg(feature = "avro")]
 fn avro_round_trip() {
     let mut out = Vec::new();
-    let mut encoder = AvroEncoder::new(&mut out, &["id", "name"]).unwrap();
-    encoder
-        .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
-        .unwrap();
-    encoder.finish().unwrap();
+    {
+        let mut encoder = AvroEncoder::new(&mut out, &["id", "name"]).unwrap();
+        encoder
+            .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
+            .unwrap();
+        encoder.finish().unwrap();
+    }
     assert!(!out.is_empty());
 }
 
@@ -323,11 +325,13 @@ fn avro_round_trip() {
 #[cfg(feature = "parquet")]
 fn parquet_round_trip() {
     let mut out = Vec::new();
-    let mut encoder = ParquetEncoder::new(&mut out, &["id", "name"]);
-    encoder
-        .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
-        .unwrap();
-    encoder.finish().unwrap();
+    {
+        let mut encoder = ParquetEncoder::new(&mut out, &["id", "name"]);
+        encoder
+            .write_row(&[Cell::Integer(1), Cell::Text("Alice")])
+            .unwrap();
+        encoder.finish().unwrap();
+    }
     assert!(!out.is_empty());
 }
 

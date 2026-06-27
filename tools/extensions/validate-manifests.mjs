@@ -23,6 +23,7 @@ const contributionShapes = {
   keybindings: defs.keybinding,
   resultGridActions: defs.resultGridAction,
   resultGridRenderers: defs.resultGridRenderer,
+  statusBarItems: defs.statusBarItem,
   themes: defs.themeContribution,
   sqlDialects: defs.sqlDialectContribution,
 };
@@ -35,6 +36,7 @@ const contributionPermissionRules = [
   ["keybindings", "keybindings"],
   ["resultGridActions", "resultRenderers"],
   ["resultGridRenderers", "resultRenderers"],
+  ["statusBarItems", "statusBar"],
   ["themes", "themes"],
   ["sqlDialects", "sqlDialects"],
 ];
@@ -315,6 +317,18 @@ function validateProperty(value, property, label) {
   }
   if (property.type === "boolean" && typeof value !== "boolean") {
     error(`${label} must be a boolean`);
+  }
+  if (property.type === "integer") {
+    if (!Number.isInteger(value)) {
+      error(`${label} must be an integer`);
+    }
+    return;
+  }
+  if (property.type === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      error(`${label} must be a number`);
+    }
+    return;
   }
 }
 

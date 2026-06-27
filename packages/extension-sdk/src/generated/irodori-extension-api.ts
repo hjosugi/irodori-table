@@ -4,11 +4,11 @@ export type JsonValue = unknown;
 
 export type ExtensionRuntime = "typescript" | "javascript" | "wasm" | "native";
 
-export type PermissionScope = "commands" | "keybindings" | "workspace:read" | "connections:read" | "connections:write" | "queries:run" | "queryResults:read" | "queryResults:write" | "metadata:read" | "files:read" | "files:write" | "themes" | "sqlDialects" | "resultRenderers" | "logs" | "dev:fixtures" | "native" | "wasm";
+export type PermissionScope = "commands" | "keybindings" | "workspace:read" | "connections:read" | "connections:write" | "queries:run" | "queryResults:read" | "queryResults:write" | "metadata:read" | "files:read" | "files:write" | "themes" | "sqlDialects" | "statusBar" | "resultRenderers" | "logs" | "dev:fixtures" | "native" | "wasm";
 
 export type ExtensionManifest = { manifestVersion: number, id: string, name: string, version: string, publisher?: string, description?: string, license: string, repository?: string, apiVersion: string, runtime: ExtensionRuntime, entry: string, permissions: Array<PermissionScope>, contributes: ExtensionContributions, capabilities: ExtensionCapabilities, dev?: ExtensionDevConfig, };
 
-export type ExtensionContributions = { commands: Array<CommandContribution>, keybindings: Array<KeybindingContribution>, resultGridActions: Array<ResultGridActionContribution>, resultGridRenderers: Array<ResultGridRendererContribution>, themes: Array<ThemeContribution>, sqlDialects: Array<SqlDialectContribution>, };
+export type ExtensionContributions = { commands: Array<CommandContribution>, keybindings: Array<KeybindingContribution>, resultGridActions: Array<ResultGridActionContribution>, resultGridRenderers: Array<ResultGridRendererContribution>, statusBarItems: Array<StatusBarItemContribution>, themes: Array<ThemeContribution>, sqlDialects: Array<SqlDialectContribution>, };
 
 export type ExtensionCapabilities = { wasmModules: Array<WasmModuleContribution>, nativeModules: Array<NativeModuleContribution>, };
 
@@ -19,6 +19,10 @@ export type KeybindingContribution = { command: string, key: string, mac?: strin
 export type ResultGridActionContribution = { id: string, title: string, command: string, when?: string, };
 
 export type ResultGridRendererContribution = { id: string, title: string, path: string, mediaTypes: Array<string>, };
+
+export type StatusBarAlignment = "left" | "right";
+
+export type StatusBarItemContribution = { id: string, label: string, alignment?: StatusBarAlignment, priority?: number, command?: string, tooltip?: string, when?: string, };
 
 export type ThemeContribution = { id: string, label: string, path: string, kind?: ThemeKind, };
 

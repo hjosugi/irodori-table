@@ -13,7 +13,7 @@
 .connection-picker {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 42px minmax(0, 1fr) auto auto;
+  grid-template-rows: 42px minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
@@ -26,6 +26,71 @@
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--border);
+}
+
+.connection-action-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.connection-action-menu {
+  position: absolute;
+  top: 35px;
+  left: 0;
+  z-index: 30;
+  width: 248px;
+  padding: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 12px 32px var(--shadow-color-strong);
+}
+
+.connection-action-menu button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 28px;
+  padding: 5px 11px;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.connection-action-menu button:hover:not(:disabled),
+.connection-action-menu button:focus-visible {
+  background: var(--selected);
+  outline: 0;
+}
+
+.connection-action-menu button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.connection-action-menu small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.connection-action-menu span,
+.connection-action-menu small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-action-menu-separator {
+  display: block;
+  height: 1px;
+  margin: 5px 0;
+  background: var(--border);
 }
 
 .connection-search {
@@ -120,26 +185,6 @@
 .connection-picker-empty {
   min-height: 28px;
   padding: 0 12px 8px;
-}
-
-.connection-transfer-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px 30px;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 8px;
-  border-top: 1px solid var(--border);
-}
-
-.connection-transfer-bar select {
-  min-width: 0;
-  height: 30px;
-  padding: 0 7px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  background: var(--input-bg);
-  font: inherit;
 }
 
 .connection-form {

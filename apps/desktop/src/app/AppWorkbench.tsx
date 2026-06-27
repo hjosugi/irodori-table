@@ -29,6 +29,7 @@ import {
   appCommandCatalog,
   fallbackSnapshot,
   loadSavedQuery,
+  menuBarSections,
   resultCopyDefaultKeymap,
   resultRows,
   savedQueryStorageKey,
@@ -149,7 +150,7 @@ import {
 import { createTranslator, normalizeLocale } from "@/i18n";
 import {
   createWorkbenchCommandHandler,
-  Inspector,
+  InspectorContent,
   INSPECTOR_WIDTH_MAX,
   INSPECTOR_WIDTH_MIN,
   RESULTS_HEIGHT_MAX,
@@ -195,6 +196,7 @@ import {
   dbResultWindow,
   jobsCancel,
   jobsList,
+  openDeveloperTools,
   type CellValue,
   type DbEngine,
   type DbObjectMetadata,
@@ -386,7 +388,6 @@ export function AppWorkbench() {
     (state) => state.setViewPlacements,
   );
   const viewVisibility = useWorkbenchStore((state) => state.viewVisibility);
-  const setViewOpen = useWorkbenchStore((state) => state.setViewOpen);
   const setViewVisibility = useWorkbenchStore(
     (state) => state.setViewVisibility,
   );
@@ -433,6 +434,22 @@ export function AppWorkbench() {
   function setPrimarySidebarSide(side: "left" | "right") {
     setSidebarSide(side);
     setViewPlacement("objectBrowser", side);
+  }
+
+  function setActiveSidebarView(
+    viewId: "objectBrowser" | "completion" | "queryHistory",
+  ) {
+    setSidebarOpen(true);
+    setViewVisibility((current) => ({
+      ...current,
+      objectBrowser: viewId === "objectBrowser",
+      completion: viewId === "completion",
+      queryHistory: viewId === "queryHistory",
+    }));
+  }
+
+  function toggleSidebarView(viewId: "completion" | "queryHistory") {
+    setActiveSidebarView(activeSidebarView === viewId ? "objectBrowser" : viewId);
   }
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -605,8 +622,6 @@ export function AppWorkbench() {
   const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
   const [diagramZoom, setDiagramZoom] = useState(1);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [connectionTransferFormat, setConnectionTransferFormat] =
-    useState<ConnectionTransferFormat>("irodori");
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(
     null,
   );
@@ -1819,13 +1834,14 @@ export function AppWorkbench() {
     openHistory: openQueryHistoryDialog,
     openGit: openGitDrawer,
     openHelp: () => setAboutOpen(true),
+    openDeveloperTools: () => void openAppDeveloperTools(),
     openConnectionManager: () => setConnectionManagerOpen(true),
     openDiagram: () => setDiagramOpen(true),
     toggleTheme: () =>
       activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark")),
     toggleSidebar: () => setSidebarOpen((open) => !open),
-    toggleCompletion: () => setViewOpen("completion", (open) => !open),
-    toggleHistory: () => setViewOpen("queryHistory", (open) => !open),
+    toggleCompletion: () => toggleSidebarView("completion"),
+    toggleHistory: () => toggleSidebarView("queryHistory"),
     toggleSidebarSide: () =>
       setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left"),
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
@@ -2279,6 +2295,18 @@ export function AppWorkbench() {
     }
   }
 
+  async function openAppDeveloperTools() {
+    try {
+      await openDeveloperTools();
+    } catch (error) {
+      showActionNotice(
+        "error",
+        "Developer Tools unavailable",
+        errorMessage(error),
+      );
+    }
+  }
+
   function showActionNotice(
     kind: ActionNotice["kind"],
     title: string,
@@ -2613,9 +2641,9 @@ export function AppWorkbench() {
     }
   }
 
-  function exportConnectionFile() {
+  function exportConnectionFile(format: ConnectionTransferFormat) {
     try {
-      const exported = exportConnectionProfiles(profiles, connectionTransferFormat);
+      const exported = exportConnectionProfiles(profiles, format);
       downloadBlob(
         new Blob([exported.content], { type: `${exported.mime};charset=utf-8` }),
         exported.fileName,
@@ -3700,16 +3728,13 @@ export function AppWorkbench() {
     }
   }
 
-  const completionSide = viewPlacements.completion;
-  const queryHistorySide = viewPlacements.queryHistory;
-  const completionOpen = viewVisibility.completion;
-  const historyOpen = viewVisibility.queryHistory;
-  const showLeftInspector =
-    (completionOpen && completionSide === "left") ||
-    (historyOpen && queryHistorySide === "left");
-  const showRightInspector =
-    (completionOpen && completionSide === "right") ||
-    (historyOpen && queryHistorySide === "right");
+  const activeSidebarView = viewVisibility.completion
+    ? "completion"
+    : viewVisibility.queryHistory
+      ? "queryHistory"
+      : "objectBrowser";
+  const completionOpen = activeSidebarView === "completion";
+  const historyOpen = activeSidebarView === "queryHistory";
   const appStyle = useMemo(
     () =>
       ({
@@ -3739,6 +3764,7 @@ export function AppWorkbench() {
         resultsHeight={resultsHeight}
         editorSplitPercent={editorSplitPercent}
         workspaceMenuOpen={workspaceMenuOpen}
+        menuBarSections={menuBarSections}
         workspaceMenuSections={workspaceMenuSections}
         commandCatalog={appCommandCatalog}
         keymap={keymap}
@@ -3767,8 +3793,8 @@ export function AppWorkbench() {
           activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
         }
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
-        onToggleCompletion={() => setViewOpen("completion", (open) => !open)}
-        onToggleHistory={() => setViewOpen("queryHistory", (open) => !open)}
+        onToggleCompletion={() => toggleSidebarView("completion")}
+        onToggleHistory={() => toggleSidebarView("queryHistory")}
         onOpenSettings={() => openSettingsSection("general")}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
         onOpenGit={openGitDrawer}
@@ -3779,6 +3805,40 @@ export function AppWorkbench() {
         sidebar={
           <Sidebar
             sidebarOpen={sidebarOpen}
+            sidebarSide={sidebarSide}
+            activeView={activeSidebarView}
+            completionPanel={
+              <InspectorContent
+                activeConnectionId={activeConnectionId}
+                editorEngine={editorEngine}
+                connectionById={connectionById}
+                activeMetadataLoading={activeMetadataLoading}
+                activeMetadataError={activeMetadataError}
+                completionHints={completionHints}
+                onInsertCompletionHint={insertCompletionHint}
+                onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+                onLoadHistorySql={setQuery}
+                onCloseCompletion={() => setActiveSidebarView("objectBrowser")}
+                showCompletion
+                showHistory={false}
+              />
+            }
+            historyPanel={
+              <InspectorContent
+                activeConnectionId={activeConnectionId}
+                editorEngine={editorEngine}
+                connectionById={connectionById}
+                activeMetadataLoading={activeMetadataLoading}
+                activeMetadataError={activeMetadataError}
+                completionHints={completionHints}
+                onInsertCompletionHint={insertCompletionHint}
+                onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+                onLoadHistorySql={setQuery}
+                onCloseHistory={() => setActiveSidebarView("objectBrowser")}
+                showCompletion={false}
+                showHistory
+              />
+            }
             connections={connections}
             profileById={profileById}
             activeConnectionId={activeConnectionId}
@@ -3805,7 +3865,11 @@ export function AppWorkbench() {
             onOpenSnapshotObject={openSnapshotObject}
             onShowObjectInDiagram={showObjectInDiagram}
             onSetObjectActionMenu={setObjectActionMenu}
+            onSelectView={setActiveSidebarView}
             onCloseSidebar={() => setSidebarOpen(false)}
+            onToggleSidebarSide={() =>
+              setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
+            }
             onBeginResize={(event) => beginPanelResize("sidebar", event)}
             onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
           />
@@ -3840,45 +3904,8 @@ export function AppWorkbench() {
           </div>
 
           <div
-            className={[
-              "editor-and-inspector",
-              showLeftInspector ? "has-left-inspector" : null,
-              showRightInspector ? "has-right-inspector" : null,
-            ]
-              .filter(Boolean)
-              .join(" ")}
+            className="editor-and-inspector"
           >
-            {showLeftInspector ? (
-              <>
-                <Inspector
-                  activeConnectionId={activeConnectionId}
-                  editorEngine={editorEngine}
-                  connectionById={connectionById}
-                  activeMetadataLoading={activeMetadataLoading}
-                  activeMetadataError={activeMetadataError}
-                  completionHints={completionHints}
-                  onInsertCompletionHint={insertCompletionHint}
-                  onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-                  onLoadHistorySql={setQuery}
-                  onCloseCompletion={() => setViewOpen("completion", false)}
-                  onCloseHistory={() => setViewOpen("queryHistory", false)}
-                  side="left"
-                  showCompletion={completionOpen && completionSide === "left"}
-                  showHistory={historyOpen && queryHistorySide === "left"}
-                />
-                <div
-                  className="panel-resizer inspector-resizer left-inspector-resizer"
-                  role="separator"
-                  aria-label="Resize left inspector"
-                  aria-orientation="vertical"
-                  tabIndex={0}
-                  onPointerDown={(event) =>
-                    beginPanelResize("leftInspector", event)
-                  }
-                  onKeyDown={(event) => onPanelResizeKey("leftInspector", event)}
-                />
-              </>
-            ) : null}
             <QueryEditorPane
               activeTabLabel={activeTabLabel}
               activeConnectionOpen={activeConnectionOpen}
@@ -3935,36 +3962,6 @@ export function AppWorkbench() {
               sqlFileDropLabel={t("editor.dropSqlFile")}
               onMetadataJump={jumpToSqlMetadata}
             />
-
-            {showRightInspector ? (
-              <>
-                <div
-                  className="panel-resizer inspector-resizer right-inspector-resizer"
-                  role="separator"
-                  aria-label="Resize right inspector"
-                  aria-orientation="vertical"
-                  tabIndex={0}
-                  onPointerDown={(event) => beginPanelResize("inspector", event)}
-                  onKeyDown={(event) => onPanelResizeKey("inspector", event)}
-                />
-                <Inspector
-                  activeConnectionId={activeConnectionId}
-                  editorEngine={editorEngine}
-                  connectionById={connectionById}
-                  activeMetadataLoading={activeMetadataLoading}
-                  activeMetadataError={activeMetadataError}
-                  completionHints={completionHints}
-                  onInsertCompletionHint={insertCompletionHint}
-                  onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-                  onLoadHistorySql={setQuery}
-                  onCloseCompletion={() => setViewOpen("completion", false)}
-                  onCloseHistory={() => setViewOpen("queryHistory", false)}
-                  side="right"
-                  showCompletion={completionOpen && completionSide === "right"}
-                  showHistory={historyOpen && queryHistorySide === "right"}
-                />
-              </>
-            ) : null}
           </div>
 
           <div
@@ -4093,13 +4090,11 @@ export function AppWorkbench() {
           activeConnectionOpen={activeConnectionOpen}
           testing={testingConnection}
           connecting={connecting}
-          transferFormat={connectionTransferFormat}
           onClose={() => setConnectionManagerOpen(false)}
           onSearchChange={setConnectionSearch}
           onAddProfile={addProfile}
           onImportProfiles={(file) => void importConnectionFile(file)}
           onExportProfiles={exportConnectionFile}
-          onTransferFormatChange={setConnectionTransferFormat}
           onSelectProfile={selectProfile}
           onUpdateDraft={updateDraft}
           onDeleteProfile={() => void deleteProfile()}
@@ -4153,8 +4148,6 @@ export function AppWorkbench() {
           setSidebarOpen={setSidebarOpen}
           sidebarSide={sidebarSide}
           setSidebarSide={setPrimarySidebarSide}
-          viewPlacements={viewPlacements}
-          setViewPlacement={setViewPlacement}
           commandCatalog={appCommandCatalog}
           keymap={keymap}
           keymapOverrides={keymapOverrides}

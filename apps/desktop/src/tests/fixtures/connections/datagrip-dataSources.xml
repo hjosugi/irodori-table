@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="Billing Postgres" uuid="billing-postgres">
+      <driver-ref>postgresql</driver-ref>
+      <jdbc-url>jdbc:postgresql://billing.example.test:5432/billing</jdbc-url>
+      <user-name>billing_reader</user-name>
+    </data-source>
+    <data-source source="LOCAL" name="BI SQL Server" uuid="bi-sqlserver">
+      <driver-ref>sqlserver.ms</driver-ref>
+      <jdbc-url>jdbc:sqlserver://bi-mssql.example.test:1433;databaseName=warehouse;user=bi_reader;password=should-not-import</jdbc-url>
+      <user-name>bi_reader</user-name>
+    </data-source>
+  </component>
+</project>

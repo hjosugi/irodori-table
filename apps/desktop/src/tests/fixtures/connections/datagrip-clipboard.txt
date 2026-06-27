@@ -1,0 +1,6 @@
+#DataSourceSettings#
+<data-source source="LOCAL" name="Clipboard Cockroach" uuid="clipboard-cockroach">
+  <driver-ref>cockroach</driver-ref>
+  <jdbc-url>jdbc:postgresql://crdb.example.test:26257/defaultdb</jdbc-url>
+  <user-name>root</user-name>
+</data-source>

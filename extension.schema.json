@@ -101,6 +101,7 @@
         "files:write",
         "themes",
         "sqlDialects",
+        "statusBar",
         "resultRenderers",
         "logs",
         "dev:fixtures",
@@ -134,6 +135,12 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/resultGridRenderer"
+          }
+        },
+        "statusBarItems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statusBarItem"
           }
         },
         "themes": {
@@ -237,6 +244,36 @@
             "type": "string"
           },
           "uniqueItems": true
+        }
+      }
+    },
+    "statusBarItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["left", "right"]
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "command": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "tooltip": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
         }
       }
     },

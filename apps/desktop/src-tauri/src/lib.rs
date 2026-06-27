@@ -140,6 +140,20 @@ fn workspace_snapshot() -> WorkspaceSnapshot {
     }
 }
 
+#[tauri::command]
+fn open_developer_tools(window: tauri::WebviewWindow) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        window.open_devtools();
+        Ok(())
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = window;
+        Err("Developer Tools are available in development builds.".into())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -151,6 +165,7 @@ pub fn run() {
         .manage(security::SecurityState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
+            open_developer_tools,
             jobs::jobs_list,
             jobs::jobs_get,
             jobs::jobs_cancel,
@@ -306,6 +321,7 @@ mod typegen {
             .decl(&decl::<git::GitDiffResult>())
             .decl(&decl::<git::GitCommandOutput>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
+            .command(Command::returning("open_developer_tools", TsType::void()))
             .command(Command::new("jobs_list", "JobList"))
             .command(
                 Command::new("jobs_get", "JobRecord | null")

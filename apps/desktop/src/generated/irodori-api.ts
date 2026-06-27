@@ -235,6 +235,10 @@ export function workspaceSnapshot(): Promise<WorkspaceSnapshot> {
   return invoke<WorkspaceSnapshot>("workspace_snapshot");
 }
 
+export function openDeveloperTools(): Promise<void> {
+  return invoke<void>("open_developer_tools");
+}
+
 export function jobsList(): Promise<JobList> {
   return invoke<JobList>("jobs_list");
 }

@@ -1,6 +1,9 @@
-export { WorkbenchShell } from "./components/WorkbenchShell";
+export {
+  WorkbenchShell,
+  type WorkbenchStatusBarItem,
+} from "./components/WorkbenchShell";
 export { Sidebar } from "./components/Sidebar";
-export { Inspector } from "./components/Inspector";
+export { Inspector, InspectorContent } from "./components/Inspector";
 export { completionHintsFromMetadata } from "./completion-hints";
 export { createWorkbenchCommandHandler } from "./command-handlers";
 export {

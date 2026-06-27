@@ -121,6 +121,12 @@ const shellCommands: CommandMeta[] = [
     category: "Help",
     scope: "global",
   },
+  {
+    id: "developer.openDevtools",
+    title: "Open Developer Tools",
+    category: "Help",
+    scope: "global",
+  },
 ];
 
 export const appCommandCatalog: CommandMeta[] = [
@@ -169,7 +175,50 @@ export const workspaceMenuSections: AppMenuSection[] = [
   },
   {
     label: "Help",
-    items: [{ commandId: "help.open" }, { commandId: "about.open" }],
+    items: [
+      { commandId: "help.open" },
+      { commandId: "developer.openDevtools" },
+      { commandId: "about.open" },
+    ],
+  },
+];
+
+export const menuBarSections: AppMenuSection[] = [
+  {
+    label: "File",
+    items: [
+      { commandId: "connection.manager" },
+      { commandId: "settings.open" },
+    ],
+  },
+  {
+    label: "View",
+    items: [
+      { commandId: "view.sidebar.toggle" },
+      { commandId: "view.completion.toggle" },
+      { commandId: "view.history.toggle" },
+      { commandId: "view.sidebar.swap" },
+      { commandId: "view.zoomIn" },
+      { commandId: "view.zoomOut" },
+      { commandId: "view.zoomReset" },
+    ],
+  },
+  {
+    label: "Tools",
+    items: [
+      { commandId: "palette.open" },
+      { commandId: "settings.keymap" },
+      { commandId: "theme.toggle" },
+      { commandId: "git.open" },
+    ],
+  },
+  {
+    label: "Help",
+    items: [
+      { commandId: "help.open" },
+      { commandId: "developer.openDevtools" },
+      { commandId: "about.open" },
+    ],
   },
 ];
 

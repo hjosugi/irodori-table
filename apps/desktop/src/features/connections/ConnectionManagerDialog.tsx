@@ -1,8 +1,8 @@
-import { useRef, type FormEventHandler } from "react";
+import { useRef, useState, type FormEventHandler } from "react";
 import {
   AlertTriangle,
   Database,
-  Download,
+  MoreHorizontal,
   Plus,
   Power,
   Search,
@@ -32,13 +32,11 @@ export function ConnectionManagerDialog({
   activeConnectionOpen,
   testing,
   connecting,
-  transferFormat,
   onClose,
   onSearchChange,
   onAddProfile,
   onImportProfiles,
   onExportProfiles,
-  onTransferFormatChange,
   onSelectProfile,
   onUpdateDraft,
   onDeleteProfile,
@@ -56,13 +54,11 @@ export function ConnectionManagerDialog({
   activeConnectionOpen: boolean;
   testing: boolean;
   connecting: boolean;
-  transferFormat: ConnectionTransferFormat;
   onClose: () => void;
   onSearchChange: (value: string) => void;
   onAddProfile: () => void;
   onImportProfiles: (file: File) => void;
-  onExportProfiles: () => void;
-  onTransferFormatChange: (value: ConnectionTransferFormat) => void;
+  onExportProfiles: (format: ConnectionTransferFormat) => void;
   onSelectProfile: (profile: ConnectionDraft) => void;
   onUpdateDraft: (patch: Partial<ConnectionDraft>) => void;
   onDeleteProfile: () => void;
@@ -72,6 +68,7 @@ export function ConnectionManagerDialog({
   onConnect: FormEventHandler<HTMLFormElement>;
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [transferMenuOpen, setTransferMenuOpen] = useState(false);
 
   return (
     <div
@@ -96,6 +93,49 @@ export function ConnectionManagerDialog({
             >
               <Plus size={16} />
             </button>
+            <div className="connection-action-menu-wrap">
+              <button
+                className={transferMenuOpen ? "icon-button active" : "icon-button"}
+                type="button"
+                title="Connection import and export"
+                aria-label="Connection import and export"
+                aria-expanded={transferMenuOpen}
+                onClick={() => setTransferMenuOpen((open) => !open)}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {transferMenuOpen ? (
+                <div className="connection-action-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setTransferMenuOpen(false);
+                      importInputRef.current?.click();
+                    }}
+                  >
+                    <span>Import Connections...</span>
+                    <Upload size={13} />
+                  </button>
+                  <span className="connection-action-menu-separator" />
+                  {connectionTransferFormatOptions.map((format) => (
+                    <button
+                      key={format.value}
+                      type="button"
+                      role="menuitem"
+                      disabled={profiles.length === 0}
+                      onClick={() => {
+                        setTransferMenuOpen(false);
+                        onExportProfiles(format.value);
+                      }}
+                    >
+                      <span>Export {format.label}</span>
+                      <small>No passwords</small>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <label className="connection-search">
               <Search size={15} />
               <input
@@ -105,6 +145,19 @@ export function ConnectionManagerDialog({
                 onChange={(event) => onSearchChange(event.currentTarget.value)}
               />
             </label>
+            <input
+              ref={importInputRef}
+              className="hidden-file-input"
+              type="file"
+              accept=".json,.xml,.csv,.ini,.txt,.conf,.tableplusconnection"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) {
+                  onImportProfiles(file);
+                }
+              }}
+            />
           </div>
           <div className="connection-profile-list">
             {profiles.map((profile) => {
@@ -136,55 +189,6 @@ export function ConnectionManagerDialog({
                 </button>
               );
             })}
-          </div>
-          <div className="connection-transfer-bar">
-            <select
-              value={transferFormat}
-              aria-label="Connection transfer format"
-              onChange={(event) =>
-                onTransferFormatChange(
-                  event.currentTarget.value as ConnectionTransferFormat,
-                )
-              }
-            >
-              {connectionTransferFormatOptions.map((format) => (
-                <option key={format.value} value={format.value}>
-                  {format.label}
-                </option>
-              ))}
-            </select>
-            <button
-              className="icon-button"
-              type="button"
-              title="Import connections"
-              aria-label="Import connections"
-              onClick={() => importInputRef.current?.click()}
-            >
-              <Upload size={15} />
-            </button>
-            <button
-              className="icon-button"
-              type="button"
-              title="Export connections"
-              aria-label="Export connections"
-              disabled={profiles.length === 0}
-              onClick={onExportProfiles}
-            >
-              <Download size={15} />
-            </button>
-            <input
-              ref={importInputRef}
-              className="hidden-file-input"
-              type="file"
-              accept=".json,.xml,.csv,.ini,.txt,.conf,.tableplusconnection"
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                event.currentTarget.value = "";
-                if (file) {
-                  onImportProfiles(file);
-                }
-              }}
-            />
           </div>
           <div className="connection-picker-empty">
             {profiles.length === 0 ? "No matching connections" : null}

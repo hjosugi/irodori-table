@@ -1,0 +1,33 @@
+{
+  "folders": {},
+  "connections": {
+    "postgres-prod": {
+      "provider": "postgresql",
+      "driver": "postgres-jdbc",
+      "name": "Postgres Prod",
+      "configuration": {
+        "host": "prod-pg.example.test",
+        "port": "5432",
+        "database": "app",
+        "url": "jdbc:postgresql://prod-pg.example.test:5432/app?password=should-not-import",
+        "properties": {
+          "user": "app_reader",
+          "password": "should-not-import"
+        }
+      }
+    },
+    "mysql-reporting": {
+      "provider": "mysql",
+      "driver": "mysql8",
+      "name": "MySQL Reporting",
+      "configuration": {
+        "host": "reporting-mysql.example.test",
+        "port": 3306,
+        "database": "reporting",
+        "properties": {
+          "user": "reporter"
+        }
+      }
+    }
+  }
+}

@@ -164,11 +164,47 @@ textarea:disabled {
   padding: 0 8px;
 }
 
+.menubar {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+  gap: 1px;
+}
+
+.menubar-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.menubar-item > button {
+  height: 100%;
+  padding: 0 9px;
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  font-size: var(--font-ui-sm);
+  cursor: pointer;
+}
+
+.menubar-item > button:hover,
+.menubar-item > button:focus-visible,
+.menubar-item > button[aria-expanded="true"] {
+  color: var(--text);
+  background: var(--hover);
+}
+
 .brand,
-.statusbar span {
+.statusbar-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -179,6 +215,7 @@ textarea:disabled {
   overflow: hidden;
   color: var(--text);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand {
@@ -240,6 +277,12 @@ textarea:disabled {
   top: calc(100% + 5px);
   right: 0;
   min-width: 250px;
+}
+
+.menubar-popover {
+  top: calc(100% + 1px);
+  right: auto;
+  left: 0;
 }
 
 .app-menu-section {
@@ -327,8 +370,20 @@ textarea:disabled {
 }
 
 .toolbar {
+  display: flex;
+  align-items: center;
   gap: 8px;
   padding: 0 7px;
+}
+
+.connection-toolbar {
+  flex: 0 1 calc(50px + var(--sidebar-width, 276px) - 14px);
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 420px;
 }
 
 .connection-select,
@@ -369,6 +424,19 @@ textarea:disabled {
 .text-button span {
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connection-select {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.connection-select small {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
   text-overflow: ellipsis;
 }
 

@@ -106,7 +106,9 @@ Checklist:
   a debug binary alone always expects `:1420`.
 
 ### Reading Console and Rust Logs
-- **Developer Tools**: Right-click anywhere in the app window during debug/dev runs and click **Inspect Element** to open the Web Inspector.
+- **Developer Tools**: Open **Help > Open Developer Tools** from the app
+  menubar during debug/dev runs. The WebView's default right-click inspection
+  menu is suppressed so product context menus stay clean.
 - **Stdout/Stderr Console**: Run the app from a terminal. Console logs (`console.log`) from the React frontend and `println!`/`log` events from the Rust backend will print directly to the terminal stdout.
 - **Core Dumps & Journal**: If the app segfaults or WebKit crashes, inspect system logs:
   ```bash

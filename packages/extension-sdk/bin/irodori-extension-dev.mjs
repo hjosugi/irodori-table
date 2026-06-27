@@ -21,6 +21,7 @@ const contributionPermissionRules = [
   ["keybindings", "keybindings", "contributes.keybindings requires permissions: keybindings"],
   ["resultGridActions", "resultRenderers", "contributes.resultGridActions requires permissions: resultRenderers"],
   ["resultGridRenderers", "resultRenderers", "contributes.resultGridRenderers requires permissions: resultRenderers"],
+  ["statusBarItems", "statusBar", "contributes.statusBarItems requires permissions: statusBar"],
   ["themes", "themes", "contributes.themes requires permissions: themes"],
   ["sqlDialects", "sqlDialects", "contributes.sqlDialects requires permissions: sqlDialects"],
 ];

@@ -1,8 +1,9 @@
-import type {
-  CSSProperties,
-  FocusEvent,
-  MouseEvent,
-  ReactNode,
+import {
+  useState,
+  type CSSProperties,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
 } from "react";
 import {
   ChevronDown,
@@ -27,6 +28,15 @@ import {
 import type { ThemeKind } from "@/theme";
 import type { SidebarSide } from "../store/workbench-store";
 
+export type WorkbenchStatusBarItem = {
+  id: string;
+  label: string;
+  alignment?: "left" | "right";
+  priority?: number;
+  command?: string;
+  tooltip?: string;
+};
+
 type WorkbenchShellProps = {
   appName: string;
   appVersion: string;
@@ -41,6 +51,7 @@ type WorkbenchShellProps = {
   resultsHeight: number;
   editorSplitPercent: number;
   workspaceMenuOpen: boolean;
+  menuBarSections: readonly AppMenuSection[];
   workspaceMenuSections: readonly AppMenuSection[];
   commandCatalog: readonly CommandMeta[];
   keymap: Keymap;
@@ -54,6 +65,7 @@ type WorkbenchShellProps = {
   sqlLintEnabled: boolean;
   running: boolean;
   selectionStatus: string | null;
+  statusBarItems?: readonly WorkbenchStatusBarItem[];
   shellStyle: CSSProperties;
   sidebar: ReactNode;
   children: ReactNode;
@@ -86,6 +98,7 @@ export function WorkbenchShell({
   resultsHeight,
   editorSplitPercent,
   workspaceMenuOpen,
+  menuBarSections,
   workspaceMenuSections,
   commandCatalog,
   keymap,
@@ -99,6 +112,7 @@ export function WorkbenchShell({
   sqlLintEnabled,
   running,
   selectionStatus,
+  statusBarItems = [],
   shellStyle,
   sidebar,
   children,
@@ -116,6 +130,7 @@ export function WorkbenchShell({
   onToggleWorkspaceMenu,
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
+  const [activeMenuLabel, setActiveMenuLabel] = useState<string | null>(null);
   const commandById = new Map(commandCatalog.map((command) => [command.id, command]));
 
   const shortcutFor = (commandId: string) => {
@@ -143,8 +158,72 @@ export function WorkbenchShell({
   };
 
   const runMenuCommand = (commandId: string) => {
+    setActiveMenuLabel(null);
     onCloseWorkspaceMenu();
     onRunCommand(commandId);
+  };
+
+  const renderMenuButtons = (section: AppMenuSection) =>
+    section.items.map((item) => {
+        const command = commandById.get(item.commandId);
+        if (!command) {
+          return null;
+        }
+        const shortcut = shortcutFor(command.id);
+        return (
+          <button
+            type="button"
+            role="menuitem"
+            key={command.id}
+            onClick={() => runMenuCommand(command.id)}
+          >
+            <span>{titleFor(command)}</span>
+            {shortcut ? <kbd>{shortcut}</kbd> : null}
+          </button>
+        );
+      });
+
+  const renderMenuSection = (section: AppMenuSection) => (
+    <div
+      className="app-menu-section"
+      role="group"
+      aria-label={section.label}
+      key={section.label}
+    >
+      {renderMenuButtons(section)}
+    </div>
+  );
+
+  const sortedStatusBarItems = [...statusBarItems].sort(
+    (left, right) => (right.priority ?? 0) - (left.priority ?? 0),
+  );
+  const leftStatusBarItems = sortedStatusBarItems.filter(
+    (item) => item.alignment !== "right",
+  );
+  const rightStatusBarItems = sortedStatusBarItems.filter(
+    (item) => item.alignment === "right",
+  );
+
+  const renderStatusBarItem = (item: WorkbenchStatusBarItem) => {
+    const title = item.tooltip ?? item.label;
+    if (item.command) {
+      return (
+        <button
+          className="statusbar-item statusbar-button"
+          type="button"
+          title={title}
+          key={item.id}
+          onClick={() => onRunCommand(item.command ?? "")}
+        >
+          {item.label}
+        </button>
+      );
+    }
+    return (
+      <span className="statusbar-item" title={title} key={item.id}>
+        {item.label}
+      </span>
+    );
   };
 
   return (
@@ -163,11 +242,40 @@ export function WorkbenchShell({
       data-key-scope={activeKeyScope}
       onFocusCapture={onScopeFocus}
       onMouseDownCapture={onScopeMouseDown}
+      onContextMenu={(event) => event.preventDefault()}
     >
       <header className="titlebar">
         <div className="brand" title={appName} aria-label={appName}>
           <img className="brand-icon" src="/irodori-icon.svg" alt="" />
         </div>
+        <nav className="menubar" aria-label="Application menu">
+          {menuBarSections.map((section) => (
+            <div className="menubar-item" key={section.label}>
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={activeMenuLabel === section.label}
+                onClick={() =>
+                  setActiveMenuLabel((current) =>
+                    current === section.label ? null : section.label,
+                  )
+                }
+                onMouseEnter={() => {
+                  if (activeMenuLabel) {
+                    setActiveMenuLabel(section.label);
+                  }
+                }}
+              >
+                {section.label}
+              </button>
+              {activeMenuLabel === section.label ? (
+                <div className="app-menu-popover menubar-popover" role="menu">
+                  {renderMenuSection(section)}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </nav>
         <div className="titlebar-actions">
           <button
             className="theme-toggle"
@@ -223,24 +331,7 @@ export function WorkbenchShell({
                     <span className="menu-separator" role="separator" />
                   ) : null}
                   <div className="app-menu-section-title">{section.label}</div>
-                  {section.items.map((item) => {
-                    const command = commandById.get(item.commandId);
-                    if (!command) {
-                      return null;
-                    }
-                    const shortcut = shortcutFor(command.id);
-                    return (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        key={command.id}
-                        onClick={() => runMenuCommand(command.id)}
-                      >
-                        <span>{titleFor(command)}</span>
-                        {shortcut ? <kbd>{shortcut}</kbd> : null}
-                      </button>
-                    );
-                  })}
+                  {renderMenuButtons(section)}
                 </div>
               ))}
               <span className="app-menu-version" aria-label="Application version">
@@ -252,34 +343,36 @@ export function WorkbenchShell({
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
-        <button
-          className="icon-button sidebar-toggle"
-          type="button"
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          aria-pressed={!sidebarOpen}
-          onClick={onToggleSidebar}
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose size={15} />
-          ) : (
-            <PanelLeftOpen size={15} />
-          )}
-        </button>
-        <button
-          className="connection-select"
-          type="button"
-          onClick={onOpenConnectionManager}
-        >
-          <span
-            className="connection-color-dot"
-            style={{ background: activeConnectionColor }}
-            aria-hidden="true"
-          />
-          <span>{activeConnectionName}</span>
-          <small>{activeConnectionEngine}</small>
-          <ChevronDown size={15} />
-        </button>
+        <div className="connection-toolbar">
+          <button
+            className="icon-button sidebar-toggle"
+            type="button"
+            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            aria-pressed={!sidebarOpen}
+            onClick={onToggleSidebar}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose size={15} />
+            ) : (
+              <PanelLeftOpen size={15} />
+            )}
+          </button>
+          <button
+            className="connection-select"
+            type="button"
+            onClick={onOpenConnectionManager}
+          >
+            <span
+              className="connection-color-dot"
+              style={{ background: activeConnectionColor }}
+              aria-hidden="true"
+            />
+            <span>{activeConnectionName}</span>
+            <small>{activeConnectionEngine}</small>
+            <ChevronDown size={15} />
+          </button>
+        </div>
         <div className="toolbar-spacer" />
         <button
           className={completionOpen ? "icon-button active" : "icon-button"}
@@ -326,23 +419,29 @@ export function WorkbenchShell({
       </div>
 
       <footer className="statusbar">
-        <span>
-          <span
-            className="connection-color-dot"
-            style={{ background: activeConnectionColor }}
-            aria-hidden="true"
-          />
-          {activeConnectionStatus}
-        </span>
-        <span>{activeTransportLabel}</span>
+        <div className="statusbar-group statusbar-left">
+          <span className="statusbar-item statusbar-connection">
+            <span
+              className="connection-color-dot"
+              style={{ background: activeConnectionColor }}
+              aria-hidden="true"
+            />
+            {activeConnectionStatus}
+          </span>
+          <span className="statusbar-item">{activeTransportLabel}</span>
+          {leftStatusBarItems.map(renderStatusBarItem)}
+        </div>
         {selectionStatus ? (
           <span className="statusbar-selection">{selectionStatus}</span>
         ) : null}
-        <span>
-          {vimMode ? "Vim" : "Default"} · {queryLineCount} lines ·{" "}
-          {sqlLintEnabled ? "lint on" : "lint off"} ·{" "}
-          {running ? "running" : "idle"}
-        </span>
+        <div className="statusbar-group statusbar-right">
+          {rightStatusBarItems.map(renderStatusBarItem)}
+          <span className="statusbar-item">
+            {vimMode ? "Vim" : "Default"} · {queryLineCount} lines ·{" "}
+            {sqlLintEnabled ? "lint on" : "lint off"} ·{" "}
+            {running ? "running" : "idle"}
+          </span>
+        </div>
       </footer>
 
     </main>

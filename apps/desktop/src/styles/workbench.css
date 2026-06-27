@@ -122,10 +122,74 @@
 .sidebar {
   position: relative;
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: 32px minmax(0, 1fr);
   min-width: 0;
   border-right: 1px solid var(--border);
   background: var(--surface);
+}
+
+.sidebar-view-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 28px;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 0;
+  padding: 3px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.sidebar-view-switcher button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 25px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  font-size: var(--font-ui-sm);
+  line-height: var(--line-compact);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sidebar-view-switcher button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-view-switcher button:hover,
+.sidebar-view-switcher button:focus-visible {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--hover);
+}
+
+.sidebar-view-switcher button.active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--focus) 42%, var(--border));
+  background: var(--selected);
+}
+
+.sidebar-view-switcher .sidebar-side-button {
+  padding: 0;
+}
+
+.sidebar-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sidebar-panel > section {
+  min-height: 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar-section {

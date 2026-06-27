@@ -14,6 +14,7 @@
     "keybindings",
     "queryResults:read",
     "resultRenderers",
+    "statusBar",
     "themes",
     "sqlDialects",
     "logs",
@@ -43,6 +44,17 @@
         "title": "Copy as Markdown",
         "command": "typescriptBasic.copyResultAsMarkdown",
         "when": "resultGridFocus"
+      }
+    ],
+    "statusBarItems": [
+      {
+        "id": "typescriptBasic.sampleStatus",
+        "label": "Acme SQL",
+        "alignment": "right",
+        "priority": 50,
+        "command": "typescriptBasic.copyResultAsMarkdown",
+        "tooltip": "Run the sample extension command",
+        "when": "workspaceReady"
       }
     ],
     "themes": [
