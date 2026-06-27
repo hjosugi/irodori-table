@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  aiDownloadModel,
   aiEngineStatus,
   aiGenerateSql,
   aiGetProvider,
@@ -60,7 +59,6 @@ export function AiGenerateDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<AiEngineStatus | null>(null);
-  const [downloading, setDownloading] = useState(false);
   const [provider, setProvider] = useState<AiProviderConfig>(EMPTY_PROVIDER);
   const [showProvider, setShowProvider] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -102,19 +100,6 @@ export function AiGenerateDialog({
       setLoading(false);
     }
   }, [prompt, loading, connectionId, engine, onInsert, notify, onClose]);
-
-  const startDownload = useCallback(async () => {
-    setDownloading(true);
-    setError(null);
-    try {
-      await aiDownloadModel();
-      notify("info", "Model download started", "Watch progress in the jobs dashboard.");
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setDownloading(false);
-    }
-  }, [notify]);
 
   const saveProvider = useCallback(async () => {
     setSavingProvider(true);
@@ -184,15 +169,7 @@ export function AiGenerateDialog({
         )}
         {needsDownload && (
           <p className="ai-generate-note">
-            The local model isn’t downloaded yet.{" "}
-            <button
-              type="button"
-              className="ai-generate-link"
-              onClick={() => void startDownload()}
-              disabled={downloading}
-            >
-              {downloading ? "Starting…" : "Download model"}
-            </button>
+            The local model is not present. Use a preinstalled model or pick another provider below.
           </p>
         )}
         {error && <p className="ai-generate-error">{error}</p>}

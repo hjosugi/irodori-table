@@ -189,8 +189,6 @@ pub fn run() {
             sql_format_snowflake,
             jobs::jobs_list,
             jobs::jobs_get,
-            jobs::jobs_cancel,
-            indexing::db_index_schema,
             indexing::db_search_schema,
             db::db_connect,
             db::db_query_parameters,
@@ -367,14 +365,6 @@ mod typegen {
             .command(
                 Command::new("jobs_get", "JobRecord | null")
                     .arg(Arg::rust("job_id", TsType::string())),
-            )
-            .command(
-                Command::new("jobs_cancel", "JobRecord").arg(Arg::rust("job_id", TsType::string())),
-            )
-            .command(
-                // Returns the background job id; watch it in the jobs dashboard.
-                Command::returning("db_index_schema", TsType::string())
-                    .arg(Arg::rust("connection_id", TsType::string())),
             )
             .command(
                 Command::new("db_search_schema", "Array<SchemaSearchHit>")

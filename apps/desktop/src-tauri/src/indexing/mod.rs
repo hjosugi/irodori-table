@@ -142,26 +142,6 @@ fn schema_index_config() -> IndexBuildConfig {
     }
 }
 
-/// Load metadata, build documents, open + register an index store, and submit the
-/// job. The actual build is run separately so the command can background it while
-/// tests await it deterministically.
-async fn prepare_schema_index(
-    db: &DbState,
-    jobs: &JobRuntime,
-    index: &SchemaIndexState,
-    connection_id: String,
-    job_id: String,
-) -> Result<(String, IndexStore, Vec<Document>), IrodoriError> {
-    let metadata = list_objects_impl(db, connection_id.clone())
-        .await
-        .map_err(IrodoriError::from)?;
-    let documents = schema_documents(&metadata);
-    let store = IndexStore::open_in_memory().await?;
-    index.register(&connection_id, store.clone()).await;
-    jobs.submit_with_id(&job_id, schema_index_spec(&connection_id))?;
-    Ok((job_id, store, documents))
-}
-
 async fn run_schema_index_job(
     db: DbState,
     runtime: Arc<JobRuntime>,
