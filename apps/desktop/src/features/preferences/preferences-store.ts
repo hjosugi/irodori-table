@@ -13,6 +13,7 @@ import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
 import type { CustomThemeEntry, IrodoriTheme, ThemeKind } from "@/theme";
 
 export type { CustomThemeEntry } from "@/theme";
+export type ThemePreference = "system" | ThemeKind;
 type ValueUpdater<T> = T | ((current: T) => T);
 
 const themeStorageKey = "irodori.theme.v1";
@@ -34,6 +35,7 @@ export const UI_ZOOM_STEP = 0.1;
 
 type PreferencesState = {
   locale: Locale;
+  themePreference: ThemePreference;
   themeKind: ThemeKind;
   activeCustomThemeId: string | null;
   customThemes: CustomThemeEntry[];
@@ -44,6 +46,7 @@ type PreferencesState = {
   autoCommit: boolean;
   uiZoom: number;
   setLocale: (value: ValueUpdater<Locale>) => void;
+  setThemePreference: (value: ValueUpdater<ThemePreference>) => void;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
   setActiveCustomThemeId: (value: ValueUpdater<string | null>) => void;
   setCustomThemes: (value: ValueUpdater<CustomThemeEntry[]>) => void;
@@ -84,8 +87,29 @@ function removeStorage(key: string) {
   localStorageOrNull()?.removeItem(key);
 }
 
-function loadThemeKind(): ThemeKind {
-  return readStorage(themeStorageKey) === "light" ? "light" : "dark";
+function systemThemeKind(): ThemeKind {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  ) {
+    return "dark";
+  }
+  return "light";
+}
+
+function normalizeThemePreference(value: unknown): ThemePreference {
+  return value === "dark" || value === "light" || value === "system"
+    ? value
+    : "system";
+}
+
+function themeKindForPreference(preference: ThemePreference): ThemeKind {
+  return preference === "system" ? systemThemeKind() : preference;
+}
+
+function loadThemePreference(): ThemePreference {
+  return normalizeThemePreference(readStorage(themeStorageKey));
 }
 
 function loadLocale(): Locale {
@@ -199,10 +223,12 @@ function loadUiZoom() {
 }
 
 const initialCustomThemes = loadCustomThemes();
+const initialThemePreference = loadThemePreference();
 
 export const usePreferencesStore = create<PreferencesState>((set) => ({
   locale: loadLocale(),
-  themeKind: loadThemeKind(),
+  themePreference: initialThemePreference,
+  themeKind: themeKindForPreference(initialThemePreference),
   activeCustomThemeId: loadActiveCustomThemeId(initialCustomThemes),
   customThemes: initialCustomThemes,
   vimMode: loadVimMode(),
@@ -213,8 +239,24 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   uiZoom: loadUiZoom(),
   setLocale: (value) =>
     set((state) => ({ locale: normalizeLocale(resolveValue(state.locale, value)) })),
+  setThemePreference: (value) =>
+    set((state) => {
+      const themePreference = normalizeThemePreference(
+        resolveValue(state.themePreference, value),
+      );
+      return {
+        themePreference,
+        themeKind: themeKindForPreference(themePreference),
+      };
+    }),
   setThemeKind: (value) =>
-    set((state) => ({ themeKind: resolveValue(state.themeKind, value) })),
+    set((state) => {
+      const themeKind = resolveValue(state.themeKind, value);
+      return {
+        themePreference: themeKind,
+        themeKind,
+      };
+    }),
   setActiveCustomThemeId: (value) =>
     set((state) => ({
       activeCustomThemeId: resolveValue(state.activeCustomThemeId, value),
@@ -245,7 +287,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
 
 usePreferencesStore.subscribe((state) => {
   writeStorage(localeStorageKey, state.locale);
-  writeStorage(themeStorageKey, state.themeKind);
+  writeStorage(themeStorageKey, state.themePreference);
   if (state.activeCustomThemeId) {
     writeStorage(
       activeCustomThemeStorageKey,
@@ -269,3 +311,18 @@ usePreferencesStore.subscribe((state) => {
   writeStorage(autoCommitStorageKey, String(state.autoCommit));
   writeStorage(uiZoomStorageKey, String(state.uiZoom));
 });
+
+if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const onSystemThemeChange = () => {
+    const state = usePreferencesStore.getState();
+    if (state.themePreference === "system") {
+      usePreferencesStore.setState({ themeKind: systemThemeKind() });
+    }
+  };
+  if (typeof media.addEventListener === "function") {
+    media.addEventListener("change", onSystemThemeChange);
+  } else {
+    media.addListener?.(onSystemThemeChange);
+  }
+}

@@ -140,6 +140,7 @@ import {
   UI_ZOOM_STEP,
   normalizeUiZoom,
   usePreferencesStore,
+  type ThemePreference,
 } from "@/features/preferences";
 import { createTranslator, normalizeLocale } from "@/i18n";
 import {
@@ -324,6 +325,10 @@ export function AppWorkbench() {
   const locale = usePreferencesStore((state) => state.locale);
   const setLocale = usePreferencesStore((state) => state.setLocale);
   const { t } = useMemo(() => createTranslator(locale), [locale]);
+  const themePreference = usePreferencesStore((state) => state.themePreference);
+  const setThemePreference = usePreferencesStore(
+    (state) => state.setThemePreference,
+  );
   const themeKind = usePreferencesStore((state) => state.themeKind);
   const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
   const activeCustomThemeId = usePreferencesStore(
@@ -1845,6 +1850,11 @@ export function AppWorkbench() {
     setActiveCustomThemeId(null);
   }
 
+  function activateThemePreference(value: ThemePreference) {
+    setThemePreference(value);
+    setActiveCustomThemeId(null);
+  }
+
   function activateCustomTheme(themeId: string | null) {
     if (!themeId) {
       setActiveCustomThemeId(null);
@@ -1864,7 +1874,7 @@ export function AppWorkbench() {
       {
         version: 1,
         locale,
-        theme: activeCustomTheme?.theme ?? themeKind,
+        theme: activeCustomTheme?.theme ?? themePreference,
         activeCustomThemeId,
         customThemes,
         editor: {
@@ -1967,8 +1977,12 @@ export function AppWorkbench() {
         }
         setCustomThemes(nextCustomThemes);
       }
-      if (parsed.theme === "dark" || parsed.theme === "light") {
-        activateBuiltInTheme(parsed.theme);
+      if (
+        parsed.theme === "system" ||
+        parsed.theme === "dark" ||
+        parsed.theme === "light"
+      ) {
+        activateThemePreference(parsed.theme);
         nextActiveCustomThemeId = null;
       } else if (isRecord(parsed.theme)) {
         const themeSource = parsed.theme;
@@ -3987,7 +4001,9 @@ export function AppWorkbench() {
           setAutoCommit={setAutoCommit}
           uiZoom={uiZoom}
           setUiZoom={setUiZoom}
+          themePreference={themePreference}
           themeKind={themeKind}
+          setThemePreference={activateThemePreference}
           setThemeKind={activateBuiltInTheme}
           customThemes={customThemes}
           activeCustomThemeId={activeCustomThemeId}

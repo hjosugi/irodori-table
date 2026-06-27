@@ -6,4 +6,5 @@ export {
   normalizeUiZoom,
   usePreferencesStore,
   type CustomThemeEntry,
+  type ThemePreference,
 } from "./preferences-store";

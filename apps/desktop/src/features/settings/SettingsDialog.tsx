@@ -18,6 +18,7 @@ import {
   UI_ZOOM_STEP,
   normalizeUiZoom,
   type CustomThemeEntry,
+  type ThemePreference,
 } from "../preferences";
 import {
   commandHasConflict,
@@ -78,7 +79,9 @@ export interface SettingsDialogProps {
   setAutoCommit: (value: BooleanUpdater) => void;
   uiZoom: number;
   setUiZoom: (value: ValueUpdater<number>) => void;
+  themePreference: ThemePreference;
   themeKind: ThemeKind;
+  setThemePreference: (value: ThemePreference) => void;
   setThemeKind: (value: ThemeKind) => void;
   customThemes: CustomThemeEntry[];
   activeCustomThemeId: string | null;
@@ -213,7 +216,9 @@ export function SettingsDialog({
   setAutoCommit,
   uiZoom,
   setUiZoom,
+  themePreference,
   themeKind,
+  setThemePreference,
   setThemeKind,
   customThemes,
   activeCustomThemeId,
@@ -721,7 +726,18 @@ export function SettingsDialog({
                     <button
                       type="button"
                       className={
-                        themeKind === "dark" && !activeCustomThemeId
+                        themePreference === "system" && !activeCustomThemeId
+                          ? "active"
+                          : undefined
+                      }
+                      onClick={() => setThemePreference("system")}
+                    >
+                      {t("common.system")}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        themePreference === "dark" && !activeCustomThemeId
                           ? "active"
                           : undefined
                       }
@@ -732,7 +748,7 @@ export function SettingsDialog({
                     <button
                       type="button"
                       className={
-                        themeKind === "light" && !activeCustomThemeId
+                        themePreference === "light" && !activeCustomThemeId
                           ? "active"
                           : undefined
                       }

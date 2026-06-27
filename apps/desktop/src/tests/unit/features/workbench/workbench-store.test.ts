@@ -123,19 +123,23 @@ describe("workbench store view placements", () => {
   it("loads default view visibility", async () => {
     const store = await loadWorkbenchStore();
 
-    expect(store.getState().viewVisibility).toEqual(
-      defaultWorkbenchViewVisibility,
-    );
+    expect(store.getState().viewVisibility).toEqual({
+      objectBrowser: true,
+      completion: false,
+      queryHistory: false,
+      git: false,
+    });
+    expect(store.getState().viewVisibility).toEqual(defaultWorkbenchViewVisibility);
   });
 
   it("sets and persists a single view visibility", async () => {
     const store = await loadWorkbenchStore();
     const expected: WorkbenchViewVisibility = {
       ...defaultWorkbenchViewVisibility,
-      queryHistory: false,
+      queryHistory: true,
     };
 
-    store.getState().setViewOpen("queryHistory", false);
+    store.getState().setViewOpen("queryHistory", true);
 
     expect(store.getState().viewVisibility).toEqual(expected);
     expect(

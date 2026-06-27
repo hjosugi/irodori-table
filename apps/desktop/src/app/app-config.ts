@@ -222,7 +222,7 @@ export const tabs = [
 
 export const savedQueryStorageKey = "irodori.savedScratchQuery.v1";
 
-export const initialQuery = `select
+const legacySeedQuery = `select
   c.id,
   c.name,
   sum(o.total) as lifetime_value,
@@ -233,6 +233,8 @@ where o.created_at >= now() - interval '90 days'
 group by c.id, c.name
 order by lifetime_value desc
 limit 200;`;
+
+export const initialQuery = "";
 
 export const resultRows = [
   ["1029", "Kawase Foods", "9841200", "2026-06-20 18:34"],
@@ -245,5 +247,9 @@ export const resultRows = [
 ];
 
 export function loadSavedQuery(): string {
-  return window.localStorage.getItem(savedQueryStorageKey) ?? initialQuery;
+  const stored = window.localStorage.getItem(savedQueryStorageKey);
+  if (!stored || stored === legacySeedQuery) {
+    return initialQuery;
+  }
+  return stored;
 }

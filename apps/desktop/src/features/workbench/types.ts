@@ -32,7 +32,7 @@ export const defaultWorkbenchViewPlacements: WorkbenchViewPlacements = {
 
 export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
   objectBrowser: true,
-  completion: true,
-  queryHistory: true,
-  git: true,
+  completion: false,
+  queryHistory: false,
+  git: false,
 };
