@@ -17,9 +17,12 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   // The shell mounts.
   await expect(page.getByLabel("Irodori Table")).toBeVisible();
 
-  // CodeMirror is mounted with seeded SQL and produces highlight token spans.
+  // CodeMirror starts clean by default, then highlights once text is entered.
   const content = page.locator(".cm-content");
   await expect(page.locator(".cm-editor")).toBeVisible();
+  await expect(content).toHaveText("");
+  await content.click();
+  await page.keyboard.type("select 1");
   await expect(content).toContainText("select");
   await expect(content.locator("span").first()).toBeVisible();
 
@@ -34,17 +37,15 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await page.getByRole("button", { name: "Show sidebar" }).click();
   await expect(page.locator(".sidebar")).toBeVisible();
 
-  // Inspector sections can be closed from the pane and reopened from the toolbar.
-  await expect(page.locator(".inspector")).toContainText("Completion");
-  await expect(page.locator(".inspector")).toContainText("History");
-  await page.getByRole("button", { name: "Close history" }).click();
-  await expect(page.locator(".inspector")).not.toContainText("History");
-  await page.getByRole("button", { name: "Show history" }).click();
-  await expect(page.locator(".inspector")).toContainText("History");
-  await page.getByRole("button", { name: "Close completion" }).click();
-  await expect(page.locator(".inspector")).not.toContainText("Completion");
-  await page.getByRole("button", { name: "Show completion" }).click();
-  await expect(page.locator(".inspector")).toContainText("Completion");
+  // Sidebar views switch like a workbench rather than showing every pane at once.
+  await page.getByRole("tab", { name: "Completion" }).click();
+  await expect(page.locator(".sidebar .completion-list")).toBeVisible();
+  await expect(page.locator(".sidebar .history-list")).toHaveCount(0);
+  await page.getByRole("tab", { name: "History" }).click();
+  await expect(page.locator(".sidebar .history-list")).toBeVisible();
+  await expect(page.locator(".sidebar .completion-list")).toHaveCount(0);
+  await page.getByRole("tab", { name: "Tables" }).click();
+  await expect(page.locator(".object-browser")).toBeVisible();
 
   // Vim mode can be toggled on/off without remounting the editor.
   await page.getByRole("button", { name: "Settings" }).click();

@@ -9,7 +9,7 @@ import type {
 import {
   calculateResultGridVirtualColumnWindow,
   calculateResultGridVirtualRowWindow,
-} from "../src/result-grid";
+} from "../src/features/results/result-grid";
 
 const GRID_ROW_HEIGHT_PX = 27;
 const GRID_OVERSCAN_ROWS = 8;
@@ -397,10 +397,14 @@ async function waitForGridPaint() {
 }
 
 async function connectMockDatabase(page: Page) {
-  await page
+  const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
-    .first()
-    .click();
+    .first();
+  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+    await connectionManager.click();
+  } else {
+    await page.locator(".connection-select").click();
+  }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.locator(".editor-meta")).toContainText("ready");
 }

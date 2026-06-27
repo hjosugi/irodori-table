@@ -6,7 +6,7 @@ import type {
   QueryParameterPromptSet,
   WorkspaceSnapshot,
 } from "../src/generated/irodori-api";
-import { calculateResultGridVirtualRowWindow } from "../src/result-grid";
+import { calculateResultGridVirtualRowWindow } from "../src/features/results/result-grid";
 
 // EXEC-010: with disk offload on, a result larger than the in-memory budget is
 // retained behind a backend store and the grid pages rows from disk via
@@ -255,7 +255,14 @@ async function installSpillMock(page: Page) {
 // a fresh URL-mode draft, fill it, and submit "Connect". The mock `db_connect`
 // resolves to the `local-pg` connection, after which the editor reports "ready".
 async function connectMock(page: Page) {
-  await page.getByRole("button", { name: "Connection manager" }).first().click();
+  const connectionManager = page
+    .getByRole("button", { name: "Connection manager" })
+    .first();
+  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+    await connectionManager.click();
+  } else {
+    await page.locator(".connection-select").click();
+  }
   await page.getByRole("button", { name: "New connection" }).last().click();
   await page.getByPlaceholder("Connection's name").fill("Mock Database");
   await page

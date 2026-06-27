@@ -54,6 +54,8 @@ Status legend:
 | BigQuery | `bigquery` | HTTP | `db/bigquery.rs` | 443 | Wired (HTTP client) |
 | Bigtable | `bigtable` | gRPC/HTTP | `db/bigtable.rs` | 443 | Wired (adapter) |
 | InfluxDB | `influxdb` | HTTP (SQL/v3) | `db/influx.rs` | 8086 | Wired (adapter) |
+| ScyllaDB | `scylladb` | CQL / scylla driver | (via `cassandra.rs`) | 9042 | Wired (CQL-compatible) |
+| QuestDB | `questdb` | Postgres wire / sqlx | (via `postgres.rs`) | 8812 | Wired |
 
 > Maturity is a coverage signal, not a UX guarantee. "Wired (adapter)" means the
 > connect/query path exists; first-class browsing, completion, editing,
@@ -75,6 +77,20 @@ These appear in `DbEngine` but `is_unimplemented_wire()` rejects them with
 | Qdrant | `qdrant` | Vector | — | Vector family has no adapter yet. |
 | Milvus | `milvus` | Vector | — | Vector family has no adapter yet. |
 | Pinecone | `pinecone` | Vector (HTTP) | — | Vector family has no adapter yet. |
+| Trino / Presto | `trinoPresto` | Federated SQL | `Jdbc` | JDBC-style connector not implemented yet. |
+| Firebird | `firebird` | Relational | `Jdbc` | JDBC-style connector not implemented yet. |
+| Databricks / Spark SQL | `databricks` | Warehouse | `Jdbc` | JDBC-style connector not implemented yet. |
+| Elasticsearch / OpenSearch | `elasticsearch` | Search | `Search` | Search connector and index/data-stream browser are not implemented yet. |
+| Couchbase | `couchbase` | Document | `Document` | Document connector not implemented yet. |
+| DynamoDB | `dynamodb` | Key-value | `KeyValue` | Key-value connector not implemented yet. |
+| ArangoDB | `arangodb` | Graph / multi-model | `Graph` | Graph/multi-model connector not implemented yet. |
+| Apache IoTDB | `iotdb` | Time-series | `TimeSeries` | Time-series connector not implemented yet. |
+| Apache Hive | `hive` | Lakehouse / catalog | `Jdbc` | Catalog/metastore model is still pending. |
+| Apache Iceberg | `iceberg` | Lakehouse | `Lakehouse` | Priority lakehouse target; catalog-backed model is still pending. |
+| AWS S3 Tables | `s3Tables` | Lakehouse | `Lakehouse` | Managed Iceberg connector not implemented yet. |
+| Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | Object browser/source connector not implemented yet. |
+| Delta Lake | `deltaLake` | Lakehouse | `Lakehouse` | Lakehouse connector not implemented yet. |
+| Apache Hudi | `hudi` | Lakehouse | `Lakehouse` | Lakehouse connector not implemented yet. |
 
 ## 4. Not registered (roadmap intent, not in the engine enum yet)
 
@@ -82,37 +98,7 @@ Named in `docs/data-source-coverage-strategy.md` / `docs/feature-matrix.md` but
 **not selectable in the app** — adding any of these starts with a new `DbEngine`
 variant + `Wire` + adapter.
 
-**Relational / distributed SQL & warehouse**
-- Trino / Presto (federated SQL)
-- Firebird
-- Databricks / Spark SQL
-
-**Search**
-- Elasticsearch / OpenSearch
-  - Priority search target; current general DB clients are not a strong benchmark,
-    so use Kibana Discover and Dev Tools as behavior references for a deep
-    index/data-stream browser, mapping/field inspection, filter/query authoring,
-    saved searches, request history, explain/profile, and health/status cues.
-
-**Document / KV / wide-column**
-- Couchbase
-- DynamoDB
-- ScyllaDB (could route through the existing CQL/`cassandra.rs` path)
-
-**Graph / multi-model**
-- ArangoDB
-
-**Time-series**
-- QuestDB
-- Apache IoTDB
-- (TimescaleDB is already Wired via Postgres wire)
-
-**Lakehouse / catalog / object store (priority: Apache Iceberg)**
-- Apache Iceberg via catalogs: Hive Metastore, AWS Glue, REST, JDBC
-- AWS S3 Tables (managed Iceberg)
-- Apache Hive (as catalog/metastore)
-- Object stores: S3 / GCS / Azure Blob
-- Delta Lake, Apache Hudi (after Iceberg)
+All roadmap sources currently promoted into the registry are listed above. Keep this section for future coverage-strategy ideas that are not selectable in the app yet.
 
 ## 5. Managed wire-compatible targets
 
@@ -137,8 +123,7 @@ surface beyond connection templates. They route through existing adapters:
 - **Memgraph is the cheapest win.** It speaks Bolt/Cypher like Neo4j; promoting it
   from "recognized, no connector" to "Wired" is mostly routing `Wire::Memgraph`
   through the Neo4j adapter plus a verification container.
-- **ScyllaDB** can likely ride the existing `cassandra.rs` CQL path the way
-  MariaDB rides MySQL — a registration + verification task, not a new driver.
+- **ScyllaDB** now rides the existing `cassandra.rs` CQL path; the remaining work is verification against a real ScyllaDB instance and source-specific UX polish.
 - **Iceberg/lakehouse** is the largest unstarted area and the stated P2 priority;
   it needs a catalog-backed connection model, not just a wire. Apache Iceberg and
   Amazon S3 Tables should be modeled as table/catalog sources with execution

@@ -152,10 +152,14 @@ async function replaceEditorText(page: Page, text: string) {
 }
 
 async function connectMockDatabase(page: Page) {
-  await page
+  const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
-    .first()
-    .click();
+    .first();
+  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+    await connectionManager.click();
+  } else {
+    await page.locator(".connection-select").click();
+  }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
 }
 
@@ -166,11 +170,12 @@ test("schema metadata drives table and column completion in the editor", async (
   await page.goto("/");
   await connectMockDatabase(page);
   await expect(page.locator(".editor-meta")).toContainText("ready");
-  await expect(page.locator(".inspector .completion-item").first()).toContainText(
+  await page.getByRole("tab", { name: "Completion" }).click();
+  await expect(page.locator(".sidebar .completion-item").first()).toContainText(
     "customers",
   );
   await page
-    .locator(".inspector .completion-item")
+    .locator(".sidebar .completion-item")
     .filter({ hasText: "customers" })
     .first()
     .click();

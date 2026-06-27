@@ -4,5 +4,10 @@
     "fsevents": "Optional macOS file-watcher dependency from Vite/Rollup toolchain."
   },
   "cargoExternalPaths": {},
-  "cargoGitSources": {}
+  "cargoGitSources": {
+    "irodori-error": "Project-owned split crate from hjosugi/irodori-knowledge, pinned by tag and lockfile commit.",
+    "irodori-jobs": "Project-owned split crate from hjosugi/irodori-knowledge, pinned by tag and lockfile commit.",
+    "irodori-knowledge": "Project-owned split crate from hjosugi/irodori-knowledge, pinned by tag and lockfile commit.",
+    "irodori-sql": "Project-owned split crate from hjosugi/irodori-sql, pinned by tag and lockfile commit."
+  }
 }

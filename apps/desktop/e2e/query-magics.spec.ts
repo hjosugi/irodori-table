@@ -185,10 +185,14 @@ async function installQueryMagicMock(page: Page) {
 
 async function connect(page: Page) {
   await page.goto("/");
-  await page
+  const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
-    .first()
-    .click();
+    .first();
+  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+    await connectionManager.click();
+  } else {
+    await page.locator(".connection-select").click();
+  }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.locator(".editor-meta")).toContainText("ready");
 }
