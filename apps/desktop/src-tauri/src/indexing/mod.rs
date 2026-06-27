@@ -3,7 +3,7 @@
 //!
 //! This is the "wire a real workflow into the dashboard" half of JOB-004. The
 //! index build runs through the shared batch-operation contract
-//! (`irodori_core::batch` via `irodori_knowledge::index::build_index`), submitted
+//! (`irodori_jobs::batch` via `irodori_knowledge::index::build_index`), submitted
 //! against the same `JobRuntime` the desktop jobs dashboard already polls — so the
 //! job appears there with live progress, is cancellable, and finishes with an
 //! output artifact. The resulting index is retained per connection so the UI can

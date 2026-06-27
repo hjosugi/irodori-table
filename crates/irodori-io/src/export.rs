@@ -1,7 +1,7 @@
 //! JOB-004 — job-driven tabular export.
 //!
 //! Streams a row source through any [`TabularEncoder`](crate::TabularEncoder)
-//! under the shared batch-job envelope (`irodori_core::batch`): progress every N
+//! under the shared batch-job envelope (`irodori_jobs::batch`): progress every N
 //! rows, cooperative cancellation, an output artifact, and a single terminal
 //! transition. This is the second workflow migrated onto the contract (the first
 //! being the index builder), proving the same envelope spans a streaming-IO job,
