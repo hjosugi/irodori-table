@@ -1969,14 +1969,39 @@ export function AppWorkbench() {
     toggleSidebar: () => setSidebarOpen((open) => !open),
     toggleCompletion: () => toggleSidebarView("completion"),
     toggleHistory: () => toggleSidebarView("queryHistory"),
+    toggleSidebarSide: () =>
+      setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left"),
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
     zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
     newSqlTab: reopenSqlTab,
     closeActiveTab: closeActiveSqlTab,
     saveQuery: saveCurrentQuery,
-    saveQueryAs: saveCurrentQueryAsFile,
-    exitApp: exitApplication,
+    saveQueryAs: () => {
+      const fileName = sqlDownloadFileName(activeTabLabel ?? "query.sql");
+      downloadBlob(
+        new Blob([query], { type: "application/sql;charset=utf-8" }),
+        fileName,
+      );
+      showActionNotice("success", "SQL export started", fileName);
+    },
+    exitApp: async () => {
+      const runtimeError = tauriRuntimeError();
+      if (runtimeError) {
+        showActionNotice(
+          "info",
+          "Exit unavailable",
+          "Close the browser preview tab or open the Tauri desktop window.",
+        );
+        return;
+      }
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        await getCurrentWindow().close();
+      } catch (error) {
+        showActionNotice("error", "Exit failed", errorMessage(error));
+      }
+    },
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
     runCurrentQuery,
@@ -4512,8 +4537,6 @@ export function AppWorkbench() {
           setQueryHistoryResultRows={setQueryHistoryResultRows}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          sidebarSide={sidebarSide}
-          setSidebarSide={setPrimarySidebarSide}
           commandCatalog={appCommandCatalog}
           keymap={keymap}
           keymapOverrides={keymapOverrides}
