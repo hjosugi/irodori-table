@@ -30,9 +30,11 @@ import { sqlHighlightingExtensions } from "@/sql/highlighting";
 import { lintSqlDocument, type SqlLinterId } from "@/sql/linter";
 import {
   inspectSqlMetadataAt,
+  sqlColumnDefinitionPreview,
   sqlColumnSampleValues,
   sqlMetadataTargetSubtitle,
   sqlMetadataTargetTitle,
+  sqlObjectColumnDefinitionRows,
   sqlObjectDefinitionPreview,
   sqlObjectSampleRows,
   type SqlMetadataTarget,
@@ -237,6 +239,12 @@ function sqlMetadataInsightExtensions(
       },
       { hideOnChange: true },
     ),
+    keymap.of([
+      {
+        key: "F12",
+        run: (view) => jumpToMetadataAtSelection(view, metadata, onMetadataJump),
+      },
+    ]),
     EditorView.domEventHandlers({
       mousedown(event, view) {
         if (!onMetadataJump || !(event.metaKey || event.ctrlKey)) {
@@ -267,9 +275,33 @@ function sqlMetadataInsightExtensions(
   ];
 }
 
+function jumpToMetadataAtSelection(
+  view: EditorView,
+  metadata: DatabaseMetadata,
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+): boolean {
+  if (!onMetadataJump) {
+    return false;
+  }
+  const target = inspectSqlMetadataAt(
+    view.state.doc.toString(),
+    view.state.selection.main.head,
+    metadata,
+  );
+  if (!target) {
+    return false;
+  }
+  view.dispatch({
+    selection: { anchor: target.range.from, head: target.range.to },
+    scrollIntoView: true,
+  });
+  onMetadataJump(target);
+  return true;
+}
+
 function renderSqlMetadataTooltip(target: SqlMetadataTarget): HTMLElement {
   const root = document.createElement("div");
-  root.className = "sql-metadata-tooltip";
+  root.className = `sql-metadata-tooltip sql-metadata-tooltip-${target.kind}`;
   appendText(root, "div", "sql-metadata-title", sqlMetadataTargetTitle(target));
   appendText(
     root,
@@ -291,10 +323,18 @@ function appendObjectDetails(
   root: HTMLElement,
   object: SqlMetadataTarget["object"],
 ) {
+  if (object.comment) {
+    appendText(root, "div", "sql-metadata-comment", object.comment);
+  }
+
   const definition = document.createElement("pre");
   definition.className = "sql-metadata-definition";
   definition.textContent = truncateText(sqlObjectDefinitionPreview(object), 1_400);
   root.appendChild(definition);
+
+  appendObjectColumns(root, object);
+  appendObjectKeys(root, object);
+  appendObjectIndexes(root, object);
 
   const sampleRows = sqlObjectSampleRows(object, 2);
   if (!object.sample || sampleRows.length === 0) {
@@ -321,13 +361,117 @@ function appendObjectDetails(
   root.appendChild(sample);
 }
 
+function appendObjectColumns(
+  root: HTMLElement,
+  object: SqlMetadataTarget["object"],
+) {
+  const rows = sqlObjectColumnDefinitionRows(object, 10);
+  if (rows.length === 0) {
+    return;
+  }
+
+  const columns = document.createElement("div");
+  columns.className = "sql-metadata-columns";
+  appendText(columns, "div", "sql-metadata-section-title", "columns");
+  for (const row of rows) {
+    appendText(columns, "div", "sql-metadata-detail-line", row);
+  }
+  root.appendChild(columns);
+}
+
+function appendObjectKeys(
+  root: HTMLElement,
+  object: SqlMetadataTarget["object"],
+) {
+  const rows = object.foreignKeys.map((fk) => {
+    const schema = fk.referencesSchema ?? object.schema;
+    const columns = fk.columns.join(", ");
+    const references = `${schema}.${fk.referencesTable}(${fk.referencesColumns.join(", ")})`;
+    return `${columns} -> ${references}`;
+  });
+  if (rows.length === 0) {
+    return;
+  }
+
+  const keys = document.createElement("div");
+  keys.className = "sql-metadata-keys";
+  appendText(keys, "div", "sql-metadata-section-title", "foreign keys");
+  for (const row of rows.slice(0, 6)) {
+    appendText(keys, "div", "sql-metadata-detail-line", row);
+  }
+  if (rows.length > 6) {
+    appendText(
+      keys,
+      "div",
+      "sql-metadata-detail-line",
+      `... ${rows.length - 6} more foreign key(s)`,
+    );
+  }
+  root.appendChild(keys);
+}
+
+function appendObjectIndexes(
+  root: HTMLElement,
+  object: SqlMetadataTarget["object"],
+) {
+  if (object.indexes.length === 0) {
+    return;
+  }
+
+  const indexes = document.createElement("div");
+  indexes.className = "sql-metadata-indexes";
+  appendText(indexes, "div", "sql-metadata-section-title", "indexes");
+  for (const index of object.indexes.slice(0, 6)) {
+    appendText(
+      indexes,
+      "div",
+      "sql-metadata-detail-line",
+      `${index.unique ? "unique " : ""}${index.name} (${index.columns.join(", ")})`,
+    );
+  }
+  if (object.indexes.length > 6) {
+    appendText(
+      indexes,
+      "div",
+      "sql-metadata-detail-line",
+      `... ${object.indexes.length - 6} more index(es)`,
+    );
+  }
+  root.appendChild(indexes);
+}
+
 function appendColumnDetails(
   root: HTMLElement,
   target: Extract<SqlMetadataTarget, { kind: "column" }>,
 ) {
+  const definition = document.createElement("pre");
+  definition.className = "sql-metadata-definition";
+  definition.textContent = sqlColumnDefinitionPreview(
+    target.object,
+    target.column,
+  );
+  root.appendChild(definition);
+
+  const targetColumnName = target.column.name.toLowerCase();
+  const foreignKey = target.object.foreignKeys.find((fk) =>
+    fk.columns.some((column) => column.toLowerCase() === targetColumnName),
+  );
+  const indexes = target.object.indexes
+    .filter((index) =>
+      index.columns.some(
+        (column) => column.toLowerCase() === targetColumnName,
+      ),
+    )
+    .map((index) => `${index.unique ? "unique " : ""}${index.name}`);
+  const reference = foreignKey
+    ? `${foreignKey.referencesSchema ?? target.object.schema}.${
+        foreignKey.referencesTable
+      }(${foreignKey.referencesColumns.join(", ")})`
+    : null;
   const lines = [
     target.column.comment,
-    target.column.defaultValue ? `default ${target.column.defaultValue}` : null,
+    indexes.length ? `index ${indexes.join(", ")}` : null,
+    reference ? `references ${reference}` : null,
     ...sqlColumnSampleValues(target.object, target.column).map(
       (value) => `sample ${value}`,
     ),

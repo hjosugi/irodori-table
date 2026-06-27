@@ -997,7 +997,9 @@ body.panel-resizing .result-grid {
 .sql-metadata-tooltip {
   display: grid;
   gap: 7px;
-  max-width: min(560px, 70vw);
+  max-width: min(680px, 76vw);
+  max-height: min(620px, 76vh);
+  overflow: auto;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1020,7 +1022,15 @@ body.panel-resizing .result-grid {
   color: var(--muted);
 }
 
+.sql-metadata-comment {
+  max-width: 62ch;
+  color: var(--text);
+}
+
 .sql-metadata-definition,
+.sql-metadata-columns,
+.sql-metadata-keys,
+.sql-metadata-indexes,
 .sql-metadata-sample,
 .sql-metadata-column-detail {
   margin: 0;
@@ -1038,6 +1048,13 @@ body.panel-resizing .result-grid {
   font-size: var(--font-code);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.sql-metadata-columns,
+.sql-metadata-keys,
+.sql-metadata-indexes {
+  display: grid;
+  gap: 4px;
 }
 
 .sql-metadata-sample {

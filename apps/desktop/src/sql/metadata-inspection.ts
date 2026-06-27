@@ -156,20 +156,68 @@ export function sqlObjectDefinitionPreview(object: DbObjectMetadata): string {
     return ddl;
   }
 
-  const columns = object.columns.map((column) => {
-    const parts = [
-      quotePreviewIdentifier(column.name),
-      column.dataType,
-      column.nullable ? null : "not null",
-      column.defaultValue ? `default ${column.defaultValue}` : null,
-    ].filter(Boolean);
-    return `  ${parts.join(" ")}`;
-  });
+  const columns = object.columns.map(
+    (column) => `  ${sqlColumnBaseDefinitionPreview(column)}`,
+  );
   const primaryKey = object.primaryKey.length
     ? `  primary key (${object.primaryKey.map(quotePreviewIdentifier).join(", ")})`
     : null;
-  const body = [...columns, primaryKey].filter(Boolean).join(",\n");
+  const foreignKeys = object.foreignKeys.map((foreignKey) => {
+    const columns = foreignKey.columns.map(quotePreviewIdentifier).join(", ");
+    return `  foreign key (${columns}) references ${foreignKeyReferenceText(
+      object,
+      foreignKey,
+    )}`;
+  });
+  const body = [...columns, primaryKey, ...foreignKeys]
+    .filter(Boolean)
+    .join(",\n");
   return `create ${object.kind} ${qualifiedObjectName(object)} (\n${body}\n);`;
+}
+
+export function sqlColumnDefinitionPreview(
+  object: DbObjectMetadata,
+  column: ColumnMetadata,
+): string {
+  const foreignKey = foreignKeyForColumn(object, column.name);
+  const parts = [
+    quotePreviewIdentifier(column.name),
+    column.dataType || "unknown",
+    column.nullable ? null : "not null",
+    column.defaultValue ? `default ${column.defaultValue}` : null,
+    object.primaryKey.some((name) => eqId(name, column.name))
+      ? "primary key"
+      : null,
+    foreignKey
+      ? `references ${foreignKeyReferenceText(object, foreignKey)}`
+      : null,
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+
+function sqlColumnBaseDefinitionPreview(column: ColumnMetadata): string {
+  const parts = [
+    quotePreviewIdentifier(column.name),
+    column.dataType || "unknown",
+    column.nullable ? null : "not null",
+    column.defaultValue ? `default ${column.defaultValue}` : null,
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+
+export function sqlObjectColumnDefinitionRows(
+  object: DbObjectMetadata,
+  limit = 8,
+): string[] {
+  const rows = object.columns
+    .slice()
+    .sort((left, right) => left.ordinal - right.ordinal)
+    .slice(0, limit)
+    .map((column) => sqlColumnDefinitionPreview(object, column));
+  if (object.columns.length > limit) {
+    rows.push(`... ${object.columns.length - limit} more column(s)`);
+  }
+  return rows;
 }
 
 export function sqlColumnSampleValues(
@@ -614,6 +662,15 @@ function foreignKeyForColumn(object: DbObjectMetadata, columnName: string) {
   return object.foreignKeys.find((foreignKey) =>
     foreignKey.columns.some((column) => eqId(column, columnName)),
   );
+}
+
+function foreignKeyReferenceText(
+  object: DbObjectMetadata,
+  foreignKey: DbObjectMetadata["foreignKeys"][number],
+): string {
+  const schema = foreignKey.referencesSchema ?? object.schema;
+  const table = `${schema}.${foreignKey.referencesTable}`;
+  return `${table}(${foreignKey.referencesColumns.join(", ")})`;
 }
 
 function qualifiedObjectName(object: DbObjectMetadata): string {

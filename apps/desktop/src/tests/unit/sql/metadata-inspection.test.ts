@@ -4,11 +4,14 @@ import type {
   DatabaseMetadata,
   DbObjectMetadata,
   ForeignKey,
+  IndexMetadata,
 } from "@/generated/irodori-api";
 import {
   inspectSqlMetadataAt,
+  sqlColumnDefinitionPreview,
   sqlColumnSampleValues,
   sqlMetadataTargetTitle,
+  sqlObjectColumnDefinitionRows,
   sqlObjectDefinitionPreview,
 } from "@/sql/metadata-inspection";
 
@@ -19,6 +22,8 @@ function table(
   options: {
     primaryKey?: string[];
     foreignKeys?: ForeignKey[];
+    indexes?: IndexMetadata[];
+    columnMeta?: Partial<Record<string, Partial<ColumnMetadata>>>;
     sample?: DbObjectMetadata["sample"];
   } = {},
 ): DbObjectMetadata {
@@ -31,8 +36,9 @@ function table(
       dataType: column.endsWith("_id") || column === "id" ? "int4" : "text",
       nullable: !options.primaryKey?.includes(column),
       ordinal: index + 1,
+      ...options.columnMeta?.[column],
     })),
-    indexes: [],
+    indexes: options.indexes ?? [],
     primaryKey: options.primaryKey ?? [],
     foreignKeys: options.foreignKeys ?? [],
     sample: options.sample,
@@ -50,6 +56,13 @@ const customers = table("public", "customers", ["id", "name", "email"], {
 
 const orders = table("public", "orders", ["id", "customer_id", "total"], {
   primaryKey: ["id"],
+  indexes: [
+    {
+      name: "idx_orders_customer_id",
+      columns: ["customer_id"],
+      unique: false,
+    },
+  ],
   foreignKeys: [
     {
       columns: ["customer_id"],
@@ -93,6 +106,9 @@ describe("inspectSqlMetadataAt", () => {
     if (target?.kind === "column") {
       expect(target.object.name).toBe("customers");
       expect(target.column.name).toBe("name");
+      expect(sqlColumnDefinitionPreview(target.object, target.column)).toBe(
+        "name text",
+      );
       expect(sqlColumnSampleValues(target.object, target.column)).toEqual(["Ada"]);
     }
   });
@@ -119,5 +135,27 @@ describe("inspectSqlMetadataAt", () => {
       "create table public.customers",
     );
     expect(sqlObjectDefinitionPreview(customers)).toContain("primary key (id)");
+    expect(sqlObjectDefinitionPreview(orders)).toContain(
+      "foreign key (customer_id) references public.customers(id)",
+    );
+  });
+
+  it("builds table column definition rows with keys and references", () => {
+    expect(sqlObjectColumnDefinitionRows(orders)).toContain(
+      "id int4 not null primary key",
+    );
+    expect(sqlObjectColumnDefinitionRows(orders)).toContain(
+      "customer_id int4 references public.customers(id)",
+    );
+  });
+
+  it("builds a complete column definition preview for hover cards", () => {
+    const customerId = orders.columns.find(
+      (column) => column.name === "customer_id",
+    );
+    expect(customerId).toBeTruthy();
+    expect(sqlColumnDefinitionPreview(orders, customerId!)).toBe(
+      "customer_id int4 references public.customers(id)",
+    );
   });
 });
