@@ -4,7 +4,7 @@
 //! (the completion metadata cache) into the engine's [`GenSchema`], runs the
 //! grammar-constrained generator, and returns SQL the caller inserts into the
 //! editor. It never executes the SQL. The embedded model is opt-in (cargo feature
-//! `llama`) and loaded lazily; without it (or without a downloaded model) the
+//! `llama`) and loaded lazily; without it (or without a preinstalled model) the
 //! commands fail cleanly so the deterministic completion path is unaffected.
 
 use std::path::{Path, PathBuf};
@@ -15,21 +15,16 @@ use tauri::{AppHandle, Manager, State};
 use ts_rs::TS;
 
 use irodori_completion::{MetadataObjectKind, MetadataSnapshot};
-use irodori_core::{
-    run_job, BatchOutcome, BatchResult, IrodoriError, IrodoriErrorKind, JobArtifact, JobKind,
-    JobLogLevel, JobRuntime, JobSpec, Result as IrodoriResult,
-};
+use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use irodori_generate::{
     generate, CommandConfig, CommandModel, GenColumn, GenForeignKey, GenSchema, GenTable,
     GenerateRequest, GrammarModel, HttpConfig, OllamaModel, OpenAiCompatModel, RelationKind,
 };
 
 use crate::db::{DbEngine, DbState};
-use crate::jobs::JobState;
 
 /// Default local model: small, strong at text-to-SQL, CPU-friendly (~0.4 GB).
 const DEFAULT_MODEL_FILE: &str = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf";
-const DEFAULT_MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf";
 
 /// Lazily-loaded engine handle, shared across commands.
 #[derive(Default)]
@@ -111,7 +106,6 @@ pub struct AiEngineStatus {
     pub loaded: bool,
     pub model_file: String,
     pub model_path: String,
-    pub download_url: String,
 }
 
 /// Generate a single `SELECT` from natural language, grounded in the connection's
@@ -188,36 +182,7 @@ pub fn ai_engine_status(ai: State<'_, AiState>, app: AppHandle) -> IrodoriResult
         loaded,
         model_file: DEFAULT_MODEL_FILE.to_string(),
         model_path: path.display().to_string(),
-        download_url: DEFAULT_MODEL_URL.to_string(),
     })
-}
-
-/// Download the default model in the background; returns the job id to watch in
-/// the jobs dashboard.
-#[tauri::command]
-pub async fn ai_download_model(jobs: State<'_, JobState>, app: AppHandle) -> IrodoriResult<String> {
-    let path = model_path(&app)?;
-    if path.exists() {
-        return Err(IrodoriError::validation("the model is already downloaded"));
-    }
-    let url = DEFAULT_MODEL_URL.to_string();
-    let spec = JobSpec {
-        source: Some(url.clone()),
-        tags: vec!["ai".to_string(), "model".to_string()],
-        ..JobSpec::new(
-            JobKind::Other,
-            format!("download model: {DEFAULT_MODEL_FILE}"),
-        )
-    };
-    let record = jobs.runtime().submit(spec)?;
-    let job_id = record.id.clone();
-
-    let runtime = jobs.runtime_arc();
-    let spawned = job_id.clone();
-    tokio::spawn(async move {
-        let _ = download_model_job(&runtime, &spawned, &url, &path).await;
-    });
-    Ok(job_id)
 }
 
 /// Set the active generation provider (local model, Ollama, an HTTP API, or a CLI).
@@ -326,7 +291,7 @@ fn ensure_model(ai: &AiState, app: &AppHandle) -> IrodoriResult<Arc<dyn GrammarM
         return Err(IrodoriError::new(
             IrodoriErrorKind::NotFound,
             format!(
-                "local model not found at {}; download it from settings first",
+                "local model not found at {}; preinstall it or choose another provider",
                 path.display()
             ),
         ));
@@ -408,80 +373,4 @@ fn snapshot_to_gen_schema(snapshot: &MetadataSnapshot) -> GenSchema {
         default_schema: snapshot.schemas.first().map(|s| s.name.clone()),
         tables,
     }
-}
-
-async fn download_model_job(
-    runtime: &JobRuntime,
-    job_id: &str,
-    url: &str,
-    path: &Path,
-) -> IrodoriResult<()> {
-    let url = url.to_string();
-    let path = path.to_path_buf();
-    run_job(runtime, job_id, move |ctx| async move {
-        use futures_util::StreamExt;
-        use tokio::io::AsyncWriteExt;
-
-        if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| {
-                IrodoriError::new(IrodoriErrorKind::Internal, format!("create dir: {e}"))
-            })?;
-        }
-        ctx.log(JobLogLevel::Info, format!("downloading {url}"))?;
-
-        let response = reqwest::get(&url)
-            .await
-            .map_err(|e| IrodoriError::transport(format!("download request failed: {e}")))?;
-        if !response.status().is_success() {
-            return Err(IrodoriError::transport(format!(
-                "download failed: HTTP {}",
-                response.status()
-            )));
-        }
-        let total = response.content_length();
-
-        let tmp = path.with_extension("part");
-        let mut file = tokio::fs::File::create(&tmp).await.map_err(|e| {
-            IrodoriError::new(IrodoriErrorKind::Internal, format!("create file: {e}"))
-        })?;
-
-        let mut downloaded: u64 = 0;
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            if ctx.should_cancel() {
-                drop(file);
-                let _ = tokio::fs::remove_file(&tmp).await;
-                return Ok(BatchResult::new(
-                    BatchOutcome::cancelled("download cancelled"),
-                    (),
-                ));
-            }
-            let chunk =
-                chunk.map_err(|e| IrodoriError::transport(format!("download error: {e}")))?;
-            file.write_all(&chunk).await.map_err(|e| {
-                IrodoriError::new(IrodoriErrorKind::Internal, format!("write: {e}"))
-            })?;
-            downloaded += chunk.len() as u64;
-            ctx.report_progress(downloaded, total, "bytes", "downloading model")?;
-        }
-        file.flush().await.ok();
-        drop(file);
-        tokio::fs::rename(&tmp, &path)
-            .await
-            .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("finalize: {e}")))?;
-
-        let artifact = JobArtifact {
-            id: "model".to_string(),
-            name: DEFAULT_MODEL_FILE.to_string(),
-            path: path.display().to_string(),
-            media_type: Some("application/octet-stream".to_string()),
-            size_bytes: Some(downloaded),
-        };
-        Ok(BatchResult::new(
-            BatchOutcome::completed_with(format!("downloaded {downloaded} bytes"), vec![artifact]),
-            (),
-        ))
-    })
-    .await?;
-    Ok(())
 }

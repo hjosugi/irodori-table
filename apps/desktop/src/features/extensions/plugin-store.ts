@@ -1,5 +1,5 @@
-export const defaultPluginStoreUrl =
-  "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/index.json";
+export const defaultPluginStoreCatalogUrl =
+  "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/catalog.json";
 
 export type PluginStoreInstallKind = "githubRelease" | "git";
 
@@ -22,26 +22,27 @@ export type PluginStoreExtension = {
   license: string;
   repository: string;
   homepage?: string;
+  detailsUrl?: string;
   categories: string[];
   engines: string[];
   permissions: string[];
   runtime: "typescript" | "javascript" | "wasm" | "native";
   verified: boolean;
   publishedAt: string;
-  install: PluginStoreInstallSource;
+  install?: PluginStoreInstallSource;
 };
 
-export type PluginStoreIndex = {
+export type PluginStoreCatalog = {
   schemaVersion: 1;
   updatedAt: string;
   source: string;
   extensions: PluginStoreExtension[];
 };
 
-export const bundledPluginStoreIndex: PluginStoreIndex = {
+export const bundledPluginStoreCatalog: PluginStoreCatalog = {
   schemaVersion: 1,
   updatedAt: "2026-06-27T00:00:00Z",
-  source: "bundled",
+  source: "bundled-extension-catalog",
   extensions: [
     connector("irodori.duckdb", "DuckDB Connector", ["duckdb"]),
     connector("irodori.motherduck", "MotherDuck Connector", ["motherduck"]),
@@ -83,9 +84,9 @@ export const bundledPluginStoreIndex: PluginStoreIndex = {
   ],
 };
 
-export async function fetchPluginStoreIndex(
-  url = defaultPluginStoreUrl,
-): Promise<PluginStoreIndex> {
+export async function fetchPluginStoreCatalog(
+  url = defaultPluginStoreCatalogUrl,
+): Promise<PluginStoreCatalog> {
   const response = await fetch(url, {
     headers: {
       accept: "application/json",
@@ -95,16 +96,16 @@ export async function fetchPluginStoreIndex(
     throw new Error(`plugin store request failed: HTTP ${response.status}`);
   }
   const parsed = (await response.json()) as unknown;
-  return normalizePluginStoreIndex(parsed, url);
+  return normalizePluginStoreCatalog(parsed, url);
 }
 
-function normalizePluginStoreIndex(value: unknown, source: string): PluginStoreIndex {
+function normalizePluginStoreCatalog(value: unknown, source: string): PluginStoreCatalog {
   if (!value || typeof value !== "object") {
-    throw new Error("plugin store index must be an object");
+    throw new Error("plugin store catalog must be an object");
   }
-  const raw = value as Partial<PluginStoreIndex>;
+  const raw = value as Partial<PluginStoreCatalog>;
   if (raw.schemaVersion !== 1 || !Array.isArray(raw.extensions)) {
-    throw new Error("plugin store index has an unsupported schema");
+    throw new Error("plugin store catalog has an unsupported schema");
   }
   return {
     schemaVersion: 1,
@@ -130,13 +131,14 @@ function normalizePluginStoreExtension(value: unknown): PluginStoreExtension {
     license: requiredString(raw.license, "extension license"),
     repository: requiredString(raw.repository, "extension repository"),
     homepage: optionalString(raw.homepage),
+    detailsUrl: optionalString(raw.detailsUrl),
     categories: stringList(raw.categories),
     engines: stringList(raw.engines),
     permissions: stringList(raw.permissions),
     runtime: requiredString(raw.runtime, "extension runtime") as PluginStoreExtension["runtime"],
     verified: Boolean(raw.verified),
     publishedAt: requiredString(raw.publishedAt, "extension publishedAt"),
-    install: normalizeInstallSource(raw.install),
+    install: raw.install ? normalizeInstallSource(raw.install) : undefined,
   };
 }
 
@@ -167,16 +169,10 @@ function connector(id: string, name: string, engines: string[]): PluginStoreExte
     repository: `https://github.com/hjosugi/${repoName}`,
     categories: ["connector", "database"],
     engines,
-    permissions: ["connections:read", "connections:write", "queries:run", "metadata:read", "native"],
+    permissions: [],
     runtime: "native",
     verified: true,
     publishedAt: "2026-06-27T00:00:00Z",
-    install: {
-      kind: "githubRelease",
-      url: `https://github.com/hjosugi/${repoName}/releases/latest`,
-      assetName: `${repoName}.tar.gz`,
-      manifestPath: "irodori.extension.json",
-    },
   };
 }
 

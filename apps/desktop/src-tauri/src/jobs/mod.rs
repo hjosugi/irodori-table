@@ -21,8 +21,7 @@ impl JobState {
     }
 
     /// A shared owning handle so a background task can keep driving the runtime
-    /// after the spawning command returns — the dashboard then shows live progress
-    /// and can cancel the in-flight job.
+    /// after the spawning command returns.
     pub fn runtime_arc(&self) -> Arc<JobRuntime> {
         Arc::clone(&self.runtime)
     }
@@ -36,9 +35,4 @@ pub fn jobs_list(state: State<'_, JobState>) -> JobList {
 #[tauri::command]
 pub fn jobs_get(state: State<'_, JobState>, job_id: String) -> IrodoriResult<Option<JobRecord>> {
     Ok(state.runtime().get(&job_id))
-}
-
-#[tauri::command]
-pub fn jobs_cancel(state: State<'_, JobState>, job_id: String) -> IrodoriResult<JobRecord> {
-    state.runtime().request_cancel(&job_id)
 }

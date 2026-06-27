@@ -420,14 +420,14 @@
     "notes": "Track Copilot-compatible MCP integration path for Irodori."
   },
   {
-    "id": "irodori-extension-marketplace-index",
-    "name": "Irodori extension marketplace index",
+    "id": "irodori-extension-marketplace-catalog",
+    "name": "Irodori extension marketplace catalog",
     "product": "Irodori Extensions",
     "category": "extension_registry",
-    "sourceType": "marketplace_index",
-    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/index.json",
+    "sourceType": "marketplace_catalog",
+    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/catalog.json",
     "cadence": "daily",
-    "notes": "Track published connector extensions, engine ids, install sources, permissions, and verified repository links."
+    "notes": "Track published connector extensions, engine ids, and verified repository links without fetching install details."
   },
   {
     "id": "irodori-extension-repository-index",

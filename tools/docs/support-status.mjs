@@ -2,12 +2,19 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import {
+  buildExtensionCatalog,
+  hasHeavyExtensionCatalogFields,
+  serializeExtensionCatalog,
+} from "./extension-catalog.mjs";
+
 const root = resolve(import.meta.dirname, "../..");
 const engineRegistryPath = resolve(root, "apps/desktop/src-tauri/src/db/engine.rs");
 const dbProfilePath = resolve(root, "apps/desktop/src-tauri/src/db/profile.rs");
 const enginesJsonPath = resolve(root, "knowledge/engines.json");
 const sourcesJsonPath = resolve(root, "knowledge/sources.json");
 const marketplaceIndexPath = resolve(root, "docs/extension-marketplace/index.json");
+const marketplaceCatalogPath = resolve(root, "docs/extension-marketplace/catalog.json");
 const connectorRepositoriesPath = resolve(
   root,
   "docs/extension-marketplace/connector-repositories.json",
@@ -20,6 +27,9 @@ function main() {
   const enginesJson = JSON.parse(read(enginesJsonPath));
   const sourcesJson = JSON.parse(read(sourcesJsonPath));
   const marketplaceIndex = JSON.parse(read(marketplaceIndexPath));
+  const marketplaceCatalogSource = read(marketplaceCatalogPath);
+  const marketplaceCatalog = JSON.parse(marketplaceCatalogSource);
+  const expectedMarketplaceCatalog = buildExtensionCatalog(marketplaceIndex);
   const connectorRepositories = JSON.parse(read(connectorRepositoriesPath));
   const supportStatus = read(supportStatusPath);
 
@@ -28,10 +38,17 @@ function main() {
   const jsonIds = new Set(engineRows.map((engine) => engine.id));
   const sourceProducts = new Set(sourcesJson.map((source) => sourceProductKey(source.product)));
   const marketplaceExtensions = marketplaceIndex.extensions ?? [];
+  const marketplaceCatalogExtensions = marketplaceCatalog.extensions ?? [];
   const marketplaceEngineIds = new Set(
     marketplaceExtensions.flatMap((extension) => extension.engines ?? []),
   );
+  const marketplaceCatalogEngineIds = new Set(
+    marketplaceCatalogExtensions.flatMap((extension) => extension.engines ?? []),
+  );
   const marketplaceExtensionIds = new Set(marketplaceExtensions.map((extension) => extension.id));
+  const marketplaceCatalogExtensionIds = new Set(
+    marketplaceCatalogExtensions.map((extension) => extension.id),
+  );
   const repositoryExtensionIds = new Set(
     (connectorRepositories.repositories ?? []).map((repository) => repository.extensionId),
   );
@@ -57,6 +74,26 @@ function main() {
     ...setDiff(marketplaceEngineIds, jsonIds).map(
       (id) => `docs/extension-marketplace/index.json lists engine '${id}' missing from knowledge/engines.json`,
     ),
+    ...(marketplaceCatalogSource === serializeExtensionCatalog(expectedMarketplaceCatalog)
+      ? []
+      : [
+          "docs/extension-marketplace/catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
+        ]),
+    ...setDiff(marketplaceCatalogEngineIds, jsonIds).map(
+      (id) => `docs/extension-marketplace/catalog.json lists engine '${id}' missing from knowledge/engines.json`,
+    ),
+    ...setDiff(marketplaceExtensionIds, marketplaceCatalogExtensionIds).map(
+      (id) => `docs/extension-marketplace/catalog.json is missing extension '${id}' from index.json`,
+    ),
+    ...setDiff(marketplaceCatalogExtensionIds, marketplaceExtensionIds).map(
+      (id) => `docs/extension-marketplace/catalog.json lists unknown extension '${id}'`,
+    ),
+    ...marketplaceCatalogExtensions
+      .filter(hasHeavyExtensionCatalogFields)
+      .map(
+        (extension) =>
+          `docs/extension-marketplace/catalog.json includes heavy detail fields for extension '${extension.id}'`,
+      ),
     ...setDiff(marketplaceExtensionIds, repositoryExtensionIds).map(
       (id) => `docs/extension-marketplace/connector-repositories.json is missing extension '${id}'`,
     ),

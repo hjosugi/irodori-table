@@ -228,7 +228,6 @@ pub fn run() {
             security::network_diagnose_transport,
             ai::ai_generate_sql,
             ai::ai_engine_status,
-            ai::ai_download_model,
             ai::ai_set_provider,
             ai::ai_get_provider,
             pty::pty_spawn,
@@ -548,7 +547,6 @@ mod typegen {
                     .arg(Arg::new("engine", TsType::named("DbEngine"))),
             )
             .command(Command::new("ai_engine_status", "AiEngineStatus"))
-            .command(Command::returning("ai_download_model", TsType::string()))
             .command(
                 Command::returning("ai_set_provider", TsType::void())
                     .arg(Arg::new("config", TsType::named("AiProviderConfig"))),

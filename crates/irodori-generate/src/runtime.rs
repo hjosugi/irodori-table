@@ -14,6 +14,9 @@ pub struct DecodeOptions {
     pub max_tokens: u32,
     pub temperature: f32,
     pub seed: Option<u64>,
+    /// Total generation attempts. On a validation failure the verify error is fed
+    /// back into the prompt and the model tries again, up to this many times.
+    pub max_attempts: u32,
 }
 
 impl Default for DecodeOptions {
@@ -22,6 +25,7 @@ impl Default for DecodeOptions {
             max_tokens: 256,
             temperature: 0.0,
             seed: None,
+            max_attempts: 2,
         }
     }
 }

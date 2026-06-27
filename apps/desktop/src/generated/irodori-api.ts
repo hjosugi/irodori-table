@@ -110,7 +110,7 @@ modelPresent: boolean,
 /**
  * The model is loaded in memory.
  */
-loaded: boolean, modelFile: string, modelPath: string, downloadUrl: string, };
+loaded: boolean, modelFile: string, modelPath: string, };
 
 export type AiProviderKind = "local" | "ollama" | "openaiCompat" | "command";
 
@@ -279,14 +279,6 @@ export function jobsGet(jobId: string): Promise<JobRecord | null> {
   return invoke<JobRecord | null>("jobs_get", { jobId });
 }
 
-export function jobsCancel(jobId: string): Promise<JobRecord> {
-  return invoke<JobRecord>("jobs_cancel", { jobId });
-}
-
-export function dbIndexSchema(connectionId: string): Promise<string> {
-  return invoke<string>("db_index_schema", { connectionId });
-}
-
 export function dbSearchSchema(connectionId: string, term: string, limit?: number): Promise<Array<SchemaSearchHit>> {
   return invoke<Array<SchemaSearchHit>>("db_search_schema", { connectionId, term, limit });
 }
@@ -433,10 +425,6 @@ export function aiGenerateSql(connectionId: string, prompt: string, engine: DbEn
 
 export function aiEngineStatus(): Promise<AiEngineStatus> {
   return invoke<AiEngineStatus>("ai_engine_status");
-}
-
-export function aiDownloadModel(): Promise<string> {
-  return invoke<string>("ai_download_model");
 }
 
 export function aiSetProvider(config: AiProviderConfig): Promise<void> {

@@ -122,7 +122,7 @@ export function AiGenerateDialog({
 
   if (!open) return null;
 
-  const needsDownload =
+  const modelMissing =
     provider.kind === "local" && status ? status.compiled && !status.modelPresent : false;
   const notCompiled = provider.kind === "local" && status ? !status.compiled : false;
 
@@ -167,7 +167,7 @@ export function AiGenerateDialog({
             pick another provider below (Ollama / API / CLI work without it).
           </p>
         )}
-        {needsDownload && (
+        {modelMissing && (
           <p className="ai-generate-note">
             The local model is not present. Use a preinstalled model or pick another provider below.
           </p>

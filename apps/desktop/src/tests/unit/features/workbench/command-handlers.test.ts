@@ -29,7 +29,6 @@ function createHandler(calls: string[]) {
     exitApp: async () => {
       calls.push("exit");
     },
-    buildSchemaIndex: () => calls.push("schema-index"),
     runQuery: async () => {
       calls.push("query-run");
     },

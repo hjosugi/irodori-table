@@ -38,7 +38,7 @@ pub use verify::Verified;
 #[cfg(feature = "http")]
 pub use http::{HttpConfig, OllamaModel, OpenAiCompatModel};
 
-use irodori_error::Result;
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
 use irodori_sql::dialect::SqlDialect;
 use irodori_sql::grammar::select_grammar;
 
@@ -94,21 +94,46 @@ pub fn generate(
         project::grammar_schema_scoped(&request.schema, &relevant)
     };
     let gbnf = select_grammar(Some(&grammar_schema));
+    let base_prompt = plan::build_prompt(&request.prompt, &plan, &request.schema, dialect);
+    let planned_tables: Vec<String> = plan.tables.iter().map(|t| t.name.clone()).collect();
 
-    let prompt = plan::build_prompt(&request.prompt, &plan, &request.schema, dialect);
+    // Retry/repair loop: on a validation failure, feed the error back into the
+    // prompt and try again. This recovers schema/syntax mistakes from any backend
+    // — crucial for providers that can't honor the GBNF grammar (Ollama/API/CLI).
+    let attempts = request.options.max_attempts.max(1);
+    let mut tokens_in = 0u32;
+    let mut tokens_out = 0u32;
+    let mut last_error: Option<IrodoriError> = None;
 
-    let output = model.complete(&prompt, &gbnf, &request.options)?;
-    let sql = sanitize_output(&output.text);
-    let verified = verify::verify(&sql, &index, dialect)?;
+    for attempt in 0..attempts {
+        let prompt = match &last_error {
+            None => base_prompt.clone(),
+            Some(err) => format!(
+                "{base_prompt}\n\n-- Your previous SQL was rejected: {err}\n-- Output a corrected SQL SELECT.",
+            ),
+        };
+        let output = model.complete(&prompt, &gbnf, &request.options)?;
+        tokens_in = tokens_in.saturating_add(output.tokens_in);
+        tokens_out = tokens_out.saturating_add(output.tokens_out);
 
-    Ok(GenerateOutcome {
-        sql: verified.sql,
-        model: model.describe().name,
-        tokens_in: output.tokens_in,
-        tokens_out: output.tokens_out,
-        repaired: verified.repaired,
-        tables: plan.tables.into_iter().map(|t| t.name).collect(),
-    })
+        let sql = sanitize_output(&output.text);
+        match verify::verify(&sql, &index, dialect) {
+            Ok(verified) => {
+                return Ok(GenerateOutcome {
+                    sql: verified.sql,
+                    model: model.describe().name,
+                    tokens_in,
+                    tokens_out,
+                    repaired: verified.repaired || attempt > 0,
+                    tables: planned_tables,
+                });
+            }
+            Err(err) => last_error = Some(err),
+        }
+    }
+
+    Err(last_error
+        .unwrap_or_else(|| IrodoriError::new(IrodoriErrorKind::Internal, "generation failed")))
 }
 
 /// Strip Markdown fences / surrounding prose a non-constrained model might add.
@@ -170,5 +195,50 @@ mod tests {
         let req = GenerateRequest::new("ids", shop_schema());
         let outcome = generate(&model, &req, &PostgresDialect).unwrap();
         assert_eq!(outcome.sql, "SELECT id FROM orders");
+    }
+
+    /// Returns a different output per call, to exercise the retry loop.
+    struct SeqModel {
+        outputs: Vec<String>,
+        index: std::sync::atomic::AtomicUsize,
+    }
+
+    impl GrammarModel for SeqModel {
+        fn complete(
+            &self,
+            _prompt: &str,
+            _gbnf: &str,
+            _options: &DecodeOptions,
+        ) -> Result<ModelOutput> {
+            let i = self
+                .index
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                .min(self.outputs.len() - 1);
+            Ok(ModelOutput {
+                text: self.outputs[i].clone(),
+                tokens_in: 0,
+                tokens_out: 0,
+            })
+        }
+        fn describe(&self) -> ModelDescription {
+            ModelDescription {
+                name: "seq".to_string(),
+            }
+        }
+    }
+
+    #[test]
+    fn retry_recovers_after_invalid_first_attempt() {
+        let model = SeqModel {
+            outputs: vec![
+                "SELECT bogus FROM orders".to_string(), // rejected → retry
+                "SELECT id FROM orders".to_string(),    // valid
+            ],
+            index: std::sync::atomic::AtomicUsize::new(0),
+        };
+        let req = GenerateRequest::new("order ids", shop_schema());
+        let outcome = generate(&model, &req, &PostgresDialect).unwrap();
+        assert_eq!(outcome.sql, "SELECT id FROM orders");
+        assert!(outcome.repaired); // succeeded on a later attempt
     }
 }

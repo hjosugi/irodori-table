@@ -1,10 +1,69 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 // Errors the app raises on purpose in a plain browser: Tauri IPC is absent, so
 // `invoke` rejects. The app catches these and falls back to a mock snapshot.
 const ignorable = (message: string) => /tauri|invoke|__TAURI/i.test(message);
 
+async function runMenuCommand(
+  page: Page,
+  menuName: string,
+  commandName: string | RegExp,
+) {
+  await page
+    .getByRole("navigation", { name: "Application menu" })
+    .getByRole("button", { name: menuName })
+    .click();
+  await page.getByRole("menuitem", { name: commandName }).click();
+}
+
+async function openWorkbench(page: Page) {
+  await page.goto("/", { waitUntil: "commit" });
+  await expect(page.locator(".app-shell")).toBeVisible({ timeout: 30_000 });
+}
+
+async function expectTitlebarConnectionCentered(page: Page) {
+  const titlebar = page.locator(".titlebar");
+  const connection = page.locator(".titlebar-connection");
+  const menubar = page.locator(".menubar");
+  const layoutButtons = page.locator(".titlebar-control-zone .icon-button");
+  await expect(titlebar).toBeVisible();
+  await expect(connection).toBeVisible();
+
+  const titlebarBox = await titlebar.boundingBox();
+  const connectionBox = await connection.boundingBox();
+  expect(titlebarBox).toBeTruthy();
+  expect(connectionBox).toBeTruthy();
+
+  const titlebarCenter = titlebarBox!.x + titlebarBox!.width / 2;
+  const connectionCenter = connectionBox!.x + connectionBox!.width / 2;
+  expect(Math.abs(titlebarCenter - connectionCenter)).toBeLessThanOrEqual(4);
+  expect(connectionBox!.x).toBeGreaterThanOrEqual(titlebarBox!.x);
+  expect(connectionBox!.x + connectionBox!.width).toBeLessThanOrEqual(
+    titlebarBox!.x + titlebarBox!.width,
+  );
+
+  const overlaps = (
+    left: NonNullable<typeof connectionBox>,
+    right: NonNullable<typeof connectionBox>,
+  ) =>
+    left.x < right.x + right.width &&
+    left.x + left.width > right.x &&
+    left.y < right.y + right.height &&
+    left.y + left.height > right.y;
+  const menubarBox = await menubar.boundingBox();
+  if (menubarBox) {
+    expect(overlaps(connectionBox!, menubarBox)).toBe(false);
+  }
+  for (let index = 0; index < await layoutButtons.count(); index += 1) {
+    const buttonBox = await layoutButtons.nth(index).boundingBox();
+    if (buttonBox) {
+      expect(overlaps(connectionBox!, buttonBox)).toBe(false);
+    }
+  }
+}
+
 test("editor shell renders, themes, and formats", async ({ page }) => {
+  test.setTimeout(90_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => {
     console.error("BROWSER PAGE ERROR:", error);
@@ -12,10 +71,10 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   });
   page.on("console", (msg) => console.log("BROWSER LOG:", msg.text()));
 
-  await page.goto("/");
+  await openWorkbench(page);
 
   // The shell mounts.
-  await expect(page.getByLabel("Irodori Table")).toBeVisible();
+  await expect(page.locator(".app-shell")).toBeVisible();
 
   // CodeMirror starts clean by default, then highlights once text is entered.
   const content = page.locator(".cm-content");
@@ -48,7 +107,7 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(page.locator(".object-browser")).toBeVisible();
 
   // Vim mode can be toggled on/off without remounting the editor.
-  await page.getByRole("button", { name: "Settings" }).click();
+  await runMenuCommand(page, "File", "Open Settings");
   const settingsDialog = page.getByRole("dialog", { name: "Settings" });
   await expect(settingsDialog).toBeVisible();
   const editorModeRow = settingsDialog
@@ -63,11 +122,28 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await settingsDialog.getByRole("button", { name: "Close" }).click();
   await expect(page.locator(".cm-vimMode")).toHaveCount(0);
 
+  // About stays informational; preferences live in Settings/menu entry points.
+  await runMenuCommand(page, "Help", "About Irodori Table");
+  const aboutDialog = page.getByRole("dialog", { name: "About Irodori Table" });
+  await expect(aboutDialog).toBeVisible();
+  await expect(
+    aboutDialog.getByRole("button", { name: "Settings" }),
+  ).toHaveCount(0);
+  await expect(
+    aboutDialog.getByRole("button", { name: "Copy diagnostics" }),
+  ).toBeVisible();
+  await aboutDialog.getByRole("button", { name: "Close" }).click();
+  await expect(aboutDialog).toHaveCount(0);
+
   // Theme toggle flips the shell's data-theme from the system/default value.
   const shell = page.locator(".app-shell");
   await expect(shell).toHaveAttribute("data-theme", /^(dark|light)$/);
   const initialTheme = await shell.getAttribute("data-theme");
-  await page.getByRole("button", { name: "Toggle color theme" }).click();
+  await runMenuCommand(
+    page,
+    "Tools",
+    initialTheme === "dark" ? "Light Theme" : "Dark Theme",
+  );
   await expect(shell).toHaveAttribute(
     "data-theme",
     initialTheme === "dark" ? "light" : "dark",
@@ -86,4 +162,19 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
 
   // No unexpected (non-Tauri) uncaught errors.
   expect(pageErrors.filter((message) => !ignorable(message))).toEqual([]);
+});
+
+test("titlebar connection selector stays centered responsively", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1536, height: 900 },
+    { width: 1280, height: 720 },
+    { width: 900, height: 720 },
+    { width: 640, height: 720 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await openWorkbench(page);
+    await expectTitlebarConnectionCentered(page);
+  }
 });

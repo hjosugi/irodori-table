@@ -192,9 +192,9 @@ async fn run_schema_index_job(
     result
 }
 
-/// Index a connection's schema in the background. Returns the job id immediately;
-/// progress, cancellation, and the output artifact are visible in the jobs
-/// dashboard while the build runs.
+/// Index a connection's schema in the background. This is intentionally kept out
+/// of the UI command surface; app screens should read prebuilt indexes instead
+/// of letting users start heavy jobs repeatedly.
 pub async fn index_schema_impl(
     db: &DbState,
     jobs: &JobState,
@@ -258,18 +258,7 @@ pub async fn search_schema_impl(
     Ok(hits)
 }
 
-/// Start a background schema-index job; returns the job id for the dashboard.
-#[tauri::command]
-pub async fn db_index_schema(
-    db: tauri::State<'_, DbState>,
-    jobs: tauri::State<'_, JobState>,
-    index: tauri::State<'_, SchemaIndexState>,
-    connection_id: String,
-) -> Result<String, IrodoriError> {
-    index_schema_impl(db.inner(), jobs.inner(), index.inner(), connection_id).await
-}
-
-/// Search a connection's schema index built by `db_index_schema`.
+/// Search a connection's retained schema index.
 #[tauri::command]
 pub async fn db_search_schema(
     index: tauri::State<'_, SchemaIndexState>,

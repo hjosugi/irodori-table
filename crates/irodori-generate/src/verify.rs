@@ -94,6 +94,154 @@ fn verify_statement(stmt: &SelectStatement, index: &SchemaIndex) -> Result<()> {
     for column in collect_statement_columns(stmt) {
         validate_column(column, &scope)?;
     }
+    validate_group_by(stmt)?;
+    Ok(())
+}
+
+const AGGREGATES: &[&str] = &[
+    "count",
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "total",
+    "group_concat",
+    "string_agg",
+    "array_agg",
+];
+
+fn is_aggregate(name: &str) -> bool {
+    AGGREGATES.iter().any(|agg| agg.eq_ignore_ascii_case(name))
+}
+
+fn contains_aggregate(expr: &Expr) -> bool {
+    match expr {
+        Expr::Function { name, args, .. } => {
+            is_aggregate(name) || args.iter().any(|arg| matches!(arg, FuncArg::Expr(e) if contains_aggregate(e)))
+        }
+        Expr::Unary { expr, .. } | Expr::IsNull { expr, .. } | Expr::Paren(expr) => {
+            contains_aggregate(expr)
+        }
+        Expr::Binary { left, right, .. } => contains_aggregate(left) || contains_aggregate(right),
+        Expr::Case {
+            operand,
+            whens,
+            else_expr,
+        } => {
+            operand.as_deref().is_some_and(contains_aggregate)
+                || whens
+                    .iter()
+                    .any(|(w, t)| contains_aggregate(w) || contains_aggregate(t))
+                || else_expr.as_deref().is_some_and(contains_aggregate)
+        }
+        Expr::InList { expr, list, .. } => {
+            contains_aggregate(expr) || list.iter().any(contains_aggregate)
+        }
+        Expr::Between {
+            expr, low, high, ..
+        } => contains_aggregate(expr) || contains_aggregate(low) || contains_aggregate(high),
+        _ => false,
+    }
+}
+
+/// Columns referenced outside any aggregate call (the ones GROUP BY must cover).
+fn collect_non_aggregated_columns<'a>(expr: &'a Expr, out: &mut Vec<&'a ColumnRef>) {
+    walk_columns(expr, true, out);
+}
+
+/// Walk an expression collecting column references. With `skip_aggregates`,
+/// columns inside aggregate calls are ignored (used by the GROUP BY check).
+fn walk_columns<'a>(expr: &'a Expr, skip_aggregates: bool, out: &mut Vec<&'a ColumnRef>) {
+    match expr {
+        Expr::Column(column) => out.push(column),
+        Expr::Literal(_) | Expr::Param(_) => {}
+        Expr::Unary { expr, .. } | Expr::IsNull { expr, .. } | Expr::Paren(expr) => {
+            walk_columns(expr, skip_aggregates, out)
+        }
+        Expr::Binary { left, right, .. } => {
+            walk_columns(left, skip_aggregates, out);
+            walk_columns(right, skip_aggregates, out);
+        }
+        Expr::Function { name, args, .. } => {
+            if skip_aggregates && is_aggregate(name) {
+                return;
+            }
+            for arg in args {
+                if let FuncArg::Expr(e) = arg {
+                    walk_columns(e, skip_aggregates, out);
+                }
+            }
+        }
+        Expr::Case {
+            operand,
+            whens,
+            else_expr,
+        } => {
+            if let Some(operand) = operand {
+                walk_columns(operand, skip_aggregates, out);
+            }
+            for (when, then) in whens {
+                walk_columns(when, skip_aggregates, out);
+                walk_columns(then, skip_aggregates, out);
+            }
+            if let Some(else_expr) = else_expr {
+                walk_columns(else_expr, skip_aggregates, out);
+            }
+        }
+        Expr::InList { expr, list, .. } => {
+            walk_columns(expr, skip_aggregates, out);
+            for item in list {
+                walk_columns(item, skip_aggregates, out);
+            }
+        }
+        Expr::Between {
+            expr, low, high, ..
+        } => {
+            walk_columns(expr, skip_aggregates, out);
+            walk_columns(low, skip_aggregates, out);
+            walk_columns(high, skip_aggregates, out);
+        }
+    }
+}
+
+/// When a query aggregates, every non-aggregated projection column must appear in
+/// GROUP BY (the classic LLM mistake). Lenient: matches by column name so
+/// `GROUP BY upper(name)` still covers a `name` projection.
+fn validate_group_by(stmt: &SelectStatement) -> Result<()> {
+    let has_aggregate = stmt.projection.iter().any(|item| {
+        matches!(item, SelectItem::Expr { expr, .. } if contains_aggregate(expr))
+    });
+    if !has_aggregate {
+        return Ok(());
+    }
+
+    let mut grouped: HashSet<String> = HashSet::new();
+    for expr in &stmt.group_by {
+        let mut cols = Vec::new();
+        collect_columns(expr, &mut cols);
+        for col in cols {
+            grouped.insert(col.name.to_ascii_lowercase());
+        }
+    }
+
+    let mut ungrouped = Vec::new();
+    for item in &stmt.projection {
+        if let SelectItem::Expr { expr, .. } = item {
+            collect_non_aggregated_columns(expr, &mut ungrouped);
+        }
+    }
+
+    for col in ungrouped {
+        if !grouped.contains(&col.name.to_ascii_lowercase()) {
+            return Err(IrodoriError::new(
+                IrodoriErrorKind::Validation,
+                format!(
+                    "`{}` must appear in GROUP BY or be inside an aggregate",
+                    col.name
+                ),
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -194,18 +342,32 @@ fn validate_column(column: &ColumnRef, scope: &Scope<'_>) -> Result<()> {
                 return Ok(());
             }
             let tables = scope.known_tables();
-            if tables.iter().any(|t| t.has_column(&column.name)) {
+            let matching = tables
+                .iter()
+                .filter(|t| t.has_column(&column.name))
+                .count();
+            if matching == 1 {
                 return Ok(());
             }
-            // With an opaque relation in scope the column may legitimately come
-            // from it, so we can't prove it wrong.
+            // With an opaque relation (CTE) in scope, or no known tables, we can't
+            // prove the column wrong.
             if scope.has_opaque || tables.is_empty() {
                 return Ok(());
             }
-            Err(IrodoriError::new(
-                IrodoriErrorKind::Validation,
-                format!("generated SQL references unknown column `{}`", column.name),
-            ))
+            if matching == 0 {
+                Err(IrodoriError::new(
+                    IrodoriErrorKind::Validation,
+                    format!("generated SQL references unknown column `{}`", column.name),
+                ))
+            } else {
+                Err(IrodoriError::new(
+                    IrodoriErrorKind::Validation,
+                    format!(
+                        "column `{}` is ambiguous; qualify it with a table alias",
+                        column.name
+                    ),
+                ))
+            }
         }
     }
 }
@@ -238,53 +400,7 @@ fn collect_statement_columns(stmt: &SelectStatement) -> Vec<&ColumnRef> {
 }
 
 fn collect_columns<'a>(expr: &'a Expr, out: &mut Vec<&'a ColumnRef>) {
-    match expr {
-        Expr::Column(column) => out.push(column),
-        Expr::Literal(_) | Expr::Param(_) => {}
-        Expr::Unary { expr, .. } => collect_columns(expr, out),
-        Expr::Binary { left, right, .. } => {
-            collect_columns(left, out);
-            collect_columns(right, out);
-        }
-        Expr::Function { args, .. } => {
-            for arg in args {
-                if let FuncArg::Expr(e) = arg {
-                    collect_columns(e, out);
-                }
-            }
-        }
-        Expr::Case {
-            operand,
-            whens,
-            else_expr,
-        } => {
-            if let Some(operand) = operand {
-                collect_columns(operand, out);
-            }
-            for (when, then) in whens {
-                collect_columns(when, out);
-                collect_columns(then, out);
-            }
-            if let Some(else_expr) = else_expr {
-                collect_columns(else_expr, out);
-            }
-        }
-        Expr::InList { expr, list, .. } => {
-            collect_columns(expr, out);
-            for item in list {
-                collect_columns(item, out);
-            }
-        }
-        Expr::Between {
-            expr, low, high, ..
-        } => {
-            collect_columns(expr, out);
-            collect_columns(low, out);
-            collect_columns(high, out);
-        }
-        Expr::IsNull { expr, .. } => collect_columns(expr, out),
-        Expr::Paren(inner) => collect_columns(inner, out),
-    }
+    walk_columns(expr, false, out);
 }
 
 #[cfg(test)]
@@ -355,5 +471,24 @@ mod tests {
     fn rejects_unparseable_sql() {
         let err = check("SELCT * FROM orders").unwrap_err();
         assert_eq!(err.kind, IrodoriErrorKind::Query);
+    }
+
+    #[test]
+    fn rejects_ambiguous_bare_column() {
+        // both `orders` and `customers` have `id`.
+        let err =
+            check("SELECT id FROM orders o JOIN customers c ON o.customer_id = c.id").unwrap_err();
+        assert!(err.message.contains("ambiguous"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn rejects_missing_group_by() {
+        let err = check("SELECT name, count(*) FROM customers").unwrap_err();
+        assert!(err.message.contains("GROUP BY"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn accepts_correct_group_by() {
+        check("SELECT name, count(*) FROM customers GROUP BY name").unwrap();
     }
 }

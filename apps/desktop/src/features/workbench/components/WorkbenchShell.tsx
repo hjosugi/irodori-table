@@ -261,37 +261,39 @@ export function WorkbenchShell({
       onContextMenuCapture={(event) => event.preventDefault()}
     >
       <header className="titlebar">
-        <div className="brand" title={appName} aria-label={appName}>
-          <img className="brand-icon" src="/irodori-icon.svg" alt="" />
-        </div>
-        <nav className="menubar" aria-label="Application menu" ref={menubarRef}>
-          {menuBarSections.map((section) => (
-            <div className="menubar-item" key={section.label}>
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={activeMenuLabel === section.label}
-                onClick={() =>
-                  setActiveMenuLabel((current) =>
-                    current === section.label ? null : section.label,
-                  )
-                }
-                onMouseEnter={() => {
-                  if (activeMenuLabel) {
-                    setActiveMenuLabel(section.label);
+        <div className="titlebar-menu-zone">
+          <div className="brand" title={appName} aria-label={appName}>
+            <img className="brand-icon" src="/irodori-icon.svg" alt="" />
+          </div>
+          <nav className="menubar" aria-label="Application menu" ref={menubarRef}>
+            {menuBarSections.map((section) => (
+              <div className="menubar-item" key={section.label}>
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={activeMenuLabel === section.label}
+                  onClick={() =>
+                    setActiveMenuLabel((current) =>
+                      current === section.label ? null : section.label,
+                    )
                   }
-                }}
-              >
-                {section.label}
-              </button>
-              {activeMenuLabel === section.label ? (
-                <div className="app-menu-popover menubar-popover" role="menu">
-                  {renderMenuSection(section)}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </nav>
+                  onMouseEnter={() => {
+                    if (activeMenuLabel) {
+                      setActiveMenuLabel(section.label);
+                    }
+                  }}
+                >
+                  {section.label}
+                </button>
+                {activeMenuLabel === section.label ? (
+                  <div className="app-menu-popover menubar-popover" role="menu">
+                    {renderMenuSection(section)}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </nav>
+        </div>
         <button
           className="connection-select titlebar-connection"
           type="button"
@@ -306,8 +308,7 @@ export function WorkbenchShell({
           <small>{activeConnectionEngine}</small>
           <ChevronDown size={15} />
         </button>
-        <div className="titlebar-spacer" />
-        <div className="titlebar-layout-controls" aria-label="Layout controls">
+        <div className="titlebar-control-zone" aria-label="Layout controls">
           <button
             className={sidebarOpen ? "icon-button active" : "icon-button"}
             type="button"

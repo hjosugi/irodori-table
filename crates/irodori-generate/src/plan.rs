@@ -205,9 +205,24 @@ fn render_table_context(out: &mut String, table: &GenTable) {
         if i > 0 {
             out.push_str(", ");
         }
-        let _ = write!(out, "{} {}", column.name, column.data_type);
+        let pk = if table
+            .primary_key
+            .iter()
+            .any(|key| key.eq_ignore_ascii_case(&column.name))
+        {
+            " pk"
+        } else {
+            ""
+        };
+        let _ = write!(out, "{} {}{}", column.name, column.data_type, pk);
     }
     out.push_str(")\n");
+    // Foreign-key hints so the model joins on real relationships.
+    for fk in &table.foreign_keys {
+        if let (Some(col), Some(ref_col)) = (fk.columns.first(), fk.ref_columns.first()) {
+            let _ = writeln!(out, "    fk: {}.{} -> {}.{}", table.name, col, fk.ref_table, ref_col);
+        }
+    }
 }
 
 /// Pick tables whose name is mentioned in the prompt, in order of first mention.

@@ -46,8 +46,8 @@ NL prompt + connection schema
   orchestrator. The `llama` feature adds the embedded runtime (`llama.rs`).
   Without it (or without a model) the engine returns `unsupported`/`not found`.
 - **desktop (`src-tauri/src/ai`)** — the `ai_generate_sql`, `ai_engine_status`,
-  and `ai_download_model` commands. The schema comes from the existing completion
-  metadata cache; the dialect from the connection engine.
+  `ai_set_provider`, and `ai_get_provider` commands. The schema comes from the
+  existing completion metadata cache; the dialect from the connection engine.
 
 ## Runtime & model
 
@@ -98,9 +98,9 @@ cargo build -p irodori-table-desktop
 TMPDIR=.irodori-local/cc-tmp cargo build -p irodori-table-desktop --features llama
 ```
 
-The model downloads on first use via the background `ai_download_model` job
-(visible in the jobs dashboard) into the app data dir under `models/`. After it's
-cached, generation works fully offline.
+The embedded model is read only when it already exists in the app data dir under
+`models/`. The desktop UI does not start a background download job; preinstall
+the model for local generation, or use Ollama / API / CLI providers.
 
 ## Safety
 
@@ -110,8 +110,7 @@ the A5SQL-style read-only / AI-disabled posture intact.
 
 ## Follow-ups
 
-- A dedicated `JobKind::ModelDownload` (currently uses `JobKind::Other` to avoid a
-  cross-repo tag bump of `irodori-knowledge`).
+- Optional admin tooling for preinstalling local models outside the desktop UI.
 - Expand the grammar/AST beyond `SELECT` (DML/DDL) over later iterations.
 - Optional idle-unload timer to drop the model from memory after inactivity.
 - Cut `irodori-sql` tag `v0.2.24` once the AST/grammar API is stable and remove

@@ -22,9 +22,12 @@ http-body-util = "0.1"
 bytes = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite"] }
+# Synchronous SQLite for the built-in source, driven from `spawn_blocking`. (sqlx's
+# async SQLite needs `'static` SQL for its Send worker future, which fights the
+# async-trait boxing here; rusqlite owns the statement and sidesteps that.)
+rusqlite = { version = "0.32", features = ["bundled"] }
 subtle = "2"
-futures = "0.3"
+async-trait = "0.1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

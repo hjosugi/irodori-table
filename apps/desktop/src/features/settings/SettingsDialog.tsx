@@ -61,11 +61,11 @@ import {
 } from "../../i18n";
 import { defaultThemeEntries, type ThemeKind } from "@/theme";
 import {
-  bundledPluginStoreIndex,
-  defaultPluginStoreUrl,
-  fetchPluginStoreIndex,
+  bundledPluginStoreCatalog,
+  defaultPluginStoreCatalogUrl,
+  fetchPluginStoreCatalog,
+  type PluginStoreCatalog,
   type PluginStoreExtension,
-  type PluginStoreIndex,
 } from "@/features/extensions/plugin-store";
 
 export type SettingsTab =
@@ -260,15 +260,19 @@ function ExtensionSection({
                 </div>
               </div>
               <div className="extension-actions">
-                <button
-                  type="button"
-                  className="icon-button"
-                  title="Open release"
-                  aria-label={`Open ${extension.name} release`}
-                  onClick={() => openExternalUrl(extension.install.url)}
-                >
-                  <Download size={15} />
-                </button>
+                {extension.install ? (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    title="Open release"
+                    aria-label={`Open ${extension.name} release`}
+                    onClick={() =>
+                      openExternalUrl(extension.install?.url ?? extension.repository)
+                    }
+                  >
+                    <Download size={15} />
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="text-button"
@@ -353,8 +357,8 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const { t } = createTranslator(locale);
   const uiZoomPercent = `${Math.round(uiZoom * 100)}%`;
-  const [pluginStore, setPluginStore] = useState<PluginStoreIndex>(
-    bundledPluginStoreIndex,
+  const [pluginStore, setPluginStore] = useState<PluginStoreCatalog>(
+    bundledPluginStoreCatalog,
   );
   const [pluginStoreLoading, setPluginStoreLoading] = useState(false);
   const [pluginStoreError, setPluginStoreError] = useState<string | null>(null);
@@ -395,15 +399,15 @@ export function SettingsDialog({
     let cancelled = false;
     setPluginStoreLoading(true);
     setPluginStoreError(null);
-    fetchPluginStoreIndex(defaultPluginStoreUrl)
-      .then((index) => {
+    fetchPluginStoreCatalog(defaultPluginStoreCatalogUrl)
+      .then((catalog) => {
         if (!cancelled) {
-          setPluginStore(index);
+          setPluginStore(catalog);
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          setPluginStore(bundledPluginStoreIndex);
+          setPluginStore(bundledPluginStoreCatalog);
           setPluginStoreError(
             error instanceof Error ? error.message : String(error),
           );
@@ -1235,7 +1239,7 @@ export function SettingsDialog({
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => openExternalUrl(defaultPluginStoreUrl)}
+                    onClick={() => openExternalUrl(defaultPluginStoreCatalogUrl)}
                   >
                     {t("settings.extensions.openStore")}
                   </button>
