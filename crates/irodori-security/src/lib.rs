@@ -1,3 +1,5 @@
+//! Audit log, redaction, and privacy-mode primitives for Irodori.
+
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 

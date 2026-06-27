@@ -1,9 +1,11 @@
+//! Connection profiles, transports, and their portable (exportable) forms.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{IrodoriError, Result};
+use irodori_error::{IrodoriError, Result};
 
 const MAX_PROFILE_ID_LEN: usize = 128;
 const MAX_SOURCE_ID_LEN: usize = 128;

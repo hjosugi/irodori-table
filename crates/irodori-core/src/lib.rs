@@ -4,9 +4,6 @@
 //! in `irodori-jobs`; both are re-exported here so existing
 //! `irodori_core::{IrodoriError, JobKind, ...}` paths keep working.
 
-pub mod connection;
-pub mod security;
-
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -16,7 +13,7 @@ pub use irodori_jobs::{
     JobContext, JobKind, JobList, JobLogEntry, JobLogLevel, JobProgress, JobRecord,
     JobResourceBudget, JobRetryPolicy, JobRuntime, JobRuntimeConfig, JobSpec, JobStatus, JobSummary,
 };
-pub use connection::{
+pub use irodori_connection::{
     AuthConfig, ConnectionProfile, ConnectionProfileExport, DirectTransport, LocalFileTransport,
     PortableAuthConfig, PortableConnectionProfile, PortableProxyAuthConfig, PortableProxyChainHop,
     PortableProxyChainTransport, PortableProxyHopConfig, PortableProxyTransport,
@@ -26,7 +23,7 @@ pub use connection::{
     SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
     CONNECTION_PROFILE_SCHEMA_VERSION,
 };
-pub use security::{
+pub use irodori_security::{
     AuditEvent, AuditEventKind, AuditLog, PrivacyMode, RedactedExport, RedactionReport, Redactor,
 };
 

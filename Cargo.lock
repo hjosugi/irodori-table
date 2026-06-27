@@ -3221,11 +3221,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "irodori-core"
+name = "irodori-connection"
 version = "0.2.23"
 dependencies = [
  "irodori-error",
+ "serde",
+ "serde_json",
+ "ts-rs",
+]
+
+[[package]]
+name = "irodori-core"
+version = "0.2.23"
+dependencies = [
+ "irodori-connection",
+ "irodori-error",
  "irodori-jobs",
+ "irodori-security",
  "serde",
  "serde_json",
  "tokio",
@@ -3307,6 +3319,14 @@ name = "irodori-secure-store"
 version = "0.2.23"
 dependencies = [
  "irodori-core",
+]
+
+[[package]]
+name = "irodori-security"
+version = "0.2.23"
+dependencies = [
+ "serde",
+ "ts-rs",
 ]
 
 [[package]]

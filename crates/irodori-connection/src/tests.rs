@@ -153,7 +153,7 @@ fn connection_profile_export_rejects_unsupported_schema_versions() {
     };
 
     let error = export.validate_schema_version().unwrap_err();
-    assert_eq!(error.kind, crate::IrodoriErrorKind::Validation);
+    assert_eq!(error.kind, irodori_error::IrodoriErrorKind::Validation);
     assert!(error.message.contains("schema version"));
 }
 

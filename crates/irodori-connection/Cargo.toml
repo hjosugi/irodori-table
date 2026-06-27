@@ -1,5 +1,5 @@
 [package]
-name = "irodori-core"
+name = "irodori-connection"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,13 +10,9 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
-irodori-connection = { path = "../irodori-connection" }
 irodori-error = { path = "../irodori-error" }
-irodori-jobs = { path = "../irodori-jobs" }
-irodori-security = { path = "../irodori-security" }
 serde = { version = "1", features = ["derive"] }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
 
 [dev-dependencies]
 serde_json = "1"
-tokio = { version = "1", features = ["rt", "macros"] }

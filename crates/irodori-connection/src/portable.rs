@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{IrodoriError, Result};
+use irodori_error::{IrodoriError, Result};
 
 use super::{
     AuthConfig, ConnectionProfile, DirectTransport, LocalFileTransport, ProxyAuthConfig,

@@ -1,6 +1,8 @@
-import { useRef, useState, type FormEventHandler } from "react";
+import { useMemo, useRef, useState, type FormEventHandler } from "react";
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
   Database,
   MoreHorizontal,
   Plus,
@@ -21,6 +23,65 @@ import {
   connectionTransferFormatOptions,
   type ConnectionTransferFormat,
 } from "./connection-transfer";
+
+type ConnectionProfileGroup = {
+  id: string;
+  label: string;
+  profiles: ConnectionDraft[];
+};
+
+const environmentOrder = ["prod", "stg", "dev", "local", "other"] as const;
+const environmentLabels: Record<(typeof environmentOrder)[number], string> = {
+  prod: "Production",
+  stg: "Staging",
+  dev: "Development",
+  local: "Local",
+  other: "Other",
+};
+
+function connectionSearchText(profile: ConnectionDraft) {
+  return [
+    profile.id,
+    profile.name,
+    profile.host,
+    profile.database,
+    profile.url,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function connectionEnvironment(profile: ConnectionDraft) {
+  const text = connectionSearchText(profile);
+  if (/\b(prod|prd|production)\b/.test(text)) {
+    return "prod";
+  }
+  if (/\b(stg|stage|staging)\b/.test(text)) {
+    return "stg";
+  }
+  if (/\b(dev|develop|development|test|qa)\b/.test(text)) {
+    return "dev";
+  }
+  if (/\b(local|localhost|127\.0\.0\.1|memory)\b/.test(text)) {
+    return "local";
+  }
+  return "other";
+}
+
+function groupConnectionProfiles(profiles: ConnectionDraft[]) {
+  const byEnvironment = new Map<string, ConnectionDraft[]>();
+  for (const profile of profiles) {
+    const key = connectionEnvironment(profile);
+    byEnvironment.set(key, [...(byEnvironment.get(key) ?? []), profile]);
+  }
+  return environmentOrder
+    .filter((key) => byEnvironment.has(key))
+    .map((key) => ({
+      id: key,
+      label: environmentLabels[key],
+      profiles: byEnvironment.get(key) ?? [],
+    }));
+}
 
 export function ConnectionManagerDialog({
   profiles,
@@ -69,6 +130,90 @@ export function ConnectionManagerDialog({
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [transferMenuOpen, setTransferMenuOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const groupedProfiles = useMemo(
+    () => groupConnectionProfiles(profiles),
+    [profiles],
+  );
+
+  function toggleGroup(groupId: string) {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }
+
+  function renderProfile(profile: ConnectionDraft) {
+    const connected = connectedIds.has(profile.id);
+    return (
+      <button
+        key={profile.id}
+        className={
+          profile.id === selectedProfileId
+            ? "connection-profile active"
+            : "connection-profile"
+        }
+        type="button"
+        onClick={() => onSelectProfile(profile)}
+      >
+        <span
+          className="connection-color-dot"
+          style={{ background: profile.color }}
+          aria-hidden="true"
+        />
+        <span>
+          <strong>{profile.name}</strong>
+          <small>
+            {engineLabel(profile.engine)}
+            {profile.database ? " · " + profile.database : ""}
+          </small>
+        </span>
+        <i className={connected ? "connected" : ""} />
+      </button>
+    );
+  }
+
+  function renderGroup(group: ConnectionProfileGroup) {
+    const collapsed = collapsedGroups.has(group.id);
+    const connectedCount = group.profiles.filter((profile) =>
+      connectedIds.has(profile.id),
+    ).length;
+    return (
+      <section className="connection-profile-group" key={group.id}>
+        <button
+          className="connection-profile-group-header"
+          type="button"
+          aria-expanded={!collapsed}
+          onClick={() => toggleGroup(group.id)}
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          <span>
+            <strong>{group.label}</strong>
+            <small>
+              {connectedCount > 0
+                ? connectedCount +
+                  " connected · " +
+                  group.profiles.length +
+                  " total"
+                : group.profiles.length + " total"}
+            </small>
+          </span>
+        </button>
+        {collapsed ? null : (
+          <div className="connection-profile-group-items">
+            {group.profiles.map(renderProfile)}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <div
@@ -160,35 +305,7 @@ export function ConnectionManagerDialog({
             />
           </div>
           <div className="connection-profile-list">
-            {profiles.map((profile) => {
-              const connected = connectedIds.has(profile.id);
-              return (
-                <button
-                  key={profile.id}
-                  className={
-                    profile.id === selectedProfileId
-                      ? "connection-profile active"
-                      : "connection-profile"
-                  }
-                  type="button"
-                  onClick={() => onSelectProfile(profile)}
-                >
-                  <span
-                    className="connection-color-dot"
-                    style={{ background: profile.color }}
-                    aria-hidden="true"
-                  />
-                  <span>
-                    <strong>{profile.name}</strong>
-                    <small>
-                      {engineLabel(profile.engine)}
-                      {profile.database ? ` \u00b7 ${profile.database}` : ""}
-                    </small>
-                  </span>
-                  <i className={connected ? "connected" : ""} />
-                </button>
-              );
-            })}
+            {groupedProfiles.map(renderGroup)}
           </div>
           <div className="connection-picker-empty">
             {profiles.length === 0 ? "No matching connections" : null}

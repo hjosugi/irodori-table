@@ -3,6 +3,8 @@ members = [
     "apps/desktop/src-tauri",
     "crates/irodori-error",
     "crates/irodori-jobs",
+    "crates/irodori-connection",
+    "crates/irodori-security",
     "crates/irodori-core",
     "crates/irodori-proxy",
     "crates/irodori-secure-store",
@@ -15,6 +17,8 @@ members = [
 default-members = [
     "crates/irodori-error",
     "crates/irodori-jobs",
+    "crates/irodori-connection",
+    "crates/irodori-security",
     "crates/irodori-core",
     "crates/irodori-proxy",
     "crates/irodori-secure-store",

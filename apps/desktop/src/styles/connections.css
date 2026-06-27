@@ -1,8 +1,9 @@
 .connection-dialog {
   display: grid;
-  grid-template-columns: 260px minmax(420px, 620px);
-  width: min(880px, calc(100vw - 48px));
-  max-height: min(540px, calc(100vh - 48px));
+  grid-template-columns: minmax(300px, 0.36fr) minmax(620px, 1fr);
+  width: min(1180px, calc(100vw - 48px));
+  min-height: min(620px, calc(100vh - 48px));
+  max-height: min(760px, calc(100vh - 48px));
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -119,13 +120,68 @@
 .connection-profile-list {
   display: grid;
   align-content: start;
-  gap: 4px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
   min-height: 0;
   overflow: auto;
   padding: 7px;
+}
+
+.connection-profile-group {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.connection-profile-group-header {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.connection-profile-group-header:hover,
+.connection-profile-group-header:focus-visible {
+  background: var(--surface);
+  outline: 0;
+}
+
+.connection-profile-group-header strong,
+.connection-profile-group-header small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-profile-group-header strong {
+  color: var(--text);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.connection-profile-group-header small {
+  font-size: 11px;
+}
+
+.connection-profile-group-items {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 14px;
 }
 
 .connection-profile {
@@ -320,7 +376,7 @@
   .connection-dialog {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 190px) minmax(0, 1fr);
-    width: min(100%, 680px);
+    width: min(100%, 760px);
     height: calc(100vh - 24px);
     max-height: calc(100vh - 24px);
   }
