@@ -82,7 +82,7 @@ constraints through the Postgres information-schema metamodel.
   bool/ints/floats native.
 - **Arrays** decode best-effort to text today (rich array decode is a follow-up).
 - **CockroachDB** omits some `OID`-typed system columns that tools expect.
-- The deep driver/decoding reference is `docs/engine-syntax-reference.md`.
+- The deep driver/decoding reference is `https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html`.
 
 ## Gotchas
 
