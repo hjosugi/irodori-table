@@ -42,6 +42,39 @@ compose_file() {
   fi
 }
 
+require_compose() {
+  local e="$1"
+  local file
+  file="$(compose_file "$e")"
+  if [ ! -f "$file" ]; then
+    echo "missing sample compose file: $file" >&2
+    echo "set IRODORI_SAMPLES=/path/to/irodori-samples or clone it next to irodori-table" >&2
+    return 1
+  fi
+  case "$e" in
+    postgres|mysql|oracle|mongodb)
+      local seed="$SAMPLES/$e/01_samples.sql"
+      [ "$e" = "mongodb" ] && seed="$SAMPLES/$e/01_samples.js"
+      if [ ! -f "$seed" ]; then
+        echo "missing sample seed file: $seed" >&2
+        return 1
+      fi
+      ;;
+    mariadb)
+      if [ ! -f "$SAMPLES/mysql/01_samples.sql" ]; then
+        echo "missing sample seed file: $SAMPLES/mysql/01_samples.sql" >&2
+        return 1
+      fi
+      ;;
+    timescaledb)
+      if [ ! -f "$SAMPLES/postgres/01_samples.sql" ]; then
+        echo "missing sample seed file: $SAMPLES/postgres/01_samples.sql" >&2
+        return 1
+      fi
+      ;;
+  esac
+}
+
 compose() { "$ENGINE_BIN" compose -f "$(compose_file "$1")" "${@:2}"; }
 
 down_engine() {
@@ -53,6 +86,7 @@ down_engine() {
 
 up_engine() {
   local e="$1"
+  require_compose "$e" || return 1
   if compose "$e" up -d; then
     return 0
   fi

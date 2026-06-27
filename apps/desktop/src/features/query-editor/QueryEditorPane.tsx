@@ -43,10 +43,6 @@ import {
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "@/theme";
 import type { EditorSplitMode } from "../workbench";
-import {
-  ShortcutTips,
-  type ShortcutTip,
-} from "../workbench/components/ShortcutTips";
 import { findSqlFile, hasDraggedFiles } from "./drag-drop";
 import { renderSqlMetadataTooltip } from "./sql-metadata-tooltip";
 
@@ -87,7 +83,6 @@ export interface QueryEditorPaneProps {
   runCurrentShortcutLabel: string;
   runFromStartShortcutLabel: string;
   runAllShortcutLabel: string;
-  shortcutTips: readonly ShortcutTip[];
   runMenuOpen: boolean;
   hasSelectedEditorSql: boolean;
   resultActionsAvailable: boolean;
@@ -141,7 +136,6 @@ export function QueryEditorPane({
   runCurrentShortcutLabel,
   runFromStartShortcutLabel,
   runAllShortcutLabel,
-  shortcutTips,
   runMenuOpen,
   hasSelectedEditorSql,
   resultActionsAvailable,
@@ -174,7 +168,6 @@ export function QueryEditorPane({
     editorBackgroundImage,
     editorBackgroundOpacity,
   );
-  const showShortcutTips = query.trim().length === 0;
 
   useEffect(() => {
     if (!contextMenu) {
@@ -366,12 +359,6 @@ export function QueryEditorPane({
             onMetadataJump={onMetadataJump}
             onMetadataToolWindow={setMetadataToolWindow}
           />
-          {showShortcutTips ? (
-            <ShortcutTips
-              className="editor-shortcut-tips"
-              items={shortcutTips}
-            />
-          ) : null}
         </div>
         {editorSplitOpen ? (
           <>

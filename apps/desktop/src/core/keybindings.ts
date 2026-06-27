@@ -56,6 +56,12 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "tab.new",
+    title: "New SQL tab",
+    category: "Workspace",
+    scope: "global",
+  },
+  {
     id: "tab.close",
     title: "Close active SQL tab",
     category: "Workspace",
@@ -194,6 +200,7 @@ export const commandCatalog: CommandMeta[] = [
 export const defaultKeymap: Keymap = {
   "palette.open": "Mod+Shift+P",
   "settings.open": "Mod+,",
+  "tab.new": "Mod+T",
   "tab.close": "Mod+W",
   "view.zoomIn": "Mod+=",
   "view.zoomOut": "Mod+-",

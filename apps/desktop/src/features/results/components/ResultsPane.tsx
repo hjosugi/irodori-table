@@ -255,6 +255,8 @@ export function ResultsPane({
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const filterToggleRef = useRef<HTMLButtonElement | null>(null);
   const filterPanelRef = useRef<HTMLDivElement | null>(null);
+  const copyExportAvailable =
+    !showingStructure && Boolean(activeResult || queryError || commitError);
 
   useEffect(() => {
     if (!exportMenuOpen) {
@@ -425,7 +427,7 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              disabled={!activeResult || showingStructure}
+              disabled={!copyExportAvailable}
               onClick={() => onExportActiveResult("csv")}
             >
               <Download size={13} />
@@ -436,7 +438,7 @@ export function ResultsPane({
               type="button"
               title="Export formats"
               aria-label="Export formats"
-              disabled={!activeResult || showingStructure}
+              disabled={!copyExportAvailable}
               onClick={onToggleExportMenu}
             >
               <ChevronDown size={13} />
@@ -463,7 +465,7 @@ export function ResultsPane({
           <button
             className="text-button"
             type="button"
-            disabled={!activeResult || showingStructure}
+            disabled={!copyExportAvailable}
             onClick={onCopyVisibleResult}
           >
             <Copy size={13} />

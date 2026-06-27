@@ -296,6 +296,11 @@ function formatUiZoom(zoom: number) {
   return `${Math.round(normalizeUiZoom(zoom) * 100)}%`;
 }
 
+function isQueryCancelledMessage(message: string) {
+  const normalized = message.trim().toLowerCase();
+  return normalized === "cancelled" || normalized.includes("query cancelled");
+}
+
 const MigrationStudioDialog = lazy(() =>
   import("@/features/migration").then((module) => ({
     default: module.MigrationStudioDialog,
@@ -503,6 +508,7 @@ export function AppWorkbench() {
   }
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
+  const cancelRequestedQueryIdRef = useRef<string | null>(null);
   const profiles = useConnectionStore((state) => state.profiles);
   const setProfiles = useConnectionStore((state) => state.setProfiles);
   const selectedProfileId = useConnectionStore((state) => state.selectedProfileId);
@@ -951,19 +957,11 @@ export function AppWorkbench() {
     label,
     shortcut: formatKeySequence(keymap[commandId] ?? "") || null,
   });
-  const editorShortcutTips = [
-    shortcutTip("Show Commands", "palette.open"),
-    shortcutTip("Format SQL", "editor.format"),
-    shortcutTip("Toggle Comment", "editor.comment.toggle"),
-    shortcutTip("Quick Definition", "editor.quickDefinition"),
-    shortcutTip("Run Selection / Current", "query.run"),
-    shortcutTip("Run Current", "query.runCurrent"),
-    shortcutTip("Run From Top", "query.runFromStart"),
-    shortcutTip("Run All", "query.runAll"),
-    shortcutTip("Close Tab", "tab.close"),
-  ];
   const resultShortcutTips = [
+    shortcutTip("New Tab", "tab.new"),
+    shortcutTip("Show Commands", "palette.open"),
     shortcutTip("Export CSV", "result.export"),
+    shortcutTip("Copy TSV", "result.copyVisible"),
     shortcutTip("Toggle Edit Data", "edit.toggle"),
     shortcutTip("Add Row", "edit.addRow"),
     shortcutTip("Undo Edit", "edit.undo"),
@@ -1965,6 +1963,7 @@ export function AppWorkbench() {
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
     zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
+    newSqlTab: reopenSqlTab,
     closeActiveTab: closeActiveSqlTab,
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
@@ -3059,16 +3058,32 @@ export function AppWorkbench() {
     );
   }
 
+  function errorResultSetForExport(): QueryResultSet | null {
+    if (!queryError) {
+      return null;
+    }
+    return {
+      statementIndex: 0,
+      statement: lastRunSql || "query",
+      columns: ["error"],
+      rows: [[queryError]],
+      rowCount: 1n,
+      elapsedMs: 0n,
+      truncated: false,
+    };
+  }
+
   function exportActiveResult(format: ResultExportFormat) {
-    if (!activeResult) {
+    const exportResult = activeResult ?? errorResultSetForExport();
+    if (!exportResult) {
       showActionNotice("info", "No result to export");
       return;
     }
     const target = inferEditTarget();
     const exported = buildResultExport(
-      activeResult,
+      exportResult,
       format,
-      target?.table ?? "query_result",
+      target?.table ?? (activeResult ? "query_result" : "query_error"),
     );
     const blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
       type: exported.mime,
@@ -3090,22 +3105,23 @@ export function AppWorkbench() {
   }
 
   async function copyActiveResultSqlInserts() {
-    if (!activeResult) {
+    const exportResult = activeResult ?? errorResultSetForExport();
+    if (!exportResult) {
       showActionNotice("info", "No result to copy");
       return;
     }
     const target = inferEditTarget();
     const exported = buildResultExport(
-      activeResult,
+      exportResult,
       "sql",
-      target?.table ?? "query_result",
+      target?.table ?? (activeResult ? "query_result" : "query_error"),
     );
     try {
       await writeTextToClipboard(exported.content);
       showActionNotice(
         "success",
         "INSERT SQL copied",
-        `${toCount(activeResult.rows.length)} rows`,
+        `${toCount(exportResult.rows.length)} rows`,
       );
     } catch (error) {
       showActionNotice("error", "Copy failed", errorMessage(error));
@@ -3678,6 +3694,11 @@ export function AppWorkbench() {
     const ranAt = new Date().toISOString();
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     runningQueryIdRef.current = queryId;
+    const cancelRequestedForRun = () => cancelRequestedQueryIdRef.current === queryId;
+    const showCancelledRun = () => {
+      setQueryError(null);
+      showActionNotice("info", "Query cancelled");
+    };
     let publishRaf: number | null = null;
     try {
       // Stream the run so the grid fills as batches arrive instead of waiting for
@@ -3908,6 +3929,13 @@ export function AppWorkbench() {
               );
               break;
             case "error":
+              if (
+                cancelRequestedForRun() &&
+                isQueryCancelledMessage(event.message)
+              ) {
+                showCancelledRun();
+                break;
+              }
               setQueryError(event.message);
               showActionNotice("error", "Query failed", event.message);
               appendHistory({
@@ -3930,24 +3958,31 @@ export function AppWorkbench() {
       }
     } catch (error) {
       const message = errorMessage(error);
-      setQueryError(message);
-      showActionNotice("error", "Query failed", message);
-      appendHistory({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        connectionId: activeConnectionId,
-        connectionName: activeConnection.name,
-        engine: activeConnection.engine,
-        sql: sqlToRun,
-        status: "error",
-        rowCount: 0,
-        elapsedMs: Math.max(1, Math.round(performance.now() - started)),
-        truncated: false,
-        error: message,
-        ranAt,
-      });
+      if (cancelRequestedForRun() && isQueryCancelledMessage(message)) {
+        showCancelledRun();
+      } else {
+        setQueryError(message);
+        showActionNotice("error", "Query failed", message);
+        appendHistory({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          connectionId: activeConnectionId,
+          connectionName: activeConnection.name,
+          engine: activeConnection.engine,
+          sql: sqlToRun,
+          status: "error",
+          rowCount: 0,
+          elapsedMs: Math.max(1, Math.round(performance.now() - started)),
+          truncated: false,
+          error: message,
+          ranAt,
+        });
+      }
     } finally {
       if (publishRaf !== null) {
         window.cancelAnimationFrame(publishRaf);
+      }
+      if (cancelRequestedQueryIdRef.current === queryId) {
+        cancelRequestedQueryIdRef.current = null;
       }
       runningQueryIdRef.current = null;
       setRunning(false);
@@ -3978,12 +4013,26 @@ export function AppWorkbench() {
     if (!id) {
       return;
     }
+    if (cancelRequestedQueryIdRef.current === id) {
+      showActionNotice("info", "Cancel already requested");
+      return;
+    }
     try {
-      await dbCancel(id);
-      showActionNotice("info", "Cancel requested");
-    } catch {
-      // Best-effort: if the run already finished there is nothing to cancel.
-      showActionNotice("info", "Query already finished");
+      cancelRequestedQueryIdRef.current = id;
+      const cancelled = await dbCancel(id);
+      if (cancelled) {
+        showActionNotice("info", "Cancel requested");
+      } else {
+        if (cancelRequestedQueryIdRef.current === id) {
+          cancelRequestedQueryIdRef.current = null;
+        }
+        showActionNotice("info", "Query already finished");
+      }
+    } catch (error) {
+      if (cancelRequestedQueryIdRef.current === id) {
+        cancelRequestedQueryIdRef.current = null;
+      }
+      showActionNotice("error", "Cancel failed", errorMessage(error));
     }
   }
 
@@ -4194,7 +4243,6 @@ export function AppWorkbench() {
               runCurrentShortcutLabel={runCurrentShortcutLabel}
               runFromStartShortcutLabel={runFromStartShortcutLabel}
               runAllShortcutLabel={runAllShortcutLabel}
-              shortcutTips={editorShortcutTips}
               runMenuOpen={runMenuOpen}
               hasSelectedEditorSql={hasSelectedEditorSql}
               resultActionsAvailable={Boolean(activeResult)}

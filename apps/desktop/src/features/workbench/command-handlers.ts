@@ -20,6 +20,7 @@ type WorkbenchCommandHandlerDeps = {
   zoomIn: () => void;
   zoomOut: () => void;
   zoomReset: () => void;
+  newSqlTab: () => void;
   closeActiveTab: () => void;
   buildSchemaIndex: () => void;
   runQuery: () => Promise<void>;
@@ -68,6 +69,7 @@ export function createWorkbenchCommandHandler({
   zoomIn,
   zoomOut,
   zoomReset,
+  newSqlTab,
   closeActiveTab,
   buildSchemaIndex,
   runQuery,
@@ -151,6 +153,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "diagram.show":
         openDiagram();
+        break;
+      case "tab.new":
+        newSqlTab();
         break;
       case "tab.close":
         closeActiveTab();

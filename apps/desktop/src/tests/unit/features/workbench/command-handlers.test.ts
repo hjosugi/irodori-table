@@ -23,6 +23,7 @@ function createHandler(calls: string[]) {
     zoomIn: () => calls.push("zoom-in"),
     zoomOut: () => calls.push("zoom-out"),
     zoomReset: () => calls.push("zoom-reset"),
+    newSqlTab: () => calls.push("tab-new"),
     closeActiveTab: () => calls.push("tab-close"),
     buildSchemaIndex: () => calls.push("schema-index"),
     runQuery: async () => {
@@ -89,6 +90,7 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.zoomReset");
     runCommand("developer.openDevtools");
     runCommand("migration.studio");
+    runCommand("query.cancel");
 
     expect(calls).toEqual([
       "keymap",
@@ -102,6 +104,7 @@ describe("createWorkbenchCommandHandler", () => {
       "zoom-reset",
       "devtools",
       "migration",
+      "query-cancel",
     ]);
   });
 });

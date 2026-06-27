@@ -619,7 +619,7 @@ function menuButton({
 }) {
   const button = document.createElement("button");
   button.type = "button";
-  button.role = "menuitem";
+  button.setAttribute("role", "menuitem");
   button.disabled = disabled;
   button.textContent = label;
   button.addEventListener("click", (event) => {
@@ -1152,17 +1152,13 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor
       },
       quickDefinition() {
         const view = viewRef.current;
-        if (!view) return false;
-        const event = new KeyboardEvent("keydown", {
-          key: "I",
-          code: "KeyI",
-          ctrlKey: true,
-          shiftKey: true,
-          bubbles: true,
-          cancelable: true,
-        });
-        view.contentDOM.dispatchEvent(event);
-        return event.defaultPrevented;
+        if (!view || !metadata) return false;
+        return openQuickDefinitionAtSelection(
+          view,
+          metadata,
+          onMetadataJump,
+          onMetadataToolWindow,
+        );
       },
       revealRange(selection) {
         const view = viewRef.current;

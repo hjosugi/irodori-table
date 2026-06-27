@@ -14,7 +14,13 @@ set -euo pipefail
 
 ENGINE_BIN="${ENGINE_BIN:-$(command -v podman >/dev/null 2>&1 && echo podman || echo docker)}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SAMPLES="$ROOT/samples"
+if [ -n "${IRODORI_SAMPLES:-}" ]; then
+  SAMPLES="$IRODORI_SAMPLES"
+elif [ -d "$ROOT/../irodori-samples" ]; then
+  SAMPLES="$ROOT/../irodori-samples"
+else
+  SAMPLES="$ROOT/samples"
+fi
 MANIFEST="$ROOT/apps/desktop/src-tauri/Cargo.toml"
 
 PG_NAME=irodori-pg
@@ -28,7 +34,18 @@ TABLES="${TABLES:-100}"
 pg()  { "$ENGINE_BIN" exec -i "$PG_NAME" psql -v ON_ERROR_STOP=1 -U irodori -d samples "$@"; }
 my()  { "$ENGINE_BIN" exec -i "$MY_NAME" mysql --local-infile=1 -uirodori -pirodori samples "$@"; }
 
+require_sample_dir() {
+  local engine="$1"
+  local dir="$SAMPLES/$engine"
+  if [ ! -d "$dir" ]; then
+    echo "missing sample directory: $dir" >&2
+    echo "set IRODORI_SAMPLES=/path/to/irodori-samples or clone it next to irodori-table" >&2
+    exit 1
+  fi
+}
+
 up_pg() {
+  require_sample_dir postgres
   "$ENGINE_BIN" run -d --replace --name "$PG_NAME" \
     -e POSTGRES_USER=irodori -e POSTGRES_PASSWORD=irodori -e POSTGRES_DB=samples \
     -p 55432:5432 -v "$SAMPLES/postgres:/docker-entrypoint-initdb.d:ro,Z" \
@@ -37,6 +54,7 @@ up_pg() {
 }
 
 up_my() {
+  require_sample_dir mysql
   "$ENGINE_BIN" run -d --replace --name "$MY_NAME" \
     -e MYSQL_ROOT_PASSWORD=root -e MYSQL_USER=irodori -e MYSQL_PASSWORD=irodori -e MYSQL_DATABASE=samples \
     -p 55306:3306 -v "$SAMPLES/mysql:/docker-entrypoint-initdb.d:ro,Z" \
