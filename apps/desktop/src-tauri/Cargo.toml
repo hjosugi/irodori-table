@@ -37,7 +37,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 # Oracle is intentionally NOT here: the plan is a pure-Rust thin TNS driver
 # (no Instant Client, like A5:SQL Mk-2's direct mode) built by inheriting the
 # permissive `oracle-rs` crate. See docs/data-source-coverage-strategy.md (SRC-004).
-sqlx = { version = "0.8", default-features = false, features = [
+sqlx = { version = "0.9", default-features = false, features = [
     "runtime-tokio",
     "postgres",
     "mysql",
@@ -72,8 +72,8 @@ oracle-rs = "0.1.7"
 reqwest = { version = "0.13.4", features = ["json"] }
 neo4rs = "0.8.0"
 tauri-plugin-dialog = "2.7.1"
-redis = { version = "0.27.5", default-features = false, features = ["tokio-comp"] }
-scylla = { version = "0.15" }
+redis = { version = "1.2.4", default-features = false, features = ["tokio-comp"] }
+scylla = { version = "1.7" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
