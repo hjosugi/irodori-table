@@ -12,9 +12,9 @@ pub const CONNECTION_PROFILE_SCHEMA_VERSION: u16 = 1;
 mod portable;
 
 pub use portable::{
-    ConnectionProfileExport, PortableAuthConfig, PortableConnectionProfile, PortableProxyAuthConfig,
-    PortableProxyChainHop, PortableProxyChainTransport, PortableProxyHopConfig,
-    PortableProxyTransport, PortableSshAuthConfig, PortableSshProxyHop,
+    ConnectionProfileExport, PortableAuthConfig, PortableConnectionProfile,
+    PortableProxyAuthConfig, PortableProxyChainHop, PortableProxyChainTransport,
+    PortableProxyHopConfig, PortableProxyTransport, PortableSshAuthConfig, PortableSshProxyHop,
     PortableSshTunnelTransport, PortableTransportConfig, SecretSlot, SecretSlotPurpose,
 };
 
