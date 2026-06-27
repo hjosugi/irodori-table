@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   appCommandCatalog,
+  appMenuCommandCatalog,
   initialQuery,
   loadSavedQuery,
   resultCopyDefaultKeymap,
@@ -60,7 +61,9 @@ describe("app command config", () => {
   });
 
   it("only references known commands from the workspace menu", () => {
-    const catalogIds = new Set(appCommandCatalog.map((command) => command.id));
+    const catalogIds = new Set(
+      appMenuCommandCatalog.map((command) => command.id),
+    );
 
     for (const section of workspaceMenuSections) {
       expect(section.items.length, section.label).toBeGreaterThan(0);

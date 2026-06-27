@@ -27,6 +27,7 @@ import {
   APP_NAME,
   APP_VERSION,
   appCommandCatalog,
+  appMenuCommandCatalog,
   fallbackSnapshot,
   loadSavedQuery,
   menuBarSections,
@@ -3766,7 +3767,7 @@ export function AppWorkbench() {
         workspaceMenuOpen={workspaceMenuOpen}
         menuBarSections={menuBarSections}
         workspaceMenuSections={workspaceMenuSections}
-        commandCatalog={appCommandCatalog}
+        commandCatalog={appMenuCommandCatalog}
         keymap={keymap}
         activeConnectionName={activeConnection.name}
         activeConnectionEngine={activeConnection.engine}

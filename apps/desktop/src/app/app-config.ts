@@ -30,6 +30,17 @@ const resultCopyCommands: CommandMeta[] = [
   },
 ];
 
+const developerCommands: CommandMeta[] = import.meta.env.DEV
+  ? [
+      {
+        id: "developer.openDevtools",
+        title: "Open Developer Tools",
+        category: "Help",
+        scope: "global",
+      },
+    ]
+  : [];
+
 const shellCommands: CommandMeta[] = [
   {
     id: "connection.manager",
@@ -121,18 +132,17 @@ const shellCommands: CommandMeta[] = [
     category: "Help",
     scope: "global",
   },
-  {
-    id: "developer.openDevtools",
-    title: "Open Developer Tools",
-    category: "Help",
-    scope: "global",
-  },
 ];
 
 export const appCommandCatalog: CommandMeta[] = [
   ...commandCatalog,
   ...shellCommands,
   ...resultCopyCommands,
+];
+
+export const appMenuCommandCatalog: CommandMeta[] = [
+  ...appCommandCatalog,
+  ...developerCommands,
 ];
 
 export type AppMenuItem = {
@@ -177,7 +187,7 @@ export const workspaceMenuSections: AppMenuSection[] = [
     label: "Help",
     items: [
       { commandId: "help.open" },
-      { commandId: "developer.openDevtools" },
+      ...developerCommands.map((command) => ({ commandId: command.id })),
       { commandId: "about.open" },
     ],
   },
@@ -216,7 +226,7 @@ export const menuBarSections: AppMenuSection[] = [
     label: "Help",
     items: [
       { commandId: "help.open" },
-      { commandId: "developer.openDevtools" },
+      ...developerCommands.map((command) => ({ commandId: command.id })),
       { commandId: "about.open" },
     ],
   },

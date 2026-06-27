@@ -3224,9 +3224,20 @@ dependencies = [
 name = "irodori-core"
 version = "0.2.23"
 dependencies = [
+ "irodori-error",
+ "irodori-jobs",
  "serde",
  "serde_json",
  "tokio",
+ "ts-rs",
+]
+
+[[package]]
+name = "irodori-error"
+version = "0.2.23"
+dependencies = [
+ "serde",
+ "serde_json",
  "ts-rs",
 ]
 
@@ -3257,10 +3268,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "irodori-jobs"
+version = "0.2.23"
+dependencies = [
+ "irodori-error",
+ "serde",
+ "serde_json",
+ "tokio",
+ "ts-rs",
+]
+
+[[package]]
 name = "irodori-knowledge"
 version = "0.2.23"
 dependencies = [
- "irodori-core",
+ "irodori-error",
+ "irodori-jobs",
  "serde",
  "sha2 0.11.0",
  "sqlx",

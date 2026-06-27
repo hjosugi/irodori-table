@@ -16,9 +16,9 @@
 
 use std::path::Path;
 
-use irodori_core::{
-    run_job, BatchOutcome, BatchResult, IrodoriError, IrodoriErrorKind, JobArtifact, JobContext,
-    JobLogLevel, JobRuntime,
+use irodori_error::{IrodoriError, IrodoriErrorKind};
+use irodori_jobs::{
+    run_job, BatchOutcome, BatchResult, JobArtifact, JobContext, JobLogLevel, JobRuntime,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
@@ -437,7 +437,7 @@ fn internal(error: impl std::fmt::Display) -> IrodoriError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use irodori_core::{JobCheckpoint, JobKind, JobRuntime, JobSpec};
+    use irodori_jobs::{JobCheckpoint, JobKind, JobRuntime, JobSpec};
 
     fn resumable_spec(title: &str) -> JobSpec {
         JobSpec {
@@ -564,7 +564,7 @@ mod tests {
 
         // The job finished and recorded throughput + an artifact.
         let job = runtime.get("big").unwrap();
-        assert_eq!(job.status, irodori_core::JobStatus::Succeeded);
+        assert_eq!(job.status, irodori_jobs::JobStatus::Succeeded);
         assert!(!job.artifacts.is_empty());
     }
 

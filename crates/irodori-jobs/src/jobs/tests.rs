@@ -66,7 +66,7 @@ fn global_and_group_concurrency_limits_are_enforced() {
         .unwrap();
     runtime.start("job.one").unwrap();
     let error = runtime.start("job.two").unwrap_err();
-    assert_eq!(error.kind, crate::IrodoriErrorKind::Validation);
+    assert_eq!(error.kind, irodori_error::IrodoriErrorKind::Validation);
 
     let grouped = JobRuntime::new(JobRuntimeConfig {
         max_concurrent_jobs: 4,
@@ -81,7 +81,7 @@ fn global_and_group_concurrency_limits_are_enforced() {
     grouped.start("job.a").unwrap();
     assert_eq!(
         grouped.start("job.b").unwrap_err().kind,
-        crate::IrodoriErrorKind::Validation
+        irodori_error::IrodoriErrorKind::Validation
     );
 }
 

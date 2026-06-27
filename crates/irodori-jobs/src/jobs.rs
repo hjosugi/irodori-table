@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{IrodoriError, Result};
+use irodori_error::{IrodoriError, Result};
 
 mod runtime;
 

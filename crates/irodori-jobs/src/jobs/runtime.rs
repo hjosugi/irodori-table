@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{IrodoriError, Result};
+use irodori_error::{IrodoriError, Result};
 
 use super::{
     now_millis, validate_id, validate_required, JobArtifact, JobCheckpoint, JobList, JobLogEntry,
@@ -140,7 +140,7 @@ impl JobRuntime {
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, JobRuntimeInner>> {
         self.inner.lock().map_err(|_| {
             IrodoriError::new(
-                crate::IrodoriErrorKind::Internal,
+                irodori_error::IrodoriErrorKind::Internal,
                 "job runtime lock poisoned",
             )
         })
@@ -460,7 +460,7 @@ impl JobRuntimeInner {
     fn job(&self, id: &str) -> Result<&JobRecord> {
         self.jobs.get(id).ok_or_else(|| {
             IrodoriError::new(
-                crate::IrodoriErrorKind::NotFound,
+                irodori_error::IrodoriErrorKind::NotFound,
                 format!("job not found: {id}"),
             )
         })
@@ -469,7 +469,7 @@ impl JobRuntimeInner {
     fn job_mut(&mut self, id: &str) -> Result<&mut JobRecord> {
         self.jobs.get_mut(id).ok_or_else(|| {
             IrodoriError::new(
-                crate::IrodoriErrorKind::NotFound,
+                irodori_error::IrodoriErrorKind::NotFound,
                 format!("job not found: {id}"),
             )
         })

@@ -15,7 +15,7 @@
 use std::future::Future;
 
 use crate::jobs::{JobArtifact, JobCheckpoint, JobLogLevel, JobRecord, JobRuntime};
-use crate::Result;
+use irodori_error::Result;
 
 const CHECKPOINT_VERSION: u16 = 1;
 
@@ -261,8 +261,8 @@ mod tests {
     async fn run_job_fails_on_error() {
         let runtime = runtime_with("boom", false);
         let result: Result<(JobRecord, ())> = run_job(&runtime, "boom", |_ctx| async move {
-            Err(crate::IrodoriError::new(
-                crate::IrodoriErrorKind::Internal,
+            Err(irodori_error::IrodoriError::new(
+                irodori_error::IrodoriErrorKind::Internal,
                 "kaboom",
             ))
         })
