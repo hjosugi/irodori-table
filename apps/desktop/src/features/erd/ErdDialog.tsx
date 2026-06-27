@@ -38,6 +38,9 @@ export function ErdDialog({
   onCopyPng,
   onDownloadSvg,
   onDownloadPng,
+  onDownloadSpecMarkdown,
+  onDownloadSpecJson,
+  onLoadSpecDdl,
   onCopyMermaid,
 }: {
   activeConnectionName: string;
@@ -61,6 +64,9 @@ export function ErdDialog({
   onCopyPng: () => void;
   onDownloadSvg: () => void;
   onDownloadPng: () => void;
+  onDownloadSpecMarkdown: () => void;
+  onDownloadSpecJson: () => void;
+  onLoadSpecDdl: () => void;
   onCopyMermaid: () => void;
 }) {
   return (
@@ -157,6 +163,29 @@ export function ErdDialog({
           >
             <ImageDown size={13} />
             <span>PNG</span>
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={onDownloadSpecMarkdown}
+            disabled={!metadataLoaded}
+          >
+            Spec MD
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={onDownloadSpecJson}
+            disabled={!metadataLoaded}
+          >
+            Spec JSON
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={onLoadSpecDdl}
+          >
+            Spec to DDL
           </button>
           <button
             className="text-button"

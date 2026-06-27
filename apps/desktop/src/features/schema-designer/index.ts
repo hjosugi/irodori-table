@@ -11,3 +11,13 @@ export {
   type SchemaForeignKeyDraft,
   type SchemaIndexDraft,
 } from "./schema-designer";
+export {
+  buildTableSpecDocument,
+  ddlFromTableSpecDocument,
+  exportTableSpecJson,
+  exportTableSpecMarkdown,
+  parseTableSpecDocument,
+  tableSpecFileName,
+  tableSpecFormat,
+  type TableSpecDocument,
+} from "./schema-spec";

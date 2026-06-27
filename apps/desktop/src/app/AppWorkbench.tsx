@@ -138,6 +138,12 @@ import {
 import {
   SchemaDesignerDialog,
   buildSchemaSql,
+  buildTableSpecDocument,
+  ddlFromTableSpecDocument,
+  exportTableSpecJson,
+  exportTableSpecMarkdown,
+  parseTableSpecDocument,
+  tableSpecFileName,
   useSchemaDesignerStore,
 } from "@/features/schema-designer";
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
@@ -303,6 +309,7 @@ export function AppWorkbench() {
   }, []);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
+  const schemaSpecFileRef = useRef<HTMLInputElement | null>(null);
   const diagramSvgRef = useRef<SVGSVGElement | null>(null);
   const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
   const pendingDiagramSearchRef = useRef<string | null>(null);
@@ -3036,6 +3043,70 @@ export function AppWorkbench() {
     }
   }
 
+  function currentTableSpecDocument() {
+    if (!activeMetadata) {
+      throw new Error("No schema metadata is loaded");
+    }
+    return buildTableSpecDocument(activeMetadata, {
+      connectionId: activeConnectionId,
+      connectionName: activeConnection.name,
+      schemaNames: diagramSchemaNames,
+      search: diagramSearch,
+    });
+  }
+
+  function downloadTableSpecMarkdown() {
+    try {
+      const exported = exportTableSpecMarkdown(currentTableSpecDocument());
+      downloadBlob(
+        new Blob([exported.content], { type: exported.mime }),
+        tableSpecFileName(activeConnectionId, exported.extension),
+      );
+      setDiagramError(null);
+      showActionNotice("success", "Table spec exported", "Markdown");
+    } catch (error) {
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "Table spec export failed", message);
+    }
+  }
+
+  function downloadTableSpecJson() {
+    try {
+      const exported = exportTableSpecJson(currentTableSpecDocument());
+      downloadBlob(
+        new Blob([exported.content], { type: exported.mime }),
+        tableSpecFileName(activeConnectionId, exported.extension),
+      );
+      setDiagramError(null);
+      showActionNotice("success", "Table spec exported", "JSON");
+    } catch (error) {
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "Table spec export failed", message);
+    }
+  }
+
+  async function handleSchemaSpecFile(file: File) {
+    try {
+      const spec = parseTableSpecDocument(await file.text());
+      const sql = ddlFromTableSpecDocument(spec);
+      setQuery(sql);
+      setDiagramOpen(false);
+      setDiagramError(null);
+      showActionNotice("success", "DDL generated from table spec", file.name);
+      window.setTimeout(() => activeEditorApi()?.focus(), 0);
+    } catch (error) {
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "Spec import failed", message);
+    } finally {
+      if (schemaSpecFileRef.current) {
+        schemaSpecFileRef.current.value = "";
+      }
+    }
+  }
+
   function fitDiagramToViewport() {
     if (!diagramLayout || !diagramCanvasRef.current) {
       return;
@@ -4286,6 +4357,9 @@ export function AppWorkbench() {
           onCopyPng={() => void copyDiagramPng()}
           onDownloadSvg={downloadDiagramSvg}
           onDownloadPng={() => void downloadDiagramPng()}
+          onDownloadSpecMarkdown={downloadTableSpecMarkdown}
+          onDownloadSpecJson={downloadTableSpecJson}
+          onLoadSpecDdl={() => schemaSpecFileRef.current?.click()}
           onCopyMermaid={() => {
             if (activeMetadata) {
               void navigator.clipboard?.writeText(diagramMermaid);
@@ -4293,6 +4367,19 @@ export function AppWorkbench() {
           }}
         />
       ) : null}
+
+      <input
+        ref={schemaSpecFileRef}
+        type="file"
+        accept=".json,.irodori-schema.json,application/json"
+        hidden
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) {
+            void handleSchemaSpecFile(file);
+          }
+        }}
+      />
 
       {actionNotice ? (
         <ActionToast

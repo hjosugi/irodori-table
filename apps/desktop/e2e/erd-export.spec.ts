@@ -173,7 +173,7 @@ async function installErdMock(page: Page) {
 }
 
 async function connect(page: Page) {
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
@@ -258,6 +258,7 @@ async function pngStats(page: Page, bytes: Buffer) {
 test("ERD downloads SVG and non-empty PNG from the rendered diagram", async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   await installErdMock(page);
   await connect(page);
   await openErd(page);
@@ -269,7 +270,7 @@ test("ERD downloads SVG and non-empty PNG from the rendered diagram", async ({
   expect(svgMarkup).toContain("Entity relationship diagram");
   expect(svgMarkup).toContain("sales");
   expect(svgMarkup).toContain("auth");
-  expect(svgMarkup.match(/class="erd-edge/g)).toHaveLength(4);
+  expect(svgMarkup.match(/<path[^>]+class="erd-edge/g)).toHaveLength(4);
 
   const png = await downloadedBytes(page, "Download ERD PNG");
   expect(png.fileName).toMatch(/^irodori-erd-local-pg-.*\.png$/);
@@ -283,4 +284,40 @@ test("ERD downloads SVG and non-empty PNG from the rendered diagram", async ({
   expect(stats.height).toBeGreaterThan(300);
   expect(stats.opaquePixels).toBeGreaterThan(100);
   expect(stats.colorCount).toBeGreaterThan(3);
+
+  const specJson = await downloadedBytes(page, "Spec JSON");
+  expect(specJson.fileName).toMatch(
+    /^irodori-table-spec-local-pg-.*\.irodori-schema\.json$/,
+  );
+  const spec = JSON.parse(specJson.bytes.toString("utf8")) as {
+    format: string;
+    schemas: Array<{ tables: Array<{ name: string }> }>;
+  };
+  expect(spec.format).toBe("irodori.table-spec.v1");
+  expect(spec.schemas.flatMap((schema) => schema.tables).map((table) => table.name)).toEqual(
+    ["customers", "orders", "order_items", "users", "teams"],
+  );
+
+  const specMarkdown = await downloadedBytes(page, "Spec MD");
+  expect(specMarkdown.fileName).toMatch(/^irodori-table-spec-local-pg-.*\.md$/);
+  const markdown = specMarkdown.bytes.toString("utf8");
+  expect(markdown).toContain("# Table Definition Specification");
+  expect(markdown).toContain("| sales | orders | 3 | id | 2 |");
+
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Spec to DDL" }).click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
+    name: "spec.irodori-schema.json",
+    mimeType: "application/json",
+    buffer: specJson.bytes,
+  });
+
+  await expect(page.getByRole("dialog", { name: "ER diagram" })).toHaveCount(0);
+  await expect(page.locator(".cm-content")).toContainText(
+    'CREATE TABLE "sales"."orders"',
+  );
+  await expect(page.locator(".cm-content")).toContainText(
+    'FOREIGN KEY ("customer_id") REFERENCES "sales"."customers" ("id")',
+  );
 });
