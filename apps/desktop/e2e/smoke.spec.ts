@@ -63,11 +63,15 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await settingsDialog.getByRole("button", { name: "Close" }).click();
   await expect(page.locator(".cm-vimMode")).toHaveCount(0);
 
-  // Theme toggle flips the shell's data-theme.
+  // Theme toggle flips the shell's data-theme from the system/default value.
   const shell = page.locator(".app-shell");
-  await expect(shell).toHaveAttribute("data-theme", "dark");
+  await expect(shell).toHaveAttribute("data-theme", /^(dark|light)$/);
+  const initialTheme = await shell.getAttribute("data-theme");
   await page.getByRole("button", { name: "Toggle color theme" }).click();
-  await expect(shell).toHaveAttribute("data-theme", "light");
+  await expect(shell).toHaveAttribute(
+    "data-theme",
+    initialTheme === "dark" ? "light" : "dark",
+  );
 
   // Format SQL reflows a one-line statement across multiple lines.
   await content.click();
