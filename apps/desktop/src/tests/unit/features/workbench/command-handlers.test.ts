@@ -25,6 +25,11 @@ function createHandler(calls: string[]) {
     zoomReset: () => calls.push("zoom-reset"),
     newSqlTab: () => calls.push("tab-new"),
     closeActiveTab: () => calls.push("tab-close"),
+    saveQuery: () => calls.push("save"),
+    saveQueryAs: () => calls.push("save-as"),
+    exitApp: async () => {
+      calls.push("exit");
+    },
     buildSchemaIndex: () => calls.push("schema-index"),
     runQuery: async () => {
       calls.push("query-run");
@@ -84,11 +89,13 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.sidebar.toggle");
     runCommand("view.completion.toggle");
     runCommand("view.history.toggle");
-    runCommand("view.sidebar.swap");
     runCommand("view.zoomIn");
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
     runCommand("tab.new");
+    runCommand("file.save");
+    runCommand("file.saveAs");
+    runCommand("app.exit");
     runCommand("developer.openDevtools");
     runCommand("migration.studio");
     runCommand("query.cancel");
@@ -99,11 +106,13 @@ describe("createWorkbenchCommandHandler", () => {
       "sidebar",
       "completion",
       "history-toggle",
-      "sidebar-side",
       "zoom-in",
       "zoom-out",
       "zoom-reset",
       "tab-new",
+      "save",
+      "save-as",
+      "exit",
       "devtools",
       "migration",
       "query-cancel",

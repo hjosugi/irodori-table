@@ -10,15 +10,10 @@ import {
 import {
   ChevronDown,
   GitBranch,
-  HelpCircle,
   History,
   ListPlus,
-  Menu,
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings,
-  Sun,
 } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
 import {
@@ -28,7 +23,6 @@ import {
   type Keymap,
 } from "@/core/keybindings";
 import type { ThemeKind } from "@/theme";
-import type { SidebarSide } from "../store/workbench-store";
 
 export type WorkbenchStatusBarItem = {
   id: string;
@@ -41,20 +35,19 @@ export type WorkbenchStatusBarItem = {
 
 type WorkbenchShellProps = {
   appName: string;
-  appVersion: string;
+  appVersion?: string;
   themeKind: ThemeKind;
   activeKeyScope: KeybindingScope;
   sidebarOpen: boolean;
   completionOpen: boolean;
   historyOpen: boolean;
-  sidebarSide: SidebarSide;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
   editorSplitPercent: number;
-  workspaceMenuOpen: boolean;
+  workspaceMenuOpen?: boolean;
   menuBarSections: readonly AppMenuSection[];
-  workspaceMenuSections: readonly AppMenuSection[];
+  workspaceMenuSections?: readonly AppMenuSection[];
   commandCatalog: readonly CommandMeta[];
   keymap: Keymap;
   activeConnectionName: string;
@@ -73,35 +66,31 @@ type WorkbenchShellProps = {
   children: ReactNode;
   onScopeFocus: (event: FocusEvent<HTMLElement>) => void;
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
-  onToggleTheme: () => void;
   onToggleSidebar: () => void;
   onToggleCompletion: () => void;
   onToggleHistory: () => void;
-  onOpenSettings: () => void;
+  onToggleTheme?: () => void;
+  onToggleWorkspaceMenu?: () => void;
+  onOpenSettings?: () => void;
   onOpenConnectionManager: () => void;
   onOpenGit: () => void;
-  onOpenHelp: () => void;
+  onOpenHelp?: () => void;
   onRunCommand: (commandId: string) => void;
-  onToggleWorkspaceMenu: () => void;
   onCloseWorkspaceMenu: () => void;
 };
 
 export function WorkbenchShell({
   appName,
-  appVersion,
   themeKind,
   activeKeyScope,
   sidebarOpen,
   completionOpen,
   historyOpen,
-  sidebarSide,
   sidebarWidth,
   inspectorWidth,
   resultsHeight,
   editorSplitPercent,
-  workspaceMenuOpen,
   menuBarSections,
-  workspaceMenuSections,
   commandCatalog,
   keymap,
   activeConnectionName,
@@ -120,25 +109,20 @@ export function WorkbenchShell({
   children,
   onScopeFocus,
   onScopeMouseDown,
-  onToggleTheme,
   onToggleSidebar,
   onToggleCompletion,
   onToggleHistory,
-  onOpenSettings,
   onOpenConnectionManager,
   onOpenGit,
-  onOpenHelp,
   onRunCommand,
-  onToggleWorkspaceMenu,
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
   const [activeMenuLabel, setActiveMenuLabel] = useState<string | null>(null);
   const menubarRef = useRef<HTMLElement | null>(null);
-  const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
   const commandById = new Map(commandCatalog.map((command) => [command.id, command]));
 
   useEffect(() => {
-    if (!activeMenuLabel && !workspaceMenuOpen) {
+    if (!activeMenuLabel) {
       return;
     }
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -153,14 +137,10 @@ export function WorkbenchShell({
       const target = event.target;
       if (!(target instanceof Node)) {
         setActiveMenuLabel(null);
-        onCloseWorkspaceMenu();
         return;
       }
       if (activeMenuLabel && !menubarRef.current?.contains(target)) {
         setActiveMenuLabel(null);
-      }
-      if (workspaceMenuOpen && !workspaceMenuRef.current?.contains(target)) {
-        onCloseWorkspaceMenu();
       }
     };
     window.addEventListener("pointerdown", closeOnOutsidePointerDown);
@@ -169,7 +149,7 @@ export function WorkbenchShell({
       window.removeEventListener("pointerdown", closeOnOutsidePointerDown);
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [activeMenuLabel, workspaceMenuOpen, onCloseWorkspaceMenu]);
+  }, [activeMenuLabel, onCloseWorkspaceMenu]);
 
   const shortcutFor = (commandId: string) => {
     const shortcut = keymap[commandId];
@@ -326,72 +306,6 @@ export function WorkbenchShell({
           <small>{activeConnectionEngine}</small>
           <ChevronDown size={15} />
         </button>
-        <div className="titlebar-actions">
-          <button
-            className="theme-toggle"
-            type="button"
-            title={
-              themeKind === "dark"
-                ? "Switch to light theme"
-                : "Switch to dark theme"
-            }
-            aria-label="Toggle color theme"
-            onClick={onToggleTheme}
-          >
-            {themeKind === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-          <button
-            className="theme-toggle"
-            type="button"
-            title="Settings"
-            aria-label="Settings"
-            onClick={onOpenSettings}
-          >
-            <Settings size={15} />
-          </button>
-          <button
-            className="theme-toggle"
-            type="button"
-            title="Help"
-            aria-label="Help"
-            onClick={onOpenHelp}
-          >
-            <HelpCircle size={15} />
-          </button>
-          <div className="workspace-menu-host" ref={workspaceMenuRef}>
-            <button
-              className="theme-toggle"
-              type="button"
-              title="Workspace menu"
-              aria-label="Workspace menu"
-              aria-expanded={workspaceMenuOpen}
-              onClick={onToggleWorkspaceMenu}
-            >
-              <Menu size={15} />
-            </button>
-            {workspaceMenuOpen ? (
-              <div className="app-menu-popover" role="menu">
-                {workspaceMenuSections.map((section, sectionIndex) => (
-                  <div
-                    className="app-menu-section"
-                    role="group"
-                    aria-label={section.label}
-                    key={section.label}
-                  >
-                    {sectionIndex > 0 ? (
-                      <span className="menu-separator" role="separator" />
-                    ) : null}
-                    <div className="app-menu-section-title">{section.label}</div>
-                    {renderMenuButtons(section)}
-                  </div>
-                ))}
-                <span className="app-menu-version" aria-label="Application version">
-                  v{appVersion}
-                </span>
-            </div>
-            ) : null}
-          </div>
-        </div>
       </header>
 
       <section className="toolbar" aria-label="Workspace toolbar">
@@ -412,6 +326,20 @@ export function WorkbenchShell({
           </button>
         </div>
         <div className="toolbar-spacer" />
+        <button
+          className={
+            sidebarOpen && !completionOpen && !historyOpen
+              ? "icon-button active"
+              : "icon-button"
+          }
+          type="button"
+          title="Tables"
+          aria-label="Tables"
+          aria-pressed={sidebarOpen && !completionOpen && !historyOpen}
+          onClick={() => onRunCommand("view.sidebar.toggle")}
+        >
+          <PanelLeftOpen size={15} />
+        </button>
         <button
           className={completionOpen ? "icon-button active" : "icon-button"}
           type="button"
@@ -447,7 +375,6 @@ export function WorkbenchShell({
         className={[
           "workspace",
           sidebarOpen ? null : "sidebar-collapsed",
-          sidebarSide === "right" ? "sidebar-right" : null,
         ]
           .filter(Boolean)
           .join(" ")}

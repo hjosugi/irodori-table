@@ -129,6 +129,9 @@ export function createWorkbenchCommandHandler({
       case "view.sidebar.swap":
         toggleSidebarSide();
         break;
+      case "view.sidebar.swap":
+        toggleSidebarSide();
+        break;
       case "view.zoomIn":
         zoomIn();
         break;

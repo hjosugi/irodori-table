@@ -79,6 +79,12 @@ const shellCommands: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "view.sidebar.swap",
+    title: "Move Sidebar to Other Side",
+    category: "View",
+    scope: "global",
+  },
+  {
     id: "view.completion.toggle",
     title: "Toggle Completion Panel",
     category: "View",
@@ -178,6 +184,7 @@ export const workspaceMenuSections: AppMenuSection[] = [
     items: [
       { commandId: "editor.quickDefinition" },
       { commandId: "view.sidebar.toggle" },
+      { commandId: "view.sidebar.swap" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
       { commandId: "view.zoomIn" },
@@ -230,6 +237,7 @@ export const menuBarSections: AppMenuSection[] = [
       { commandId: "palette.open" },
       { commandId: "editor.quickDefinition" },
       { commandId: "view.sidebar.toggle" },
+      { commandId: "view.sidebar.swap" },
       { commandId: "view.completion.toggle" },
       { commandId: "view.history.toggle" },
       { commandId: "history.open" },

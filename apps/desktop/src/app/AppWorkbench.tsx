@@ -35,7 +35,6 @@ import {
   resultCopyDefaultKeymap,
   savedQueryStorageKey,
   tabs,
-  workspaceMenuSections,
 } from "@/app/app-config";
 import { AboutDialog } from "@/app/AboutDialog";
 import { ActionToast, type ActionNotice } from "@/app/ActionToast";
@@ -444,7 +443,6 @@ export function AppWorkbench() {
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
-  const sidebarSide = useWorkbenchStore((state) => state.sidebarSide);
   const setSidebarSide = useWorkbenchStore((state) => state.setSidebarSide);
   const viewPlacements = useWorkbenchStore((state) => state.viewPlacements);
   const setViewPlacement = useWorkbenchStore((state) => state.setViewPlacement);
@@ -477,6 +475,11 @@ export function AppWorkbench() {
   const setEditorSplitPercent = useWorkbenchStore(
     (state) => state.setEditorSplitPercent,
   );
+  const sidebarSide = "left" as const;
+  const effectiveViewPlacements = useMemo(
+    () => ({ ...viewPlacements, objectBrowser: "left" as const }),
+    [viewPlacements],
+  );
   const { beginPanelResize, onPanelResizeKey } = createPanelResizeController({
     sidebarSide,
     sidebarWidth,
@@ -495,9 +498,9 @@ export function AppWorkbench() {
     editorSplitMode === "single" ? "primary" : preferredEditorGroup;
   const [running, setRunning] = useState(false);
 
-  function setPrimarySidebarSide(side: "left" | "right") {
-    setSidebarSide(side);
-    setViewPlacement("objectBrowser", side);
+  function setPrimarySidebarSide(_side: "left" | "right") {
+    setSidebarSide("left");
+    setViewPlacement("objectBrowser", "left");
   }
 
   function setActiveSidebarView(
@@ -1977,31 +1980,8 @@ export function AppWorkbench() {
     newSqlTab: reopenSqlTab,
     closeActiveTab: closeActiveSqlTab,
     saveQuery: saveCurrentQuery,
-    saveQueryAs: () => {
-      const fileName = sqlDownloadFileName(activeTabLabel ?? "query.sql");
-      downloadBlob(
-        new Blob([query], { type: "application/sql;charset=utf-8" }),
-        fileName,
-      );
-      showActionNotice("success", "SQL export started", fileName);
-    },
-    exitApp: async () => {
-      const runtimeError = tauriRuntimeError();
-      if (runtimeError) {
-        showActionNotice(
-          "info",
-          "Exit unavailable",
-          "Close the browser preview tab or open the Tauri desktop window.",
-        );
-        return;
-      }
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        await getCurrentWindow().close();
-      } catch (error) {
-        showActionNotice("error", "Exit failed", errorMessage(error));
-      }
-    },
+    saveQueryAs: saveCurrentQueryAsFile,
+    exitApp: exitApplication,
     buildSchemaIndex: () => void buildSchemaIndexJob(),
     runQuery,
     runCurrentQuery,
@@ -4126,7 +4106,6 @@ export function AppWorkbench() {
     >
       <WorkbenchShell
         appName={APP_NAME}
-        appVersion={APP_VERSION}
         themeKind={theme.kind}
         activeKeyScope={activeKeyScope}
         sidebarOpen={sidebarOpen}
@@ -4137,9 +4116,7 @@ export function AppWorkbench() {
         inspectorWidth={inspectorWidth}
         resultsHeight={resultsHeight}
         editorSplitPercent={editorSplitPercent}
-        workspaceMenuOpen={workspaceMenuOpen}
         menuBarSections={menuBarSections}
-        workspaceMenuSections={workspaceMenuSections}
         commandCatalog={appMenuCommandCatalog}
         keymap={keymap}
         activeConnectionName={activeConnection.name}
@@ -4163,18 +4140,12 @@ export function AppWorkbench() {
           activeKeyScopeRef.current = scope;
           setActiveKeyScope(scope);
         }}
-        onToggleTheme={() =>
-          activateBuiltInTheme((kind) => (kind === "dark" ? "light" : "dark"))
-        }
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
         onToggleCompletion={() => toggleSidebarView("completion")}
         onToggleHistory={() => toggleSidebarView("queryHistory")}
-        onOpenSettings={() => openSettingsSection("general")}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
         onOpenGit={openGitDrawer}
-        onOpenHelp={() => setAboutOpen(true)}
         onRunCommand={runCommand}
-        onToggleWorkspaceMenu={() => setWorkspaceMenuOpen((open) => !open)}
         onCloseWorkspaceMenu={() => setWorkspaceMenuOpen(false)}
         sidebar={
           <Sidebar
@@ -4241,6 +4212,9 @@ export function AppWorkbench() {
             onSetObjectActionMenu={setObjectActionMenu}
             onSelectView={setActiveSidebarView}
             onCloseSidebar={() => setSidebarOpen(false)}
+            onToggleSidebarSide={() =>
+              setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
+            }
             onBeginResize={(event) => beginPanelResize("sidebar", event)}
             onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
           />

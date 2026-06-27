@@ -8,32 +8,6 @@
   grid-template-columns: 50px minmax(0, 1fr);
 }
 
-/* VS Code-style: move the primary sidebar to the right. The connection rail
-   (activity bar) stays on the left; only the object-browser sidebar moves, via
-   grid column order. */
-.workspace.sidebar-right:not(.sidebar-collapsed) {
-  grid-template-columns: 50px minmax(0, 1fr) var(--sidebar-width, 220px);
-}
-
-.workspace.sidebar-right .connection-rail {
-  order: 0;
-}
-
-.workspace.sidebar-right .main-pane {
-  order: 1;
-}
-
-.workspace.sidebar-right .sidebar {
-  order: 2;
-  border-right: 0;
-  border-left: 1px solid var(--border);
-}
-
-.workspace.sidebar-right .sidebar-resizer {
-  right: auto;
-  left: -3px;
-}
-
 .connection-rail {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -188,10 +162,6 @@
   color: var(--text);
   border-color: color-mix(in srgb, var(--focus) 42%, var(--border));
   background: var(--selected);
-}
-
-.sidebar-view-switcher .sidebar-side-button {
-  padding: 0;
 }
 
 .sidebar-panel {
