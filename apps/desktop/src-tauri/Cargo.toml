@@ -32,7 +32,7 @@ irodori-completion = { path = "../../../crates/irodori-completion" }
 # external/subscription models work without the heavy embedded `llama` build.
 irodori-generate = { path = "../../../crates/irodori-generate", features = ["http"] }
 irodori-knowledge.workspace = true
-sql-dialect-fmt-formatter = { path = "../../../../../sql-dialect-fmt/crates/sql-dialect-fmt-formatter" }
+sql-dialect-fmt-formatter = { git = "https://github.com/hjosugi/sql-dialect-fmt", tag = "v1.0.0" }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util"] }
@@ -65,13 +65,15 @@ base64 = "0.22"
 # extensions; keeping them feature-gated here avoids compiling them in normal
 # desktop builds while preserving a local escape hatch.
 mongodb = { version = "3", optional = true }
-# SQL Server via the pure-Rust TDS driver (no native client needed). `chrono`
-# turns on precision-safe temporal decode (datetime/datetime2/date/time/
-# datetimeoffset -> chrono types); exact numerics use tiberius' built-in
-# `Numeric` (no extra feature) so DECIMAL/NUMERIC/MONEY keep full precision.
+# SQL Server via the pure-Rust TDS driver (no SQL Server client needed). Use
+# native-tls to avoid tiberius' stale rustls 0.21 stack while keeping the
+# connector feature-gated. `chrono` turns on precision-safe temporal decode
+# (datetime/datetime2/date/time/datetimeoffset -> chrono types); exact numerics
+# use tiberius' built-in `Numeric` (no extra feature) so DECIMAL/NUMERIC/MONEY
+# keep full precision.
 tiberius = { version = "0.12", optional = true, default-features = false, features = [
     "tds73",
-    "rustls",
+    "native-tls",
     "chrono",
 ] }
 tokio-util = { version = "0.7", features = ["compat"] }

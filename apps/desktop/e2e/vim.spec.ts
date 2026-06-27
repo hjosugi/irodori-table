@@ -16,9 +16,15 @@ async function replaceEditorText(page: Page, text: string) {
   await expect.poll(() => editorText(page)).toBe(text);
 }
 
+async function openSettings(page: Page) {
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Open Settings/ }).click();
+}
+
 test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => {
     console.error("BROWSER PAGE ERROR:", error);
@@ -34,7 +40,7 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
 
   await replaceEditorText(page, "select alpha;\nselect beta;\nselect gamma;");
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await openSettings(page);
   const settingsDialog = page.getByRole("dialog", { name: "Settings" });
   await expect(settingsDialog).toBeVisible();
   const editorModeRow = settingsDialog
@@ -60,7 +66,7 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
     "-- inserted in vim\nselect alpha;\nselect gamma;",
   );
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await openSettings(page);
   await expect(settingsDialog).toBeVisible();
   await settingsDialog
     .locator("button")

@@ -77,8 +77,8 @@ impl LlamaSqlModel {
     }
 
     fn context_params(&self) -> Result<LlamaContextParams> {
-        let n_ctx = NonZeroU32::new(self.config.n_ctx.max(256))
-            .ok_or_else(|| internal("invalid n_ctx"))?;
+        let n_ctx =
+            NonZeroU32::new(self.config.n_ctx.max(256)).ok_or_else(|| internal("invalid n_ctx"))?;
         Ok(LlamaContextParams::default()
             .with_n_ctx(Some(n_ctx))
             .with_n_threads(self.config.n_threads)
@@ -171,7 +171,10 @@ impl LlamaSqlModel {
                 LlamaSampler::dist(seed),
             ]))
         } else {
-            Ok(LlamaSampler::chain_simple([grammar, LlamaSampler::greedy()]))
+            Ok(LlamaSampler::chain_simple([
+                grammar,
+                LlamaSampler::greedy(),
+            ]))
         }
     }
 }
@@ -179,7 +182,11 @@ impl LlamaSqlModel {
 fn shared_backend() -> Result<Arc<LlamaBackend>> {
     static BACKEND: OnceLock<std::result::Result<Arc<LlamaBackend>, String>> = OnceLock::new();
     BACKEND
-        .get_or_init(|| LlamaBackend::init().map(Arc::new).map_err(|e| e.to_string()))
+        .get_or_init(|| {
+            LlamaBackend::init()
+                .map(Arc::new)
+                .map_err(|e| e.to_string())
+        })
         .clone()
         .map_err(|e| internal(format!("failed to init llama backend: {e}")))
 }

@@ -33,13 +33,7 @@ license = "MIT OR 0BSD"
 authors = ["Irodori Table contributors"]
 
 [workspace.dependencies]
-irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", tag = "v0.2.23" }
+irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", rev = "d7f202af614782e9cf547a757bfc7c68bc052ed1" }
 irodori-error = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
 irodori-jobs = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
 irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
-
-# Development patch: consume the local irodori-sql checkout (the SELECT AST /
-# parser / GBNF grammar for local SQL generation is built here before being cut
-# as tag v0.2.24). Remove once the tag is published and the version is bumped.
-[patch."https://github.com/hjosugi/irodori-sql"]
-irodori-sql = { path = "../irodori-sql" }

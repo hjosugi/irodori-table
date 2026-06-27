@@ -1,0 +1,29 @@
+# Known transitive RustSec warnings that are tracked but not directly actionable
+# in this repository. Keep cargo-audit strict for vulnerabilities; remove entries
+# when upstream crates release compatible fixes.
+#
+# Tauri 2 / wry Linux WebKitGTK stack still depends on gtk-rs GTK3 0.18.
+RUSTSEC-2024-0411 gdkwayland-sys via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0412 gdk via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0413 atk via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0414 gdkx11-sys via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0415 gtk via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0416 atk-sys via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0417 gdkx11 via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0418 gdk-sys via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0419 gtk3-macros via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0420 gtk-sys via Tauri/wry Linux WebKitGTK
+RUSTSEC-2024-0429 glib via Tauri/wry Linux WebKitGTK
+
+# Optional/database/tooling transitive crates with no compatible upstream
+# replacement in the current dependency graph.
+RUSTSEC-2024-0370 proc-macro-error via schema/codegen tooling
+RUSTSEC-2024-0384 instant via transitive UI/tooling dependencies
+RUSTSEC-2024-0436 paste via transitive driver/tooling dependencies
+RUSTSEC-2025-0012 backoff via optional database driver dependencies
+RUSTSEC-2025-0075 unic-char-range via transitive parser/schema dependencies
+RUSTSEC-2025-0080 unic-common via transitive parser/schema dependencies
+RUSTSEC-2025-0081 unic-char-property via transitive parser/schema dependencies
+RUSTSEC-2025-0098 unic-ucd-version via transitive parser/schema dependencies
+RUSTSEC-2025-0100 unic-ucd-ident via transitive parser/schema dependencies
+RUSTSEC-2025-0134 rustls-pemfile warning remains in modern rustls stack

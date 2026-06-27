@@ -8,6 +8,10 @@
     "irodori-error": "Project-owned split crate from hjosugi/irodori-knowledge, pinned by tag and lockfile commit.",
     "irodori-jobs": "Project-owned split crate from hjosugi/irodori-knowledge, pinned by tag and lockfile commit.",
     "irodori-knowledge": "Project-owned split crate from hjosugi/irodori-knowledge, pinned by tag and lockfile commit.",
-    "irodori-sql": "Project-owned split crate from hjosugi/irodori-sql, pinned by tag and lockfile commit."
+    "irodori-sql": "Project-owned split crate from hjosugi/irodori-sql, pinned by lockfile commit.",
+    "sql-dialect-fmt-formatter": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
+    "sql-dialect-fmt-lexer": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
+    "sql-dialect-fmt-parser": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
+    "sql-dialect-fmt-syntax": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit."
   }
 }

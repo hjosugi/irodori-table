@@ -291,6 +291,162 @@ pub(crate) fn split_sql_statements(sql: &str) -> Vec<String> {
     statements
 }
 
+pub(crate) fn sql_may_change_metadata(sql: &str) -> bool {
+    split_sql_statements(sql)
+        .iter()
+        .any(|statement| sql_tokens(statement).any(is_metadata_mutation_keyword))
+}
+
+fn sql_tokens(sql: &str) -> impl Iterator<Item = String> + '_ {
+    SqlTokenIter {
+        input: sql.as_bytes(),
+        offset: 0,
+    }
+}
+
+fn is_metadata_mutation_keyword(token: String) -> bool {
+    matches!(
+        token.as_str(),
+        "alter"
+            | "analyze"
+            | "comment"
+            | "copy"
+            | "create"
+            | "delete"
+            | "drop"
+            | "grant"
+            | "insert"
+            | "load"
+            | "merge"
+            | "refresh"
+            | "reindex"
+            | "rename"
+            | "replace"
+            | "revoke"
+            | "truncate"
+            | "update"
+            | "upsert"
+            | "vacuum"
+    )
+}
+
+struct SqlTokenIter<'a> {
+    input: &'a [u8],
+    offset: usize,
+}
+
+impl Iterator for SqlTokenIter<'_> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.offset < self.input.len() {
+            match self.input[self.offset] {
+                b'-' if self.input.get(self.offset + 1) == Some(&b'-') => {
+                    self.skip_line_comment();
+                }
+                b'/' if self.input.get(self.offset + 1) == Some(&b'*') => {
+                    self.skip_block_comment();
+                }
+                b'\'' | b'"' | b'`' => {
+                    self.skip_quoted(self.input[self.offset]);
+                }
+                b'$' => {
+                    if !self.skip_dollar_quoted() {
+                        self.offset += 1;
+                    }
+                }
+                byte if byte.is_ascii_alphabetic() || byte == b'_' => {
+                    let start = self.offset;
+                    self.offset += 1;
+                    while self
+                        .input
+                        .get(self.offset)
+                        .is_some_and(|byte| byte.is_ascii_alphanumeric() || *byte == b'_')
+                    {
+                        self.offset += 1;
+                    }
+                    return Some(
+                        String::from_utf8_lossy(&self.input[start..self.offset])
+                            .to_ascii_lowercase(),
+                    );
+                }
+                _ => {
+                    self.offset += 1;
+                }
+            }
+        }
+        None
+    }
+}
+
+impl SqlTokenIter<'_> {
+    fn skip_line_comment(&mut self) {
+        self.offset += 2;
+        while self
+            .input
+            .get(self.offset)
+            .is_some_and(|byte| !matches!(byte, b'\n' | b'\r'))
+        {
+            self.offset += 1;
+        }
+    }
+
+    fn skip_block_comment(&mut self) {
+        self.offset += 2;
+        while self.offset + 1 < self.input.len() {
+            if self.input[self.offset] == b'*' && self.input[self.offset + 1] == b'/' {
+                self.offset += 2;
+                return;
+            }
+            self.offset += 1;
+        }
+        self.offset = self.input.len();
+    }
+
+    fn skip_quoted(&mut self, quote: u8) {
+        self.offset += 1;
+        while self.offset < self.input.len() {
+            if self.input[self.offset] == quote {
+                self.offset += 1;
+                if self.input.get(self.offset) == Some(&quote) {
+                    self.offset += 1;
+                    continue;
+                }
+                return;
+            }
+            self.offset += 1;
+        }
+    }
+
+    fn skip_dollar_quoted(&mut self) -> bool {
+        let start = self.offset;
+        self.offset += 1;
+        while self
+            .input
+            .get(self.offset)
+            .is_some_and(|byte| byte.is_ascii_alphanumeric() || *byte == b'_')
+        {
+            self.offset += 1;
+        }
+        if self.input.get(self.offset) != Some(&b'$') {
+            self.offset = start;
+            return false;
+        }
+
+        let tag = &self.input[start..=self.offset];
+        self.offset += 1;
+        while self.offset + tag.len() <= self.input.len() {
+            if &self.input[self.offset..self.offset + tag.len()] == tag {
+                self.offset += tag.len();
+                return true;
+            }
+            self.offset += 1;
+        }
+        self.offset = self.input.len();
+        true
+    }
+}
+
 fn skip_repeated_quote(bytes: &[u8], index: &mut usize, quote: u8) {
     *index += 1;
     while *index < bytes.len() {

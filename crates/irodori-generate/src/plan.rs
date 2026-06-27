@@ -176,7 +176,9 @@ pub fn build_prompt(
         }
     }
 
-    out.push_str("\nExample:\nQuestion: how many orders are there?\nSQL: SELECT COUNT(*) FROM orders\n\n");
+    out.push_str(
+        "\nExample:\nQuestion: how many orders are there?\nSQL: SELECT COUNT(*) FROM orders\n\n",
+    );
     let _ = write!(out, "Question: {}\nSQL:", user_prompt.trim());
     out
 }
@@ -220,7 +222,11 @@ fn render_table_context(out: &mut String, table: &GenTable) {
     // Foreign-key hints so the model joins on real relationships.
     for fk in &table.foreign_keys {
         if let (Some(col), Some(ref_col)) = (fk.columns.first(), fk.ref_columns.first()) {
-            let _ = writeln!(out, "    fk: {}.{} -> {}.{}", table.name, col, fk.ref_table, ref_col);
+            let _ = writeln!(
+                out,
+                "    fk: {}.{} -> {}.{}",
+                table.name, col, fk.ref_table, ref_col
+            );
         }
     }
 }
@@ -288,7 +294,12 @@ fn join_predicates(
     None
 }
 
-fn pairs(a: &PlannedTable, a_cols: &[String], b: &PlannedTable, b_cols: &[String]) -> Vec<JoinPredicate> {
+fn pairs(
+    a: &PlannedTable,
+    a_cols: &[String],
+    b: &PlannedTable,
+    b_cols: &[String],
+) -> Vec<JoinPredicate> {
     a_cols
         .iter()
         .zip(b_cols.iter())
@@ -336,8 +347,10 @@ mod tests {
     use crate::schema::{GenColumn, GenForeignKey, GenTable};
 
     fn shop_schema() -> GenSchema {
-        let customers = GenTable::new("customers")
-            .with_columns(vec![GenColumn::new("id", "int"), GenColumn::new("name", "text")]);
+        let customers = GenTable::new("customers").with_columns(vec![
+            GenColumn::new("id", "int"),
+            GenColumn::new("name", "text"),
+        ]);
         let mut orders = GenTable::new("orders").with_columns(vec![
             GenColumn::new("id", "int"),
             GenColumn::new("customer_id", "int"),

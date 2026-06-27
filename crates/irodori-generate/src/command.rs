@@ -96,7 +96,11 @@ impl GrammarModel for CommandModel {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(IrodoriError::new(
                 IrodoriErrorKind::Internal,
-                format!("`{}` exited with error: {}", self.config.program, stderr.trim()),
+                format!(
+                    "`{}` exited with error: {}",
+                    self.config.program,
+                    stderr.trim()
+                ),
             ));
         }
 

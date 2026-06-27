@@ -127,7 +127,9 @@ impl DataSource for SqliteDataSource {
 }
 
 fn list_objects_blocking(conn: &Mutex<Connection>) -> Result<Vec<ObjectInfo>, DataError> {
-    let conn = conn.lock().map_err(|_| DataError::Backend("connection lock poisoned".into()))?;
+    let conn = conn
+        .lock()
+        .map_err(|_| DataError::Backend("connection lock poisoned".into()))?;
     let mut stmt = conn
         .prepare(
             "SELECT name, type FROM sqlite_master \
@@ -160,7 +162,9 @@ fn run_query_blocking(
     cap: usize,
 ) -> Result<QueryResultDto, DataError> {
     let started = Instant::now();
-    let conn = conn.lock().map_err(|_| DataError::Backend("connection lock poisoned".into()))?;
+    let conn = conn
+        .lock()
+        .map_err(|_| DataError::Backend("connection lock poisoned".into()))?;
     let mut stmt = conn.prepare(sql).map_err(backend)?;
     let columns: Vec<String> = stmt
         .column_names()

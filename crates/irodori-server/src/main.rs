@@ -35,9 +35,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let registry = Registry::new().with("default", Arc::new(source));
 
     let auth = match std::env::var("IRODORI_SERVER_TOKEN") {
-        Ok(token) if !token.trim().is_empty() => {
-            Authenticator::new(vec![Token::new("default", token, [Scope::Read, Scope::Write])])
-        }
+        Ok(token) if !token.trim().is_empty() => Authenticator::new(vec![Token::new(
+            "default",
+            token,
+            [Scope::Read, Scope::Write],
+        )]),
         _ => Authenticator::default(), // open, read-only
     };
 

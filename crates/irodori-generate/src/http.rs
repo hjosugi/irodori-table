@@ -68,7 +68,10 @@ impl OllamaModel {
 
 impl GrammarModel for OllamaModel {
     fn complete(&self, prompt: &str, _gbnf: &str, options: &DecodeOptions) -> Result<ModelOutput> {
-        let url = format!("{}/api/generate", self.config.endpoint.trim_end_matches('/'));
+        let url = format!(
+            "{}/api/generate",
+            self.config.endpoint.trim_end_matches('/')
+        );
         let body = serde_json::json!({
             "model": self.config.model,
             "prompt": prompt,
@@ -140,7 +143,9 @@ impl GrammarModel for OpenAiCompatModel {
                 { "role": "user", "content": prompt },
             ],
         });
-        let mut request = client(self.config.timeout_secs)?.post(self.url()).json(&body);
+        let mut request = client(self.config.timeout_secs)?
+            .post(self.url())
+            .json(&body);
         if let Some(key) = &self.config.api_key {
             request = request.bearer_auth(key);
         }

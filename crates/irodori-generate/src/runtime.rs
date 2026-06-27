@@ -66,7 +66,12 @@ impl EchoModel {
 }
 
 impl GrammarModel for EchoModel {
-    fn complete(&self, _prompt: &str, _gbnf: &str, _options: &DecodeOptions) -> Result<ModelOutput> {
+    fn complete(
+        &self,
+        _prompt: &str,
+        _gbnf: &str,
+        _options: &DecodeOptions,
+    ) -> Result<ModelOutput> {
         Ok(ModelOutput {
             text: self.sql.clone(),
             tokens_in: 0,

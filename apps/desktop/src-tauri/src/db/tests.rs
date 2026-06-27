@@ -71,10 +71,6 @@ async fn metadata_cache_integration_test() {
         )
         .await
         .expect("create table");
-
-        // Invalidate to trigger a fresh metadata fetch in background / next load
-        let mut cache = state.metadata_cache.lock().await;
-        cache.invalidate_connection(&conn_id);
     }
 
     // Fetch objects blockingly to warm cache with new table
@@ -102,6 +98,64 @@ async fn metadata_cache_integration_test() {
         }
         _ => panic!("expected object card"),
     }
+}
+
+#[test]
+fn detects_sql_that_can_change_metadata() {
+    assert!(!sql_may_change_metadata(
+        "select 'create table fake' as sql_text from users"
+    ));
+    assert!(!sql_may_change_metadata(
+        r#"select "drop" as quoted_identifier from users"#
+    ));
+    assert!(sql_may_change_metadata(
+        "-- migrate\ncreate table users(id integer primary key)"
+    ));
+    assert!(sql_may_change_metadata(
+        "with changed as (select 1) insert into audit_log select * from changed"
+    ));
+    assert!(sql_may_change_metadata(
+        "/* maintenance */ vacuum; analyze users"
+    ));
+}
+
+#[tokio::test]
+async fn successful_mutation_refreshes_metadata_without_manual_invalidation() {
+    let state = DbState::default();
+    let conn_id = "metadata_mutation".to_string();
+    connect_impl(
+        &state,
+        &SecurityState::default(),
+        temp_sqlite_profile(&conn_id),
+    )
+    .await
+    .expect("connect");
+
+    list_objects_impl(&state, conn_id.clone())
+        .await
+        .expect("initial metadata");
+
+    run_query_impl(
+        &state,
+        conn_id.clone(),
+        "create table mutation_visible (id integer primary key, label text)".into(),
+        None,
+    )
+    .await
+    .expect("create table");
+
+    let metadata = list_objects_impl(&state, conn_id.clone())
+        .await
+        .expect("refreshed metadata");
+    let objects: Vec<_> = metadata
+        .schemas
+        .iter()
+        .flat_map(|schema| schema.objects.iter().map(|object| object.name.as_str()))
+        .collect();
+    assert!(
+        objects.contains(&"mutation_visible"),
+        "expected mutation_visible table in refreshed metadata, got {objects:?}"
+    );
 }
 
 #[tokio::test]

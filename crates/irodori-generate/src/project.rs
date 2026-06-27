@@ -22,10 +22,7 @@ pub fn grammar_schema(schema: &GenSchema) -> GrammarSchema {
 /// schema order. Used to project the grammar down to just the tables a query
 /// needs — a smaller grammar decodes faster and can't emit irrelevant relations.
 pub fn grammar_schema_scoped(schema: &GenSchema, table_names: &[String]) -> GrammarSchema {
-    let wanted: HashSet<String> = table_names
-        .iter()
-        .map(|n| n.to_ascii_lowercase())
-        .collect();
+    let wanted: HashSet<String> = table_names.iter().map(|n| n.to_ascii_lowercase()).collect();
     GrammarSchema::new(
         schema
             .tables
@@ -49,10 +46,14 @@ mod tests {
 
     fn two_table_schema() -> GenSchema {
         GenSchema::new(vec![
-            GenTable::new("customers")
-                .with_columns(vec![GenColumn::new("id", "int"), GenColumn::new("name", "text")]),
-            GenTable::new("orders")
-                .with_columns(vec![GenColumn::new("id", "int"), GenColumn::new("total", "numeric")]),
+            GenTable::new("customers").with_columns(vec![
+                GenColumn::new("id", "int"),
+                GenColumn::new("name", "text"),
+            ]),
+            GenTable::new("orders").with_columns(vec![
+                GenColumn::new("id", "int"),
+                GenColumn::new("total", "numeric"),
+            ]),
         ])
     }
 

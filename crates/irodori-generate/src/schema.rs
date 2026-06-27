@@ -122,7 +122,11 @@ impl SchemaIndex {
     }
 
     /// Tables (by name) among `candidates` that contain `column`.
-    pub fn tables_with_column<'a>(&self, candidates: &'a [&'a GenTable], column: &str) -> Vec<&'a GenTable> {
+    pub fn tables_with_column<'a>(
+        &self,
+        candidates: &'a [&'a GenTable],
+        column: &str,
+    ) -> Vec<&'a GenTable> {
         candidates
             .iter()
             .copied()

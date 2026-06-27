@@ -19,6 +19,7 @@
 
 use std::collections::HashMap;
 use std::future::Future;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -78,7 +79,7 @@ pub use profile::ConnectionProfile;
 use profile::{normalize_profile, redact_secret_text};
 pub(crate) use query::{
     bounded_query_cap, prepare_query, query_result_from_sets, query_result_set,
-    split_sql_statements, PreparedQuery, RawResultSet, RowSet,
+    split_sql_statements, sql_may_change_metadata, PreparedQuery, RawResultSet, RowSet,
 };
 pub use query::{
     query_parameter_prompt_set, QueryParameterInput, QueryParameterKey, QueryParameterPrompt,
@@ -240,6 +241,7 @@ pub struct DbState {
     /// `db_cancel` can stop a specific run. Entries are removed when the run ends.
     cancels: Arc<Mutex<HashMap<String, CancellationToken>>>,
     pub metadata_cache: Arc<Mutex<MetadataCache>>,
+    metadata_generation: Arc<std::sync::atomic::AtomicU64>,
     tunnels: Arc<Mutex<HashMap<String, tokio_util::sync::CancellationToken>>>,
     /// Retained disk-offloaded results (EXEC-010), keyed by handle, for windowed
     /// paging. Bounded by `MAX_RETAINED_RESULTS`; evicting an entry closes its file.
@@ -262,6 +264,7 @@ impl Default for DbState {
             conns: Arc::new(Mutex::new(HashMap::new())),
             cancels: Arc::new(Mutex::new(HashMap::new())),
             metadata_cache: Arc::new(Mutex::new(MetadataCache::new())),
+            metadata_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             tunnels: Arc::new(Mutex::new(HashMap::new())),
             results: Arc::new(Mutex::new(HashMap::new())),
             result_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
@@ -270,6 +273,7 @@ impl Default for DbState {
 }
 
 fn trigger_background_refresh(state: DbState, connection_id: String) {
+    let generation = metadata_generation(&state);
     tokio::spawn(async move {
         let conn = {
             let guard = state.conns.lock().await;
@@ -278,10 +282,13 @@ fn trigger_background_refresh(state: DbState, connection_id: String) {
         if let Some(conn) = conn {
             match conn.metadata().await {
                 Ok(db_meta) => {
-                    let mut cache = state.metadata_cache.lock().await;
-                    let snapshot = convert_metadata_to_snapshot(&connection_id, &db_meta);
-                    cache.upsert_snapshot(snapshot);
-                    let _ = cache.drain_refresh_requests();
+                    let _ = upsert_metadata_snapshot_if_current(
+                        &state,
+                        &connection_id,
+                        &db_meta,
+                        generation,
+                    )
+                    .await;
                 }
                 Err(e) => {
                     eprintln!(
@@ -291,6 +298,34 @@ fn trigger_background_refresh(state: DbState, connection_id: String) {
             }
         }
     });
+}
+
+fn metadata_generation(state: &DbState) -> u64 {
+    state.metadata_generation.load(Ordering::SeqCst)
+}
+
+fn bump_metadata_generation(state: &DbState) {
+    state.metadata_generation.fetch_add(1, Ordering::SeqCst);
+}
+
+async fn upsert_metadata_snapshot_if_current(
+    state: &DbState,
+    connection_id: &str,
+    db_meta: &DatabaseMetadata,
+    generation: u64,
+) -> bool {
+    if metadata_generation(state) != generation {
+        return false;
+    }
+
+    let mut cache = state.metadata_cache.lock().await;
+    if metadata_generation(state) != generation {
+        return false;
+    }
+    let snapshot = convert_metadata_to_snapshot(connection_id, db_meta);
+    cache.upsert_snapshot(snapshot);
+    let _ = cache.drain_refresh_requests();
+    true
 }
 
 use irodori_proxy::start_forwarder;
@@ -374,6 +409,20 @@ async fn with_timeout<T>(
     }
 }
 
+async fn refresh_metadata_after_query_if_needed(state: &DbState, connection_id: &str, sql: &str) {
+    if !sql_may_change_metadata(sql) {
+        return;
+    }
+
+    bump_metadata_generation(state);
+    state
+        .metadata_cache
+        .lock()
+        .await
+        .invalidate_connection(connection_id);
+    trigger_background_refresh(state.clone(), connection_id.to_string());
+}
+
 pub async fn run_query_impl(
     state: &DbState,
     connection_id: String,
@@ -412,6 +461,7 @@ pub async fn run_query_with_params_impl(
 
     let cap = bounded_query_cap(max_rows)?;
     let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
+    let metadata_sql = prepared.sql.clone();
     let start = Instant::now();
     let sets = if prepared.params.is_empty() {
         conn.run_query_sets(&prepared.sql, cap).await?
@@ -431,6 +481,7 @@ pub async fn run_query_with_params_impl(
         .into_iter()
         .map(|set| query_result_set(set, cap))
         .collect();
+    refresh_metadata_after_query_if_needed(state, &connection_id, &metadata_sql).await;
     Ok(query_result_from_sets(result_sets, elapsed_ms))
 }
 
@@ -592,6 +643,7 @@ pub(crate) async fn run_query_stream_capped_impl(
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
     let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
+    let metadata_sql = prepared.sql.clone();
 
     let token = CancellationToken::new();
     if let Some(qid) = &query_id {
@@ -626,6 +678,9 @@ pub(crate) async fn run_query_stream_capped_impl(
 
     if let Some(qid) = &query_id {
         state.cancels.lock().await.remove(qid);
+    }
+    if result.is_ok() {
+        refresh_metadata_after_query_if_needed(state, &connection_id, &metadata_sql).await;
     }
     result
 }
@@ -889,13 +944,9 @@ pub async fn list_objects_impl(
             .cloned()
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
+    let generation = metadata_generation(state);
     let db_meta = conn.metadata().await?;
-    {
-        let mut cache = state.metadata_cache.lock().await;
-        let snapshot = convert_metadata_to_snapshot(&connection_id, &db_meta);
-        cache.upsert_snapshot(snapshot);
-        let _ = cache.drain_refresh_requests();
-    }
+    let _ = upsert_metadata_snapshot_if_current(state, &connection_id, &db_meta, generation).await;
     Ok(db_meta)
 }
 

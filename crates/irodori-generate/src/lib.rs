@@ -87,12 +87,12 @@ pub fn generate(
     // tinier model suffice, and can't emit irrelevant relations.
     const GRAMMAR_SCOPE_THRESHOLD: usize = 16;
     let relevant = plan::relevant_tables(&plan, &request.schema);
-    let grammar_schema = if relevant.is_empty() || request.schema.tables.len() <= GRAMMAR_SCOPE_THRESHOLD
-    {
-        project::grammar_schema(&request.schema)
-    } else {
-        project::grammar_schema_scoped(&request.schema, &relevant)
-    };
+    let grammar_schema =
+        if relevant.is_empty() || request.schema.tables.len() <= GRAMMAR_SCOPE_THRESHOLD {
+            project::grammar_schema(&request.schema)
+        } else {
+            project::grammar_schema_scoped(&request.schema, &relevant)
+        };
     let gbnf = select_grammar(Some(&grammar_schema));
     let base_prompt = plan::build_prompt(&request.prompt, &plan, &request.schema, dialect);
     let planned_tables: Vec<String> = plan.tables.iter().map(|t| t.name.clone()).collect();
@@ -156,8 +156,10 @@ mod tests {
     use irodori_sql::dialect::PostgresDialect;
 
     fn shop_schema() -> GenSchema {
-        let customers = GenTable::new("customers")
-            .with_columns(vec![GenColumn::new("id", "int"), GenColumn::new("name", "text")]);
+        let customers = GenTable::new("customers").with_columns(vec![
+            GenColumn::new("id", "int"),
+            GenColumn::new("name", "text"),
+        ]);
         let mut orders = GenTable::new("orders").with_columns(vec![
             GenColumn::new("id", "int"),
             GenColumn::new("customer_id", "int"),
@@ -177,7 +179,10 @@ mod tests {
         let model = EchoModel::new("select id, total from orders where total > 100");
         let req = GenerateRequest::new("big orders", shop_schema());
         let outcome = generate(&model, &req, &PostgresDialect).unwrap();
-        assert_eq!(outcome.sql, "SELECT id, total FROM orders WHERE total > 100");
+        assert_eq!(
+            outcome.sql,
+            "SELECT id, total FROM orders WHERE total > 100"
+        );
         assert!(outcome.repaired); // lowercase -> canonical uppercase keywords
         assert_eq!(outcome.model, "echo");
     }

@@ -50,7 +50,17 @@ done
 
 step "RustSec advisory audit"
 if command -v cargo-audit >/dev/null 2>&1; then
-  cargo audit --deny warnings
+  audit_args=(--deny warnings)
+  rustsec_ignore_file="$root/tools/security/rustsec-audit-ignore.txt"
+  if [[ -f "$rustsec_ignore_file" ]]; then
+    while read -r advisory _; do
+      if [[ -z "${advisory:-}" || "$advisory" == \#* ]]; then
+        continue
+      fi
+      audit_args+=(--ignore "$advisory")
+    done < "$rustsec_ignore_file"
+  fi
+  cargo audit "${audit_args[@]}"
 else
   echo "cargo-audit is not installed; install it with: cargo install cargo-audit --locked" >&2
   if [[ "${REQUIRE_CARGO_AUDIT:-0}" == "1" ]]; then

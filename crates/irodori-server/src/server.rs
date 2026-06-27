@@ -279,7 +279,11 @@ mod tests {
             .expect("insert");
 
         let registry = Registry::new().with("default", Arc::new(source));
-        let auth = Authenticator::new(vec![Token::new("ci", "secret", [Scope::Read, Scope::Write])]);
+        let auth = Authenticator::new(vec![Token::new(
+            "ci",
+            "secret",
+            [Scope::Read, Scope::Write],
+        )]);
         let audit = Arc::new(MemoryAuditSink::default());
         let server = ApiServer::new(registry, auth).with_audit(audit.clone());
         (server, audit)
@@ -314,7 +318,12 @@ mod tests {
                 br#"{"sql":"SELECT id, name FROM t ORDER BY id"}"#,
             )
             .await;
-        assert_eq!(response.status, 200, "{:?}", String::from_utf8_lossy(&response.body));
+        assert_eq!(
+            response.status,
+            200,
+            "{:?}",
+            String::from_utf8_lossy(&response.body)
+        );
         let body = body_json(&response);
         assert_eq!(body["columns"], json!(["id", "name"]));
         assert_eq!(body["rows"], json!([[1, "a"], [2, "b"]]));
@@ -350,7 +359,10 @@ mod tests {
     async fn writes_need_scope_and_writable_source() {
         // Read-only token against a writable source: write rejected.
         let source = SqliteDataSource::open(":memory:", false).unwrap();
-        source.run_query("CREATE TABLE t (id INTEGER)", 10).await.unwrap();
+        source
+            .run_query("CREATE TABLE t (id INTEGER)", 10)
+            .await
+            .unwrap();
         let registry = Registry::new().with("default", Arc::new(source));
         let auth = Authenticator::new(vec![Token::new("ro", "ro-secret", [Scope::Read])]);
         let server = ApiServer::new(registry, auth);

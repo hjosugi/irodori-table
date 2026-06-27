@@ -265,6 +265,7 @@ async function connectMock(page: Page) {
   }
   await page.getByRole("button", { name: "New connection" }).last().click();
   await page.getByPlaceholder("Connection's name").fill("Mock Database");
+  await page.getByRole("button", { name: "URL", exact: true }).click();
   await page
     .getByPlaceholder("postgres://user:password@host:5432/database")
     .fill("postgres://u:p@localhost:5432/db");

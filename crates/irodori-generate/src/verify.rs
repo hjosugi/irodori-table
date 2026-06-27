@@ -8,10 +8,10 @@
 //! wrong SQL.
 
 use crate::schema::{GenTable, SchemaIndex};
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
 use irodori_sql::ast::{ColumnRef, Expr, FuncArg, SelectItem, SelectStatement, TableExpr};
 use irodori_sql::dialect::SqlDialect;
 use irodori_sql::parser::parse_select;
-use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
 use std::collections::HashSet;
 
 /// A validated statement plus its canonical rendering.
@@ -117,7 +117,10 @@ fn is_aggregate(name: &str) -> bool {
 fn contains_aggregate(expr: &Expr) -> bool {
     match expr {
         Expr::Function { name, args, .. } => {
-            is_aggregate(name) || args.iter().any(|arg| matches!(arg, FuncArg::Expr(e) if contains_aggregate(e)))
+            is_aggregate(name)
+                || args
+                    .iter()
+                    .any(|arg| matches!(arg, FuncArg::Expr(e) if contains_aggregate(e)))
         }
         Expr::Unary { expr, .. } | Expr::IsNull { expr, .. } | Expr::Paren(expr) => {
             contains_aggregate(expr)
@@ -208,9 +211,10 @@ fn walk_columns<'a>(expr: &'a Expr, skip_aggregates: bool, out: &mut Vec<&'a Col
 /// GROUP BY (the classic LLM mistake). Lenient: matches by column name so
 /// `GROUP BY upper(name)` still covers a `name` projection.
 fn validate_group_by(stmt: &SelectStatement) -> Result<()> {
-    let has_aggregate = stmt.projection.iter().any(|item| {
-        matches!(item, SelectItem::Expr { expr, .. } if contains_aggregate(expr))
-    });
+    let has_aggregate = stmt
+        .projection
+        .iter()
+        .any(|item| matches!(item, SelectItem::Expr { expr, .. } if contains_aggregate(expr)));
     if !has_aggregate {
         return Ok(());
     }
@@ -342,10 +346,7 @@ fn validate_column(column: &ColumnRef, scope: &Scope<'_>) -> Result<()> {
                 return Ok(());
             }
             let tables = scope.known_tables();
-            let matching = tables
-                .iter()
-                .filter(|t| t.has_column(&column.name))
-                .count();
+            let matching = tables.iter().filter(|t| t.has_column(&column.name)).count();
             if matching == 1 {
                 return Ok(());
             }
@@ -411,8 +412,10 @@ mod tests {
 
     fn index() -> SchemaIndex {
         SchemaIndex::build(&GenSchema::new(vec![
-            GenTable::new("customers")
-                .with_columns(vec![GenColumn::new("id", "int"), GenColumn::new("name", "text")]),
+            GenTable::new("customers").with_columns(vec![
+                GenColumn::new("id", "int"),
+                GenColumn::new("name", "text"),
+            ]),
             GenTable::new("orders").with_columns(vec![
                 GenColumn::new("id", "int"),
                 GenColumn::new("customer_id", "int"),

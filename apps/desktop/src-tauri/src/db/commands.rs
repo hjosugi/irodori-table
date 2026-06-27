@@ -31,11 +31,15 @@ pub async fn db_autocomplete(
             guard.get(&connection_id).cloned()
         };
         if let Some(conn) = conn {
+            let generation = metadata_generation(state_inner);
             if let Ok(db_meta) = conn.metadata().await {
-                let mut cache = state_inner.metadata_cache.lock().await;
-                let snapshot = convert_metadata_to_snapshot(&connection_id, &db_meta);
-                cache.upsert_snapshot(snapshot);
-                let _ = cache.drain_refresh_requests();
+                let _ = upsert_metadata_snapshot_if_current(
+                    state_inner,
+                    &connection_id,
+                    &db_meta,
+                    generation,
+                )
+                .await;
             }
         }
     } else {

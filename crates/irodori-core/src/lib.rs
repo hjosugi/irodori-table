@@ -7,12 +7,6 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
-pub use irodori_jobs::{
-    run_job, BatchOutcome, BatchResult, JobArtifact, JobCheckpoint, JobConcurrencyPolicy,
-    JobContext, JobKind, JobList, JobLogEntry, JobLogLevel, JobProgress, JobRecord,
-    JobResourceBudget, JobRetryPolicy, JobRuntime, JobRuntimeConfig, JobSpec, JobStatus, JobSummary,
-};
 pub use irodori_connection::{
     AuthConfig, ConnectionProfile, ConnectionProfileExport, DirectTransport, LocalFileTransport,
     PortableAuthConfig, PortableConnectionProfile, PortableProxyAuthConfig, PortableProxyChainHop,
@@ -22,6 +16,13 @@ pub use irodori_connection::{
     ProxyTransport, SecretRef, SecretSlot, SecretSlotPurpose, SourceFamily, SourceKind,
     SshAuthConfig, SshProxyHop, SshTunnelTransport, TransportConfig,
     CONNECTION_PROFILE_SCHEMA_VERSION,
+};
+pub use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
+pub use irodori_jobs::{
+    run_job, BatchOutcome, BatchResult, JobArtifact, JobCheckpoint, JobConcurrencyPolicy,
+    JobContext, JobKind, JobList, JobLogEntry, JobLogLevel, JobProgress, JobRecord,
+    JobResourceBudget, JobRetryPolicy, JobRuntime, JobRuntimeConfig, JobSpec, JobStatus,
+    JobSummary,
 };
 pub use irodori_security::{
     AuditEvent, AuditEventKind, AuditLog, PrivacyMode, RedactedExport, RedactionReport, Redactor,

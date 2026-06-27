@@ -195,23 +195,23 @@ export function WorkbenchShell({
 
   const renderMenuButtons = (section: AppMenuSection) =>
     section.items.map((item) => {
-        const command = commandById.get(item.commandId);
-        if (!command) {
-          return null;
-        }
-        const shortcut = shortcutFor(command.id);
-        return (
-          <button
-            type="button"
-            role="menuitem"
-            key={command.id}
-            onClick={() => runMenuCommand(command.id)}
-          >
-            <span>{titleFor(command)}</span>
-            {shortcut ? <kbd>{shortcut}</kbd> : null}
-          </button>
-        );
-      });
+      const command = commandById.get(item.commandId);
+      if (!command) {
+        return null;
+      }
+      const shortcut = shortcutFor(command.id);
+      return (
+        <button
+          type="button"
+          role="menuitem"
+          key={command.id}
+          onClick={() => runMenuCommand(command.id)}
+        >
+          <span>{titleFor(command)}</span>
+          {shortcut ? <kbd>{shortcut}</kbd> : null}
+        </button>
+      );
+    });
 
   const renderMenuSection = (section: AppMenuSection) => (
     <div

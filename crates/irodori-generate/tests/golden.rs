@@ -61,7 +61,11 @@ fn golden_rejects_cross_table_hallucination() {
     let model = EchoModel::new("SELECT c.total FROM customers c");
     let request = GenerateRequest::new("totals", shop_schema());
     let err = generate(&model, &request, &PostgresDialect).unwrap_err();
-    assert!(err.message.contains("unknown column"), "got: {}", err.message);
+    assert!(
+        err.message.contains("unknown column"),
+        "got: {}",
+        err.message
+    );
 }
 
 #[test]
@@ -69,6 +73,9 @@ fn golden_already_canonical_is_not_marked_repaired() {
     let model = EchoModel::new("SELECT id, total FROM orders WHERE total > 100");
     let request = GenerateRequest::new("big orders", shop_schema());
     let outcome = generate(&model, &request, &PostgresDialect).unwrap();
-    assert_eq!(outcome.sql, "SELECT id, total FROM orders WHERE total > 100");
+    assert_eq!(
+        outcome.sql,
+        "SELECT id, total FROM orders WHERE total > 100"
+    );
     assert!(!outcome.repaired);
 }

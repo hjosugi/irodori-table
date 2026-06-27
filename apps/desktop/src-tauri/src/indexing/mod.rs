@@ -339,7 +339,10 @@ mod tests {
         let orders = search_schema_impl(&index, "idx".into(), "orders".into(), None)
             .await
             .expect("search");
-        assert!(orders.iter().any(|hit| hit.object.contains("orders")));
+        assert!(
+            orders.iter().any(|hit| hit.object.contains("orders")),
+            "expected `orders` table hit, got {orders:?}"
+        );
         assert!(
             search_schema_impl(&index, "idx".into(), "nope".into(), None)
                 .await

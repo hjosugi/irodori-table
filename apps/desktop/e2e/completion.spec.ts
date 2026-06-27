@@ -151,6 +151,13 @@ async function replaceEditorText(page: Page, text: string) {
   await page.keyboard.press("Escape");
 }
 
+async function moveEditorCursorTo(page: Page, offset: number) {
+  await page.keyboard.press("Home");
+  for (let index = 0; index < offset; index += 1) {
+    await page.keyboard.press("ArrowRight");
+  }
+}
+
 async function connectMockDatabase(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
@@ -189,8 +196,7 @@ test("schema metadata drives table and column completion in the editor", async (
   );
 
   await replaceEditorText(page, "select c. from customers c");
-  await page.locator(".cm-content").click();
-  await page.keyboard.press("ArrowLeft");
+  await moveEditorCursorTo(page, "select c.".length);
   await page.keyboard.press("Control+Space");
   await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("email");
   await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("name");
