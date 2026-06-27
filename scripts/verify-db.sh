@@ -12,7 +12,8 @@ set -uo pipefail
 
 ENGINE_BIN="${ENGINE_BIN:-$(command -v podman >/dev/null 2>&1 && echo podman || echo docker)}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SAMPLES="$ROOT/samples"
+# DB sample fixtures live in the sibling irodori-samples repo; override with IRODORI_SAMPLES.
+SAMPLES="${IRODORI_SAMPLES:-$ROOT/../irodori-samples}"
 MANIFEST="$ROOT/apps/desktop/src-tauri/Cargo.toml"
 
 # engine -> (EVAR, URL, TEST). Oracle uses a flag env because its integration

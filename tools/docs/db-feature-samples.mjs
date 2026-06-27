@@ -3,10 +3,13 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
-const catalogPath = resolve(root, "samples/db-feature-samples.json");
+// DB sample fixtures + catalog live in the sibling irodori-samples repo.
+const sampleRoot = process.env.IRODORI_SAMPLES
+  ? resolve(process.env.IRODORI_SAMPLES)
+  : resolve(root, "../irodori-samples");
+const catalogPath = resolve(sampleRoot, "db-feature-samples.json");
 const enginesPath = resolve(root, "knowledge/engines.json");
-const sampleRoot = resolve(root, "samples");
-const projectRoot = resolve(root, "samples/projects");
+const projectRoot = resolve(sampleRoot, "projects");
 
 function main() {
   const catalog = JSON.parse(read(catalogPath));
@@ -158,11 +161,17 @@ function validateCatalogEntry(errors, featureIds, entry, where, options = {}) {
   }
 }
 
+// Catalog paths keep their historical "samples/" prefix; resolve them against
+// the sibling irodori-samples repo (sampleRoot) instead of the table root.
+function resolveSample(relativePath) {
+  return resolve(sampleRoot, relativePath.replace(/^samples\//, ""));
+}
+
 function checkFile(errors, relativePath, label) {
   if (!relativePath) {
     return;
   }
-  const path = resolve(root, relativePath);
+  const path = resolveSample(relativePath);
   if (!existsSync(path) || !statSync(path).isFile()) {
     errors.push(`${label} '${relativePath}' does not exist`);
   }
@@ -172,7 +181,7 @@ function checkDirectory(errors, relativePath, label) {
   if (!relativePath) {
     return;
   }
-  const path = resolve(root, relativePath);
+  const path = resolveSample(relativePath);
   if (!existsSync(path) || !statSync(path).isDirectory()) {
     errors.push(`${label} '${relativePath}' does not exist`);
   }
