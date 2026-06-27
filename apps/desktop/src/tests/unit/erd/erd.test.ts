@@ -359,7 +359,9 @@ describe("ERD model", () => {
 
     for (let i = 0; i < layout.edges.length; i += 1) {
       for (let j = i + 1; j < layout.edges.length; j += 1) {
-        expect(rectsOverlap(labelRect(layout.edges[i]), labelRect(layout.edges[j]))).toBe(false);
+        expect(
+          rectsOverlap(labelRect(layout.edges[i]), labelRect(layout.edges[j])),
+        ).toBe(false);
       }
     }
     expect(new Set(layout.edges.map((edge) => edge.path)).size).toBe(layout.edges.length);
@@ -517,7 +519,7 @@ describe("ERD model", () => {
               "id": "sales.table_3->sales.table_1:prior_id",
               "label": [
                 728,
-                156,
+                161,
                 84,
                 17,
               ],
@@ -630,7 +632,7 @@ describe("ERD model", () => {
               "id": "warehouse.table_3->warehouse.table_1:prior_id",
               "label": [
                 728,
-                156,
+                161,
                 84,
                 17,
               ],
