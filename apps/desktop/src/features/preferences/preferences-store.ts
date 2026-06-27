@@ -10,13 +10,19 @@ import {
 } from "../../sql/formatter";
 import { detectBrowserLocale, normalizeLocale, type Locale } from "../../i18n";
 import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
-import type { CustomThemeEntry, IrodoriTheme, ThemeKind } from "@/theme";
+import {
+  defaultThemeEntryForKind,
+  type CustomThemeEntry,
+  type IrodoriTheme,
+  type ThemeKind,
+} from "@/theme";
 
 export type { CustomThemeEntry } from "@/theme";
 export type ThemePreference = "system" | ThemeKind;
 type ValueUpdater<T> = T | ((current: T) => T);
 
 const themeStorageKey = "irodori.theme.v1";
+const activeDefaultThemeStorageKey = "irodori.theme.defaultId.v1";
 const activeCustomThemeStorageKey = "irodori.theme.activeCustomId.v1";
 const customThemesStorageKey = "irodori.theme.customThemes.v1";
 const legacyCustomThemeStorageKey = "irodori.theme.customJson.v1";
@@ -37,6 +43,7 @@ type PreferencesState = {
   locale: Locale;
   themePreference: ThemePreference;
   themeKind: ThemeKind;
+  activeDefaultThemeId: string | null;
   activeCustomThemeId: string | null;
   customThemes: CustomThemeEntry[];
   vimMode: boolean;
@@ -48,6 +55,7 @@ type PreferencesState = {
   setLocale: (value: ValueUpdater<Locale>) => void;
   setThemePreference: (value: ValueUpdater<ThemePreference>) => void;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
+  setActiveDefaultThemeId: (value: ValueUpdater<string | null>) => void;
   setActiveCustomThemeId: (value: ValueUpdater<string | null>) => void;
   setCustomThemes: (value: ValueUpdater<CustomThemeEntry[]>) => void;
   setVimMode: (value: ValueUpdater<boolean>) => void;
@@ -108,6 +116,13 @@ function themeKindForPreference(preference: ThemePreference): ThemeKind {
   return preference === "system" ? systemThemeKind() : preference;
 }
 
+function defaultThemeIdForKind(
+  kind: ThemeKind,
+  preferredId?: string | null,
+) {
+  return defaultThemeEntryForKind(kind, preferredId)?.id ?? null;
+}
+
 function loadThemePreference(): ThemePreference {
   return normalizeThemePreference(readStorage(themeStorageKey));
 }
@@ -163,6 +178,13 @@ function loadCustomThemes(): CustomThemeEntry[] {
     return [];
   }
   return [];
+}
+
+function loadActiveDefaultThemeId(themeKind: ThemeKind) {
+  return defaultThemeIdForKind(
+    themeKind,
+    readStorage(activeDefaultThemeStorageKey),
+  );
 }
 
 function loadActiveCustomThemeId(customThemes: CustomThemeEntry[]) {
@@ -224,11 +246,13 @@ function loadUiZoom() {
 
 const initialCustomThemes = loadCustomThemes();
 const initialThemePreference = loadThemePreference();
+const initialThemeKind = themeKindForPreference(initialThemePreference);
 
 export const usePreferencesStore = create<PreferencesState>((set) => ({
   locale: loadLocale(),
   themePreference: initialThemePreference,
-  themeKind: themeKindForPreference(initialThemePreference),
+  themeKind: initialThemeKind,
+  activeDefaultThemeId: loadActiveDefaultThemeId(initialThemeKind),
   activeCustomThemeId: loadActiveCustomThemeId(initialCustomThemes),
   customThemes: initialCustomThemes,
   vimMode: loadVimMode(),
@@ -244,9 +268,14 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
       const themePreference = normalizeThemePreference(
         resolveValue(state.themePreference, value),
       );
+      const themeKind = themeKindForPreference(themePreference);
       return {
         themePreference,
-        themeKind: themeKindForPreference(themePreference),
+        themeKind,
+        activeDefaultThemeId: defaultThemeIdForKind(
+          themeKind,
+          state.activeDefaultThemeId,
+        ),
       };
     }),
   setThemeKind: (value) =>
@@ -255,8 +284,19 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
       return {
         themePreference: themeKind,
         themeKind,
+        activeDefaultThemeId: defaultThemeIdForKind(
+          themeKind,
+          state.activeDefaultThemeId,
+        ),
       };
     }),
+  setActiveDefaultThemeId: (value) =>
+    set((state) => ({
+      activeDefaultThemeId: defaultThemeIdForKind(
+        state.themeKind,
+        resolveValue(state.activeDefaultThemeId, value),
+      ),
+    })),
   setActiveCustomThemeId: (value) =>
     set((state) => ({
       activeCustomThemeId: resolveValue(state.activeCustomThemeId, value),
@@ -288,6 +328,11 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
 usePreferencesStore.subscribe((state) => {
   writeStorage(localeStorageKey, state.locale);
   writeStorage(themeStorageKey, state.themePreference);
+  if (state.activeDefaultThemeId) {
+    writeStorage(activeDefaultThemeStorageKey, state.activeDefaultThemeId);
+  } else {
+    removeStorage(activeDefaultThemeStorageKey);
+  }
   if (state.activeCustomThemeId) {
     writeStorage(
       activeCustomThemeStorageKey,
@@ -317,7 +362,14 @@ if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
   const onSystemThemeChange = () => {
     const state = usePreferencesStore.getState();
     if (state.themePreference === "system") {
-      usePreferencesStore.setState({ themeKind: systemThemeKind() });
+      const themeKind = systemThemeKind();
+      usePreferencesStore.setState({
+        themeKind,
+        activeDefaultThemeId: defaultThemeIdForKind(
+          themeKind,
+          state.activeDefaultThemeId,
+        ),
+      });
     }
   };
   if (typeof media.addEventListener === "function") {

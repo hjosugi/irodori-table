@@ -7,6 +7,7 @@
 
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import defaultThemeCatalog from "./default-themes.json";
 
 export type ThemeKind = "light" | "dark";
 
@@ -69,6 +70,80 @@ export interface IrodoriTheme {
   ui: IrodoriUiColors;
   syntax: IrodoriSyntaxColors;
 }
+
+export interface DefaultThemeEntry {
+  id: string;
+  name: string;
+  kind: ThemeKind;
+  inspiredBy: string[];
+  licenseNote: string;
+  theme: IrodoriTheme;
+}
+
+export interface VsCodeColorThemeJson {
+  $schema: "vscode://schemas/color-theme";
+  name: string;
+  type: "dark" | "light";
+  colors: Record<string, string>;
+  tokenColors: Array<{
+    name?: string;
+    scope: string | string[];
+    settings: {
+      foreground: string;
+      fontStyle?: string;
+    };
+  }>;
+  semanticHighlighting: true;
+  semanticTokenColors: Record<string, string | { foreground: string }>;
+}
+
+const irodoriUiColorKeys: Array<keyof IrodoriUiColors> = [
+  "border",
+  "borderStrong",
+  "surface",
+  "surfaceRaised",
+  "surfaceMuted",
+  "chrome",
+  "editorBg",
+  "text",
+  "muted",
+  "green",
+  "teal",
+  "blue",
+  "amber",
+  "red",
+  "purple",
+  "hover",
+  "selected",
+  "selectedStrong",
+  "focus",
+  "inputBg",
+  "gridHeader",
+  "gridRowAlt",
+  "cellBorder",
+  "dangerBg",
+  "warningBg",
+  "selection",
+  "activeLine",
+  "caret",
+  "gutterBg",
+  "gutterText",
+];
+
+const irodoriSyntaxColorKeys: Array<keyof IrodoriSyntaxColors> = [
+  "keyword",
+  "string",
+  "number",
+  "comment",
+  "type",
+  "property",
+  "name",
+  "operator",
+  "function",
+  "bracket",
+  "punctuation",
+  "bool",
+];
 
 export const lightTheme: IrodoriTheme = {
   name: "Irodori Light",
@@ -177,6 +252,227 @@ export const themes: Record<ThemeKind, IrodoriTheme> = {
   dark: darkTheme,
 };
 
+function defaultThemeEntryFromJson(value: unknown): DefaultThemeEntry {
+  if (!isJsonObject(value)) {
+    throw new Error("default theme entry must be an object");
+  }
+  if (typeof value.id !== "string" || !value.id.trim()) {
+    throw new Error("default theme entry requires an id");
+  }
+  if (!Array.isArray(value.inspiredBy)) {
+    throw new Error(`default theme "${value.id}" requires inspiredBy`);
+  }
+  const kind = readThemeKind(value.kind, "dark");
+  const theme = irodoriThemeFromJson(value);
+  if (theme.kind !== kind) {
+    throw new Error(`default theme "${value.id}" has mismatched kind`);
+  }
+  return {
+    id: value.id.trim(),
+    name: theme.name,
+    kind,
+    inspiredBy: value.inspiredBy.filter(
+      (source): source is string => typeof source === "string",
+    ),
+    licenseNote:
+      typeof value.licenseNote === "string"
+        ? value.licenseNote
+        : "Original Irodori palette.",
+    theme,
+  };
+}
+
+export const defaultThemeEntries: DefaultThemeEntry[] = (
+  defaultThemeCatalog as unknown[]
+).map(defaultThemeEntryFromJson);
+
+export const defaultThemeEntriesByKind: Record<ThemeKind, DefaultThemeEntry[]> = {
+  light: defaultThemeEntries.filter((entry) => entry.kind === "light"),
+  dark: defaultThemeEntries.filter((entry) => entry.kind === "dark"),
+};
+
+const defaultThemeEntryMap = new Map(
+  defaultThemeEntries.map((entry) => [entry.id, entry]),
+);
+
+export function defaultThemeById(
+  id: string | null | undefined,
+): DefaultThemeEntry | null {
+  return id ? defaultThemeEntryMap.get(id) ?? null : null;
+}
+
+export function isDefaultThemeId(value: unknown): value is string {
+  return typeof value === "string" && defaultThemeEntryMap.has(value);
+}
+
+export function defaultThemeEntryForKind(
+  kind: ThemeKind,
+  preferredId?: string | null,
+): DefaultThemeEntry | null {
+  const preferred = defaultThemeById(preferredId);
+  if (preferred?.kind === kind) {
+    return preferred;
+  }
+  return defaultThemeEntriesByKind[kind][0] ?? null;
+}
+
+export function defaultThemeForKind(
+  kind: ThemeKind,
+  preferredId?: string | null,
+): IrodoriTheme {
+  return defaultThemeEntryForKind(kind, preferredId)?.theme ?? themes[kind];
+}
+
+export function vscodeThemeFromIrodoriTheme(
+  theme: IrodoriTheme,
+): VsCodeColorThemeJson {
+  const { ui, syntax } = theme;
+  return {
+    $schema: "vscode://schemas/color-theme",
+    name: theme.name,
+    type: theme.kind,
+    colors: {
+      foreground: ui.text,
+      descriptionForeground: ui.muted,
+      disabledForeground: ui.muted,
+      errorForeground: ui.red,
+      focusBorder: ui.focus,
+      contrastBorder: ui.borderStrong,
+      "activityBar.background": ui.chrome,
+      "activityBar.border": ui.border,
+      "badge.background": ui.blue,
+      "button.background": ui.blue,
+      "charts.blue": ui.blue,
+      "charts.foreground": ui.text,
+      "charts.green": ui.green,
+      "charts.purple": ui.purple,
+      "charts.red": ui.red,
+      "charts.yellow": ui.amber,
+      "dropdown.background": ui.inputBg,
+      "dropdown.border": ui.border,
+      "dropdown.foreground": ui.text,
+      "editor.background": ui.editorBg,
+      "editor.foreground": ui.text,
+      "editor.findMatchBackground": ui.selectedStrong,
+      "editor.findMatchHighlightBackground": ui.selected,
+      "editor.inactiveSelectionBackground": ui.selected,
+      "editor.lineHighlightBackground": ui.activeLine,
+      "editor.selectionBackground": ui.selection,
+      "editor.selectionHighlightBackground": ui.selected,
+      "editorCursor.foreground": ui.caret,
+      "editorError.foreground": ui.red,
+      "editorGroup.border": ui.borderStrong,
+      "editorGutter.background": ui.gutterBg,
+      "editorHint.foreground": ui.teal,
+      "editorInfo.foreground": ui.blue,
+      "editorLineNumber.foreground": ui.gutterText,
+      "editorOverviewRuler.errorForeground": ui.red,
+      "editorOverviewRuler.warningForeground": ui.amber,
+      "editorWarning.foreground": ui.amber,
+      "editorWidget.background": ui.surfaceRaised,
+      "editorWidget.border": ui.border,
+      "input.background": ui.inputBg,
+      "input.border": ui.border,
+      "input.foreground": ui.text,
+      "inputValidation.errorBackground": ui.dangerBg,
+      "inputValidation.errorBorder": ui.red,
+      "inputValidation.warningBackground": ui.warningBg,
+      "inputValidation.warningBorder": ui.amber,
+      "list.activeSelectionBackground": ui.selectedStrong,
+      "list.focusBackground": ui.selected,
+      "list.hoverBackground": ui.hover,
+      "list.inactiveSelectionBackground": ui.selected,
+      "list.highlightForeground": ui.blue,
+      "menu.background": ui.surfaceRaised,
+      "menu.border": ui.border,
+      "panel.background": ui.surfaceRaised,
+      "panel.border": ui.border,
+      "sideBar.background": ui.surface,
+      "sideBar.border": ui.border,
+      "sideBarSectionHeader.background": ui.surfaceMuted,
+      "sideBarTitle.foreground": ui.text,
+      "tab.activeBackground": ui.surfaceRaised,
+      "tab.border": ui.border,
+      "titleBar.activeBackground": ui.chrome,
+      "titleBar.activeForeground": ui.text,
+      "tree.tableOddRowsBackground": ui.gridRowAlt,
+      "widget.border": ui.border,
+    },
+    tokenColors: [
+      {
+        name: "Comments",
+        scope: ["comment", "punctuation.definition.comment"],
+        settings: { foreground: syntax.comment },
+      },
+      {
+        name: "Strings",
+        scope: ["string", "constant.other.symbol"],
+        settings: { foreground: syntax.string },
+      },
+      {
+        name: "Numbers",
+        scope: ["constant.numeric", "keyword.other.unit"],
+        settings: { foreground: syntax.number },
+      },
+      {
+        name: "Keywords",
+        scope: ["keyword", "storage", "storage.modifier"],
+        settings: { foreground: syntax.keyword },
+      },
+      {
+        name: "Types",
+        scope: ["entity.name.type", "support.type", "storage.type"],
+        settings: { foreground: syntax.type },
+      },
+      {
+        name: "Functions",
+        scope: ["entity.name.function", "support.function"],
+        settings: { foreground: syntax.function },
+      },
+      {
+        name: "Properties",
+        scope: ["variable.other.property", "support.variable.property"],
+        settings: { foreground: syntax.property },
+      },
+      {
+        name: "Operators",
+        scope: "keyword.operator",
+        settings: { foreground: syntax.operator },
+      },
+      {
+        name: "Punctuation",
+        scope: ["punctuation.separator", "punctuation.terminator"],
+        settings: { foreground: syntax.punctuation },
+      },
+      {
+        name: "Brackets",
+        scope: "punctuation.section",
+        settings: { foreground: syntax.bracket },
+      },
+    ],
+    semanticHighlighting: true,
+    semanticTokenColors: {
+      boolean: syntax.bool,
+      class: syntax.type,
+      enum: syntax.type,
+      enumMember: syntax.property,
+      function: syntax.function,
+      interface: syntax.type,
+      keyword: syntax.keyword,
+      method: syntax.function,
+      namespace: syntax.type,
+      number: syntax.number,
+      operator: syntax.operator,
+      parameter: syntax.name,
+      property: syntax.property,
+      string: syntax.string,
+      struct: syntax.type,
+      type: syntax.type,
+      variable: syntax.name,
+    },
+  };
+}
+
 export type CustomThemeEntry = {
   id: string;
   name: string;
@@ -190,54 +486,6 @@ export interface ThemeJsonImport {
   source: ThemeJsonImportSource;
   warnings: string[];
 }
-
-const irodoriUiColorKeys: Array<keyof IrodoriUiColors> = [
-  "border",
-  "borderStrong",
-  "surface",
-  "surfaceRaised",
-  "surfaceMuted",
-  "chrome",
-  "editorBg",
-  "text",
-  "muted",
-  "green",
-  "teal",
-  "blue",
-  "amber",
-  "red",
-  "purple",
-  "hover",
-  "selected",
-  "selectedStrong",
-  "focus",
-  "inputBg",
-  "gridHeader",
-  "gridRowAlt",
-  "cellBorder",
-  "dangerBg",
-  "warningBg",
-  "selection",
-  "activeLine",
-  "caret",
-  "gutterBg",
-  "gutterText",
-];
-
-const irodoriSyntaxColorKeys: Array<keyof IrodoriSyntaxColors> = [
-  "keyword",
-  "string",
-  "number",
-  "comment",
-  "type",
-  "property",
-  "name",
-  "operator",
-  "function",
-  "bracket",
-  "punctuation",
-  "bool",
-];
 
 function readThemeKind(value: unknown, fallback: ThemeKind): ThemeKind {
   return value === "light" || value === "dark" ? value : fallback;

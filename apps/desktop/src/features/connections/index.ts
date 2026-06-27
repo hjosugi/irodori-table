@@ -7,9 +7,11 @@ export {
   loadProfiles,
   memoryDefaults,
   newDraft,
+  portableProfile,
   profileFromDraft,
   profilesStorageKey,
   repairBuiltinSampleProfile,
+  redactPasswordFromConnectionUrl,
   sanitizedProfile,
   settingsProfileFromJson,
   starterProfiles,
@@ -20,5 +22,13 @@ export {
   type ConnectionInputMode,
   type WorkspaceConnection,
 } from "./connection-profiles";
+export {
+  connectionTransferFormatOptions,
+  exportConnectionProfiles,
+  importConnectionProfiles,
+  type ConnectionExportResult,
+  type ConnectionImportResult,
+  type ConnectionTransferFormat,
+} from "./connection-transfer";
 export { ConnectionManagerDialog } from "./ConnectionManagerDialog";
 export { useConnectionStore } from "./connection-store";

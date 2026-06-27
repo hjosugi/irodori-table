@@ -79,8 +79,11 @@ import {
   defaultConnectionColor,
   describeConnection,
   engineLabel,
+  exportConnectionProfiles,
+  importConnectionProfiles,
   memoryDefaults,
   newDraft,
+  portableProfile,
   profileFromDraft,
   repairBuiltinSampleProfile,
   sanitizedProfile,
@@ -89,6 +92,7 @@ import {
   validateDraft,
   withStarterProfiles,
   withUniqueProfileIds,
+  type ConnectionTransferFormat,
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "@/features/connections";
@@ -215,6 +219,8 @@ import { selectedOrCurrentStatement } from "@/sql/statements";
 import {
   cssVariables,
   customThemeEntryFromJson,
+  defaultThemeById,
+  defaultThemeEntryForKind,
   importThemeJson,
   upsertCustomThemeEntry,
   type ThemeKind,
@@ -331,6 +337,12 @@ export function AppWorkbench() {
   );
   const themeKind = usePreferencesStore((state) => state.themeKind);
   const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
+  const activeDefaultThemeId = usePreferencesStore(
+    (state) => state.activeDefaultThemeId,
+  );
+  const setActiveDefaultThemeId = usePreferencesStore(
+    (state) => state.setActiveDefaultThemeId,
+  );
   const activeCustomThemeId = usePreferencesStore(
     (state) => state.activeCustomThemeId,
   );
@@ -346,7 +358,12 @@ export function AppWorkbench() {
       customThemes.find((entry) => entry.id === activeCustomThemeId) ?? null,
     [activeCustomThemeId, customThemes],
   );
-  const theme = activeCustomTheme?.theme ?? builtInTheme(themeKind);
+  const activeDefaultTheme = useMemo(
+    () => defaultThemeEntryForKind(themeKind, activeDefaultThemeId),
+    [activeDefaultThemeId, themeKind],
+  );
+  const theme =
+    activeCustomTheme?.theme ?? builtInTheme(themeKind, activeDefaultThemeId);
   const vimMode = usePreferencesStore((state) => state.vimMode);
   const setVimMode = usePreferencesStore((state) => state.setVimMode);
   const formatter = usePreferencesStore((state) => state.formatter);
@@ -588,6 +605,8 @@ export function AppWorkbench() {
   const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
   const [diagramZoom, setDiagramZoom] = useState(1);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [connectionTransferFormat, setConnectionTransferFormat] =
+    useState<ConnectionTransferFormat>("irodori");
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(
     null,
   );
@@ -1847,11 +1866,28 @@ export function AppWorkbench() {
   function activateBuiltInTheme(value: ThemeKind | ((kind: ThemeKind) => ThemeKind)) {
     const nextThemeKind = typeof value === "function" ? value(themeKind) : value;
     setThemeKind(nextThemeKind);
+    setActiveDefaultThemeId(
+      defaultThemeEntryForKind(nextThemeKind, activeDefaultThemeId)?.id ?? null,
+    );
     setActiveCustomThemeId(null);
   }
 
   function activateThemePreference(value: ThemePreference) {
     setThemePreference(value);
+    setActiveCustomThemeId(null);
+  }
+
+  function activateDefaultTheme(themeId: string | null) {
+    const entry = defaultThemeById(themeId);
+    if (!entry) {
+      setActiveDefaultThemeId(
+        defaultThemeEntryForKind(themeKind, activeDefaultThemeId)?.id ?? null,
+      );
+      setActiveCustomThemeId(null);
+      return;
+    }
+    setThemeKind(entry.kind);
+    setActiveDefaultThemeId(entry.id);
     setActiveCustomThemeId(null);
   }
 
@@ -1875,6 +1911,7 @@ export function AppWorkbench() {
         version: 1,
         locale,
         theme: activeCustomTheme?.theme ?? themePreference,
+        defaultThemeId: activeDefaultTheme?.id ?? activeDefaultThemeId,
         activeCustomThemeId,
         customThemes,
         editor: {
@@ -1904,7 +1941,7 @@ export function AppWorkbench() {
         },
         activeConnectionId,
         keymapOverrides,
-        connections: profiles.map(sanitizedProfile),
+        connections: profiles.map(portableProfile),
       },
       null,
       2,
@@ -1978,6 +2015,20 @@ export function AppWorkbench() {
         setCustomThemes(nextCustomThemes);
       }
       if (
+        typeof parsed.theme === "string" &&
+        defaultThemeById(parsed.theme)
+      ) {
+        const entry = defaultThemeById(parsed.theme);
+        if (entry) {
+          setThemeKind(entry.kind);
+          setActiveDefaultThemeId(entry.id);
+          setActiveCustomThemeId(null);
+          parsed.theme = entry.kind;
+          parsed.defaultThemeId = entry.id;
+          nextActiveCustomThemeId = null;
+          themeNotice = `Built-in theme: ${entry.name}`;
+        }
+      } else if (
         parsed.theme === "system" ||
         parsed.theme === "dark" ||
         parsed.theme === "light"
@@ -2038,6 +2089,16 @@ export function AppWorkbench() {
           setActiveCustomThemeId(entry.id);
           nextActiveCustomThemeId = entry.id;
           themeNotice = `Custom theme: ${entry.name}`;
+        }
+      }
+      if (typeof parsed.defaultThemeId === "string") {
+        const entry = defaultThemeById(parsed.defaultThemeId);
+        if (entry) {
+          setActiveDefaultThemeId(entry.id);
+          parsed.defaultThemeId = entry.id;
+          if (!themeNotice) {
+            themeNotice = `Built-in theme: ${entry.name}`;
+          }
         }
       }
       if (nextActiveCustomThemeId === undefined && Array.isArray(parsed.customThemes)) {
@@ -2489,7 +2550,7 @@ export function AppWorkbench() {
       showActionNotice("error", "Connection was not saved", validationError);
       return false;
     }
-    const cleanDraft = repairBuiltinSampleProfile(sanitizedProfile(draft));
+    const cleanDraft = sanitizedProfile(repairBuiltinSampleProfile(draft));
     setProfiles((current) => {
       const existing = current.findIndex(
         (profile) => profile.id === cleanDraft.id,
@@ -2516,6 +2577,63 @@ export function AppWorkbench() {
     setDraft(next);
     setConnectionError(null);
     showActionNotice("info", "New connection draft created", next.name);
+  }
+
+  async function importConnectionFile(file: File) {
+    setConnectionError(null);
+    try {
+      const text = await file.text();
+      const imported = importConnectionProfiles(text, file.name);
+      const importedProfiles = imported.profiles;
+      const firstImportedRef: { current: ConnectionDraft | null } = {
+        current: null,
+      };
+      setProfiles((current) => {
+        const merged = withUniqueProfileIds([...current, ...importedProfiles]);
+        const mergedImported = merged.slice(current.length);
+        firstImportedRef.current = mergedImported[0] ?? null;
+        return withStarterProfiles(merged);
+      });
+      setConnectionSearch("");
+      const firstImported = firstImportedRef.current;
+      if (firstImported) {
+        setSelectedProfileId(firstImported.id);
+        setDraft(firstImported);
+        setActiveConnectionId(firstImported.id);
+      }
+      showActionNotice(
+        "success",
+        "Connections imported",
+        `${imported.source} · ${toCount(importedProfiles.length)} profile(s)`,
+      );
+    } catch (error) {
+      const message = errorMessage(error);
+      setConnectionError(message);
+      showActionNotice("error", "Connection import failed", message);
+    }
+  }
+
+  function exportConnectionFile() {
+    try {
+      const exported = exportConnectionProfiles(profiles, connectionTransferFormat);
+      downloadBlob(
+        new Blob([exported.content], { type: `${exported.mime};charset=utf-8` }),
+        exported.fileName,
+      );
+      const skipped =
+        exported.skippedCount > 0
+          ? ` · ${toCount(exported.skippedCount)} skipped`
+          : "";
+      showActionNotice(
+        "success",
+        "Connections exported",
+        `${exported.label} · ${toCount(exported.profileCount)} profile(s)${skipped}`,
+      );
+    } catch (error) {
+      const message = errorMessage(error);
+      setConnectionError(message);
+      showActionNotice("error", "Connection export failed", message);
+    }
   }
 
   async function deleteProfile() {
@@ -3975,9 +4093,13 @@ export function AppWorkbench() {
           activeConnectionOpen={activeConnectionOpen}
           testing={testingConnection}
           connecting={connecting}
+          transferFormat={connectionTransferFormat}
           onClose={() => setConnectionManagerOpen(false)}
           onSearchChange={setConnectionSearch}
           onAddProfile={addProfile}
+          onImportProfiles={(file) => void importConnectionFile(file)}
+          onExportProfiles={exportConnectionFile}
+          onTransferFormatChange={setConnectionTransferFormat}
           onSelectProfile={selectProfile}
           onUpdateDraft={updateDraft}
           onDeleteProfile={() => void deleteProfile()}
@@ -4005,6 +4127,9 @@ export function AppWorkbench() {
           themeKind={themeKind}
           setThemePreference={activateThemePreference}
           setThemeKind={activateBuiltInTheme}
+          activeDefaultThemeId={activeDefaultTheme?.id ?? activeDefaultThemeId}
+          activeDefaultThemeName={activeDefaultTheme?.name ?? null}
+          setActiveDefaultThemeId={activateDefaultTheme}
           customThemes={customThemes}
           activeCustomThemeId={activeCustomThemeId}
           activeCustomThemeName={activeCustomTheme?.name ?? null}

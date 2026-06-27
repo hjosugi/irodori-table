@@ -1,11 +1,13 @@
-import type { FormEventHandler } from "react";
+import { useRef, type FormEventHandler } from "react";
 import {
   AlertTriangle,
   Database,
+  Download,
   Plus,
   Power,
   Search,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 import type { DbEngine } from "@/generated/irodori-api";
 import {
@@ -15,6 +17,10 @@ import {
   normalizeConnectionColor,
   type ConnectionDraft,
 } from "./connection-profiles";
+import {
+  connectionTransferFormatOptions,
+  type ConnectionTransferFormat,
+} from "./connection-transfer";
 
 export function ConnectionManagerDialog({
   profiles,
@@ -26,9 +32,13 @@ export function ConnectionManagerDialog({
   activeConnectionOpen,
   testing,
   connecting,
+  transferFormat,
   onClose,
   onSearchChange,
   onAddProfile,
+  onImportProfiles,
+  onExportProfiles,
+  onTransferFormatChange,
   onSelectProfile,
   onUpdateDraft,
   onDeleteProfile,
@@ -46,9 +56,13 @@ export function ConnectionManagerDialog({
   activeConnectionOpen: boolean;
   testing: boolean;
   connecting: boolean;
+  transferFormat: ConnectionTransferFormat;
   onClose: () => void;
   onSearchChange: (value: string) => void;
   onAddProfile: () => void;
+  onImportProfiles: (file: File) => void;
+  onExportProfiles: () => void;
+  onTransferFormatChange: (value: ConnectionTransferFormat) => void;
   onSelectProfile: (profile: ConnectionDraft) => void;
   onUpdateDraft: (patch: Partial<ConnectionDraft>) => void;
   onDeleteProfile: () => void;
@@ -57,6 +71,8 @@ export function ConnectionManagerDialog({
   onTest: () => void;
   onConnect: FormEventHandler<HTMLFormElement>;
 }) {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <div
       className="palette-overlay connection-overlay"
@@ -120,6 +136,55 @@ export function ConnectionManagerDialog({
                 </button>
               );
             })}
+          </div>
+          <div className="connection-transfer-bar">
+            <select
+              value={transferFormat}
+              aria-label="Connection transfer format"
+              onChange={(event) =>
+                onTransferFormatChange(
+                  event.currentTarget.value as ConnectionTransferFormat,
+                )
+              }
+            >
+              {connectionTransferFormatOptions.map((format) => (
+                <option key={format.value} value={format.value}>
+                  {format.label}
+                </option>
+              ))}
+            </select>
+            <button
+              className="icon-button"
+              type="button"
+              title="Import connections"
+              aria-label="Import connections"
+              onClick={() => importInputRef.current?.click()}
+            >
+              <Upload size={15} />
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              title="Export connections"
+              aria-label="Export connections"
+              disabled={profiles.length === 0}
+              onClick={onExportProfiles}
+            >
+              <Download size={15} />
+            </button>
+            <input
+              ref={importInputRef}
+              className="hidden-file-input"
+              type="file"
+              accept=".json,.xml,.csv,.ini,.txt,.conf,.tableplusconnection"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) {
+                  onImportProfiles(file);
+                }
+              }}
+            />
           </div>
           <div className="connection-picker-empty">
             {profiles.length === 0 ? "No matching connections" : null}

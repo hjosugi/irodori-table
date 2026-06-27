@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   normalizeConnectionColor,
+  portableProfile,
   profileFromDraft,
+  redactPasswordFromConnectionUrl,
   repairBuiltinSampleProfile,
   settingsProfileFromJson,
   validateDraft,
@@ -56,6 +58,25 @@ describe("connection profiles", () => {
       password: "",
     });
     expect(profile.color).toBe("#6b7280");
+  });
+
+  it("redacts passwords from portable connection definitions", () => {
+    const profile = portableProfile(
+      draft({
+        mode: "url",
+        url: "postgres://irodori:secret@127.0.0.1:5432/samples?password=secret",
+      }),
+    );
+
+    expect(profile.password).toBe("");
+    expect(profile.url).toBe(
+      "postgres://irodori@127.0.0.1:5432/samples?password=",
+    );
+    expect(
+      redactPasswordFromConnectionUrl(
+        "Server=db;Database=main;User Id=sa;Password=secret",
+      ),
+    ).toBe("Server=db;Database=main;User Id=sa;Password=");
   });
 
   it("keeps duplicate imported IDs unique", () => {

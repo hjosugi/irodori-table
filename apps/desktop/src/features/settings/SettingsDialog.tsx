@@ -49,7 +49,7 @@ import {
   supportedLocales,
   type Locale,
 } from "../../i18n";
-import type { ThemeKind } from "@/theme";
+import { defaultThemeEntries, type ThemeKind } from "@/theme";
 import type {
   WorkbenchSide,
   WorkbenchViewId,
@@ -83,6 +83,9 @@ export interface SettingsDialogProps {
   themeKind: ThemeKind;
   setThemePreference: (value: ThemePreference) => void;
   setThemeKind: (value: ThemeKind) => void;
+  activeDefaultThemeId: string | null;
+  activeDefaultThemeName: string | null;
+  setActiveDefaultThemeId: (value: string | null) => void;
   customThemes: CustomThemeEntry[];
   activeCustomThemeId: string | null;
   activeCustomThemeName: string | null;
@@ -220,6 +223,9 @@ export function SettingsDialog({
   themeKind,
   setThemePreference,
   setThemeKind,
+  activeDefaultThemeId,
+  activeDefaultThemeName,
+  setActiveDefaultThemeId,
   customThemes,
   activeCustomThemeId,
   activeCustomThemeName,
@@ -760,6 +766,28 @@ export function SettingsDialog({
                 </label>
                 <label className="settings-row">
                   <span>
+                    <strong>{t("settings.theme.defaultThemes.title")}</strong>
+                    <small>
+                      {t("settings.theme.defaultThemes.description")}
+                    </small>
+                  </span>
+                  <select
+                    value={activeDefaultThemeId ?? ""}
+                    onChange={(event) =>
+                      setActiveDefaultThemeId(
+                        event.currentTarget.value || null,
+                      )
+                    }
+                  >
+                    {defaultThemeEntries.map((theme) => (
+                      <option key={theme.id} value={theme.id}>
+                        {theme.name} ({theme.kind})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="settings-row">
+                  <span>
                     <strong>{t("settings.theme.savedThemes.title")}</strong>
                     <small>
                       {t("settings.theme.savedThemes.description")}
@@ -789,6 +817,10 @@ export function SettingsDialog({
                         ? t("settings.theme.activeTheme.customDescription", {
                             name: activeCustomThemeName,
                           })
+                        : activeDefaultThemeName
+                          ? t("settings.theme.activeTheme.builtinNameDescription", {
+                              name: activeDefaultThemeName,
+                            })
                         : t("settings.theme.activeTheme.builtinDescription", {
                             kind: themeKind,
                           })}

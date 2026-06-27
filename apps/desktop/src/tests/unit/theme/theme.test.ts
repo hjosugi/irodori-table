@@ -3,13 +3,41 @@ import {
   cssVariables,
   customThemeEntryFromJson,
   darkTheme,
+  defaultThemeById,
+  defaultThemeEntries,
+  defaultThemeEntriesByKind,
+  defaultThemeForKind,
   importThemeJson,
   importVsCodeTheme,
   irodoriThemeFromJson,
   lightTheme,
   themes,
   upsertCustomThemeEntry,
+  vscodeThemeFromIrodoriTheme,
 } from "@/theme";
+
+function relativeLuminance(color: string) {
+  const values = [0, 2, 4].map((offset) => {
+    const channel = Number.parseInt(color.slice(1 + offset, 3 + offset), 16);
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+}
+
+function contrastRatio(foreground: string, background: string) {
+  const lighter = Math.max(
+    relativeLuminance(foreground),
+    relativeLuminance(background),
+  );
+  const darker = Math.min(
+    relativeLuminance(foreground),
+    relativeLuminance(background),
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 describe("theme model", () => {
   it("exposes distinct light and dark themes", () => {
@@ -19,6 +47,59 @@ describe("theme model", () => {
     expect(lightTheme.syntax.keyword).not.toBe(darkTheme.syntax.keyword);
     expect(themes.light).toBe(lightTheme);
     expect(themes.dark).toBe(darkTheme);
+  });
+
+  it("loads curated default themes from JSON", () => {
+    expect(defaultThemeEntries).toHaveLength(40);
+    expect(defaultThemeEntriesByKind.dark).toHaveLength(20);
+    expect(defaultThemeEntriesByKind.light).toHaveLength(20);
+    expect(new Set(defaultThemeEntries.map((theme) => theme.id)).size).toBe(
+      defaultThemeEntries.length,
+    );
+
+    for (const entry of defaultThemeEntries) {
+      expect(entry.name).toBe(entry.theme.name);
+      expect(entry.kind).toBe(entry.theme.kind);
+      expect(entry.inspiredBy.length).toBeGreaterThan(0);
+      expect(entry.licenseNote).toContain("Original Irodori palette");
+      expect(
+        contrastRatio(entry.theme.ui.text, entry.theme.ui.editorBg),
+      ).toBeGreaterThanOrEqual(7);
+      expect(
+        contrastRatio(entry.theme.syntax.comment, entry.theme.ui.editorBg),
+      ).toBeGreaterThanOrEqual(3.5);
+    }
+  });
+
+  it("resolves default themes by id and kind", () => {
+    const darkEntry = defaultThemeEntriesByKind.dark[0];
+    const lightEntry = defaultThemeEntriesByKind.light[0];
+    expect(defaultThemeById(darkEntry.id)).toBe(darkEntry);
+    expect(defaultThemeForKind("dark", darkEntry.id)).toBe(darkEntry.theme);
+    expect(defaultThemeForKind("dark", lightEntry.id)).toBe(darkEntry.theme);
+  });
+
+  it("can project Irodori themes into a VS Code color theme shape", () => {
+    const entry = defaultThemeEntries[0];
+    const vscode = vscodeThemeFromIrodoriTheme(entry.theme);
+    expect(vscode.$schema).toBe("vscode://schemas/color-theme");
+    expect(vscode.name).toBe(entry.name);
+    expect(vscode.type).toBe(entry.kind);
+    expect(vscode.colors["editor.background"]).toBe(entry.theme.ui.editorBg);
+    expect(vscode.colors["editor.foreground"]).toBe(entry.theme.ui.text);
+    expect(
+      vscode.tokenColors.some((rule) =>
+        Array.isArray(rule.scope)
+          ? rule.scope.includes("keyword")
+          : rule.scope === "keyword",
+      ),
+    ).toBe(true);
+    expect(vscode.tokenColors.some((rule) => rule.name === "Comments")).toBe(
+      true,
+    );
+    expect(vscode.semanticTokenColors.keyword).toBe(
+      entry.theme.syntax.keyword,
+    );
   });
 
   it("maps ui colors onto shell CSS custom properties", () => {

@@ -5,7 +5,10 @@ import type {
   ResultGridDraftCell as GridCellDraft,
   ResultSortRule,
 } from "@/features/results";
-import { darkTheme, lightTheme, type ThemeKind } from "@/theme";
+import {
+  defaultThemeForKind,
+  type ThemeKind,
+} from "@/theme";
 
 export function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -63,8 +66,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function builtInTheme(kind: ThemeKind) {
-  return kind === "dark" ? darkTheme : lightTheme;
+export function builtInTheme(kind: ThemeKind, preferredThemeId?: string | null) {
+  return defaultThemeForKind(kind, preferredThemeId);
 }
 
 export function tauriRuntimeError() {

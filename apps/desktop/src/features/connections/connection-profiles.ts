@@ -294,6 +294,47 @@ export function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
   };
 }
 
+export function portableProfile(profile: ConnectionDraft): ConnectionDraft {
+  return {
+    ...sanitizedProfile(profile),
+    url: redactPasswordFromConnectionUrl(profile.url),
+  };
+}
+
+export function redactPasswordFromConnectionUrl(value: string): string {
+  const raw = value.trim();
+  if (!raw) {
+    return "";
+  }
+
+  const jdbcPrefix = raw.toLowerCase().startsWith("jdbc:") ? "jdbc:" : "";
+  const candidate = jdbcPrefix ? raw.slice(5) : raw;
+  const parsed = redactUrlUserInfo(candidate);
+  const withoutUserInfoSecret = parsed ? `${jdbcPrefix}${parsed}` : raw;
+
+  return withoutUserInfoSecret
+    .replace(/([?&;](?:password|pwd|pass|passphrase)=)[^;&\s]*/gi, "$1")
+    .replace(
+      /(^|[;\s])((?:password|pwd|pass|passphrase)=)[^;\s]*/gi,
+      (_match, prefix: string, key: string) => `${prefix}${key}`,
+    );
+}
+
+function redactUrlUserInfo(value: string) {
+  if (!/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value)) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    if (url.password) {
+      url.password = "";
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function repairBuiltinSampleProfile(profile: ConnectionDraft): ConnectionDraft {
   if (profile.id !== "local-pg") {
     return profile;
@@ -367,8 +408,8 @@ export function settingsProfileFromJson(
   };
   const mode: ConnectionInputMode =
     value.mode === "fields" || value.mode === "url" ? value.mode : "url";
-  return repairBuiltinSampleProfile(
-    sanitizedProfile({
+  return portableProfile(
+    repairBuiltinSampleProfile({
       ...defaults,
       id: nonEmptyJsonString(value.id, defaults.id),
       name: nonEmptyJsonString(value.name, defaults.name),
