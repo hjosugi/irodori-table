@@ -69,13 +69,18 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 ## Architecture Direction
 
 - Desktop shell: Tauri v2, with Rust commands for privileged/local work and a web UI for editor and layout.
+- Extracted reusable packages:
+  - `typeship` (`hjosugi/typebridge`): Rust-to-TypeScript command/API generation
+    consumed from crates.io so Serde `camelCase` JSON and frontend types never
+    drift.
+  - `irodori-sql` (`hjosugi/irodori-sql`): SQL dialect metadata, parameter
+    detection, information-schema/metamodel helpers, and schema-diff primitives.
+    Irodori Table consumes it as a version-tagged Git dependency (`v0.2.23`).
 - Core crates:
   - `irodori-core`: connection model, workspace model, command registry, keybinding resolver.
   - `irodori-proxy`: direct, SSH, SOCKS/HTTP, and multi-hop transport composition.
   - `irodori-secure-store`: OS keychain integration and encrypted local config.
 - Supporting crates:
-  - `irodori-typeship`: Rust-to-TypeScript command/API generation so Serde `camelCase` JSON and frontend types never drift.
-  - `irodori-sql`: dialect metadata, parser hooks, introspection cache, formatter/linter adapters.
   - `irodori-graph`: Cypher/graph metadata, result graph model, and graph-completion hooks.
   - `irodori-timeseries`: time range model, frame/downsampling model, and time-series query helper hooks.
   - `irodori-completion`: parser-aware deterministic completion, ranking, snippets, signature help, and optional provider hooks.
@@ -267,6 +272,11 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Keep the crate layout conservative: add modules first, extract crates only when
   a stable shared API, independent test boundary, or multi-host release boundary
   is already visible.
+- Continue repository slimming in dependency order: `irodori-core` only after the
+  job/API contracts settle, `packages/extension-sdk` after generated extension
+  API cadence stabilizes, and samples/docs-site only if their release cadence
+  diverges. Keep DB adapter modules inside the desktop app until connector
+  contracts are stable enough to publish independently.
 - Keep CI/release discipline tight: typegen drift, frontend unit tests, browser
   smoke, Rust tests, security checks, and release notes should be green before
   each cut.

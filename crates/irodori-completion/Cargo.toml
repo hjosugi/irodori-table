@@ -10,4 +10,4 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
-irodori-sql = { path = "../irodori-sql" }
+irodori-sql.workspace = true

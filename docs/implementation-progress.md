@@ -259,6 +259,10 @@ Highlights:
 - **typeship** (Rust→TypeScript type bridge) is consumed from crates.io; the
   `export_typescript_bindings` test renders the desktop TS boundary through it.
   See `docs/type-bridge-handoff.md`.
+- **irodori-sql** has been split into `hjosugi/irodori-sql` and released at
+  `v0.2.23`; this workspace consumes it through a version-tagged Git dependency.
+  The package now owns SQL dialects, parameter detection, metamodel helpers, and
+  schema-diff/migration-preview primitives outside the desktop monorepo.
 
 ## Not done yet (next)
 
@@ -272,9 +276,10 @@ Highlights:
 - **H2**: deferred for now. The production path is likely H2's PostgreSQL-wire
   server mode first, with native/JDBC-style H2 access considered later only if a
   suitable Rust bridge is chosen.
-- **SRC-001a remaining**: per-engine `SqlDialect` (identifier quoting / keywords /
-  paging), a generic `information_schema` metamodel, a two-tier lazy metadata cache,
-  and a cancellation token.
+- **SRC-001a remaining**: the reusable `SqlDialect` and generic
+  `information_schema` metamodel now live in external `irodori-sql`; remaining
+  desktop work is the two-tier lazy metadata cache and cancellation plumbing
+  around per-engine adapters.
 - **Refinements**: Oracle NUMBER → integer representation, date/timestamp formatting,
   and `fetch_more` pagination; rich array decoding. (SQL Server precision-safe
   decimals/temporals/binary is now done — see below.)

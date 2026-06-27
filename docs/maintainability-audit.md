@@ -98,6 +98,29 @@ Next IO split: move each format family (`DelimitedEncoder`, `JsonEncoder`,
 `SqlScriptEncoder`, optional Avro/Parquet encoders) into focused modules while
 preserving the existing public re-exports from `irodori_io::tabular`.
 
+## Repository Slimming Progress
+
+Current status: `irodori-sql` has been extracted into
+`https://github.com/hjosugi/irodori-sql` and tagged as `v0.2.23`. This workspace
+now consumes it through a central `[workspace.dependencies]` Git tag instead of
+keeping `crates/irodori-sql` as a workspace member. The extracted repo carries
+its own README, license, CI, package metadata, history-preserving subtree split,
+and release tag.
+
+Next extraction candidates:
+
+- `irodori-core`: good dependency direction, but wait until job runtime, command
+  envelope, and local API DTOs stop moving every day.
+- `packages/extension-sdk`: good public-package boundary, but split after the
+  generated extension API versioning story is stable.
+- `docs/site` and `samples`: split only if their release cadence diverges from
+  app releases; they do not affect Rust build time materially.
+
+Do not extract DB adapter modules yet. Their connection trait, metadata model,
+permissions/edit capability contract, and per-engine test harness still change
+with the desktop product, so a separate repo would add friction without shrinking
+the long Tauri build.
+
 ## SQL Completion Split Progress
 
 Current status: `apps/desktop/src/sql/completion.ts` remains the main
