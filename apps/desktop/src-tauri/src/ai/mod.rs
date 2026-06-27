@@ -20,8 +20,8 @@ use irodori_core::{
     JobLogLevel, JobRuntime, JobSpec, Result as IrodoriResult,
 };
 use irodori_generate::{
-    generate, GenColumn, GenForeignKey, GenSchema, GenTable, GenerateRequest, GrammarModel,
-    RelationKind,
+    generate, CommandConfig, CommandModel, GenColumn, GenForeignKey, GenSchema, GenTable,
+    GenerateRequest, GrammarModel, HttpConfig, OllamaModel, OpenAiCompatModel, RelationKind,
 };
 
 use crate::db::{DbEngine, DbState};
@@ -41,6 +41,46 @@ pub struct AiState {
 struct AiInner {
     model: Option<Arc<dyn GrammarModel>>,
     loaded_path: Option<PathBuf>,
+    provider: AiProviderConfig,
+}
+
+/// Which backend powers generation. The pipeline (schema projection → planning →
+/// validate/repair) is identical for all; only the model differs, and the verify
+/// gate keeps every one of them safe.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum AiProviderKind {
+    /// Embedded llama.cpp (grammar-constrained; needs the `llama` build).
+    #[default]
+    Local,
+    /// A local Ollama server.
+    Ollama,
+    /// Any OpenAI-compatible chat API (OpenAI, Azure, OpenRouter, gateways, …).
+    OpenaiCompat,
+    /// An external CLI (Claude Code, Codex, Copilot, any command).
+    Command,
+}
+
+/// Provider selection. `apiKey` is held in memory only and never returned by
+/// `ai_get_provider`; persist it via the OS keychain (`security_store_secret`).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct AiProviderConfig {
+    pub kind: AiProviderKind,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub endpoint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub api_key: Option<String>,
+    #[serde(default)]
+    pub program: String,
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 /// Result of a generation request.
@@ -108,7 +148,7 @@ pub async fn ai_generate_sql(
         ));
     }
 
-    let model = ensure_model(&ai, &app)?;
+    let model = build_provider(&ai, &app)?;
 
     let outcome = tokio::task::spawn_blocking(move || {
         let dialect = engine.dialect();
@@ -175,9 +215,84 @@ pub async fn ai_download_model(
     Ok(job_id)
 }
 
+/// Set the active generation provider (local model, Ollama, an HTTP API, or a CLI).
+#[tauri::command]
+pub fn ai_set_provider(ai: State<'_, AiState>, config: AiProviderConfig) -> IrodoriResult<()> {
+    let mut inner = ai
+        .inner
+        .lock()
+        .map_err(|_| IrodoriError::new(IrodoriErrorKind::Internal, "ai state poisoned"))?;
+    inner.provider = config;
+    Ok(())
+}
+
+/// Get the active provider with the API key stripped.
+#[tauri::command]
+pub fn ai_get_provider(ai: State<'_, AiState>) -> IrodoriResult<AiProviderConfig> {
+    let inner = ai
+        .inner
+        .lock()
+        .map_err(|_| IrodoriError::new(IrodoriErrorKind::Internal, "ai state poisoned"))?;
+    let mut config = inner.provider.clone();
+    config.api_key = None;
+    Ok(config)
+}
+
 // ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
+
+/// Build the configured provider. Local is cached (mmapped model); the HTTP and
+/// CLI providers are cheap to construct, so they're built per request.
+fn build_provider(ai: &AiState, app: &AppHandle) -> IrodoriResult<Arc<dyn GrammarModel>> {
+    let config = ai
+        .inner
+        .lock()
+        .map(|inner| inner.provider.clone())
+        .unwrap_or_default();
+
+    match config.kind {
+        AiProviderKind::Local => ensure_model(ai, app),
+        AiProviderKind::Ollama => {
+            if config.model.trim().is_empty() {
+                return Err(IrodoriError::validation("an Ollama model name is required"));
+            }
+            let endpoint = config
+                .endpoint
+                .unwrap_or_else(|| "http://localhost:11434".to_string());
+            let model: Arc<dyn GrammarModel> =
+                Arc::new(OllamaModel::new(HttpConfig::new(endpoint, config.model)));
+            Ok(model)
+        }
+        AiProviderKind::OpenaiCompat => {
+            let endpoint = config
+                .endpoint
+                .ok_or_else(|| IrodoriError::validation("an API endpoint is required"))?;
+            if config.model.trim().is_empty() {
+                return Err(IrodoriError::validation("a model id is required"));
+            }
+            let mut http = HttpConfig::new(endpoint, config.model);
+            if let Some(key) = config.api_key {
+                http = http.with_api_key(key);
+            }
+            let model: Arc<dyn GrammarModel> = Arc::new(OpenAiCompatModel::new(http));
+            Ok(model)
+        }
+        AiProviderKind::Command => {
+            if config.program.trim().is_empty() {
+                return Err(IrodoriError::validation("a command program is required"));
+            }
+            let label = config.program.clone();
+            let model: Arc<dyn GrammarModel> =
+                Arc::new(CommandModel::new(CommandConfig::new(
+                    config.program,
+                    config.args,
+                    label,
+                )));
+            Ok(model)
+        }
+    }
+}
 
 fn model_path(app: &AppHandle) -> IrodoriResult<PathBuf> {
     let dir = app.path().app_data_dir().map_err(|e| {

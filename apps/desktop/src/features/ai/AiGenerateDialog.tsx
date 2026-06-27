@@ -3,7 +3,11 @@ import {
   aiDownloadModel,
   aiEngineStatus,
   aiGenerateSql,
+  aiGetProvider,
+  aiSetProvider,
   type AiEngineStatus,
+  type AiProviderConfig,
+  type AiProviderKind,
   type DbEngine,
 } from "@/generated/irodori-api";
 import { errorMessage, isIrodoriError } from "@/core/errors";
@@ -22,11 +26,27 @@ export type AiGenerateDialogProps = {
   notify: (kind: ActionNoticeKind, title: string, detail?: string) => void;
 };
 
+const PROVIDER_LABELS: Record<AiProviderKind, string> = {
+  local: "Local (embedded model)",
+  ollama: "Ollama (local server)",
+  openaiCompat: "OpenAI-compatible API",
+  command: "CLI (Claude Code / Codex / any)",
+};
+
+const EMPTY_PROVIDER: AiProviderConfig = {
+  kind: "local",
+  model: "",
+  program: "",
+  args: [],
+};
+
 /**
- * Natural-language → SQL prompt. Calls the local, grammar-constrained generator
- * (`ai_generate_sql`) and inserts the result into the editor — it never runs the
- * SQL. When the engine isn't built or the model isn't downloaded, it explains how
- * to enable it (and can kick off the background download).
+ * Natural-language → SQL prompt with a pluggable backend. Calls the
+ * grammar-constrained generator (`ai_generate_sql`) and inserts the result into
+ * the editor — it never runs the SQL. The provider section connects a stronger or
+ * external model (Ollama, any OpenAI-compatible API, or a CLI agent); every
+ * provider goes through the same schema-validation gate, so output is always
+ * checked against the real schema.
  */
 export function AiGenerateDialog({
   open,
@@ -41,15 +61,19 @@ export function AiGenerateDialog({
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<AiEngineStatus | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [provider, setProvider] = useState<AiProviderConfig>(EMPTY_PROVIDER);
+  const [showProvider, setShowProvider] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [savingProvider, setSavingProvider] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
-    void aiEngineStatus()
-      .then(setStatus)
-      .catch(() => setStatus(null));
-    // Focus the prompt when the dialog opens.
+    void aiEngineStatus().then(setStatus).catch(() => setStatus(null));
+    void aiGetProvider()
+      .then((config) => setProvider({ ...EMPTY_PROVIDER, ...config }))
+      .catch(() => {});
     const id = window.setTimeout(() => textareaRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
   }, [open]);
@@ -70,11 +94,8 @@ export function AiGenerateDialog({
       setPrompt("");
       onClose();
     } catch (err) {
-      // A missing model is recoverable: surface the download affordance.
       if (isIrodoriError(err) && err.kind === "notFound") {
-        void aiEngineStatus()
-          .then(setStatus)
-          .catch(() => {});
+        void aiEngineStatus().then(setStatus).catch(() => {});
       }
       setError(errorMessage(err));
     } finally {
@@ -87,11 +108,7 @@ export function AiGenerateDialog({
     setError(null);
     try {
       await aiDownloadModel();
-      notify(
-        "info",
-        "Model download started",
-        "Watch progress in the jobs dashboard.",
-      );
+      notify("info", "Model download started", "Watch progress in the jobs dashboard.");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -99,10 +116,30 @@ export function AiGenerateDialog({
     }
   }, [notify]);
 
+  const saveProvider = useCallback(async () => {
+    setSavingProvider(true);
+    setError(null);
+    try {
+      const config: AiProviderConfig = {
+        ...provider,
+        // API key is sent transiently; never echoed back by the backend.
+        apiKey: apiKey.trim() ? apiKey.trim() : undefined,
+      };
+      await aiSetProvider(config);
+      setApiKey("");
+      notify("success", "Provider updated", PROVIDER_LABELS[provider.kind]);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingProvider(false);
+    }
+  }, [provider, apiKey, notify]);
+
   if (!open) return null;
 
-  const needsDownload = status ? status.compiled && !status.modelPresent : false;
-  const notCompiled = status ? !status.compiled : false;
+  const needsDownload =
+    provider.kind === "local" && status ? status.compiled && !status.modelPresent : false;
+  const notCompiled = provider.kind === "local" && status ? !status.compiled : false;
 
   return (
     <div
@@ -117,12 +154,7 @@ export function AiGenerateDialog({
       <div className="ai-generate-panel">
         <header className="ai-generate-header">
           <span className="ai-generate-title">Generate SQL</span>
-          <button
-            type="button"
-            className="ai-generate-close"
-            aria-label="Close"
-            onClick={onClose}
-          >
+          <button type="button" className="ai-generate-close" aria-label="Close" onClick={onClose}>
             ×
           </button>
         </header>
@@ -146,8 +178,8 @@ export function AiGenerateDialog({
 
         {notCompiled && (
           <p className="ai-generate-note">
-            Local generation isn’t in this build. Rebuild the desktop app with{" "}
-            <code>--features llama</code> to enable it.
+            The embedded model isn’t in this build — rebuild with <code>--features llama</code>, or
+            pick another provider below (Ollama / API / CLI work without it).
           </p>
         )}
         {needsDownload && (
@@ -165,8 +197,113 @@ export function AiGenerateDialog({
         )}
         {error && <p className="ai-generate-error">{error}</p>}
 
+        <div className="ai-generate-provider">
+          <button
+            type="button"
+            className="ai-generate-link"
+            onClick={() => setShowProvider((v) => !v)}
+          >
+            {showProvider ? "▾" : "▸"} Model provider: {PROVIDER_LABELS[provider.kind]}
+          </button>
+          {showProvider && (
+            <div className="ai-generate-provider-body">
+              <label className="ai-generate-field">
+                <span>Provider</span>
+                <select
+                  value={provider.kind}
+                  onChange={(e) =>
+                    setProvider((p) => ({ ...p, kind: e.target.value as AiProviderKind }))
+                  }
+                >
+                  {(Object.keys(PROVIDER_LABELS) as AiProviderKind[]).map((kind) => (
+                    <option key={kind} value={kind}>
+                      {PROVIDER_LABELS[kind]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {(provider.kind === "ollama" || provider.kind === "openaiCompat") && (
+                <label className="ai-generate-field">
+                  <span>Model</span>
+                  <input
+                    value={provider.model}
+                    placeholder={provider.kind === "ollama" ? "qwen2.5-coder" : "gpt-4o-mini"}
+                    onChange={(e) => setProvider((p) => ({ ...p, model: e.target.value }))}
+                  />
+                </label>
+              )}
+              {(provider.kind === "ollama" || provider.kind === "openaiCompat") && (
+                <label className="ai-generate-field">
+                  <span>Endpoint</span>
+                  <input
+                    value={provider.endpoint ?? ""}
+                    placeholder={
+                      provider.kind === "ollama"
+                        ? "http://localhost:11434"
+                        : "https://api.openai.com"
+                    }
+                    onChange={(e) =>
+                      setProvider((p) => ({ ...p, endpoint: e.target.value || undefined }))
+                    }
+                  />
+                </label>
+              )}
+              {provider.kind === "openaiCompat" && (
+                <label className="ai-generate-field">
+                  <span>API key</span>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    placeholder="sk-… (kept in memory only)"
+                    onChange={(e) => setApiKey(e.target.value)}
+                  />
+                </label>
+              )}
+              {provider.kind === "command" && (
+                <label className="ai-generate-field">
+                  <span>Program</span>
+                  <input
+                    value={provider.program}
+                    placeholder="claude"
+                    onChange={(e) => setProvider((p) => ({ ...p, program: e.target.value }))}
+                  />
+                </label>
+              )}
+              {provider.kind === "command" && (
+                <label className="ai-generate-field">
+                  <span>Args</span>
+                  <input
+                    value={provider.args.join(" ")}
+                    placeholder="-p   (use {prompt} as a placeholder, else prompt is piped to stdin)"
+                    onChange={(e) =>
+                      setProvider((p) => ({
+                        ...p,
+                        args: e.target.value.split(/\s+/).filter(Boolean),
+                      }))
+                    }
+                  />
+                </label>
+              )}
+
+              <div className="ai-generate-actions">
+                <button
+                  type="button"
+                  className="ai-generate-button"
+                  onClick={() => void saveProvider()}
+                  disabled={savingProvider}
+                >
+                  {savingProvider ? "Saving…" : "Save provider"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <footer className="ai-generate-footer">
-          <span className="ai-generate-hint">⌘/Ctrl+Enter to generate · inserts into the editor, never runs</span>
+          <span className="ai-generate-hint">
+            ⌘/Ctrl+Enter to generate · inserts into the editor, never runs
+          </span>
           <div className="ai-generate-actions">
             <button type="button" className="ai-generate-button" onClick={onClose}>
               Cancel

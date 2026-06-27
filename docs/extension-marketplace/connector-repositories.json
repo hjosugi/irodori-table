@@ -2,75 +2,42 @@
   "publisher": "irodori",
   "visibility": "public",
   "repositories": [
-    {
-      "name": "irodori-extension-duckdb",
-      "extensionId": "irodori.duckdb",
-      "engines": ["duckdb", "motherduck"]
-    },
-    {
-      "name": "irodori-extension-hive",
-      "extensionId": "irodori.hive",
-      "engines": ["hive"]
-    },
-    {
-      "name": "irodori-extension-iceberg",
-      "extensionId": "irodori.iceberg",
-      "engines": ["iceberg", "s3Tables", "athena"]
-    },
-    {
-      "name": "irodori-extension-cloud-spanner",
-      "extensionId": "irodori.cloud-spanner",
-      "engines": ["cloudSpanner"]
-    },
-    {
-      "name": "irodori-extension-kv-store",
-      "extensionId": "irodori.kv-store",
-      "engines": ["redis", "kvStore", "dynamodb"]
-    },
-    {
-      "name": "irodori-extension-snowflake",
-      "extensionId": "irodori.snowflake",
-      "engines": ["snowflake"]
-    },
-    {
-      "name": "irodori-extension-bigquery",
-      "extensionId": "irodori.bigquery",
-      "engines": ["bigquery"]
-    },
-    {
-      "name": "irodori-extension-mongodb",
-      "extensionId": "irodori.mongodb",
-      "engines": ["mongodb"]
-    },
-    {
-      "name": "irodori-extension-clickhouse",
-      "extensionId": "irodori.clickhouse",
-      "engines": ["clickhouse"]
-    },
-    {
-      "name": "irodori-extension-cassandra",
-      "extensionId": "irodori.cassandra",
-      "engines": ["cassandra", "scylladb"]
-    },
-    {
-      "name": "irodori-extension-neo4j",
-      "extensionId": "irodori.neo4j",
-      "engines": ["neo4j", "memgraph"]
-    },
-    {
-      "name": "irodori-extension-sqlserver",
-      "extensionId": "irodori.sqlserver",
-      "engines": ["sqlserver"]
-    },
-    {
-      "name": "irodori-extension-oracle",
-      "extensionId": "irodori.oracle",
-      "engines": ["oracle"]
-    },
-    {
-      "name": "irodori-extension-object-store",
-      "extensionId": "irodori.object-store",
-      "engines": ["objectStore", "deltaLake", "hudi"]
-    }
+    { "name": "irodori-extension-duckdb", "extensionId": "irodori.duckdb", "engines": ["duckdb"] },
+    { "name": "irodori-extension-motherduck", "extensionId": "irodori.motherduck", "engines": ["motherduck"] },
+    { "name": "irodori-extension-hive", "extensionId": "irodori.hive", "engines": ["hive"] },
+    { "name": "irodori-extension-iceberg", "extensionId": "irodori.iceberg", "engines": ["iceberg"] },
+    { "name": "irodori-extension-s3-tables", "extensionId": "irodori.s3-tables", "engines": ["s3Tables"] },
+    { "name": "irodori-extension-athena", "extensionId": "irodori.athena", "engines": ["athena"] },
+    { "name": "irodori-extension-object-store", "extensionId": "irodori.object-store", "engines": ["objectStore"] },
+    { "name": "irodori-extension-delta-lake", "extensionId": "irodori.delta-lake", "engines": ["deltaLake"] },
+    { "name": "irodori-extension-hudi", "extensionId": "irodori.hudi", "engines": ["hudi"] },
+    { "name": "irodori-extension-cloud-spanner", "extensionId": "irodori.cloud-spanner", "engines": ["cloudSpanner"] },
+    { "name": "irodori-extension-redis", "extensionId": "irodori.redis", "engines": ["redis"] },
+    { "name": "irodori-extension-kv-store", "extensionId": "irodori.kv-store", "engines": ["kvStore"] },
+    { "name": "irodori-extension-dynamodb", "extensionId": "irodori.dynamodb", "engines": ["dynamodb"] },
+    { "name": "irodori-extension-snowflake", "extensionId": "irodori.snowflake", "engines": ["snowflake"] },
+    { "name": "irodori-extension-bigquery", "extensionId": "irodori.bigquery", "engines": ["bigquery"] },
+    { "name": "irodori-extension-bigtable", "extensionId": "irodori.bigtable", "engines": ["bigtable"] },
+    { "name": "irodori-extension-mongodb", "extensionId": "irodori.mongodb", "engines": ["mongodb"] },
+    { "name": "irodori-extension-clickhouse", "extensionId": "irodori.clickhouse", "engines": ["clickhouse"] },
+    { "name": "irodori-extension-cassandra", "extensionId": "irodori.cassandra", "engines": ["cassandra"] },
+    { "name": "irodori-extension-scylladb", "extensionId": "irodori.scylladb", "engines": ["scylladb"] },
+    { "name": "irodori-extension-neo4j", "extensionId": "irodori.neo4j", "engines": ["neo4j"] },
+    { "name": "irodori-extension-memgraph", "extensionId": "irodori.memgraph", "engines": ["memgraph"] },
+    { "name": "irodori-extension-elasticsearch", "extensionId": "irodori.elasticsearch", "engines": ["elasticsearch"] },
+    { "name": "irodori-extension-opensearch", "extensionId": "irodori.opensearch", "engines": ["openSearch"] },
+    { "name": "irodori-extension-sqlserver", "extensionId": "irodori.sqlserver", "engines": ["sqlserver"] },
+    { "name": "irodori-extension-oracle", "extensionId": "irodori.oracle", "engines": ["oracle"] },
+    { "name": "irodori-extension-influxdb", "extensionId": "irodori.influxdb", "engines": ["influxdb"] },
+    { "name": "irodori-extension-qdrant", "extensionId": "irodori.qdrant", "engines": ["qdrant"] },
+    { "name": "irodori-extension-milvus", "extensionId": "irodori.milvus", "engines": ["milvus"] },
+    { "name": "irodori-extension-pinecone", "extensionId": "irodori.pinecone", "engines": ["pinecone"] },
+    { "name": "irodori-extension-couchbase", "extensionId": "irodori.couchbase", "engines": ["couchbase"] },
+    { "name": "irodori-extension-arangodb", "extensionId": "irodori.arangodb", "engines": ["arangodb"] },
+    { "name": "irodori-extension-questdb", "extensionId": "irodori.questdb", "engines": ["questdb"] },
+    { "name": "irodori-extension-iotdb", "extensionId": "irodori.iotdb", "engines": ["iotdb"] },
+    { "name": "irodori-extension-trino-presto", "extensionId": "irodori.trino-presto", "engines": ["trinoPresto"] },
+    { "name": "irodori-extension-firebird", "extensionId": "irodori.firebird", "engines": ["firebird"] },
+    { "name": "irodori-extension-databricks", "extensionId": "irodori.databricks", "engines": ["databricks"] }
   ]
 }

@@ -28,7 +28,9 @@ irodori-proxy = { path = "../../../crates/irodori-proxy" }
 irodori-secure-store = { path = "../../../crates/irodori-secure-store" }
 irodori-sql.workspace = true
 irodori-completion = { path = "../../../crates/irodori-completion" }
-irodori-generate = { path = "../../../crates/irodori-generate" }
+# `http` (Ollama + OpenAI-compatible APIs) and the CLI provider are always on so
+# external/subscription models work without the heavy embedded `llama` build.
+irodori-generate = { path = "../../../crates/irodori-generate", features = ["http"] }
 irodori-knowledge.workspace = true
 sql-dialect-fmt-formatter = { path = "../../../../../snowflake-formatter/crates/sql-dialect-fmt-formatter" }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
@@ -55,13 +57,15 @@ sqlx = { version = "0.9", default-features = false, features = [
 futures-util = "0.3"
 # Object-safe async trait for the per-engine `Connection` abstraction + registry.
 async-trait = "0.1"
-# MongoDB (document store) — proves the Connection trait extends beyond SQL.
-mongodb = "3"
+# Optional connector implementations. Long-term these move to installable
+# extensions; keeping them feature-gated here avoids compiling them in normal
+# desktop builds while preserving a local escape hatch.
+mongodb = { version = "3", optional = true }
 # SQL Server via the pure-Rust TDS driver (no native client needed). `chrono`
 # turns on precision-safe temporal decode (datetime/datetime2/date/time/
 # datetimeoffset -> chrono types); exact numerics use tiberius' built-in
 # `Numeric` (no extra feature) so DECIMAL/NUMERIC/MONEY keep full precision.
-tiberius = { version = "0.12", default-features = false, features = [
+tiberius = { version = "0.12", optional = true, default-features = false, features = [
     "tds73",
     "rustls",
     "chrono",
@@ -70,19 +74,43 @@ tokio-util = { version = "0.7", features = ["compat"] }
 # DuckDB is embedded C++ (heavy bundled build) so it is feature-gated and off by
 # default: build with `--features duckdb`.
 duckdb = { version = "1", optional = true, features = ["bundled"] }
-oracle-rs = "0.1.7"
+oracle-rs = { version = "0.1.7", optional = true }
 reqwest = { version = "0.13.4", features = ["json", "stream"] }
-neo4rs = "0.8.0"
+neo4rs = { version = "0.8.0", optional = true }
 tauri-plugin-dialog = "2.7.1"
-redis = { version = "1.2.4", default-features = false, features = ["tokio-comp"] }
-scylla = { version = "1.7" }
-openssl = { version = "0.10", features = ["vendored"] }
+redis = { version = "1.2.4", optional = true, default-features = false, features = ["tokio-comp"] }
+scylla = { version = "1.7", optional = true }
+openssl = { version = "0.10", optional = true, features = ["vendored"] }
 
 [features]
 default = []
 # Connector extensions should provide DuckDB long-term. This feature remains as
 # a local escape hatch while the extension host grows native-driver support.
 duckdb = ["dep:duckdb"]
+cassandra = ["dep:scylla"]
+mongo = ["dep:mongodb"]
+neo4j = ["dep:neo4rs"]
+oracle = ["dep:oracle-rs"]
+redis-connector = ["dep:redis"]
+snowflake = []
+bigquery = ["dep:openssl"]
+bigtable = ["dep:openssl"]
+clickhouse = []
+influxdb = []
+sqlserver = ["dep:tiberius", "tokio-util/compat"]
+legacy-connectors = [
+    "bigquery",
+    "bigtable",
+    "cassandra",
+    "clickhouse",
+    "influxdb",
+    "mongo",
+    "neo4j",
+    "oracle",
+    "redis-connector",
+    "snowflake",
+    "sqlserver",
+]
 # Embedded local SQL generation (compiles llama.cpp). Off by default so standard
 # builds stay light; the `ai_generate_sql` command returns `unsupported` without it.
 llama = ["irodori-generate/llama"]

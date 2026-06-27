@@ -228,7 +228,9 @@ pub fn run() {
             security::network_diagnose_transport,
             ai::ai_generate_sql,
             ai::ai_engine_status,
-            ai::ai_download_model
+            ai::ai_download_model,
+            ai::ai_set_provider,
+            ai::ai_get_provider
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -298,6 +300,8 @@ mod typegen {
             .decl(&decl::<security::DesktopSecretPurpose>())
             .decl(&decl::<ai::AiGenerateResult>())
             .decl(&decl::<ai::AiEngineStatus>())
+            .decl(&decl::<ai::AiProviderKind>())
+            .decl(&decl::<ai::AiProviderConfig>())
             .decl(&decl::<DbObjectKind>())
             .decl(&decl::<ConnectionStatus>())
             .decl(&decl::<DbObject>())
@@ -549,6 +553,11 @@ mod typegen {
             )
             .command(Command::new("ai_engine_status", "AiEngineStatus"))
             .command(Command::returning("ai_download_model", TsType::string()))
+            .command(
+                Command::returning("ai_set_provider", TsType::void())
+                    .arg(Arg::new("config", TsType::named("AiProviderConfig"))),
+            )
+            .command(Command::new("ai_get_provider", "AiProviderConfig"))
     }
 
     /// Locally (and through `npm run typegen`) this regenerates the committed

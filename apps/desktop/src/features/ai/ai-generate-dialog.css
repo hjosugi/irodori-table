@@ -92,6 +92,45 @@
   cursor: default;
 }
 
+.ai-generate-provider {
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  padding-top: 8px;
+}
+
+.ai-generate-provider-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ai-generate-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.ai-generate-field > span {
+  width: 72px;
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+.ai-generate-field select,
+.ai-generate-field input {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  background: var(--input-background, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+}
+.ai-generate-field select:focus,
+.ai-generate-field input:focus {
+  outline: none;
+  border-color: var(--accent, #5b9dff);
+}
+
 .ai-generate-footer {
   display: flex;
   align-items: center;
