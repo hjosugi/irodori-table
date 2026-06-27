@@ -19,7 +19,6 @@ function createHandler(calls: string[]) {
     toggleSidebar: () => calls.push("sidebar"),
     toggleCompletion: () => calls.push("completion"),
     toggleHistory: () => calls.push("history-toggle"),
-    toggleSidebarSide: () => calls.push("sidebar-side"),
     zoomIn: () => calls.push("zoom-in"),
     zoomOut: () => calls.push("zoom-out"),
     zoomReset: () => calls.push("zoom-reset"),
@@ -89,6 +88,7 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.sidebar.toggle");
     runCommand("view.completion.toggle");
     runCommand("view.history.toggle");
+    runCommand("view.sidebar.swap");
     runCommand("view.zoomIn");
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
@@ -106,6 +106,7 @@ describe("createWorkbenchCommandHandler", () => {
       "sidebar",
       "completion",
       "history-toggle",
+      "sidebar-side",
       "zoom-in",
       "zoom-out",
       "zoom-reset",

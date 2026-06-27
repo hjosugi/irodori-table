@@ -10,8 +10,8 @@ import {
   Columns3,
   Database,
   Folder,
+  GitBranch,
   History,
-  KeyRound,
   ListPlus,
   MoreHorizontal,
   PanelLeftOpen,
@@ -33,17 +33,19 @@ import {
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "@/features/connections";
+import type { WorkbenchSide, WorkbenchViewId } from "../types";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
-type SidebarViewId = "objectBrowser" | "completion" | "queryHistory";
+type SidebarViewId = WorkbenchViewId;
 
 type SidebarProps = {
   sidebarOpen: boolean;
-  sidebarSide: "left" | "right";
+  sidebarSide: WorkbenchSide;
   activeView: SidebarViewId;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
+  gitPanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
   activeConnectionId: string;
@@ -85,6 +87,7 @@ export function Sidebar({
   activeView,
   completionPanel,
   historyPanel,
+  gitPanel,
   connections,
   profileById,
   activeConnectionId,
@@ -255,6 +258,18 @@ export function Sidebar({
             >
               <History size={14} />
               <span>History</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={activeView === "git" ? "active" : undefined}
+              aria-selected={activeView === "git"}
+              title="Git"
+              aria-label="Git"
+              onClick={() => onSelectView("git")}
+            >
+              <GitBranch size={14} />
+              <span>Git</span>
             </button>
             <button
               className="sidebar-side-button"
@@ -463,50 +478,25 @@ export function Sidebar({
                               ) : null}
                             </summary>
                             <div className="metadata-children">
-                              {object.kind === "table" ? (
-                                <button
-                                  className="metadata-row"
-                                  type="button"
-                                  title={`Design ${object.name}`}
-                                  onClick={() => onOpenObjectSchemaDesigner(object)}
-                                >
-                                  <KeyRound size={14} />
-                                  <span>Design table</span>
-                                  <small>alter / index / FK</small>
-                                </button>
-                              ) : null}
-                              {object.columns.map((column) => (
-                                <button
-                                  className="metadata-row"
-                                  key={`${object.schema}.${object.name}.${column.name}`}
-                                  type="button"
-                                  title={`${column.name}: ${column.dataType}`}
-                                >
-                                  <Columns3 size={14} />
-                                  <span>{column.name}</span>
-                                  <small>
-                                    {column.dataType}
-                                    {column.nullable ? "" : " not null"}
-                                  </small>
-                                </button>
-                              ))}
-                              {object.indexes.map((index) => (
-                                <button
-                                  className="metadata-row"
-                                  key={`${object.schema}.${object.name}.${index.name}`}
-                                  type="button"
-                                  title={`${index.name}: ${index.columns.join(", ")}`}
-                                >
-                                  <KeyRound size={14} />
-                                  <span>{index.name}</span>
-                                  <small>
-                                    {index.unique ? "unique" : "index"}
-                                    {index.columns.length > 0
-                                      ? ` · ${index.columns.join(", ")}`
-                                      : ""}
-                                  </small>
-                                </button>
-                              ))}
+                              {object.columns.length > 0 ? (
+                                object.columns.map((column) => (
+                                  <button
+                                    className="metadata-row field-row"
+                                    key={`${object.schema}.${object.name}.${column.name}`}
+                                    type="button"
+                                    title={`${column.name}: ${column.dataType}`}
+                                  >
+                                    <Columns3 size={13} />
+                                    <span>{column.name}</span>
+                                    <small>
+                                      {column.dataType}
+                                      {column.nullable ? "" : " not null"}
+                                    </small>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="metadata-empty">No fields</div>
+                              )}
                             </div>
                           </details>
                         );
@@ -540,7 +530,11 @@ export function Sidebar({
           </section>
           ) : (
             <div className="sidebar-panel">
-              {activeView === "completion" ? completionPanel : historyPanel}
+              {activeView === "completion"
+                ? completionPanel
+                : activeView === "queryHistory"
+                  ? historyPanel
+                  : gitPanel}
             </div>
           )}
           <div

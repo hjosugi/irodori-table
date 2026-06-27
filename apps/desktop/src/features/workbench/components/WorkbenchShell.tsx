@@ -14,6 +14,7 @@ import {
   ListPlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Table2,
 } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
 import {
@@ -41,6 +42,8 @@ type WorkbenchShellProps = {
   sidebarOpen: boolean;
   completionOpen: boolean;
   historyOpen: boolean;
+  gitOpen: boolean;
+  sidebarSide: "left" | "right";
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -67,6 +70,7 @@ type WorkbenchShellProps = {
   onScopeFocus: (event: FocusEvent<HTMLElement>) => void;
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
   onToggleSidebar: () => void;
+  onShowObjectBrowser: () => void;
   onToggleCompletion: () => void;
   onToggleHistory: () => void;
   onToggleTheme?: () => void;
@@ -86,6 +90,8 @@ export function WorkbenchShell({
   sidebarOpen,
   completionOpen,
   historyOpen,
+  gitOpen,
+  sidebarSide,
   sidebarWidth,
   inspectorWidth,
   resultsHeight,
@@ -110,6 +116,7 @@ export function WorkbenchShell({
   onScopeFocus,
   onScopeMouseDown,
   onToggleSidebar,
+  onShowObjectBrowser,
   onToggleCompletion,
   onToggleHistory,
   onOpenConnectionManager,
@@ -328,17 +335,17 @@ export function WorkbenchShell({
         <div className="toolbar-spacer" />
         <button
           className={
-            sidebarOpen && !completionOpen && !historyOpen
+            sidebarOpen && !completionOpen && !historyOpen && !gitOpen
               ? "icon-button active"
               : "icon-button"
           }
           type="button"
           title="Tables"
           aria-label="Tables"
-          aria-pressed={sidebarOpen && !completionOpen && !historyOpen}
-          onClick={() => onRunCommand("view.sidebar.toggle")}
+          aria-pressed={sidebarOpen && !completionOpen && !historyOpen && !gitOpen}
+          onClick={onShowObjectBrowser}
         >
-          <PanelLeftOpen size={15} />
+          <Table2 size={15} />
         </button>
         <button
           className={completionOpen ? "icon-button active" : "icon-button"}
@@ -361,10 +368,11 @@ export function WorkbenchShell({
           <History size={15} />
         </button>
         <button
-          className="icon-button"
+          className={gitOpen ? "icon-button active" : "icon-button"}
           type="button"
-          title="Git panel"
-          aria-label="Git panel"
+          title={gitOpen ? "Hide Git panel" : "Show Git panel"}
+          aria-label={gitOpen ? "Hide Git panel" : "Show Git panel"}
+          aria-pressed={gitOpen}
           onClick={onOpenGit}
         >
           <GitBranch size={15} />
@@ -375,6 +383,7 @@ export function WorkbenchShell({
         className={[
           "workspace",
           sidebarOpen ? null : "sidebar-collapsed",
+          `sidebar-${sidebarSide}`,
         ]
           .filter(Boolean)
           .join(" ")}

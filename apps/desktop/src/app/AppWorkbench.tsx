@@ -443,6 +443,7 @@ export function AppWorkbench() {
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
+  const sidebarSide = useWorkbenchStore((state) => state.sidebarSide);
   const setSidebarSide = useWorkbenchStore((state) => state.setSidebarSide);
   const viewPlacements = useWorkbenchStore((state) => state.viewPlacements);
   const setViewPlacement = useWorkbenchStore((state) => state.setViewPlacement);
@@ -475,11 +476,6 @@ export function AppWorkbench() {
   const setEditorSplitPercent = useWorkbenchStore(
     (state) => state.setEditorSplitPercent,
   );
-  const sidebarSide = "left" as const;
-  const effectiveViewPlacements = useMemo(
-    () => ({ ...viewPlacements, objectBrowser: "left" as const }),
-    [viewPlacements],
-  );
   const { beginPanelResize, onPanelResizeKey } = createPanelResizeController({
     sidebarSide,
     sidebarWidth,
@@ -498,9 +494,9 @@ export function AppWorkbench() {
     editorSplitMode === "single" ? "primary" : preferredEditorGroup;
   const [running, setRunning] = useState(false);
 
-  function setPrimarySidebarSide(_side: "left" | "right") {
-    setSidebarSide("left");
-    setViewPlacement("objectBrowser", "left");
+  function setPrimarySidebarSide(side: "left" | "right") {
+    setSidebarSide(side);
+    setViewPlacement("objectBrowser", side);
   }
 
   function setActiveSidebarView(
@@ -1972,8 +1968,6 @@ export function AppWorkbench() {
     toggleSidebar: () => setSidebarOpen((open) => !open),
     toggleCompletion: () => toggleSidebarView("completion"),
     toggleHistory: () => toggleSidebarView("queryHistory"),
-    toggleSidebarSide: () =>
-      setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left"),
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
     zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
@@ -2088,7 +2082,7 @@ export function AppWorkbench() {
           uiZoom,
           sidebarOpen,
           sidebarSide,
-          viewPlacements: effectiveViewPlacements,
+          viewPlacements,
           viewVisibility,
           sidebarWidth,
           inspectorWidth,
@@ -4111,6 +4105,7 @@ export function AppWorkbench() {
         sidebarOpen={sidebarOpen}
         completionOpen={completionOpen}
         historyOpen={historyOpen}
+        sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
         resultsHeight={resultsHeight}
@@ -4210,9 +4205,6 @@ export function AppWorkbench() {
             onSetObjectActionMenu={setObjectActionMenu}
             onSelectView={setActiveSidebarView}
             onCloseSidebar={() => setSidebarOpen(false)}
-            onToggleSidebarSide={() =>
-              setPrimarySidebarSide(sidebarSide === "left" ? "right" : "left")
-            }
             onBeginResize={(event) => beginPanelResize("sidebar", event)}
             onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
           />

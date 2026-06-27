@@ -508,8 +508,6 @@
 }
 
 .git-graph-list {
-  display: grid;
-  align-content: start;
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -525,7 +523,7 @@
   grid-template-columns: var(--git-graph-columns);
   align-items: center;
   min-width: 720px;
-  min-height: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
@@ -533,6 +531,20 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.git-graph-virtual-space {
+  position: relative;
+  min-width: 720px;
+}
+
+.git-graph-virtual-rows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  align-content: start;
 }
 
 .git-graph-row:hover,

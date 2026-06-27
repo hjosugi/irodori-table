@@ -1,4 +1,12 @@
-import { useState, type KeyboardEvent } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type UIEvent,
+} from "react";
 import { Search, X } from "lucide-react";
 import type { GitCommitSummary } from "../../generated/irodori-api";
 import {
@@ -18,6 +26,9 @@ const graphLaneColors = [
   "#ff5d73",
   "#00b8a9",
 ];
+
+const gitGraphRowHeight = 36;
+const gitGraphOverscanRows = 8;
 
 function laneColor(lane: number) {
   return graphLaneColors[lane % graphLaneColors.length];
@@ -80,13 +91,17 @@ function RefBadge({ refName }: { refName: string }) {
   return <em className={`git-ref-badge ${refKind(refName)}`}>{refLabel(refName)}</em>;
 }
 
-function GraphCommitRow({
+const GraphCommitRow = memo(function GraphCommitRow({
   row,
+  rowIndex,
+  rowCount,
   selected,
   showRemoteRefs,
   onSelect,
 }: {
   row: GitGraphRow;
+  rowIndex: number;
+  rowCount: number;
   selected: boolean;
   showRemoteRefs: boolean;
   onSelect: () => void;
@@ -100,6 +115,8 @@ function GraphCommitRow({
       type="button"
       role="option"
       aria-selected={selected}
+      aria-posinset={rowIndex + 1}
+      aria-setsize={rowCount}
       onClick={onSelect}
       title={commit.hash}
     >
@@ -123,7 +140,7 @@ function GraphCommitRow({
       <code className="git-graph-hash">{commit.shortHash}</code>
     </button>
   );
-}
+});
 
 function CommitDetail({
   commit,
@@ -211,13 +228,102 @@ export function GitGraphView({
   onSelectCommit: (hash: string) => void;
 }) {
   const [showRemoteRefs, setShowRemoteRefs] = useState(true);
-  const filteredCommits = filterGraphCommits(commits, query, refFilter);
-  const graphRows = buildGitGraphRows(filteredCommits);
-  const selectedCommit =
-    filteredCommits.find((commit) => commit.hash === selectedCommitHash) ??
-    filteredCommits[0] ??
-    null;
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const filteredCommits = useMemo(
+    () => filterGraphCommits(commits, query, refFilter),
+    [commits, query, refFilter],
+  );
+  const graphRows = useMemo(
+    () => buildGitGraphRows(filteredCommits),
+    [filteredCommits],
+  );
+  const selectedCommit = useMemo(
+    () =>
+      filteredCommits.find((commit) => commit.hash === selectedCommitHash) ??
+      filteredCommits[0] ??
+      null,
+    [filteredCommits, selectedCommitHash],
+  );
   const activeCommitHash = selectedCommit?.hash ?? null;
+  const virtualWindow = useMemo(() => {
+    const rowCount = graphRows.length;
+    const measuredViewport = viewportHeight || gitGraphRowHeight * 24;
+    const visibleRows = Math.ceil(measuredViewport / gitGraphRowHeight);
+    const startIndex = Math.max(
+      0,
+      Math.floor(scrollTop / gitGraphRowHeight) - gitGraphOverscanRows,
+    );
+    const endIndex = Math.min(
+      rowCount,
+      startIndex + visibleRows + gitGraphOverscanRows * 2,
+    );
+    return {
+      endIndex,
+      offsetTop: startIndex * gitGraphRowHeight,
+      rows: graphRows.slice(startIndex, endIndex),
+      startIndex,
+      totalHeight: rowCount * gitGraphRowHeight,
+    };
+  }, [graphRows, scrollTop, viewportHeight]);
+  const activeCommitRendered = virtualWindow.rows.some(
+    (row) => row.commit.hash === activeCommitHash,
+  );
+
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) {
+      return;
+    }
+    const updateViewportHeight = () => setViewportHeight(node.clientHeight);
+    updateViewportHeight();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateViewportHeight);
+      return () => window.removeEventListener("resize", updateViewportHeight);
+    }
+    const observer = new ResizeObserver(updateViewportHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) {
+      return;
+    }
+    node.scrollTop = 0;
+    setScrollTop(0);
+  }, [query, refFilter]);
+
+  useEffect(() => {
+    if (!activeCommitHash) {
+      return;
+    }
+    scrollCommitIntoView(activeCommitHash);
+  }, [activeCommitHash, filteredCommits]);
+
+  function onGraphScroll(event: UIEvent<HTMLDivElement>) {
+    setScrollTop(event.currentTarget.scrollTop);
+  }
+
+  function scrollCommitIntoView(hash: string) {
+    const node = listRef.current;
+    if (!node) {
+      return;
+    }
+    const index = filteredCommits.findIndex((commit) => commit.hash === hash);
+    if (index < 0) {
+      return;
+    }
+    const rowTop = index * gitGraphRowHeight;
+    const rowBottom = rowTop + gitGraphRowHeight;
+    if (rowTop < node.scrollTop) {
+      node.scrollTop = rowTop;
+    } else if (rowBottom > node.scrollTop + node.clientHeight) {
+      node.scrollTop = Math.max(0, rowBottom - node.clientHeight);
+    }
+  }
 
   function onGraphKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const navigation =
@@ -243,6 +349,7 @@ export function GitGraphView({
     }
     event.preventDefault();
     onSelectCommit(nextHash);
+    window.requestAnimationFrame(() => scrollCommitIntoView(nextHash));
   }
 
   return (
@@ -310,20 +417,39 @@ export function GitGraphView({
             role="listbox"
             aria-label="Git commit graph"
             aria-activedescendant={
-              activeCommitHash ? `git-commit-${activeCommitHash}` : undefined
+              activeCommitHash && activeCommitRendered
+                ? `git-commit-${activeCommitHash}`
+                : undefined
             }
             onKeyDown={onGraphKeyDown}
+            onScroll={onGraphScroll}
+            ref={listRef}
           >
             {graphRows.length ? (
-              graphRows.map((row) => (
-                <GraphCommitRow
-                  key={row.commit.hash}
-                  row={row}
-                  selected={activeCommitHash === row.commit.hash}
-                  showRemoteRefs={showRemoteRefs}
-                  onSelect={() => onSelectCommit(row.commit.hash)}
-                />
-              ))
+              <div
+                className="git-graph-virtual-space"
+                style={{ height: virtualWindow.totalHeight }}
+              >
+                <div
+                  className="git-graph-virtual-rows"
+                  style={{ transform: `translateY(${virtualWindow.offsetTop}px)` }}
+                >
+                  {virtualWindow.rows.map((row, index) => {
+                    const rowIndex = virtualWindow.startIndex + index;
+                    return (
+                      <GraphCommitRow
+                        key={row.commit.hash}
+                        row={row}
+                        rowIndex={rowIndex}
+                        rowCount={graphRows.length}
+                        selected={activeCommitHash === row.commit.hash}
+                        showRemoteRefs={showRemoteRefs}
+                        onSelect={() => onSelectCommit(row.commit.hash)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             ) : (
               <div className="empty-browser">
                 {loading ? "Loading Git graph..." : "No commits found"}

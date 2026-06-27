@@ -591,6 +591,18 @@
   cursor: pointer;
 }
 
+.metadata-row.field-row {
+  grid-template-columns: 15px minmax(0, 1fr) minmax(72px, auto);
+  padding-left: 4px;
+}
+
+.metadata-empty {
+  min-height: 23px;
+  padding: 3px 6px 3px 21px;
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+}
+
 .schema-tree summary span,
 .object-tree summary span,
 .metadata-row span {
