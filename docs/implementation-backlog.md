@@ -815,6 +815,7 @@ bulk edits, and source scans without blocking the interactive desktop.
 - **Goal:** MongoDB, Redis, Elasticsearch/OpenSearch, Cassandra/Scylla, plus Couchbase/DynamoDB/Arango/Memgraph by maturity.
 - **Done when:** native query surface, collection/keyspace/index browser, document viewer/editor with patch preview, and field/operator/stage completion work for the first targets (MongoDB, Redis, Elasticsearch, Cassandra/Scylla).
 - **Done (MongoDB, Redis, Cassandra):** mongodb.rs (mongodb driver), redis.rs (redis client with command parser mapping to grid), and cassandra.rs (scylla driver using new lazy DeserializeRow API) implemented and verified via tests.
+- **Elasticsearch/OpenSearch bar:** go deeper than a generic HTTP console. Use Kibana Discover and Dev Tools as behavior references for data views, index/data-stream/alias browsing, mappings and field capabilities, DSL and ES|QL-style authoring, filter composition, saved searches, request history, document detail/edit-with-patch-preview, explain/profile, shard/index health, and completion over fields/operators/API paths. Kibana code is behavior-only reference material because of its source-available licenses.
 - **Remaining:** Elasticsearch/OpenSearch and the broader document/KV set are open; Bigtable/HBase wide-column work is tracked separately in `SRC-014`.
 - **Depends on:** SRC-001
 - **Size:** L · **Priority:** P2
