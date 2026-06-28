@@ -50,6 +50,9 @@ import {
 } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
+import { indentOnInput } from "@codemirror/language";
+import { indentationMarkers } from "@replit/codemirror-indentation-markers";
+import { rainbowBrackets } from "./editor-rainbow-brackets";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 import type { SqlSnippetDefinition } from "@/sql/completion";
 import { buildSqlExtensions } from "@/sql/dialect";
@@ -77,6 +80,11 @@ export type SqlMetadataToolWindowRequest = {
   target: SqlMetadataTarget;
   mode: SqlMetadataToolWindowMode;
 };
+export type SqlEditorCommandResult = {
+  error: string | null;
+  changed: boolean;
+  skipped?: "empty" | "unchanged";
+};
 
 export interface SqlEditorHandle {
   /** Document offsets of the current selection (collapsed range = caret). */
@@ -89,11 +97,11 @@ export interface SqlEditorHandle {
   revealRange: (selection: SqlEditorSelection) => void;
   /**
    * Pretty-print the whole buffer with the engine's dialect, in place.
-   * Returns `null` on success, or an error message when formatting fails.
+   * Reports no-op cases separately so the host does not show a fake success.
    */
-  format: () => Promise<string | null>;
+  format: () => Promise<SqlEditorCommandResult>;
   /** Run deterministic cleanup across the whole buffer. */
-  cleanup: () => Promise<string | null>;
+  cleanup: () => Promise<SqlEditorCommandResult>;
   /** Focus the editor and show diagnostics/quick-fix actions near the caret. */
   showQuickFix: () => boolean;
   /** Toggle SQL line/block comments around the current selection. */
@@ -156,6 +164,7 @@ interface CreateSqlEditorViewOptions {
 interface FormatEditorResult {
   error: string | null;
   formatted?: string;
+  skipped?: "empty" | "unchanged";
 }
 
 function createSqlEditorCompartments(): SqlEditorCompartments {
@@ -1001,14 +1010,14 @@ async function formatEditorDocument(
   formatter: SqlFormatterId,
 ): Promise<FormatEditorResult> {
   const doc = view.state.doc.toString();
-  if (!doc.trim()) return { error: null };
+  if (!doc.trim()) return { error: null, skipped: "empty" };
   try {
     const formatted = await formatSqlDocument(doc, engine, formatter);
     if (formatted !== doc) {
       replaceEditorDocument(view, doc, formatted);
       return { error: null, formatted };
     }
-    return { error: null };
+    return { error: null, skipped: "unchanged" };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : String(error),
@@ -1031,7 +1040,15 @@ async function cleanupEditorDocument(
     replaceEditorDocument(view, current, cleaned);
     return { error: null, formatted: cleaned };
   }
-  return formatted;
+  return formatted.skipped ? formatted : { error: null, skipped: "unchanged" };
+}
+
+function toEditorCommandResult(result: FormatEditorResult): SqlEditorCommandResult {
+  return {
+    error: result.error,
+    changed: result.formatted !== undefined,
+    skipped: result.skipped,
+  };
 }
 
 function showEditorQuickFix(view: EditorView): boolean {
@@ -1251,21 +1268,25 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
         },
         async format() {
           const view = viewRef.current;
-          if (!view) return null;
+          if (!view) {
+            return { error: "editor is not ready", changed: false };
+          }
           const result = await formatEditorDocument(view, engine, formatter);
           if (result.formatted !== undefined) {
             onChangeRef.current(result.formatted);
           }
-          return result.error;
+          return toEditorCommandResult(result);
         },
         async cleanup() {
           const view = viewRef.current;
-          if (!view) return null;
+          if (!view) {
+            return { error: "editor is not ready", changed: false };
+          }
           const result = await cleanupEditorDocument(view, engine, formatter);
           if (result.formatted !== undefined) {
             onChangeRef.current(result.formatted);
           }
-          return result.error;
+          return toEditorCommandResult(result);
         },
         showQuickFix() {
           const view = viewRef.current;

@@ -338,7 +338,13 @@ function sqlDownloadFileName(label: string) {
   return `${base || "query"}.sql`;
 }
 
+type EditorTabDefinition = {
+  id: string;
+  label: string;
+};
+
 type EditorGroupState = {
+  tabs: EditorTabDefinition[];
   activeTabId: string;
   openTabIds: string[];
   queryByTabId: Record<string, string>;
@@ -350,14 +356,19 @@ type EditorGroupStates = Record<EditorGroup, EditorGroupState>;
 const defaultEditorSelections: EditorSelections = [{ from: 0, to: 0 }];
 
 function createEditorGroupState(initialQuery: string): EditorGroupState {
+  const initialTabs = tabs.map((tab) => ({ ...tab }));
   return {
-    activeTabId: tabs[0].id,
-    openTabIds: tabs.map((tab) => tab.id),
+    tabs: initialTabs,
+    activeTabId: initialTabs[0].id,
+    openTabIds: initialTabs.map((tab) => tab.id),
     queryByTabId: Object.fromEntries(
-      tabs.map((tab, index) => [tab.id, index === 0 ? initialQuery : ""]),
+      initialTabs.map((tab, index) => [
+        tab.id,
+        index === 0 ? initialQuery : "",
+      ]),
     ) as Record<string, string>,
     selectionsByTabId: Object.fromEntries(
-      tabs.map((tab) => [tab.id, defaultEditorSelections]),
+      initialTabs.map((tab) => [tab.id, defaultEditorSelections]),
     ) as Record<string, EditorSelections>,
   };
 }
@@ -371,7 +382,7 @@ function selectionsForEditorGroup(state: EditorGroupState) {
 }
 
 function openTabsForEditorGroup(state: EditorGroupState) {
-  return tabs.filter((tab) => state.openTabIds.includes(tab.id));
+  return state.tabs.filter((tab) => state.openTabIds.includes(tab.id));
 }
 
 function activeTabLabelForEditorGroup(state: EditorGroupState) {
@@ -565,6 +576,34 @@ export function AppWorkbench() {
   const editorSelections = selectionsForEditorGroup(activeEditorGroupState);
   const activeTabLabel = activeTabLabelForEditorGroup(activeEditorGroupState);
   const [running, setRunning] = useState(false);
+  const [editorTabMenu, setEditorTabMenu] = useState<{
+    x: number;
+    y: number;
+    group: EditorGroup;
+    tabId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!editorTabMenu) {
+      return;
+    }
+    const close = () => setEditorTabMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setEditorTabMenu(null);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", close);
+    };
+  }, [editorTabMenu]);
 
   function updateEditorGroupState(
     group: EditorGroup,
@@ -2008,11 +2047,94 @@ export function AppWorkbench() {
   }
 
   // Run a command by id (the keybinding handler and the Commands list share this).
+  function nextSqlTabLabel(state: EditorGroupState) {
+    let index = state.tabs.length + 1;
+    let label = `query-${index}.sql`;
+    const labels = new Set(state.tabs.map((tab) => tab.label));
+    while (labels.has(label)) {
+      index += 1;
+      label = `query-${index}.sql`;
+    }
+    return label;
+  }
+
+  function newSqlTab(group: EditorGroup = activeEditorGroup) {
+    const id = `query-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 7)}`;
+    updateEditorGroupState(group, (state) => {
+      const tab = { id, label: nextSqlTabLabel(state) };
+      return {
+        ...state,
+        tabs: [...state.tabs, tab],
+        openTabIds: [...state.openTabIds, id],
+        activeTabId: id,
+        queryByTabId: { ...state.queryByTabId, [id]: "" },
+        selectionsByTabId: {
+          ...state.selectionsByTabId,
+          [id]: defaultEditorSelections,
+        },
+      };
+    });
+    setActiveEditorGroup(group);
+  }
+
+  function renameSqlTab(group: EditorGroup, tabId: string) {
+    const state = editorGroupStates[group];
+    const tab = state.tabs.find((item) => item.id === tabId);
+    if (!tab) return;
+    const next = window.prompt("Rename SQL tab", tab.label)?.trim();
+    if (!next || next === tab.label) {
+      return;
+    }
+    updateEditorGroupState(group, (current) => ({
+      ...current,
+      tabs: current.tabs.map((item) =>
+        item.id === tabId ? { ...item, label: next } : item,
+      ),
+    }));
+    showActionNotice("success", "Tab renamed", next);
+  }
+
+  function duplicateSqlTab(group: EditorGroup, tabId: string) {
+    const state = editorGroupStates[group];
+    const source = state.tabs.find((item) => item.id === tabId);
+    if (!source) return;
+    const id = `query-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 7)}`;
+    const sourceText = state.queryByTabId[tabId] ?? "";
+    updateEditorGroupState(group, (current) => {
+      const tab = {
+        id,
+        label: `${source.label.replace(/\.sql$/i, "")}-copy.sql`,
+      };
+      return {
+        ...current,
+        tabs: [...current.tabs, tab],
+        openTabIds: [...current.openTabIds, id],
+        activeTabId: id,
+        queryByTabId: { ...current.queryByTabId, [id]: sourceText },
+        selectionsByTabId: {
+          ...current.selectionsByTabId,
+          [id]: defaultEditorSelections,
+        },
+      };
+    });
+    setActiveEditorGroup(group);
+    showActionNotice("success", "Tab duplicated", source.label);
+  }
+
   function closeActiveSqlTab(group: EditorGroup = activeEditorGroup) {
+    const state = editorGroupStates[group];
+    closeSqlTab(group, state.activeTabId);
+  }
+
+  function closeSqlTab(group: EditorGroup, tabId: string) {
     const state = editorGroupStates[group];
     const groupOpenTabs = openTabsForEditorGroup(state);
     const activeIndex = groupOpenTabs.findIndex(
-      (tab) => tab.id === state.activeTabId,
+      (tab) => tab.id === tabId,
     );
     if (groupOpenTabs.length <= 1 || activeIndex < 0) {
       showActionNotice(
@@ -2030,14 +2152,28 @@ export function AppWorkbench() {
     updateEditorGroupState(group, (current) => ({
       ...current,
       openTabIds: current.openTabIds.filter((id) => id !== closedTab.id),
-      activeTabId: nextTab.id,
+      activeTabId:
+        current.activeTabId === closedTab.id ? nextTab.id : current.activeTabId,
     }));
     showActionNotice("info", "Tab closed", closedTab.label);
   }
 
+  function closeOtherSqlTabs(group: EditorGroup, tabId: string) {
+    const state = editorGroupStates[group];
+    const tab = state.tabs.find((item) => item.id === tabId);
+    if (!tab) return;
+    updateEditorGroupState(group, (current) => ({
+      ...current,
+      openTabIds: [tabId],
+      activeTabId: tabId,
+    }));
+    setActiveEditorGroup(group);
+    showActionNotice("info", "Other tabs closed", tab.label);
+  }
+
   function reopenSqlTab(group: EditorGroup = activeEditorGroup) {
     const state = editorGroupStates[group];
-    const closedTab = tabs.find((tab) => !state.openTabIds.includes(tab.id));
+    const closedTab = state.tabs.find((tab) => !state.openTabIds.includes(tab.id));
     if (!closedTab) {
       showActionNotice("info", "Tabs already open");
       return;
