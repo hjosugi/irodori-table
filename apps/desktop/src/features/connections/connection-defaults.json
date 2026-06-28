@@ -120,11 +120,13 @@
       "engine": "postgres",
       "mode": "url",
       "url": "postgres://irodori:irodori@127.0.0.1:55432/samples",
+      "connectionTransport": "tcp",
       "host": "127.0.0.1",
       "port": "55432",
       "user": "irodori",
       "password": "",
       "database": "samples",
+      "socketPath": "",
       "readOnly": false
     },
     {
@@ -134,11 +136,13 @@
       "engine": "mysql",
       "mode": "url",
       "url": "mysql://irodori:irodori@localhost:55306/samples",
+      "connectionTransport": "tcp",
       "host": "localhost",
       "port": "55306",
       "user": "irodori",
       "password": "",
       "database": "samples",
+      "socketPath": "",
       "readOnly": false
     },
     {
@@ -148,11 +152,13 @@
       "engine": "sqlite",
       "mode": "fields",
       "url": "",
+      "connectionTransport": "tcp",
       "host": "",
       "port": "",
       "user": "",
       "password": "",
       "database": ":memory:",
+      "socketPath": "",
       "readOnly": false
     },
     {
@@ -162,11 +168,13 @@
       "engine": "duckdb",
       "mode": "fields",
       "url": "",
+      "connectionTransport": "tcp",
       "host": "",
       "port": "",
       "user": "",
       "password": "",
       "database": ":memory:",
+      "socketPath": "",
       "readOnly": false
     }
   ]
