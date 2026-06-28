@@ -5,8 +5,7 @@ import type {
   QueryPlanMetric,
   QueryPlanNode,
 } from "@/generated/irodori-api";
-
-type SelectNode = (nodeId: string | undefined) => void;
+import type { PlanNodeSelector } from "./plan-types";
 
 export function OverviewView({
   plan,
@@ -19,7 +18,7 @@ export function OverviewView({
   findings: QueryPlanFinding[];
   hotNodes: QueryPlanNode[];
   selectedNodeId: string | null;
-  onSelectNode: SelectNode;
+  onSelectNode: PlanNodeSelector;
 }) {
   return (
     <>
@@ -69,7 +68,7 @@ function FindingList({
 }: {
   findings: QueryPlanFinding[];
   selectedNodeId: string | null;
-  onSelectNode: SelectNode;
+  onSelectNode: PlanNodeSelector;
 }) {
   if (findings.length === 0) {
     return (
@@ -118,7 +117,7 @@ function HotNodeList({
 }: {
   nodes: QueryPlanNode[];
   selectedNodeId: string | null;
-  onSelectNode: SelectNode;
+  onSelectNode: PlanNodeSelector;
 }) {
   if (nodes.length === 0) {
     return <div className="plan-empty-card">No plan nodes are available.</div>;

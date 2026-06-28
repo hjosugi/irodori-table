@@ -196,7 +196,7 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(page.locator(".cm-line")).toHaveCount(1);
   await page
     .getByRole("toolbar", { name: "Editor actions" })
-    .getByRole("button", { name: "Format SQL" })
+    .getByRole("button", { name: "Format SQL", exact: true })
     .click();
   expect(await page.locator(".cm-line").count()).toBeGreaterThan(1);
 

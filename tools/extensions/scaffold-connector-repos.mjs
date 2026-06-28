@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -129,6 +129,7 @@ function writeConnectorRepo(entry) {
 
   mkdirSync(resolve(repoDir, "src"), { recursive: true });
   mkdirSync(resolve(repoDir, "dist/native"), { recursive: true });
+  mkdirSync(resolve(repoDir, "native/source"), { recursive: true });
   mkdirSync(resolve(repoDir, ".github/workflows"), { recursive: true });
 
   writeJson(resolve(repoDir, "irodori.extension.json"), manifest);
@@ -136,10 +137,26 @@ function writeConnectorRepo(entry) {
   writeText(resolve(repoDir, "Cargo.toml"), cargoToml(repoName, crateName));
   writeText(resolve(repoDir, "src/lib.rs"), rustLib(engine, label));
   writeText(resolve(repoDir, "README.md"), readme(entry, engineMeta, visibility));
+  writeText(
+    resolve(repoDir, "native/source/README.md"),
+    sourceReadme(entry, engineMeta, config.source.adapter),
+  );
+  copyAdapterSource(repoDir, config.source.adapter);
   writeText(resolve(repoDir, "Makefile"), makefile());
   writeText(resolve(repoDir, ".gitignore"), gitignore());
   writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow());
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
+}
+
+function copyAdapterSource(repoDir, adapter) {
+  if (!adapter) {
+    return;
+  }
+  const sourcePath = resolve(root, "apps/desktop/src-tauri/src", adapter);
+  if (!existsSync(sourcePath)) {
+    return;
+  }
+  copyFileSync(sourcePath, resolve(repoDir, "native/source", adapter.split("/").at(-1)));
 }
 
 function repositoryName(entry) {
@@ -341,6 +358,22 @@ make build
 \`\`\`
 
 Release packages place platform-specific native artifacts under \`dist/native\`.
+`;
+}
+
+function sourceReadme(entry, engineMeta, adapter) {
+  const sourceNote = adapter
+    ? `The initial source snapshot was copied from \`${adapter}\` in the desktop app.`
+    : "There is no existing desktop adapter source for this connector yet.";
+  return `# Native Source
+
+${sourceNote}
+
+This directory is a migration staging area for \`${entry.id}\`. The active native
+ABI shim lives in \`src/lib.rs\`; engine-specific connect/query/metadata behavior
+should move here as the connector runtime contract is wired into the desktop app.
+
+Engine status from \`knowledge/engines.json\`: \`${engineMeta.status}\`.
 `;
 }
 

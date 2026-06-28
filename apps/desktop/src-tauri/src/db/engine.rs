@@ -297,7 +297,6 @@ impl DbEngine {
             DbEngine::Hive => Some("irodori.hive"),
             DbEngine::Athena => Some("irodori.athena"),
             DbEngine::S3Tables => Some("irodori.s3-tables"),
-            DbEngine::ObjectStore => Some("irodori.object-store"),
             DbEngine::DeltaLake => Some("irodori.delta-lake"),
             DbEngine::Hudi => Some("irodori.hudi"),
             DbEngine::KvStore => None,

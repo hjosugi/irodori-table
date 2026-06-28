@@ -1,5 +1,5 @@
 import { AlertTriangle, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   aiEngineStatus,
   aiExplainPlan,
@@ -7,7 +7,11 @@ import {
   type QueryPlanAnalysis,
 } from "@/generated/irodori-api";
 
-export function PlanAiExplanation({ plan }: { plan: QueryPlanAnalysis }) {
+export const PlanAiExplanation = memo(function PlanAiExplanation({
+  plan,
+}: {
+  plan: QueryPlanAnalysis;
+}) {
   const [providerReady, setProviderReady] = useState<boolean | null>(null);
   const [narration, setNarration] = useState<string | null>(null);
   const [narrating, setNarrating] = useState(false);
@@ -93,4 +97,4 @@ export function PlanAiExplanation({ plan }: { plan: QueryPlanAnalysis }) {
       )}
     </section>
   );
-}
+});

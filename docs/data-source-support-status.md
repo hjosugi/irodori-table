@@ -73,10 +73,10 @@ not-ready error, list it here instead of mixing it with production connectors.
 
 ## 3. Recognized, extension required (in the enum, rejected at connect)
 
-These appear in `DbEngine` but `is_unimplemented_wire()` rejects them with
-*"Install connector extension `irodori.<engine>`."* Public marketplace entries
-are listed in `docs/extension-marketplace/index.json`; `kvStore` remains an
-internal target and is not published as a public extension.
+These appear in `DbEngine` but `is_unimplemented_wire()` rejects them before a
+connection is opened. Most public connector targets ask the user to install
+`irodori.<engine>` from `docs/extension-marketplace/index.json`; `kvStore` and
+`objectStore` are intentionally not published as public extensions.
 
 | Engine | `DbEngine` id | Family | Closest existing wire | Note |
 |---|---|---|---|---|
@@ -99,7 +99,7 @@ internal target and is not published as a public extension.
 | Amazon Athena | `athena` | Lakehouse / query-engine | `Lakehouse` | Athena/Glue/workgroup/output-location behavior is separate from Iceberg and S3 Tables. |
 | Apache Iceberg | `iceberg` | Lakehouse | `Lakehouse` | Priority lakehouse target; catalog-backed model is still pending. |
 | AWS S3 Tables | `s3Tables` | Lakehouse | `Lakehouse` | Managed Iceberg connector not implemented yet. |
-| Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | Object browser/source connector not implemented yet. |
+| Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | No public connector extension; object browser/source connector not implemented yet. |
 | Delta Lake | `deltaLake` | Lakehouse | `Lakehouse` | Lakehouse connector not implemented yet. |
 | Apache Hudi | `hudi` | Lakehouse | `Lakehouse` | Lakehouse connector not implemented yet. |
 

@@ -1319,40 +1319,48 @@ fn sqlite_findings(nodes: &[QueryPlanNode]) -> Vec<QueryPlanFinding> {
 }
 
 fn native_metrics(nodes: &[QueryPlanNode], mode: QueryPlanMode) -> Vec<QueryPlanMetric> {
-    let total_cost = nodes
-        .iter()
-        .filter_map(|node| node.total_cost)
-        .fold(0.0_f64, f64::max);
-    let max_estimated_rows = nodes
-        .iter()
-        .filter_map(|node| node.estimated_rows)
-        .fold(0.0_f64, f64::max);
-    let actual_ms = nodes
-        .iter()
-        .filter_map(|node| node.actual_total_ms)
-        .fold(0.0_f64, f64::max);
-    let scan_count = nodes
-        .iter()
-        .filter(|node| node.operation.to_ascii_lowercase().contains("scan"))
-        .count();
-    let temp_blocks = nodes
-        .iter()
-        .map(|node| {
-            node_property_f64(node, "tempReadBlocks").unwrap_or(0.0)
-                + node_property_f64(node, "tempWrittenBlocks").unwrap_or(0.0)
-        })
-        .sum::<f64>();
-    let max_rows_removed = nodes
-        .iter()
-        .map(|node| {
-            node_property_f64(node, "rowsRemovedByFilter").unwrap_or(0.0)
-                + node_property_f64(node, "rowsRemovedByJoinFilter").unwrap_or(0.0)
-        })
-        .fold(0.0_f64, f64::max);
-    let max_estimate_error = nodes
-        .iter()
-        .filter_map(|node| estimate_error_ratio(node.estimated_rows, node.actual_rows))
-        .fold(0.0_f64, f64::max);
+    let mut total_cost = 0.0_f64;
+    let mut max_estimated_rows = 0.0_f64;
+    let mut actual_ms = 0.0_f64;
+    let mut scan_count = 0_usize;
+    let mut temp_blocks = 0.0_f64;
+    let mut max_rows_removed = 0.0_f64;
+    let mut max_estimate_error = 0.0_f64;
+
+    for node in nodes {
+        if let Some(cost) = node.total_cost {
+            total_cost = total_cost.max(cost);
+        }
+        if let Some(rows) = node.estimated_rows {
+            max_estimated_rows = max_estimated_rows.max(rows);
+        }
+        if let Some(ms) = node.actual_total_ms {
+            actual_ms = actual_ms.max(ms);
+        }
+        if contains_ascii_case(&node.operation, "scan") {
+            scan_count += 1;
+        }
+        if let Some(ratio) = estimate_error_ratio(node.estimated_rows, node.actual_rows) {
+            max_estimate_error = max_estimate_error.max(ratio);
+        }
+
+        let mut node_temp_blocks = 0.0_f64;
+        let mut node_rows_removed = 0.0_f64;
+        for property in &node.properties {
+            match property.name.as_str() {
+                "tempReadBlocks" | "tempWrittenBlocks" => {
+                    node_temp_blocks += parse_f64(&property.value).unwrap_or(0.0);
+                }
+                "rowsRemovedByFilter" | "rowsRemovedByJoinFilter" => {
+                    node_rows_removed += parse_f64(&property.value).unwrap_or(0.0);
+                }
+                _ => {}
+            }
+        }
+        temp_blocks += node_temp_blocks;
+        max_rows_removed = max_rows_removed.max(node_rows_removed);
+    }
+
     let mut metrics = vec![
         QueryPlanMetric {
             key: "nodes".into(),
@@ -1955,6 +1963,15 @@ fn json_cell(value: &serde_json::Value) -> String {
 
 fn parse_f64(value: &str) -> Option<f64> {
     value.replace(',', "").parse::<f64>().ok()
+}
+
+fn contains_ascii_case(haystack: &str, needle: &str) -> bool {
+    let needle = needle.as_bytes();
+    !needle.is_empty()
+        && haystack
+            .as_bytes()
+            .windows(needle.len())
+            .any(|window| window.eq_ignore_ascii_case(needle))
 }
 
 fn format_number(value: f64) -> String {
