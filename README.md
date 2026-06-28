@@ -10,7 +10,7 @@ Some reusable foundations are intentionally split out like standalone products:
 - `typeship` lives in [`hjosugi/typebridge`](https://github.com/hjosugi/typebridge)
   and is consumed from crates.io for Rust-to-TypeScript boundary generation.
 - `irodori-sql` lives in [`hjosugi/irodori-sql`](https://github.com/hjosugi/irodori-sql)
-  and is consumed from the `v0.2.23` Git tag for SQL dialect, parameter,
+  and is consumed from the `v0.2.24` Git tag for SQL dialect, parameter,
   metamodel, and schema-diff helpers.
 
 Application UX stays here unless it has a stable standalone contract. BI panels,

@@ -113,5 +113,3 @@ the A5SQL-style read-only / AI-disabled posture intact.
 - Optional admin tooling for preinstalling local models outside the desktop UI.
 - Expand the grammar/AST beyond `SELECT` (DML/DDL) over later iterations.
 - Optional idle-unload timer to drop the model from memory after inactivity.
-- Cut `irodori-sql` tag `v0.2.24` once the AST/grammar API is stable and remove
-  the local `[patch]` in the workspace `Cargo.toml`.

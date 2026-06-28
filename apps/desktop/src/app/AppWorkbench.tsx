@@ -3,7 +3,6 @@ import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
-  type UIEvent,
   lazy,
   Suspense,
   useEffect,
@@ -34,6 +33,9 @@ import {
   tabs,
 } from "@/app/app-config";
 import { AboutDialog } from "@/app/AboutDialog";
+import { useResultGridScroll } from "@/app/hooks/useResultGridScroll";
+import { useResultGridFiltering } from "@/app/hooks/useResultGridFiltering";
+import { useResultGridSelection } from "@/app/hooks/useResultGridSelection";
 import { ActionToast, type ActionNotice } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
 import { GitPanel, useGitStore } from "@/features/git";
@@ -48,7 +50,6 @@ import {
   calculateResultGridVirtualColumnWindow,
   calculateResultGridVirtualRowWindow,
   createWindowedRowsProxy,
-  cycleResultSortRules,
   deriveResultEditTarget,
   findTableMetadata,
   formatResultSelectionStatus,
@@ -56,18 +57,14 @@ import {
   formatResultGridTsv,
   formatResultGridTsvRow,
   historySnapshotToQueryResult,
-  normalizeResultCellRange,
   parseSourceTable,
-  readResultCellRangeRows,
   resultExportFileName,
   resultGridRowKey,
-  summarizeResultCellRange,
   toCount,
   useResultGridStore,
   useResultsStore,
   type ResultEditTarget,
   type ResultExportFormat,
-  type ResultFilterRule,
   type ResultGridEditDraft,
   type ResultGridDraftCell as GridCellDraft,
   type ResultGridRowLike,
@@ -622,16 +619,6 @@ export function AppWorkbench() {
   const setSelectedRange = useResultGridStore(
     (state) => state.setSelectedRange,
   );
-  const sortRules = useResultGridStore((state) => state.sortRules);
-  const setSortRules = useResultGridStore((state) => state.setSortRules);
-  const filtersOpen = useResultGridStore((state) => state.filtersOpen);
-  const setFiltersOpen = useResultGridStore((state) => state.setFiltersOpen);
-  const quickFilter = useResultGridStore((state) => state.quickFilter);
-  const setQuickFilter = useResultGridStore((state) => state.setQuickFilter);
-  const filterJoin = useResultGridStore((state) => state.filterJoin);
-  const setFilterJoin = useResultGridStore((state) => state.setFilterJoin);
-  const filterRules = useResultGridStore((state) => state.filterRules);
-  const setFilterRules = useResultGridStore((state) => state.setFilterRules);
   const selectedRowKey = useResultGridStore((state) => state.selectedRowKey);
   const setSelectedRowKey = useResultGridStore(
     (state) => state.setSelectedRowKey,
@@ -642,6 +629,46 @@ export function AppWorkbench() {
   const setCommitError = useResultGridStore((state) => state.setCommitError);
   const resetGridStoreEdits = useResultGridStore((state) => state.resetEdits);
   const resetGridStoreView = useResultGridStore((state) => state.resetGridView);
+  const gridRowHeight = scaledUiPixels(GRID_ROW_HEIGHT, uiZoom);
+  const gridColumnWidth = scaledUiPixels(GRID_COLUMN_WIDTH, uiZoom);
+  const gridGutterColumnWidth = scaledUiPixels(GRID_GUTTER_WIDTH, uiZoom);
+  const gridGutterWidth = editMode ? gridGutterColumnWidth : 0;
+  const {
+    gridScrollTop,
+    gridScrollLeft,
+    gridViewportHeight,
+    gridViewportWidth,
+    setGridScrollTop,
+    setGridScrollLeft,
+    onGridScroll,
+    resetGridScrollPosition,
+    scrollGridCellIntoView,
+  } = useResultGridScroll({
+    gridRef,
+    result,
+    gridRowHeight,
+    gridGutterWidth,
+    gridColumnWidth,
+    setSelectedRowKey,
+    setSelectedCell,
+    setSelectedRange,
+  });
+  const {
+    sortRules,
+    filtersOpen,
+    setFiltersOpen,
+    quickFilter,
+    filterJoin,
+    setFilterJoin,
+    filterRules,
+    updateQuickFilter,
+    clearQuickFilter,
+    toggleSort,
+    addFilterRule,
+    updateFilterRule,
+    removeFilterRule,
+    clearResultFilters,
+  } = useResultGridFiltering({ resetGridScrollPosition });
   // Remappable keybindings: defaults merged with user overrides (localStorage).
   const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
   const keymap = {
@@ -1020,30 +1047,6 @@ export function AppWorkbench() {
     activeResult && selectedRowKey && selectedRowKey.startsWith("o")
       ? (activeResult.rows[Number(selectedRowKey.slice(1))] ?? null)
       : null;
-  const gridRowHeight = scaledUiPixels(GRID_ROW_HEIGHT, uiZoom);
-  const gridColumnWidth = scaledUiPixels(GRID_COLUMN_WIDTH, uiZoom);
-  const gridGutterColumnWidth = scaledUiPixels(GRID_GUTTER_WIDTH, uiZoom);
-  const gridGutterWidth = editMode ? gridGutterColumnWidth : 0;
-  const {
-    gridScrollTop,
-    gridScrollLeft,
-    gridViewportHeight,
-    gridViewportWidth,
-    setGridScrollTop,
-    setGridScrollLeft,
-    onGridScroll,
-    resetGridScrollPosition,
-    scrollGridCellIntoView,
-  } = useResultGridScroll({
-    gridRef,
-    result,
-    gridRowHeight,
-    gridGutterWidth,
-    gridColumnWidth,
-    setSelectedRowKey,
-    setSelectedCell,
-    setSelectedRange,
-  });
   const gridTotalWidth = Math.max(
     1,
     gridGutterWidth + resultColumns.length * gridColumnWidth,
@@ -1125,14 +1128,29 @@ export function AppWorkbench() {
     totalRowCount,
     unfilteredRowCount,
   } = resultGridView;
-  const selectedRangeBounds = useMemo(
-    () => normalizeResultCellRange(resultGridView, selectedRange),
-    [resultGridView, selectedRange],
-  );
-  const selectionSummary = useMemo(
-    () => summarizeResultCellRange(resultGridView, selectedRangeBounds),
-    [resultGridView, selectedRangeBounds],
-  );
+  const {
+    selectedRangeBounds,
+    selectionSummary,
+    selectGridCell,
+    selectGridRow,
+    moveSelectedCell,
+    selectedDisplayRow,
+    selectedRowForCopy,
+    selectedGridCopyText,
+  } = useResultGridSelection({
+    resultGridView,
+    resultColumns,
+    gridRef,
+    totalRows: totalRowCount,
+    selectedCell,
+    selectedRange,
+    selectedRowKey,
+    setSelectedCell,
+    setSelectedRange,
+    setSelectedRowKey,
+    scrollGridCellIntoView,
+    copyCellsForRow,
+  });
   const selectionStatus = selectionSummary
     ? formatResultSelectionStatus(selectionSummary)
     : null;
@@ -1253,49 +1271,10 @@ export function AppWorkbench() {
     };
   }, [spillInfo, firstVisible, lastVisible, gridWindowVersion]);
 
-  function onGridScroll(event: UIEvent<HTMLDivElement>) {
-    pendingGridScroll.current = {
-      top: event.currentTarget.scrollTop,
-      left: event.currentTarget.scrollLeft,
-    };
-    if (gridScrollRaf.current != null) {
-      return;
-    }
-    gridScrollRaf.current = requestAnimationFrame(() => {
-      gridScrollRaf.current = null;
-      setGridScrollTop(pendingGridScroll.current.top);
-      setGridScrollLeft(pendingGridScroll.current.left);
-    });
-  }
-
-  function resetGridScrollPosition(clearSelection = false) {
-    if (gridRef.current) {
-      gridRef.current.scrollTop = 0;
-      gridRef.current.scrollLeft = 0;
-    }
-    setGridScrollTop(0);
-    setGridScrollLeft(0);
-    if (clearSelection) {
-      setSelectedRowKey(null);
-      setSelectedCell(null);
-      setSelectedRange(null);
-    }
-  }
-
   function selectResultSet(index: number) {
     setActiveResultIndex(index);
     resetEdits();
     resetGridView();
-    resetGridScrollPosition(true);
-  }
-
-  function updateQuickFilter(value: string) {
-    setQuickFilter(value);
-    resetGridScrollPosition(true);
-  }
-
-  function clearQuickFilter() {
-    setQuickFilter("");
     resetGridScrollPosition(true);
   }
 
@@ -1321,70 +1300,6 @@ export function AppWorkbench() {
     setGridWindowVersion(0);
   }
 
-  function toggleSort(col: number, additive = false) {
-    setSortRules((current) => cycleResultSortRules(current, col, additive));
-    resetGridScrollPosition();
-  }
-
-  function addFilterRule(columnIndex: number | "any" = "any") {
-    setFilterRules((current) => [
-      ...current,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        columnIndex,
-        operator: "contains",
-        value: "",
-        enabled: true,
-      },
-    ]);
-    setFiltersOpen(true);
-    resetGridScrollPosition(true);
-  }
-
-  function updateFilterRule(id: string, patch: Partial<ResultFilterRule>) {
-    setFilterRules((current) =>
-      current.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
-    );
-    resetGridScrollPosition(true);
-  }
-
-  function removeFilterRule(id: string) {
-    setFilterRules((current) => current.filter((rule) => rule.id !== id));
-    resetGridScrollPosition(true);
-  }
-
-  function clearResultFilters() {
-    setQuickFilter("");
-    setFilterRules([]);
-    setFilterJoin("and");
-    resetGridScrollPosition(true);
-  }
-
-  function selectGridCell(rowKey: string, col: number, extendRange = false) {
-    const nextCell = { key: rowKey, col };
-    const anchor =
-      selectedRange?.anchor ??
-      selectedCell ??
-      (selectedRowKey ? { key: selectedRowKey, col } : nextCell);
-    setSelectedRowKey(rowKey);
-    setSelectedCell(nextCell);
-    setSelectedRange(
-      extendRange &&
-        (anchor.key !== nextCell.key || anchor.col !== nextCell.col)
-        ? { anchor, focus: nextCell }
-        : null,
-    );
-    gridRef.current?.focus({ preventScroll: true });
-  }
-
-  function selectGridRow(rowKey: string, focusGrid = false) {
-    setSelectedRowKey(rowKey);
-    setSelectedCell(null);
-    setSelectedRange(null);
-    if (focusGrid) {
-      gridRef.current?.focus({ preventScroll: true });
-    }
-  }
 
   function beginCellEdit(key: string, col: number, seed?: string) {
     if (!editMode) {
@@ -1535,119 +1450,8 @@ export function AppWorkbench() {
     }
   }
 
-  function scrollGridCellIntoView(rowIndex: number, col: number) {
-    const element = gridRef.current;
-    if (!element) {
-      return;
-    }
-    const targetTop = rowIndex * gridRowHeight;
-    const targetBottom = targetTop + gridRowHeight;
-    let nextTop = element.scrollTop;
-    if (targetTop < element.scrollTop) {
-      nextTop = targetTop;
-    } else if (targetBottom > element.scrollTop + element.clientHeight) {
-      nextTop = targetBottom - element.clientHeight;
-    }
-
-    const targetLeft = gridGutterWidth + col * gridColumnWidth;
-    const targetRight = targetLeft + gridColumnWidth;
-    let nextLeft = element.scrollLeft;
-    if (targetLeft < element.scrollLeft) {
-      nextLeft = targetLeft;
-    } else if (targetRight > element.scrollLeft + element.clientWidth) {
-      nextLeft = targetRight - element.clientWidth;
-    }
-
-    element.scrollTop = Math.max(0, nextTop);
-    element.scrollLeft = Math.max(0, nextLeft);
-    setGridScrollTop(element.scrollTop);
-    setGridScrollLeft(element.scrollLeft);
-  }
-
-  function moveSelectedCell(
-    rowDelta: number,
-    colDelta: number,
-    extendRange = false,
-  ) {
-    if (totalRows === 0 || resultColumns.length === 0) {
-      return;
-    }
-    const firstRow = resultGridView.rowAt(0);
-    const currentKey = selectedCell?.key ?? selectedRowKey ?? firstRow?.key;
-    const currentRowIndex = currentKey
-      ? Math.max(0, resultGridView.displayIndexForKey(currentKey))
-      : 0;
-    const currentCol = selectedCell?.col ?? 0;
-    const nextRowIndex = clampNumber(
-      currentRowIndex + rowDelta,
-      0,
-      totalRows - 1,
-    );
-    const nextCol = clampNumber(
-      currentCol + colDelta,
-      0,
-      Math.max(0, resultColumns.length - 1),
-    );
-    const nextRow = resultGridView.rowAt(nextRowIndex);
-    if (!nextRow) {
-      return;
-    }
-    const nextCell = { key: nextRow.key, col: nextCol };
-    const anchor =
-      selectedRange?.anchor ??
-      selectedCell ??
-      (currentKey ? { key: currentKey, col: currentCol } : nextCell);
-    setSelectedRowKey(nextCell.key);
-    setSelectedCell(nextCell);
-    setSelectedRange(
-      extendRange &&
-        (anchor.key !== nextCell.key || anchor.col !== nextCell.col)
-        ? { anchor, focus: nextCell }
-        : null,
-    );
-    gridRef.current?.focus({ preventScroll: true });
-    scrollGridCellIntoView(nextRowIndex, nextCol);
-  }
-
-  function selectedDisplayRow() {
-    if (!selectedCell && !selectedRowKey) {
-      return null;
-    }
-    const key = selectedCell?.key ?? selectedRowKey;
-    if (!key) {
-      return null;
-    }
-    const index = resultGridView.displayIndexForKey(key);
-    return index >= 0 ? resultGridView.rowAt(index) : null;
-  }
-
-  function selectedRowForCopy() {
-    const key = selectedRowKey ?? selectedCell?.key;
-    if (!key) {
-      return null;
-    }
-    const index = resultGridView.displayIndexForKey(key);
-    return index >= 0 ? resultGridView.rowAt(index) : null;
-  }
-
   function copyCellsForRow(row: ResultGridRowLike): string[] {
     return resultColumns.map((_, index) => row.cells[index] ?? "");
-  }
-
-  function selectedGridCopyText(): string | null {
-    if (selectedRangeBounds) {
-      return readResultCellRangeRows(resultGridView, selectedRangeBounds)
-        .map(formatResultGridTsvRow)
-        .join("\n");
-    }
-    if (selectedCell) {
-      const row = selectedDisplayRow();
-      if (row) {
-        return row.cells[selectedCell.col] ?? "";
-      }
-    }
-    const row = selectedRowForCopy();
-    return row ? formatResultGridTsvRow(copyCellsForRow(row)) : null;
   }
 
   async function copyGridText(text: string | null) {
@@ -4335,19 +4139,9 @@ export function AppWorkbench() {
             commitError={commitError}
             pendingCount={pendingCount}
             displayedResultSummary={displayedResultSummary}
-            quickFilter={quickFilter}
-            filtersOpen={filtersOpen}
-            filtersActive={filtersActive}
-            activeFilters={activeFilters}
-            filteredOutCount={filteredOutCount}
-            filterJoin={filterJoin}
-            filterRules={filterRules}
             resultColumns={resultColumns}
             exportMenuOpen={exportMenuOpen}
             shortcutTips={resultShortcutTips}
-            editMode={editMode}
-            editUndoDepth={editUndoDepth}
-            committing={committing}
             showingStructure={showingStructure}
             structureObject={structureObject}
             editorEngine={editorEngine}
@@ -4355,74 +4149,92 @@ export function AppWorkbench() {
             totalRows={totalRows}
             gridRef={gridRef}
             importFileRef={importFileRef}
-            gridRowStyle={gridRowStyle}
-            gridTotalWidth={gridTotalWidth}
-            gridRowHeight={gridRowHeight}
-            gridColumnWidth={gridColumnWidth}
-            leftColumnPad={leftColumnPad}
-            rightColumnPad={rightColumnPad}
-            topPad={topPad}
-            bottomPad={bottomPad}
-            firstVisible={firstVisible}
-            visibleColumnIndexes={visibleColumnIndexes}
-            visibleRows={visibleRows}
-            sortRuleByColumn={sortRuleByColumn}
-            sortRules={sortRules}
-            selectedRowKey={selectedRowKey}
-            selectedCell={selectedCell}
-            selectedRangeBounds={selectedRangeBounds}
-            editingCell={editingCell}
-            cellEdits={cellEdits}
-            selectedRowValues={selectedRowValues}
-            rowDetailTable={rowDetailTable}
             activeMetadata={activeMetadata}
             activeConnectionId={activeConnectionId}
             formatObjectName={(object) => qualifiedObjectName(editorEngine, object)}
             formatCount={toCount}
-            canEditActiveResult={canEditActiveResult}
             onResultModeChange={setResultMode}
             onSelectResultSet={selectResultSet}
-            onQuickFilterChange={updateQuickFilter}
-            onClearQuickFilter={clearQuickFilter}
-            onToggleFilters={() => setFiltersOpen((open) => !open)}
-            onSetFilterJoin={setFilterJoin}
-            onAddFilterRule={addFilterRule}
-            onUpdateFilterRule={updateFilterRule}
-            onRemoveFilterRule={removeFilterRule}
-            onClearResultFilters={clearResultFilters}
             onExportActiveResult={exportActiveResult}
             onToggleExportMenu={() => setExportMenuOpen((open) => !open)}
             onCloseExportMenu={() => setExportMenuOpen(false)}
-            onCloseFilters={() => setFiltersOpen(false)}
             onCopyVisibleResult={() => void copyVisibleResult()}
             onImportFile={(file) => void handleImportFile(file)}
-            onAddNewRow={addNewRow}
-            onUndoEdit={undoLastEdit}
-            onCommitEdits={() => void commitEdits()}
-            onDiscardEdits={() => {
-              resetEdits();
-              setEditMode(false);
+            filtering={{
+              quickFilter,
+              filtersOpen,
+              filtersActive,
+              activeFilters,
+              filteredOutCount,
+              filterJoin,
+              filterRules,
+              sortRuleByColumn,
+              sortRules,
+              onQuickFilterChange: updateQuickFilter,
+              onClearQuickFilter: clearQuickFilter,
+              onToggleFilters: () => setFiltersOpen((open) => !open),
+              onSetFilterJoin: setFilterJoin,
+              onAddFilterRule: addFilterRule,
+              onUpdateFilterRule: updateFilterRule,
+              onRemoveFilterRule: removeFilterRule,
+              onClearResultFilters: clearResultFilters,
+              onToggleSort: toggleSort,
+              onCloseFilters: () => setFiltersOpen(false),
             }}
-            onEnableEditMode={() => {
-              setCommitError(null);
-              setEditMode(true);
+            editing={{
+              editMode,
+              editUndoDepth,
+              committing,
+              cellEdits,
+              editingCell,
+              canEditActiveResult,
+              onAddNewRow: addNewRow,
+              onUndoEdit: undoLastEdit,
+              onCommitEdits: () => void commitEdits(),
+              onDiscardEdits: () => {
+                resetEdits();
+                setEditMode(false);
+              },
+              onEnableEditMode: () => {
+                setCommitError(null);
+                setEditMode(true);
+              },
+              onBeginCellEdit: beginCellEdit,
+              onSetCellValue: setCellValue,
+              onDeleteRow: deleteRow,
+              onPasteTableAt: pasteTableAt,
+              onEndCellEdit: () => setEditingCell(null),
             }}
-            onGridScroll={onGridScroll}
-            onGridKeyDown={onGridKeyDown}
-            onGridPaste={onGridPaste}
-            onGridCopy={onGridCopy}
-            onToggleSort={toggleSort}
-            onSelectGridRow={selectGridRow}
-            onSelectGridCell={selectGridCell}
-            onBeginCellEdit={beginCellEdit}
-            onSetCellValue={setCellValue}
-            onDeleteRow={deleteRow}
-            onPasteTableAt={pasteTableAt}
-            onEndCellEdit={() => setEditingCell(null)}
-            onCloseRowDetail={() => {
-              setSelectedRowKey(null);
-              setSelectedCell(null);
-              setSelectedRange(null);
+            selection={{
+              selectedRowKey,
+              selectedCell,
+              selectedRangeBounds,
+              selectedRowValues,
+              rowDetailTable,
+              onSelectGridRow: selectGridRow,
+              onSelectGridCell: selectGridCell,
+              onCloseRowDetail: () => {
+                setSelectedRowKey(null);
+                setSelectedCell(null);
+                setSelectedRange(null);
+              },
+            }}
+            gridGeometry={{
+              gridRowStyle,
+              gridTotalWidth,
+              gridRowHeight,
+              gridColumnWidth,
+              leftColumnPad,
+              rightColumnPad,
+              topPad,
+              bottomPad,
+              firstVisible,
+              visibleColumnIndexes,
+              visibleRows,
+              onGridScroll,
+              onGridKeyDown,
+              onGridPaste,
+              onGridCopy,
             }}
           />
         </section>

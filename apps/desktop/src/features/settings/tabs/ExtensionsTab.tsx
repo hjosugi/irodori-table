@@ -157,6 +157,7 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
           type="search"
           value={pluginSearch}
           placeholder={t("settings.extensions.search")}
+          aria-label={t("settings.extensions.search")}
           onChange={(event) => setPluginSearch(event.currentTarget.value)}
         />
       </div>

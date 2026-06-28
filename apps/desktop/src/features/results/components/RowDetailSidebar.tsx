@@ -116,6 +116,7 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
               setCopyStatus("idle");
             }}
             placeholder="Search row"
+            aria-label="Search row"
           />
         </label>
       </div>

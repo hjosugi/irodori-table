@@ -4065,8 +4065,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-sql"
-version = "0.2.23"
-source = "git+https://github.com/hjosugi/irodori-sql?rev=d7f202af614782e9cf547a757bfc7c68bc052ed1#d7f202af614782e9cf547a757bfc7c68bc052ed1"
+version = "0.2.24"
+source = "git+https://github.com/hjosugi/irodori-sql?tag=v0.2.24#4c3a923539302f0462755ea9847e7d5a337b2381"
 
 [[package]]
 name = "irodori-table-desktop"

@@ -11,8 +11,9 @@ explicitly defer the exotic surfaces. Current version: **0.3.0**.
    time-series, the long in-progress list) is *experimental*. Without this, 1.0
    never closes.
 2. **Stabilize the build.** `cargo build` green on default features (the DB-connector
-   feature refactor is mid-flight and only builds via `--features legacy-connectors`),
-   remove the dev `[patch]`, and cut **`irodori-sql` v0.2.24**.
+   feature refactor is mid-flight and only builds via `--features legacy-connectors`).
+   *(Done: the dev `[patch]` is removed and **`irodori-sql` v0.2.24** is cut — the
+   workspace now consumes it from the `v0.2.24` tag.)*
 3. **Core data workflows (Phase 6):** schema compare + migration preview (engine
    already exists in `irodori-sql/schema.rs` — mostly wiring), editable results +
    table designer + index/constraint UI, data compare + safe bulk edit.

@@ -15,7 +15,7 @@ So the download channel is live today: just push a `v0.3.0` tag.
 | --- | --- | --- | --- |
 | GitHub Releases (installers) | end users | ✅ exists | `release.yml`; cut by tagging `v0.3.0` |
 | Tauri in-app updater | end users (auto-update) | ⬜ next | the fastest *update* path for the GUI; needs a signing key |
-| `cargo install --git` | Rust devs (headless `irodori-server`/CLI) | ⬜ blocked | unblocked by removing the dev `[patch]` (cut `irodori-sql` v0.2.24) |
+| `cargo install --git` | Rust devs (headless `irodori-server`/CLI) | ✅ unblocked | `irodori-sql` is now a tagged dep (`v0.2.24`); no dev `[patch]` remains |
 | crates.io | Rust devs | ⬜ later | crates.io forbids git/path deps; all `irodori-*` must be published first |
 | Homebrew cask / Scoop / winget | mac/Windows | ⬜ later | manifests auto-bumped from releases |
 | AUR / Flatpak | Linux | ⬜ later | from releases |
@@ -27,14 +27,17 @@ channel for the headless **`irodori-server`** (and any CLI) — but **not** for 
 desktop app, which bundles a webview + a built frontend (`cargo install` can't
 produce that; use installers/updater instead).
 
-And it's currently **blocked**: the workspace has a development
-`[patch."https://github.com/hjosugi/irodori-sql"] → path = "../irodori-sql"`, so
-`cargo install --git` would fail (that sibling path doesn't exist for a remote
-install). Prerequisite to unblock (also a 1.0 item):
+This is now **unblocked**. The workspace previously carried a development
+`[patch]` redirecting `irodori-sql` to a local sibling path, which made a remote
+`cargo install --git` fail. That patch is gone — the workspace consumes
+`irodori-sql` from the `v0.2.24` Git tag — so the headless binary installs with:
 
-1. Commit + tag the sibling `irodori-sql` repo as `v0.2.24` and push the tag.
-2. Point the workspace dep at `tag = "v0.2.24"` and delete the `[patch]`.
-3. Then: `cargo install --git https://github.com/hjosugi/irodori-table irodori-server`.
+```
+cargo install --git https://github.com/hjosugi/irodori-table irodori-server
+```
+
+(How it got here: `irodori-sql` was bumped to `0.2.24`, tagged `v0.2.24`, and
+pushed; the workspace dep was repointed from `rev = …` to `tag = "v0.2.24"`.)
 
 ## Recommended order
 
@@ -45,6 +48,7 @@ install). Prerequisite to unblock (also a 1.0 item):
    - In `tauri.conf.json`: set `bundle.createUpdaterArtifacts = true` and
      `plugins.updater` with the public key + an `endpoints` entry pointing at the
      releases `latest.json` (tauri-action emits it per release).
-3. **Unblock cargo** for the headless binary (the v0.2.24 + drop-patch steps above).
+3. ~~**Unblock cargo**~~ — ✅ done (`irodori-sql v0.2.24` tagged + workspace
+   repointed). `cargo install --git … irodori-server` works today.
 4. **Package managers** (brew/scoop/winget/AUR/Flatpak) once you want them — each
    is a small manifest auto-updated from the GitHub Release assets.

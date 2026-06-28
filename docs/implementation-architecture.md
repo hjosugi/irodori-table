@@ -101,6 +101,21 @@ Frontend rules of thumb:
 - Keep global keyboard metadata in `src/core/keybindings.ts`.
 - Keep command orchestration in `features/workbench/command-handlers.ts`.
 - Keep large repeated UI surfaces under feature `components/`.
+- Keep cross-feature UI primitives under `src/components/` — currently
+  `DialogShell` (shared modal chrome) and `ErrorBoundary`.
+- All modals render through `DialogShell`: it owns the scrim overlay,
+  ESC-to-close, click-outside, focus trap, focus restoration, and
+  `role="dialog"`/`aria-modal`. Do not hand-roll modal overlays.
+- Wrap fallible subtrees in `ErrorBoundary` so a render error degrades locally
+  instead of white-screening the whole app (the root is wrapped in `App.tsx`).
+- Pull cohesive orchestration out of the `AppWorkbench` shell into hooks under
+  `src/app/hooks/` (e.g. `useResultGridScroll` / `useResultGridFiltering` /
+  `useResultGridSelection`) rather than growing the shell.
+- Split multi-tab dialogs into one component per tab (e.g.
+  `features/settings/tabs/`); the dialog file stays a thin shell.
+- Use the design tokens in `styles/base.css` for spacing, radius, and
+  elevation (`--space-*`, `--radius-*`, `--elevation-*`) instead of ad-hoc px,
+  and theme color tokens instead of hardcoded colors.
 - Add or change Tauri payloads in Rust first, then regenerate TypeScript.
 
 ## Backend Shape

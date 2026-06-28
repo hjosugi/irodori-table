@@ -75,7 +75,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
     drift.
   - `irodori-sql` (`hjosugi/irodori-sql`): SQL dialect metadata, parameter
     detection, information-schema/metamodel helpers, and schema-diff primitives.
-    Irodori Table consumes it as a version-tagged Git dependency (`v0.2.23`).
+    Irodori Table consumes it as a version-tagged Git dependency (`v0.2.24`).
 - Core crates:
   - `irodori-core`: connection model, workspace model, command registry, keybinding resolver.
   - `irodori-proxy`: direct, SSH, SOCKS/HTTP, and multi-hop transport composition.

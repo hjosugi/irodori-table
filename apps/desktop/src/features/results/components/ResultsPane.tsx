@@ -51,6 +51,84 @@ import type {
   SelectedCell,
 } from "../types";
 
+export type ResultsPaneFiltering = {
+  quickFilter: string;
+  filtersOpen: boolean;
+  filtersActive: boolean;
+  activeFilters: readonly ResultFilterRule[];
+  filteredOutCount: number;
+  filterJoin: ResultFilterJoin;
+  filterRules: readonly ResultFilterRule[];
+  sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
+  sortRules: readonly ResultSortRule[];
+  onQuickFilterChange: (value: string) => void;
+  onClearQuickFilter: () => void;
+  onToggleFilters: () => void;
+  onSetFilterJoin: (join: ResultFilterJoin) => void;
+  onAddFilterRule: (columnIndex?: number | "any") => void;
+  onUpdateFilterRule: (id: string, patch: Partial<ResultFilterRule>) => void;
+  onRemoveFilterRule: (id: string) => void;
+  onClearResultFilters: () => void;
+  onToggleSort: (col: number, additive?: boolean) => void;
+  onCloseFilters: () => void;
+};
+
+export type ResultsPaneEditing = {
+  editMode: boolean;
+  editUndoDepth: number;
+  committing: boolean;
+  cellEdits: ReadonlyMap<string, GridCellDraft>;
+  editingCell: EditingCell;
+  canEditActiveResult: () => boolean;
+  onAddNewRow: () => void;
+  onUndoEdit: () => void;
+  onCommitEdits: () => void;
+  onDiscardEdits: () => void;
+  onEnableEditMode: () => void;
+  onBeginCellEdit: (key: string, col: number, seed?: string) => void;
+  onSetCellValue: (
+    origin: ResultGridRowOrigin,
+    col: number,
+    value: GridCellDraft,
+  ) => void;
+  onDeleteRow: (origin: ResultGridRowOrigin) => void;
+  onPasteTableAt: (
+    origin: ResultGridRowOrigin,
+    startCol: number,
+    text: string,
+  ) => void;
+  onEndCellEdit: () => void;
+};
+
+export type ResultsPaneSelection = {
+  selectedRowKey: string | null;
+  selectedCell: SelectedCell;
+  selectedRangeBounds: ResultCellRangeBounds;
+  selectedRowValues: unknown[] | null;
+  rowDetailTable: DbObjectMetadata | null;
+  onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
+  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
+  onCloseRowDetail: () => void;
+};
+
+export type ResultsPaneGridGeometry = {
+  gridRowStyle: CSSProperties;
+  gridTotalWidth: number;
+  gridRowHeight: number;
+  gridColumnWidth: number;
+  leftColumnPad: number;
+  rightColumnPad: number;
+  topPad: number;
+  bottomPad: number;
+  firstVisible: number;
+  visibleColumnIndexes: number[];
+  visibleRows: readonly ResultGridDisplayRow[];
+  onGridScroll: (event: UIEvent<HTMLDivElement>) => void;
+  onGridKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  onGridPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void;
+  onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
+};
+
 type ResultsPaneProps = {
   running: boolean;
   tableViewObject: DbObjectMetadata | null;
@@ -68,19 +146,9 @@ type ResultsPaneProps = {
   commitError: string | null;
   pendingCount: number;
   displayedResultSummary: string;
-  quickFilter: string;
-  filtersOpen: boolean;
-  filtersActive: boolean;
-  activeFilters: readonly ResultFilterRule[];
-  filteredOutCount: number;
-  filterJoin: ResultFilterJoin;
-  filterRules: readonly ResultFilterRule[];
   resultColumns: string[];
   exportMenuOpen: boolean;
   shortcutTips: readonly ShortcutTip[];
-  editMode: boolean;
-  editUndoDepth: number;
-  committing: boolean;
   showingStructure: boolean;
   structureObject: DbObjectMetadata | null;
   editorEngine: DbEngine;
@@ -88,73 +156,21 @@ type ResultsPaneProps = {
   totalRows: number;
   gridRef: RefObject<HTMLDivElement | null>;
   importFileRef: RefObject<HTMLInputElement | null>;
-  gridRowStyle: CSSProperties;
-  gridTotalWidth: number;
-  gridRowHeight: number;
-  gridColumnWidth: number;
-  leftColumnPad: number;
-  rightColumnPad: number;
-  topPad: number;
-  bottomPad: number;
-  firstVisible: number;
-  visibleColumnIndexes: number[];
-  visibleRows: readonly ResultGridDisplayRow[];
-  sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
-  sortRules: readonly ResultSortRule[];
-  selectedRowKey: string | null;
-  selectedCell: SelectedCell;
-  selectedRangeBounds: ResultCellRangeBounds;
-  editingCell: EditingCell;
-  cellEdits: ReadonlyMap<string, GridCellDraft>;
-  selectedRowValues: unknown[] | null;
-  rowDetailTable: DbObjectMetadata | null;
   activeMetadata: DatabaseMetadata | undefined;
   activeConnectionId: string;
   formatObjectName: (object: DbObjectMetadata) => string;
   formatCount: (value: bigint | number) => string;
-  canEditActiveResult: () => boolean;
   onResultModeChange: (mode: ResultMode) => void;
   onSelectResultSet: (index: number) => void;
-  onQuickFilterChange: (value: string) => void;
-  onClearQuickFilter: () => void;
-  onToggleFilters: () => void;
-  onSetFilterJoin: (join: ResultFilterJoin) => void;
-  onAddFilterRule: (columnIndex?: number | "any") => void;
-  onUpdateFilterRule: (id: string, patch: Partial<ResultFilterRule>) => void;
-  onRemoveFilterRule: (id: string) => void;
-  onClearResultFilters: () => void;
   onExportActiveResult: (format: ResultExportFormat) => void;
   onToggleExportMenu: () => void;
   onCloseExportMenu: () => void;
-  onCloseFilters: () => void;
   onCopyVisibleResult: () => void;
   onImportFile: (file: File) => void;
-  onAddNewRow: () => void;
-  onUndoEdit: () => void;
-  onCommitEdits: () => void;
-  onDiscardEdits: () => void;
-  onEnableEditMode: () => void;
-  onGridScroll: (event: UIEvent<HTMLDivElement>) => void;
-  onGridKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
-  onGridPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void;
-  onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
-  onToggleSort: (col: number, additive?: boolean) => void;
-  onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
-  onBeginCellEdit: (key: string, col: number, seed?: string) => void;
-  onSetCellValue: (
-    origin: ResultGridRowOrigin,
-    col: number,
-    value: GridCellDraft,
-  ) => void;
-  onDeleteRow: (origin: ResultGridRowOrigin) => void;
-  onPasteTableAt: (
-    origin: ResultGridRowOrigin,
-    startCol: number,
-    text: string,
-  ) => void;
-  onEndCellEdit: () => void;
-  onCloseRowDetail: () => void;
+  filtering: ResultsPaneFiltering;
+  editing: ResultsPaneEditing;
+  selection: ResultsPaneSelection;
+  gridGeometry: ResultsPaneGridGeometry;
 };
 
 export function ResultsPane({
@@ -174,19 +190,9 @@ export function ResultsPane({
   commitError,
   pendingCount,
   displayedResultSummary,
-  quickFilter,
-  filtersOpen,
-  filtersActive,
-  activeFilters,
-  filteredOutCount,
-  filterJoin,
-  filterRules,
   resultColumns,
   exportMenuOpen,
   shortcutTips,
-  editMode,
-  editUndoDepth,
-  committing,
   showingStructure,
   structureObject,
   editorEngine,
@@ -194,66 +200,88 @@ export function ResultsPane({
   totalRows,
   gridRef,
   importFileRef,
-  gridRowStyle,
-  gridTotalWidth,
-  gridRowHeight,
-  gridColumnWidth,
-  leftColumnPad,
-  rightColumnPad,
-  topPad,
-  bottomPad,
-  firstVisible,
-  visibleColumnIndexes,
-  visibleRows,
-  sortRuleByColumn,
-  sortRules,
-  selectedRowKey,
-  selectedCell,
-  selectedRangeBounds,
-  editingCell,
-  cellEdits,
-  selectedRowValues,
-  rowDetailTable,
   activeMetadata,
   activeConnectionId,
   formatObjectName,
   formatCount,
-  canEditActiveResult,
   onResultModeChange,
   onSelectResultSet,
-  onQuickFilterChange,
-  onClearQuickFilter,
-  onToggleFilters,
-  onSetFilterJoin,
-  onAddFilterRule,
-  onUpdateFilterRule,
-  onRemoveFilterRule,
-  onClearResultFilters,
   onExportActiveResult,
   onToggleExportMenu,
   onCloseExportMenu,
-  onCloseFilters,
   onCopyVisibleResult,
   onImportFile,
-  onAddNewRow,
-  onUndoEdit,
-  onCommitEdits,
-  onDiscardEdits,
-  onEnableEditMode,
-  onGridScroll,
-  onGridKeyDown,
-  onGridPaste,
-  onGridCopy,
-  onToggleSort,
-  onSelectGridRow,
-  onSelectGridCell,
-  onBeginCellEdit,
-  onSetCellValue,
-  onDeleteRow,
-  onPasteTableAt,
-  onEndCellEdit,
-  onCloseRowDetail,
+  filtering,
+  editing,
+  selection,
+  gridGeometry,
 }: ResultsPaneProps) {
+  const {
+    quickFilter,
+    filtersOpen,
+    filtersActive,
+    activeFilters,
+    filteredOutCount,
+    filterJoin,
+    filterRules,
+    sortRuleByColumn,
+    sortRules,
+    onQuickFilterChange,
+    onClearQuickFilter,
+    onToggleFilters,
+    onSetFilterJoin,
+    onAddFilterRule,
+    onUpdateFilterRule,
+    onRemoveFilterRule,
+    onClearResultFilters,
+    onToggleSort,
+    onCloseFilters,
+  } = filtering;
+  const {
+    editMode,
+    editUndoDepth,
+    committing,
+    cellEdits,
+    editingCell,
+    canEditActiveResult,
+    onAddNewRow,
+    onUndoEdit,
+    onCommitEdits,
+    onDiscardEdits,
+    onEnableEditMode,
+    onBeginCellEdit,
+    onSetCellValue,
+    onDeleteRow,
+    onPasteTableAt,
+    onEndCellEdit,
+  } = editing;
+  const {
+    selectedRowKey,
+    selectedCell,
+    selectedRangeBounds,
+    selectedRowValues,
+    rowDetailTable,
+    onSelectGridRow,
+    onSelectGridCell,
+    onCloseRowDetail,
+  } = selection;
+  const {
+    gridRowStyle,
+    gridTotalWidth,
+    gridRowHeight,
+    gridColumnWidth,
+    leftColumnPad,
+    rightColumnPad,
+    topPad,
+    bottomPad,
+    firstVisible,
+    visibleColumnIndexes,
+    visibleRows,
+    onGridScroll,
+    onGridKeyDown,
+    onGridPaste,
+    onGridCopy,
+  } = gridGeometry;
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const filterToggleRef = useRef<HTMLButtonElement | null>(null);
   const filterPanelRef = useRef<HTMLDivElement | null>(null);

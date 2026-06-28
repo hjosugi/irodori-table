@@ -297,6 +297,12 @@ pub(crate) fn sql_may_change_metadata(sql: &str) -> bool {
         .any(|statement| sql_tokens(statement).any(is_metadata_mutation_keyword))
 }
 
+pub(crate) fn sql_may_write(sql: &str) -> bool {
+    split_sql_statements(sql)
+        .iter()
+        .any(|statement| sql_tokens(statement).any(is_write_keyword))
+}
+
 fn sql_tokens(sql: &str) -> impl Iterator<Item = String> + '_ {
     SqlTokenIter {
         input: sql.as_bytes(),
@@ -323,6 +329,37 @@ fn is_metadata_mutation_keyword(token: String) -> bool {
             | "rename"
             | "replace"
             | "revoke"
+            | "truncate"
+            | "update"
+            | "upsert"
+            | "vacuum"
+    )
+}
+
+fn is_write_keyword(token: String) -> bool {
+    matches!(
+        token.as_str(),
+        "alter"
+            | "analyze"
+            | "call"
+            | "comment"
+            | "copy"
+            | "create"
+            | "delete"
+            | "do"
+            | "drop"
+            | "execute"
+            | "exec"
+            | "grant"
+            | "insert"
+            | "load"
+            | "merge"
+            | "refresh"
+            | "reindex"
+            | "rename"
+            | "replace"
+            | "revoke"
+            | "set"
             | "truncate"
             | "update"
             | "upsert"

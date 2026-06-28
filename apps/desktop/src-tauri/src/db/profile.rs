@@ -36,8 +36,15 @@ pub struct ConnectionProfile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub transport: Option<irodori_core::TransportConfig>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    #[ts(optional)]
+    pub read_only: bool,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub options: BTreeMap<String, String>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 pub(super) fn normalize_profile(
