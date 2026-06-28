@@ -6,7 +6,7 @@ import {
 import type { WorkspaceSnapshot } from "../generated/irodori-api";
 
 export const APP_NAME = "Irodori Table";
-export const APP_VERSION = "0.3.7";
+export const APP_VERSION = "0.3.8";
 export const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
