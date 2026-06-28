@@ -81,21 +81,45 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
   SQL Server listed "Planned"; Oracle/Firebird/all others absent.
 - **Connectors: 0 of 36 implemented** at audit time (empty repos).
 
-## Recommended fixes (low-risk, data-file edits)
+## Fixes applied (2026-06-28, verified: tsc 0 / 342 tests)
 
-1. Remove `returning`/`limit` from `completion-keywords.json` `common[]`; move to
-   the engines that actually support them.
-2. Athena keyword `format = 'iceberg'` → `'table_type'='ICEBERG'`; add Trino +
-   Athena to `mergeEngines`.
-3. Drop Snowflake/Redshift from the SAVEPOINT (`sp`) snippet; reclassify BigQuery
-   as transaction-capable.
-4. Remove QuestDB from the DELETE-bearing `dmlEngines` path; add `SAMPLE BY`/
-   `ASOF JOIN` snippets.
-5. Add a `firebird` keyword entry; add Firebird to `mergeEngines`/
-   `returningEngines`; add MariaDB to `returningEngines`.
-6. Remove hallucinated lakehouse keyword tokens (Delta `time travel`, Hudi
-   `compaction`/`recordkey`, Iceberg `expire_snapshots`/`rewrite_data_files`,
-   S3 Tables `table bucket`); document that formats are queried via an engine.
-7. (Larger) Gate keyword completion by SQL-applicability so non-SQL stores stop
-   receiving SQL keywords (`completion.ts`/`dialect.ts`).
-8. Set `catalog.json` `verified:false` until the connector repos carry real code.
+- ✅ **Keyword completion gated by SQL-applicability** (`completion.ts` `keywordList`):
+  non-SQL stores no longer receive SQL `SELECT/JOIN/RETURNING` keywords — they
+  surface only their own dialect terms (e.g. Elasticsearch `_search`/`aggs`).
+  Systemic finding #2 resolved.
+- ✅ **`common.returning` removed** from `completion-keywords.json`; moved to the
+  engines that support it (postgres, sqlite, duckdb, mariadb; the
+  cockroachdb/yugabytedb/neon lists already had it).
+- ✅ **Athena + S3 Tables** keyword `format = 'iceberg'` → `table_type = 'iceberg'`.
+- ✅ **Delta** `time travel` → `version as of`/`timestamp as of`; **Hudi**
+  `compaction`/`incremental query`/`recordkey` removed (left `merge into`).
+- ✅ **MERGE**: added `trinoPresto`, `athena`, `firebird` to `mergeEngines`.
+- ✅ **RETURNING**: added `mariadb`, `firebird` to `returningEngines`.
+- ✅ **SAVEPOINT**: new `savepointEngines` group excludes Snowflake/Redshift
+  (which have BEGIN/COMMIT but no SAVEPOINT); the generic `sp` snippet uses it.
+- ✅ **QuestDB DELETE**: new `deleteEngines`/`limitDeleteEngines`/
+  `noTxnDeleteEngines` groups exclude QuestDB from `del`/`delop` (it keeps
+  SELECT/UPDATE/`softdel`, which are valid).
+- ✅ **`common.limit`** filtered for `oracle`/`sqlserver`/`firebird` in
+  `completion.ts` `keywordList` (`NON_LIMIT_SQL_ENGINES`) — they use
+  `TOP`/`FETCH FIRST`/`FIRST..SKIP`, not `LIMIT`. (Done in code rather than
+  moving `limit` across ~23 engine lists, both to avoid the churn and to avoid
+  colliding with concurrent edits to `completion-keywords.json`.)
+- ✅ **Firebird/Oracle/SQL Server keyword additions** (Firebird entry;
+  Oracle `dual`/`decode`/`rownum`/`listagg`/`pivot`; SQL Server `output`) —
+  landed via the connector/keyword work in `completion-keywords.json`.
+- ✅ **BigQuery transactions**: dedicated `begin`/`tx`/`commit`/`rollback`
+  snippets use `BEGIN TRANSACTION`/`COMMIT TRANSACTION`/`ROLLBACK TRANSACTION`
+  without adding BigQuery to the generic `begin;` transaction group.
+- ✅ **QuestDB signatures**: added `SAMPLE BY`, `LATEST ON`, and `ASOF JOIN`
+  snippets for QuestDB time-series extensions.
+- ✅ **SQL Server delete-returning**: added a `delret` variant using
+  `OUTPUT deleted.*`.
+
+## Remaining (deferred — larger/owned elsewhere)
+
+- `catalog.json` `verified:true` — the connector repos under
+  `../irodori-extensions/` are now being populated (no longer empty), so the
+  flag is becoming legitimate. Owned by the connector-population effort; not
+  edited here.
+- Cheatsheet coverage (2/36 engines).

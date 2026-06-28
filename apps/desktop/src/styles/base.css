@@ -741,6 +741,44 @@ textarea:disabled {
   background: var(--accent-soft);
 }
 
+.inline-error,
+.inline-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-ui-xs);
+  line-height: 1.35;
+}
+
+.inline-error {
+  border-color: color-mix(in srgb, var(--red) 32%, var(--border));
+  color: var(--red);
+  background: var(--danger-bg);
+}
+
+.inline-success {
+  border-color: color-mix(in srgb, var(--green) 32%, var(--border));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+}
+
+.inline-error svg,
+.inline-success svg {
+  flex: 0 0 auto;
+}
+
+.inline-error span,
+.inline-success span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .toolbar-command {
   color: var(--text);
   font-weight: 700;

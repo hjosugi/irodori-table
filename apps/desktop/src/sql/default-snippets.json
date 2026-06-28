@@ -71,7 +71,6 @@
       "sqlite",
       "redshift",
       "h2",
-      "clickhouse",
       "snowflake",
       "bigquery",
       "athena",
@@ -167,6 +166,74 @@
       "oracle",
       "firebird",
       "sqlserver"
+    ],
+    "deleteEngines": [
+      "postgres",
+      "cockroachdb",
+      "yugabytedb",
+      "timescaledb",
+      "neon",
+      "mysql",
+      "mariadb",
+      "tidb",
+      "duckdb",
+      "motherduck",
+      "sqlite",
+      "redshift",
+      "h2",
+      "snowflake",
+      "firebird",
+      "bigquery",
+      "athena",
+      "cloudSpanner",
+      "trinoPresto",
+      "databricks",
+      "hive",
+      "iceberg",
+      "s3Tables",
+      "deltaLake",
+      "hudi",
+      "oracle",
+      "sqlserver"
+    ],
+    "limitDeleteEngines": [
+      "postgres",
+      "cockroachdb",
+      "yugabytedb",
+      "timescaledb",
+      "neon",
+      "mysql",
+      "mariadb",
+      "tidb",
+      "duckdb",
+      "motherduck",
+      "sqlite",
+      "redshift",
+      "h2",
+      "clickhouse",
+      "snowflake",
+      "bigquery",
+      "athena",
+      "cloudSpanner",
+      "trinoPresto",
+      "databricks",
+      "hive",
+      "iceberg",
+      "s3Tables",
+      "deltaLake",
+      "hudi"
+    ],
+    "noTxnDeleteEngines": [
+      "bigquery",
+      "athena",
+      "cloudSpanner",
+      "trinoPresto",
+      "databricks",
+      "hive",
+      "iceberg",
+      "s3Tables",
+      "deltaLake",
+      "hudi"
     ],
     "returningEngines": [
       "postgres",
@@ -417,7 +484,17 @@
       "rank": 525,
       "scope": "statement",
       "engineGroups": [
-        "dmlEngines"
+        "deleteEngines"
+      ]
+    },
+    {
+      "label": "del",
+      "detail": "ClickHouse delete mutation",
+      "template": "alter table ${1:table}\ndelete where ${2:condition};\n${0}",
+      "rank": 525,
+      "scope": "statement",
+      "engines": [
+        "clickhouse"
       ]
     },
     {
@@ -427,7 +504,17 @@
       "rank": 524,
       "scope": "statement",
       "engineGroups": [
-        "limitEngines"
+        "limitDeleteEngines"
+      ]
+    },
+    {
+      "label": "delop",
+      "detail": "ClickHouse delete mutation: preview/delete/check",
+      "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\n-- ClickHouse delete mutations are asynchronous.\nalter table ${1:table}\ndelete where ${2:condition};\n\n-- verify mutation progress\nselect database, table, mutation_id, command, is_done, latest_failed_part, latest_fail_reason\nfrom system.mutations\nwhere table = '${1:table}'\norder by create_time desc\nlimit 10;\n${0}",
+      "rank": 524,
+      "scope": "statement",
+      "engines": [
+        "clickhouse"
       ]
     },
     {
@@ -457,7 +544,7 @@
       "rank": 524,
       "scope": "statement",
       "engineGroups": [
-        "noExplicitTransactionDmlEngines"
+        "noTxnDeleteEngines"
       ]
     },
     {
@@ -468,6 +555,16 @@
       "scope": "statement",
       "engineGroups": [
         "returningEngines"
+      ]
+    },
+    {
+      "label": "delret",
+      "detail": "delete output deleted rows",
+      "template": "delete from ${1:table}\noutput deleted.${3:*}\nwhere ${2:condition};\n${0}",
+      "rank": 512,
+      "scope": "statement",
+      "engines": [
+        "sqlserver"
       ]
     },
     {
@@ -512,6 +609,16 @@
     },
     {
       "label": "begin",
+      "detail": "safe transaction block",
+      "template": "begin transaction;\n\n${1:statement}\n\n-- commit transaction;\nrollback transaction;\n${0}",
+      "rank": 524,
+      "scope": "statement",
+      "engines": [
+        "bigquery"
+      ]
+    },
+    {
+      "label": "begin",
       "detail": "PL/SQL block",
       "template": "begin\n  ${1:null;}\nend;\n/\n${0}",
       "rank": 524,
@@ -542,6 +649,16 @@
       ]
     },
     {
+      "label": "commit",
+      "detail": "commit transaction",
+      "template": "commit transaction;\n${0}",
+      "rank": 500,
+      "scope": "statement",
+      "engines": [
+        "bigquery"
+      ]
+    },
+    {
       "label": "rollback",
       "detail": "rollback transaction",
       "template": "rollback;\n${0}",
@@ -563,13 +680,23 @@
       ]
     },
     {
+      "label": "rollback",
+      "detail": "rollback transaction",
+      "template": "rollback transaction;\n${0}",
+      "rank": 500,
+      "scope": "statement",
+      "engines": [
+        "bigquery"
+      ]
+    },
+    {
       "label": "sp",
       "detail": "savepoint with rollback",
       "template": "savepoint ${1:sp_name};\n\n${2:statement}\n\n-- rollback to savepoint ${1:sp_name};\n-- release savepoint ${1:sp_name};\n${0}",
       "rank": 495,
       "scope": "statement",
       "engineGroups": [
-        "explicitTransactionEngines"
+        "savepointEngines"
       ]
     },
     {
@@ -975,6 +1102,36 @@
       ]
     },
     {
+      "label": "sampleby",
+      "detail": "QuestDB sample by time bucket",
+      "template": "select ${1:timestamp_column}, ${2:avg(value)} as ${3:avg_value}\nfrom ${4:table}\nwhere ${1:timestamp_column} in '${5:2026-01-01}'\nsample by ${6:1h};\n${0}",
+      "rank": 498,
+      "scope": "statement",
+      "engines": [
+        "questdb"
+      ]
+    },
+    {
+      "label": "lateston",
+      "detail": "QuestDB latest row per key",
+      "template": "select *\nfrom ${1:table}\nlatest on ${2:timestamp_column}\npartition by ${3:symbol_column};\n${0}",
+      "rank": 497,
+      "scope": "statement",
+      "engines": [
+        "questdb"
+      ]
+    },
+    {
+      "label": "asofjoin",
+      "detail": "QuestDB as-of join",
+      "template": "select ${1:l.*}, ${2:r.value}\nfrom ${3:left_table} l\nasof join ${4:right_table} r on (${5:symbol_column});\n${0}",
+      "rank": 497,
+      "scope": "statement",
+      "engines": [
+        "questdb"
+      ]
+    },
+    {
       "label": "merge",
       "detail": "merge/upsert operation",
       "template": "merge into ${1:target_table} as target\nusing ${2:source_table} as source\non ${3:target.id = source.id}\nwhen matched then update set\n  ${4:column} = source.${4:column}\nwhen not matched then insert (${5:columns})\nvalues (${6:source_columns});\n${0}",
@@ -1012,6 +1169,16 @@
       "scope": "statement",
       "engineGroups": [
         "topEngines"
+      ]
+    },
+    {
+      "label": "tx",
+      "detail": "transaction block",
+      "template": "begin transaction;\n\n${1:statement}\n\n-- commit transaction;\nrollback transaction;\n${0}",
+      "rank": 495,
+      "scope": "statement",
+      "engines": [
+        "bigquery"
       ]
     },
     {

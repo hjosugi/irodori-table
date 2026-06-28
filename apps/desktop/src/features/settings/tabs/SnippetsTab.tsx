@@ -1,5 +1,14 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileUp, ListPlus } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileUp,
+  ListPlus,
+  Plus,
+  Replace,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import {
   cloneDefaultSqlSnippets,
   isSqlSnippetScope,
@@ -126,14 +135,16 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
           type="button"
           onClick={() => setSqlSnippets(copyDefaultSqlSnippets())}
         >
-          {t("settings.snippets.resetDefaults")}
+          <RotateCcw size={14} />
+          <span>{t("settings.snippets.resetDefaults")}</span>
         </button>
         <button
           className="primary-button"
           type="button"
           onClick={addSnippet}
         >
-          {t("settings.snippets.add")}
+          <Plus size={14} />
+          <span>{t("settings.snippets.add")}</span>
         </button>
       </div>
       <div className="snippet-import-panel">
@@ -161,7 +172,7 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
             onClick={() => importFileRef.current?.click()}
           >
             <FileUp size={14} />
-            {t("settings.snippets.importFile")}
+            <span>{t("settings.snippets.importFile")}</span>
           </button>
         </div>
         <textarea
@@ -183,7 +194,7 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
             onClick={() => void applySnippetImport("merge")}
           >
             <ListPlus size={14} />
-            {t("settings.snippets.importMerge")}
+            <span>{t("settings.snippets.importMerge")}</span>
           </button>
           <button
             className="text-button"
@@ -191,16 +202,17 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
             disabled={importDraft.trim().length === 0}
             onClick={() => void applySnippetImport("replace")}
           >
-            {t("settings.snippets.importReplace")}
+            <Replace size={14} />
+            <span>{t("settings.snippets.importReplace")}</span>
           </button>
         </div>
         {importError ? (
-          <div className="inline-error settings-json-error">
+          <div className="inline-error settings-json-error" role="alert">
             <AlertTriangle size={13} />
             <span>{importError}</span>
           </div>
         ) : importNotice ? (
-          <div className="inline-success snippet-import-notice">
+          <div className="inline-success snippet-import-notice" role="status">
             <CheckCircle2 size={13} />
             <span>{importNotice}</span>
           </div>
@@ -289,11 +301,12 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
               </label>
               <div className="snippet-editor-actions">
                 <button
-                  className="text-button"
+                  className="text-button danger"
                   type="button"
                   onClick={() => removeSnippet(index)}
                 >
-                  {t("settings.snippets.remove")}
+                  <Trash2 size={13} />
+                  <span>{t("settings.snippets.remove")}</span>
                 </button>
               </div>
             </div>

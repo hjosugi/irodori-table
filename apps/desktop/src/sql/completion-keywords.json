@@ -47,8 +47,19 @@
     "mariadb": ["straight_join", "date_format", "returning"],
     "tidb": ["explain analyze", "date_format"],
     "sqlite": ["pragma", "without rowid", "strftime", "returning"],
-    "sqlserver": ["top", "cross apply", "outer apply", "with (nolock)"],
-    "oracle": ["fetch first", "connect by", "merge into", "nvl"],
+    "sqlserver": ["top", "cross apply", "outer apply", "with (nolock)", "output"],
+    "oracle": [
+      "fetch first",
+      "connect by",
+      "merge into",
+      "nvl",
+      "nvl2",
+      "dual",
+      "decode",
+      "rownum",
+      "listagg",
+      "pivot"
+    ],
     "duckdb": ["sample", "qualify", "read_csv", "read_parquet", "returning"],
     "motherduck": ["attach 'md:'", "show all tables", "sample", "qualify"],
     "clickhouse": ["prewhere", "array join", "limit by"],
@@ -64,6 +75,15 @@
       "optimize"
     ],
     "redshift": ["distkey", "sortkey", "encode"],
+    "firebird": [
+      "first",
+      "skip",
+      "rows",
+      "fetch first",
+      "merge into",
+      "returning",
+      "next value for"
+    ],
     "iceberg": [
       "merge into",
       "create table",

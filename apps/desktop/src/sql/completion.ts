@@ -20,6 +20,7 @@ import completionKeywords from "./completion-keywords.json";
 import {
   DEFAULT_SNIPPET_RANK,
   defaultSqlSnippets,
+  isSqlSnippetEngine,
   snippetsForEngine,
   type SqlSnippetDefinition,
 } from "./snippets";
@@ -1345,8 +1346,28 @@ function columnDetail(column: ColumnMetadata): string {
   return column.nullable ? column.dataType : `${column.dataType} not null`;
 }
 
+// SQL engines that page with TOP / FETCH FIRST / FIRST..SKIP instead of LIMIT,
+// so the shared `limit` common keyword must not surface for them.
+const NON_LIMIT_SQL_ENGINES = new Set<DbEngine>([
+  "oracle",
+  "sqlserver",
+  "firebird",
+]);
+
 function keywordList(engine: DbEngine): string[] {
-  return [...new Set([...COMMON_KEYWORDS, ...(ENGINE_KEYWORDS[engine] ?? [])])];
+  const engineKeywords = ENGINE_KEYWORDS[engine] ?? [];
+  // Gate the SQL common keywords by SQL-applicability: non-SQL stores
+  // (MongoDB, Redis, DynamoDB, Cassandra/Scylla, Bigtable, Couchbase, ArangoDB,
+  // Elasticsearch/OpenSearch query DSL, vector/time-series APIs, Cypher graphs)
+  // must not get SELECT/JOIN/RETURNING completion. They only surface their own
+  // dialect terms (e.g. Elasticsearch `_search`/`aggs`), if any.
+  if (!isSqlSnippetEngine(engine)) {
+    return [...new Set(engineKeywords)];
+  }
+  const common = NON_LIMIT_SQL_ENGINES.has(engine)
+    ? COMMON_KEYWORDS.filter((keyword) => keyword !== "limit")
+    : COMMON_KEYWORDS;
+  return [...new Set([...common, ...engineKeywords])];
 }
 
 function relationInsertName(entry: ObjectEntry, index: SqlCompletionIndex): string {

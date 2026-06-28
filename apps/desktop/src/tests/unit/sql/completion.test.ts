@@ -423,6 +423,18 @@ describe("completeSqlLightweight", () => {
     expect(defaultSnippetForEngine("sqlserver", "begin")?.template).toContain(
       "begin transaction",
     );
+    expect(defaultSnippetForEngine("bigquery", "begin")?.template).toContain(
+      "begin transaction",
+    );
+    expect(defaultSnippetForEngine("bigquery", "begin")?.template).not.toContain(
+      "begin;\n",
+    );
+    expect(defaultSnippetForEngine("bigquery", "tx")?.template).toContain(
+      "rollback transaction",
+    );
+    expect(defaultSnippetForEngine("bigquery", "commit")?.template).toContain(
+      "commit transaction",
+    );
     expect(defaultSnippetForEngine("mongodb", "sel")).toBeUndefined();
     expect(
       snippetsForEngine(defaultSqlSnippets, "bigquery").filter(
@@ -439,10 +451,25 @@ describe("completeSqlLightweight", () => {
       (option) => option.label === "upsert",
     );
     const oracleDeleteOperation = defaultSnippetForEngine("oracle", "delop");
+    const clickHouseDeleteOperation = defaultSnippetForEngine("clickhouse", "delop");
+    const sqlServerDeleteReturning = defaultSnippetForEngine("sqlserver", "delret");
+    const questDbSampleBy = defaultSnippetForEngine("questdb", "sampleby");
+    const questDbLatestOn = defaultSnippetForEngine("questdb", "lateston");
+    const questDbAsofJoin = defaultSnippetForEngine("questdb", "asofjoin");
 
     expect(mysqlUpsert?.detail).toBe("insert on duplicate key update");
     expect(oracleDeleteOperation?.template).toContain("fetch first");
     expect(oracleDeleteOperation?.template).not.toContain("limit");
+    expect(clickHouseDeleteOperation?.detail).toBe(
+      "ClickHouse delete mutation: preview/delete/check",
+    );
+    expect(clickHouseDeleteOperation?.template).toContain("alter table");
+    expect(clickHouseDeleteOperation?.template).not.toContain("delete from");
+    expect(sqlServerDeleteReturning?.template).toContain("output deleted.${3:*}");
+    expect(questDbSampleBy?.template).toContain("sample by");
+    expect(questDbLatestOn?.template).toContain("latest on");
+    expect(questDbAsofJoin?.template).toContain("asof join");
+    expect(questDbAsofJoin?.template).toContain("on (${5:symbol_column})");
   });
 
   it("adds clause snippets in column-capable contexts", () => {
@@ -606,6 +633,33 @@ snippets:
   it("falls back to cheap keyword completion without metadata matches", () => {
     expect(labels("sel")).toContain("select");
     expect(labels("select * from customers c where ema")).toContain("c.email");
+  });
+
+  it("does not leak common SQL keywords into non-SQL engines", () => {
+    expect(completeWithEngine("sel", metadata, "mongodb").map((option) => option.label)).not.toContain(
+      "select",
+    );
+    expect(completeWithEngine("ag", metadata, "elasticsearch").map((option) => option.label)).toContain(
+      "aggs",
+    );
+    expect(completeWithEngine("sel", metadata, "elasticsearch").map((option) => option.label)).not.toContain(
+      "select",
+    );
+  });
+
+  it("adds dialect-specific keyword completions", () => {
+    expect(completeWithEngine("dual", metadata, "oracle").map((option) => option.label)).toContain(
+      "dual",
+    );
+    expect(completeWithEngine("row", metadata, "oracle").map((option) => option.label)).toContain(
+      "rownum",
+    );
+    expect(completeWithEngine("firs", metadata, "firebird").map((option) => option.label)).toContain(
+      "first",
+    );
+    expect(completeWithEngine("next", metadata, "firebird").map((option) => option.label)).toContain(
+      "next value for",
+    );
   });
 
   it("ignores semicolons inside strings when resolving the current statement", () => {
