@@ -296,6 +296,31 @@ Extension rules:
 - Templates must stay permissively licensed and validate through
   `make extension-manifests`.
 
+## Parallel Agent Development
+
+Parallel work is organized around explicit workstreams rather than informal file
+ownership. The detailed policy lives in
+[`parallel-agent-architecture.md`](parallel-agent-architecture.md), and the
+machine-readable source is [`agent-workstreams.json`](agent-workstreams.json).
+
+The key split is:
+
+- One coordinator agent owns registry and generated-catalog source files:
+  `knowledge/engines.json`, `docs/extension-marketplace/*.json`, and
+  `apps/desktop/src-tauri/src/db/engine.rs`.
+- Connector agents are repeatable and own exactly one generated sibling
+  repository under `../irodori-extensions/irodori-extension-*`.
+- Extension-host, DB-runtime, migration/diff, and workbench-UI agents own
+  separate source trees and serialize changes only when shared contracts move.
+- Generated outputs are changed by the owner of the generator input, not by
+  downstream agents.
+
+Validate the workstream map with:
+
+```sh
+node tools/docs/agent-workstreams.mjs
+```
+
 ## Adding A Feature
 
 1. Decide the owner.

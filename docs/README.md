@@ -19,6 +19,9 @@ implementation shape or are edited while changing this repo:
 
 - [implementation-architecture.md](implementation-architecture.md) — current
   codebase map, module boundaries, Tauri/API flow, and implementation diagrams.
+- [parallel-agent-architecture.md](parallel-agent-architecture.md) — workstream
+  ownership, connector-agent lanes, serialized contracts, and validation for
+  parallel coding agents.
 - [roadmap-1.0.md](roadmap-1.0.md) — what's required for a 1.0 release (scope,
   P0/P1, deferrals).
 - [distribution.md](distribution.md) — download/update channels (GitHub Releases,
@@ -52,6 +55,9 @@ irodori-docs; edit the generators, not the output:
   (`tools/knowledge/cheatsheet.mjs`)
 - [extension-marketplace/](extension-marketplace/) — extension catalog JSON
   consumed by the desktop app and generated/validated by `tools/docs/*`.
+- [agent-workstreams.json](agent-workstreams.json) — machine-readable
+  workstream ownership for parallel agent development
+  (`tools/docs/agent-workstreams.mjs`).
 
 The static project site (landing page, blog) stays under [site/](site/) and is
 deployed by `.github/workflows/pages.yml`.

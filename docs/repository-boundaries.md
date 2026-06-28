@@ -13,6 +13,7 @@ mdBook, a samples repo, or the private archive.
 | `irodori-samples` | Public | Database compose files, seed data, and DB-specific sample query projects. |
 | `irodori-sql` | Public | Reusable SQL dialect, placeholder, metamodel, and schema-diff helpers. |
 | `irodori-knowledge` | Public | Shared error/job/knowledge crates used by this workspace. |
+| `irodori-extension-*` | Public per connector | One installable connector implementation per repository, usually generated under the local sibling parent `../irodori-extensions/`. |
 | `irodori-archive` | Private | Historical internal planning/status snapshots, audits, private research notes, bulky discarded docs, and material that should not be public. |
 
 ## What Stays In `irodori-table`
@@ -81,6 +82,24 @@ Generated docs are edited at their inputs:
 
 Generated snapshots can be mirrored into `irodori-docs`, but the generator and
 app-consumed source stay in `irodori-table`.
+
+## Parallel Agent Boundary
+
+Use [parallel-agent-architecture.md](parallel-agent-architecture.md) and
+[agent-workstreams.json](agent-workstreams.json) when assigning work to multiple
+coding agents. The default split is:
+
+- app/runtime/registry contract changes stay in `irodori-table`;
+- one connector implementation agent writes one `irodori-extension-*` repository;
+- generated docs/catalog files are updated by the agent that owns the source
+  data or generator;
+- shared contracts are serialized through the coordinator workstream.
+
+The check is:
+
+```sh
+node tools/docs/agent-workstreams.mjs
+```
 
 ## Decision Checklist
 

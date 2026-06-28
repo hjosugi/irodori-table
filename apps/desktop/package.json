@@ -21,8 +21,11 @@
     "release:minor": "node tools/release.mjs minor",
     "release:major": "node tools/release.mjs major",
     "test": "vitest run",
+    "test:all": "node tools/test-rust-ts.mjs",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:watch": "vitest",
+    "test:rust": "node tools/test-rust-ts.mjs --rust-only",
+    "test:rust-ts": "node tools/test-rust-ts.mjs",
     "test:e2e": "node tools/playwright-test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"

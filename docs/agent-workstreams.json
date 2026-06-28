@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-28",
+  "purpose": "Partition Irodori development so multiple coding agents can work in parallel without editing the same files by default.",
+  "rules": [
+    "Use one git worktree or one connector repository checkout per active agent.",
+    "Only the coordinator workstream edits registry and generated-catalog source files.",
+    "Connector implementation agents write only inside their assigned ../irodori-extensions/{repository}/ tree.",
+    "Shared contracts are read-only for feature agents unless the workstream explicitly owns the contract change.",
+    "Generated files are updated by the owner of the generator input, then checked by the relevant tool."
+  ],
+  "sharedContracts": [
+    {
+      "id": "connector-registry",
+      "owner": "coordinator",
+      "paths": [
+        "knowledge/engines.json",
+        "docs/extension-marketplace/index.json",
+        "docs/extension-marketplace/catalog.json",
+        "docs/extension-marketplace/connector-repositories.json",
+        "apps/desktop/src-tauri/src/db/engine.rs",
+        "apps/desktop/src-tauri/src/db/profile.rs"
+      ],
+      "checks": [
+        "node tools/docs/build-extension-catalog.mjs --check",
+        "node tools/docs/support-status.mjs"
+      ]
+    },
+    {
+      "id": "native-connector-abi",
+      "owner": "extension-host",
+      "paths": [
+        "crates/irodori-extension/**",
+        "packages/extension-sdk/**",
+        "extension.schema.json",
+        "tools/extensions/validate-manifests.mjs"
+      ],
+      "checks": [
+        "make extension-manifests",
+        "make desktop-typegen-check"
+      ]
+    },
+    {
+      "id": "portable-connection",
+      "owner": "db-runtime",
+      "paths": [
+        "crates/irodori-connection/**",
+        "crates/irodori-secure-store/**",
+        "crates/irodori-proxy/**",
+        "apps/desktop/src-tauri/src/db/connection.rs",
+        "apps/desktop/src-tauri/src/db/profile.rs",
+        "apps/desktop/src-tauri/src/db/transport.rs"
+      ],
+      "checks": [
+        "cargo test --workspace"
+      ]
+    },
+    {
+      "id": "desktop-command-api",
+      "owner": "desktop-runtime",
+      "paths": [
+        "apps/desktop/src-tauri/src/**",
+        "apps/desktop/src/generated/**",
+        "apps/desktop/tools/typegen.mjs"
+      ],
+      "checks": [
+        "make desktop-typegen-check",
+        "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml"
+      ]
+    },
+    {
+      "id": "data-diff-contract",
+      "owner": "migration-diff",
+      "paths": [
+        "docs/data-verification-diff.md",
+        "crates/irodori-io/**",
+        "apps/desktop/src/features/migration/**",
+        "apps/desktop/src-tauri/src/db/**"
+      ],
+      "checks": [
+        "npm --prefix apps/desktop run test -- --run src/tests/unit/features/migration/migration-studio.test.ts",
+        "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml db"
+      ]
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "connector-extension",
+      "title": "One installable connector extension",
+      "owner": "connector-agent",
+      "repeatable": true,
+      "source": "docs/extension-marketplace/connector-repositories.json",
+      "unit": "one repository entry from docs/extension-marketplace/connector-repositories.json",
+      "exclusiveWriteGlobs": [
+        "../irodori-extensions/{repository}/**"
+      ],
+      "readOnlyGlobs": [
+        "docs/extension-marketplace/index.json",
+        "docs/extension-marketplace/connector-repositories.json",
+        "knowledge/engines.json",
+        "apps/desktop/src-tauri/src/db/**",
+        "crates/irodori-connection/**",
+        "crates/irodori-extension/**",
+        "packages/extension-sdk/**"
+      ],
+      "coordinatorWriteGlobs": [
+        "docs/extension-marketplace/index.json",
+        "docs/extension-marketplace/catalog.json",
+        "docs/extension-marketplace/connector-repositories.json",
+        "knowledge/engines.json"
+      ],
+      "sharedContracts": [
+        "connector-registry",
+        "native-connector-abi",
+        "portable-connection"
+      ],
+      "checks": [
+        "make -C ../irodori-extensions/{repository} check",
+        "node tools/docs/support-status.mjs"
+      ],
+      "mergeRule": "Can merge independently when the connector stays inside its repository and consumes existing ABI/config contracts."
+    },
+    {
+      "id": "extension-host",
+      "title": "Desktop extension host and SDK",
+      "owner": "extension-host-agent",
+      "repeatable": false,
+      "exclusiveWriteGlobs": [
+        "apps/desktop/src/features/extensions/**",
+        "crates/irodori-extension/**",
+        "packages/extension-sdk/**",
+        "extension.schema.json",
+        "tools/extensions/**"
+      ],
+      "coordinatorWriteGlobs": [
+        "docs/extension-marketplace/*.json"
+      ],
+      "sharedContracts": [
+        "native-connector-abi",
+        "desktop-command-api"
+      ],
+      "checks": [
+        "make extension-manifests",
+        "make desktop-typegen-check",
+        "npm --prefix apps/desktop run build"
+      ],
+      "mergeRule": "Serialize changes that alter the manifest schema, connector ABI, or generated extension SDK."
+    },
+    {
+      "id": "db-runtime",
+      "title": "Core DB runtime, streaming, cancellation, and connection transport",
+      "owner": "db-runtime-agent",
+      "repeatable": false,
+      "exclusiveWriteGlobs": [
+        "apps/desktop/src-tauri/src/db/**",
+        "crates/irodori-connection/**",
+        "crates/irodori-proxy/**",
+        "crates/irodori-secure-store/**"
+      ],
+      "coordinatorWriteGlobs": [
+        "apps/desktop/src-tauri/src/db/engine.rs",
+        "knowledge/engines.json"
+      ],
+      "sharedContracts": [
+        "portable-connection",
+        "desktop-command-api",
+        "connector-registry"
+      ],
+      "checks": [
+        "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml db",
+        "make desktop-typegen-check"
+      ],
+      "mergeRule": "Serialize command payload, connection profile, and cancellation contract changes before UI or connector agents consume them."
+    },
+    {
+      "id": "migration-diff",
+      "title": "Migration studio, row hashing, and high-scale diff",
+      "owner": "migration-agent",
+      "repeatable": false,
+      "exclusiveWriteGlobs": [
+        "apps/desktop/src/features/migration/**",
+        "apps/desktop/src-tauri/src/db/diff*.rs",
+        "apps/desktop/src-tauri/src/db/migration*.rs",
+        "crates/irodori-io/**",
+        "docs/data-verification-diff.md"
+      ],
+      "coordinatorWriteGlobs": [
+        "apps/desktop/src-tauri/src/db/engine.rs",
+        "docs/extension-marketplace/*.json"
+      ],
+      "sharedContracts": [
+        "data-diff-contract",
+        "desktop-command-api",
+        "connector-registry"
+      ],
+      "checks": [
+        "npm --prefix apps/desktop run test -- --run src/tests/unit/features/migration/migration-studio.test.ts",
+        "npm --prefix apps/desktop run build"
+      ],
+      "mergeRule": "Keep diff algorithms behind stable specs so connector agents can implement engine-specific extraction independently."
+    },
+    {
+      "id": "workbench-ui",
+      "title": "Workbench shell, panels, editor, and result interactions",
+      "owner": "frontend-agent",
+      "repeatable": false,
+      "exclusiveWriteGlobs": [
+        "apps/desktop/src/app/**",
+        "apps/desktop/src/features/workbench/**",
+        "apps/desktop/src/features/query-editor/**",
+        "apps/desktop/src/features/results/**",
+        "apps/desktop/src/styles/**"
+      ],
+      "coordinatorWriteGlobs": [
+        "apps/desktop/src/generated/**"
+      ],
+      "sharedContracts": [
+        "desktop-command-api"
+      ],
+      "checks": [
+        "npm --prefix apps/desktop run test -- --run src/tests/unit/features/workbench/command-handlers.test.ts",
+        "npm --prefix apps/desktop run build"
+      ],
+      "mergeRule": "Do not change Rust command DTOs from this lane; request a desktop-command-api contract change first."
+    },
+    {
+      "id": "docs-registry",
+      "title": "Source-of-truth docs, generated docs, and marketplace catalog",
+      "owner": "docs-agent",
+      "repeatable": false,
+      "exclusiveWriteGlobs": [
+        "docs/**",
+        "knowledge/**",
+        "tools/docs/**",
+        "tools/knowledge/**"
+      ],
+      "coordinatorWriteGlobs": [
+        "docs/extension-marketplace/*.json",
+        "knowledge/engines.json"
+      ],
+      "sharedContracts": [
+        "connector-registry"
+      ],
+      "checks": [
+        "make docs-check"
+      ],
+      "mergeRule": "Generated docs change with their source data or generator; do not hand-edit generated snapshots alone."
+    }
+  ]
+}

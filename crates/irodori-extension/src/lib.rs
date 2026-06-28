@@ -96,7 +96,7 @@ pub enum PermissionScope {
     Wasm,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[ts(rename_all = "camelCase")]
 pub struct ExtensionManifest {
@@ -128,7 +128,7 @@ pub struct ExtensionManifest {
     pub dev: Option<ExtensionDevConfig>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[ts(rename_all = "camelCase")]
 pub struct ExtensionContributions {
@@ -303,7 +303,7 @@ pub struct SqlDialectContribution {
     pub file_extensions: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[ts(rename_all = "camelCase")]
 pub struct ConnectorContribution {
@@ -326,6 +326,9 @@ pub struct ConnectorContribution {
     pub dialect: Option<String>,
     #[serde(default)]
     pub features: Vec<ConnectorFeature>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub connection: Option<ConnectorConnectionModel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -339,6 +342,185 @@ pub enum ConnectorFeature {
     PreparedQueries,
     Explain,
     ResultEditing,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorConnectionModel {
+    pub schema_version: u16,
+    pub endpoint: ConnectorEndpointModel,
+    #[serde(default)]
+    pub profile_fields: Vec<ConnectorConnectionField>,
+    #[serde(default)]
+    pub auth_methods: Vec<ConnectorAuthMethod>,
+    #[serde(default)]
+    pub secret_purposes: Vec<ConnectorSecretPurpose>,
+    pub tls: ConnectorTlsModel,
+    #[serde(default)]
+    pub transports: Vec<ConnectorTransportMode>,
+    #[serde(default)]
+    pub option_namespaces: Vec<String>,
+    #[serde(default)]
+    pub custom_driver_options: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorEndpointModel {
+    #[serde(default)]
+    pub modes: Vec<ConnectorEndpointMode>,
+    pub default_port: u16,
+    #[serde(default)]
+    pub fields: Vec<ConnectorConnectionField>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorAuthMethod {
+    pub id: String,
+    pub label: String,
+    pub kind: ConnectorAuthKind,
+    #[serde(default)]
+    pub secret_purposes: Vec<ConnectorSecretPurpose>,
+    #[serde(default)]
+    pub fields: Vec<ConnectorConnectionField>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorConnectionField {
+    pub id: String,
+    pub label: String,
+    #[serde(rename = "type")]
+    #[ts(rename = "type")]
+    pub field_type: ConnectorConnectionFieldType,
+    #[serde(default)]
+    pub required: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub profile_field: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub option: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub secret_purpose: Option<ConnectorSecretPurpose>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub default: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorTlsModel {
+    pub supported: bool,
+    pub required_by_default: bool,
+    #[serde(default)]
+    pub modes: Vec<ConnectorTlsMode>,
+    #[serde(default)]
+    pub fields: Vec<ConnectorConnectionField>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorConnectionFieldType {
+    String,
+    Number,
+    Boolean,
+    Secret,
+    Path,
+    Json,
+    Pem,
+    Uri,
+    Select,
+    StringList,
+    Map,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorAuthKind {
+    None,
+    ConnectionString,
+    UserPassword,
+    Basic,
+    Token,
+    ApiKey,
+    Oauth2,
+    ServiceAccount,
+    PrivateKey,
+    Certificate,
+    Kerberos,
+    Ldap,
+    Saml,
+    Iam,
+    AzureAd,
+    ManagedIdentity,
+    BrowserSso,
+    Custom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorSecretPurpose {
+    Password,
+    Token,
+    PrivateKey,
+    PrivateKeyPassphrase,
+    SshPassword,
+    ProxyPassword,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorTlsMode {
+    Disable,
+    Prefer,
+    Require,
+    VerifyCa,
+    VerifyFull,
+    ClientCertificate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorEndpointMode {
+    HostPort,
+    ConnectionString,
+    LocalFile,
+    InMemory,
+    MotherduckService,
+    CloudResource,
+    CustomEndpoint,
+    Catalog,
+    ObjectStorage,
+    Jdbc,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorTransportMode {
+    Direct,
+    LocalFile,
+    SshTunnel,
+    Socks5Proxy,
+    HttpConnectProxy,
+    ProxyChain,
+    CustomEndpoint,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -704,6 +886,17 @@ mod typegen {
             .decl(&decl::<SqlKeywordCase>())
             .decl(&decl::<ConnectorContribution>())
             .decl(&decl::<ConnectorFeature>())
+            .decl(&decl::<ConnectorConnectionModel>())
+            .decl(&decl::<ConnectorEndpointModel>())
+            .decl(&decl::<ConnectorAuthMethod>())
+            .decl(&decl::<ConnectorConnectionField>())
+            .decl(&decl::<ConnectorTlsModel>())
+            .decl(&decl::<ConnectorConnectionFieldType>())
+            .decl(&decl::<ConnectorAuthKind>())
+            .decl(&decl::<ConnectorSecretPurpose>())
+            .decl(&decl::<ConnectorTlsMode>())
+            .decl(&decl::<ConnectorEndpointMode>())
+            .decl(&decl::<ConnectorTransportMode>())
             .decl(&decl::<WasmModuleContribution>())
             .decl(&decl::<NativeModuleContribution>())
             .decl(&decl::<NativePlatform>())

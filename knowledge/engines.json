@@ -174,8 +174,7 @@
       "wire": "keyValue",
       "defaultPort": 0,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.kv-store",
-      "notes": "provider-neutral key-value connector contract"
+      "notes": "provider-neutral key-value connector contract; not published as a public extension"
     },
     {
       "id": "cassandra",
@@ -447,8 +446,7 @@
       "wire": "objectStore",
       "defaultPort": 443,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.object-store",
-      "notes": "object browsing/source connector is provided as an installable extension"
+      "notes": "object browsing/source connector contract; not published as a public extension"
     },
     {
       "id": "deltaLake",

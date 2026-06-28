@@ -46,9 +46,31 @@ export type SqlFormatterConfig = { keywordCase?: SqlKeywordCase, identifierQuote
 
 export type SqlKeywordCase = "upper" | "lower" | "preserve";
 
-export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, };
+export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, connection?: ConnectorConnectionModel, };
 
 export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing";
+
+export type ConnectorConnectionModel = { schemaVersion: number, endpoint: ConnectorEndpointModel, profileFields: Array<ConnectorConnectionField>, authMethods: Array<ConnectorAuthMethod>, secretPurposes: Array<ConnectorSecretPurpose>, tls: ConnectorTlsModel, transports: Array<ConnectorTransportMode>, optionNamespaces: Array<string>, customDriverOptions: boolean, };
+
+export type ConnectorEndpointModel = { modes: Array<ConnectorEndpointMode>, defaultPort: number, fields: Array<ConnectorConnectionField>, };
+
+export type ConnectorAuthMethod = { id: string, label: string, kind: ConnectorAuthKind, secretPurposes: Array<ConnectorSecretPurpose>, fields: Array<ConnectorConnectionField>, };
+
+export type ConnectorConnectionField = { id: string, label: string, type: ConnectorConnectionFieldType, required: boolean, profileField?: string, option?: string, secretPurpose?: ConnectorSecretPurpose, default?: JsonValue, description?: string, };
+
+export type ConnectorTlsModel = { supported: boolean, requiredByDefault: boolean, modes: Array<ConnectorTlsMode>, fields: Array<ConnectorConnectionField>, };
+
+export type ConnectorConnectionFieldType = "string" | "number" | "boolean" | "secret" | "path" | "json" | "pem" | "uri" | "select" | "stringList" | "map";
+
+export type ConnectorAuthKind = "none" | "connectionString" | "userPassword" | "basic" | "token" | "apiKey" | "oauth2" | "serviceAccount" | "privateKey" | "certificate" | "kerberos" | "ldap" | "saml" | "iam" | "azureAd" | "managedIdentity" | "browserSso" | "custom";
+
+export type ConnectorSecretPurpose = "password" | "token" | "privateKey" | "privateKeyPassphrase" | "sshPassword" | "proxyPassword";
+
+export type ConnectorTlsMode = "disable" | "prefer" | "require" | "verifyCa" | "verifyFull" | "clientCertificate";
+
+export type ConnectorEndpointMode = "hostPort" | "connectionString" | "localFile" | "inMemory" | "motherduckService" | "cloudResource" | "customEndpoint" | "catalog" | "objectStorage" | "jdbc";
+
+export type ConnectorTransportMode = "direct" | "localFile" | "sshTunnel" | "socks5Proxy" | "httpConnectProxy" | "proxyChain" | "customEndpoint";
 
 export type WasmModuleContribution = { id: string, path: string, abi: string, exports: Array<string>, };
 

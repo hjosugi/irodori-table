@@ -62,6 +62,11 @@ function main() {
       .filter((engine) => engine.status === "recognized_no_connector")
       .map((engine) => engine.id),
   );
+  const recognizedNoConnectorMarketplaceIds = new Set(
+    engineRows
+      .filter((engine) => engine.status === "recognized_no_connector" && engine.extensionId)
+      .map((engine) => engine.id),
+  );
   const unimplementedWireIds = parseUnimplementedWires(dbProfileSource).map(camelId);
   const expectedNoConnectorIds = new Set(
     engineRows
@@ -102,11 +107,12 @@ function main() {
     ...setDiff(marketplaceExtensionIds, repositoryExtensionIds).map(
       (id) => `docs/extension-marketplace/connector-repositories.json is missing extension '${id}'`,
     ),
-    ...setDiff(recognizedNoConnectorIds, marketplaceEngineIds).map(
+    ...setDiff(recognizedNoConnectorMarketplaceIds, marketplaceEngineIds).map(
       (id) => `recognized/no-connector engine '${id}' has no marketplace extension`,
     ),
     ...engineRows
       .filter((engine) => engine.status === "recognized_no_connector")
+      .filter((engine) => engine.extensionId)
       .filter((engine) => engine.extensionId !== marketplaceExtensionIdByEngine.get(engine.id))
       .map(
         (engine) =>

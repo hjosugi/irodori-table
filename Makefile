@@ -8,7 +8,7 @@ ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo d
 
 .PHONY: help setup setup-desktop setup-fast \
         dev test build typegen e2e doctor \
-        desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-test desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
+        desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
         check security security-strict extension-manifests db db-verify db-all db-up db-down \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
@@ -41,6 +41,7 @@ help:
 	@printf "  make desktop-typegen   regenerate Rust -> TypeScript bindings\n"
 	@printf "  make desktop-typegen-check verify generated bindings are current\n"
 	@printf "  make desktop-test      Vitest\n"
+	@printf "  make desktop-test-rust-ts Vitest + cargo test in parallel\n"
 	@printf "  make desktop-test-watch Vitest watch mode\n"
 	@printf "  make desktop-build     TypeScript + Vite production build (fast, no typegen)\n"
 	@printf "  make desktop-build-verified typegen check + TypeScript + Vite build\n"
@@ -95,6 +96,9 @@ desktop-typegen-check:
 
 desktop-test:
 	$(call js-run,apps/desktop,test)
+
+desktop-test-rust-ts:
+	$(call js-run,apps/desktop,test:rust-ts)
 
 desktop-test-watch:
 	$(call js-run,apps/desktop,test:watch)
@@ -183,6 +187,7 @@ docs:
 	node tools/knowledge/cheatsheet.mjs
 
 docs-check:
+	node tools/docs/agent-workstreams.mjs
 	node tools/docs/support-status.mjs
 	node tools/docs/db-feature-samples.mjs
 	node tools/extensions/validate-manifests.mjs

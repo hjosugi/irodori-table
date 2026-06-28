@@ -106,6 +106,7 @@ Useful desktop commands:
 make desktop-vite     # Vite only, useful when launching a debug binary manually
 make desktop-typegen  # regenerate Rust -> TypeScript bindings
 make desktop-test     # Vitest
+make desktop-test-rust-ts # Vitest + cargo test in parallel
 make desktop-build    # TypeScript + Vite production build (fast, no Rust typegen)
 make desktop-build-verified # typegen drift check + TypeScript + Vite build
 make desktop-e2e      # Playwright

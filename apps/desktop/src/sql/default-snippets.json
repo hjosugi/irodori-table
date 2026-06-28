@@ -109,6 +109,21 @@
       "snowflake",
       "firebird"
     ],
+    "savepointEngines": [
+      "postgres",
+      "cockroachdb",
+      "yugabytedb",
+      "timescaledb",
+      "neon",
+      "mysql",
+      "mariadb",
+      "tidb",
+      "duckdb",
+      "motherduck",
+      "sqlite",
+      "h2",
+      "firebird"
+    ],
     "noExplicitTransactionDmlEngines": [
       "bigquery",
       "athena",
@@ -161,7 +176,9 @@
       "neon",
       "sqlite",
       "duckdb",
-      "motherduck"
+      "motherduck",
+      "mariadb",
+      "firebird"
     ],
     "mergeEngines": [
       "oracle",
@@ -176,7 +193,10 @@
       "iceberg",
       "s3Tables",
       "deltaLake",
-      "hudi"
+      "hudi",
+      "trinoPresto",
+      "athena",
+      "firebird"
     ],
     "indexEngines": [
       "postgres",

@@ -1351,13 +1351,9 @@ fn max_rows(request: &Value) -> usize {
 fn connect(request: &Value) -> IrodoriConnectorBuffer {
     let connection_id = connection_id(Some(request));
     let database = profile_field(request, "database").or_else(|| profile_field(request, "url"));
-    let conn = if ENGINE == "motherduck" {
-        duckdb::Connection::open_in_memory()
-    } else {
-        match database.map(str::trim) {
-            None | Some("") | Some(":memory:") => duckdb::Connection::open_in_memory(),
-            Some(path) => duckdb::Connection::open(path),
-        }
+    let conn = match database.map(str::trim) {
+        None | Some("") | Some(":memory:") => duckdb::Connection::open_in_memory(),
+        Some(path) => duckdb::Connection::open(path),
     };
     let conn = match conn {
         Ok(conn) => conn,
