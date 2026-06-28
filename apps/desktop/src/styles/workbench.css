@@ -1704,6 +1704,20 @@
   border-radius: 3px;
 }
 
+.editor-command-bar .editor-toolbar-button {
+  justify-content: flex-start;
+  min-width: 0;
+  max-width: 92px;
+  padding: 0 8px;
+}
+
+.editor-command-bar .editor-toolbar-button span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-ui-xs);
+  text-overflow: ellipsis;
+}
+
 .editor-command-bar .run-main-button span {
   max-width: 128px;
   overflow: hidden;
@@ -1741,6 +1755,24 @@
   flex-wrap: wrap;
   width: fit-content;
   max-width: 100%;
+}
+
+@media (max-width: 1080px) {
+  .editor-command-bar .editor-toolbar-button {
+    width: var(--control-sm);
+    max-width: var(--control-sm);
+    padding: 0;
+    justify-content: center;
+  }
+
+  .editor-command-bar .editor-toolbar-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
 
 .query-toolbar .editor-command-bar .text-button span {

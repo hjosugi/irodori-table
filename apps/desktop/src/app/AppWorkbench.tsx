@@ -30,8 +30,22 @@ import {
   menuBarSections,
   resultCopyDefaultKeymap,
   savedQueryStorageKey,
-  tabs,
 } from "@/app/app-config";
+import {
+  activeTabLabelForEditorGroup,
+  addSqlTabToEditorGroup,
+  closeOtherSqlTabsInEditorGroup,
+  closeSqlTabInEditorGroup,
+  createEditorGroupState,
+  duplicateSqlTabInEditorGroup,
+  openTabsForEditorGroup,
+  queryForEditorGroup,
+  renameSqlTabInEditorGroup,
+  reopenSqlTabInEditorGroup,
+  selectEditorTabInGroup,
+  selectionsForEditorGroup,
+  type EditorGroupState,
+} from "@/app/editor-tabs";
 import { AboutDialog } from "@/app/AboutDialog";
 import { useResultGridScroll } from "@/app/hooks/useResultGridScroll";
 import { useResultGridFiltering } from "@/app/hooks/useResultGridFiltering";
@@ -338,59 +352,7 @@ function sqlDownloadFileName(label: string) {
   return `${base || "query"}.sql`;
 }
 
-type EditorTabDefinition = {
-  id: string;
-  label: string;
-};
-
-type EditorGroupState = {
-  tabs: EditorTabDefinition[];
-  activeTabId: string;
-  openTabIds: string[];
-  queryByTabId: Record<string, string>;
-  selectionsByTabId: Record<string, EditorSelections>;
-};
-
 type EditorGroupStates = Record<EditorGroup, EditorGroupState>;
-
-const defaultEditorSelections: EditorSelections = [{ from: 0, to: 0 }];
-
-function createEditorGroupState(initialQuery: string): EditorGroupState {
-  const initialTabs = tabs.map((tab) => ({ ...tab }));
-  return {
-    tabs: initialTabs,
-    activeTabId: initialTabs[0].id,
-    openTabIds: initialTabs.map((tab) => tab.id),
-    queryByTabId: Object.fromEntries(
-      initialTabs.map((tab, index) => [
-        tab.id,
-        index === 0 ? initialQuery : "",
-      ]),
-    ) as Record<string, string>,
-    selectionsByTabId: Object.fromEntries(
-      initialTabs.map((tab) => [tab.id, defaultEditorSelections]),
-    ) as Record<string, EditorSelections>,
-  };
-}
-
-function queryForEditorGroup(state: EditorGroupState) {
-  return state.queryByTabId[state.activeTabId] ?? "";
-}
-
-function selectionsForEditorGroup(state: EditorGroupState) {
-  return state.selectionsByTabId[state.activeTabId] ?? defaultEditorSelections;
-}
-
-function openTabsForEditorGroup(state: EditorGroupState) {
-  return state.tabs.filter((tab) => state.openTabIds.includes(tab.id));
-}
-
-function activeTabLabelForEditorGroup(state: EditorGroupState) {
-  return (
-    openTabsForEditorGroup(state).find((tab) => tab.id === state.activeTabId)
-      ?.label ?? "Scratch"
-  );
-}
 
 const MigrationStudioDialog = lazy(() =>
   import("@/features/migration").then((module) => ({
@@ -644,10 +606,9 @@ export function AppWorkbench() {
 
   function selectEditorTab(group: EditorGroup, tabId: string) {
     setActiveEditorGroup(group);
-    updateEditorGroupState(group, (state) => ({
-      ...state,
-      activeTabId: tabId,
-    }));
+    updateEditorGroupState(group, (state) =>
+      selectEditorTabInGroup(state, tabId),
+    );
   }
 
   function setActiveSidebarView(viewId: WorkbenchViewId) {
@@ -2044,35 +2005,8 @@ export function AppWorkbench() {
   }
 
   // Run a command by id (the keybinding handler and the Commands list share this).
-  function nextSqlTabLabel(state: EditorGroupState) {
-    let index = state.tabs.length + 1;
-    let label = `query-${index}.sql`;
-    const labels = new Set(state.tabs.map((tab) => tab.label));
-    while (labels.has(label)) {
-      index += 1;
-      label = `query-${index}.sql`;
-    }
-    return label;
-  }
-
   function newSqlTab(group: EditorGroup = activeEditorGroup) {
-    const id = `query-${Date.now().toString(36)}-${Math.random()
-      .toString(36)
-      .slice(2, 7)}`;
-    updateEditorGroupState(group, (state) => {
-      const tab = { id, label: nextSqlTabLabel(state) };
-      return {
-        ...state,
-        tabs: [...state.tabs, tab],
-        openTabIds: [...state.openTabIds, id],
-        activeTabId: id,
-        queryByTabId: { ...state.queryByTabId, [id]: "" },
-        selectionsByTabId: {
-          ...state.selectionsByTabId,
-          [id]: defaultEditorSelections,
-        },
-      };
-    });
+    updateEditorGroupState(group, addSqlTabToEditorGroup);
     setActiveEditorGroup(group);
   }
 
@@ -2084,12 +2018,9 @@ export function AppWorkbench() {
     if (!next || next === tab.label) {
       return;
     }
-    updateEditorGroupState(group, (current) => ({
-      ...current,
-      tabs: current.tabs.map((item) =>
-        item.id === tabId ? { ...item, label: next } : item,
-      ),
-    }));
+    updateEditorGroupState(group, (current) =>
+      renameSqlTabInEditorGroup(current, tabId, next),
+    );
     setActiveEditorGroup(group);
     showActionNotice("success", "Tab renamed", next);
   }
@@ -2098,27 +2029,9 @@ export function AppWorkbench() {
     const state = editorGroupStates[group];
     const source = state.tabs.find((item) => item.id === tabId);
     if (!source) return;
-    const id = `query-${Date.now().toString(36)}-${Math.random()
-      .toString(36)
-      .slice(2, 7)}`;
-    const sourceText = state.queryByTabId[tabId] ?? "";
-    updateEditorGroupState(group, (current) => {
-      const tab = {
-        id,
-        label: `${source.label.replace(/\.sql$/i, "")}-copy.sql`,
-      };
-      return {
-        ...current,
-        tabs: [...current.tabs, tab],
-        openTabIds: [...current.openTabIds, id],
-        activeTabId: id,
-        queryByTabId: { ...current.queryByTabId, [id]: sourceText },
-        selectionsByTabId: {
-          ...current.selectionsByTabId,
-          [id]: defaultEditorSelections,
-        },
-      };
-    });
+    updateEditorGroupState(group, (current) =>
+      duplicateSqlTabInEditorGroup(current, tabId),
+    );
     setActiveEditorGroup(group);
     showActionNotice("success", "Tab duplicated", source.label);
   }
@@ -2130,9 +2043,8 @@ export function AppWorkbench() {
 
   function closeSqlTab(group: EditorGroup, tabId: string) {
     const state = editorGroupStates[group];
-    const groupOpenTabs = openTabsForEditorGroup(state);
-    const activeIndex = groupOpenTabs.findIndex((tab) => tab.id === tabId);
-    if (groupOpenTabs.length <= 1 || activeIndex < 0) {
+    const result = closeSqlTabInEditorGroup(state, tabId);
+    if (result.keptLast || !result.closedTab) {
       showActionNotice(
         "info",
         "Tab kept open",
@@ -2140,49 +2052,31 @@ export function AppWorkbench() {
       );
       return;
     }
-    const closedTab = groupOpenTabs[activeIndex];
-    const nextTab =
-      groupOpenTabs[activeIndex + 1] ??
-      groupOpenTabs[activeIndex - 1] ??
-      groupOpenTabs[0];
-    updateEditorGroupState(group, (current) => ({
-      ...current,
-      openTabIds: current.openTabIds.filter((id) => id !== closedTab.id),
-      activeTabId:
-        current.activeTabId === closedTab.id ? nextTab.id : current.activeTabId,
-    }));
-    showActionNotice("info", "Tab closed", closedTab.label);
+    updateEditorGroupState(group, () => result.state);
+    showActionNotice("info", "Tab closed", result.closedTab.label);
   }
 
   function closeOtherSqlTabs(group: EditorGroup, tabId: string) {
     const state = editorGroupStates[group];
     const tab = state.tabs.find((item) => item.id === tabId);
     if (!tab) return;
-    updateEditorGroupState(group, (current) => ({
-      ...current,
-      openTabIds: [tabId],
-      activeTabId: tabId,
-    }));
+    updateEditorGroupState(group, (current) =>
+      closeOtherSqlTabsInEditorGroup(current, tabId),
+    );
     setActiveEditorGroup(group);
     showActionNotice("info", "Other tabs closed", tab.label);
   }
 
   function reopenSqlTab(group: EditorGroup = activeEditorGroup) {
     const state = editorGroupStates[group];
-    const closedTab = state.tabs.find(
-      (tab) => !state.openTabIds.includes(tab.id),
-    );
-    if (!closedTab) {
+    const result = reopenSqlTabInEditorGroup(state);
+    if (!result.restoredTab) {
       showActionNotice("info", "Tabs already open");
       return;
     }
     setActiveEditorGroup(group);
-    updateEditorGroupState(group, (current) => ({
-      ...current,
-      openTabIds: [...current.openTabIds, closedTab.id],
-      activeTabId: closedTab.id,
-    }));
-    showActionNotice("success", "Tab restored", closedTab.label);
+    updateEditorGroupState(group, () => result.state);
+    showActionNotice("success", "Tab restored", result.restoredTab.label);
   }
 
   function updateUiZoom(nextZoom: number) {

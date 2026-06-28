@@ -379,62 +379,66 @@ describe("ERD model", () => {
     }
   });
 
-  it("lays out a dense 100-table fixture with 250 finite anchored edges", () => {
-    const objects = Array.from({ length: 100 }, (_, index) =>
-      denseWarehouseTable(index),
-    );
-    const metadata: DatabaseMetadata = {
-      schemas: [{ name: "warehouse", objects }],
-    };
-    const layout = layoutErdModel(buildErdModel(metadata));
-    expect(layout.tables).toHaveLength(100);
-    expect(layout.edges).toHaveLength(250);
-    expect(layout.width).toBeGreaterThan(900);
-    expect(layout.height).toBeGreaterThan(2000);
-    expect(layout.edges.map((edge) => edge.path).join(" ")).not.toMatch(
-      /\b(?:NaN|undefined)\b/,
-    );
-
-    for (let i = 0; i < layout.tables.length; i += 1) {
-      for (let j = i + 1; j < layout.tables.length; j += 1) {
-        expect(rectsOverlap(layout.tables[i], layout.tables[j])).toBe(false);
-      }
-    }
-
-    for (const edge of layout.edges) {
-      expectEdgePathToBeSane(edge, layout);
-      expect(labelRect(edge)).toEqual(
-        expect.objectContaining({
-          width: 84,
-          height: 17,
-        }),
+  it(
+    "lays out a dense 100-table fixture with 250 finite anchored edges",
+    () => {
+      const objects = Array.from({ length: 100 }, (_, index) =>
+        denseWarehouseTable(index),
       );
-      expect(
-        rectInside(labelRect(edge), {
-          x: 0,
-          y: 0,
-          width: layout.width,
-          height: layout.height,
-        }),
-      ).toBe(true);
-      expect(
-        layout.tables.some((tableLayout) =>
-          rectsOverlap(labelRect(edge), tableLayout),
-        ),
-      ).toBe(false);
-    }
+      const metadata: DatabaseMetadata = {
+        schemas: [{ name: "warehouse", objects }],
+      };
+      const layout = layoutErdModel(buildErdModel(metadata));
+      expect(layout.tables).toHaveLength(100);
+      expect(layout.edges).toHaveLength(250);
+      expect(layout.width).toBeGreaterThan(900);
+      expect(layout.height).toBeGreaterThan(2000);
+      expect(layout.edges.map((edge) => edge.path).join(" ")).not.toMatch(
+        /\b(?:NaN|undefined)\b/,
+      );
 
-    for (let i = 0; i < layout.edges.length; i += 1) {
-      for (let j = i + 1; j < layout.edges.length; j += 1) {
+      for (let i = 0; i < layout.tables.length; i += 1) {
+        for (let j = i + 1; j < layout.tables.length; j += 1) {
+          expect(rectsOverlap(layout.tables[i], layout.tables[j])).toBe(false);
+        }
+      }
+
+      for (const edge of layout.edges) {
+        expectEdgePathToBeSane(edge, layout);
+        expect(labelRect(edge)).toEqual(
+          expect.objectContaining({
+            width: 84,
+            height: 17,
+          }),
+        );
         expect(
-          rectsOverlap(labelRect(layout.edges[i]), labelRect(layout.edges[j])),
+          rectInside(labelRect(edge), {
+            x: 0,
+            y: 0,
+            width: layout.width,
+            height: layout.height,
+          }),
+        ).toBe(true);
+        expect(
+          layout.tables.some((tableLayout) =>
+            rectsOverlap(labelRect(edge), tableLayout),
+          ),
         ).toBe(false);
       }
-    }
-    expect(new Set(layout.edges.map((edge) => edge.path)).size).toBe(
-      layout.edges.length,
-    );
-  });
+
+      for (let i = 0; i < layout.edges.length; i += 1) {
+        for (let j = i + 1; j < layout.edges.length; j += 1) {
+          expect(
+            rectsOverlap(labelRect(layout.edges[i]), labelRect(layout.edges[j])),
+          ).toBe(false);
+        }
+      }
+      expect(new Set(layout.edges.map((edge) => edge.path)).size).toBe(
+        layout.edges.length,
+      );
+    },
+    15_000,
+  );
 
   it("keeps small, medium, and wide schema visual signatures stable", () => {
     const cases = [

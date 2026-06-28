@@ -42,20 +42,15 @@ import {
 } from "lucide-react";
 
 /**
- * Master switch for trademarked brand logos.
+ * Per-engine brand marks keyed by `DbEngine` id.
  *
- * The artwork below comes from simple-icons (CC0 / public-domain paths), and
- * showing a product's mark purely to identify a connection is the same
- * nominative use DBeaver / TablePlus / VS Code's database extensions rely on.
- * Some brands are still trademark-sensitive, though — flip this to `false` to
- * render the neutral, look-alike category glyphs ({@link FALLBACK}) for *every*
- * engine instead, with zero logos shipped.
- */
-const USE_BRAND_LOGOS = true;
-
-/**
- * Real per-engine brand logos (CC0 simple-icons) keyed by `DbEngine` id. Engines
- * without an official brand mark fall back to a category glyph in {@link FALLBACK}.
+ * Artwork is from simple-icons (CC0 / public domain), rendered as a monochrome
+ * silhouette in the current text color so it blends into the UI — the same
+ * nominative, identification-only use DBeaver / DataGrip / TablePlus / VS Code's
+ * database extensions rely on. Trademark-strict brands (Oracle, SQL Server, …)
+ * are deliberately absent from simple-icons, so they fall through to a neutral
+ * category glyph in {@link FALLBACK} rather than a hand-drawn look-alike, which
+ * would be the legally worse choice.
  */
 const BRAND: Record<string, IconType> = {
   postgres: SiPostgresql,
@@ -123,28 +118,21 @@ const FALLBACK: Record<string, LucideIcon> = {
 type EngineIconProps = {
   engine: string;
   size?: number;
-  /** Render in the engine's official brand color (default) vs. `currentColor`. */
-  brandColor?: boolean;
   className?: string;
 };
 
 /**
- * Brand-accurate icon for a database engine. Mirrors what VS Code's database
- * extensions show: the real product logo where one exists, a category glyph
- * otherwise — so every connection is visually identifiable at a glance.
+ * Monochrome silhouette icon for a database engine: the real product mark where
+ * a public-domain one exists, a neutral category glyph otherwise — drawn in the
+ * current text color so every connection is identifiable yet blends into the UI.
  */
-export function EngineIcon({
-  engine,
-  size = 16,
-  brandColor = true,
-  className,
-}: EngineIconProps) {
-  const Brand = USE_BRAND_LOGOS ? BRAND[engine] : undefined;
+export function EngineIcon({ engine, size = 16, className }: EngineIconProps) {
+  const Brand = BRAND[engine];
   if (Brand) {
     return (
       <Brand
         size={size}
-        color={brandColor ? "default" : "currentColor"}
+        color="currentColor"
         className={className}
         aria-hidden="true"
       />

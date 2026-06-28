@@ -61,6 +61,7 @@ type EditorToolbarCommand = {
   commandId: string;
   title: string;
   ariaLabel: string;
+  label: string;
   icon: ComponentType<{ size?: number | string }>;
 };
 
@@ -74,30 +75,35 @@ const editorToolbarCommands: readonly EditorToolbarCommand[] = [
     commandId: "editor.format",
     title: "Format SQL",
     ariaLabel: "Format SQL",
+    label: "Format",
     icon: AlignLeft,
   },
   {
     commandId: "editor.transform.unformat",
     title: "Unformat SQL to one line",
     ariaLabel: "Unformat SQL to one line",
+    label: "One line",
     icon: AlignJustify,
   },
   {
     commandId: "editor.comment.toggle",
     title: "Toggle SQL comment",
     ariaLabel: "Toggle SQL comment",
+    label: "Comment",
     icon: TerminalSquare,
   },
   {
     commandId: "editor.outdent",
     title: "Outdent line or selection",
     ariaLabel: "Outdent line or selection",
+    label: "Outdent",
     icon: IndentDecrease,
   },
   {
     commandId: "editor.indent",
     title: "Indent line or selection",
     ariaLabel: "Indent line or selection",
+    label: "Indent",
     icon: IndentIncrease,
   },
 ];
@@ -635,7 +641,7 @@ function EditorCommandBar({
             : command.title;
         return (
           <button
-            className="icon-button"
+            className="icon-button editor-toolbar-button"
             type="button"
             title={title}
             aria-label={command.ariaLabel}
@@ -643,6 +649,7 @@ function EditorCommandBar({
             onClick={() => runCommand(command.commandId)}
           >
             <Icon size={15} />
+            <span>{command.label}</span>
           </button>
         );
       })}
@@ -652,7 +659,7 @@ function EditorCommandBar({
         setEditorSplitMode={setEditorSplitMode}
       />
       <button
-        className="icon-button"
+        className="icon-button editor-toolbar-button"
         type="button"
         title="Cancel query"
         aria-label="Cancel query"
@@ -660,6 +667,7 @@ function EditorCommandBar({
         onClick={() => void cancelQuery()}
       >
         <Square size={15} />
+        <span>Cancel</span>
       </button>
     </div>
   );
@@ -681,7 +689,9 @@ function EditorSplitControls({
     >
       <button
         className={
-          editorSplitMode === "right" ? "icon-button active" : "icon-button"
+          editorSplitMode === "right"
+            ? "icon-button editor-toolbar-button active"
+            : "icon-button editor-toolbar-button"
         }
         type="button"
         title="Split editor right"
@@ -690,10 +700,13 @@ function EditorSplitControls({
         onClick={() => setEditorSplitMode("right")}
       >
         <SplitSquareHorizontal size={15} />
+        <span>Split R</span>
       </button>
       <button
         className={
-          editorSplitMode === "down" ? "icon-button active" : "icon-button"
+          editorSplitMode === "down"
+            ? "icon-button editor-toolbar-button active"
+            : "icon-button editor-toolbar-button"
         }
         type="button"
         title="Split editor down"
@@ -702,10 +715,11 @@ function EditorSplitControls({
         onClick={() => setEditorSplitMode("down")}
       >
         <SplitSquareVertical size={15} />
+        <span>Split D</span>
       </button>
       {editorSplitOpen ? (
         <button
-          className="icon-button"
+          className="icon-button editor-toolbar-button"
           type="button"
           title="Close editor split"
           aria-label="Close editor split"
@@ -716,6 +730,7 @@ function EditorSplitControls({
           ) : (
             <PanelRightClose size={15} />
           )}
+          <span>Close</span>
         </button>
       ) : null}
     </div>

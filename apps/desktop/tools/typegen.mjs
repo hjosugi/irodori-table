@@ -102,7 +102,7 @@ async function normalizeGeneratedFiles(files) {
     files.map(async (file) => {
       const path = resolve(repoRoot, file);
       const source = await readFile(path, "utf8");
-      let normalized = source.replace(/[ \t]+$/gm, "");
+      let normalized = source.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "");
       if (!normalized.endsWith("\n")) {
         normalized += "\n";
       }

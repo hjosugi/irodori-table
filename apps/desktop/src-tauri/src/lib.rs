@@ -258,12 +258,23 @@ pub fn run() {
 #[cfg(test)]
 mod typegen {
     use super::*;
+    use std::fs;
     use std::path::Path;
     use typeship::ir::{Decl, TsType};
     use typeship::{Arg, Bridge, Command};
     use typeship_ts_rs::decl;
 
     const GENERATED: &str = "../src/generated/irodori-api.ts";
+
+    fn normalized_bindings(contents: &str) -> String {
+        let mut normalized = contents
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n");
+        normalized.push('\n');
+        normalized
+    }
 
     /// The single source of truth for the desktop TypeScript boundary.
     ///
@@ -599,16 +610,19 @@ mod typegen {
     fn export_typescript_bindings() {
         let rendered = bridge().render();
         let path = Path::new(GENERATED);
+        let normalized = normalized_bindings(&rendered.contents);
 
         if std::env::var_os("CI").is_some() {
-            let outcome = rendered.check(path).expect("read generated bindings");
+            let committed = fs::read_to_string(path).expect("read generated bindings");
             assert!(
-                outcome.is_up_to_date(),
-                "{} — run `npm run typegen` and commit the result",
-                outcome.summary()
+                normalized == committed,
+                "stale bindings: {GENERATED} differs after normalization — run `npm run typegen` and commit the result"
             );
         } else {
-            rendered.write(path).expect("write generated bindings");
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).expect("create generated bindings directory");
+            }
+            fs::write(path, normalized).expect("write generated bindings");
         }
     }
 }
