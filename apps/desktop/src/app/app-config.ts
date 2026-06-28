@@ -6,7 +6,7 @@ import {
 import type { WorkspaceSnapshot } from "../generated/irodori-api";
 
 export const APP_NAME = "Irodori Table";
-export const APP_VERSION = "0.3.6";
+export const APP_VERSION = "0.3.7";
 export const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
@@ -212,6 +212,8 @@ export const workspaceMenuSections: AppMenuSection[] = [
       { commandId: "editor.format" },
       { commandId: "editor.transform.unformat" },
       { commandId: "editor.comment.toggle" },
+      { commandId: "editor.indent" },
+      { commandId: "editor.outdent" },
     ],
   },
   {
@@ -266,6 +268,8 @@ export const menuBarSections: AppMenuSection[] = [
       { commandId: "editor.format" },
       { commandId: "editor.transform.unformat" },
       { commandId: "editor.comment.toggle" },
+      { commandId: "editor.indent" },
+      { commandId: "editor.outdent" },
       { commandId: "query.explainPlan" },
       { commandId: "query.explainAnalyze" },
     ],

@@ -200,4 +200,27 @@ describe("SQL editor browser shortcuts", () => {
     root.unmount();
     host.remove();
   });
+
+  it("indents and outdents the current line through the editor handle", async () => {
+    const sql = "select 1;";
+    let changed = sql;
+    const { host, root, editorRef } = renderSqlEditor({
+      value: sql,
+      onChange: (next) => {
+        changed = next;
+      },
+    });
+    await waitForEditor(host);
+
+    editorRef.current?.revealRange({ from: 0, to: 0 });
+
+    expect(editorRef.current?.indentSelection()).toBe(true);
+    expect(changed).toMatch(/^\s+select 1;$/);
+
+    expect(editorRef.current?.outdentSelection()).toBe(true);
+    expect(changed).toBe(sql);
+
+    root.unmount();
+    host.remove();
+  });
 });

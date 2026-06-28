@@ -29,9 +29,11 @@ const DETAIL_MODES: Array<{ id: DetailMode; label: string }> = [
   { id: "tree", label: "Tree" },
 ];
 
+const emptyRowValues: readonly unknown[] = [];
+
 type RowDetailSidebarProps = {
   columns: string[];
-  values: unknown[];
+  values: readonly unknown[] | null;
   /** Metadata for the table the row came from (null when the source is ambiguous). */
   table: DbObjectMetadata | null;
   metadata: DatabaseMetadata | undefined;
@@ -44,17 +46,24 @@ type RowDetailSidebarProps = {
 export function RowDetailSidebar(props: RowDetailSidebarProps) {
   const [mode, setMode] = useState<DetailMode>("fields");
   const [query, setQuery] = useState("");
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">(
+    "idle",
+  );
+  const rowSelected = props.values !== null;
+  const values = props.values ?? emptyRowValues;
   const rowJson = useMemo(
-    () => formatRowAsJson(props.columns, props.values),
-    [props.columns, props.values],
+    () => (rowSelected ? formatRowAsJson(props.columns, values) : ""),
+    [props.columns, rowSelected, values],
   );
   const rowObject = useMemo(
-    () => rowToJsonObject(props.columns, props.values),
-    [props.columns, props.values],
+    () => (rowSelected ? rowToJsonObject(props.columns, values) : null),
+    [props.columns, rowSelected, values],
   );
 
   async function copyJson() {
+    if (!rowSelected) {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(rowJson);
       setCopyStatus("copied");
@@ -67,15 +76,18 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
     <aside className="row-detail" aria-label="Row detail">
       <div className="row-detail-header">
         <div className="row-detail-title">
-          <span>JSON Row Viewer</span>
-          <span>{props.columns.length} fields</span>
+          <span>Row Viewer</span>
+          <span>
+            {rowSelected ? `${props.columns.length} fields` : "No row selected"}
+          </span>
         </div>
         <button
           type="button"
           className="row-detail-close"
           onClick={props.onClose}
-          aria-label="Close row detail"
-          title="Close"
+          aria-label="Clear row selection"
+          title="Clear row selection"
+          disabled={!rowSelected}
         >
           <X size={14} />
         </button>
@@ -100,10 +112,15 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
           className={`row-detail-copy${copyStatus !== "idle" ? " is-status" : ""}`}
           onClick={copyJson}
           title="Copy row JSON"
+          disabled={!rowSelected}
         >
           <Copy size={12} aria-hidden="true" />
           <span>
-            {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Failed" : "Copy"}
+            {copyStatus === "copied"
+              ? "Copied"
+              : copyStatus === "failed"
+                ? "Failed"
+                : "Copy"}
           </span>
         </button>
         <label className="row-detail-search">
@@ -117,14 +134,17 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
             }}
             placeholder="Search row"
             aria-label="Search row"
+            disabled={!rowSelected}
           />
         </label>
       </div>
       <div className="row-detail-body">
-        {mode === "fields" ? (
+        {!rowSelected ? (
+          <div className="row-detail-empty">No row selected</div>
+        ) : mode === "fields" ? (
           <RowDetailFields
             columns={props.columns}
-            values={props.values}
+            values={values}
             table={props.table}
             metadata={props.metadata}
             engine={props.engine}
@@ -144,7 +164,7 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
 
 type RowDetailFieldsProps = {
   columns: string[];
-  values: unknown[];
+  values: readonly unknown[];
   table: DbObjectMetadata | null;
   metadata: DatabaseMetadata | undefined;
   engine: DbEngine;
@@ -160,9 +180,13 @@ type ReferencedRow = {
 };
 
 function RowDetailFields(props: RowDetailFieldsProps) {
-  const { columns, values, table, metadata, engine, connectionId, depth, filter } = props;
+  const { columns, values, table, metadata, engine, connectionId, depth, filter } =
+    props;
 
-  const fkColumns = useMemo(() => foreignKeyColumns(table, columns), [table, columns]);
+  const fkColumns = useMemo(
+    () => foreignKeyColumns(table, columns),
+    [table, columns],
+  );
   const typeByColumn = useMemo(() => {
     const map = new Map<string, string>();
     for (const column of table?.columns ?? []) {
@@ -177,7 +201,11 @@ function RowDetailFields(props: RowDetailFieldsProps) {
   const [error, setError] = useState<string | null>(null);
   const normalizedFilter = filter.trim().toLowerCase();
 
-  async function navigate(columnIndex: number, fk: ForeignKey, columnIndexes: number[]) {
+  async function navigate(
+    columnIndex: number,
+    fk: ForeignKey,
+    columnIndexes: number[],
+  ) {
     if (openColumn === columnIndex) {
       setOpenColumn(null);
       setReferenced(null);
@@ -209,7 +237,11 @@ function RowDetailFields(props: RowDetailFieldsProps) {
       setReferenced({
         columns: result.columns,
         values: result.rows[0],
-        table: findTableByName(metadata, fk.referencesSchema, fk.referencesTable),
+        table: findTableByName(
+          metadata,
+          fk.referencesSchema,
+          fk.referencesTable,
+        ),
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));

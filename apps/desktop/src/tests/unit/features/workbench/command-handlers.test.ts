@@ -58,6 +58,8 @@ function createHandler(calls: string[]) {
     showEditorQuickFix: () => calls.push("editor-quick-fix"),
     cleanupQuery: () => calls.push("editor-cleanup"),
     toggleEditorComment: () => calls.push("editor-comment"),
+    indentEditorSelection: () => calls.push("editor-indent"),
+    outdentEditorSelection: () => calls.push("editor-outdent"),
     transformEditorSelection: (action: SqlEditorTransformAction) =>
       calls.push(`transform:${action}`),
     exportCsv: () => calls.push("export-csv"),
@@ -141,6 +143,8 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("editor.transform.unformat");
     runCommand("editor.transform.addCommas");
     runCommand("editor.transform.doubleToSingleQuotes");
+    runCommand("editor.indent");
+    runCommand("editor.outdent");
 
     expect(calls).toEqual([
       "transform:uppercase",
@@ -148,6 +152,8 @@ describe("createWorkbenchCommandHandler", () => {
       "transform:unformat",
       "transform:appendCommas",
       "transform:doubleToSingleQuotes",
+      "editor-indent",
+      "editor-outdent",
     ]);
   });
 });

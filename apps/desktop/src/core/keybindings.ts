@@ -175,6 +175,18 @@ export const commandCatalog: CommandMeta[] = [
     scope: "editor",
   },
   {
+    id: "editor.indent",
+    title: "Indent line or selection",
+    category: "Editor",
+    scope: "editor",
+  },
+  {
+    id: "editor.outdent",
+    title: "Outdent line or selection",
+    category: "Editor",
+    scope: "editor",
+  },
+  {
     id: "editor.transform.uppercase",
     title: "Uppercase selection or current line",
     category: "Editor",
@@ -270,6 +282,8 @@ export const defaultKeymap: Keymap = {
   "editor.quickFix": "Alt+Enter",
   "editor.cleanup": "",
   "editor.comment.toggle": "Mod+/",
+  "editor.indent": "Tab",
+  "editor.outdent": "Shift+Tab",
   "editor.transform.unformat": "",
   "result.export": "Mod+Shift+S",
   "edit.toggle": "Mod+E",

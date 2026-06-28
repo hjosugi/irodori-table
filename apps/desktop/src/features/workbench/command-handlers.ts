@@ -39,6 +39,8 @@ type WorkbenchCommandHandlerDeps = {
   showEditorQuickFix: () => void;
   cleanupQuery: () => void;
   toggleEditorComment: () => void;
+  indentEditorSelection: () => void;
+  outdentEditorSelection: () => void;
   transformEditorSelection: (action: SqlEditorTransformAction) => void;
   exportCsv: () => void;
   exportSqlInserts: () => void;
@@ -98,6 +100,8 @@ export function createWorkbenchCommandHandler({
   showEditorQuickFix,
   cleanupQuery,
   toggleEditorComment,
+  indentEditorSelection,
+  outdentEditorSelection,
   transformEditorSelection,
   exportCsv,
   exportSqlInserts,
@@ -230,6 +234,12 @@ export function createWorkbenchCommandHandler({
         break;
       case "editor.comment.toggle":
         toggleEditorComment();
+        break;
+      case "editor.indent":
+        indentEditorSelection();
+        break;
+      case "editor.outdent":
+        outdentEditorSelection();
         break;
       case "editor.transform.uppercase":
         transformEditorSelection("uppercase");

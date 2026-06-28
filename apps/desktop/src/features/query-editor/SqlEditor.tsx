@@ -41,7 +41,13 @@ import {
   openLintPanel,
   type Diagnostic,
 } from "@codemirror/lint";
-import { indentWithTab, selectAll, toggleComment } from "@codemirror/commands";
+import {
+  indentLess,
+  indentMore,
+  indentWithTab,
+  selectAll,
+  toggleComment,
+} from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
 import { basicSetup } from "codemirror";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
@@ -92,6 +98,10 @@ export interface SqlEditorHandle {
   showQuickFix: () => boolean;
   /** Toggle SQL line/block comments around the current selection. */
   toggleComment: () => boolean;
+  /** Indent the selected lines or current line. */
+  indentSelection: () => boolean;
+  /** Outdent the selected lines or current line. */
+  outdentSelection: () => boolean;
   /** Transform the current selection, or the current line when nothing is selected. */
   transformSelection: (action: SqlEditorTransformAction) => boolean;
   /** Insert text at the current selection/caret without remounting the editor. */
@@ -1265,6 +1275,14 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
           const view = viewRef.current;
           if (!view) return false;
           return toggleComment(view);
+        },
+        indentSelection() {
+          const view = viewRef.current;
+          return view ? indentMore(view) : false;
+        },
+        outdentSelection() {
+          const view = viewRef.current;
+          return view ? indentLess(view) : false;
         },
         transformSelection(action) {
           const view = viewRef.current;

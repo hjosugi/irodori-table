@@ -1,20 +1,24 @@
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
+  type ComponentType,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
+  type CSSProperties,
   type ReactNode,
 } from "react";
-import type { CSSProperties } from "react";
 import {
   AlignJustify,
   AlignLeft,
   ChevronDown,
   FileSearch,
+  IndentDecrease,
+  IndentIncrease,
   Pencil,
   PanelBottomClose,
   PanelRightClose,
@@ -55,6 +59,74 @@ export type EditorSelections = readonly EditorSelection[];
 type EditorSplitModeUpdater =
   | EditorSplitMode
   | ((mode: EditorSplitMode) => EditorSplitMode);
+
+type EditorToolbarCommand = {
+  commandId: string;
+  title: string;
+  ariaLabel: string;
+  icon: ComponentType<{ size?: number | string }>;
+};
+
+type EditorContextCommand = {
+  commandId: string;
+  label: string;
+};
+
+const editorToolbarCommands: readonly EditorToolbarCommand[] = [
+  {
+    commandId: "editor.format",
+    title: "Format SQL",
+    ariaLabel: "Format SQL",
+    icon: AlignLeft,
+  },
+  {
+    commandId: "editor.transform.unformat",
+    title: "Unformat SQL to one line",
+    ariaLabel: "Unformat SQL to one line",
+    icon: AlignJustify,
+  },
+  {
+    commandId: "editor.comment.toggle",
+    title: "Toggle SQL comment",
+    ariaLabel: "Toggle SQL comment",
+    icon: TerminalSquare,
+  },
+  {
+    commandId: "editor.outdent",
+    title: "Outdent line or selection",
+    ariaLabel: "Outdent line or selection",
+    icon: IndentDecrease,
+  },
+  {
+    commandId: "editor.indent",
+    title: "Indent line or selection",
+    ariaLabel: "Indent line or selection",
+    icon: IndentIncrease,
+  },
+];
+
+const editorContextCommandGroups: readonly (readonly EditorContextCommand[])[] = [
+  [
+    { commandId: "query.run", label: "" },
+    { commandId: "editor.quickFix", label: "Show Problems and Quick Fixes" },
+    { commandId: "editor.cleanup", label: "Code Cleanup" },
+    { commandId: "editor.format", label: "Format SQL" },
+    { commandId: "editor.comment.toggle", label: "Toggle Comment" },
+    { commandId: "editor.outdent", label: "Outdent Line or Selection" },
+    { commandId: "editor.indent", label: "Indent Line or Selection" },
+    { commandId: "editor.quickDefinition", label: "Quick Definition" },
+  ],
+  [
+    { commandId: "editor.transform.uppercase", label: "Uppercase selection" },
+    { commandId: "editor.transform.lowercase", label: "Lowercase selection" },
+    { commandId: "editor.transform.unformat", label: "Unformat to one line" },
+    { commandId: "editor.transform.addCommas", label: "Add commas to lines" },
+    {
+      commandId: "editor.transform.doubleToSingleQuotes",
+      label: "Double quotes to single quotes",
+    },
+  ],
+];
 
 export interface QueryEditorPaneProps {
   activeTabLabel: string;
@@ -110,6 +182,60 @@ export interface QueryEditorPaneProps {
   sqlFileDropLabel?: string;
   onMetadataJump?: (target: SqlMetadataTarget) => void;
 }
+
+type EditorCommandBarProps = {
+  formatter: SqlFormatterId;
+  editorSplitOpen: boolean;
+  editorSplitMode: EditorSplitMode;
+  setEditorSplitMode: (value: EditorSplitModeUpdater) => void;
+  running: boolean;
+  runCommand: (commandId: string) => void;
+  cancelQuery: () => Promise<void>;
+};
+
+type RunControlProps = {
+  running: boolean;
+  runControlRef: RefObject<HTMLDivElement | null>;
+  runMenuOpen: boolean;
+  setRunMenuOpen: (value: boolean | ((open: boolean) => boolean)) => void;
+  runPrimaryLabel: string;
+  runShortcutLabel: string;
+  runCurrentShortcutLabel: string;
+  runFromStartShortcutLabel: string;
+  runAllShortcutLabel: string;
+  hasSelectedEditorSql: boolean;
+  saveCurrentQuery: () => void;
+  runQuery: () => Promise<void>;
+  runSelectionQuery: () => Promise<void>;
+  runCurrentQuery: () => Promise<void>;
+  runFromStartQuery: () => Promise<void>;
+  runAllQuery: () => Promise<void>;
+};
+
+type EditorGroupShellProps = {
+  group: EditorGroup;
+  active: boolean;
+  query: string;
+  apiRef: RefObject<SqlEditorHandle | null>;
+  formatter: SqlFormatterId;
+  editorEngine: DbEngine;
+  activeMetadata?: DatabaseMetadata;
+  sqlSnippets: readonly SqlSnippetDefinition[];
+  editorBackgroundStyle: CSSProperties | undefined;
+  theme: IrodoriTheme;
+  vimMode: boolean;
+  sqlLinter: SqlLinterId;
+  renderEditorTabStrip: (group: EditorGroup) => ReactNode;
+  onQueryChange: (next: string) => void;
+  setActiveEditorGroup: (group: EditorGroup) => void;
+  setEditorSelection: (group: EditorGroup, selection: EditorSelections) => void;
+  onContextMenu: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    group: EditorGroup,
+  ) => void;
+  onMetadataJump?: (target: SqlMetadataTarget) => void;
+  onMetadataToolWindow: (request: SqlMetadataToolWindowRequest) => void;
+};
 
 export function QueryEditorPane({
   activeTabLabel,
@@ -243,6 +369,24 @@ export function QueryEditorPane({
     runCommand(commandId);
   };
 
+  const renderContextCommand = (command: EditorContextCommand) => {
+    const label =
+      command.commandId === "query.run" ? runPrimaryLabel : command.label;
+    const shortcut =
+      command.commandId === "query.run" ? runShortcutLabel : null;
+    return (
+      <button
+        type="button"
+        role="menuitem"
+        key={command.commandId}
+        onClick={() => runContextCommand(command.commandId)}
+      >
+        <span>{label}</span>
+        {shortcut ? <kbd>{shortcut}</kbd> : null}
+      </button>
+    );
+  };
+
   const revealMetadataUsage = (selection: EditorSelection) => {
     const primary = editorApiRef.current;
     const secondary = secondaryEditorApiRef.current;
@@ -325,33 +469,25 @@ export function QueryEditorPane({
           aria-label="SQL query actions"
         >
           <div className="editor-command-bar">
-            <button
-              className="icon-button"
-              type="button"
-              title={`Format SQL (${formatter})`}
-              aria-label="Format SQL"
-              onClick={() => runCommand("editor.format")}
-            >
-              <AlignLeft size={15} />
-            </button>
-            <button
-              className="icon-button"
-              type="button"
-              title="Unformat SQL to one line"
-              aria-label="Unformat SQL to one line"
-              onClick={() => runCommand("editor.transform.unformat")}
-            >
-              <AlignJustify size={15} />
-            </button>
-            <button
-              className="icon-button"
-              type="button"
-              title="Toggle SQL comment"
-              aria-label="Toggle SQL comment"
-              onClick={() => runCommand("editor.comment.toggle")}
-            >
-              <TerminalSquare size={15} />
-            </button>
+            {editorToolbarCommands.map((command) => {
+              const Icon = command.icon;
+              const title =
+                command.commandId === "editor.format"
+                  ? `${command.title} (${formatter})`
+                  : command.title;
+              return (
+                <button
+                  className="icon-button"
+                  type="button"
+                  title={title}
+                  aria-label={command.ariaLabel}
+                  key={command.commandId}
+                  onClick={() => runCommand(command.commandId)}
+                >
+                  <Icon size={15} />
+                </button>
+              );
+            })}
             <div
               className="editor-split-controls"
               role="group"
@@ -494,7 +630,9 @@ export function QueryEditorPane({
                     onClick={() => void runAllQuery()}
                   >
                     <span>Run All</span>
-                    {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
+                    {runAllShortcutLabel ? (
+                      <kbd>{runAllShortcutLabel}</kbd>
+                    ) : null}
                   </button>
                 </div>
               ) : null}
@@ -619,87 +757,14 @@ export function QueryEditorPane({
           onContextMenu={(event) => event.preventDefault()}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("query.run")}
-          >
-            <span>{runPrimaryLabel}</span>
-            {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.quickFix")}
-          >
-            <span>Show Problems and Quick Fixes</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.cleanup")}
-          >
-            <span>Code Cleanup</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.format")}
-          >
-            <span>Format SQL</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.comment.toggle")}
-          >
-            <span>Toggle Comment</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.quickDefinition")}
-          >
-            <span>Quick Definition</span>
-          </button>
-          <span className="menu-separator" aria-hidden="true" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.transform.uppercase")}
-          >
-            <span>Uppercase selection</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.transform.lowercase")}
-          >
-            <span>Lowercase selection</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.transform.unformat")}
-          >
-            <span>Unformat to one line</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => runContextCommand("editor.transform.addCommas")}
-          >
-            <span>Add commas to lines</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() =>
-              runContextCommand("editor.transform.doubleToSingleQuotes")
-            }
-          >
-            <span>Double quotes to single quotes</span>
-          </button>
+          {editorContextCommandGroups.map((group, index) => (
+            <Fragment key={index}>
+              {index > 0 ? (
+                <span className="menu-separator" aria-hidden="true" />
+              ) : null}
+              {group.map(renderContextCommand)}
+            </Fragment>
+          ))}
           <span className="menu-separator" aria-hidden="true" />
           <button
             type="button"

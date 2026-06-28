@@ -156,6 +156,18 @@ export function ResultBody({
   onCloseRowDetail: () => void;
   shortcutTips: readonly ShortcutTip[];
 }) {
+  const rowDetailSidebar = (
+    <RowDetailSidebar
+      columns={resultColumns}
+      values={selectedRowValues}
+      table={rowDetailTable}
+      metadata={activeMetadata}
+      engine={editorEngine}
+      connectionId={activeConnectionId}
+      onClose={onCloseRowDetail}
+    />
+  );
+
   if (structureObject) {
     return (
       <StructureView
@@ -202,17 +214,7 @@ export function ResultBody({
           onSelectGridRow={onSelectGridRow}
           onSelectGridCell={onSelectGridCell}
         />
-        {selectedRowValues ? (
-          <RowDetailSidebar
-            columns={resultColumns}
-            values={selectedRowValues}
-            table={rowDetailTable}
-            metadata={activeMetadata}
-            engine={editorEngine}
-            connectionId={activeConnectionId}
-            onClose={onCloseRowDetail}
-          />
-        ) : null}
+        {rowDetailSidebar}
       </div>
     );
   }
@@ -465,17 +467,7 @@ export function ResultBody({
           />
         ) : null}
       </div>
-      {selectedRowValues ? (
-        <RowDetailSidebar
-          columns={resultColumns}
-          values={selectedRowValues}
-          table={rowDetailTable}
-          metadata={activeMetadata}
-          engine={editorEngine}
-          connectionId={activeConnectionId}
-          onClose={onCloseRowDetail}
-        />
-      ) : null}
+      {rowDetailSidebar}
     </div>
   );
 }

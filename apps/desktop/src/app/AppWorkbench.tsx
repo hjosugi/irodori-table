@@ -2100,6 +2100,8 @@ export function AppWorkbench() {
     showEditorQuickFix,
     cleanupQuery,
     toggleEditorComment: () => activeEditorApi()?.toggleComment(),
+    indentEditorSelection,
+    outdentEditorSelection,
     transformEditorSelection,
     exportCsv: () => exportActiveResult("csv"),
     exportSqlInserts: () => exportActiveResult("sql"),
@@ -3702,6 +3704,22 @@ export function AppWorkbench() {
       doubleToSingleQuotes: "Quotes converted",
     };
     showActionNotice("success", label[action]);
+  }
+
+  function indentEditorSelection() {
+    const changed = activeEditorApi()?.indentSelection() ?? false;
+    showActionNotice(
+      changed ? "success" : "info",
+      changed ? "Indented" : "Nothing changed",
+    );
+  }
+
+  function outdentEditorSelection() {
+    const changed = activeEditorApi()?.outdentSelection() ?? false;
+    showActionNotice(
+      changed ? "success" : "info",
+      changed ? "Outdented" : "Nothing changed",
+    );
   }
 
   async function runQuery() {
