@@ -301,9 +301,19 @@
   grid-column: 1 / -1;
 }
 
+.connection-form-stack {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .form-toggle {
   min-width: 132px;
   align-self: end;
+}
+
+.connection-transport-toggle {
+  justify-self: start;
 }
 
 .connection-color-options {
