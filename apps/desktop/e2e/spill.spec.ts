@@ -253,7 +253,7 @@ async function installSpillMock(page: Page) {
 
 // The refactored UI connects through the connection-manager dialog: open it, start
 // a fresh URL-mode draft, fill it, and submit "Connect". The mock `db_connect`
-// resolves to the `local-pg` connection, after which the editor reports "ready".
+// resolves to the `local-pg` connection, after which the status bar reports it.
 async function connectMock(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager" })
@@ -270,7 +270,7 @@ async function connectMock(page: Page) {
     .getByPlaceholder("postgres://user:password@host:5432/database")
     .fill("postgres://u:p@localhost:5432/db");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".editor-meta")).toContainText("ready");
+  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
 }
 
 async function runHugeTable(page: Page, expectedDone: number) {

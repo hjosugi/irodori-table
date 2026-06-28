@@ -192,7 +192,7 @@ async function connectAndRun(page: Page) {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".editor-meta")).toContainText("ready");
+  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
   await page.locator(".cm-content").click();
   await page.keyboard.type("select * from customers");
   await page.getByRole("button", { name: "Run Current", exact: true }).click();

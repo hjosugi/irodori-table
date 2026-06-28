@@ -159,7 +159,6 @@
 
 .app-shell[data-theme="dark"] .main-pane,
 .app-shell[data-theme="dark"] .editor-pane,
-.app-shell[data-theme="dark"] .editor-meta,
 .app-shell[data-theme="dark"] .results-pane,
 .app-shell[data-theme="dark"] .results-header,
 .app-root[data-theme="dark"] .data-dialog,
@@ -189,7 +188,6 @@
   background: var(--surface-raised);
 }
 
-.app-shell[data-theme="dark"] .editor-meta,
 .app-shell[data-theme="dark"] .results-header {
   background: var(--surface-muted);
 }

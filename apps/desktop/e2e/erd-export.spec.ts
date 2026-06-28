@@ -183,7 +183,7 @@ async function connect(page: Page) {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".editor-meta")).toContainText("ready");
+  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
 }
 
 async function openErd(page: Page) {

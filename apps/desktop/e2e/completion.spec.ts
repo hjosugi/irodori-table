@@ -176,7 +176,7 @@ test("schema metadata drives table and column completion in the editor", async (
   await installCompletionMock(page);
   await page.goto("/");
   await connectMockDatabase(page);
-  await expect(page.locator(".editor-meta")).toContainText("ready");
+  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
   await page.getByRole("tab", { name: "Completion" }).click();
   await expect(page.locator(".sidebar .completion-item").first()).toContainText(
     "customers",

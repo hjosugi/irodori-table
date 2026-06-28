@@ -77,7 +77,7 @@ describe("workbench store view placements", () => {
     ).toEqual(expected);
   });
 
-  it("accepts left and right view placements", async () => {
+  it("accepts left and right placements while pinning object browser left", async () => {
     const store = await loadWorkbenchStore();
     const requested: WorkbenchViewPlacements = {
       ...defaultWorkbenchViewPlacements,
@@ -85,13 +85,17 @@ describe("workbench store view placements", () => {
       bi: "left",
       git: "left",
     };
+    const expected: WorkbenchViewPlacements = {
+      ...requested,
+      objectBrowser: "left",
+    };
 
     store.getState().setViewPlacements(requested);
 
-    expect(store.getState().viewPlacements).toEqual(requested);
+    expect(store.getState().viewPlacements).toEqual(expected);
     expect(
       JSON.parse(window.localStorage.getItem(viewPlacementsStorageKey) ?? "{}"),
-    ).toEqual(requested);
+    ).toEqual(expected);
   });
 
   it("sanitizes stored view placements", async () => {
@@ -109,7 +113,7 @@ describe("workbench store view placements", () => {
 
     expect(store.getState().viewPlacements).toEqual({
       ...defaultWorkbenchViewPlacements,
-      objectBrowser: "right",
+      objectBrowser: "left",
     });
   });
 
@@ -199,8 +203,8 @@ describe("workbench store view placements", () => {
     expect(window.localStorage.getItem(sidebarWidthStorageKey)).toBe("180");
 
     store.getState().setSidebarWidth(900);
-    expect(store.getState().sidebarWidth).toBe(420);
-    expect(window.localStorage.getItem(sidebarWidthStorageKey)).toBe("420");
+    expect(store.getState().sidebarWidth).toBe(640);
+    expect(window.localStorage.getItem(sidebarWidthStorageKey)).toBe("640");
   });
 
   it("defaults the results pane to a practical working height", async () => {

@@ -85,47 +85,47 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(content).toContainText("select");
   await expect(content.locator("span").first()).toBeVisible();
 
+  // Query actions belong in the top toolbar, not as floating editor chrome.
+  const queryToolbar = page.locator(".query-toolbar");
+  await expect(queryToolbar).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run All" })).toHaveCount(0);
+  const toolbarBox = await queryToolbar.boundingBox();
+  const editorBox = await page.locator(".editor-pane").boundingBox();
+  expect(toolbarBox).toBeTruthy();
+  expect(editorBox).toBeTruthy();
+  expect(toolbarBox!.y + toolbarBox!.height).toBeLessThanOrEqual(
+    editorBox!.y + 1,
+  );
+
   // The object/connection sidebar is collapsible, like a workbench side bar.
   await expect(page.locator(".sidebar")).toBeVisible();
-  await page.getByRole("button", { name: "Hide sidebar" }).click();
+  await page.getByRole("button", { name: "Hide left sidebar" }).click();
   await expect(page.locator(".sidebar")).toHaveCount(0);
-  await page.getByRole("button", { name: "Show sidebar" }).click();
+  await page.getByRole("button", { name: "Show left sidebar" }).click();
   await expect(page.locator(".sidebar")).toBeVisible();
-  const sidebarVisibilityButton = page.locator(
-    '.titlebar-control-zone [data-sidebar-toggle="visibility"]',
+  const leftSidebarButton = page.locator(
+    '.titlebar-control-zone [data-sidebar-toggle="left"]',
   );
-  const sidebarMoveButton = page.locator(
-    '.titlebar-control-zone [data-sidebar-toggle="side"]',
+  const rightSidebarButton = page.locator(
+    '.titlebar-control-zone [data-sidebar-toggle="right"]',
   );
-  await expect(sidebarVisibilityButton).toHaveClass(/active/);
-  await expect(sidebarVisibilityButton).toHaveAttribute(
-    "data-sidebar-side",
-    "left",
-  );
-  const activeLayoutBackground = await sidebarVisibilityButton.evaluate(
+  await expect(leftSidebarButton).toHaveClass(/active/);
+  await expect(rightSidebarButton).not.toHaveClass(/active/);
+  const activeLayoutBackground = await leftSidebarButton.evaluate(
     (node) => getComputedStyle(node).backgroundColor,
   );
-  const inactiveLayoutBackground = await sidebarMoveButton.evaluate(
+  const inactiveLayoutBackground = await rightSidebarButton.evaluate(
     (node) => getComputedStyle(node).backgroundColor,
   );
   expect(activeLayoutBackground).not.toEqual(inactiveLayoutBackground);
-  await sidebarMoveButton.click();
-  await expect(sidebarVisibilityButton).toHaveAttribute(
-    "data-sidebar-side",
-    "right",
-  );
-  await expect(sidebarVisibilityButton).toHaveAttribute(
-    "title",
-    "Hide right sidebar",
-  );
-  await sidebarMoveButton.click();
-  await expect(sidebarVisibilityButton).toHaveAttribute(
-    "data-sidebar-side",
-    "left",
-  );
+  await rightSidebarButton.click();
+  await expect(rightSidebarButton).toHaveClass(/active/);
+  await expect(page.locator(".sidebar.sidebar-right")).toBeVisible();
+  await rightSidebarButton.click();
+  await expect(rightSidebarButton).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "Close sidebar" }).click();
   await expect(page.locator(".sidebar")).toHaveCount(0);
-  await page.getByRole("button", { name: "Show sidebar" }).click();
+  await page.getByRole("button", { name: "Show left sidebar" }).click();
   await expect(page.locator(".sidebar")).toBeVisible();
 
   // Sidebar views switch like a workbench rather than showing every pane at once.
@@ -195,7 +195,7 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await page.keyboard.type("select a, b from t where a = 1");
   await expect(page.locator(".cm-line")).toHaveCount(1);
   await page
-    .getByRole("toolbar", { name: "Editor actions" })
+    .getByRole("toolbar", { name: "SQL query actions" })
     .getByRole("button", { name: "Format SQL", exact: true })
     .click();
   expect(await page.locator(".cm-line").count()).toBeGreaterThan(1);
