@@ -33,14 +33,16 @@ export {
   type ResultGridDraftCell,
   type ResultGridRowOrigin,
 } from "./result-view-model";
-export {
-  WindowedRows,
-  createWindowedRowsProxy,
-} from "./result-window";
+export { WindowedRows, createWindowedRowsProxy } from "./result-window";
 export {
   deriveResultEditTarget,
   type ResultEditTarget,
 } from "./result-edit-target";
+export {
+  buildSelectedRowChangeSql,
+  sqlLiteralForResultValue,
+  type BuildSelectedRowChangeSqlInput,
+} from "./row-change-sql";
 export { findTableMetadata, parseSourceTable } from "./row-detail";
 export {
   formatResultSelectionStatus,

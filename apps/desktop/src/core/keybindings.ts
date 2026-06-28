@@ -285,6 +285,7 @@ const vimReservedEditorShortcuts: Record<string, string> = {
 const vimModeSuggestedKeymap: Keymap = {
   "tab.new": "Alt+Shift+T",
   "tab.close": "Alt+Shift+W",
+  "app.exit": "Alt+Shift+Q",
 };
 
 interface Parsed {
@@ -378,8 +379,14 @@ function sequenceParts(sequence: string): string[] {
     .filter((chord) => chord.length > 0);
 }
 
-function sameSequence(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((part, index) => part === right[index]);
+function sameSequence(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((part, index) => part === right[index])
+  );
 }
 
 function startsWithSequence(
@@ -515,7 +522,9 @@ export function commandHasConflict(
 ): boolean {
   const scopes = scope ? [scope] : keybindingScopes;
   return scopes.some((currentScope) =>
-    Object.values(conflicts[currentScope]).some((ids) => ids.includes(commandId)),
+    Object.values(conflicts[currentScope]).some((ids) =>
+      ids.includes(commandId),
+    ),
   );
 }
 
@@ -565,9 +574,7 @@ export function applyVimKeybindingResolutions(
 ): Keymap {
   const next = { ...overrides };
   for (const conflict of conflicts) {
-    const resolution =
-      resolutions[conflict.commandId] ??
-      (conflict.suggestedSequence ? "suggested" : "keep");
+    const resolution = resolutions[conflict.commandId] ?? "keep";
     if (resolution === "suggested" && conflict.suggestedSequence) {
       next[conflict.commandId] = conflict.suggestedSequence;
     } else if (resolution === "unset") {
@@ -614,10 +621,14 @@ export function resolveKeybinding({
     })
     .filter(
       ({ sequence, parts }) =>
-        sequence.length > 0 && parts.length > 0 && (allowBare || !isBareSequence(sequence)),
+        sequence.length > 0 &&
+        parts.length > 0 &&
+        (allowBare || !isBareSequence(sequence)),
     );
 
-  const prefix = bindings.some(({ parts }) => startsWithSequence(parts, current));
+  const prefix = bindings.some(({ parts }) =>
+    startsWithSequence(parts, current),
+  );
   if (prefix) {
     return {
       kind: "pending",

@@ -17,14 +17,19 @@ use ts_rs::TS;
 use irodori_completion::{MetadataObjectKind, MetadataSnapshot};
 use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use irodori_generate::{
-    generate, CommandConfig, CommandModel, GenColumn, GenForeignKey, GenSchema, GenTable,
-    GenerateRequest, GrammarModel, HttpConfig, OllamaModel, OpenAiCompatModel, RelationKind,
+    generate, CommandConfig, CommandModel, DecodeOptions, GenColumn, GenForeignKey, GenSchema,
+    GenTable, GenerateRequest, GrammarModel, HttpConfig, OllamaModel, OpenAiCompatModel,
+    RelationKind,
 };
 
-use crate::db::{DbEngine, DbState};
+use crate::db::{DbEngine, DbState, QueryPlanAnalysis};
 
 /// Default local model: small, strong at text-to-SQL, CPU-friendly (~0.4 GB).
 const DEFAULT_MODEL_FILE: &str = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf";
+
+/// Permissive grammar: accept any free-form prose. The embedded llama path needs
+/// a grammar to decode against; the HTTP/Ollama/CLI providers ignore it.
+const PROSE_GBNF: &str = "root ::= char+\nchar ::= [^\\x00]";
 
 /// Lazily-loaded engine handle, shared across commands.
 #[derive(Default)]
@@ -165,6 +170,100 @@ pub async fn ai_generate_sql(
         repaired: outcome.repaired,
         tables: outcome.tables,
     })
+}
+
+/// Narrate an already-computed query plan in plain prose with the active AI
+/// provider. Opt-in; the deterministic `plan.summary` is always available without
+/// it. Takes the `QueryPlanAnalysis` the UI already holds (it is `Deserialize`),
+/// so no database round-trip is needed here.
+#[tauri::command]
+pub async fn ai_explain_plan(
+    ai: State<'_, AiState>,
+    app: AppHandle,
+    plan: QueryPlanAnalysis,
+) -> IrodoriResult<String> {
+    let prompt = build_plan_prompt(&plan);
+    let model = build_provider(&ai, &app)?;
+
+    let output = tokio::task::spawn_blocking(move || {
+        model.complete(
+            &prompt,
+            PROSE_GBNF,
+            &DecodeOptions {
+                max_tokens: 512,
+                temperature: 0.2,
+                ..Default::default()
+            },
+        )
+    })
+    .await
+    .map_err(|e| {
+        IrodoriError::new(
+            IrodoriErrorKind::Internal,
+            format!("narration task failed: {e}"),
+        )
+    })??;
+
+    Ok(output.text.trim().to_string())
+}
+
+/// Build a compact text prompt from the plan: instruction, headline/summary,
+/// engine, the highest-impact nodes, and the findings. We never dump the raw
+/// EXPLAIN output — the normalized fields are enough and keep tokens low.
+fn build_plan_prompt(plan: &QueryPlanAnalysis) -> String {
+    let mut out = String::new();
+    out.push_str(
+        "You are a database performance assistant. Explain this query execution plan in plain \
+         language for an engineer. Cover: what the query does, where the time goes and why, and \
+         the single highest-impact fix. Briefly teach how to read the key metrics (rows, cost, \
+         time, scans). Be concise and concrete; do not invent details that are not in the plan.\n\n",
+    );
+
+    out.push_str(&format!("Headline: {}\n", plan.headline));
+    out.push_str(&format!("Engine: {}\n", plan.engine_family));
+    out.push_str(&format!("Deterministic summary: {}\n\n", plan.summary));
+
+    let mut nodes: Vec<&_> = plan.nodes.iter().collect();
+    nodes.sort_by(|a, b| b.impact_score.total_cmp(&a.impact_score));
+    out.push_str("Top plan nodes (by relative impact):\n");
+    for node in nodes.iter().take(8) {
+        let mut parts = vec![format!("operation={}", node.operation)];
+        if let Some(object) = &node.object {
+            parts.push(format!("object={object}"));
+        }
+        if let Some(rows) = node.estimated_rows {
+            parts.push(format!("estRows={}", trim_num(rows)));
+        }
+        if let Some(rows) = node.actual_rows {
+            parts.push(format!("actualRows={}", trim_num(rows)));
+        }
+        if let Some(cost) = node.total_cost {
+            parts.push(format!("cost={}", trim_num(cost)));
+        }
+        if let Some(ms) = node.actual_total_ms {
+            parts.push(format!("ms={}", trim_num(ms)));
+        }
+        out.push_str(&format!("- {}\n", parts.join(", ")));
+    }
+    out.push('\n');
+
+    out.push_str("Findings:\n");
+    for finding in &plan.findings {
+        out.push_str(&format!(
+            "- [{:?}] {}: {} Fix: {}\n",
+            finding.severity, finding.title, finding.detail, finding.action
+        ));
+    }
+
+    out
+}
+
+fn trim_num(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{value:.0}")
+    } else {
+        format!("{value:.2}")
+    }
 }
 
 /// Report whether generation is available and where the model lives.

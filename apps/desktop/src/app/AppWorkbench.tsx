@@ -50,6 +50,7 @@ import {
   calculateResultGridVirtualColumnWindow,
   calculateResultGridVirtualRowWindow,
   createWindowedRowsProxy,
+  buildSelectedRowChangeSql,
   deriveResultEditTarget,
   findTableMetadata,
   formatResultSelectionStatus,
@@ -276,96 +277,6 @@ function scaledUiPixels(value: number, zoom: number) {
 
 function scaledUiFont(value: number, zoom: number) {
   return `${Math.round(value * zoom * 100) / 100}px`;
-}
-
-function sqlLiteralForEditor(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "NULL";
-  }
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? String(value) : "NULL";
-  }
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-  if (typeof value === "boolean") {
-    return value ? "TRUE" : "FALSE";
-  }
-  const text =
-    typeof value === "object"
-      ? JSON.stringify(jsonSafeSqlValue(value))
-      : String(value);
-  return `'${text.replace(/'/g, "''")}'`;
-}
-
-function jsonSafeSqlValue(value: unknown): unknown {
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-  if (Array.isArray(value)) {
-    return value.map(jsonSafeSqlValue);
-  }
-  if (isRecord(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, nested]) => [
-        key,
-        jsonSafeSqlValue(nested),
-      ]),
-    );
-  }
-  return value;
-}
-
-function buildSelectedRowUpdateSql({
-  engine,
-  target,
-  columns,
-  row,
-}: {
-  engine: DbEngine;
-  target: ResultEditTarget;
-  columns: readonly string[];
-  row: readonly unknown[];
-}) {
-  const keyLookup = new Set(
-    target.keyColumns.map((column) => column.toLowerCase()),
-  );
-  const tableName = [target.schema, target.table]
-    .filter(Boolean)
-    .map((part) => quoteSqlIdentifier(engine, part!))
-    .join(".");
-  const setLines = columns
-    .map((column, index) => ({ column, index }))
-    .filter(({ column }) => !keyLookup.has(column.toLowerCase()))
-    .map(
-      ({ column, index }) =>
-        `  ${quoteSqlIdentifier(engine, column)} = ${sqlLiteralForEditor(row[index])}`,
-    );
-  const whereLines = target.keyColumns.map((column) => {
-    const columnIndex = columns.findIndex(
-      (candidate) => candidate.toLowerCase() === column.toLowerCase(),
-    );
-    const value = row[columnIndex];
-    const quoted = quoteSqlIdentifier(engine, column);
-    return value === null || value === undefined
-      ? `  ${quoted} IS NULL`
-      : `  ${quoted} = ${sqlLiteralForEditor(value)}`;
-  });
-  const begin = engine === "sqlserver" ? "BEGIN TRANSACTION;" : "BEGIN;";
-  return [
-    "-- Generated from the selected result row. Review before running.",
-    "-- Edit the SET values, then run this transaction.",
-    begin,
-    `UPDATE ${tableName}`,
-    "SET",
-    setLines.length > 0
-      ? setLines.join(",\n")
-      : "  -- TODO: add columns to update",
-    "WHERE",
-    whereLines.join("\n  AND "),
-    ";",
-    "COMMIT;",
-  ].join("\n");
 }
 
 function uiZoomStyleVariables(zoom: number): Record<string, string> {
@@ -1820,7 +1731,7 @@ export function AppWorkbench() {
       showActionNotice("info", "Select a row first");
       return;
     }
-    const sql = buildSelectedRowUpdateSql({
+    const sql = buildSelectedRowChangeSql({
       engine: activeEngine,
       target,
       columns: resultColumns,
@@ -3635,7 +3546,10 @@ export function AppWorkbench() {
   }
 
   function explainTargetSql() {
-    const selectedSql = selectedSqlFromSelections(query, activeEditorSelections());
+    const selectedSql = selectedSqlFromSelections(
+      query,
+      activeEditorSelections(),
+    );
     if (selectedSql) {
       return selectedSql;
     }

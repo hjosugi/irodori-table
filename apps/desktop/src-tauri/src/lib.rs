@@ -228,6 +228,7 @@ pub fn run() {
             security::network_transport_plan,
             security::network_diagnose_transport,
             ai::ai_generate_sql,
+            ai::ai_explain_plan,
             ai::ai_engine_status,
             ai::ai_set_provider,
             ai::ai_get_provider,
@@ -564,6 +565,10 @@ mod typegen {
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("prompt", TsType::string()))
                     .arg(Arg::new("engine", TsType::named("DbEngine"))),
+            )
+            .command(
+                Command::new("ai_explain_plan", "string")
+                    .arg(Arg::new("plan", TsType::named("QueryPlanAnalysis"))),
             )
             .command(Command::new("ai_engine_status", "AiEngineStatus"))
             .command(

@@ -177,6 +177,7 @@ describe("keybinding resolver", () => {
     expect(conflicts.map((conflict) => conflict.commandId)).toEqual([
       "tab.new",
       "tab.close",
+      "app.exit",
     ]);
     expect(conflicts[0].suggestedSequence).toBe("Alt+Shift+T");
 
@@ -186,6 +187,7 @@ describe("keybinding resolver", () => {
     ).toMatchObject({
       "tab.new": "Alt+Shift+T",
       "tab.close": "Alt+Shift+W",
+      "app.exit": "Alt+Shift+Q",
     });
 
     expect(

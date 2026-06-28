@@ -139,8 +139,7 @@ interface CreateSqlEditorViewOptions {
   linter: SqlLinterId;
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
   onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined;
+    ((request: SqlMetadataToolWindowRequest) => void) | undefined;
   compartments: SqlEditorCompartments;
 }
 
@@ -203,7 +202,9 @@ function createSqlEditorState({
       ),
       compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
       compartments.theme.of(editorThemeExtensions(theme)),
-      compartments.highlight.of(sqlHighlightingExtensions(engine, theme.syntax)),
+      compartments.highlight.of(
+        sqlHighlightingExtensions(engine, theme.syntax),
+      ),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChangeRef.current(update.state.doc.toString());
@@ -241,23 +242,30 @@ function vimClipboardShortcuts(): Extension {
           event.preventDefault();
           event.stopPropagation();
           const text = selectedEditorText(view.state);
-          if (text) {
-            void navigator.clipboard?.writeText(text).catch(() => undefined);
+          const writeText = navigator.clipboard?.writeText;
+          if (text && writeText) {
+            void writeText
+              .call(navigator.clipboard, text)
+              .catch(() => undefined);
           }
           return true;
         }
         if (matchesCtrlShiftKey(event, "v")) {
           event.preventDefault();
           event.stopPropagation();
-          void navigator.clipboard?.readText?.()
-            .then((text) => {
-              if (!text || !view.dom.isConnected) {
-                return;
-              }
-              view.dispatch(view.state.replaceSelection(text));
-              view.focus();
-            })
-            .catch(() => undefined);
+          const readText = navigator.clipboard?.readText;
+          if (readText) {
+            void readText
+              .call(navigator.clipboard)
+              .then((text) => {
+                if (!text || !view.dom.isConnected) {
+                  return;
+                }
+                view.dispatch(view.state.replaceSelection(text));
+                view.focus();
+              })
+              .catch(() => undefined);
+          }
           return true;
         }
         return false;
@@ -279,7 +287,8 @@ function matchesCtrlShiftKey(event: KeyboardEvent, key: "c" | "v"): boolean {
     event.shiftKey &&
     !event.altKey &&
     !event.metaKey &&
-    (event.key.toLowerCase() === key || event.code === `Key${key.toUpperCase()}`)
+    (event.key.toLowerCase() === key ||
+      event.code === `Key${key.toUpperCase()}`)
   );
 }
 
@@ -300,7 +309,9 @@ function acceptCompletionWithTab(view: EditorView): boolean {
   return completionStatus(view.state) === "active" && acceptCompletion(view);
 }
 
-function visibleDiagnosticMarkers(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+function visibleDiagnosticMarkers(
+  diagnostics: readonly Diagnostic[],
+): Diagnostic[] {
   return diagnostics.filter(
     (diagnostic) =>
       diagnostic.severity === "warning" || diagnostic.severity === "error",
@@ -334,12 +345,15 @@ function buildEditorSqlExtensions(
   snippets: readonly SqlSnippetDefinition[],
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined,
+    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
 ): Extension {
   return [
     buildSqlExtensions(engine, metadata, snippets),
-    sqlMetadataInsightExtensions(metadata, onMetadataJump, onMetadataToolWindow),
+    sqlMetadataInsightExtensions(
+      metadata,
+      onMetadataJump,
+      onMetadataToolWindow,
+    ),
   ];
 }
 
@@ -348,8 +362,7 @@ type QuickDefinitionPopupState = {
   metadata: DatabaseMetadata;
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
   onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined;
+    ((request: SqlMetadataToolWindowRequest) => void) | undefined;
   anchor: number;
   range: SqlEditorSelection;
   history: readonly SqlMetadataTarget[];
@@ -381,8 +394,7 @@ function sqlMetadataInsightExtensions(
   metadata: DatabaseMetadata | undefined,
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined,
+    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
 ): Extension[] {
   if (!metadata) {
     return [];
@@ -441,7 +453,8 @@ function sqlMetadataInsightExtensions(
       },
       {
         key: "F12",
-        run: (view) => jumpToMetadataAtSelection(view, metadata, onMetadataJump),
+        run: (view) =>
+          jumpToMetadataAtSelection(view, metadata, onMetadataJump),
       },
       {
         key: "F4",
@@ -456,29 +469,17 @@ function sqlMetadataInsightExtensions(
       {
         key: "Ctrl-Enter",
         run: (view) =>
-          openQuickDefinitionSource(
-            view,
-            quickDefinitionField,
-            onMetadataJump,
-          ),
+          openQuickDefinitionSource(view, quickDefinitionField, onMetadataJump),
       },
       {
         key: "Alt-Shift-ArrowLeft",
         run: (view) =>
-          navigateQuickDefinitionHistory(
-            view,
-            quickDefinitionField,
-            -1,
-          ),
+          navigateQuickDefinitionHistory(view, quickDefinitionField, -1),
       },
       {
         key: "Alt-Shift-ArrowRight",
         run: (view) =>
-          navigateQuickDefinitionHistory(
-            view,
-            quickDefinitionField,
-            1,
-          ),
+          navigateQuickDefinitionHistory(view, quickDefinitionField, 1),
       },
     ]),
     EditorView.domEventHandlers({
@@ -512,11 +513,7 @@ function sqlMetadataInsightExtensions(
 }
 
 function quickDefinitionTooltip(popup: QuickDefinitionPopupState): Tooltip {
-  const {
-    metadata,
-    onMetadataJump,
-    onMetadataToolWindow,
-  } = popup;
+  const { metadata, onMetadataJump, onMetadataToolWindow } = popup;
   return {
     pos: popup.anchor,
     end: popup.range.to,
@@ -542,22 +539,14 @@ function quickDefinitionTooltip(popup: QuickDefinitionPopupState): Tooltip {
           text: "<",
           disabled: popup.historyIndex <= 0,
           onClick: () =>
-            navigateQuickDefinitionHistory(
-              view,
-              quickDefinitionField,
-              -1,
-            ),
+            navigateQuickDefinitionHistory(view, quickDefinitionField, -1),
         }),
         toolbarButton({
           label: "Forward",
           text: ">",
           disabled: popup.historyIndex >= popup.history.length - 1,
           onClick: () =>
-            navigateQuickDefinitionHistory(
-              view,
-              quickDefinitionField,
-              1,
-            ),
+            navigateQuickDefinitionHistory(view, quickDefinitionField, 1),
         }),
         toolbarSeparator(),
         toolbarButton({
@@ -705,8 +694,7 @@ function openQuickDefinitionAtSelection(
   metadata: DatabaseMetadata,
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined,
+    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
 ): boolean {
   const target = inspectSqlMetadataAt(
     view.state.doc.toString(),
@@ -846,7 +834,11 @@ function metadataForeignKeyLink(
   foreignKey: SqlMetadataTarget["object"]["foreignKeys"][number],
 ): SqlMetadataTooltipLink | null {
   const schema = foreignKey.referencesSchema ?? target.object.schema;
-  const object = findMetadataObject(metadata, schema, foreignKey.referencesTable);
+  const object = findMetadataObject(
+    metadata,
+    schema,
+    foreignKey.referencesTable,
+  );
   if (!object) {
     return null;
   }
@@ -910,7 +902,9 @@ function reconfigureVimMode(
 ) {
   view?.dispatch({
     effects: [
-      compartments.clipboard.reconfigure(vimMode ? vimClipboardShortcuts() : []),
+      compartments.clipboard.reconfigure(
+        vimMode ? vimClipboardShortcuts() : [],
+      ),
       compartments.vim.reconfigure(vimMode ? vim() : []),
     ],
   });
@@ -940,8 +934,7 @@ function reconfigureSqlExtensions(
   snippets: readonly SqlSnippetDefinition[],
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    | ((request: SqlMetadataToolWindowRequest) => void)
-    | undefined,
+    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
 ) {
   view?.dispatch({
     effects: compartments.sql.reconfigure(
@@ -1107,181 +1100,183 @@ function uniqueTransformRanges(view: EditorView): SqlEditorSelection[] {
   return ranges;
 }
 
-const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(function SqlEditor(
-  {
-    value,
-    onChange,
-    onSelectionChange,
-    engine,
-    metadata,
-    snippets,
-    theme,
-    vimMode,
-    formatter,
-    linter,
-    onMetadataJump,
-    onMetadataToolWindow,
-  },
-  ref,
-) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  const onChangeRef = useRef(onChange);
-  const onSelectionChangeRef = useRef(onSelectionChange);
-  onChangeRef.current = onChange;
-  onSelectionChangeRef.current = onSelectionChange;
-  const compartmentsRef = useRef<SqlEditorCompartments | null>(null);
-  if (!compartmentsRef.current) {
-    compartmentsRef.current = createSqlEditorCompartments();
-  }
-  const compartments = compartmentsRef.current;
-
-  // Create the editor once. `value`/`engine`/`metadata` seed the initial state;
-  // later changes flow through the controlled-sync and reconfigure effects below.
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    const view = createSqlEditorView({
-      host,
+const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
+  function SqlEditor(
+    {
       value,
-      onChangeRef,
-      onSelectionChangeRef,
+      onChange,
+      onSelectionChange,
       engine,
       metadata,
       snippets,
       theme,
       vimMode,
+      formatter,
       linter,
       onMetadataJump,
       onMetadataToolWindow,
-      compartments,
-    });
-    viewRef.current = view;
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-    };
-    // Mount-once: deliberately excludes value/engine/metadata (handled by effects below).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    },
+    ref,
+  ) {
+    const hostRef = useRef<HTMLDivElement | null>(null);
+    const viewRef = useRef<EditorView | null>(null);
+    const onChangeRef = useRef(onChange);
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    onChangeRef.current = onChange;
+    onSelectionChangeRef.current = onSelectionChange;
+    const compartmentsRef = useRef<SqlEditorCompartments | null>(null);
+    if (!compartmentsRef.current) {
+      compartmentsRef.current = createSqlEditorCompartments();
+    }
+    const compartments = compartmentsRef.current;
 
-  // Toggle Vim emulation without recreating the editor or losing undo history.
-  useEffect(() => {
-    reconfigureVimMode(viewRef.current, compartments, vimMode);
-  }, [vimMode, compartments]);
+    // Create the editor once. `value`/`engine`/`metadata` seed the initial state;
+    // later changes flow through the controlled-sync and reconfigure effects below.
+    useEffect(() => {
+      const host = hostRef.current;
+      if (!host) return;
+      const view = createSqlEditorView({
+        host,
+        value,
+        onChangeRef,
+        onSelectionChangeRef,
+        engine,
+        metadata,
+        snippets,
+        theme,
+        vimMode,
+        linter,
+        onMetadataJump,
+        onMetadataToolWindow,
+        compartments,
+      });
+      viewRef.current = view;
+      return () => {
+        view.destroy();
+        viewRef.current = null;
+      };
+      // Mount-once: deliberately excludes value/engine/metadata (handled by effects below).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-  // Controlled sync: push external value changes (history click, etc.) into the doc.
-  useEffect(() => {
-    syncEditorDocument(viewRef.current, value);
-  }, [value]);
+    // Toggle Vim emulation without recreating the editor or losing undo history.
+    useEffect(() => {
+      reconfigureVimMode(viewRef.current, compartments, vimMode);
+    }, [vimMode, compartments]);
 
-  // Reconfigure dialect + metadata completion when the engine or metadata changes.
-  useEffect(() => {
-    reconfigureSqlExtensions(
-      viewRef.current,
-      compartments,
+    // Controlled sync: push external value changes (history click, etc.) into the doc.
+    useEffect(() => {
+      syncEditorDocument(viewRef.current, value);
+    }, [value]);
+
+    // Reconfigure dialect + metadata completion when the engine or metadata changes.
+    useEffect(() => {
+      reconfigureSqlExtensions(
+        viewRef.current,
+        compartments,
+        engine,
+        metadata,
+        snippets,
+        onMetadataJump,
+        onMetadataToolWindow,
+      );
+    }, [
       engine,
       metadata,
       snippets,
       onMetadataJump,
       onMetadataToolWindow,
+      compartments,
+    ]);
+
+    // Reconfigure the gentle SQL diagnostics without remounting the editor.
+    useEffect(() => {
+      reconfigureLintExtensions(viewRef.current, compartments, engine, linter);
+    }, [engine, linter, compartments]);
+
+    // Reconfigure editor chrome + syntax highlight when the theme or engine changes.
+    useEffect(() => {
+      reconfigureThemeExtensions(viewRef.current, compartments, engine, theme);
+    }, [engine, theme, compartments]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        getSelection() {
+          const main = viewRef.current?.state.selection.main;
+          return { from: main?.from ?? 0, to: main?.to ?? 0 };
+        },
+        getSelections() {
+          const ranges = viewRef.current?.state.selection.ranges;
+          return ranges ? editorSelectionRanges(ranges) : [{ from: 0, to: 0 }];
+        },
+        quickDefinition() {
+          const view = viewRef.current;
+          if (!view || !metadata) return false;
+          return openQuickDefinitionAtSelection(
+            view,
+            metadata,
+            onMetadataJump,
+            onMetadataToolWindow,
+          );
+        },
+        revealRange(selection) {
+          const view = viewRef.current;
+          if (!view) return;
+          view.dispatch({
+            selection: {
+              anchor: selection.from,
+              head: selection.to,
+            },
+            scrollIntoView: true,
+          });
+          view.focus();
+        },
+        async format() {
+          const view = viewRef.current;
+          if (!view) return null;
+          const result = await formatEditorDocument(view, engine, formatter);
+          if (result.formatted !== undefined) {
+            onChangeRef.current(result.formatted);
+          }
+          return result.error;
+        },
+        async cleanup() {
+          const view = viewRef.current;
+          if (!view) return null;
+          const result = await cleanupEditorDocument(view, engine, formatter);
+          if (result.formatted !== undefined) {
+            onChangeRef.current(result.formatted);
+          }
+          return result.error;
+        },
+        showQuickFix() {
+          const view = viewRef.current;
+          return view ? showEditorQuickFix(view) : false;
+        },
+        toggleComment() {
+          const view = viewRef.current;
+          if (!view) return false;
+          return toggleComment(view);
+        },
+        transformSelection(action) {
+          const view = viewRef.current;
+          return view ? transformEditorSelection(view, action) : false;
+        },
+        insertText(text) {
+          const view = viewRef.current;
+          if (!view || !text) return;
+          insertEditorText(view, text);
+        },
+        focus() {
+          viewRef.current?.focus();
+        },
+      }),
+      [engine, formatter],
     );
-  }, [
-    engine,
-    metadata,
-    snippets,
-    onMetadataJump,
-    onMetadataToolWindow,
-    compartments,
-  ]);
 
-  // Reconfigure the gentle SQL diagnostics without remounting the editor.
-  useEffect(() => {
-    reconfigureLintExtensions(viewRef.current, compartments, engine, linter);
-  }, [engine, linter, compartments]);
-
-  // Reconfigure editor chrome + syntax highlight when the theme or engine changes.
-  useEffect(() => {
-    reconfigureThemeExtensions(viewRef.current, compartments, engine, theme);
-  }, [engine, theme, compartments]);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      getSelection() {
-        const main = viewRef.current?.state.selection.main;
-        return { from: main?.from ?? 0, to: main?.to ?? 0 };
-      },
-      getSelections() {
-        const ranges = viewRef.current?.state.selection.ranges;
-        return ranges ? editorSelectionRanges(ranges) : [{ from: 0, to: 0 }];
-      },
-      quickDefinition() {
-        const view = viewRef.current;
-        if (!view || !metadata) return false;
-        return openQuickDefinitionAtSelection(
-          view,
-          metadata,
-          onMetadataJump,
-          onMetadataToolWindow,
-        );
-      },
-      revealRange(selection) {
-        const view = viewRef.current;
-        if (!view) return;
-        view.dispatch({
-          selection: {
-            anchor: selection.from,
-            head: selection.to,
-          },
-          scrollIntoView: true,
-        });
-        view.focus();
-      },
-      async format() {
-        const view = viewRef.current;
-        if (!view) return null;
-        const result = await formatEditorDocument(view, engine, formatter);
-        if (result.formatted !== undefined) {
-          onChangeRef.current(result.formatted);
-        }
-        return result.error;
-      },
-      async cleanup() {
-        const view = viewRef.current;
-        if (!view) return null;
-        const result = await cleanupEditorDocument(view, engine, formatter);
-        if (result.formatted !== undefined) {
-          onChangeRef.current(result.formatted);
-        }
-        return result.error;
-      },
-      showQuickFix() {
-        const view = viewRef.current;
-        return view ? showEditorQuickFix(view) : false;
-      },
-      toggleComment() {
-        const view = viewRef.current;
-        if (!view) return false;
-        return toggleComment(view);
-      },
-      transformSelection(action) {
-        const view = viewRef.current;
-        return view ? transformEditorSelection(view, action) : false;
-      },
-      insertText(text) {
-        const view = viewRef.current;
-        if (!view || !text) return;
-        insertEditorText(view, text);
-      },
-      focus() {
-        viewRef.current?.focus();
-      },
-    }),
-    [engine, formatter],
-  );
-
-  return <div className="cm-host" ref={hostRef} />;
-});
+    return <div className="cm-host" ref={hostRef} />;
+  },
+);
 
 export default SqlEditor;
