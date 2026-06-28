@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultConnectionColor,
   normalizeConnectionColor,
   portableProfile,
   profileFromDraft,
@@ -32,7 +33,7 @@ describe("connection profiles", () => {
   it("normalizes custom color tags", () => {
     expect(normalizeConnectionColor("#ABCDEF")).toBe("#abcdef");
     expect(normalizeConnectionColor("#0f8")).toBe("#00ff88");
-    expect(normalizeConnectionColor("bad")).toBe("#6b7280");
+    expect(normalizeConnectionColor("bad")).toBe(defaultConnectionColor);
   });
 
   it("normalizes settings JSON and strips stored passwords", () => {
@@ -57,7 +58,7 @@ describe("connection profiles", () => {
       url: ":memory:",
       password: "",
     });
-    expect(profile.color).toBe("#6b7280");
+    expect(profile.color).toBe(defaultConnectionColor);
   });
 
   it("redacts passwords from portable connection definitions", () => {
@@ -98,14 +99,49 @@ describe("connection profiles", () => {
       draft({
         id: "local-pg",
         name: "Local Warehouse",
+        color: "#16a34a",
         mode: "url",
         url: "postgres://irodori:irodori@localhost:55432/samples",
       }),
     );
 
     expect(profile.name).toBe("Local Postgres");
-    expect(profile.url).toBe("postgres://irodori:irodori@127.0.0.1:55432/samples");
+    expect(profile.url).toBe(
+      "postgres://irodori:irodori@127.0.0.1:55432/samples",
+    );
+    expect(profile.color).toBe("#bddfbf");
     expect(profile.host).toBe("127.0.0.1");
+  });
+
+  it("migrates bundled sample colors to the pastel connection palette", () => {
+    expect(
+      repairBuiltinSampleProfile(draft({ id: "local-mysql", color: "#2563eb" }))
+        .color,
+    ).toBe("#b9cceb");
+    expect(
+      repairBuiltinSampleProfile(
+        draft({
+          id: "sqlite-memory",
+          color: "#ca8a04",
+          engine: "sqlite",
+          database: ":memory:",
+        }),
+      ).color,
+    ).toBe("#ead79f");
+    expect(
+      repairBuiltinSampleProfile(
+        draft({
+          id: "duckdb-memory",
+          color: "#9333ea",
+          engine: "duckdb",
+          database: ":memory:",
+        }),
+      ).color,
+    ).toBe("#d2c1ea");
+    expect(
+      repairBuiltinSampleProfile(draft({ id: "local-mysql", color: "#112233" }))
+        .color,
+    ).toBe("#112233");
   });
 
   it("validates and converts field drafts into API profiles", () => {

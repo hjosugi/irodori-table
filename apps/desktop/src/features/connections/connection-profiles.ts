@@ -32,16 +32,23 @@ export type ConnectionDraft = {
 };
 
 export const profilesStorageKey = "irodori.connectionProfiles.v1";
-export const defaultConnectionColor = "#6b7280";
+const legacyDefaultConnectionColor = "#6b7280";
+const sampleConnectionColors = {
+  postgres: "#bddfbf",
+  mysql: "#b9cceb",
+  sqlite: "#ead79f",
+  duckdb: "#d2c1ea",
+} as const;
+export const defaultConnectionColor = "#a9d8cf";
 export const connectionColorOptions = [
   defaultConnectionColor,
-  "#2563eb",
-  "#16a34a",
-  "#ca8a04",
-  "#dc2626",
-  "#9333ea",
-  "#0891b2",
-  "#ea580c",
+  sampleConnectionColors.mysql,
+  sampleConnectionColors.postgres,
+  sampleConnectionColors.sqlite,
+  "#efb8b0",
+  sampleConnectionColors.duckdb,
+  "#a8d7dd",
+  "#f3c39f",
 ];
 
 export function normalizeConnectionColor(
@@ -60,6 +67,15 @@ export function normalizeConnectionColor(
       .join("")}`.toLowerCase();
   }
   return fallback;
+}
+
+function normalizeBuiltinConnectionColor(
+  value: unknown,
+  fallback: string,
+  legacyColors: readonly string[],
+) {
+  const normalized = normalizeConnectionColor(value, fallback);
+  return legacyColors.includes(normalized) ? fallback : normalized;
 }
 
 export const engineOptions: Array<{ value: DbEngine; label: string }> = [
@@ -120,7 +136,7 @@ export const starterProfiles: ConnectionDraft[] = [
   {
     id: "local-pg",
     name: "Local Postgres",
-    color: "#16a34a",
+    color: sampleConnectionColors.postgres,
     engine: "postgres",
     mode: "url",
     url: localPostgresSampleUrl,
@@ -133,7 +149,7 @@ export const starterProfiles: ConnectionDraft[] = [
   {
     id: "local-mysql",
     name: "Local MySQL",
-    color: "#2563eb",
+    color: sampleConnectionColors.mysql,
     engine: "mysql",
     mode: "url",
     url: "mysql://irodori:irodori@localhost:55306/samples",
@@ -146,7 +162,7 @@ export const starterProfiles: ConnectionDraft[] = [
   {
     id: "sqlite-memory",
     name: "SQLite Sample",
-    color: "#ca8a04",
+    color: sampleConnectionColors.sqlite,
     engine: "sqlite",
     mode: "fields",
     url: "",
@@ -159,7 +175,7 @@ export const starterProfiles: ConnectionDraft[] = [
   {
     id: "duckdb-memory",
     name: "DuckDB Sample",
-    color: "#9333ea",
+    color: sampleConnectionColors.duckdb,
     engine: "duckdb",
     mode: "fields",
     url: "",
@@ -319,10 +335,13 @@ function redactUrlUserInfo(value: string) {
   }
 }
 
-export function repairBuiltinSampleProfile(profile: ConnectionDraft): ConnectionDraft {
+export function repairBuiltinSampleProfile(
+  profile: ConnectionDraft,
+): ConnectionDraft {
   if (profile.id === "sqlite-memory" || profile.id === "duckdb-memory") {
     const engine = profile.id === "sqlite-memory" ? "sqlite" : "duckdb";
-    const label = profile.id === "sqlite-memory" ? "SQLite Sample" : "DuckDB Sample";
+    const label =
+      profile.id === "sqlite-memory" ? "SQLite Sample" : "DuckDB Sample";
     const database = profile.database.trim() || ":memory:";
     if (
       (profile.engine === engine || !profile.engine) &&
@@ -339,10 +358,18 @@ export function repairBuiltinSampleProfile(profile: ConnectionDraft): Connection
           !profile.name.trim()
             ? label
             : profile.name,
-        color: normalizeConnectionColor(
-          profile.color,
-          engine === "sqlite" ? "#ca8a04" : "#9333ea",
-        ),
+        color:
+          engine === "sqlite"
+            ? normalizeBuiltinConnectionColor(
+                profile.color,
+                sampleConnectionColors.sqlite,
+                [legacyDefaultConnectionColor, "#ca8a04"],
+              )
+            : normalizeBuiltinConnectionColor(
+                profile.color,
+                sampleConnectionColors.duckdb,
+                [legacyDefaultConnectionColor, "#9333ea"],
+              ),
         engine,
         mode: "fields",
         url: "",
@@ -353,6 +380,16 @@ export function repairBuiltinSampleProfile(profile: ConnectionDraft): Connection
         database: ":memory:",
       };
     }
+  }
+  if (profile.id === "local-mysql") {
+    return {
+      ...profile,
+      color: normalizeBuiltinConnectionColor(
+        profile.color,
+        sampleConnectionColors.mysql,
+        [legacyDefaultConnectionColor, "#2563eb"],
+      ),
+    };
   }
   if (profile.id !== "local-pg") {
     return profile;
@@ -375,7 +412,11 @@ export function repairBuiltinSampleProfile(profile: ConnectionDraft): Connection
       profile.name === "Local Warehouse" || !profile.name.trim()
         ? "Local Postgres"
         : profile.name,
-    color: normalizeConnectionColor(profile.color, "#16a34a"),
+    color: normalizeBuiltinConnectionColor(
+      profile.color,
+      sampleConnectionColors.postgres,
+      [legacyDefaultConnectionColor, "#16a34a"],
+    ),
     engine: "postgres",
     mode: "url",
     url: localPostgresSampleUrl,
@@ -425,7 +466,9 @@ export function settingsProfileFromJson(
     ...memoryDefaults(engine),
   };
   const mode: ConnectionInputMode =
-    value.mode === "fields" || value.mode === "url" ? value.mode : defaults.mode;
+    value.mode === "fields" || value.mode === "url"
+      ? value.mode
+      : defaults.mode;
   return portableProfile(
     repairBuiltinSampleProfile({
       ...defaults,
