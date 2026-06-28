@@ -3922,14 +3922,14 @@ dependencies = [
 
 [[package]]
 name = "irodori-completion"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "irodori-sql",
 ]
 
 [[package]]
 name = "irodori-connection"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "irodori-error",
  "serde",
@@ -3939,7 +3939,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-core"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "irodori-connection",
  "irodori-error",
@@ -3962,7 +3962,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-extension"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "serde",
  "serde_json",
@@ -3973,7 +3973,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-generate"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "irodori-error",
  "irodori-sql",
@@ -3984,7 +3984,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-io"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "apache-avro",
  "arrow 59.0.0",
@@ -4021,7 +4021,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-proxy"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "irodori-core",
  "serde",
@@ -4033,14 +4033,14 @@ dependencies = [
 
 [[package]]
 name = "irodori-secure-store"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "irodori-core",
 ]
 
 [[package]]
 name = "irodori-security"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "serde",
  "ts-rs",
@@ -4048,7 +4048,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-server"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "async-trait",
  "bytes",
@@ -4070,7 +4070,7 @@ source = "git+https://github.com/hjosugi/irodori-sql?tag=v0.2.24#4c3a923539302f0
 
 [[package]]
 name = "irodori-table-desktop"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
