@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +31,17 @@ const linkedDriverEngines = new Set(
     .map((engine) => engine.trim())
     .filter(Boolean),
 );
+const supportedLinkedDriverEngines = new Set(["duckdb", "motherduck"]);
+const unsupportedLinkedDriverEngines = [...linkedDriverEngines].filter(
+  (engine) => !supportedLinkedDriverEngines.has(engine),
+);
+if (unsupportedLinkedDriverEngines.length > 0) {
+  throw new Error(
+    `IRODORI_CONNECTOR_LINKED_DRIVERS includes unsupported generated drivers: ${unsupportedLinkedDriverEngines.join(
+      ", ",
+    )}. Supported generated drivers are duckdb and motherduck.`,
+  );
+}
 const linkDuckDbDrivers = process.env.IRODORI_CONNECTOR_LINK_DUCKDB !== "0";
 
 const sharedMigrationSources = [
@@ -115,7 +127,7 @@ function writeConnectorRepo(entry) {
   const label = connectorLabel(entry.name, engineMeta.label);
   const features = connectorFeatures(entry, engineMeta);
   const realDriverLinked =
-    linkedDriverEngines.has(engine) || (linkDuckDbDrivers && isDuckDbBackedConnector(engine));
+    isDuckDbBackedConnector(engine) && (linkDuckDbDrivers || linkedDriverEngines.has(engine));
   const visibility = entry.visibility ?? "public";
   const permissions = unique([
     ...(entry.permissions ?? []),
@@ -216,7 +228,7 @@ function writeConnectorRepo(entry) {
   writeJson(resolve(repoDir, "connector.config.json"), config);
   writeText(resolve(repoDir, "Cargo.toml"), cargoToml(repoName, crateName, realDriverLinked));
   writeText(resolve(repoDir, ".cargo/config.toml"), cargoConfig());
-  writeText(resolve(repoDir, "src/lib.rs"), rustLib(engine, label, realDriverLinked));
+  writeRustSources(repoDir, engine, label, realDriverLinked);
   writeText(
     resolve(repoDir, "README.md"),
     readme(entry, engineMeta, visibility, realDriverLinked, connection),
@@ -233,6 +245,7 @@ function writeConnectorRepo(entry) {
   writeText(resolve(repoDir, ".gitignore"), gitignore());
   writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(realDriverLinked));
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
+  formatRustSources(repoDir);
 }
 
 function adapterSourceInfo(adapter) {
@@ -965,11 +978,8 @@ bundled-duckdb = ["duckdb/bundled"]
 duckdb = { version = "1", default-features = false }
 serde_json = "1"
 `
-    : "";
-  const devDependencies = realDriverLinked
-    ? ""
     : `
-[dev-dependencies]
+[dependencies]
 serde_json = "1"
 `;
   return `[package]
@@ -984,7 +994,6 @@ publish = false
 name = "${crateName}"
 crate-type = ["cdylib", "rlib"]
 ${dependencies}
-${devDependencies}
 [profile.dev.package."*"]
 debug = 0
 
@@ -1005,59 +1014,65 @@ color = "auto"
 `;
 }
 
-function rustLib(engine, label, realDriverLinked) {
+function writeRustSources(repoDir, engine, label, realDriverLinked) {
+  writeText(resolve(repoDir, "src/lib.rs"), rustLib(engine, label, realDriverLinked));
+  writeText(resolve(repoDir, "src/abi.rs"), abiRust());
   if (realDriverLinked) {
-    return duckDbRustLib(engine, label);
+    writeText(resolve(repoDir, "src/driver.rs"), duckDbDriverRust());
+    removeIfExists(resolve(repoDir, "src/stub.rs"));
+  } else {
+    writeText(resolve(repoDir, "src/stub.rs"), stubRust());
+    removeIfExists(resolve(repoDir, "src/driver.rs"));
   }
+}
+
+function removeIfExists(path) {
+  rmSync(path, { force: true });
+}
+
+function formatRustSources(repoDir) {
+  if (process.env.IRODORI_SKIP_RUSTFMT === "1") {
+    return;
+  }
+  const result = spawnSync("cargo", ["fmt", "--manifest-path", resolve(repoDir, "Cargo.toml")], {
+    cwd: repoDir,
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `cargo fmt failed in ${repoDir}\n${result.stdout ?? ""}${result.stderr ?? ""}`,
+    );
+  }
+}
+
+function rustLib(engine, label, realDriverLinked) {
+  const dispatcherModule = realDriverLinked ? "driver" : "stub";
+  const driverOperationTest = realDriverLinked
+    ? ""
+    : `
+    #[test]
+    fn call_json_rejects_driver_operations_until_linked() {
+        let response = call(r#"{"method":"query","sql":"select 1"}"#);
+        assert_eq!(response["ok"], false);
+        assert_eq!(response["error"]["code"], "connector.driverNotLinked");
+    }
+`;
+
   return `//! Native connector ABI for ${label}.
 //!
-//! Connector behavior is declared in ../connector.config.json and
-//! ../irodori.extension.json so packaging can customize metadata without
-//! changing Rust code.
+//! Generated extension entrypoints stay small: \`abi\` owns buffer/JSON ABI
+//! mechanics, and \`${dispatcherModule}\` owns connector behavior.
 
-const ABI_VERSION: u32 = 1;
-const ENGINE: &str = "${engine}";
-const CONFIG_JSON: &str = include_str!("../connector.config.json");
-const MANIFEST_JSON: &str = include_str!("../irodori.extension.json");
-const HEALTH_RESPONSE_JSON: &str =
-    r#"{"ok":true,"engine":"${engine}","abiVersion":1,"driverLinked":false}"#;
-const DESCRIBE_RESPONSE_JSON: &str = concat!(
-    r#"{"ok":true,"engine":"${engine}","abiVersion":1,"driverLinked":false,"manifest":"#,
-    include_str!("../irodori.extension.json"),
-    r#","config":"#,
-    include_str!("../connector.config.json"),
-    r#"}"#
-);
-const INVALID_REQUEST_RESPONSE_JSON: &str = r#"{"ok":false,"error":{"code":"connector.invalidRequest","message":"Connector request buffer must be empty or valid UTF-8 JSON."}}"#;
-const NOT_LINKED_RESPONSE_JSON: &str = r#"{"ok":false,"error":{"code":"connector.driverNotLinked","message":"The native connector metadata is available, but the engine-specific driver entrypoint is not linked in this package yet."}}"#;
+mod abi;
+mod ${dispatcherModule};
 
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct IrodoriConnectorBuffer {
-    pub ptr: *const u8,
-    pub len: usize,
-}
+pub use abi::IrodoriConnectorBuffer;
 
-fn static_buffer(value: &'static str) -> IrodoriConnectorBuffer {
-    IrodoriConnectorBuffer {
-        ptr: value.as_ptr(),
-        len: value.len(),
-    }
-}
-
-fn buffer_to_string(buffer: IrodoriConnectorBuffer) -> Result<String, ()> {
-    if buffer.ptr.is_null() {
-        return if buffer.len == 0 {
-            Ok(String::new())
-        } else {
-            Err(())
-        };
-    }
-    let bytes = unsafe { std::slice::from_raw_parts(buffer.ptr, buffer.len) };
-    std::str::from_utf8(bytes)
-        .map(str::to_owned)
-        .map_err(|_| ())
-}
+pub const ABI_VERSION: u32 = 1;
+pub const ENGINE: &str = "${engine}";
+pub const DRIVER_LINKED: bool = ${realDriverLinked};
+pub const CONFIG_JSON: &str = include_str!("../connector.config.json");
+pub const MANIFEST_JSON: &str = include_str!("../irodori.extension.json");
 
 #[no_mangle]
 pub extern "C" fn irodori_extension_abi_version() -> u32 {
@@ -1066,49 +1081,35 @@ pub extern "C" fn irodori_extension_abi_version() -> u32 {
 
 #[no_mangle]
 pub extern "C" fn irodori_connector_engine_json() -> IrodoriConnectorBuffer {
-    static_buffer(ENGINE)
+    abi::owned_buffer(ENGINE.to_string())
 }
 
 #[no_mangle]
 pub extern "C" fn irodori_extension_manifest_json() -> IrodoriConnectorBuffer {
-    static_buffer(MANIFEST_JSON)
+    abi::owned_buffer(MANIFEST_JSON.to_string())
 }
 
 #[no_mangle]
 pub extern "C" fn irodori_connector_config_json() -> IrodoriConnectorBuffer {
-    static_buffer(CONFIG_JSON)
+    abi::owned_buffer(CONFIG_JSON.to_string())
 }
 
 #[no_mangle]
 pub extern "C" fn irodori_connector_call_json(
     request: IrodoriConnectorBuffer,
 ) -> IrodoriConnectorBuffer {
-    let Ok(request) = buffer_to_string(request) else {
-        return static_buffer(INVALID_REQUEST_RESPONSE_JSON);
-    };
-    if request.trim().is_empty() || request.contains(r#""health""#) || request.contains(r#""ping""#)
-    {
-        return static_buffer(HEALTH_RESPONSE_JSON);
-    }
-    if request.contains(r#""describe""#) || request.contains(r#""capabilities""#) {
-        return static_buffer(DESCRIBE_RESPONSE_JSON);
-    }
-    if request.contains(r#""manifest""#) {
-        return static_buffer(MANIFEST_JSON);
-    }
-    if request.contains(r#""config""#) {
-        return static_buffer(CONFIG_JSON);
-    }
-    static_buffer(NOT_LINKED_RESPONSE_JSON)
+    ${dispatcherModule}::call_json(request)
 }
 
 #[no_mangle]
-pub extern "C" fn irodori_connector_free_buffer(_buffer: IrodoriConnectorBuffer) {}
+pub extern "C" fn irodori_connector_free_buffer(buffer: IrodoriConnectorBuffer) {
+    abi::free_owned_buffer(buffer);
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
+    use serde_json::{json, Value};
 
     fn buffer_from_str(value: &'static str) -> IrodoriConnectorBuffer {
         IrodoriConnectorBuffer {
@@ -1124,9 +1125,22 @@ mod tests {
         }
     }
 
+    fn buffer_to_string(buffer: IrodoriConnectorBuffer) -> String {
+        let bytes = unsafe { std::slice::from_raw_parts(buffer.ptr, buffer.len) };
+        let value = std::str::from_utf8(bytes).unwrap().to_string();
+        irodori_connector_free_buffer(buffer);
+        value
+    }
+
     fn buffer_to_json(buffer: IrodoriConnectorBuffer) -> Value {
         let bytes = unsafe { std::slice::from_raw_parts(buffer.ptr, buffer.len) };
-        serde_json::from_slice(bytes).unwrap()
+        let value = serde_json::from_slice(bytes).unwrap();
+        irodori_connector_free_buffer(buffer);
+        value
+    }
+
+    fn call(request: &'static str) -> Value {
+        buffer_to_json(irodori_connector_call_json(buffer_from_str(request)))
     }
 
     #[test]
@@ -1140,6 +1154,7 @@ mod tests {
         assert_eq!(connector["engine"], config["connector"]["engine"]);
         assert_eq!(connector["module"], config["connector"]["module"]);
         assert_eq!(connector["connection"], config["connection"]);
+        assert_eq!(config["runtime"]["driverLinked"], json!(${realDriverLinked}));
         assert!(config["connection"]["authMethods"]
             .as_array()
             .is_some_and(|methods| !methods.is_empty()));
@@ -1152,42 +1167,27 @@ mod tests {
     }
 
     #[test]
-    fn abi_exports_static_json() {
+    fn abi_exports_owned_json() {
         assert_eq!(irodori_extension_abi_version(), ABI_VERSION);
-        assert!(irodori_extension_manifest_json().len > 0);
-        assert!(irodori_connector_config_json().len > 0);
-        assert_eq!(irodori_connector_engine_json().len, ENGINE.len());
+        assert_eq!(buffer_to_string(irodori_connector_engine_json()), ENGINE);
+        assert_eq!(buffer_to_string(irodori_extension_manifest_json()), MANIFEST_JSON);
+        assert_eq!(buffer_to_string(irodori_connector_config_json()), CONFIG_JSON);
     }
 
     #[test]
     fn call_json_reports_health_and_describes_metadata() {
-        let health = buffer_to_json(irodori_connector_call_json(buffer_from_str(
-            r#"{"method":"health"}"#,
-        )));
+        let health = call(r#"{"method":"health"}"#);
         assert_eq!(health["ok"], true);
         assert_eq!(health["engine"], ENGINE);
-        assert_eq!(health["driverLinked"], false);
+        assert_eq!(health["driverLinked"], json!(${realDriverLinked}));
 
-        let describe = buffer_to_json(irodori_connector_call_json(buffer_from_str(
-            r#"{"method":"describe"}"#,
-        )));
+        let describe = call(r#"{"method":"describe"}"#);
         assert_eq!(describe["ok"], true);
-        assert_eq!(
-            describe["manifest"]["id"],
-            describe["config"]["extensionId"]
-        );
+        assert_eq!(describe["driverLinked"], json!(${realDriverLinked}));
+        assert_eq!(describe["manifest"]["id"], describe["config"]["extensionId"]);
         assert_eq!(describe["config"]["connector"]["engine"], ENGINE);
     }
-
-    #[test]
-    fn call_json_rejects_driver_operations_until_linked() {
-        let response = buffer_to_json(irodori_connector_call_json(buffer_from_str(
-            r#"{"method":"query","sql":"select 1"}"#,
-        )));
-        assert_eq!(response["ok"], false);
-        assert_eq!(response["error"]["code"], "connector.driverNotLinked");
-    }
-
+${driverOperationTest}
     #[test]
     fn call_json_rejects_invalid_request_buffers() {
         let invalid_utf8 = buffer_to_json(irodori_connector_call_json(buffer_from_bytes(&[
@@ -1195,6 +1195,10 @@ mod tests {
         ])));
         assert_eq!(invalid_utf8["ok"], false);
         assert_eq!(invalid_utf8["error"]["code"], "connector.invalidRequest");
+
+        let invalid_json = call("{");
+        assert_eq!(invalid_json["ok"], false);
+        assert_eq!(invalid_json["error"]["code"], "connector.invalidJson");
 
         let invalid_null = buffer_to_json(irodori_connector_call_json(IrodoriConnectorBuffer {
             ptr: std::ptr::null(),
@@ -1207,23 +1211,10 @@ mod tests {
 `;
 }
 
-function duckDbRustLib(engine, label) {
-  return `//! Native connector ABI for ${label}.
-//!
-//! This connector links a real DuckDB driver and implements connect/query/
-//! metadata/close over the JSON connector ABI.
-
-use std::collections::{BTreeMap, HashMap};
-use std::sync::{Mutex, OnceLock};
+function abiRust() {
+  return `#![allow(dead_code)]
 
 use serde_json::{json, Value};
-
-const ABI_VERSION: u32 = 1;
-const ENGINE: &str = "${engine}";
-const CONFIG_JSON: &str = include_str!("../connector.config.json");
-const MANIFEST_JSON: &str = include_str!("../irodori.extension.json");
-
-static CONNECTIONS: OnceLock<Mutex<HashMap<String, duckdb::Connection>>> = OnceLock::new();
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -1232,19 +1223,7 @@ pub struct IrodoriConnectorBuffer {
     pub len: usize,
 }
 
-#[derive(Default)]
-struct ObjectMeta {
-    schema: String,
-    name: String,
-    kind: String,
-    columns: Vec<Value>,
-}
-
-fn connections() -> &'static Mutex<HashMap<String, duckdb::Connection>> {
-    CONNECTIONS.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-fn owned_buffer(value: String) -> IrodoriConnectorBuffer {
+pub fn owned_buffer(value: String) -> IrodoriConnectorBuffer {
     let mut bytes = value.into_bytes().into_boxed_slice();
     let buffer = IrodoriConnectorBuffer {
         ptr: bytes.as_mut_ptr(),
@@ -1254,11 +1233,21 @@ fn owned_buffer(value: String) -> IrodoriConnectorBuffer {
     buffer
 }
 
-fn json_buffer(value: Value) -> IrodoriConnectorBuffer {
+pub fn json_buffer(value: Value) -> IrodoriConnectorBuffer {
     owned_buffer(value.to_string())
 }
 
-fn buffer_to_string(buffer: IrodoriConnectorBuffer) -> Result<String, ()> {
+pub fn free_owned_buffer(buffer: IrodoriConnectorBuffer) {
+    if buffer.ptr.is_null() {
+        return;
+    }
+    unsafe {
+        let slice = std::ptr::slice_from_raw_parts_mut(buffer.ptr as *mut u8, buffer.len);
+        drop(Box::from_raw(slice));
+    }
+}
+
+pub fn buffer_to_string(buffer: IrodoriConnectorBuffer) -> Result<String, ()> {
     if buffer.ptr.is_null() {
         return if buffer.len == 0 {
             Ok(String::new())
@@ -1267,15 +1256,17 @@ fn buffer_to_string(buffer: IrodoriConnectorBuffer) -> Result<String, ()> {
         };
     }
     let bytes = unsafe { std::slice::from_raw_parts(buffer.ptr, buffer.len) };
-    std::str::from_utf8(bytes).map(str::to_owned).map_err(|_| ())
+    std::str::from_utf8(bytes)
+        .map(str::to_owned)
+        .map_err(|_| ())
 }
 
-fn ok(mut payload: serde_json::Map<String, Value>) -> IrodoriConnectorBuffer {
+pub fn ok(mut payload: serde_json::Map<String, Value>) -> IrodoriConnectorBuffer {
     payload.insert("ok".to_string(), Value::Bool(true));
     json_buffer(Value::Object(payload))
 }
 
-fn error(code: &str, message: impl Into<String>) -> IrodoriConnectorBuffer {
+pub fn error(code: &str, message: impl Into<String>) -> IrodoriConnectorBuffer {
     json_buffer(json!({
         "ok": false,
         "error": {
@@ -1285,7 +1276,7 @@ fn error(code: &str, message: impl Into<String>) -> IrodoriConnectorBuffer {
     }))
 }
 
-fn parse_request(buffer: IrodoriConnectorBuffer) -> Result<Option<Value>, IrodoriConnectorBuffer> {
+pub fn parse_request(buffer: IrodoriConnectorBuffer) -> Result<Option<Value>, IrodoriConnectorBuffer> {
     let request = buffer_to_string(buffer).map_err(|_| {
         error(
             "connector.invalidRequest",
@@ -1304,7 +1295,7 @@ fn parse_request(buffer: IrodoriConnectorBuffer) -> Result<Option<Value>, Irodor
     })
 }
 
-fn request_method(request: Option<&Value>) -> Result<&str, IrodoriConnectorBuffer> {
+pub fn request_method(request: Option<&Value>) -> Result<&str, IrodoriConnectorBuffer> {
     match request {
         None => Ok("health"),
         Some(value) => value
@@ -1315,11 +1306,14 @@ fn request_method(request: Option<&Value>) -> Result<&str, IrodoriConnectorBuffe
     }
 }
 
-fn string_field<'a>(value: &'a Value, field: &str) -> Option<&'a str> {
-    value.get(field).and_then(Value::as_str).filter(|text| !text.trim().is_empty())
+pub fn string_field<'a>(value: &'a Value, field: &str) -> Option<&'a str> {
+    value
+        .get(field)
+        .and_then(Value::as_str)
+        .filter(|text| !text.trim().is_empty())
 }
 
-fn profile_field<'a>(request: &'a Value, field: &str) -> Option<&'a str> {
+pub fn profile_field<'a>(request: &'a Value, field: &str) -> Option<&'a str> {
     string_field(request, field).or_else(|| {
         request
             .get("profile")
@@ -1327,7 +1321,7 @@ fn profile_field<'a>(request: &'a Value, field: &str) -> Option<&'a str> {
     })
 }
 
-fn connection_id(request: Option<&Value>) -> String {
+pub fn connection_id(request: Option<&Value>) -> String {
     request
         .and_then(|value| {
             string_field(value, "connectionId")
@@ -1339,7 +1333,7 @@ fn connection_id(request: Option<&Value>) -> String {
         .to_string()
 }
 
-fn max_rows(request: &Value) -> usize {
+pub fn max_rows(request: &Value) -> usize {
     request
         .get("maxRows")
         .or_else(|| request.get("limit"))
@@ -1347,30 +1341,150 @@ fn max_rows(request: &Value) -> usize {
         .unwrap_or(10_000)
         .clamp(1, 100_000) as usize
 }
+`;
+}
+
+function stubRust() {
+  return `use serde_json::{json, Value};
+
+use crate::abi::{self, IrodoriConnectorBuffer};
+use crate::{ABI_VERSION, CONFIG_JSON, ENGINE, MANIFEST_JSON};
+
+const NOT_LINKED_MESSAGE: &str = "The native connector metadata is available, but the engine-specific driver entrypoint is not linked in this package yet.";
+
+pub fn call_json(request: IrodoriConnectorBuffer) -> IrodoriConnectorBuffer {
+    let request = match abi::parse_request(request) {
+        Ok(request) => request,
+        Err(response) => return response,
+    };
+    let method = match abi::request_method(request.as_ref()) {
+        Ok(method) => method,
+        Err(response) => return response,
+    };
+
+    match method {
+        "health" | "ping" => abi::ok(serde_json::Map::from_iter([
+            ("engine".to_string(), Value::String(ENGINE.to_string())),
+            ("abiVersion".to_string(), json!(ABI_VERSION)),
+            ("driverLinked".to_string(), Value::Bool(false)),
+        ])),
+        "describe" | "capabilities" => abi::ok(serde_json::Map::from_iter([
+            ("engine".to_string(), Value::String(ENGINE.to_string())),
+            ("abiVersion".to_string(), json!(ABI_VERSION)),
+            ("driverLinked".to_string(), Value::Bool(false)),
+            (
+                "manifest".to_string(),
+                serde_json::from_str(MANIFEST_JSON).unwrap_or(Value::Null),
+            ),
+            (
+                "config".to_string(),
+                serde_json::from_str(CONFIG_JSON).unwrap_or(Value::Null),
+            ),
+        ])),
+        "manifest" => abi::owned_buffer(MANIFEST_JSON.to_string()),
+        "config" => abi::owned_buffer(CONFIG_JSON.to_string()),
+        _ => abi::error("connector.driverNotLinked", NOT_LINKED_MESSAGE),
+    }
+}
+`;
+}
+
+function duckDbDriverRust() {
+  return `use std::collections::{BTreeMap, HashMap};
+use std::sync::{Mutex, OnceLock};
+
+use serde_json::{json, Value};
+
+use crate::abi::{self, IrodoriConnectorBuffer};
+use crate::{ABI_VERSION, CONFIG_JSON, ENGINE, MANIFEST_JSON};
+
+static CONNECTIONS: OnceLock<Mutex<HashMap<String, duckdb::Connection>>> = OnceLock::new();
+
+#[derive(Default)]
+struct ObjectMeta {
+    schema: String,
+    name: String,
+    kind: String,
+    columns: Vec<Value>,
+}
+
+type QueryRows = Vec<Vec<Value>>;
+type QueryOutput = (Vec<String>, QueryRows, bool);
+
+fn connections() -> &'static Mutex<HashMap<String, duckdb::Connection>> {
+    CONNECTIONS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn call_json(request: IrodoriConnectorBuffer) -> IrodoriConnectorBuffer {
+    let request = match abi::parse_request(request) {
+        Ok(request) => request,
+        Err(response) => return response,
+    };
+    let method = match abi::request_method(request.as_ref()) {
+        Ok(method) => method,
+        Err(response) => return response,
+    };
+
+    match method {
+        "health" | "ping" => abi::ok(serde_json::Map::from_iter([
+            ("engine".to_string(), Value::String(ENGINE.to_string())),
+            ("abiVersion".to_string(), json!(ABI_VERSION)),
+            ("driverLinked".to_string(), Value::Bool(true)),
+        ])),
+        "describe" | "capabilities" => abi::ok(serde_json::Map::from_iter([
+            ("engine".to_string(), Value::String(ENGINE.to_string())),
+            ("abiVersion".to_string(), json!(ABI_VERSION)),
+            ("driverLinked".to_string(), Value::Bool(true)),
+            (
+                "manifest".to_string(),
+                serde_json::from_str(MANIFEST_JSON).unwrap_or(Value::Null),
+            ),
+            (
+                "config".to_string(),
+                serde_json::from_str(CONFIG_JSON).unwrap_or(Value::Null),
+            ),
+        ])),
+        "manifest" => abi::owned_buffer(MANIFEST_JSON.to_string()),
+        "config" => abi::owned_buffer(CONFIG_JSON.to_string()),
+        "connect" => connect(request.as_ref().expect("connect has request")),
+        "query" => query(request.as_ref().expect("query has request")),
+        "metadata" => metadata(request.as_ref().expect("metadata has request")),
+        "close" => close(request.as_ref().expect("close has request")),
+        other => abi::error(
+            "connector.unknownMethod",
+            format!("unknown connector method: {other}"),
+        ),
+    }
+}
 
 fn connect(request: &Value) -> IrodoriConnectorBuffer {
-    let connection_id = connection_id(Some(request));
-    let database = profile_field(request, "database").or_else(|| profile_field(request, "url"));
+    let connection_id = abi::connection_id(Some(request));
+    let database = abi::profile_field(request, "database").or_else(|| abi::profile_field(request, "url"));
     let conn = match database.map(str::trim) {
         None | Some("") | Some(":memory:") => duckdb::Connection::open_in_memory(),
         Some(path) => duckdb::Connection::open(path),
     };
     let conn = match conn {
         Ok(conn) => conn,
-        Err(err) => return error("connector.connectFailed", format!("connect failed: {err}")),
+        Err(err) => return abi::error("connector.connectFailed", format!("connect failed: {err}")),
     };
     let server_version = duckdb_version(&conn).unwrap_or_else(|| "unknown".to_string());
     if should_seed_sample(request, &connection_id) {
         if let Err(err) = seed_sample(&conn) {
-            return error("connector.seedFailed", err);
+            return abi::error("connector.seedFailed", err);
         }
     }
     let mut guard = match connections().lock() {
         Ok(guard) => guard,
-        Err(_) => return error("connector.statePoisoned", "Connector connection state is poisoned."),
+        Err(_) => {
+            return abi::error(
+                "connector.statePoisoned",
+                "Connector connection state is poisoned.",
+            )
+        }
     };
     guard.insert(connection_id.clone(), conn);
-    ok(serde_json::Map::from_iter([
+    abi::ok(serde_json::Map::from_iter([
         ("engine".to_string(), Value::String(ENGINE.to_string())),
         ("connectionId".to_string(), Value::String(connection_id)),
         ("serverVersion".to_string(), Value::String(server_version)),
@@ -1379,24 +1493,35 @@ fn connect(request: &Value) -> IrodoriConnectorBuffer {
 }
 
 fn query(request: &Value) -> IrodoriConnectorBuffer {
-    let connection_id = connection_id(Some(request));
-    let Some(sql) = string_field(request, "sql") else {
-        return error("connector.invalidRequest", "query requires a string sql field.");
+    let connection_id = abi::connection_id(Some(request));
+    let Some(sql) = abi::string_field(request, "sql") else {
+        return abi::error(
+            "connector.invalidRequest",
+            "query requires a string sql field.",
+        );
     };
     let mut guard = match connections().lock() {
         Ok(guard) => guard,
-        Err(_) => return error("connector.statePoisoned", "Connector connection state is poisoned."),
+        Err(_) => {
+            return abi::error(
+                "connector.statePoisoned",
+                "Connector connection state is poisoned.",
+            )
+        }
     };
     let Some(conn) = guard.get_mut(&connection_id) else {
-        return error(
+        return abi::error(
             "connector.connectionNotFound",
             format!("no open connection: {connection_id}"),
         );
     };
-    match run_query(conn, sql, max_rows(request)) {
-        Ok((columns, rows, truncated)) => ok(serde_json::Map::from_iter([
+    match run_query(conn, sql, abi::max_rows(request)) {
+        Ok((columns, rows, truncated)) => abi::ok(serde_json::Map::from_iter([
             ("connectionId".to_string(), Value::String(connection_id)),
-            ("columns".to_string(), Value::Array(columns.into_iter().map(Value::String).collect())),
+            (
+                "columns".to_string(),
+                Value::Array(columns.into_iter().map(Value::String).collect()),
+            ),
             (
                 "rows".to_string(),
                 Value::Array(
@@ -1407,46 +1532,57 @@ fn query(request: &Value) -> IrodoriConnectorBuffer {
             ),
             ("truncated".to_string(), Value::Bool(truncated)),
         ])),
-        Err(err) => error("connector.queryFailed", err),
+        Err(err) => abi::error("connector.queryFailed", err),
     }
 }
 
 fn metadata(request: &Value) -> IrodoriConnectorBuffer {
-    let connection_id = connection_id(Some(request));
+    let connection_id = abi::connection_id(Some(request));
     let mut guard = match connections().lock() {
         Ok(guard) => guard,
-        Err(_) => return error("connector.statePoisoned", "Connector connection state is poisoned."),
+        Err(_) => {
+            return abi::error(
+                "connector.statePoisoned",
+                "Connector connection state is poisoned.",
+            )
+        }
     };
     let Some(conn) = guard.get_mut(&connection_id) else {
-        return error(
+        return abi::error(
             "connector.connectionNotFound",
             format!("no open connection: {connection_id}"),
         );
     };
     match load_metadata(conn) {
-        Ok(metadata) => ok(serde_json::Map::from_iter([
+        Ok(metadata) => abi::ok(serde_json::Map::from_iter([
             ("connectionId".to_string(), Value::String(connection_id)),
             ("metadata".to_string(), metadata),
         ])),
-        Err(err) => error("connector.metadataFailed", err),
+        Err(err) => abi::error("connector.metadataFailed", err),
     }
 }
 
 fn close(request: &Value) -> IrodoriConnectorBuffer {
-    let connection_id = connection_id(Some(request));
+    let connection_id = abi::connection_id(Some(request));
     let mut guard = match connections().lock() {
         Ok(guard) => guard,
-        Err(_) => return error("connector.statePoisoned", "Connector connection state is poisoned."),
+        Err(_) => {
+            return abi::error(
+                "connector.statePoisoned",
+                "Connector connection state is poisoned.",
+            )
+        }
     };
     let existed = guard.remove(&connection_id).is_some();
-    ok(serde_json::Map::from_iter([
+    abi::ok(serde_json::Map::from_iter([
         ("connectionId".to_string(), Value::String(connection_id)),
         ("closed".to_string(), Value::Bool(existed)),
     ]))
 }
 
 fn duckdb_version(conn: &duckdb::Connection) -> Option<String> {
-    conn.query_row("select version()", [], |row| row.get::<_, String>(0)).ok()
+    conn.query_row("select version()", [], |row| row.get::<_, String>(0))
+        .ok()
 }
 
 fn should_seed_sample(request: &Value, connection_id: &str) -> bool {
@@ -1458,10 +1594,8 @@ fn should_seed_sample(request: &Value, connection_id: &str) -> bool {
 }
 
 fn seed_sample(conn: &duckdb::Connection) -> Result<(), String> {
-    conn.execute_batch(
-        "create table if not exists customers (id integer, name varchar);",
-    )
-    .map_err(|err| format!("duckdb sample schema failed: {err}"))?;
+    conn.execute_batch("create table if not exists customers (id integer, name varchar);")
+        .map_err(|err| format!("duckdb sample schema failed: {err}"))?;
     let existing = conn
         .query_row("select count(*) from customers", [], |row| row.get::<_, i64>(0))
         .unwrap_or(0);
@@ -1476,7 +1610,7 @@ fn run_query(
     conn: &duckdb::Connection,
     sql: &str,
     cap: usize,
-) -> Result<(Vec<String>, Vec<Vec<Value>>, bool), String> {
+) -> Result<QueryOutput, String> {
     let lead = sql.trim_start().to_ascii_lowercase();
     let is_query = [
         "select", "with", "show", "pragma", "explain", "describe", "values", "table", "call",
@@ -1494,7 +1628,11 @@ fn run_query(
         .map_err(|err| format!("query failed: {err}"))?;
     let mut duck_rows = stmt.query([]).map_err(|err| format!("query failed: {err}"))?;
     let columns: Vec<String> = match duck_rows.as_ref() {
-        Some(stmt) => stmt.column_names().iter().map(|column| column.to_string()).collect(),
+        Some(stmt) => stmt
+            .column_names()
+            .iter()
+            .map(|column| column.to_string())
+            .collect(),
         None => Vec::new(),
     };
     let column_count = columns.len();
@@ -1514,9 +1652,9 @@ fn load_metadata(conn: &duckdb::Connection) -> Result<Value, String> {
     let mut objects: BTreeMap<(String, String), ObjectMeta> = BTreeMap::new();
     let mut stmt = conn
         .prepare(
-            "select table_schema, table_name, table_type \
-             from information_schema.tables \
-             where table_schema not in ('information_schema', 'pg_catalog') \
+            "select table_schema, table_name, table_type \\
+             from information_schema.tables \\
+             where table_schema not in ('information_schema', 'pg_catalog') \\
              order by table_schema, table_name",
         )
         .map_err(|err| format!("metadata objects failed: {err}"))?;
@@ -1530,8 +1668,13 @@ fn load_metadata(conn: &duckdb::Connection) -> Result<Value, String> {
         })
         .map_err(|err| format!("metadata objects failed: {err}"))?;
     for row in rows {
-        let (schema, name, table_type) = row.map_err(|err| format!("metadata objects failed: {err}"))?;
-        let kind = if table_type.eq_ignore_ascii_case("VIEW") { "view" } else { "table" };
+        let (schema, name, table_type) =
+            row.map_err(|err| format!("metadata objects failed: {err}"))?;
+        let kind = if table_type.eq_ignore_ascii_case("VIEW") {
+            "view"
+        } else {
+            "table"
+        };
         objects.insert(
             (schema.clone(), name.clone()),
             ObjectMeta {
@@ -1545,9 +1688,9 @@ fn load_metadata(conn: &duckdb::Connection) -> Result<Value, String> {
 
     let mut stmt = conn
         .prepare(
-            "select table_schema, table_name, column_name, data_type, is_nullable, ordinal_position \
-             from information_schema.columns \
-             where table_schema not in ('information_schema', 'pg_catalog') \
+            "select table_schema, table_name, column_name, data_type, is_nullable, ordinal_position \\
+             from information_schema.columns \\
+             where table_schema not in ('information_schema', 'pg_catalog') \\
              order by table_schema, table_name, ordinal_position",
         )
         .map_err(|err| format!("metadata columns failed: {err}"))?;
@@ -1623,84 +1766,15 @@ fn hex_encode(bytes: &[u8]) -> String {
     output
 }
 
-#[no_mangle]
-pub extern "C" fn irodori_extension_abi_version() -> u32 {
-    ABI_VERSION
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_engine_json() -> IrodoriConnectorBuffer {
-    owned_buffer(ENGINE.to_string())
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_extension_manifest_json() -> IrodoriConnectorBuffer {
-    owned_buffer(MANIFEST_JSON.to_string())
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_config_json() -> IrodoriConnectorBuffer {
-    owned_buffer(CONFIG_JSON.to_string())
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_call_json(
-    request: IrodoriConnectorBuffer,
-) -> IrodoriConnectorBuffer {
-    let request = match parse_request(request) {
-        Ok(request) => request,
-        Err(response) => return response,
-    };
-    let method = match request_method(request.as_ref()) {
-        Ok(method) => method,
-        Err(response) => return response,
-    };
-    match method {
-        "health" | "ping" => ok(serde_json::Map::from_iter([
-            ("engine".to_string(), Value::String(ENGINE.to_string())),
-            ("abiVersion".to_string(), json!(ABI_VERSION)),
-            ("driverLinked".to_string(), Value::Bool(true)),
-        ])),
-        "describe" | "capabilities" => ok(serde_json::Map::from_iter([
-            ("engine".to_string(), Value::String(ENGINE.to_string())),
-            ("abiVersion".to_string(), json!(ABI_VERSION)),
-            ("driverLinked".to_string(), Value::Bool(true)),
-            ("manifest".to_string(), serde_json::from_str(MANIFEST_JSON).unwrap_or(Value::Null)),
-            ("config".to_string(), serde_json::from_str(CONFIG_JSON).unwrap_or(Value::Null)),
-        ])),
-        "manifest" => owned_buffer(MANIFEST_JSON.to_string()),
-        "config" => owned_buffer(CONFIG_JSON.to_string()),
-        "connect" => connect(request.as_ref().expect("connect has request")),
-        "query" => query(request.as_ref().expect("query has request")),
-        "metadata" => metadata(request.as_ref().expect("metadata has request")),
-        "close" => close(request.as_ref().expect("close has request")),
-        other => error("connector.unknownMethod", format!("unknown connector method: {other}")),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_free_buffer(buffer: IrodoriConnectorBuffer) {
-    if buffer.ptr.is_null() {
-        return;
-    }
-    unsafe {
-        let slice = std::ptr::slice_from_raw_parts_mut(buffer.ptr as *mut u8, buffer.len);
-        drop(Box::from_raw(slice));
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use serde_json::{json, Value};
+
+    use crate::{
+        irodori_connector_call_json, irodori_connector_free_buffer, IrodoriConnectorBuffer,
+    };
 
     fn buffer_from_str(value: &'static str) -> IrodoriConnectorBuffer {
-        IrodoriConnectorBuffer {
-            ptr: value.as_ptr(),
-            len: value.len(),
-        }
-    }
-
-    fn buffer_from_bytes(value: &'static [u8]) -> IrodoriConnectorBuffer {
         IrodoriConnectorBuffer {
             ptr: value.as_ptr(),
             len: value.len(),
@@ -1716,44 +1790,6 @@ mod tests {
 
     fn call(request: &'static str) -> Value {
         buffer_to_json(irodori_connector_call_json(buffer_from_str(request)))
-    }
-
-    #[test]
-    fn manifest_and_config_describe_the_same_connector() {
-        let manifest: Value = serde_json::from_str(MANIFEST_JSON).unwrap();
-        let config: Value = serde_json::from_str(CONFIG_JSON).unwrap();
-        let connector = &manifest["contributes"]["connectors"][0];
-
-        assert_eq!(manifest["id"], config["extensionId"]);
-        assert_eq!(connector["engine"], ENGINE);
-        assert_eq!(connector["engine"], config["connector"]["engine"]);
-        assert_eq!(connector["module"], config["connector"]["module"]);
-        assert_eq!(connector["connection"], config["connection"]);
-        assert!(config["connection"]["authMethods"]
-            .as_array()
-            .is_some_and(|methods| !methods.is_empty()));
-        assert!(config["connection"]["secretPurposes"]
-            .as_array()
-            .is_some_and(|purposes| !purposes.is_empty()));
-        assert_eq!(config["runtime"]["driverLinked"], true);
-        assert!(manifest["permissions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|permission| permission == "connectors"));
-    }
-
-    #[test]
-    fn call_json_reports_health_and_describes_metadata() {
-        let health = call(r#"{"method":"health"}"#);
-        assert_eq!(health["ok"], true);
-        assert_eq!(health["engine"], ENGINE);
-        assert_eq!(health["driverLinked"], true);
-
-        let describe = call(r#"{"method":"describe"}"#);
-        assert_eq!(describe["ok"], true);
-        assert_eq!(describe["manifest"]["id"], describe["config"]["extensionId"]);
-        assert_eq!(describe["config"]["connector"]["engine"], ENGINE);
     }
 
     #[test]
@@ -1797,26 +1833,6 @@ mod tests {
         assert_eq!(response["ok"], false);
         assert_eq!(response["error"]["code"], "connector.queryFailed");
     }
-
-    #[test]
-    fn call_json_rejects_invalid_request_buffers() {
-        let invalid_utf8 = buffer_to_json(irodori_connector_call_json(buffer_from_bytes(&[
-            0xff, 0xfe,
-        ])));
-        assert_eq!(invalid_utf8["ok"], false);
-        assert_eq!(invalid_utf8["error"]["code"], "connector.invalidRequest");
-
-        let invalid_json = call("{");
-        assert_eq!(invalid_json["ok"], false);
-        assert_eq!(invalid_json["error"]["code"], "connector.invalidJson");
-
-        let invalid_null = buffer_to_json(irodori_connector_call_json(IrodoriConnectorBuffer {
-            ptr: std::ptr::null(),
-            len: 1,
-        }));
-        assert_eq!(invalid_null["ok"], false);
-        assert_eq!(invalid_null["error"]["code"], "connector.invalidRequest");
-    }
 }
 `;
 }
@@ -1829,10 +1845,10 @@ function readme(entry, engineMeta, visibility, realDriverLinked, connection) {
   const adapter = engineMeta.adapter ?? engineMeta.routesThrough ?? null;
   const sourceNote = adapter
     ? `A desktop adapter source snapshot is staged in \`native/source/\` from \`${adapter}\`.`
-    : "No desktop adapter source exists yet; this package starts from the ABI shim and connector metadata.";
+    : "No desktop adapter source exists yet; this package starts from the refactored ABI shim and connector metadata.";
   const driverNote = realDriverLinked
-    ? "The Rust code links a DuckDB-compatible driver and handles `connect`, `query`, `metadata`, and `close` through the native JSON ABI."
-    : "The Rust code exports the native ABI plus self-description calls. Engine-specific connect/query/metadata behavior should be linked behind `irodori_connector_call_json`.";
+    ? "The Rust code keeps native ABI exports in `src/lib.rs`, shared buffer/JSON helpers in `src/abi.rs`, and DuckDB-compatible connect/query/metadata behavior in `src/driver.rs`."
+    : "The Rust code keeps native ABI exports in `src/lib.rs`, shared buffer/JSON helpers in `src/abi.rs`, and metadata-only behavior in `src/stub.rs` until the engine driver is linked.";
   const callRows = realDriverLinked
     ? `| \`connect\` | Opens an in-memory/local DuckDB-compatible connection. |
 | \`query\` | Runs SQL and returns columns, rows, and truncation status. |
@@ -1844,10 +1860,10 @@ function readme(entry, engineMeta, visibility, realDriverLinked, connection) {
     : "Driver operations such as `connect`, `query`, and `metadata` intentionally return `connector.driverNotLinked` until the engine implementation is connected.";
   const localBuildNote = realDriverLinked
     ? `
-DuckDB-linked builds share \`../target\` across sibling extension repositories. Normal \`make check\` does not enable \`bundled-duckdb\`; run \`make check-duckdb-bundled\` only when a self-contained DuckDB binary is required, because it compiles libduckdb C++ and can consume significant CPU.
+DuckDB-linked builds share \`../target\` across sibling extension repositories. Normal \`make check\` and CI set \`DUCKDB_DOWNLOAD_LIB=1\` so libduckdb comes from the prebuilt upstream archive instead of a local C++ build. Run \`make check-duckdb-bundled\` only when a fully self-contained DuckDB build is required, because it compiles libduckdb C++ and can consume significant CPU.
 `
     : `
-Generated extension repositories share \`../target\` across sibling repositories so Rust dependencies are compiled once per checkout. Driver-linked DuckDB scaffolds are opt-in: run the scaffold with \`IRODORI_CONNECTOR_LINK_DUCKDB=1\` or \`IRODORI_CONNECTOR_LINKED_DRIVERS=duckdb,motherduck\` only when you need the local DuckDB driver.
+Generated extension repositories share \`../target\` across sibling repositories so Rust dependencies are compiled once per checkout. DuckDB and MotherDuck are driver-linked by default; set \`IRODORI_CONNECTOR_LINK_DUCKDB=0\` only when you need metadata-only DuckDB-compatible scaffolds.
 `;
   const authRows = connection.authMethods
     .map(
@@ -1934,8 +1950,10 @@ ${sourceNote}
 ${shaNote}
 
 This directory is a migration staging area for \`${entry.id}\`. The active native
-ABI shim lives in \`src/lib.rs\`; engine-specific connect/query/metadata behavior
-should move here as the connector runtime contract is wired into the desktop app.
+entrypoints live in \`src/lib.rs\`, shared ABI helpers live in \`src/abi.rs\`, and
+engine behavior lives in \`src/stub.rs\` or \`src/driver.rs\`. Engine-specific
+connect/query/metadata code should move from these snapshots into that behavior
+module as the connector runtime contract is wired into the desktop app.
 
 ## Migration Snapshots
 
@@ -1949,14 +1967,19 @@ Engine status from \`knowledge/engines.json\`: \`${engineMeta.status}\`.
 
 function makefile(realDriverLinked) {
   const lintCommand = realDriverLinked
-    ? "$(CARGO) clippy --all-targets --features bundled-duckdb -- -D warnings"
+    ? "DUCKDB_DOWNLOAD_LIB=1 $(CARGO) clippy --all-targets --no-default-features -- -D warnings"
     : "$(CARGO) clippy --all-targets -- -D warnings";
+  const buildCommand = realDriverLinked
+    ? "DUCKDB_DOWNLOAD_LIB=1 $(CARGO) build --release --no-default-features"
+    : "$(CARGO) build --release";
   const testCommand = realDriverLinked
-    ? "$(CARGO) test --features bundled-duckdb"
+    ? "DUCKDB_DOWNLOAD_LIB=1 $(CARGO) test --no-default-features"
     : "$(CARGO) test";
   const duckDbCheckTarget = realDriverLinked
     ? `
-check-duckdb-bundled: check
+check-duckdb-bundled: fmt
+\t$(CARGO) clippy --all-targets --features bundled-duckdb -- -D warnings
+\t$(CARGO) test --features bundled-duckdb
 `
     : "";
   const phonyTargets = realDriverLinked
@@ -1980,7 +2003,7 @@ lint:
 \t${lintCommand}
 
 build:
-\t$(CARGO) build --release
+\t${buildCommand}
 
 test:
 \t${testCommand}
@@ -2006,10 +2029,10 @@ dist/native/*
 
 function ciWorkflow(realDriverLinked) {
   const clippyCommand = realDriverLinked
-    ? "cargo clippy --all-targets --features bundled-duckdb -- -D warnings"
+    ? "DUCKDB_DOWNLOAD_LIB=1 cargo clippy --all-targets --no-default-features -- -D warnings"
     : "cargo clippy --all-targets -- -D warnings";
   const testCommand = realDriverLinked
-    ? "cargo test --features bundled-duckdb"
+    ? "DUCKDB_DOWNLOAD_LIB=1 cargo test --no-default-features"
     : "cargo test";
   return `name: CI
 
