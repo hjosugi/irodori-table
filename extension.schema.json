@@ -402,6 +402,205 @@
         },
         "connection": {
           "$ref": "#/$defs/connectorConnectionModel"
+        },
+        "experience": {
+          "$ref": "#/$defs/connectorExperienceModel"
+        }
+      }
+    },
+    "connectorExperienceModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "domains",
+        "inspiredBy",
+        "resultViews",
+        "objectTypes",
+        "workflows",
+        "queryTemplates",
+        "inspectorHints"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorExperienceDomain"
+          },
+          "uniqueItems": true
+        },
+        "inspiredBy": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "resultViews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorResultView"
+          },
+          "uniqueItems": true
+        },
+        "objectTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "workflows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorExperienceWorkflow"
+          }
+        },
+        "queryTemplates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorQueryTemplate"
+          }
+        },
+        "inspectorHints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorInspectorHint"
+          }
+        }
+      }
+    },
+    "connectorExperienceDomain": {
+      "type": "string",
+      "enum": ["graph", "vector", "search", "timeSeries"]
+    },
+    "connectorResultView": {
+      "type": "string",
+      "enum": [
+        "graph",
+        "path",
+        "table",
+        "json",
+        "vectorNeighbors",
+        "searchHits",
+        "facets",
+        "timeChart",
+        "heatmap"
+      ]
+    },
+    "connectorExperienceWorkflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "description", "resultView", "templateIds"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resultView": {
+          "$ref": "#/$defs/connectorResultView"
+        },
+        "templateIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contributionId"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "connectorQueryTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "language",
+        "description",
+        "insertText",
+        "parameters",
+        "resultView"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "insertText": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorQueryTemplateParameter"
+          }
+        },
+        "resultView": {
+          "$ref": "#/$defs/connectorResultView"
+        }
+      }
+    },
+    "connectorQueryTemplateParameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "$ref": "#/$defs/connectorQueryTemplateParameterType"
+        },
+        "default": true
+      }
+    },
+    "connectorQueryTemplateParameterType": {
+      "type": "string",
+      "enum": ["string", "number", "boolean", "json"]
+    },
+    "connectorInspectorHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "description"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

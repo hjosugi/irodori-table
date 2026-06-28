@@ -156,6 +156,7 @@ function writeConnectorRepo(entry) {
     module: moduleId,
     features,
     connection,
+    ...(experience ? { experience } : {}),
   };
   const adapter = engineMeta.adapter ?? engineMeta.routesThrough ?? null;
   const adapterSource = adapterSourceInfo(adapter);

@@ -329,6 +329,9 @@ pub struct ConnectorContribution {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub connection: Option<ConnectorConnectionModel>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub experience: Option<ConnectorExperienceModel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -400,6 +403,111 @@ pub struct ConnectorConnectionDefaults {
     pub wire: String,
     pub port: u16,
     pub read_only: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorExperienceModel {
+    pub schema_version: u16,
+    #[serde(default)]
+    pub domains: Vec<ConnectorExperienceDomain>,
+    #[serde(default)]
+    pub inspired_by: Vec<String>,
+    #[serde(default)]
+    pub result_views: Vec<ConnectorResultView>,
+    #[serde(default)]
+    pub object_types: Vec<String>,
+    #[serde(default)]
+    pub workflows: Vec<ConnectorExperienceWorkflow>,
+    #[serde(default)]
+    pub query_templates: Vec<ConnectorQueryTemplate>,
+    #[serde(default)]
+    pub inspector_hints: Vec<ConnectorInspectorHint>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorExperienceDomain {
+    Graph,
+    Vector,
+    Search,
+    TimeSeries,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorResultView {
+    Graph,
+    Path,
+    Table,
+    Json,
+    VectorNeighbors,
+    SearchHits,
+    Facets,
+    TimeChart,
+    Heatmap,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorExperienceWorkflow {
+    pub id: String,
+    pub label: String,
+    pub description: String,
+    pub result_view: ConnectorResultView,
+    #[serde(default)]
+    pub template_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorQueryTemplate {
+    pub id: String,
+    pub label: String,
+    pub language: String,
+    pub description: String,
+    pub insert_text: String,
+    #[serde(default)]
+    pub parameters: Vec<ConnectorQueryTemplateParameter>,
+    pub result_view: ConnectorResultView,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorQueryTemplateParameter {
+    pub id: String,
+    pub label: String,
+    #[serde(rename = "type")]
+    #[ts(rename = "type")]
+    pub parameter_type: ConnectorQueryTemplateParameterType,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub default: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorQueryTemplateParameterType {
+    String,
+    Number,
+    Boolean,
+    Json,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorInspectorHint {
+    pub id: String,
+    pub label: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -926,6 +1034,14 @@ mod typegen {
             .decl(&decl::<ConnectorConnectionModel>())
             .decl(&decl::<ConnectorConnectionCompatibility>())
             .decl(&decl::<ConnectorConnectionDefaults>())
+            .decl(&decl::<ConnectorExperienceModel>())
+            .decl(&decl::<ConnectorExperienceDomain>())
+            .decl(&decl::<ConnectorResultView>())
+            .decl(&decl::<ConnectorExperienceWorkflow>())
+            .decl(&decl::<ConnectorQueryTemplate>())
+            .decl(&decl::<ConnectorQueryTemplateParameter>())
+            .decl(&decl::<ConnectorQueryTemplateParameterType>())
+            .decl(&decl::<ConnectorInspectorHint>())
             .decl(&decl::<ConnectorEndpointModel>())
             .decl(&decl::<ConnectorAuthMethod>())
             .decl(&decl::<ConnectorConnectionField>())

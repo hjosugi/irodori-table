@@ -46,7 +46,7 @@ export type SqlFormatterConfig = { keywordCase?: SqlKeywordCase, identifierQuote
 
 export type SqlKeywordCase = "upper" | "lower" | "preserve";
 
-export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, connection?: ConnectorConnectionModel, };
+export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, connection?: ConnectorConnectionModel, experience?: ConnectorExperienceModel, };
 
 export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing" | "graph" | "graphVisualization" | "pathFinding" | "graphAlgorithms" | "vectorSearch" | "embeddingSearch" | "hybridSearch" | "fullTextSearch" | "facetedSearch" | "timeSeries" | "timeBuckets" | "latestValue" | "asOfJoin" | "queryTemplates" | "visualization";
 
@@ -55,6 +55,22 @@ export type ConnectorConnectionModel = { schemaVersion: number, inferEnvironment
 export type ConnectorConnectionCompatibility = { addsRequiredProfileFields: boolean, acceptsExistingProfiles: boolean, };
 
 export type ConnectorConnectionDefaults = { engine: string, wire: string, port: number, readOnly: boolean, };
+
+export type ConnectorExperienceModel = { schemaVersion: number, domains: Array<ConnectorExperienceDomain>, inspiredBy: Array<string>, resultViews: Array<ConnectorResultView>, objectTypes: Array<string>, workflows: Array<ConnectorExperienceWorkflow>, queryTemplates: Array<ConnectorQueryTemplate>, inspectorHints: Array<ConnectorInspectorHint>, };
+
+export type ConnectorExperienceDomain = "graph" | "vector" | "search" | "timeSeries";
+
+export type ConnectorResultView = "graph" | "path" | "table" | "json" | "vectorNeighbors" | "searchHits" | "facets" | "timeChart" | "heatmap";
+
+export type ConnectorExperienceWorkflow = { id: string, label: string, description: string, resultView: ConnectorResultView, templateIds: Array<string>, };
+
+export type ConnectorQueryTemplate = { id: string, label: string, language: string, description: string, insertText: string, parameters: Array<ConnectorQueryTemplateParameter>, resultView: ConnectorResultView, };
+
+export type ConnectorQueryTemplateParameter = { id: string, label: string, type: ConnectorQueryTemplateParameterType, default?: JsonValue, };
+
+export type ConnectorQueryTemplateParameterType = "string" | "number" | "boolean" | "json";
+
+export type ConnectorInspectorHint = { id: string, label: string, description: string, };
 
 export type ConnectorEndpointModel = { modes: Array<ConnectorEndpointMode>, defaultPort: number, fields: Array<ConnectorConnectionField>, };
 
