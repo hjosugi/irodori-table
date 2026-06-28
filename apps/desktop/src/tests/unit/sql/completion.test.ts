@@ -8,10 +8,12 @@ import {
   mergeDefaultSqlSnippets,
   mergeImportedSqlSnippets,
   snippetsForEngine,
+  SQL_SNIPPETS_SCHEMA_VERSION,
   sqlSnippetsFromJson,
   sqlSnippetsFromText,
   type SqlSnippetDefinition,
 } from "@/sql/completion";
+import { SQL_COMPLETION_KEYWORDS_SCHEMA_VERSION } from "@/sql/keywords";
 import type {
   ColumnMetadata,
   DatabaseMetadata,
@@ -379,6 +381,12 @@ describe("completeSqlLightweight", () => {
     );
   });
 
+  it("loads versioned SQL content configs", () => {
+    expect(SQL_SNIPPETS_SCHEMA_VERSION).toBe(1);
+    expect(SQL_COMPLETION_KEYWORDS_SCHEMA_VERSION).toBe(1);
+    expect(defaultSqlSnippets.length).toBeGreaterThan(0);
+  });
+
   it("keeps new default snippets when merging stored custom snippets", () => {
     const merged = mergeDefaultSqlSnippets([
       {
@@ -454,8 +462,11 @@ describe("completeSqlLightweight", () => {
     const clickHouseDeleteOperation = defaultSnippetForEngine("clickhouse", "delop");
     const sqlServerDeleteReturning = defaultSnippetForEngine("sqlserver", "delret");
     const questDbSampleBy = defaultSnippetForEngine("questdb", "sampleby");
+    const questDbSampleByFill = defaultSnippetForEngine("questdb", "samplebyfill");
     const questDbLatestOn = defaultSnippetForEngine("questdb", "lateston");
     const questDbAsofJoin = defaultSnippetForEngine("questdb", "asofjoin");
+    const questDbAsofJoinTolerance = defaultSnippetForEngine("questdb", "asofjointol");
+    const questDbMeta = defaultSnippetForEngine("questdb", "qdbmeta");
 
     expect(mysqlUpsert?.detail).toBe("insert on duplicate key update");
     expect(oracleDeleteOperation?.template).toContain("fetch first");
@@ -467,9 +478,32 @@ describe("completeSqlLightweight", () => {
     expect(clickHouseDeleteOperation?.template).not.toContain("delete from");
     expect(sqlServerDeleteReturning?.template).toContain("output deleted.${3:*}");
     expect(questDbSampleBy?.template).toContain("sample by");
+    expect(questDbSampleByFill?.template).toContain("fill(${8:prev})");
+    expect(questDbSampleByFill?.template).toContain("align to calendar");
     expect(questDbLatestOn?.template).toContain("latest on");
     expect(questDbAsofJoin?.template).toContain("asof join");
-    expect(questDbAsofJoin?.template).toContain("on (${5:symbol_column})");
+    expect(questDbAsofJoin?.template).toContain("on (${7:symbol})");
+    expect(questDbAsofJoinTolerance?.template).toContain("tolerance ${8:50T}");
+    expect(questDbMeta?.template).toContain("from tables()");
+  });
+
+  it("adds QuestDB time-series SQL keywords", () => {
+    expect(labels("samp", false)).not.toContain("sample by");
+    expect(completeWithEngine("samp", metadata, "questdb")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "sample by" }),
+      ]),
+    );
+    expect(completeWithEngine("aso", metadata, "questdb")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "asof join" }),
+      ]),
+    );
+    expect(completeWithEngine("query_", metadata, "questdb")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "query_activity()" }),
+      ]),
+    );
   });
 
   it("adds clause snippets in column-capable contexts", () => {
@@ -587,6 +621,7 @@ describe("completeSqlLightweight", () => {
   it("imports snippets from JSON text wrappers", async () => {
     const imported = await sqlSnippetsFromText(
       JSON.stringify({
+        schemaVersion: SQL_SNIPPETS_SCHEMA_VERSION,
         editor: {
           snippets: [
             {
@@ -603,6 +638,7 @@ describe("completeSqlLightweight", () => {
     );
 
     expect(imported.format).toBe("json");
+    expect(imported.schemaVersion).toBe(SQL_SNIPPETS_SCHEMA_VERSION);
     expect(imported.snippets).toHaveLength(1);
     expect(imported.snippets[0]?.engines).toEqual(["postgres"]);
   });
@@ -610,6 +646,7 @@ describe("completeSqlLightweight", () => {
   it("imports snippets from YAML text", async () => {
     const imported = await sqlSnippetsFromText(
       `
+schemaVersion: ${SQL_SNIPPETS_SCHEMA_VERSION}
 snippets:
   - label: delop_sf
     detail: Snowflake delete operation
@@ -624,10 +661,23 @@ snippets:
     );
 
     expect(imported.format).toBe("yaml");
+    expect(imported.schemaVersion).toBe(SQL_SNIPPETS_SCHEMA_VERSION);
     expect(imported.snippets[0]?.label).toBe("delop_sf");
     expect(imported.snippets[0]?.template).toContain("delete from ${1:table}");
     expect(completeWithEngine("delop_sf", metadata, "snowflake", false, imported.snippets)).toHaveLength(1);
     expect(completeWithEngine("delop_sf", metadata, "postgres", false, imported.snippets)).toHaveLength(0);
+  });
+
+  it("rejects unsupported snippet import schema versions", async () => {
+    await expect(
+      sqlSnippetsFromText(
+        JSON.stringify({
+          schemaVersion: SQL_SNIPPETS_SCHEMA_VERSION + 1,
+          snippets: [],
+        }),
+        "snippets.json",
+      ),
+    ).rejects.toThrow("snippet import schemaVersion must be 1");
   });
 
   it("falls back to cheap keyword completion without metadata matches", () => {

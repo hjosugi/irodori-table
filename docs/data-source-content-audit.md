@@ -63,7 +63,7 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
 | Databricks, Trino/Presto | No `completion-keywords.json` entry at all | docs.databricks.com ; trino.io/docs |
 | Snowflake, Redshift | Receive the `sp` (SAVEPOINT) snippet but neither supports SAVEPOINT | docs.snowflake.com/en/sql-reference/transactions ; docs.aws.amazon.com/redshift/latest/dg/c_SQL_commands.html |
 | BigQuery | Classified `noExplicitTransactionDmlEngines` but supports `BEGIN/COMMIT/ROLLBACK TRANSACTION` | cloud.google.com/bigquery/docs/transactions |
-| QuestDB | Gets `del`/`delop`/`softdel`/`touch` but does **not** support row-level DELETE and constrains UPDATE → invalid SQL; missing signature `SAMPLE BY`/`LATEST ON`/`ASOF JOIN` snippets | questdb.com/docs/concepts/deep-dive/sql-extensions/ |
+| QuestDB | Row-level DELETE snippets were removed; time-series signatures are now covered. Remaining audit point: review generic UPDATE-oriented snippets (`upd`/`touch`/`softdel`/`updop`) against QuestDB's current DML limits before calling DML coverage complete. | questdb.com/docs/query/sql/sample-by/ ; questdb.com/docs/query/sql/asof-join/ ; questdb.com/docs/query/sql/latest-on/ |
 | Firebird | No keyword entry (only `common`, incl. invalid `limit` — Firebird uses `FIRST/SKIP`/`FETCH FIRST`); supports MERGE + RETURNING but absent from `mergeEngines`/`returningEngines` (no upsert/delret) | firebirdsql.org/file/documentation/.../fblangref40-dml.html |
 | MariaDB | Supports `INSERT/DELETE … RETURNING` (10.5+) but absent from `returningEngines` → `delret` never offered | mariadb.com/docs/.../insertreturning |
 | Iceberg, Delta Lake, Hudi, S3 Tables | Modeled as first-class engines with their own SQL keyword dialects — these are **table formats/catalogs** accessed via an engine (Spark/Trino/DuckDB/Athena). Hallucinated keyword tokens: Delta `"time travel"` (→ `VERSION AS OF`/`TIMESTAMP AS OF`); Hudi `compaction`/`incremental query`/`recordkey` (configs, not SQL); Iceberg `expire_snapshots`/`rewrite_data_files` (Spark `CALL` procedures), `snapshot_id` (metadata column); S3 Tables `table bucket`/`namespace` (API concepts) | iceberg.apache.org/docs/latest/spark-procedures/ ; docs.delta.io ; hudi.apache.org/docs/configurations/ |
@@ -77,8 +77,9 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
 
 ## Coverage gaps
 
-- **Cheatsheets: only 2 of 36 engines** (postgres, neo4j). MySQL/MariaDB/SQLite/
-  SQL Server listed "Planned"; Oracle/Firebird/all others absent.
+- **Cheatsheets: only 3 of 36 engines** (postgres, neo4j, questdb).
+  MySQL/MariaDB/SQLite/SQL Server listed "Planned"; Oracle/Firebird/all others
+  absent.
 - **Connectors: 0 of 36 implemented** at audit time (empty repos).
 
 ## Fixes applied (2026-06-28, verified: tsc 0 / 342 tests)
@@ -113,6 +114,9 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
   without adding BigQuery to the generic `begin;` transaction group.
 - ✅ **QuestDB signatures**: added `SAMPLE BY`, `LATEST ON`, and `ASOF JOIN`
   snippets for QuestDB time-series extensions.
+- ✅ **QuestDB time-series expansion**: added richer `SAMPLE BY` fill/range/
+  alignment and `ASOF JOIN TOLERANCE` snippets, QuestDB-specific completion
+  keywords, and a hand-seeded `docs/cheatsheets/questdb.md`.
 - ✅ **SQL Server delete-returning**: added a `delret` variant using
   `OUTPUT deleted.*`.
 
@@ -122,4 +126,4 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
   `../irodori-extensions/` are now being populated (no longer empty), so the
   flag is becoming legitimate. Owned by the connector-population effort; not
   edited here.
-- Cheatsheet coverage (2/36 engines).
+- Cheatsheet coverage (3/36 engines).

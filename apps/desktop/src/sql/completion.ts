@@ -16,7 +16,10 @@ import type {
   ForeignKey,
   SchemaMetadata,
 } from "../generated/irodori-api";
-import completionKeywords from "./completion-keywords.json";
+import {
+  commonSqlCompletionKeywords,
+  engineSqlCompletionKeywords,
+} from "./keywords";
 import {
   DEFAULT_SNIPPET_RANK,
   defaultSqlSnippets,
@@ -34,6 +37,7 @@ export {
   mergeDefaultSqlSnippets,
   mergeImportedSqlSnippets,
   snippetsForEngine,
+  SQL_SNIPPETS_SCHEMA_VERSION,
   sqlSnippetEngines,
   sqlSnippetsFromJson,
   sqlSnippetsFromText,
@@ -54,10 +58,8 @@ const ROUTINE_SECTION: CompletionSection = { name: "routines", rank: 5 };
 const SNIPPET_SECTION: CompletionSection = { name: "snippets", rank: 6 };
 const KEYWORD_SECTION: CompletionSection = { name: "keywords", rank: 9 };
 
-const COMMON_KEYWORDS = completionKeywords.common;
-const ENGINE_KEYWORDS = completionKeywords.engines as Partial<
-  Record<DbEngine, string[]>
->;
+const COMMON_KEYWORDS = commonSqlCompletionKeywords;
+const ENGINE_KEYWORDS = engineSqlCompletionKeywords;
 
 const RELATION_START_KEYWORDS = new Set([
   "from",

@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "engineGroups": {
     "sqlSnippetEngines": [
       "postgres",
@@ -1104,8 +1105,18 @@
     {
       "label": "sampleby",
       "detail": "QuestDB sample by time bucket",
-      "template": "select ${1:timestamp_column}, ${2:avg(value)} as ${3:avg_value}\nfrom ${4:table}\nwhere ${1:timestamp_column} in '${5:2026-01-01}'\nsample by ${6:1h};\n${0}",
+      "template": "select ${1:timestamp}, ${2:avg(price)} as ${3:avg_price}, count() as rows\nfrom ${4:trades}\nwhere ${1:timestamp} in '${5:2026-01-01}'\nsample by ${6:1h};\n${0}",
       "rank": 498,
+      "scope": "statement",
+      "engines": [
+        "questdb"
+      ]
+    },
+    {
+      "label": "samplebyfill",
+      "detail": "QuestDB sample by with fill/range/alignment",
+      "template": "select ${1:timestamp}, ${2:avg(price)} as ${3:avg_price}\nfrom ${4:trades}\nwhere ${1:timestamp} between '${5:2026-01-01T00:00:00Z}' and '${6:2026-01-02T00:00:00Z}'\nsample by ${7:5m}\n  from '${5:2026-01-01T00:00:00Z}' to '${6:2026-01-02T00:00:00Z}'\n  fill(${8:prev})\n  align to calendar time zone '${9:UTC}';\n${0}",
+      "rank": 497,
       "scope": "statement",
       "engines": [
         "questdb"
@@ -1114,7 +1125,7 @@
     {
       "label": "lateston",
       "detail": "QuestDB latest row per key",
-      "template": "select *\nfrom ${1:table}\nlatest on ${2:timestamp_column}\npartition by ${3:symbol_column};\n${0}",
+      "template": "select ${1:*}\nfrom ${2:trades}\nwhere ${3:timestamp} in '${4:2026-01-01}'\nlatest on ${3:timestamp}\npartition by ${5:symbol};\n${0}",
       "rank": 497,
       "scope": "statement",
       "engines": [
@@ -1124,8 +1135,28 @@
     {
       "label": "asofjoin",
       "detail": "QuestDB as-of join",
-      "template": "select ${1:l.*}, ${2:r.value}\nfrom ${3:left_table} l\nasof join ${4:right_table} r on (${5:symbol_column});\n${0}",
+      "template": "select ${1:l.timestamp}, ${2:l.symbol}, ${3:l.price}, ${4:r.bid_price}\nfrom ${5:trades} l\nasof join ${6:quotes} r on (${7:symbol});\n${0}",
       "rank": 497,
+      "scope": "statement",
+      "engines": [
+        "questdb"
+      ]
+    },
+    {
+      "label": "asofjointol",
+      "detail": "QuestDB as-of join with tolerance",
+      "template": "select ${1:l.timestamp}, ${2:l.symbol}, ${3:l.price}, ${4:r.bid_price}\nfrom ${5:trades} l\nasof join ${6:quotes} r on (${7:symbol}) tolerance ${8:50T}\nwhere ${1:l.timestamp} in '${9:2026-01-01}';\n${0}",
+      "rank": 496,
+      "scope": "statement",
+      "engines": [
+        "questdb"
+      ]
+    },
+    {
+      "label": "qdbmeta",
+      "detail": "QuestDB table/WAL health overview",
+      "template": "select table_name,\n       table_row_count,\n       table_min_timestamp,\n       table_max_timestamp,\n       walEnabled,\n       wal_pending_row_count\nfrom tables()\norder by table_max_timestamp desc\nlimit ${1:20};\n${0}",
+      "rank": 494,
       "scope": "statement",
       "engines": [
         "questdb"

@@ -16,20 +16,31 @@ export type SqlSnippetImportFormat = "json" | "yaml";
 
 export interface SqlSnippetImportResult {
   format: SqlSnippetImportFormat;
+  schemaVersion?: number;
   snippets: SqlSnippetDefinition[];
 }
 
 const SNIPPET_LABEL_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
 
+export const SQL_SNIPPETS_SCHEMA_VERSION = 1;
+
 export const DEFAULT_SNIPPET_RANK = 500;
 
 type DefaultSnippetConfig = {
+  schemaVersion?: unknown;
   engineGroups: Record<string, unknown>;
   snippets: unknown[];
 };
 
 const defaultSnippetsConfig =
   defaultSnippetConfig as unknown as DefaultSnippetConfig;
+
+validateSchemaVersion(
+  defaultSnippetsConfig.schemaVersion,
+  SQL_SNIPPETS_SCHEMA_VERSION,
+  "defaultSnippets.schemaVersion",
+);
+
 const defaultSnippetEngineGroups = isRecord(defaultSnippetsConfig.engineGroups)
   ? defaultSnippetsConfig.engineGroups
   : {};
@@ -136,9 +147,11 @@ export async function sqlSnippetsFromText(
   const format = inferSnippetImportFormat(sourceName, trimmed);
   const parsed =
     format === "json" ? JSON.parse(trimmed) : await parseYamlImport(trimmed);
+  const schemaVersion = snippetImportSchemaVersion(parsed);
   const snippetValue = snippetsValueFromImportRoot(parsed);
   return {
     format,
+    ...(schemaVersion === undefined ? {} : { schemaVersion }),
     snippets: sqlSnippetsFromJson(snippetValue),
   };
 }
@@ -275,9 +288,31 @@ function snippetsValueFromImportRoot(value: unknown): unknown {
   );
 }
 
+function snippetImportSchemaVersion(value: unknown): number | undefined {
+  if (!isRecord(value) || !("schemaVersion" in value)) {
+    return undefined;
+  }
+  validateSchemaVersion(
+    value.schemaVersion,
+    SQL_SNIPPETS_SCHEMA_VERSION,
+    "snippet import schemaVersion",
+  );
+  return SQL_SNIPPETS_SCHEMA_VERSION;
+}
+
 async function parseYamlImport(text: string): Promise<unknown> {
   const yaml = await import("yaml");
   return yaml.parse(text);
+}
+
+function validateSchemaVersion(
+  value: unknown,
+  expectedVersion: number,
+  fieldName: string,
+): void {
+  if (value !== expectedVersion) {
+    throw new Error(`${fieldName} must be ${expectedVersion}`);
+  }
 }
 
 function sqlSnippetEnginesFromJson(value: unknown, index: number): DbEngine[] {

@@ -20,6 +20,7 @@ automatic data collection that feeds it are specified in
 |---|---|---|
 | [neo4j.md](neo4j.md) | Neo4j (graph, Bolt/Cypher); Memgraph notes | Seed (flagship) |
 | [postgres.md](postgres.md) | PostgreSQL (+ Cockroach/Yugabyte/Redshift/Timescale/Neon) | Generated (`knowledge/cheatsheets/postgres.json`) |
+| [questdb.md](questdb.md) | QuestDB (Postgres wire + time-series SQL extensions) | Seed |
 | _mysql.md_ | MySQL / MariaDB / TiDB | Planned |
 | _sqlite.md_ | SQLite | Planned |
 | _sqlserver.md_ | SQL Server | Planned |

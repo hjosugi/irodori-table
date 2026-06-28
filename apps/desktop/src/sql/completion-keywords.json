@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "common": [
     "select",
     "from",
@@ -63,6 +64,23 @@
     "duckdb": ["sample", "qualify", "read_csv", "read_parquet", "returning"],
     "motherduck": ["attach 'md:'", "show all tables", "sample", "qualify"],
     "clickhouse": ["prewhere", "array join", "limit by"],
+    "questdb": [
+      "sample by",
+      "latest on",
+      "asof join",
+      "lt join",
+      "splice join",
+      "tolerance",
+      "fill",
+      "align to calendar",
+      "align to first observation",
+      "timestamp",
+      "partition by",
+      "tables()",
+      "table_partitions()",
+      "query_activity()",
+      "materialized_views()"
+    ],
     "snowflake": ["qualify", "try_cast", "flatten"],
     "bigquery": ["qualify", "unnest", "safe_cast"],
     "athena": [
