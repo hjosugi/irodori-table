@@ -135,14 +135,13 @@ export function replaceAllInText(
   const re = buildPattern(query, opts);
   if (!re) return { text, count: 0 };
   let count = 0;
-  const safeReplacement = opts.useRegex ? replacement : replacement.replace(/\$/g, "$$$$");
+  // A function replacer's return value is inserted verbatim (no `$` expansion),
+  // so the literal replacement is already safe; for regex mode we expand `$n`
+  // group references ourselves.
   const next = text.replace(re, (matched: string, ...rest: unknown[]) => {
     if (matched === "") return matched;
     count += 1;
-    // `String.prototype.replace` interprets `$n` in a string replacement, so for
-    // regex mode we let it; we still need a callback to count, so re-expand here.
-    if (!opts.useRegex) return safeReplacement;
-    return expandGroups(replacement, matched, rest);
+    return opts.useRegex ? expandGroups(replacement, matched, rest) : replacement;
   });
   return { text: next, count };
 }

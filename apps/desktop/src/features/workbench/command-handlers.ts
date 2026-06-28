@@ -54,6 +54,9 @@ type WorkbenchCommandHandlerDeps = {
   commitEdits: () => Promise<void>;
   generateSql: () => void;
   toggleTerminal: () => void;
+  toggleAiChat: () => void;
+  toggleSearch: () => void;
+  searchInAllTabs: () => void;
 };
 
 export function createWorkbenchCommandHandler({
@@ -110,6 +113,9 @@ export function createWorkbenchCommandHandler({
   commitEdits,
   generateSql,
   toggleTerminal,
+  toggleAiChat,
+  toggleSearch,
+  searchInAllTabs,
 }: WorkbenchCommandHandlerDeps) {
   return (id: string) => {
     switch (id) {
@@ -284,6 +290,15 @@ export function createWorkbenchCommandHandler({
         break;
       case "terminal.toggle":
         toggleTerminal();
+        break;
+      case "view.aiChat.toggle":
+        toggleAiChat();
+        break;
+      case "view.search.toggle":
+        toggleSearch();
+        break;
+      case "editor.searchInAllTabs":
+        searchInAllTabs();
         break;
     }
   };

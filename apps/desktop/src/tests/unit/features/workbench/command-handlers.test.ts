@@ -84,6 +84,9 @@ function createHandler(calls: string[]) {
     },
     generateSql: () => calls.push("generate-sql"),
     toggleTerminal: () => calls.push("toggle-terminal"),
+    toggleAiChat: () => calls.push("toggle-aichat"),
+    toggleSearch: () => calls.push("toggle-search"),
+    searchInAllTabs: () => calls.push("search-all-tabs"),
   });
 }
 

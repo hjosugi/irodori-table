@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Replace, Search, X } from "lucide-react";
 import {
   findMatches,
   isValidQuery,
   replaceAllInText,
   replaceMatchAt,
-  type SearchOptions,
   type TextMatch,
 } from "@/sql/text-search";
+import { useSearchStore } from "./search-store";
 import "./search-replace.css";
 
 /** One searchable editor tab (one entry per group, since split groups hold
@@ -38,15 +38,25 @@ export function SearchReplacePanel({
   onReplaceTab,
   onClose,
 }: SearchReplacePanelProps) {
-  const [query, setQuery] = useState("");
-  const [replacement, setReplacement] = useState("");
-  const [showReplace, setShowReplace] = useState(false);
-  const [opts, setOpts] = useState<SearchOptions>({
-    caseSensitive: false,
-    wholeWord: false,
-    useRegex: false,
-  });
+  const query = useSearchStore((s) => s.query);
+  const replacement = useSearchStore((s) => s.replacement);
+  const opts = useSearchStore((s) => s.options);
+  const showReplace = useSearchStore((s) => s.showReplace);
+  const focusNonce = useSearchStore((s) => s.focusNonce);
+  const setQuery = useSearchStore((s) => s.setQuery);
+  const setReplacement = useSearchStore((s) => s.setReplacement);
+  const toggleOption = useSearchStore((s) => s.toggleOption);
+  const setShowReplace = useSearchStore((s) => s.setShowReplace);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus + select the query when opened from a command (focusNonce bumps).
+  useEffect(() => {
+    const input = searchInputRef.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+  }, [focusNonce]);
 
   const valid = isValidQuery(query, opts);
 
@@ -58,9 +68,6 @@ export function SearchReplacePanel({
   }, [tabs, query, opts, valid]);
 
   const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
-
-  const toggle = (key: keyof SearchOptions) =>
-    setOpts((o) => ({ ...o, [key]: !o[key] }));
 
   const toggleCollapsed = (key: string) =>
     setCollapsed((current) => {
@@ -101,7 +108,7 @@ export function SearchReplacePanel({
           className="search-replace-expand"
           aria-label={showReplace ? "Hide replace" : "Show replace"}
           aria-expanded={showReplace}
-          onClick={() => setShowReplace((v) => !v)}
+          onClick={() => setShowReplace(!showReplace)}
         >
           {showReplace ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -109,7 +116,7 @@ export function SearchReplacePanel({
         <div className="search-fields">
           <div className={`search-field${valid ? "" : " invalid"}`}>
             <input
-              autoFocus
+              ref={searchInputRef}
               value={query}
               placeholder="Search across all tabs"
               onChange={(e) => setQuery(e.target.value)}
@@ -120,7 +127,7 @@ export function SearchReplacePanel({
                 className={opts.caseSensitive ? "active" : undefined}
                 title="Match case"
                 aria-pressed={opts.caseSensitive}
-                onClick={() => toggle("caseSensitive")}
+                onClick={() => toggleOption("caseSensitive")}
               >
                 Aa
               </button>
@@ -129,7 +136,7 @@ export function SearchReplacePanel({
                 className={opts.wholeWord ? "active" : undefined}
                 title="Match whole word"
                 aria-pressed={opts.wholeWord}
-                onClick={() => toggle("wholeWord")}
+                onClick={() => toggleOption("wholeWord")}
               >
                 ab
               </button>
@@ -138,7 +145,7 @@ export function SearchReplacePanel({
                 className={opts.useRegex ? "active" : undefined}
                 title="Use regular expression"
                 aria-pressed={opts.useRegex}
-                onClick={() => toggle("useRegex")}
+                onClick={() => toggleOption("useRegex")}
               >
                 .*
               </button>

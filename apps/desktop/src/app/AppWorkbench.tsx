@@ -149,6 +149,7 @@ import {
   SearchReplacePanel,
   type SearchTab,
 } from "@/features/search/SearchReplacePanel";
+import { useSearchStore } from "@/features/search/search-store";
 import type { TextMatch } from "@/sql/text-search";
 import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import {
@@ -2114,6 +2115,17 @@ export function AppWorkbench() {
     commitEdits,
     generateSql: () => setAiGenerateOpen(true),
     toggleTerminal: () => setTerminalOpen((open) => !open),
+    toggleAiChat: () => toggleSidebarView("aiChat"),
+    toggleSearch: () => toggleSidebarView("searchReplace"),
+    searchInAllTabs: () => {
+      const selection = activeEditorApi()?.getSelection();
+      const selected =
+        selection && selection.to > selection.from
+          ? query.slice(selection.from, selection.to)
+          : "";
+      useSearchStore.getState().openWith(selected);
+      setActiveSidebarView("searchReplace");
+    },
   });
 
   const keymapConflicts = findConflicts(keymap, appCommandCatalog);

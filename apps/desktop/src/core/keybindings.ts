@@ -61,6 +61,24 @@ export const commandCatalog: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "editor.searchInAllTabs",
+    title: "Search in all tabs",
+    category: "Search",
+    scope: "global",
+  },
+  {
+    id: "view.search.toggle",
+    title: "Toggle Search panel",
+    category: "View",
+    scope: "global",
+  },
+  {
+    id: "view.aiChat.toggle",
+    title: "Toggle AI Chat",
+    category: "View",
+    scope: "global",
+  },
+  {
     id: "migration.studio",
     title: "Open Migration Studio",
     category: "General",
@@ -239,6 +257,8 @@ export const defaultKeymap: Keymap = {
   "view.zoomReset": "Mod+0",
   "diagram.show": "Mod+Shift+D",
   "terminal.toggle": "Ctrl+`",
+  "editor.searchInAllTabs": "Mod+Shift+F",
+  "view.aiChat.toggle": "Mod+Shift+I",
   "query.run": "Mod+Enter",
   "query.runCurrent": "Mod+Shift+Enter",
   "query.runFromStart": "Mod+Alt+Shift+Enter",
