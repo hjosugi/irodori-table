@@ -24,35 +24,8 @@ const platforms = [
   "linuxArm64",
 ];
 
-const internalExtensions = [
-  {
-    id: "irodori.kv-store",
-    name: "KV Store Connector",
-    publisher: "irodori",
-    version: "0.1.0",
-    apiVersion: "0.1",
-    summary: "Internal generic key-value connector target.",
-    description:
-      "Internal connector target kept out of the public marketplace until a concrete provider implementation is published.",
-    license: "MIT OR 0BSD",
-    repository: "https://github.com/hjosugi/irodori-extension-kv-store",
-    categories: ["connector", "key-value", "internal"],
-    engines: ["kvStore"],
-    permissions: [
-      "connections:read",
-      "connections:write",
-      "queries:run",
-      "metadata:read",
-      "native",
-    ],
-    runtime: "native",
-    verified: false,
-    publishedAt: "2026-06-27T00:00:00Z",
-    visibility: "internal",
-  },
-];
-
-const entries = [...index.extensions, ...internalExtensions];
+const excludedExtensionIds = new Set(["irodori.kv-store", "irodori.object-store"]);
+const entries = index.extensions.filter((entry) => !excludedExtensionIds.has(entry.id));
 
 for (const entry of entries) {
   writeConnectorRepo(entry);
@@ -295,7 +268,9 @@ pub extern "C" fn irodori_connector_config_json() -> IrodoriConnectorBuffer {
 }
 
 #[no_mangle]
-pub extern "C" fn irodori_connector_call_json(_request: IrodoriConnectorBuffer) -> IrodoriConnectorBuffer {
+pub extern "C" fn irodori_connector_call_json(
+    _request: IrodoriConnectorBuffer,
+) -> IrodoriConnectorBuffer {
     static_buffer(NOT_LINKED_RESPONSE_JSON)
 }
 

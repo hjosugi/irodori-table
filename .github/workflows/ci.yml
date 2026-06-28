@@ -6,9 +6,63 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      # The committed .cargo/config.toml links Linux builds with mold, and the
+      # desktop crate needs WebKit/GTK headers when typegen compiles it.
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            mold \
+            wget
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> .irodori-local/target'
+          key: preflight-${{ runner.os }}
+
+      - name: Check Rust crate licenses
+        shell: bash
+        run: scripts/check-licenses.sh
+
+      - name: Check data-source support inventory
+        run: node tools/docs/support-status.mjs --check
+
+      - name: Validate extension manifests
+        run: node tools/extensions/validate-manifests.mjs
+
+      - name: Check generated TypeScript bindings
+        run: node apps/desktop/tools/typegen.mjs --check
+
   rust-foundation:
     name: Rust foundation (${{ matrix.os }})
+    needs: preflight
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -49,54 +103,16 @@ jobs:
           workspaces: '. -> .irodori-local/target'
           key: ${{ matrix.os }}
 
-      - name: Check Rust crate licenses
-        shell: bash
-        run: scripts/check-licenses.sh
-
-      - name: Check data-source support inventory
-        run: node tools/docs/support-status.mjs --check
-
-      - name: Validate extension manifests
-        run: node tools/extensions/validate-manifests.mjs
-
-      - name: Build Rust workspace scaffold
-        run: cargo build
-
       - name: Run Rust workspace tests
         run: cargo test --workspace
 
-      - name: Check generated TypeScript bindings
-        run: node apps/desktop/tools/typegen.mjs --check
-
-  desktop-frontend:
-    name: Desktop frontend
+  desktop-frontend-checks:
+    name: Desktop frontend checks
+    needs: preflight
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v7
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Rust/Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            curl \
-            file \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev \
-            libxdo-dev \
-            mold \
-            wget
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: '. -> .irodori-local/target'
-          key: desktop-frontend-${{ runner.os }}
 
       - uses: actions/setup-node@v6
         with:
@@ -116,9 +132,31 @@ jobs:
         working-directory: apps/desktop
         run: npm run build
 
+  desktop-browser:
+    name: Desktop browser tests
+    needs: preflight
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
       - name: Install Playwright Chromium
         working-directory: apps/desktop
         run: npx playwright install --with-deps chromium
+
+      - name: Run browser component tests
+        working-directory: apps/desktop
+        run: npm run test:browser
 
       - name: Run desktop e2e tests
         working-directory: apps/desktop

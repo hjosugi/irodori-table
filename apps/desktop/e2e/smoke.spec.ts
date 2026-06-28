@@ -147,11 +147,19 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
     .filter({ hasText: "Editor mode" });
   await editorModeRow.locator("button").filter({ hasText: /^Vim$/ }).click();
   await expect(page.locator(".cm-vimMode")).toBeVisible();
+  await expect(
+    settingsDialog.getByText("Vim shortcut adjustments"),
+  ).toBeVisible();
+  await settingsDialog
+    .getByRole("button", { name: "General", exact: true })
+    .click();
   await settingsDialog
     .locator("button")
     .filter({ hasText: /^Default$/ })
     .click();
-  await settingsDialog.getByRole("button", { name: "Close" }).click();
+  await settingsDialog
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await expect(page.locator(".cm-vimMode")).toHaveCount(0);
 
   // About stays informational; preferences live in Settings/menu entry points.

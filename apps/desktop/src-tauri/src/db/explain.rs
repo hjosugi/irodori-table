@@ -908,16 +908,25 @@ fn collect_mysql_plan_nodes(
         serde_json::Value::Object(map) => {
             let has_table = map.contains_key("table_name") || map.contains_key("access_type");
             let has_cost = map.contains_key("cost_info");
-            let node_id = if has_table || has_cost {
+            let has_operation_marker = bool_field(value, "using_filesort").unwrap_or(false)
+                || bool_field(value, "using_temporary_table").unwrap_or(false);
+            let node_id = if has_table || has_cost || has_operation_marker {
                 let id = format!("mysql-{}", nodes.len());
                 let table = string_field(value, "table_name");
                 let access_type = string_field(value, "access_type");
-                let operation = access_type
-                    .as_ref()
-                    .map(|access| format!("Access {access}"))
-                    .unwrap_or_else(|| label_hint.to_string());
-                let rows = number_field(value, "rows_examined_per_scan")
-                    .or_else(|| number_field(value, "rows_produced_per_join"));
+                let operation = if bool_field(value, "using_filesort").unwrap_or(false) {
+                    "Filesort".to_string()
+                } else if bool_field(value, "using_temporary_table").unwrap_or(false) {
+                    "Temporary table".to_string()
+                } else {
+                    access_type
+                        .as_ref()
+                        .map(|access| format!("Access {access}"))
+                        .unwrap_or_else(|| label_hint.to_string())
+                };
+                let rows_examined = number_field(value, "rows_examined_per_scan");
+                let rows_produced = number_field(value, "rows_produced_per_join");
+                let rows = rows_examined.or(rows_produced);
                 let total_cost = value
                     .get("cost_info")
                     .and_then(|cost| string_field(cost, "prefix_cost"))
@@ -929,11 +938,59 @@ fn collect_mysql_plan_nodes(
                 if let Some(key) = string_field(value, "key") {
                     properties.push(property("key", key));
                 }
-                if let Some(rows) = rows {
-                    properties.push(property("rowsExaminedPerScan", format_number(rows)));
-                }
-                if let Some(cost) = total_cost {
-                    properties.push(property("prefixCost", format_number(cost)));
+                push_number_property(&mut properties, "rowsExaminedPerScan", rows_examined);
+                push_number_property(&mut properties, "rowsProducedPerJoin", rows_produced);
+                push_number_property(
+                    &mut properties,
+                    "filteredPercent",
+                    number_field(value, "filtered"),
+                );
+                push_string_property(
+                    &mut properties,
+                    "usedKeyParts",
+                    compact_field(value, "used_key_parts"),
+                );
+                push_string_property(
+                    &mut properties,
+                    "usedColumns",
+                    compact_field(value, "used_columns"),
+                );
+                push_string_property(
+                    &mut properties,
+                    "attachedCondition",
+                    string_field(value, "attached_condition"),
+                );
+                push_string_property(
+                    &mut properties,
+                    "usingFilesort",
+                    string_field(value, "using_filesort"),
+                );
+                push_string_property(
+                    &mut properties,
+                    "usingTemporaryTable",
+                    string_field(value, "using_temporary_table"),
+                );
+                if let Some(cost_info) = value.get("cost_info") {
+                    push_string_property(
+                        &mut properties,
+                        "dataReadPerJoin",
+                        string_field(cost_info, "data_read_per_join"),
+                    );
+                    push_number_property(
+                        &mut properties,
+                        "prefixCost",
+                        string_field(cost_info, "prefix_cost").and_then(|cost| parse_f64(&cost)),
+                    );
+                    push_number_property(
+                        &mut properties,
+                        "readCost",
+                        string_field(cost_info, "read_cost").and_then(|cost| parse_f64(&cost)),
+                    );
+                    push_number_property(
+                        &mut properties,
+                        "evalCost",
+                        string_field(cost_info, "eval_cost").and_then(|cost| parse_f64(&cost)),
+                    );
                 }
                 nodes.push(QueryPlanNode {
                     id: id.clone(),
@@ -1188,22 +1245,77 @@ fn mysql_findings(nodes: &[QueryPlanNode]) -> Vec<QueryPlanFinding> {
                 node_id: Some(node.id.clone()),
             });
         }
+        if node_property_bool(node, "usingFilesort") {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "MySQL filesort".into(),
+                detail: format!("{} requires an explicit sort step.", node.label),
+                action:
+                    "Check whether the ORDER BY/GROUP BY can use an index, or reduce rows before sorting."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+        if node_property_bool(node, "usingTemporaryTable") {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "MySQL temporary table".into(),
+                detail: format!("{} materializes intermediate rows in a temporary table.", node.label),
+                action:
+                    "Reduce grouped/sorted rows, review GROUP BY/DISTINCT shape, and check memory temp table limits."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+        if let (Some(examined), Some(produced)) = (
+            node_property_f64(node, "rowsExaminedPerScan"),
+            node_property_f64(node, "rowsProducedPerJoin"),
+        ) {
+            if produced > 0.0 && examined / produced >= 100.0 {
+                findings.push(QueryPlanFinding {
+                    severity: QueryPlanSeverity::Warning,
+                    title: "High rows examined".into(),
+                    detail: format!(
+                        "{} examines about {}x more rows than it produces.",
+                        node.label,
+                        format_number(examined / produced)
+                    ),
+                    action:
+                        "Add a more selective index or predicate so MySQL can avoid reading rows that are later filtered."
+                            .into(),
+                    node_id: Some(node.id.clone()),
+                });
+            }
+        }
     }
     findings
 }
 
 fn sqlite_findings(nodes: &[QueryPlanNode]) -> Vec<QueryPlanFinding> {
-    nodes
-        .iter()
-        .filter(|node| node.label.to_ascii_uppercase().contains("SCAN"))
-        .map(|node| QueryPlanFinding {
-            severity: QueryPlanSeverity::Warning,
-            title: "SQLite scan".into(),
-            detail: node.label.clone(),
-            action: "For large tables, check indexes with PRAGMA index_list and add a predicate that can use one.".into(),
-            node_id: Some(node.id.clone()),
-        })
-        .collect()
+    let mut findings = Vec::new();
+    for node in nodes {
+        let upper = node.label.to_ascii_uppercase();
+        if upper.contains("USE TEMP B-TREE") {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "SQLite temporary B-tree".into(),
+                detail: node.label.clone(),
+                action:
+                    "Add an index matching ORDER BY/GROUP BY/DISTINCT, or reduce rows before the sort/aggregate."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
+        } else if upper.contains("SCAN") {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "SQLite scan".into(),
+                detail: node.label.clone(),
+                action: "For large tables, check indexes with PRAGMA index_list and add a predicate that can use one.".into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+    }
+    findings
 }
 
 fn native_metrics(nodes: &[QueryPlanNode], mode: QueryPlanMode) -> Vec<QueryPlanMetric> {
@@ -1754,6 +1866,12 @@ fn node_property_f64(node: &QueryPlanNode, name: &str) -> Option<f64> {
     node_property_text(node, name).and_then(parse_f64)
 }
 
+fn node_property_bool(node: &QueryPlanNode, name: &str) -> bool {
+    node_property_text(node, name)
+        .map(|value| matches!(value.to_ascii_lowercase().as_str(), "true" | "1" | "yes"))
+        .unwrap_or(false)
+}
+
 fn estimate_error_ratio(estimated: Option<f64>, actual: Option<f64>) -> Option<f64> {
     let (Some(estimated), Some(actual)) = (estimated, actual) else {
         return None;
@@ -1781,6 +1899,32 @@ fn number_field(value: &serde_json::Value, key: &str) -> Option<f64> {
         serde_json::Value::Number(number) => number.as_f64(),
         serde_json::Value::String(text) => parse_f64(text),
         _ => None,
+    })
+}
+
+fn bool_field(value: &serde_json::Value, key: &str) -> Option<bool> {
+    value.get(key).and_then(|value| match value {
+        serde_json::Value::Bool(value) => Some(*value),
+        serde_json::Value::Number(number) => number.as_i64().map(|value| value != 0),
+        serde_json::Value::String(text) => {
+            let normalized = text.to_ascii_lowercase();
+            match normalized.as_str() {
+                "true" | "1" | "yes" => Some(true),
+                "false" | "0" | "no" => Some(false),
+                _ => None,
+            }
+        }
+        _ => None,
+    })
+}
+
+fn compact_field(value: &serde_json::Value, key: &str) -> Option<String> {
+    value.get(key).and_then(|value| match value {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(text) => Some(text.clone()),
+        serde_json::Value::Number(number) => Some(number.to_string()),
+        serde_json::Value::Bool(value) => Some(value.to_string()),
+        other => serde_json::to_string(other).ok(),
     })
 }
 
@@ -2018,5 +2162,81 @@ mod tests {
             .findings
             .iter()
             .any(|finding| finding.title == "Row estimate mismatch"));
+    }
+
+    #[test]
+    fn mysql_json_surfaces_filesort_temp_table_and_row_waste() {
+        let raw = serde_json::json!({
+            "query_block": {
+                "ordering_operation": {
+                    "using_filesort": true,
+                    "using_temporary_table": true,
+                    "table": {
+                        "table_name": "orders",
+                        "access_type": "ALL",
+                        "rows_examined_per_scan": 50000,
+                        "rows_produced_per_join": 10,
+                        "filtered": "0.02",
+                        "attached_condition": "orders.status = 'open'",
+                        "cost_info": {
+                            "read_cost": "1000.00",
+                            "eval_cost": "250.00",
+                            "prefix_cost": "1250.00",
+                            "data_read_per_join": "12M"
+                        }
+                    }
+                }
+            }
+        });
+        let plan = analysis_from_mysql_json(
+            Wire::Mysql,
+            "select * from orders where status = 'open' order by created_at",
+            QueryPlanMode::Plan,
+            raw.clone(),
+            serde_json::to_string_pretty(&raw).unwrap(),
+        );
+
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "MySQL filesort"));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "MySQL temporary table"));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "Full table access"));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "High rows examined"));
+        assert!(plan.nodes.iter().any(|node| node
+            .properties
+            .iter()
+            .any(|property| property.name == "attachedCondition")));
+    }
+
+    #[test]
+    fn sqlite_rows_surface_temp_btree_separately_from_scan() {
+        let plan = analysis_from_sqlite_rows(
+            Wire::Sqlite,
+            "select * from orders order by created_at",
+            QueryPlanMode::Plan,
+            vec![
+                (2, 0, "SCAN orders".into()),
+                (3, 0, "USE TEMP B-TREE FOR ORDER BY".into()),
+            ],
+        );
+
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "SQLite scan"));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "SQLite temporary B-tree"));
     }
 }

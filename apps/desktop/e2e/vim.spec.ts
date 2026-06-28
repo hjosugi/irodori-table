@@ -47,7 +47,12 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
     .locator(".settings-row")
     .filter({ hasText: "Editor mode" });
   await editorModeRow.locator("button").filter({ hasText: /^Vim$/ }).click();
-  await settingsDialog.getByRole("button", { name: "Close" }).click();
+  await expect(
+    settingsDialog.getByText("Vim shortcut adjustments"),
+  ).toBeVisible();
+  await settingsDialog
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await expect(page.locator(".cm-vimMode")).toBeVisible();
 
   await content.locator(".cm-line").first().click({ position: { x: 1, y: 8 } });
@@ -72,7 +77,9 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
     .locator("button")
     .filter({ hasText: /^Default$/ })
     .click();
-  await settingsDialog.getByRole("button", { name: "Close" }).click();
+  await settingsDialog
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await expect(page.locator(".cm-vimMode")).toHaveCount(0);
 
   await replaceEditorText(page, "select 42 as answer;");

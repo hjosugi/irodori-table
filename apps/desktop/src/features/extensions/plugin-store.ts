@@ -50,7 +50,6 @@ export const bundledPluginStoreCatalog: PluginStoreCatalog = {
     connector("irodori.iceberg", "Iceberg Connector", ["iceberg"]),
     connector("irodori.s3-tables", "S3 Tables Connector", ["s3Tables"]),
     connector("irodori.athena", "Athena Connector", ["athena"]),
-    connector("irodori.object-store", "Object Store Connector", ["objectStore"]),
     connector("irodori.delta-lake", "Delta Lake Connector", ["deltaLake"]),
     connector("irodori.hudi", "Hudi Connector", ["hudi"]),
     connector("irodori.snowflake", "Snowflake Connector", ["snowflake"]),
