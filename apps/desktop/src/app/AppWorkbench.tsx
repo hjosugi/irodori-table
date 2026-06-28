@@ -145,6 +145,11 @@ import {
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
+import {
+  SearchReplacePanel,
+  type SearchTab,
+} from "@/features/search/SearchReplacePanel";
+import type { TextMatch } from "@/sql/text-search";
 import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import {
   UI_ZOOM_DEFAULT,
@@ -666,6 +671,44 @@ export function AppWorkbench() {
   function openGitPanel() {
     setActiveSidebarView("git");
     void useGitStore.getState().refresh();
+  }
+
+  // Every open editor tab (per group, since split groups hold independent text),
+  // surfaced to the cross-tab Search & Replace panel.
+  const searchTabs = useMemo<SearchTab[]>(() => {
+    const groups: EditorGroup[] =
+      editorSplitMode === "single" ? ["primary"] : ["primary", "secondary"];
+    return groups.flatMap((group) => {
+      const state = editorGroupStates[group];
+      return openTabsForEditorGroup(state).map((tab) => ({
+        key: `${group}:${tab.id}`,
+        group,
+        tabId: tab.id,
+        label: editorSplitMode === "single" ? tab.label : `${tab.label} · ${group}`,
+        text: state.queryByTabId[tab.id] ?? "",
+      }));
+    });
+  }, [editorGroupStates, editorSplitMode]);
+
+  function replaceSearchTab(tab: SearchTab, nextText: string) {
+    updateEditorGroupState(tab.group as EditorGroup, (state) => ({
+      ...state,
+      queryByTabId: { ...state.queryByTabId, [tab.tabId]: nextText },
+    }));
+  }
+
+  function revealSearchMatch(tab: SearchTab, match: TextMatch) {
+    const group = tab.group as EditorGroup;
+    selectEditorTab(group, tab.tabId);
+    // Let the editor re-render the selected tab before selecting the range.
+    window.setTimeout(() => {
+      const api =
+        group === "secondary"
+          ? secondaryEditorApiRef.current
+          : editorApiRef.current;
+      api?.revealRange({ from: match.start, to: match.end });
+      api?.focus();
+    }, 0);
   }
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
@@ -4445,6 +4488,14 @@ export function AppWorkbench() {
             onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
             onClose={() => closeSidebarView("aiChat")}
             notify={showActionNotice}
+          />
+        }
+        searchReplacePanel={
+          <SearchReplacePanel
+            tabs={searchTabs}
+            onReveal={revealSearchMatch}
+            onReplaceTab={replaceSearchTab}
+            onClose={() => closeSidebarView("searchReplace")}
           />
         }
         connections={connections}

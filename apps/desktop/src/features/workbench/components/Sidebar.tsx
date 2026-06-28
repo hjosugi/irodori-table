@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCw,
+  Search,
   Share2,
   Table2,
   TerminalSquare,
@@ -55,6 +56,7 @@ type SidebarProps = {
   biPanel: ReactNode;
   gitPanel: ReactNode;
   aiChatPanel: ReactNode;
+  searchReplacePanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
   activeConnectionId: string;
@@ -103,6 +105,7 @@ export function Sidebar({
   biPanel,
   gitPanel,
   aiChatPanel,
+  searchReplacePanel,
   connections,
   profileById,
   activeConnectionId,
@@ -233,6 +236,8 @@ export function Sidebar({
         return gitPanel;
       case "aiChat":
         return aiChatPanel;
+      case "searchReplace":
+        return searchReplacePanel;
       case "objectBrowser":
         return null;
     }
@@ -401,6 +406,20 @@ export function Sidebar({
               >
                 <Bot size={14} />
                 <span>Chat</span>
+              </button>
+            ) : null}
+            {isViewAvailable("searchReplace") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "searchReplace" ? "active" : undefined}
+                aria-selected={activeView === "searchReplace"}
+                title="Search & Replace"
+                aria-label="Search & Replace"
+                onClick={() => onSelectView("searchReplace")}
+              >
+                <Search size={14} />
+                <span>Find</span>
               </button>
             ) : null}
           </div>
