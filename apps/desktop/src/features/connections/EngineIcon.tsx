@@ -31,13 +31,11 @@ import {
 import {
   Activity,
   Boxes,
-  Columns3,
   Database,
   FileJson,
   HardDrive,
   KeySquare,
   Layers,
-  Search,
   Warehouse,
   Workflow,
   type LucideIcon,
