@@ -307,77 +307,153 @@
 }
 
 .connection-color-options {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px 10px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  text-transform: none;
 }
 
-.connection-color-presets,
-.connection-color-palette {
+.connection-color-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.connection-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
-.connection-color-presets {
-  grid-column: 1 / -1;
-}
-
-.connection-color-palette {
-  grid-column: 1;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
-  max-width: min(100%, 520px);
-}
-
 .connection-color-swatch {
-  width: 28px;
-  height: 24px;
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 55%, transparent);
+  border-radius: 50%;
   cursor: pointer;
+  transition:
+    transform 80ms ease,
+    box-shadow 80ms ease;
 }
 
-.connection-color-chip {
-  width: 100%;
-  min-width: 18px;
-  height: 20px;
-  border: 1px solid color-mix(in srgb, var(--border-strong) 78%, transparent);
-  border-radius: 4px;
-  cursor: pointer;
+.connection-color-swatch:hover {
+  transform: scale(1.12);
 }
 
-.connection-color-swatch.active,
-.connection-color-chip.active {
+.connection-color-swatch.active {
   box-shadow:
     0 0 0 2px var(--surface-raised),
     0 0 0 4px var(--focus);
 }
 
-.connection-custom-color {
-  display: inline-grid !important;
-  grid-template-columns: 30px minmax(82px, 108px);
-  align-items: center;
-  align-self: start;
-  grid-column: 2;
-  gap: 6px !important;
-  text-transform: none !important;
-}
-
-.connection-custom-color input[type="color"] {
-  width: 30px;
-  height: 24px;
-  padding: 0;
+/* Custom-color picker styled as a swatch; native input overlaid, invisible. */
+.connection-color-custom {
+  position: relative;
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  margin: 0;
   cursor: pointer;
 }
 
-.connection-custom-color input[type="text"],
-.connection-custom-color input:not([type]) {
-  height: 24px;
+.connection-color-custom-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px dashed color-mix(in srgb, var(--border-strong) 75%, transparent);
+  border-radius: 50%;
+}
+
+.connection-color-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.connection-color-hex {
+  width: 92px;
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 11px;
+  text-transform: uppercase;
+}
+
+/* Extended palette, collapsed by default. */
+.connection-color-more {
+  min-width: 0;
+}
+
+.connection-color-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  user-select: none;
+}
+
+.connection-color-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.connection-color-more > summary svg {
+  transition: transform 120ms ease;
+}
+
+.connection-color-more[open] > summary svg {
+  transform: rotate(90deg);
+}
+
+.connection-color-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 20px);
+  gap: 6px;
+  margin-top: 8px;
+  max-width: min(100%, 420px);
+}
+
+.connection-color-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 45%, transparent);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 80ms ease;
+}
+
+.connection-color-chip:hover {
+  transform: scale(1.12);
+}
+
+.connection-color-chip.active {
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 4px var(--focus);
 }
 
 .connection-readonly-toggle {
@@ -468,15 +544,6 @@
 
   .connection-form-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .connection-color-options {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .connection-color-palette,
-  .connection-custom-color {
-    grid-column: 1;
   }
 
   .form-toggle {

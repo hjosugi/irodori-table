@@ -388,6 +388,13 @@ fn percent_encode(input: &str) -> String {
     out
 }
 
+fn append_query_param(url: &mut String, key: &str, value: &str) {
+    url.push(if url.contains('?') { '&' } else { '?' });
+    url.push_str(key);
+    url.push('=');
+    url.push_str(&percent_encode(value));
+}
+
 /// Build a sqlx connection URL for the Postgres/MySQL/SQLite drivers. SQL Server,
 /// DuckDB, MongoDB, and Oracle use dedicated connectors instead.
 pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
@@ -448,7 +455,15 @@ fn build_tcp_url(scheme: &str, p: &ConnectionProfile) -> String {
         (Some(u), _) if !u.is_empty() => format!("{}@", percent_encode(u)),
         _ => String::new(),
     };
-    format!("{scheme}://{auth}{host}:{port}/{db}")
+    let mut url = format!("{scheme}://{auth}{host}:{port}/{db}");
+    if let Some(socket_path) = &p.socket_path {
+        match p.engine.wire() {
+            Wire::Postgres => append_query_param(&mut url, "host", socket_path),
+            Wire::Mysql => append_query_param(&mut url, "socket", socket_path),
+            _ => {}
+        }
+    }
+    url
 }
 
 #[cfg(test)]
@@ -510,6 +525,7 @@ mod tests {
             user: None,
             password: None,
             database: Some("sample".into()),
+            socket_path: None,
             url: None,
             transport: None,
             read_only: false,
@@ -633,6 +649,30 @@ mod tests {
         assert_eq!(
             build_url(&profile).unwrap(),
             "postgres://user%20name:p%40ss%2Fword@db.example.test:5432/sample"
+        );
+    }
+
+    #[test]
+    fn postgres_socket_path_uses_host_query_parameter() {
+        let mut profile = profile(DbEngine::Postgres);
+        profile.socket_path = Some("/var/run/postgresql".into());
+        profile.host = None;
+
+        assert_eq!(
+            build_url(&profile).unwrap(),
+            "postgres://localhost:5432/sample?host=%2Fvar%2Frun%2Fpostgresql"
+        );
+    }
+
+    #[test]
+    fn mysql_socket_path_uses_socket_query_parameter() {
+        let mut profile = profile(DbEngine::Mysql);
+        profile.socket_path = Some("/var/run/mysqld/mysqld.sock".into());
+        profile.host = None;
+
+        assert_eq!(
+            build_url(&profile).unwrap(),
+            "mysql://localhost:3306/sample?socket=%2Fvar%2Frun%2Fmysqld%2Fmysqld.sock"
         );
     }
 }

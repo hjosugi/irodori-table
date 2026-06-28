@@ -17,6 +17,7 @@ export {
 
 export type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
 export type ConnectionInputMode = "url" | "fields";
+export type ConnectionTransportMode = "tcp" | "socket";
 
 export type ConnectionDraft = {
   id: string;
@@ -25,11 +26,13 @@ export type ConnectionDraft = {
   engine: DbEngine;
   mode: ConnectionInputMode;
   url: string;
+  connectionTransport: ConnectionTransportMode;
   host: string;
   port: string;
   user: string;
   password: string;
   database: string;
+  socketPath: string;
   readOnly: boolean;
 };
 
@@ -131,26 +134,31 @@ export function memoryDefaults(engine: DbEngine): Partial<ConnectionDraft> {
     return {
       mode: settings.preferredMode,
       url: "",
+      connectionTransport: "tcp",
       host: "",
       port: "",
       user: "",
       password: "",
       database: ":memory:",
+      socketPath: "",
     };
   }
   if (engine === "duckdb") {
     return {
       mode: settings.preferredMode,
       url: "",
+      connectionTransport: "tcp",
       host: "",
       port: "",
       user: "",
       password: "",
       database: ":memory:",
+      socketPath: "",
     };
   }
   return {
     mode: settings.preferredMode,
+    connectionTransport: "tcp",
     port: defaultPort(engine),
   };
 }
@@ -163,11 +171,13 @@ export function newDraft(seed: number): ConnectionDraft {
     engine: "postgres",
     mode: "fields",
     url: "",
+    connectionTransport: "tcp",
     host: "127.0.0.1",
     port: "5432",
     user: "",
     password: "",
     database: "",
+    socketPath: "",
     readOnly: false,
   };
 }
@@ -198,6 +208,8 @@ export function loadProfiles() {
           color: normalizeConnectionColor(profile.color),
           password: "",
           port: profile.port ?? defaultPort(profile.engine),
+          connectionTransport: profile.connectionTransport ?? "tcp",
+          socketPath: profile.socketPath ?? "",
         }),
       ),
     );
@@ -299,6 +311,8 @@ export function repairBuiltinSampleProfile(
         user: "",
         password: "",
         database: ":memory:",
+        connectionTransport: "tcp",
+        socketPath: "",
       };
     }
   }
@@ -331,6 +345,8 @@ export function repairBuiltinSampleProfile(
         user: sample.user,
         password: "",
         database: sample.database,
+        connectionTransport: "tcp",
+        socketPath: "",
       };
     }
     return {
@@ -376,6 +392,8 @@ export function repairBuiltinSampleProfile(
     user: "irodori",
     password: "",
     database: "samples",
+    connectionTransport: "tcp",
+    socketPath: "",
   };
 }
 
@@ -429,13 +447,31 @@ export function settingsProfileFromJson(
       engine,
       mode,
       url: jsonString(value.url, defaults.url),
+      connectionTransport:
+        value.connectionTransport === "socket" ? "socket" : "tcp",
       host: jsonString(value.host, defaults.host),
       port: jsonString(value.port, defaults.port || defaultPort(engine)),
       user: jsonString(value.user, defaults.user),
       password: "",
       database: jsonString(value.database, defaults.database),
+      socketPath: jsonString(value.socketPath, defaults.socketPath),
       readOnly: value.readOnly === true,
     }),
+  );
+}
+
+export function supportsSocketTransport(engine: DbEngine) {
+  return (
+    engine === "postgres" ||
+    engine === "timescaledb" ||
+    engine === "neon" ||
+    engine === "cockroachdb" ||
+    engine === "yugabytedb" ||
+    engine === "redshift" ||
+    engine === "questdb" ||
+    engine === "mysql" ||
+    engine === "mariadb" ||
+    engine === "tidb"
   );
 }
 
@@ -485,7 +521,13 @@ export function validateDraft(draft: ConnectionDraft): string | null {
     resolvedDraft.engine !== "sqlite" &&
     resolvedDraft.engine !== "duckdb"
   ) {
-    if (settings.showHost && !resolvedDraft.host.trim()) {
+    const useSocket =
+      supportsSocketTransport(resolvedDraft.engine) &&
+      resolvedDraft.connectionTransport === "socket";
+    if (useSocket && !resolvedDraft.socketPath.trim()) {
+      return "socket path is required";
+    }
+    if (settings.showHost && !useSocket && !resolvedDraft.host.trim()) {
       return `${settings.hostLabel.toLowerCase()} is required`;
     }
   }
@@ -517,6 +559,11 @@ export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
     user: resolvedDraft.user.trim() || undefined,
     password: resolvedDraft.password || undefined,
     database: resolvedDraft.database.trim() || undefined,
+    socketPath:
+      supportsSocketTransport(resolvedDraft.engine) &&
+      resolvedDraft.connectionTransport === "socket"
+        ? resolvedDraft.socketPath.trim() || undefined
+        : undefined,
     ...readOnly,
   };
 }

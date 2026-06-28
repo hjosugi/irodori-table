@@ -7,6 +7,7 @@ import {
 } from "react";
 import {
   AlertTriangle,
+  Check,
   ChevronDown,
   ChevronRight,
   Database,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import type { DbEngine } from "@/generated/irodori-api";
 import { DialogShell } from "@/components/DialogShell";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   connectionCustomColorOptions,
   connectionColorOptions,
@@ -27,6 +29,7 @@ import {
   engineLabel,
   engineOptions,
   normalizeConnectionColor,
+  supportsSocketTransport,
   type ConnectionDraft,
 } from "./connection-profiles";
 import {
@@ -38,6 +41,13 @@ type ConnectionProfileGroup = {
   id: string;
   label: string;
   profiles: ConnectionDraft[];
+};
+
+type ConnectionColorPickerProps = {
+  color: string;
+  normalizedColor: string;
+  onChange: (color: string) => void;
+  onNormalize: () => void;
 };
 
 const environmentOrder = ["prod", "stg", "dev", "local", "other"] as const;
@@ -85,6 +95,133 @@ function groupConnectionProfiles(profiles: ConnectionDraft[]) {
       label: environmentLabels[key],
       profiles: byEnvironment.get(key) ?? [],
     }));
+}
+
+function connectionColorForeground(color: string) {
+  const normalized = normalizeConnectionColor(color);
+  const red = Number.parseInt(normalized.slice(1, 3), 16);
+  const green = Number.parseInt(normalized.slice(3, 5), 16);
+  const blue = Number.parseInt(normalized.slice(5, 7), 16);
+  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+  return luminance > 0.58 ? "#1c1c1c" : "#ffffff";
+}
+
+function isMysqlSocketEngine(engine: DbEngine) {
+  return engine === "mysql" || engine === "mariadb" || engine === "tidb";
+}
+
+function socketPathLabel(engine: DbEngine) {
+  return isMysqlSocketEngine(engine) ? "Socket file" : "Socket directory";
+}
+
+function socketPathPlaceholder(engine: DbEngine) {
+  return isMysqlSocketEngine(engine)
+    ? "/var/run/mysqld/mysqld.sock"
+    : "/var/run/postgresql";
+}
+
+function ConnectionColorPicker({
+  color,
+  normalizedColor,
+  onChange,
+  onNormalize,
+}: ConnectionColorPickerProps) {
+  return (
+    <div className="connection-color-options">
+      <div className="connection-color-bar">
+        <div
+          className="connection-color-grid"
+          role="group"
+          aria-label="Connection color"
+        >
+          {connectionColorOptions.map((option) => (
+            <ConnectionColorSwatch
+              key={option}
+              color={option}
+              selected={normalizedColor === option}
+              className="connection-color-swatch"
+              onSelect={onChange}
+            />
+          ))}
+          <label className="connection-color-custom" title="Pick a custom color">
+            <span
+              className="connection-color-custom-chip"
+              style={{
+                background: normalizedColor,
+                color: connectionColorForeground(normalizedColor),
+              }}
+              aria-hidden="true"
+            >
+              <Plus size={12} strokeWidth={2.5} />
+            </span>
+            <input
+              type="color"
+              value={normalizedColor}
+              onChange={(event) => onChange(event.currentTarget.value)}
+              aria-label="Use custom connection color"
+            />
+          </label>
+        </div>
+        <input
+          className="connection-color-hex"
+          value={color}
+          spellCheck={false}
+          aria-label="Connection color hex"
+          onBlur={onNormalize}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      </div>
+      <details className="connection-color-more">
+        <summary>
+          <ChevronRight size={13} />
+          <span>More colors</span>
+        </summary>
+        <div
+          className="connection-color-palette"
+          role="group"
+          aria-label="Extended color palette"
+        >
+          {connectionCustomColorOptions.map((option) => (
+            <ConnectionColorSwatch
+              key={option}
+              color={option}
+              selected={normalizedColor === option}
+              className="connection-color-chip"
+              onSelect={onChange}
+            />
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function ConnectionColorSwatch({
+  color,
+  selected,
+  className,
+  onSelect,
+}: {
+  color: string;
+  selected: boolean;
+  className: string;
+  onSelect: (color: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={selected ? `${className} active` : className}
+      style={{
+        background: color,
+        color: connectionColorForeground(color),
+      }}
+      aria-label={`Use color ${color}`}
+      aria-pressed={selected}
+      onClick={() => onSelect(color)}
+    >
+      {selected ? <Check size={12} strokeWidth={3} /> : null}
+    </button>
+  );
 }
 
 export function ConnectionManagerDialog({
@@ -135,6 +272,7 @@ export function ConnectionManagerDialog({
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const transferMenuRef = useRef<HTMLDivElement | null>(null);
   const engineSettings = engineConnectionSettings(draft.engine);
+  const { confirm, confirmElement } = useConfirm();
   const [transferMenuOpen, setTransferMenuOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
@@ -144,6 +282,9 @@ export function ConnectionManagerDialog({
     [profiles],
   );
   const normalizedDraftColor = normalizeConnectionColor(draft.color);
+  const socketSupported = supportsSocketTransport(draft.engine);
+  const transportMode =
+    socketSupported && draft.connectionTransport === "socket" ? "socket" : "tcp";
 
   useEffect(() => {
     if (!transferMenuOpen) {
@@ -367,71 +508,16 @@ export function ConnectionManagerDialog({
           </label>
           <div className="connection-color-row full-row">
             <span>Color tag</span>
-            <div className="connection-color-options">
-              <div
-                className="connection-color-presets"
-                role="group"
-                aria-label="Connection color presets"
-              >
-                {connectionColorOptions.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={
-                      normalizedDraftColor === color
-                        ? "connection-color-swatch active"
-                        : "connection-color-swatch"
-                    }
-                    style={{ background: color }}
-                    aria-label={`Use color ${color}`}
-                    onClick={() => onUpdateDraft({ color })}
-                  />
-                ))}
-              </div>
-              <div
-                className="connection-color-palette"
-                role="group"
-                aria-label="Connection custom color palette"
-              >
-                {connectionCustomColorOptions.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={
-                      normalizedDraftColor === color
-                        ? "connection-color-chip active"
-                        : "connection-color-chip"
-                    }
-                    style={{ background: color }}
-                    aria-label={`Use color ${color}`}
-                    onClick={() => onUpdateDraft({ color })}
-                  />
-                ))}
-              </div>
-              <label className="connection-custom-color">
-                <input
-                  type="color"
-                  value={normalizedDraftColor}
-                  onChange={(event) =>
-                    onUpdateDraft({ color: event.currentTarget.value })
-                  }
-                  aria-label="Use custom connection color"
-                />
-                <input
-                  value={draft.color}
-                  spellCheck={false}
-                  aria-label="Connection color hex"
-                  onBlur={() =>
-                    onUpdateDraft({
-                      color: normalizeConnectionColor(draft.color),
-                    })
-                  }
-                  onChange={(event) =>
-                    onUpdateDraft({ color: event.currentTarget.value })
-                  }
-                />
-              </label>
-            </div>
+            <ConnectionColorPicker
+              color={draft.color}
+              normalizedColor={normalizedDraftColor}
+              onChange={(color) => onUpdateDraft({ color })}
+              onNormalize={() =>
+                onUpdateDraft({
+                  color: normalizeConnectionColor(draft.color),
+                })
+              }
+            />
           </div>
           <div className="connection-form-grid">
             <label>
@@ -583,7 +669,20 @@ export function ConnectionManagerDialog({
           <button
             className="text-button danger"
             type="button"
-            onClick={onDeleteProfile}
+            onClick={() => {
+              void confirm({
+                title: "Delete connection?",
+                message: `"${
+                  draft.name.trim() || draft.id
+                }" will be removed from your saved connections. This can't be undone.`,
+                confirmLabel: "Delete",
+                tone: "danger",
+              }).then((confirmed) => {
+                if (confirmed) {
+                  onDeleteProfile();
+                }
+              });
+            }}
           >
             Delete
           </button>
@@ -617,6 +716,7 @@ export function ConnectionManagerDialog({
           </button>
         </div>
       </form>
+      {confirmElement}
     </DialogShell>
   );
 }

@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { hasDiagram } from "@/features/erd";
+import { EngineIcon } from "@/features/connections/EngineIcon";
 import type {
   DatabaseMetadata,
   DbObjectMetadata,
@@ -140,6 +141,12 @@ export function Sidebar({
   const objectActionMenuRef = useRef<HTMLDivElement | null>(null);
   const createMenuRef = useRef<HTMLDivElement | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [connectionMenu, setConnectionMenu] = useState<{
+    id: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const connectionMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!objectActionMenu) {
@@ -206,6 +213,36 @@ export function Sidebar({
       window.removeEventListener("blur", closeOnBlur);
     };
   }, [objectActionMenu, onSetObjectActionMenu]);
+
+  useEffect(() => {
+    if (!connectionMenu) {
+      return;
+    }
+    const close = () => setConnectionMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setConnectionMenu(null);
+      }
+    };
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        connectionMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setConnectionMenu(null);
+    };
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", close);
+    };
+  }, [connectionMenu]);
 
   function openObjectContextMenu(
     event: ReactMouseEvent<HTMLElement>,
@@ -277,8 +314,15 @@ export function Sidebar({
                 aria-current={active ? "true" : undefined}
                 onClick={() => onSelectConnection(connection, profile)}
                 onDoubleClick={onOpenConnectionManager}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setConnectionMenu({
+                    id: connection.id,
+                    ...clampObjectMenuPosition(event.clientX, event.clientY),
+                  });
+                }}
               >
-                <Database size={17} />
+                <EngineIcon engine={connection.engine} size={17} />
                 <span
                   className="connection-color-dot"
                   style={{
@@ -291,6 +335,83 @@ export function Sidebar({
             );
           })}
         </div>
+        {connectionMenu
+          ? (() => {
+              const connection = connections.find(
+                (item) => item.id === connectionMenu.id,
+              );
+              if (!connection) {
+                return null;
+              }
+              const profile = profileById.get(connection.id);
+              const connected = connectedIds.has(connection.id);
+              const isActive = connection.id === activeConnectionId;
+              const close = () => setConnectionMenu(null);
+              return (
+                <div
+                  ref={connectionMenuRef}
+                  className="object-action-menu object-action-menu-context"
+                  role="menu"
+                  style={{ left: connectionMenu.x, top: connectionMenu.y }}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSelectConnection(connection, profile);
+                      close();
+                    }}
+                  >
+                    {connected ? "Switch to connection" : "Connect"}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSelectConnection(connection, profile);
+                      onOpenConnectionManager();
+                      close();
+                    }}
+                  >
+                    Edit connection…
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!isActive || !activeConnectionOpen}
+                    onClick={() => {
+                      onRefreshObjects();
+                      close();
+                    }}
+                  >
+                    Refresh objects
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(connection.name);
+                      close();
+                    }}
+                  >
+                    Copy name
+                  </button>
+                  {profile?.url ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(profile.url);
+                        close();
+                      }}
+                    >
+                      Copy connection string
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })()
+          : null}
         </nav>
       ) : null}
       {sidebarOpen ? (

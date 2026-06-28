@@ -286,6 +286,7 @@ mod tests {
             user: None,
             password: None,
             database: Some(":memory:".into()),
+            socket_path: None,
             url: None,
             transport: None,
             read_only: false,

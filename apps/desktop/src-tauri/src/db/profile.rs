@@ -29,6 +29,11 @@ pub struct ConnectionProfile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub database: Option<String>,
+    /// Unix-domain socket path. For Postgres this is the socket directory; for
+    /// MySQL this is the socket file path. Used instead of TCP host/port when set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub socket_path: Option<String>,
     /// Raw connection URL/DSN. Overrides the structured fields when present.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -66,6 +71,7 @@ pub(super) fn normalize_profile(
     normalize_optional_text(&mut profile.host);
     normalize_optional_text(&mut profile.user);
     normalize_optional_text(&mut profile.database);
+    normalize_optional_text(&mut profile.socket_path);
 
     let wire = profile.engine.wire();
     if is_unimplemented_wire(wire) {
@@ -98,7 +104,8 @@ pub(super) fn normalize_profile(
         | Wire::Cassandra
         | Wire::Neo4j
         | Wire::InfluxDb => {
-            if profile.host.is_none() {
+            let socket_supported = matches!(wire, Wire::Postgres | Wire::Mysql);
+            if profile.host.is_none() && !(socket_supported && profile.socket_path.is_some()) {
                 return Err("host is required when URL/DSN is not provided".into());
             }
         }
@@ -252,6 +259,7 @@ mod tests {
             user: Some("user".into()),
             password: Some("secret".into()),
             database: None,
+            socket_path: None,
             url: Some("postgres://user:secret@localhost/samples".into()),
             transport: None,
             read_only: false,
@@ -269,6 +277,7 @@ mod tests {
             user: Some("  user  ".into()),
             password: Some("  secret  ".into()),
             database: Some("  samples  ".into()),
+            socket_path: Some("  /var/run/postgresql  ".into()),
             url: None,
             transport: None,
             read_only: false,

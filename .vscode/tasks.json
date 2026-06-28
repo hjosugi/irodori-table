@@ -1,0 +1,71 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "desktop: vite",
+      "type": "shell",
+      "command": "npm",
+      "args": ["--prefix", "apps/desktop", "run", "dev"],
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Local:.*http://localhost:1420"
+        }
+      },
+      "presentation": {
+        "group": "desktop",
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "desktop: cargo build",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "build",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "group": "desktop",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "desktop: prepare debug",
+      "dependsOrder": "sequence",
+      "dependsOn": ["desktop: vite", "desktop: cargo build"],
+      "problemMatcher": []
+    },
+    {
+      "label": "desktop: tauri dev",
+      "type": "shell",
+      "command": "npm",
+      "args": ["--prefix", "apps/desktop", "run", "tauri", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "group": "desktop",
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    }
+  ]
+}

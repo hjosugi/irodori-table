@@ -1,7 +1,11 @@
 .local/
-.agents/
+.agents/*
+!.agents/skills/
+!.agents/skills/**
 .claude/
-.codex/
+.codex/*
+!.codex/agents/
+!.codex/agents/**
 .irodori-local/
 .irodori-dev/
 .cache/

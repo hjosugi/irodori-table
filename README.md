@@ -83,6 +83,14 @@ Recommended editor setup:
 
 - VS Code with the Tauri extension.
 - rust-analyzer.
+- CodeLLDB for Rust/Tauri debugging.
+
+The repository shares VS Code debug setup in `.vscode/`:
+
+- `.vscode/extensions.json` recommends the required editor extensions.
+- `.vscode/tasks.json` defines Vite, Cargo build, and Tauri dev tasks.
+- `.vscode/launch.json` defines Run and Debug entries for the desktop app,
+  frontend-only debugging, and the current Vitest file.
 
 Security workflow notes are in [SECURITY.md](SECURITY.md) and
 [development-security](https://hjosugi.github.io/irodori-docs/development-security.html).
@@ -130,6 +138,48 @@ To build and install a local Linux AppImage from the repo root:
 ```sh
 make run-linux
 ```
+
+## VS Code Debugging
+
+The shared `.vscode/` files are committed so everyone can use the same local
+debug loop from the repository root.
+
+One-time setup:
+
+```sh
+make setup
+make doctor
+```
+
+Then open this repository root in VS Code, install the recommended extensions
+when prompted, and reload the window if VS Code asks. The important extensions
+are Tauri, rust-analyzer, and CodeLLDB.
+
+Run and Debug configurations:
+
+- `Desktop App (Tauri/Rust)` starts Vite on `http://localhost:1420`, builds the
+  Tauri debug binary, then launches it under CodeLLDB. Use this when debugging
+  Rust commands, database adapters, PTY behavior, or Tauri startup.
+- `Frontend only (Chrome/Vite)` starts Vite and opens Chrome with sourcemaps.
+  Use this for React, CSS, editor, grid, and workbench UI debugging.
+- `Desktop Vitest (current file)` runs the currently open Vitest file through
+  the Node debugger.
+
+Manual task equivalents are available from `Terminal: Run Task`:
+
+```sh
+desktop: vite
+desktop: cargo build
+desktop: tauri dev
+```
+
+If `Desktop App (Tauri/Rust)` cannot launch, check these first:
+
+- CodeLLDB is installed and enabled.
+- `make doctor` passes.
+- Port `1420` is free or the existing process is the Vite task from this repo.
+- Linux WebKit/Tauri system packages from the prerequisite section are
+  installed.
 
 ## Sample Databases
 
@@ -246,3 +296,10 @@ make check
 Project-authored code, official examples, and official templates are licensed
 under `MIT OR 0BSD` by default. See [LICENSE](LICENSE) and
 [licensing](https://hjosugi.github.io/irodori-docs/licensing.html).
+
+## Disclaimer
+
+Irodori Table is a development-preview database workbench. Review generated SQL,
+database operations, migration plans, AI-assisted output, and target connections
+before execution. See the public
+[disclaimer](https://hjosugi.github.io/irodori-docs/disclaimer.html).

@@ -17,10 +17,18 @@ while IFS= read -r manifest; do
   missing=1
 done < <(
   find "$root" \
-    -path "$root/.git" -prune -o \
-    -path "$root/ref" -prune -o \
-    -path "$root/target" -prune -o \
-    -path "$root/apps/desktop/src-tauri/target" -prune -o \
+    \( \
+      -path "$root/.git" -o \
+      -path "$root/.cache" -o \
+      -path "$root/.irodori-dev" -o \
+      -path "$root/.irodori-local" -o \
+      -path "$root/.local" -o \
+      -path "$root/apps/desktop/node_modules" -o \
+      -path "$root/apps/desktop/src-tauri/target" -o \
+      -path "$root/node_modules" -o \
+      -path "$root/ref" -o \
+      -path "$root/target" \
+    \) -prune -o \
     -name Cargo.toml -print
 )
 
@@ -32,4 +40,3 @@ if [[ -f "$root/apps/desktop/package.json" ]]; then
 fi
 
 exit "$missing"
-

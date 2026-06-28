@@ -7,6 +7,33 @@
   width: min(1180px, 96vw);
 }
 
+.confirm-dialog {
+  width: min(460px, 92vw);
+  max-height: none;
+}
+
+.confirm-dialog .confirm-danger-icon {
+  flex: 0 0 auto;
+  color: var(--red, #d9534f);
+}
+
+.confirm-body {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.text-button.primary {
+  color: var(--accent-contrast, #fff);
+  background: var(--accent, #2f6feb);
+}
+
+.text-button.primary:hover:not(:disabled) {
+  background: var(--accent-strong, #2a63d4);
+}
+
 .about-dialog {
   width: min(620px, 92vw);
   overflow: hidden;

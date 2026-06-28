@@ -1,0 +1,57 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Desktop App (Tauri/Rust)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/.irodori-local/target/debug/irodori-table-desktop",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_BACKTRACE": "1"
+      },
+      "preLaunchTask": "desktop: prepare debug",
+      "sourceLanguages": ["rust"],
+      "windows": {
+        "program": "${workspaceFolder}\\.irodori-local\\target\\debug\\irodori-table-desktop.exe"
+      },
+      "presentation": {
+        "group": "desktop",
+        "order": 1
+      }
+    },
+    {
+      "name": "Frontend only (Chrome/Vite)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:1420",
+      "webRoot": "${workspaceFolder}/apps/desktop/src",
+      "preLaunchTask": "desktop: vite",
+      "sourceMaps": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/apps/desktop/**",
+        "!**/node_modules/**"
+      ],
+      "presentation": {
+        "group": "desktop",
+        "order": 2
+      }
+    },
+    {
+      "name": "Desktop Vitest (current file)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/desktop",
+      "program": "${workspaceFolder}/apps/desktop/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${file}"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "smartStep": true,
+      "presentation": {
+        "group": "tests",
+        "order": 1
+      }
+    }
+  ]
+}
