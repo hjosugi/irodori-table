@@ -78,6 +78,17 @@ function rightClick(target: Element) {
 }
 
 describe("WorkbenchShell", () => {
+  it("keeps left and right sidebar widths independent", () => {
+    renderShell({ sidebarWidth: 240, inspectorWidth: 420 });
+
+    const shell = container.querySelector<HTMLElement>(".app-shell");
+
+    expect(shell?.style.getPropertyValue("--sidebar-width")).toBe("240px");
+    expect(shell?.style.getPropertyValue("--right-sidebar-width")).toBe(
+      "420px",
+    );
+  });
+
   it("opens a fallback context menu from empty workbench space", () => {
     const props = renderShell();
     const workspace = container.querySelector<HTMLElement>(".workspace");

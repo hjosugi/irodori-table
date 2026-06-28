@@ -468,176 +468,33 @@ export function QueryEditorPane({
           role="toolbar"
           aria-label="SQL query actions"
         >
-          <div className="editor-command-bar">
-            {editorToolbarCommands.map((command) => {
-              const Icon = command.icon;
-              const title =
-                command.commandId === "editor.format"
-                  ? `${command.title} (${formatter})`
-                  : command.title;
-              return (
-                <button
-                  className="icon-button"
-                  type="button"
-                  title={title}
-                  aria-label={command.ariaLabel}
-                  key={command.commandId}
-                  onClick={() => runCommand(command.commandId)}
-                >
-                  <Icon size={15} />
-                </button>
-              );
-            })}
-            <div
-              className="editor-split-controls"
-              role="group"
-              aria-label="Editor layout"
-            >
-              <button
-                className={
-                  editorSplitMode === "right"
-                    ? "icon-button active"
-                    : "icon-button"
-                }
-                type="button"
-                title="Split editor right"
-                aria-label="Split editor right"
-                aria-pressed={editorSplitMode === "right"}
-                onClick={() => setEditorSplitMode("right")}
-              >
-                <SplitSquareHorizontal size={15} />
-              </button>
-              <button
-                className={
-                  editorSplitMode === "down"
-                    ? "icon-button active"
-                    : "icon-button"
-                }
-                type="button"
-                title="Split editor down"
-                aria-label="Split editor down"
-                aria-pressed={editorSplitMode === "down"}
-                onClick={() => setEditorSplitMode("down")}
-              >
-                <SplitSquareVertical size={15} />
-              </button>
-              {editorSplitOpen ? (
-                <button
-                  className="icon-button"
-                  type="button"
-                  title="Close editor split"
-                  aria-label="Close editor split"
-                  onClick={() => setEditorSplitMode("single")}
-                >
-                  {editorSplitMode === "down" ? (
-                    <PanelBottomClose size={15} />
-                  ) : (
-                    <PanelRightClose size={15} />
-                  )}
-                </button>
-              ) : null}
-            </div>
-            <button
-              className="icon-button"
-              type="button"
-              title="Cancel query"
-              aria-label="Cancel query"
-              disabled={!running}
-              onClick={() => void cancelQuery()}
-            >
-              <Square size={15} />
-            </button>
-          </div>
-          <div className="editor-primary-actions">
-            <button
-              className="text-button toolbar-command"
-              type="button"
-              title="Save query"
-              aria-label="Save query"
-              onClick={saveCurrentQuery}
-            >
-              <Save size={15} />
-              <span>Save</span>
-            </button>
-            <div className="run-control editor-floating-run" ref={runControlRef}>
-              <button
-                className="primary-action run-main-button"
-                type="button"
-                title={
-                  runShortcutLabel
-                    ? `${runPrimaryLabel} (${runShortcutLabel})`
-                    : runPrimaryLabel
-                }
-                disabled={running}
-                onClick={() => void runQuery()}
-              >
-                <Play size={15} fill="currentColor" />
-                <span>{runPrimaryLabel}</span>
-              </button>
-              <button
-                className="primary-action run-menu-toggle"
-                type="button"
-                title="Run options"
-                aria-label="Run options"
-                aria-haspopup="menu"
-                aria-expanded={runMenuOpen}
-                disabled={running}
-                onClick={() => setRunMenuOpen((open) => !open)}
-              >
-                <ChevronDown size={14} />
-              </button>
-              {runMenuOpen ? (
-                <div className="app-menu-popover run-menu-popover" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void runQuery()}
-                  >
-                    <span>{runPrimaryLabel}</span>
-                    {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={!hasSelectedEditorSql}
-                    onClick={() => void runSelectionQuery()}
-                  >
-                    <span>Run Selection</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void runCurrentQuery()}
-                  >
-                    <span>Run Current</span>
-                    {runCurrentShortcutLabel ? (
-                      <kbd>{runCurrentShortcutLabel}</kbd>
-                    ) : null}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void runFromStartQuery()}
-                  >
-                    <span>Run From Top</span>
-                    {runFromStartShortcutLabel ? (
-                      <kbd>{runFromStartShortcutLabel}</kbd>
-                    ) : null}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void runAllQuery()}
-                  >
-                    <span>Run All</span>
-                    {runAllShortcutLabel ? (
-                      <kbd>{runAllShortcutLabel}</kbd>
-                    ) : null}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <EditorCommandBar
+            formatter={formatter}
+            editorSplitOpen={editorSplitOpen}
+            editorSplitMode={editorSplitMode}
+            setEditorSplitMode={setEditorSplitMode}
+            running={running}
+            runCommand={runCommand}
+            cancelQuery={cancelQuery}
+          />
+          <RunControl
+            running={running}
+            runControlRef={runControlRef}
+            runMenuOpen={runMenuOpen}
+            setRunMenuOpen={setRunMenuOpen}
+            runPrimaryLabel={runPrimaryLabel}
+            runShortcutLabel={runShortcutLabel}
+            runCurrentShortcutLabel={runCurrentShortcutLabel}
+            runFromStartShortcutLabel={runFromStartShortcutLabel}
+            runAllShortcutLabel={runAllShortcutLabel}
+            hasSelectedEditorSql={hasSelectedEditorSql}
+            saveCurrentQuery={saveCurrentQuery}
+            runQuery={runQuery}
+            runSelectionQuery={runSelectionQuery}
+            runCurrentQuery={runCurrentQuery}
+            runFromStartQuery={runFromStartQuery}
+            runAllQuery={runAllQuery}
+          />
         </div>
       </div>
       <section
@@ -653,40 +510,27 @@ export function QueryEditorPane({
         ref={editorSplitRef}
         className={`editor-split editor-split-${editorSplitMode}`}
       >
-        <div
-          className={`editor-shell editor-group${
-            activeEditorGroup === "primary" ? " active" : ""
-          }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
-          style={editorBackgroundStyle}
-          onFocusCapture={() => setActiveEditorGroup("primary")}
-          onPointerDown={() => setActiveEditorGroup("primary")}
-          onContextMenu={(event) => openEditorContextMenu(event, "primary")}
-        >
-          {editorBackgroundStyle ? (
-            <div className="editor-background-image" aria-hidden="true" />
-          ) : null}
-          {renderEditorTabStrip("primary")}
-          <div className="editor-buffer">
-            <SqlEditor
-              ref={editorApiRef}
-              value={primaryQuery}
-              onChange={onPrimaryQueryChange}
-              onSelectionChange={(selection) => {
-                setActiveEditorGroup("primary");
-                setEditorSelection("primary", selection);
-              }}
-              engine={editorEngine}
-              metadata={activeMetadata}
-              snippets={sqlSnippets}
-              theme={theme}
-              vimMode={vimMode}
-              formatter={formatter}
-              linter={sqlLinter}
-              onMetadataJump={onMetadataJump}
-              onMetadataToolWindow={setMetadataToolWindow}
-            />
-          </div>
-        </div>
+        <EditorGroupShell
+          group="primary"
+          active={activeEditorGroup === "primary"}
+          query={primaryQuery}
+          apiRef={editorApiRef}
+          formatter={formatter}
+          editorEngine={editorEngine}
+          activeMetadata={activeMetadata}
+          sqlSnippets={sqlSnippets}
+          editorBackgroundStyle={editorBackgroundStyle}
+          theme={theme}
+          vimMode={vimMode}
+          sqlLinter={sqlLinter}
+          renderEditorTabStrip={renderEditorTabStrip}
+          onQueryChange={onPrimaryQueryChange}
+          setActiveEditorGroup={setActiveEditorGroup}
+          setEditorSelection={setEditorSelection}
+          onContextMenu={openEditorContextMenu}
+          onMetadataJump={onMetadataJump}
+          onMetadataToolWindow={setMetadataToolWindow}
+        />
         {editorSplitOpen ? (
           <>
             <div
@@ -700,40 +544,27 @@ export function QueryEditorPane({
               onPointerDown={beginEditorSplitResize}
               onKeyDown={onEditorSplitResizeKey}
             />
-            <div
-              className={`editor-shell editor-group${
-                activeEditorGroup === "secondary" ? " active" : ""
-              }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
-              style={editorBackgroundStyle}
-              onFocusCapture={() => setActiveEditorGroup("secondary")}
-              onPointerDown={() => setActiveEditorGroup("secondary")}
-              onContextMenu={(event) => openEditorContextMenu(event, "secondary")}
-            >
-              {editorBackgroundStyle ? (
-                <div className="editor-background-image" aria-hidden="true" />
-              ) : null}
-              {renderEditorTabStrip("secondary")}
-              <div className="editor-buffer">
-                <SqlEditor
-                  ref={secondaryEditorApiRef}
-                  value={secondaryQuery}
-                  onChange={onSecondaryQueryChange}
-                  onSelectionChange={(selection) => {
-                    setActiveEditorGroup("secondary");
-                    setEditorSelection("secondary", selection);
-                  }}
-                  engine={editorEngine}
-                  metadata={activeMetadata}
-                  snippets={sqlSnippets}
-                  theme={theme}
-                  vimMode={vimMode}
-                  formatter={formatter}
-                  linter={sqlLinter}
-                  onMetadataJump={onMetadataJump}
-                  onMetadataToolWindow={setMetadataToolWindow}
-                />
-              </div>
-            </div>
+            <EditorGroupShell
+              group="secondary"
+              active={activeEditorGroup === "secondary"}
+              query={secondaryQuery}
+              apiRef={secondaryEditorApiRef}
+              formatter={formatter}
+              editorEngine={editorEngine}
+              activeMetadata={activeMetadata}
+              sqlSnippets={sqlSnippets}
+              editorBackgroundStyle={editorBackgroundStyle}
+              theme={theme}
+              vimMode={vimMode}
+              sqlLinter={sqlLinter}
+              renderEditorTabStrip={renderEditorTabStrip}
+              onQueryChange={onSecondaryQueryChange}
+              setActiveEditorGroup={setActiveEditorGroup}
+              setEditorSelection={setEditorSelection}
+              onContextMenu={openEditorContextMenu}
+              onMetadataJump={onMetadataJump}
+              onMetadataToolWindow={setMetadataToolWindow}
+            />
           </>
         ) : null}
       </div>
@@ -786,6 +617,306 @@ export function QueryEditorPane({
       ) : null}
       </section>
     </>
+  );
+}
+
+function EditorCommandBar({
+  formatter,
+  editorSplitOpen,
+  editorSplitMode,
+  setEditorSplitMode,
+  running,
+  runCommand,
+  cancelQuery,
+}: EditorCommandBarProps) {
+  return (
+    <div className="editor-command-bar">
+      {editorToolbarCommands.map((command) => {
+        const Icon = command.icon;
+        const title =
+          command.commandId === "editor.format"
+            ? `${command.title} (${formatter})`
+            : command.title;
+        return (
+          <button
+            className="icon-button"
+            type="button"
+            title={title}
+            aria-label={command.ariaLabel}
+            key={command.commandId}
+            onClick={() => runCommand(command.commandId)}
+          >
+            <Icon size={15} />
+          </button>
+        );
+      })}
+      <EditorSplitControls
+        editorSplitOpen={editorSplitOpen}
+        editorSplitMode={editorSplitMode}
+        setEditorSplitMode={setEditorSplitMode}
+      />
+      <button
+        className="icon-button"
+        type="button"
+        title="Cancel query"
+        aria-label="Cancel query"
+        disabled={!running}
+        onClick={() => void cancelQuery()}
+      >
+        <Square size={15} />
+      </button>
+    </div>
+  );
+}
+
+function EditorSplitControls({
+  editorSplitOpen,
+  editorSplitMode,
+  setEditorSplitMode,
+}: Pick<
+  EditorCommandBarProps,
+  "editorSplitOpen" | "editorSplitMode" | "setEditorSplitMode"
+>) {
+  return (
+    <div
+      className="editor-split-controls"
+      role="group"
+      aria-label="Editor layout"
+    >
+      <button
+        className={
+          editorSplitMode === "right" ? "icon-button active" : "icon-button"
+        }
+        type="button"
+        title="Split editor right"
+        aria-label="Split editor right"
+        aria-pressed={editorSplitMode === "right"}
+        onClick={() => setEditorSplitMode("right")}
+      >
+        <SplitSquareHorizontal size={15} />
+      </button>
+      <button
+        className={
+          editorSplitMode === "down" ? "icon-button active" : "icon-button"
+        }
+        type="button"
+        title="Split editor down"
+        aria-label="Split editor down"
+        aria-pressed={editorSplitMode === "down"}
+        onClick={() => setEditorSplitMode("down")}
+      >
+        <SplitSquareVertical size={15} />
+      </button>
+      {editorSplitOpen ? (
+        <button
+          className="icon-button"
+          type="button"
+          title="Close editor split"
+          aria-label="Close editor split"
+          onClick={() => setEditorSplitMode("single")}
+        >
+          {editorSplitMode === "down" ? (
+            <PanelBottomClose size={15} />
+          ) : (
+            <PanelRightClose size={15} />
+          )}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function RunControl({
+  running,
+  runControlRef,
+  runMenuOpen,
+  setRunMenuOpen,
+  runPrimaryLabel,
+  runShortcutLabel,
+  runCurrentShortcutLabel,
+  runFromStartShortcutLabel,
+  runAllShortcutLabel,
+  hasSelectedEditorSql,
+  saveCurrentQuery,
+  runQuery,
+  runSelectionQuery,
+  runCurrentQuery,
+  runFromStartQuery,
+  runAllQuery,
+}: RunControlProps) {
+  return (
+    <div className="editor-primary-actions">
+      <button
+        className="text-button toolbar-command"
+        type="button"
+        title="Save query"
+        aria-label="Save query"
+        onClick={saveCurrentQuery}
+      >
+        <Save size={15} />
+        <span>Save</span>
+      </button>
+      <div className="run-control editor-floating-run" ref={runControlRef}>
+        <button
+          className="primary-action run-main-button"
+          type="button"
+          title={
+            runShortcutLabel
+              ? `${runPrimaryLabel} (${runShortcutLabel})`
+              : runPrimaryLabel
+          }
+          disabled={running}
+          onClick={() => void runQuery()}
+        >
+          <Play size={15} fill="currentColor" />
+          <span>{runPrimaryLabel}</span>
+        </button>
+        <button
+          className="primary-action run-menu-toggle"
+          type="button"
+          title="Run options"
+          aria-label="Run options"
+          aria-haspopup="menu"
+          aria-expanded={runMenuOpen}
+          disabled={running}
+          onClick={() => setRunMenuOpen((open) => !open)}
+        >
+          <ChevronDown size={14} />
+        </button>
+        {runMenuOpen ? (
+          <RunOptionsMenu
+            runPrimaryLabel={runPrimaryLabel}
+            runShortcutLabel={runShortcutLabel}
+            runCurrentShortcutLabel={runCurrentShortcutLabel}
+            runFromStartShortcutLabel={runFromStartShortcutLabel}
+            runAllShortcutLabel={runAllShortcutLabel}
+            hasSelectedEditorSql={hasSelectedEditorSql}
+            runQuery={runQuery}
+            runSelectionQuery={runSelectionQuery}
+            runCurrentQuery={runCurrentQuery}
+            runFromStartQuery={runFromStartQuery}
+            runAllQuery={runAllQuery}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function RunOptionsMenu({
+  runPrimaryLabel,
+  runShortcutLabel,
+  runCurrentShortcutLabel,
+  runFromStartShortcutLabel,
+  runAllShortcutLabel,
+  hasSelectedEditorSql,
+  runQuery,
+  runSelectionQuery,
+  runCurrentQuery,
+  runFromStartQuery,
+  runAllQuery,
+}: Omit<
+  RunControlProps,
+  "running" | "runControlRef" | "runMenuOpen" | "setRunMenuOpen" | "saveCurrentQuery"
+>) {
+  return (
+    <div className="app-menu-popover run-menu-popover" role="menu">
+      <button type="button" role="menuitem" onClick={() => void runQuery()}>
+        <span>{runPrimaryLabel}</span>
+        {runShortcutLabel ? <kbd>{runShortcutLabel}</kbd> : null}
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        disabled={!hasSelectedEditorSql}
+        onClick={() => void runSelectionQuery()}
+      >
+        <span>Run Selection</span>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => void runCurrentQuery()}
+      >
+        <span>Run Current</span>
+        {runCurrentShortcutLabel ? <kbd>{runCurrentShortcutLabel}</kbd> : null}
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => void runFromStartQuery()}
+      >
+        <span>Run From Top</span>
+        {runFromStartShortcutLabel ? (
+          <kbd>{runFromStartShortcutLabel}</kbd>
+        ) : null}
+      </button>
+      <button type="button" role="menuitem" onClick={() => void runAllQuery()}>
+        <span>Run All</span>
+        {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
+      </button>
+    </div>
+  );
+}
+
+function EditorGroupShell({
+  group,
+  active,
+  query,
+  apiRef,
+  formatter,
+  editorEngine,
+  activeMetadata,
+  sqlSnippets,
+  editorBackgroundStyle,
+  theme,
+  vimMode,
+  sqlLinter,
+  renderEditorTabStrip,
+  onQueryChange,
+  setActiveEditorGroup,
+  setEditorSelection,
+  onContextMenu,
+  onMetadataJump,
+  onMetadataToolWindow,
+}: EditorGroupShellProps) {
+  const className = `editor-shell editor-group${active ? " active" : ""}${
+    editorBackgroundStyle ? " editor-shell-has-background" : ""
+  }`;
+
+  return (
+    <div
+      className={className}
+      style={editorBackgroundStyle}
+      onFocusCapture={() => setActiveEditorGroup(group)}
+      onPointerDown={() => setActiveEditorGroup(group)}
+      onContextMenu={(event) => onContextMenu(event, group)}
+    >
+      {editorBackgroundStyle ? (
+        <div className="editor-background-image" aria-hidden="true" />
+      ) : null}
+      {renderEditorTabStrip(group)}
+      <div className="editor-buffer">
+        <SqlEditor
+          ref={apiRef}
+          value={query}
+          onChange={onQueryChange}
+          onSelectionChange={(selection) => {
+            setActiveEditorGroup(group);
+            setEditorSelection(group, selection);
+          }}
+          engine={editorEngine}
+          metadata={activeMetadata}
+          snippets={sqlSnippets}
+          theme={theme}
+          vimMode={vimMode}
+          formatter={formatter}
+          linter={sqlLinter}
+          onMetadataJump={onMetadataJump}
+          onMetadataToolWindow={onMetadataToolWindow}
+        />
+      </div>
+    </div>
   );
 }
 

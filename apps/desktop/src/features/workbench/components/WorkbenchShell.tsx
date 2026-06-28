@@ -354,7 +354,7 @@ export function WorkbenchShell({
         {
           ...shellStyle,
           "--sidebar-width": `${sidebarWidth}px`,
-          "--right-sidebar-width": `${sidebarWidth}px`,
+          "--right-sidebar-width": `${inspectorWidth}px`,
           "--inspector-width": `${inspectorWidth}px`,
           "--results-height": `${resultsHeight}px`,
           "--editor-split-primary": `${editorSplitPercent}%`,
