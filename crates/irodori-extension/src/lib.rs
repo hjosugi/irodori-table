@@ -358,6 +358,15 @@ pub enum ConnectorFeature {
     TimeBuckets,
     LatestValue,
     AsOfJoin,
+    Warehouse,
+    QueryHistory,
+    QueryProfile,
+    WorkloadMonitoring,
+    DataLoading,
+    DataEngineering,
+    SemanticLayer,
+    AiSql,
+    SqlFormatting,
     QueryTemplates,
     Visualization,
 }
@@ -434,6 +443,7 @@ pub enum ConnectorExperienceDomain {
     Vector,
     Search,
     TimeSeries,
+    Warehouse,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -449,6 +459,17 @@ pub enum ConnectorResultView {
     Facets,
     TimeChart,
     Heatmap,
+    Worksheet,
+    QueryHistory,
+    QueryProfile,
+    WarehouseMonitor,
+    CostChart,
+    CopyReport,
+    TaskGraph,
+    Lineage,
+    SemanticModel,
+    Notebook,
+    AiAssistant,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -725,6 +746,18 @@ pub struct SqlFormatterConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub identifier_quote: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub line_width: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub indent_width: Option<u16>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]

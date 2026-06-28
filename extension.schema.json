@@ -394,6 +394,15 @@
               "timeBuckets",
               "latestValue",
               "asOfJoin",
+              "warehouse",
+              "queryHistory",
+              "queryProfile",
+              "workloadMonitoring",
+              "dataLoading",
+              "dataEngineering",
+              "semanticLayer",
+              "aiSql",
+              "sqlFormatting",
               "queryTemplates",
               "visualization"
             ]
@@ -477,7 +486,7 @@
     },
     "connectorExperienceDomain": {
       "type": "string",
-      "enum": ["graph", "vector", "search", "timeSeries"]
+      "enum": ["graph", "vector", "search", "timeSeries", "warehouse"]
     },
     "connectorResultView": {
       "type": "string",
@@ -490,7 +499,18 @@
         "searchHits",
         "facets",
         "timeChart",
-        "heatmap"
+        "heatmap",
+        "worksheet",
+        "queryHistory",
+        "queryProfile",
+        "warehouseMonitor",
+        "costChart",
+        "copyReport",
+        "taskGraph",
+        "lineage",
+        "semanticModel",
+        "notebook",
+        "aiAssistant"
       ]
     },
     "connectorExperienceWorkflow": {

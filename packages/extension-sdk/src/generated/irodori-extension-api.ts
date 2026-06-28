@@ -42,13 +42,13 @@ export type SqlKeywordCategory = "keyword" | "function" | "type" | "operator" | 
 
 export type SqlSnippet = { label: string, insertText: string, detail?: string, };
 
-export type SqlFormatterConfig = { keywordCase?: SqlKeywordCase, identifierQuote?: string, };
+export type SqlFormatterConfig = { keywordCase?: SqlKeywordCase, identifierQuote?: string, provider?: string, command?: string, lineWidth?: number, indentWidth?: number, };
 
 export type SqlKeywordCase = "upper" | "lower" | "preserve";
 
 export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, connection?: ConnectorConnectionModel, experience?: ConnectorExperienceModel, };
 
-export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing" | "graph" | "graphVisualization" | "pathFinding" | "graphAlgorithms" | "vectorSearch" | "embeddingSearch" | "hybridSearch" | "fullTextSearch" | "facetedSearch" | "timeSeries" | "timeBuckets" | "latestValue" | "asOfJoin" | "queryTemplates" | "visualization";
+export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing" | "graph" | "graphVisualization" | "pathFinding" | "graphAlgorithms" | "vectorSearch" | "embeddingSearch" | "hybridSearch" | "fullTextSearch" | "facetedSearch" | "timeSeries" | "timeBuckets" | "latestValue" | "asOfJoin" | "warehouse" | "queryHistory" | "queryProfile" | "workloadMonitoring" | "dataLoading" | "dataEngineering" | "semanticLayer" | "aiSql" | "sqlFormatting" | "queryTemplates" | "visualization";
 
 export type ConnectorConnectionModel = { schemaVersion: number, inferEnvironmentFrom: Array<string>, compatibility: ConnectorConnectionCompatibility, defaults: ConnectorConnectionDefaults, endpoint: ConnectorEndpointModel, profileFields: Array<ConnectorConnectionField>, authMethods: Array<ConnectorAuthMethod>, secretPurposes: Array<ConnectorSecretPurpose>, tls: ConnectorTlsModel, transports: Array<ConnectorTransportMode>, optionNamespaces: Array<string>, customDriverOptions: boolean, };
 
@@ -58,9 +58,9 @@ export type ConnectorConnectionDefaults = { engine: string, wire: string, port: 
 
 export type ConnectorExperienceModel = { schemaVersion: number, domains: Array<ConnectorExperienceDomain>, inspiredBy: Array<string>, resultViews: Array<ConnectorResultView>, objectTypes: Array<string>, workflows: Array<ConnectorExperienceWorkflow>, queryTemplates: Array<ConnectorQueryTemplate>, inspectorHints: Array<ConnectorInspectorHint>, };
 
-export type ConnectorExperienceDomain = "graph" | "vector" | "search" | "timeSeries";
+export type ConnectorExperienceDomain = "graph" | "vector" | "search" | "timeSeries" | "warehouse";
 
-export type ConnectorResultView = "graph" | "path" | "table" | "json" | "vectorNeighbors" | "searchHits" | "facets" | "timeChart" | "heatmap";
+export type ConnectorResultView = "graph" | "path" | "table" | "json" | "vectorNeighbors" | "searchHits" | "facets" | "timeChart" | "heatmap" | "worksheet" | "queryHistory" | "queryProfile" | "warehouseMonitor" | "costChart" | "copyReport" | "taskGraph" | "lineage" | "semanticModel" | "notebook" | "aiAssistant";
 
 export type ConnectorExperienceWorkflow = { id: string, label: string, description: string, resultView: ConnectorResultView, templateIds: Array<string>, };
 

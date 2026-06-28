@@ -126,6 +126,15 @@ function writeConnectorRepo(entry) {
   const moduleId = `${engine}.driver`;
   const label = connectorLabel(entry.name, engineMeta.label);
   const features = connectorFeatures(entry, engineMeta);
+  const dialectDefinition = connectorSqlDialectDefinition(entry, engineMeta);
+  const dialectContribution = dialectDefinition
+    ? {
+        id: dialectDefinition.id,
+        name: dialectDefinition.name,
+        path: `dialects/${kebabEngine(engine)}.json`,
+        fileExtensions: [".sql", ".sfsql"],
+      }
+    : null;
   const realDriverLinked =
     isDuckDbBackedConnector(engine) && (linkDuckDbDrivers || linkedDriverEngines.has(engine));
   const visibility = entry.visibility ?? "public";
@@ -133,6 +142,7 @@ function writeConnectorRepo(entry) {
     ...(entry.permissions ?? []),
     "connectors",
     "native",
+    ...(dialectContribution ? ["sqlDialects"] : []),
   ]);
   const nativeModule = {
     id: moduleId,
@@ -154,6 +164,7 @@ function writeConnectorRepo(entry) {
     defaultPort: engineMeta.defaultPort,
     wire: engineMeta.wire,
     module: moduleId,
+    ...(dialectContribution ? { dialect: dialectContribution.id } : {}),
     features,
     connection,
     ...(experience ? { experience } : {}),
@@ -178,13 +189,19 @@ function writeConnectorRepo(entry) {
     entry: "dist/native",
     permissions,
     contributes: {
+      ...(dialectContribution ? { sqlDialects: [dialectContribution] } : {}),
       connectors: [connectorContribution],
     },
     capabilities: {
       nativeModules: [nativeModule],
     },
     dev: {
-      watch: ["src", "connector.config.json", "irodori.extension.json"],
+      watch: unique([
+        "src",
+        "connector.config.json",
+        "irodori.extension.json",
+        ...(dialectContribution ? ["dialects"] : []),
+      ]),
     },
   };
   const config = {
@@ -218,6 +235,7 @@ function writeConnectorRepo(entry) {
       snapshots: migrationSources,
     },
     connection,
+    ...(dialectDefinition ? { dialect: dialectDefinition } : {}),
     ...(experience ? { experience } : {}),
   };
 
@@ -226,15 +244,21 @@ function writeConnectorRepo(entry) {
   mkdirSync(resolve(repoDir, "native/source"), { recursive: true });
   mkdirSync(resolve(repoDir, ".cargo"), { recursive: true });
   mkdirSync(resolve(repoDir, ".github/workflows"), { recursive: true });
+  if (dialectContribution) {
+    mkdirSync(resolve(repoDir, "dialects"), { recursive: true });
+  }
 
   writeJson(resolve(repoDir, "irodori.extension.json"), manifest);
   writeJson(resolve(repoDir, "connector.config.json"), config);
+  if (dialectContribution) {
+    writeJson(resolve(repoDir, dialectContribution.path), dialectDefinition);
+  }
   writeText(resolve(repoDir, "Cargo.toml"), cargoToml(repoName, crateName, realDriverLinked));
   writeText(resolve(repoDir, ".cargo/config.toml"), cargoConfig());
   writeRustSources(repoDir, engine, label, realDriverLinked);
   writeText(
     resolve(repoDir, "README.md"),
-    readme(entry, engineMeta, visibility, realDriverLinked, connection, experience),
+    readme(entry, engineMeta, visibility, realDriverLinked, connection, experience, dialectDefinition),
   );
   writeText(
     resolve(repoDir, "native/source/README.md"),
@@ -371,6 +395,21 @@ function connectorFeatures(entry, engineMeta) {
       features.push("asOfJoin");
     }
   }
+  if (domains.has("warehouse")) {
+    features.push(
+      "warehouse",
+      "queryHistory",
+      "queryProfile",
+      "workloadMonitoring",
+      "dataLoading",
+      "dataEngineering",
+      "semanticLayer",
+      "aiSql",
+      "sqlFormatting",
+      "queryTemplates",
+      "visualization",
+    );
+  }
   return unique(features);
 }
 
@@ -395,6 +434,9 @@ function connectorExperienceDomains(entry, engineMeta) {
   ) {
     domains.push("timeSeries");
   }
+  if (engine === "snowflake") {
+    domains.push("warehouse");
+  }
   return unique(domains);
 }
 
@@ -418,6 +460,9 @@ function connectorExperience(entry, engineMeta) {
       if (domain === "timeSeries") {
         return timeSeriesExperience(engine);
       }
+      if (domain === "warehouse") {
+        return warehouseExperience(engine);
+      }
       return null;
     })
     .filter(Boolean);
@@ -431,6 +476,92 @@ function connectorExperience(entry, engineMeta) {
     queryTemplates: uniqueBy(parts.flatMap((part) => part.queryTemplates ?? []), (template) => template.id),
     inspectorHints: uniqueBy(parts.flatMap((part) => part.inspectorHints ?? []), (hint) => hint.id),
   };
+}
+
+function connectorSqlDialectDefinition(entry, engineMeta) {
+  const engine = entry.engines[0];
+  if (engine !== "snowflake") {
+    return null;
+  }
+  return {
+    id: "snowflake.sql",
+    name: "Snowflake SQL",
+    aliases: ["snowflake", "snowsql", "sfsql", engineMeta.label],
+    keywords: [
+      sqlKeyword("select", "keyword"),
+      sqlKeyword("qualify", "keyword"),
+      sqlKeyword("sample", "keyword"),
+      sqlKeyword("tablesample", "keyword"),
+      sqlKeyword("pivot", "keyword"),
+      sqlKeyword("unpivot", "keyword"),
+      sqlKeyword("match_recognize", "keyword"),
+      sqlKeyword("merge", "keyword"),
+      sqlKeyword("copy", "keyword"),
+      sqlKeyword("stage", "keyword"),
+      sqlKeyword("warehouse", "keyword"),
+      sqlKeyword("task", "keyword"),
+      sqlKeyword("stream", "keyword"),
+      sqlKeyword("dynamic", "keyword"),
+      sqlKeyword("semantic", "keyword"),
+      sqlKeyword("time", "keyword"),
+      sqlKeyword("travel", "keyword"),
+      sqlKeyword("changes", "keyword"),
+      sqlKeyword("flatten", "function"),
+      sqlKeyword("try_cast", "function"),
+      sqlKeyword("result_scan", "function"),
+      sqlKeyword("get_query_operator_stats", "function"),
+      sqlKeyword("query_history", "function"),
+      sqlKeyword("warehouse_load_history", "function"),
+      sqlKeyword("warehouse_metering_history", "function"),
+      sqlKeyword("snowflake.cortex.complete", "function"),
+      sqlKeyword("snowflake.cortex.summarize", "function"),
+      sqlKeyword("snowflake.cortex.sentiment", "function"),
+      sqlKeyword("system$task_dependents_enable", "procedure"),
+    ],
+    snippets: [
+      sqlSnippet(
+        "sf context",
+        "SELECT CURRENT_ACCOUNT() AS account, CURRENT_REGION() AS region, CURRENT_USER() AS user, CURRENT_ROLE() AS role, CURRENT_WAREHOUSE() AS warehouse, CURRENT_DATABASE() AS database, CURRENT_SCHEMA() AS schema;",
+        "Show Snowflake session context.",
+      ),
+      sqlSnippet(
+        "sf query history",
+        "SELECT query_id, user_name, warehouse_name, execution_status, total_elapsed_time, bytes_scanned, rows_produced, query_text\nFROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(END_TIME_RANGE_START => DATEADD('hour', -1, CURRENT_TIMESTAMP()), RESULT_LIMIT => 100))\nORDER BY start_time DESC;",
+        "Recent query history from INFORMATION_SCHEMA.",
+      ),
+      sqlSnippet(
+        "sf query profile",
+        "SELECT *\nFROM TABLE(GET_QUERY_OPERATOR_STATS('<query_id>'))\nORDER BY step_id, operator_id;",
+        "Operator-level query profile for one query id.",
+      ),
+      sqlSnippet(
+        "sf copy validate",
+        "COPY INTO <table_name>\nFROM @<stage_name>\nFILE_FORMAT = (FORMAT_NAME = '<file_format>')\nVALIDATION_MODE = RETURN_ERRORS;",
+        "Validate staged files before loading.",
+      ),
+      sqlSnippet(
+        "sf cortex complete",
+        "SELECT SNOWFLAKE.CORTEX.COMPLETE('claude-3-5-sonnet', '<prompt>') AS response;",
+        "Run a Cortex AISQL completion.",
+      ),
+    ],
+    formatter: {
+      keywordCase: "upper",
+      identifierQuote: "\"",
+      provider: "sql-dialect-fmt",
+      command: "sql_format_snowflake",
+      lineWidth: 100,
+      indentWidth: 4,
+    },
+  };
+}
+
+function sqlKeyword(word, category) {
+  return { word, category };
+}
+
+function sqlSnippet(label, insertText, detail) {
+  return { label, insertText, detail };
 }
 
 function graphExperience(engine) {
@@ -1028,6 +1159,352 @@ GROUP BY series_id;`,
     inspectorHints: [
       inspectorHint("time-partition", "Partition key", "Show partition expressions and TTL settings near each table."),
       inspectorHint("time-projection", "Projection hint", "Surface projections and materialized views useful for time buckets."),
+    ],
+  };
+}
+
+function warehouseExperience(engine) {
+  if (engine !== "snowflake") {
+    return null;
+  }
+  return {
+    inspiredBy: [
+      "Snowsight Worksheets",
+      "Snowsight Query History",
+      "Snowsight Query Profile",
+      "Snowflake SQL API",
+      "Snowflake Tasks",
+      "Snowflake Streams",
+      "Snowflake Dynamic Tables",
+      "Snowflake Semantic Views",
+      "Snowflake Cortex AISQL",
+      "sql-dialect-fmt",
+    ],
+    resultViews: [
+      "worksheet",
+      "queryHistory",
+      "queryProfile",
+      "warehouseMonitor",
+      "costChart",
+      "copyReport",
+      "taskGraph",
+      "lineage",
+      "semanticModel",
+      "notebook",
+      "aiAssistant",
+      "table",
+    ],
+    objectTypes: [
+      "accounts",
+      "databases",
+      "schemas",
+      "tables",
+      "views",
+      "semanticViews",
+      "stages",
+      "fileFormats",
+      "warehouses",
+      "roles",
+      "users",
+      "shares",
+      "tasks",
+      "streams",
+      "dynamicTables",
+      "notebooks",
+      "queryHistory",
+      "queryProfile",
+      "cortexFunctions",
+    ],
+    workflows: [
+      workflow("snowflake-worksheet-context", "Worksheet context", "Show account, role, warehouse, database, schema, and formatter-backed worksheet context.", "worksheet", ["snowflake-context"]),
+      workflow("snowflake-query-history", "Query history triage", "Find slow, failed, expensive, or high-scan queries without leaving the connector.", "queryHistory", ["snowflake-query-history", "snowflake-expensive-queries", "snowflake-result-scan"]),
+      workflow("snowflake-query-profile", "Query profile drilldown", "Open operator stats for a query id and compare hotspots.", "queryProfile", ["snowflake-query-profile"]),
+      workflow("snowflake-warehouse-monitor", "Warehouse monitor", "Inspect warehouse load and credit consumption together.", "warehouseMonitor", ["snowflake-warehouse-load", "snowflake-warehouse-metering"]),
+      workflow("snowflake-data-loading", "Stage and COPY control", "Validate staged files, load them, and review load failures.", "copyReport", ["snowflake-copy-validate", "snowflake-copy-into", "snowflake-load-history"]),
+      workflow("snowflake-data-engineering", "Streams, tasks, and dynamic tables", "Create incremental pipelines with streams, tasks, and dynamic tables.", "taskGraph", ["snowflake-stream-changes", "snowflake-create-task", "snowflake-dynamic-table"]),
+      workflow("snowflake-semantic-layer", "Semantic model starter", "Start a semantic view and inspect metrics-friendly model shape.", "semanticModel", ["snowflake-semantic-view"]),
+      workflow("snowflake-cortex-ai", "Cortex AISQL assistant", "Use Cortex functions from SQL templates for summarization and generation.", "aiAssistant", ["snowflake-cortex-complete", "snowflake-cortex-summarize"]),
+      workflow("snowflake-governance", "Role and grants audit", "Inspect active role, grants, and object access before running privileged operations.", "table", ["snowflake-role-grants"]),
+    ],
+    queryTemplates: [
+      queryTemplate(
+        "snowflake-context",
+        "Current Snowflake context",
+        "sql",
+        "Show the account, user, role, warehouse, database, and schema used by this worksheet.",
+        `SELECT
+  CURRENT_ACCOUNT() AS account,
+  CURRENT_REGION() AS region,
+  CURRENT_USER() AS user_name,
+  CURRENT_ROLE() AS role_name,
+  CURRENT_WAREHOUSE() AS warehouse_name,
+  CURRENT_DATABASE() AS database_name,
+  CURRENT_SCHEMA() AS schema_name;`,
+        [],
+        "worksheet",
+      ),
+      queryTemplate(
+        "snowflake-query-history",
+        "Recent query history",
+        "sql",
+        "List recent query history from INFORMATION_SCHEMA with runtime and scan indicators.",
+        `SELECT
+  query_id,
+  user_name,
+  warehouse_name,
+  execution_status,
+  total_elapsed_time,
+  bytes_scanned,
+  rows_produced,
+  query_text
+FROM TABLE(
+  INFORMATION_SCHEMA.QUERY_HISTORY(
+    END_TIME_RANGE_START => DATEADD('hour', -$hours, CURRENT_TIMESTAMP()),
+    RESULT_LIMIT => $limit
+  )
+)
+ORDER BY start_time DESC;`,
+        [parameter("hours", "Hours back", "number", 1), parameter("limit", "Limit", "number", 100)],
+        "queryHistory",
+      ),
+      queryTemplate(
+        "snowflake-expensive-queries",
+        "Expensive queries",
+        "sql",
+        "Find high-scan or long-running queries from ACCOUNT_USAGE.",
+        `SELECT
+  query_id,
+  user_name,
+  warehouse_name,
+  total_elapsed_time / 1000 AS elapsed_seconds,
+  bytes_scanned,
+  rows_produced,
+  credits_used_cloud_services,
+  query_text
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE start_time >= DATEADD('hour', -$hours, CURRENT_TIMESTAMP())
+ORDER BY bytes_scanned DESC, total_elapsed_time DESC
+LIMIT $limit;`,
+        [parameter("hours", "Hours back", "number", 24), parameter("limit", "Limit", "number", 50)],
+        "costChart",
+      ),
+      queryTemplate(
+        "snowflake-result-scan",
+        "Result scan",
+        "sql",
+        "Re-open a prior query result by query id.",
+        "SELECT *\nFROM TABLE(RESULT_SCAN('$queryId'))\nLIMIT $limit;",
+        [parameter("queryId", "Query ID", "string"), parameter("limit", "Limit", "number", 100)],
+        "table",
+      ),
+      queryTemplate(
+        "snowflake-query-profile",
+        "Query operator stats",
+        "sql",
+        "Inspect operator-level query profile data for a query id.",
+        `SELECT *
+FROM TABLE(GET_QUERY_OPERATOR_STATS('$queryId'))
+ORDER BY step_id, operator_id;`,
+        [parameter("queryId", "Query ID", "string")],
+        "queryProfile",
+      ),
+      queryTemplate(
+        "snowflake-warehouse-load",
+        "Warehouse load history",
+        "sql",
+        "Review queued and running load for one warehouse.",
+        `SELECT *
+FROM TABLE(
+  INFORMATION_SCHEMA.WAREHOUSE_LOAD_HISTORY(
+    DATE_RANGE_START => DATEADD('hour', -$hours, CURRENT_TIMESTAMP()),
+    WAREHOUSE_NAME => '$warehouse'
+  )
+)
+ORDER BY start_time DESC;`,
+        [parameter("hours", "Hours back", "number", 6), parameter("warehouse", "Warehouse", "string")],
+        "warehouseMonitor",
+      ),
+      queryTemplate(
+        "snowflake-warehouse-metering",
+        "Warehouse metering history",
+        "sql",
+        "Review credits used by a warehouse.",
+        `SELECT
+  start_time,
+  end_time,
+  warehouse_name,
+  credits_used,
+  credits_used_compute,
+  credits_used_cloud_services
+FROM TABLE(
+  INFORMATION_SCHEMA.WAREHOUSE_METERING_HISTORY(
+    DATE_RANGE_START => DATEADD('day', -$days, CURRENT_TIMESTAMP()),
+    WAREHOUSE_NAME => '$warehouse'
+  )
+)
+ORDER BY start_time DESC;`,
+        [parameter("days", "Days back", "number", 7), parameter("warehouse", "Warehouse", "string")],
+        "costChart",
+      ),
+      queryTemplate(
+        "snowflake-copy-validate",
+        "Validate staged files",
+        "sql",
+        "Validate staged files before loading them into a table.",
+        `COPY INTO $table
+FROM @$stage
+FILE_FORMAT = (FORMAT_NAME = '$fileFormat')
+VALIDATION_MODE = RETURN_ERRORS;`,
+        [
+          parameter("table", "Target table", "string"),
+          parameter("stage", "Stage", "string"),
+          parameter("fileFormat", "File format", "string"),
+        ],
+        "copyReport",
+      ),
+      queryTemplate(
+        "snowflake-copy-into",
+        "COPY INTO table",
+        "sql",
+        "Load staged files into a target table.",
+        `COPY INTO $table
+FROM @$stage
+FILE_FORMAT = (FORMAT_NAME = '$fileFormat')
+MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+ON_ERROR = CONTINUE;`,
+        [
+          parameter("table", "Target table", "string"),
+          parameter("stage", "Stage", "string"),
+          parameter("fileFormat", "File format", "string"),
+        ],
+        "copyReport",
+      ),
+      queryTemplate(
+        "snowflake-load-history",
+        "Load history",
+        "sql",
+        "Inspect load status for a target table.",
+        `SELECT *
+FROM TABLE(
+  INFORMATION_SCHEMA.LOAD_HISTORY(
+    TABLE_NAME => '$table',
+    START_TIME => DATEADD('day', -$days, CURRENT_TIMESTAMP())
+  )
+)
+ORDER BY last_load_time DESC;`,
+        [parameter("table", "Table", "string"), parameter("days", "Days back", "number", 7)],
+        "copyReport",
+      ),
+      queryTemplate(
+        "snowflake-stream-changes",
+        "Read stream changes",
+        "sql",
+        "Preview change data captured by a stream.",
+        `SELECT *
+FROM $streamName
+WHERE METADATA$ACTION IS NOT NULL
+LIMIT $limit;`,
+        [parameter("streamName", "Stream name", "string"), parameter("limit", "Limit", "number", 100)],
+        "lineage",
+      ),
+      queryTemplate(
+        "snowflake-create-task",
+        "Create scheduled task",
+        "sql",
+        "Create a scheduled task starter using the active warehouse.",
+        `CREATE OR REPLACE TASK $taskName
+  WAREHOUSE = $warehouse
+  SCHEDULE = 'USING CRON 0 * * * * UTC'
+AS
+  $statement;`,
+        [
+          parameter("taskName", "Task name", "string"),
+          parameter("warehouse", "Warehouse", "string"),
+          parameter("statement", "Task SQL", "string", "SELECT 1"),
+        ],
+        "taskGraph",
+      ),
+      queryTemplate(
+        "snowflake-dynamic-table",
+        "Create dynamic table",
+        "sql",
+        "Create a dynamic table with a target lag and warehouse.",
+        `CREATE OR REPLACE DYNAMIC TABLE $dynamicTable
+  TARGET_LAG = '$targetLag'
+  WAREHOUSE = $warehouse
+AS
+SELECT *
+FROM $sourceTable;`,
+        [
+          parameter("dynamicTable", "Dynamic table", "string"),
+          parameter("targetLag", "Target lag", "string", "5 minutes"),
+          parameter("warehouse", "Warehouse", "string"),
+          parameter("sourceTable", "Source table", "string"),
+        ],
+        "lineage",
+      ),
+      queryTemplate(
+        "snowflake-semantic-view",
+        "Semantic view starter",
+        "sql",
+        "Start a semantic view definition for metric-friendly analytics.",
+        `CREATE OR REPLACE SEMANTIC VIEW $semanticView
+  TABLES (
+    $factTable PRIMARY KEY ($primaryKey)
+  )
+  FACTS (
+    $factTable.$metricColumn AS metric_value
+  )
+  METRICS (
+    metric_count AS COUNT(*)
+  );`,
+        [
+          parameter("semanticView", "Semantic view", "string"),
+          parameter("factTable", "Fact table", "string"),
+          parameter("primaryKey", "Primary key", "string"),
+          parameter("metricColumn", "Metric column", "string"),
+        ],
+        "semanticModel",
+      ),
+      queryTemplate(
+        "snowflake-cortex-complete",
+        "Cortex complete",
+        "sql",
+        "Generate text with a Cortex model.",
+        "SELECT SNOWFLAKE.CORTEX.COMPLETE('$model', '$prompt') AS response;",
+        [parameter("model", "Model", "string", "claude-3-5-sonnet"), parameter("prompt", "Prompt", "string")],
+        "aiAssistant",
+      ),
+      queryTemplate(
+        "snowflake-cortex-summarize",
+        "Cortex summarize",
+        "sql",
+        "Summarize a column or text expression with Cortex.",
+        "SELECT SNOWFLAKE.CORTEX.SUMMARIZE($expression) AS summary\nFROM $table\nLIMIT $limit;",
+        [
+          parameter("expression", "Expression", "string"),
+          parameter("table", "Table", "string"),
+          parameter("limit", "Limit", "number", 25),
+        ],
+        "aiAssistant",
+      ),
+      queryTemplate(
+        "snowflake-role-grants",
+        "Role grants",
+        "sql",
+        "Inspect grants for a role before changing objects.",
+        "SHOW GRANTS TO ROLE $role;",
+        [parameter("role", "Role", "string")],
+        "table",
+      ),
+    ],
+    inspectorHints: [
+      inspectorHint("snowflake-session-context", "Session context", "Pin role, warehouse, database, and schema above the worksheet."),
+      inspectorHint("snowflake-format-provider", "Snowflake formatter", "Use sql-dialect-fmt for lossless Snowflake formatting before falling back to generic SQL formatting."),
+      inspectorHint("snowflake-query-profile", "Profile deep link", "Attach query ids to results so operator stats can open beside the grid."),
+      inspectorHint("snowflake-warehouse-cost", "Warehouse cost panel", "Pair load history with metering history and current warehouse size."),
+      inspectorHint("snowflake-pipeline-objects", "Pipeline objects", "Group streams, tasks, and dynamic tables as a pipeline graph."),
+      inspectorHint("snowflake-cortex", "Cortex actions", "Expose AI SQL templates only when the active account has Cortex access."),
     ],
   };
 }
@@ -2554,7 +3031,7 @@ mod tests {
 `;
 }
 
-function readme(entry, engineMeta, visibility, realDriverLinked, connection, experience) {
+function readme(entry, engineMeta, visibility, realDriverLinked, connection, experience, dialectDefinition) {
   const publicNote =
     visibility === "public"
       ? "This connector is listed in the public Irodori extension marketplace."
@@ -2623,7 +3100,7 @@ ${driverNote}
 |---|---|---|
 ${authRows}
 
-${experienceReadme(experience)}## ABI Calls
+${dialectReadme(dialectDefinition)}${experienceReadme(experience)}## ABI Calls
 
 The scaffold handles these JSON requests today:
 
@@ -2647,6 +3124,26 @@ make build
 \`\`\`
 
 Release packages place platform-specific native artifacts under \`dist/native\`.
+`;
+}
+
+function dialectReadme(dialectDefinition) {
+  if (!dialectDefinition) {
+    return "";
+  }
+  const aliases = dialectDefinition.aliases.map((alias) => `\`${alias}\``).join(", ");
+  const formatter = dialectDefinition.formatter ?? {};
+  return `## SQL Dialect
+
+- Dialect ID: \`${dialectDefinition.id}\`
+- Aliases: ${aliases}
+- Formatter provider: \`${formatter.provider ?? "default"}\`
+- Formatter command: \`${formatter.command ?? "default"}\`
+- Keyword case: \`${formatter.keywordCase ?? "preserve"}\`
+- Identifier quote: \`${formatter.identifierQuote ?? ""}\`
+- Line width: \`${formatter.lineWidth ?? "default"}\`
+- Indent width: \`${formatter.indentWidth ?? "default"}\`
+
 `;
 }
 
