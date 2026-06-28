@@ -72,7 +72,6 @@
       "id": "data-diff-contract",
       "owner": "migration-diff",
       "paths": [
-        "docs/data-verification-diff.md",
         "crates/irodori-io/**",
         "apps/desktop/src/features/migration/**",
         "apps/desktop/src-tauri/src/db/**"
@@ -181,8 +180,7 @@
         "apps/desktop/src/features/migration/**",
         "apps/desktop/src-tauri/src/db/diff*.rs",
         "apps/desktop/src-tauri/src/db/migration*.rs",
-        "crates/irodori-io/**",
-        "docs/data-verification-diff.md"
+        "crates/irodori-io/**"
       ],
       "coordinatorWriteGlobs": [
         "apps/desktop/src-tauri/src/db/engine.rs",

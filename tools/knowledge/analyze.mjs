@@ -624,7 +624,7 @@ const COMPONENT_PATHS = {
   completion: "crates/irodori-completion and the CodeMirror editor integration",
   ui: "apps/desktop/src/ workbench UI",
   export: "apps/desktop/src/result-export.ts and import/export flows",
-  planning: "https://hjosugi.github.io/irodori-docs/feature-matrix.html and https://hjosugi.github.io/irodori-docs/implementation-backlog.html"
+  planning: "https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html and https://hjosugi.github.io/irodori-docs/roadmap-1.0.html"
 };
 
 const NOISE_PATTERNS = [

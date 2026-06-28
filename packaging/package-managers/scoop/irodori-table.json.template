@@ -1,7 +1,7 @@
 {
   "version": "__VERSION__",
   "description": "Open-source SQL workbench for querying, inspecting, and editing data across multiple database engines.",
-  "homepage": "https://hjosugi.github.io/irodori-table/",
+  "homepage": "https://hjosugi.github.io/irodori-docs/",
   "license": {
     "identifier": "MIT OR 0BSD",
     "url": "https://github.com/hjosugi/irodori-table/blob/main/LICENSE"

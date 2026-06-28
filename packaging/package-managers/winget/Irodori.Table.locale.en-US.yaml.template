@@ -4,10 +4,10 @@ PackageLocale: en-US
 Publisher: __PUBLISHER_NAME__
 PublisherUrl: https://github.com/hjosugi
 PackageName: Irodori Table
-PackageUrl: https://hjosugi.github.io/irodori-table/
+PackageUrl: https://hjosugi.github.io/irodori-docs/
 License: MIT OR 0BSD
 LicenseUrl: https://github.com/hjosugi/irodori-table/blob/main/LICENSE
-PrivacyUrl: https://hjosugi.github.io/irodori-table/privacy.html
+PrivacyUrl: https://hjosugi.github.io/irodori-docs/privacy.html
 Copyright: Copyright Irodori Table contributors
 ShortDescription: Open-source SQL workbench for multiple database engines.
 Description: Irodori Table is a local-first desktop database workbench for SQL editing, schema inspection, result browsing, and database workflows.

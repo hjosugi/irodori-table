@@ -8,8 +8,8 @@ mdBook, a samples repo, or the private archive.
 
 | Repository | Visibility | Owns |
 | --- | --- | --- |
-| `irodori-table` | Public | Desktop app, app-local crates, extension SDK, local knowledge tools, static project site, and generated docs consumed by the app. |
-| `irodori-docs` | Public | Durable user/contributor docs, policy pages, reference pages, feature matrix, backlog/progress views, ADR-style docs, and public long-form explanations. |
+| `irodori-table` | Public | Desktop app, app-local crates, extension SDK, local knowledge tools, packaging templates, and generated docs consumed by the app/CI. |
+| `irodori-docs` | Public | Public mdBook/site, durable user/contributor docs, policy pages, reference pages, feature matrix, backlog/progress views, ADR-style docs, and public long-form explanations. |
 | `irodori-samples` | Public | Database compose files, seed data, and DB-specific sample query projects. |
 | `irodori-sql` | Public | Reusable SQL dialect, placeholder, metamodel, and schema-diff helpers. |
 | `irodori-knowledge` | Public | Shared error/job/knowledge crates used by this workspace. |
@@ -20,23 +20,24 @@ mdBook, a samples repo, or the private archive.
 
 - Root project entry points: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
   `ROADMAP.md`.
-- Implementation maps that must be edited with source changes, such as
-  `docs/implementation-architecture.md`.
-- Feature notes that describe code currently in this repo and are useful during
-  implementation, such as query plan analysis, local SQL generation, terminal,
-  data diff, and headless API notes.
 - Generated snapshots that are consumed by tooling or the desktop app:
   `docs/data-source-support-status.md`, selected `docs/cheatsheets/`, and
   `docs/extension-marketplace/*.json`.
-- `docs/site/`, which is the project landing/blog site. This is not the mdBook.
+- Machine-readable coordination files that local tools validate, such as
+  `docs/agent-workstreams.json`.
+- Short repo-local pointers, such as `docs/README.md` and this boundary policy.
 
 ## What Moves To `irodori-docs`
 
 - Stable user guides and contributor guides.
+- Public site pages.
 - Policy pages: clean-room, licensing, security process, release process.
 - Reference pages that should have durable public URLs.
 - Feature matrix, implementation progress, backlog, and release-readiness pages.
 - ADR-style decisions that explain why the system is shaped a certain way.
+- Long-form feature architecture docs, including implementation architecture,
+  migration/data-diff, local SQL generation, query plan explorer, integrated
+  terminal, headless API, distribution, and store/package registration.
 
 When a page is moved out, keep a local link from `docs/README.md` only if a code
 workflow still needs to discover it from this repository.
@@ -86,9 +87,10 @@ or app-consumed source needs it.
 
 ## Parallel Agent Boundary
 
-Use [parallel-agent-architecture.md](parallel-agent-architecture.md) and
-[agent-workstreams.json](agent-workstreams.json) when assigning work to multiple
-coding agents. The default split is:
+Use
+[parallel-agent-architecture](https://hjosugi.github.io/irodori-docs/parallel-agent-architecture.html)
+and [agent-workstreams.json](agent-workstreams.json) when assigning work to
+multiple coding agents. The default split is:
 
 - app/runtime/registry contract changes stay in `irodori-table`;
 - one connector implementation agent writes one `irodori-extension-*` repository;

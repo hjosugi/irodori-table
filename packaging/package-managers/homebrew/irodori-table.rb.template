@@ -6,7 +6,7 @@ cask "irodori-table" do
       verified: "github.com/hjosugi/irodori-table/"
   name "Irodori Table"
   desc "Open-source SQL workbench for multiple database engines"
-  homepage "https://hjosugi.github.io/irodori-table/"
+  homepage "https://hjosugi.github.io/irodori-docs/"
 
   livecheck do
     url :url

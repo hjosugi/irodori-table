@@ -7,42 +7,28 @@ as an mdBook:
 - **Markdown source:** <https://github.com/hjosugi/irodori-docs> (under `src/`)
 - **PDF:** open the book and use the print icon → *Save as PDF*
 
-This repo keeps only documents that are tied directly to the app source tree,
-generated from this repo, or needed by the static project site. The detailed
-placement/archive rules are in
-[repository-boundaries.md](repository-boundaries.md).
+This repo keeps only documents that are generated from this repo, consumed by
+the desktop app/CI, or needed as a short local pointer. Public site pages and
+durable feature docs live in `irodori-docs`. The detailed placement/archive rules
+are in [repository-boundaries.md](repository-boundaries.md).
 
-## Local Source-Of-Truth Docs
+## Public Docs Moved To `irodori-docs`
 
-These are intentionally kept next to the code because they describe current
-implementation shape or are edited while changing this repo:
+Use the mdBook source for stable, reader-facing documentation:
 
-- [implementation-architecture.md](implementation-architecture.md) — current
-  codebase map, module boundaries, Tauri/API flow, and implementation diagrams.
-- [parallel-agent-architecture.md](parallel-agent-architecture.md) — workstream
-  ownership, connector-agent lanes, serialized contracts, and validation for
-  parallel coding agents.
-- [roadmap-1.0.md](roadmap-1.0.md) — what's required for a 1.0 release (scope,
-  P0/P1, deferrals).
-- [distribution.md](distribution.md) — download/update channels (GitHub Releases,
-  Tauri updater, cargo, package managers) and their status.
-- [store-registration.md](store-registration.md) — public app-store and
-  package-manager listing metadata, support/privacy/disclaimer URLs, and
-  submission checklists.
-- [support.md](support.md), [privacy.md](privacy.md), and
-  [disclaimer.md](disclaimer.md) — public text mirrored into the static project
-  site for store submissions.
-- [ai-local-sql-generation.md](ai-local-sql-generation.md) — local,
-  grammar-constrained NL→SQL generation + pluggable model providers.
-- [data-verification-diff.md](data-verification-diff.md) — current migration
-  planner, row-hash/diff SQL, selected-row repair SQL, and the target
-  high-scale data-diff architecture.
-- [integrated-terminal.md](integrated-terminal.md) — the PTY-backed xterm.js
-  terminal panel.
-- [headless-data-api.md](headless-data-api.md) — the optional local HTTP data API
-  (`irodori-server`).
-- [query-plan-explorer.md](query-plan-explorer.md) — execution-plan UI and
-  analysis model notes for the desktop feature.
+- [Implementation architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html)
+- [Parallel agent architecture](https://hjosugi.github.io/irodori-docs/parallel-agent-architecture.html)
+- [Path to 1.0](https://hjosugi.github.io/irodori-docs/roadmap-1.0.html)
+- [Distribution and updates](https://hjosugi.github.io/irodori-docs/distribution.html)
+- [Store and package registration](https://hjosugi.github.io/irodori-docs/store-registration.html)
+- [Support](https://hjosugi.github.io/irodori-docs/support.html),
+  [privacy](https://hjosugi.github.io/irodori-docs/privacy.html), and
+  [disclaimer](https://hjosugi.github.io/irodori-docs/disclaimer.html)
+- [Local SQL generation](https://hjosugi.github.io/irodori-docs/ai-local-sql-generation.html)
+- [Data verification diff](https://hjosugi.github.io/irodori-docs/data-verification-diff.html)
+- [Integrated terminal](https://hjosugi.github.io/irodori-docs/integrated-terminal.html)
+- [Headless local data API](https://hjosugi.github.io/irodori-docs/headless-data-api.html)
+- [Query plan explorer](https://hjosugi.github.io/irodori-docs/query-plan-explorer.html)
 
 ## Generated Or Mirrored Here
 
@@ -59,9 +45,6 @@ CI needs them:
 - [agent-workstreams.json](agent-workstreams.json) — machine-readable
   workstream ownership for parallel agent development
   (`tools/docs/agent-workstreams.mjs`).
-
-The static project site (landing page, blog) stays under [site/](site/) and is
-deployed by `.github/workflows/pages.yml`.
 
 ## External Repositories
 

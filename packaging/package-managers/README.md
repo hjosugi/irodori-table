@@ -4,7 +4,8 @@ These files are submission templates, not ready-to-submit manifests. Replace
 every `__PLACEHOLDER__` value after a GitHub Release exists and the artifact
 names, sha256 checksums, signatures, and installer behavior are verified.
 
-Canonical public metadata lives in [docs/store-registration.md](../../docs/store-registration.md).
+Canonical public metadata lives in
+[store-registration](https://hjosugi.github.io/irodori-docs/store-registration.html).
 
 ## Release values to collect
 

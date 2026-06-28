@@ -30,7 +30,7 @@ read first.
    [docs/data-source-support-status.md](docs/data-source-support-status.md).
 4. For product direction, read [ROADMAP.md](ROADMAP.md).
 5. For implementation architecture, read
-   [docs/implementation-architecture.md](docs/implementation-architecture.md).
+   [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html).
 6. For contribution rules, especially clean-room and licensing rules, read
    [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -201,8 +201,7 @@ make check
 | `tools/security/` | Local security automation config used by `make security`. |
 | `tools/knowledge/` | Local knowledge-base refresh, analysis, query, and cheatsheet generation tools. |
 | `knowledge/` | Tracked schema/source registry for the generated local knowledge database. |
-| `docs/site/` | Static project site published by GitHub Pages. |
-| `docs/` | Repo-local docs, generated snapshots, and pointers to the public mdBook. See [docs/repository-boundaries.md](docs/repository-boundaries.md). |
+| `docs/` | Generated/app-consumed docs and pointers to the public mdBook. See [docs/repository-boundaries.md](docs/repository-boundaries.md). |
 | `.irodori-local/ref/` | Optional local reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit. |
 | `../irodori-samples/` | Sibling checkout containing per-engine database compose files and sample schemas. |
 
@@ -210,20 +209,20 @@ make check
 
 | Need | Read |
 | --- | --- |
-| Implementation architecture and module boundaries | [docs/implementation-architecture.md](docs/implementation-architecture.md) |
-| Migration planning, row-hash validation, and data diff design | [docs/data-verification-diff.md](docs/data-verification-diff.md) |
+| Implementation architecture and module boundaries | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html) |
+| Migration planning, row-hash validation, and data diff design | [data-verification-diff](https://hjosugi.github.io/irodori-docs/data-verification-diff.html) |
 | Linux setup, WebKit crashes, blank Tauri window | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) |
 | Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
 | Connection syntax and engine quirks | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html) |
 | Sample database containers | [irodori-samples](https://github.com/hjosugi/irodori-samples) |
 | Doc/repo/archive ownership | [docs/repository-boundaries.md](docs/repository-boundaries.md) |
-| Product capability matrix | [feature-matrix](https://hjosugi.github.io/irodori-docs/feature-matrix.html) |
-| Current implementation snapshot | [implementation-progress](https://hjosugi.github.io/irodori-docs/implementation-progress.html) |
-| Backlog and task IDs | [implementation-backlog](https://hjosugi.github.io/irodori-docs/implementation-backlog.html) |
-| Store/package registration pack | [docs/store-registration.md](docs/store-registration.md) |
+| Product capability strategy | [data-source-coverage-strategy](https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html) |
+| Current implementation snapshot | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html) |
+| Roadmap and task direction | [roadmap-1.0](https://hjosugi.github.io/irodori-docs/roadmap-1.0.html) |
+| Store/package registration pack | [store-registration](https://hjosugi.github.io/irodori-docs/store-registration.html) |
 | UI language switching and translation keys | [i18n](https://hjosugi.github.io/irodori-docs/i18n.html) |
-| Release-readiness checklist | [production-readiness](https://hjosugi.github.io/irodori-docs/production-readiness.html) |
-| Maintainability audit | [maintainability-audit](https://hjosugi.github.io/irodori-docs/maintainability-audit.html) |
+| Release and distribution status | [distribution](https://hjosugi.github.io/irodori-docs/distribution.html) |
+| Data-source content audit | [data-source-content-audit](https://hjosugi.github.io/irodori-docs/data-source-content-audit.html) |
 | Extension development | [extension-development](https://hjosugi.github.io/irodori-docs/extension-development.html) and [packages/extension-sdk/README.md](packages/extension-sdk/README.md) |
 | Clean-room rules | [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html) |
 | License policy | [licensing](https://hjosugi.github.io/irodori-docs/licensing.html) |
