@@ -245,7 +245,7 @@ make check
 | --- | --- |
 | `apps/desktop/` | Main Tauri + React desktop application. |
 | `apps/desktop/src-tauri/` | Rust backend for the desktop app, including DB adapters and Tauri commands. |
-| `crates/` | Shared Rust crates for core models, SQL/completion, proxy/secret handling, extension APIs, IO, server, and knowledge tooling. |
+| `irodori-kit` (sibling repo) | Shared Rust foundation crates (core models, completion, proxy/secret handling, extension APIs, IO, server) — extracted to [hjosugi/irodori-kit](https://github.com/hjosugi/irodori-kit), consumed via git tag. |
 | `packages/extension-sdk/` | TypeScript extension SDK package. |
 | `packages/extension-sdk/templates/` | Starter templates for extension authors. |
 | `examples/extensions/` | Example extensions. |

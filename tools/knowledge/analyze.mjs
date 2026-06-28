@@ -618,10 +618,10 @@ Options:
 }
 
 const COMPONENT_PATHS = {
-  driver: "apps/desktop/src-tauri/src/db/ and crates/irodori-data-sources",
+  driver: "apps/desktop/src-tauri/src/db/ database adapters",
   metadata: "metadata introspection in apps/desktop/src-tauri/src/db/",
-  sql_dialect: "crates/irodori-sql and apps/desktop/src/sql/",
-  completion: "crates/irodori-completion and the CodeMirror editor integration",
+  sql_dialect: "the irodori-sql crate and apps/desktop/src/sql/",
+  completion: "irodori-kit/irodori-completion and the CodeMirror editor integration",
   ui: "apps/desktop/src/ workbench UI",
   export: "apps/desktop/src/result-export.ts and import/export flows",
   planning: "https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html and https://hjosugi.github.io/irodori-docs/roadmap-1.0.html"

@@ -30,7 +30,7 @@
       "id": "native-connector-abi",
       "owner": "extension-host",
       "paths": [
-        "crates/irodori-extension/**",
+        "../irodori-kit/irodori-extension/**",
         "packages/extension-sdk/**",
         "extension.schema.json",
         "tools/extensions/validate-manifests.mjs"
@@ -44,9 +44,9 @@
       "id": "portable-connection",
       "owner": "db-runtime",
       "paths": [
-        "crates/irodori-connection/**",
-        "crates/irodori-secure-store/**",
-        "crates/irodori-proxy/**",
+        "../irodori-kit/irodori-connection/**",
+        "../irodori-kit/irodori-secure-store/**",
+        "../irodori-kit/irodori-proxy/**",
         "apps/desktop/src-tauri/src/db/connection.rs",
         "apps/desktop/src-tauri/src/db/profile.rs",
         "apps/desktop/src-tauri/src/db/transport.rs"
@@ -72,7 +72,7 @@
       "id": "data-diff-contract",
       "owner": "migration-diff",
       "paths": [
-        "crates/irodori-io/**",
+        "../irodori-kit/irodori-io/**",
         "apps/desktop/src/features/migration/**",
         "apps/desktop/src-tauri/src/db/**"
       ],
@@ -98,8 +98,8 @@
         "docs/extension-marketplace/connector-repositories.json",
         "knowledge/engines.json",
         "apps/desktop/src-tauri/src/db/**",
-        "crates/irodori-connection/**",
-        "crates/irodori-extension/**",
+        "../irodori-kit/irodori-connection/**",
+        "../irodori-kit/irodori-extension/**",
         "packages/extension-sdk/**"
       ],
       "coordinatorWriteGlobs": [
@@ -126,7 +126,7 @@
       "repeatable": false,
       "exclusiveWriteGlobs": [
         "apps/desktop/src/features/extensions/**",
-        "crates/irodori-extension/**",
+        "../irodori-kit/irodori-extension/**",
         "packages/extension-sdk/**",
         "extension.schema.json",
         "tools/extensions/**"
@@ -152,9 +152,9 @@
       "repeatable": false,
       "exclusiveWriteGlobs": [
         "apps/desktop/src-tauri/src/db/**",
-        "crates/irodori-connection/**",
-        "crates/irodori-proxy/**",
-        "crates/irodori-secure-store/**"
+        "../irodori-kit/irodori-connection/**",
+        "../irodori-kit/irodori-proxy/**",
+        "../irodori-kit/irodori-secure-store/**"
       ],
       "coordinatorWriteGlobs": [
         "apps/desktop/src-tauri/src/db/engine.rs",
@@ -180,7 +180,7 @@
         "apps/desktop/src/features/migration/**",
         "apps/desktop/src-tauri/src/db/diff*.rs",
         "apps/desktop/src-tauri/src/db/migration*.rs",
-        "crates/irodori-io/**"
+        "../irodori-kit/irodori-io/**"
       ],
       "coordinatorWriteGlobs": [
         "apps/desktop/src-tauri/src/db/engine.rs",

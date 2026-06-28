@@ -3,8 +3,8 @@
 This package is the TypeScript SDK surface for Irodori Table extensions.
 
 The generated types in `src/generated/irodori-extension-api.ts` come from the
-Rust crate `crates/irodori-extension` through the same `typeship` flow used by
-the desktop app.
+`irodori-extension` crate (in the sibling `irodori-kit` repo) through the same
+`typeship` flow used by the desktop app.
 
 ## Manifest
 

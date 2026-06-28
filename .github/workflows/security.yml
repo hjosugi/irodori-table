@@ -12,7 +12,6 @@ on:
       - apps/**/Dockerfile
       - apps/**/package-lock.json
       - apps/**/package.json
-      - crates/**/Cargo.toml
       - scripts/check-licenses.sh
       - scripts/dependency-review.mjs
       - scripts/security-check.sh

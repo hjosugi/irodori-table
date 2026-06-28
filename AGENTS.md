@@ -22,8 +22,10 @@ These instructions apply to the whole repository. More specific `AGENTS.md` or
 
 - `apps/desktop/` is the Tauri, React, TypeScript, and Vite desktop app.
 - `apps/desktop/src-tauri/` is the desktop Rust backend and Tauri command layer.
-- `crates/` contains shared Rust crates for connection handling, proxying,
-  completion, generation, extensions, IO, security, and server work.
+- The shared Rust foundation crates (connection handling, proxying, completion,
+  generation, extensions, IO, security, and server work) live in the sibling
+  repo `irodori-kit` (https://github.com/hjosugi/irodori-kit) and are consumed
+  via git tag; the app depends on them through `[workspace.dependencies]`.
 - `packages/extension-sdk/` contains the TypeScript extension SDK and templates.
 - `examples/extensions/` contains example extensions.
 - `docs/agent-workstreams.json` is the machine-readable split for parallel

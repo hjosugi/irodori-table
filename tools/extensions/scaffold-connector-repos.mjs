@@ -71,31 +71,31 @@ const sharedMigrationSources = [
   },
   {
     kind: "portable-connection-contract",
-    path: "crates/irodori-connection/src/lib.rs",
+    path: "../irodori-kit/irodori-connection/src/lib.rs",
   },
   {
     kind: "portable-connection-contract",
-    path: "crates/irodori-connection/src/portable.rs",
+    path: "../irodori-kit/irodori-connection/src/portable.rs",
   },
   {
     kind: "secure-store-contract",
-    path: "crates/irodori-secure-store/src/lib.rs",
+    path: "../irodori-kit/irodori-secure-store/src/lib.rs",
   },
   {
     kind: "transport-contract",
-    path: "crates/irodori-core/src/lib.rs",
+    path: "../irodori-kit/irodori-core/src/lib.rs",
   },
   {
     kind: "transport-runtime",
-    path: "crates/irodori-proxy/src/lib.rs",
+    path: "../irodori-kit/irodori-proxy/src/lib.rs",
   },
   {
     kind: "transport-runtime",
-    path: "crates/irodori-proxy/src/plan.rs",
+    path: "../irodori-kit/irodori-proxy/src/plan.rs",
   },
   {
     kind: "transport-runtime",
-    path: "crates/irodori-proxy/src/resolved.rs",
+    path: "../irodori-kit/irodori-proxy/src/resolved.rs",
   },
 ];
 
