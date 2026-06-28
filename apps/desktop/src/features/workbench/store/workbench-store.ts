@@ -52,10 +52,10 @@ const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
 
 const sidebarWidthDefault = 200;
 const sidebarWidthMin = 180;
-const sidebarWidthMax = 420;
+const sidebarWidthMax = 640;
 const inspectorWidthDefault = 300;
 const inspectorWidthMin = 220;
-const inspectorWidthMax = 420;
+const inspectorWidthMax = 640;
 const resultsHeightDefault = 340;
 const resultsHeightMin = 220;
 const resultsHeightMax = 560;

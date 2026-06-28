@@ -24,8 +24,10 @@ use irodori_generate::{
     GenSchema, GenTable, GenerateRequest, GrammarChatAdapter, GrammarModel, HttpConfig, OllamaModel,
     OpenAiCompatModel, RelationKind,
 };
+use irodori_secure_store::{connection_secret_ref, SecretPurpose, SecretValue, SecureStore};
 
 use crate::db::{DbEngine, DbState, QueryPlanAnalysis};
+use crate::security::SecurityState;
 
 pub use chat::{ai_chat, ai_chat_cancel};
 
@@ -331,15 +333,111 @@ pub fn ai_delete_local_model(ai: State<'_, AiState>, app: AppHandle) -> IrodoriR
     Ok(())
 }
 
-/// Set the active generation provider (local model, Ollama, an HTTP API, or a CLI).
+/// Set the active generation/chat provider (local model, Ollama, an HTTP API, or a
+/// CLI). The selection is persisted so it survives a restart: non-secret fields go
+/// to a small JSON file in the app data dir, and the API key (if any) goes to the
+/// OS keychain — so the user never re-enters it. A blank key leaves any stored key
+/// untouched.
 #[tauri::command]
-pub fn ai_set_provider(ai: State<'_, AiState>, config: AiProviderConfig) -> IrodoriResult<()> {
+pub fn ai_set_provider(
+    ai: State<'_, AiState>,
+    security: State<'_, SecurityState>,
+    app: AppHandle,
+    config: AiProviderConfig,
+) -> IrodoriResult<()> {
+    persist_provider(&app, &security, &config)?;
+
+    // Resolve the in-memory key: use the freshly entered one, else fall back to
+    // whatever is already in the keychain so the provider can authenticate now.
+    let mut effective = config;
+    if effective
+        .api_key
+        .as_deref()
+        .map(|k| k.trim().is_empty())
+        .unwrap_or(true)
+    {
+        effective.api_key = load_secret(&security);
+    }
+
     let mut inner = ai
         .inner
         .lock()
         .map_err(|_| IrodoriError::new(IrodoriErrorKind::Internal, "ai state poisoned"))?;
-    inner.provider = config;
+    inner.provider = effective;
     Ok(())
+}
+
+/// Keychain handle for the AI provider API key (one shared slot, like the rest of
+/// the AI provider config).
+fn ai_secret_ref() -> IrodoriResult<irodori_core::SecretRef> {
+    connection_secret_ref("ai-provider", SecretPurpose::Token)
+        .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("secret ref: {e}")))
+}
+
+fn load_secret(security: &SecurityState) -> Option<String> {
+    let secret = ai_secret_ref().ok()?;
+    security.store().get(&secret).ok().flatten()
+}
+
+fn provider_config_path(app: &AppHandle) -> IrodoriResult<PathBuf> {
+    let dir = app.path().app_data_dir().map_err(|e| {
+        IrodoriError::new(
+            IrodoriErrorKind::Internal,
+            format!("could not resolve app data dir: {e}"),
+        )
+    })?;
+    Ok(dir.join("ai-provider.json"))
+}
+
+/// Write the provider selection: non-secret fields to JSON, the key to the keychain.
+fn persist_provider(
+    app: &AppHandle,
+    security: &SecurityState,
+    config: &AiProviderConfig,
+) -> IrodoriResult<()> {
+    let path = provider_config_path(app)?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            IrodoriError::new(IrodoriErrorKind::Internal, format!("create config dir: {e}"))
+        })?;
+    }
+    let mut sanitized = config.clone();
+    sanitized.api_key = None;
+    let json = serde_json::to_string_pretty(&sanitized).map_err(|e| {
+        IrodoriError::new(IrodoriErrorKind::Internal, format!("serialize provider: {e}"))
+    })?;
+    std::fs::write(&path, json).map_err(|e| {
+        IrodoriError::new(IrodoriErrorKind::Internal, format!("write provider config: {e}"))
+    })?;
+
+    if let Some(key) = config.api_key.as_deref().filter(|k| !k.trim().is_empty()) {
+        let secret = ai_secret_ref()?;
+        let value = SecretValue::new(key)
+            .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("secret: {e}")))?;
+        security
+            .store()
+            .put(&secret, value)
+            .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("store key: {e}")))?;
+    }
+    Ok(())
+}
+
+/// Restore the persisted provider into memory at startup (called from the Tauri
+/// `setup` hook). Best-effort: a missing/corrupt file just leaves the default.
+pub fn hydrate_provider(app: &AppHandle, ai: &AiState, security: &SecurityState) {
+    let Ok(path) = provider_config_path(app) else {
+        return;
+    };
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return;
+    };
+    let Ok(mut config) = serde_json::from_str::<AiProviderConfig>(&text) else {
+        return;
+    };
+    config.api_key = load_secret(security);
+    if let Ok(mut inner) = ai.inner.lock() {
+        inner.provider = config;
+    }
 }
 
 /// Get the active provider with the API key stripped.

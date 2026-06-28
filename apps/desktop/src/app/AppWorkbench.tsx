@@ -612,6 +612,16 @@ export function AppWorkbench() {
     } else {
       setSidebarOpen(true);
     }
+    // The chat panel needs more room than a tree view; open it comfortably wide
+    // (without shrinking a side the user already widened).
+    if (viewId === "aiChat") {
+      const comfortable = 420;
+      if (side === "right") {
+        setInspectorWidth((current) => Math.max(current, comfortable));
+      } else {
+        setSidebarWidth((current) => Math.max(current, comfortable));
+      }
+    }
     setViewVisibility((current) => {
       const next = { ...current };
       workbenchViewIds.forEach((id) => {

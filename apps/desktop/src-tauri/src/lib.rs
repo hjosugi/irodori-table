@@ -183,6 +183,16 @@ pub fn run() {
         .manage(security::SecurityState::default())
         .manage(ai::AiState::default())
         .manage(pty::PtyState::default())
+        .setup(|app| {
+            // Restore the persisted AI provider (selection + keychain API key) so
+            // the user doesn't reconfigure it on every launch.
+            use tauri::Manager;
+            let handle = app.handle().clone();
+            let ai = app.state::<ai::AiState>();
+            let security = app.state::<security::SecurityState>();
+            ai::hydrate_provider(&handle, &ai, &security);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,
             open_developer_tools,
