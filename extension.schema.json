@@ -395,6 +395,9 @@
       "additionalProperties": false,
       "required": [
         "schemaVersion",
+        "inferEnvironmentFrom",
+        "compatibility",
+        "defaults",
         "endpoint",
         "profileFields",
         "authMethods",
@@ -407,6 +410,50 @@
       "properties": {
         "schemaVersion": {
           "const": 1
+        },
+        "inferEnvironmentFrom": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "compatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["addsRequiredProfileFields", "acceptsExistingProfiles"],
+          "properties": {
+            "addsRequiredProfileFields": {
+              "type": "boolean"
+            },
+            "acceptsExistingProfiles": {
+              "type": "boolean"
+            }
+          }
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["engine", "wire", "port", "readOnly"],
+          "properties": {
+            "engine": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wire": {
+              "type": "string",
+              "minLength": 1
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            "readOnly": {
+              "type": "boolean"
+            }
+          }
         },
         "endpoint": {
           "$ref": "#/$defs/connectorEndpointModel"

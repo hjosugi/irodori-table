@@ -24,6 +24,13 @@ const platforms = [
   "linuxX64",
   "linuxArm64",
 ];
+const linkedDriverEngines = new Set(
+  (process.env.IRODORI_CONNECTOR_LINKED_DRIVERS ?? "")
+    .split(",")
+    .map((engine) => engine.trim())
+    .filter(Boolean),
+);
+const linkDuckDbDrivers = process.env.IRODORI_CONNECTOR_LINK_DUCKDB !== "0";
 
 const sharedMigrationSources = [
   {
@@ -107,7 +114,8 @@ function writeConnectorRepo(entry) {
   const moduleId = `${engine}.driver`;
   const label = connectorLabel(entry.name, engineMeta.label);
   const features = connectorFeatures(entry, engineMeta);
-  const realDriverLinked = isDuckDbBackedConnector(engine);
+  const realDriverLinked =
+    linkedDriverEngines.has(engine) || (linkDuckDbDrivers && isDuckDbBackedConnector(engine));
   const visibility = entry.visibility ?? "public";
   const permissions = unique([
     ...(entry.permissions ?? []),
@@ -221,9 +229,9 @@ function writeConnectorRepo(entry) {
   copyMigrationSources(repoDir, migrationSources);
   writeText(resolve(repoDir, "LICENSE-MIT"), licenseMit());
   writeText(resolve(repoDir, "LICENSE-0BSD"), licenseZeroBsd());
-  writeText(resolve(repoDir, "Makefile"), makefile());
+  writeText(resolve(repoDir, "Makefile"), makefile(realDriverLinked));
   writeText(resolve(repoDir, ".gitignore"), gitignore());
-  writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow());
+  writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(realDriverLinked));
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
 }
 
@@ -950,7 +958,7 @@ function cargoToml(packageName, crateName, realDriverLinked) {
   const dependencies = realDriverLinked
     ? `
 [features]
-default = ["bundled-duckdb"]
+default = []
 bundled-duckdb = ["duckdb/bundled"]
 
 [dependencies]
@@ -977,6 +985,14 @@ name = "${crateName}"
 crate-type = ["cdylib", "rlib"]
 ${dependencies}
 ${devDependencies}
+[profile.dev.package."*"]
+debug = 0
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
 `;
 }
 
@@ -1127,9 +1143,7 @@ mod tests {
         assert!(config["connection"]["authMethods"]
             .as_array()
             .is_some_and(|methods| !methods.is_empty()));
-        assert!(config["connection"]["secretPurposes"]
-            .as_array()
-            .is_some_and(|purposes| !purposes.is_empty()));
+        assert!(config["connection"]["secretPurposes"].as_array().is_some());
         assert!(manifest["permissions"]
             .as_array()
             .unwrap()
@@ -1834,10 +1848,10 @@ function readme(entry, engineMeta, visibility, realDriverLinked, connection) {
     : "Driver operations such as `connect`, `query`, and `metadata` intentionally return `connector.driverNotLinked` until the engine implementation is connected.";
   const localBuildNote = realDriverLinked
     ? `
-DuckDB-linked builds share \`../target\` across sibling extension repositories. The default \`bundled-duckdb\` feature builds a reproducible embedded DuckDB library; for faster local iteration with a system \`libduckdb\`, run \`cargo test --no-default-features\`.
+DuckDB-linked builds share \`../target\` across sibling extension repositories. Normal \`make check\` does not enable \`bundled-duckdb\`; run \`make check-duckdb-bundled\` only when a self-contained DuckDB binary is required, because it compiles libduckdb C++ and can consume significant CPU.
 `
     : `
-Generated extension repositories share \`../target\` across sibling repositories so Rust dependencies are compiled once per checkout.
+Generated extension repositories share \`../target\` across sibling repositories so Rust dependencies are compiled once per checkout. Driver-linked DuckDB scaffolds are opt-in: run the scaffold with \`IRODORI_CONNECTOR_LINK_DUCKDB=1\` or \`IRODORI_CONNECTOR_LINKED_DRIVERS=duckdb,motherduck\` only when you need the local DuckDB driver.
 `;
   const authRows = connection.authMethods
     .map(
@@ -1937,25 +1951,45 @@ Engine status from \`knowledge/engines.json\`: \`${engineMeta.status}\`.
 `;
 }
 
-function makefile() {
+function makefile(realDriverLinked) {
+  const lintCommand = realDriverLinked
+    ? "$(CARGO) clippy --all-targets --no-default-features -- -D warnings"
+    : "$(CARGO) clippy --all-targets -- -D warnings";
+  const testCommand = realDriverLinked
+    ? "$(CARGO) check --tests --no-default-features"
+    : "$(CARGO) test";
+  const duckDbCheckTarget = realDriverLinked
+    ? `
+check-duckdb-bundled: fmt
+\t$(CARGO) clippy --all-targets --features bundled-duckdb -- -D warnings
+\t$(CARGO) test --features bundled-duckdb
+`
+    : "";
+  const phonyTargets = realDriverLinked
+    ? "build check check-duckdb-bundled fmt lint test package clean"
+    : "build check fmt lint test package clean";
   return `CARGO ?= cargo
 CARGO_TARGET_DIR ?= ../target
+CARGO_BUILD_JOBS ?= 2
+export CARGO_TARGET_DIR
+export CARGO_BUILD_JOBS
 
-.PHONY: build check fmt lint test package clean
+.PHONY: ${phonyTargets}
 
 check: fmt lint test
+${duckDbCheckTarget}
 
 fmt:
 \t$(CARGO) fmt --check
 
 lint:
-\t$(CARGO) clippy --all-targets -- -D warnings
+\t${lintCommand}
 
 build:
 \t$(CARGO) build --release
 
 test:
-\t$(CARGO) test
+\t${testCommand}
 
 package: build
 \tmkdir -p dist/native
@@ -1976,7 +2010,13 @@ dist/native/*
 `;
 }
 
-function ciWorkflow() {
+function ciWorkflow(realDriverLinked) {
+  const clippyCommand = realDriverLinked
+    ? "cargo clippy --all-targets --features bundled-duckdb -- -D warnings"
+    : "cargo clippy --all-targets -- -D warnings";
+  const testCommand = realDriverLinked
+    ? "cargo test --features bundled-duckdb"
+    : "cargo test";
   return `name: CI
 
 on:
@@ -1986,6 +2026,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      CARGO_BUILD_JOBS: "2"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -1993,8 +2035,8 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: ${clippyCommand}
+      - run: ${testCommand}
 `;
 }
 
