@@ -31,8 +31,10 @@ export {
 } from "./store/workbench-store";
 export {
   activeWorkbenchView,
+  activeWorkbenchViewForSide,
   defaultWorkbenchViewPlacements,
   defaultWorkbenchViewVisibility,
+  workbenchViewsForSide,
   workbenchViewIds,
 } from "./types";
 export type {

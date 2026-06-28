@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
+  type ReactNode,
 } from "react";
 import type { CSSProperties } from "react";
 import {
@@ -57,11 +58,13 @@ type EditorSplitModeUpdater =
 
 export interface QueryEditorPaneProps {
   activeTabLabel: string;
-  activeConnectionOpen: boolean;
   running: boolean;
   formatter: SqlFormatterId;
-  query: string;
-  onQueryChange: (next: string) => void;
+  primaryQuery: string;
+  secondaryQuery: string;
+  onPrimaryQueryChange: (next: string) => void;
+  onSecondaryQueryChange: (next: string) => void;
+  renderEditorTabStrip: (group: EditorGroup) => ReactNode;
   editorEngine: DbEngine;
   activeMetadata?: DatabaseMetadata;
   sqlSnippets: readonly SqlSnippetDefinition[];
@@ -78,7 +81,7 @@ export interface QueryEditorPaneProps {
   setEditorSplitMode: (value: EditorSplitModeUpdater) => void;
   activeEditorGroup: EditorGroup;
   setActiveEditorGroup: (group: EditorGroup) => void;
-  setEditorSelection: (selection: EditorSelections) => void;
+  setEditorSelection: (group: EditorGroup, selection: EditorSelections) => void;
   runPrimaryLabel: string;
   runShortcutLabel: string;
   runCurrentShortcutLabel: string;
@@ -110,11 +113,13 @@ export interface QueryEditorPaneProps {
 
 export function QueryEditorPane({
   activeTabLabel,
-  activeConnectionOpen,
   running,
   formatter,
-  query,
-  onQueryChange,
+  primaryQuery,
+  secondaryQuery,
+  onPrimaryQueryChange,
+  onSecondaryQueryChange,
+  renderEditorTabStrip,
   editorEngine,
   activeMetadata,
   sqlSnippets,
@@ -169,6 +174,8 @@ export function QueryEditorPane({
     editorBackgroundImage,
     editorBackgroundOpacity,
   );
+  const activeQuery =
+    activeEditorGroup === "secondary" ? secondaryQuery : primaryQuery;
 
   useEffect(() => {
     if (!contextMenu) {
@@ -309,122 +316,13 @@ export function QueryEditorPane({
   };
 
   return (
-    <section
-      className={`editor-pane${sqlFileDragOver ? " sql-file-drag-over" : ""}`}
-      data-drop-label={sqlFileDropLabel}
-      aria-label={activeTabLabel}
-      onDragEnter={handleSqlFileDragEnter}
-      onDragOver={handleSqlFileDragOver}
-      onDragLeave={handleSqlFileDragLeave}
-      onDrop={handleSqlFileDrop}
-    >
-      <div className="editor-meta">
-        <div className="editor-title">
-          <span>{activeTabLabel}</span>
-          <small>
-            {running ? "running..." : activeConnectionOpen ? "ready" : "closed"}
-          </small>
-        </div>
-      </div>
-      <div
-        ref={editorSplitRef}
-        className={`editor-split editor-split-${editorSplitMode}`}
-      >
-        <div
-          className={`editor-shell editor-group${
-            activeEditorGroup === "primary" ? " active" : ""
-          }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
-          style={editorBackgroundStyle}
-          onFocusCapture={() => setActiveEditorGroup("primary")}
-          onPointerDown={() => setActiveEditorGroup("primary")}
-          onContextMenu={(event) => openEditorContextMenu(event, "primary")}
-        >
-          {editorBackgroundStyle ? (
-            <div className="editor-background-image" aria-hidden="true" />
-          ) : null}
-          <SqlEditor
-            ref={editorApiRef}
-            value={query}
-            onChange={onQueryChange}
-            onSelectionChange={(selection) => {
-              setActiveEditorGroup("primary");
-              setEditorSelection(selection);
-            }}
-            engine={editorEngine}
-            metadata={activeMetadata}
-            snippets={sqlSnippets}
-            theme={theme}
-            vimMode={vimMode}
-            formatter={formatter}
-            linter={sqlLinter}
-            onMetadataJump={onMetadataJump}
-            onMetadataToolWindow={setMetadataToolWindow}
-          />
-        </div>
-        {editorSplitOpen ? (
-          <>
-            <div
-              className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
-              role="separator"
-              aria-label="Resize editor split"
-              aria-orientation={
-                editorSplitMode === "down" ? "horizontal" : "vertical"
-              }
-              tabIndex={0}
-              onPointerDown={beginEditorSplitResize}
-              onKeyDown={onEditorSplitResizeKey}
-            />
-            <div
-              className={`editor-shell editor-group${
-                activeEditorGroup === "secondary" ? " active" : ""
-              }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
-              style={editorBackgroundStyle}
-              onFocusCapture={() => setActiveEditorGroup("secondary")}
-              onPointerDown={() => setActiveEditorGroup("secondary")}
-              onContextMenu={(event) => openEditorContextMenu(event, "secondary")}
-            >
-              {editorBackgroundStyle ? (
-                <div className="editor-background-image" aria-hidden="true" />
-              ) : null}
-              <SqlEditor
-                ref={secondaryEditorApiRef}
-                value={query}
-                onChange={onQueryChange}
-                onSelectionChange={(selection) => {
-                  setActiveEditorGroup("secondary");
-                  setEditorSelection(selection);
-                }}
-                engine={editorEngine}
-                metadata={activeMetadata}
-                snippets={sqlSnippets}
-                theme={theme}
-                vimMode={vimMode}
-                formatter={formatter}
-                linter={sqlLinter}
-                onMetadataJump={onMetadataJump}
-                onMetadataToolWindow={setMetadataToolWindow}
-              />
-            </div>
-          </>
-        ) : null}
-      </div>
-      {metadataToolWindow ? (
-        <MetadataToolWindow
-          request={metadataToolWindow}
-          query={query}
-          onClose={() => setMetadataToolWindow(null)}
-          onEdit={() => {
-            onMetadataJump?.(metadataToolWindow.target);
-            setMetadataToolWindow(null);
-          }}
-          onRevealUsage={revealMetadataUsage}
-        />
-      ) : null}
-      <div className="editor-floating-actions">
+    <>
+      <div className="query-toolbar">
+        <div className="query-toolbar-spacer" aria-hidden="true" />
         <div
           className="editor-action-dock"
           role="toolbar"
-          aria-label="Editor actions"
+          aria-label="SQL query actions"
         >
           <div className="editor-command-bar">
             <button
@@ -525,20 +423,6 @@ export function QueryEditorPane({
               <Save size={15} />
               <span>Save</span>
             </button>
-            <button
-              className="text-button toolbar-command"
-              type="button"
-              title={
-                runAllShortcutLabel
-                  ? `Run All (${runAllShortcutLabel})`
-                  : "Run All"
-              }
-              disabled={running}
-              onClick={() => void runAllQuery()}
-            >
-              <Play size={15} />
-              <span>Run All</span>
-            </button>
             <div className="run-control editor-floating-run" ref={runControlRef}>
               <button
                 className="primary-action run-main-button"
@@ -618,6 +502,115 @@ export function QueryEditorPane({
           </div>
         </div>
       </div>
+      <section
+        className={`editor-pane${sqlFileDragOver ? " sql-file-drag-over" : ""}`}
+        data-drop-label={sqlFileDropLabel}
+        aria-label={activeTabLabel}
+        onDragEnter={handleSqlFileDragEnter}
+        onDragOver={handleSqlFileDragOver}
+        onDragLeave={handleSqlFileDragLeave}
+        onDrop={handleSqlFileDrop}
+      >
+      <div
+        ref={editorSplitRef}
+        className={`editor-split editor-split-${editorSplitMode}`}
+      >
+        <div
+          className={`editor-shell editor-group${
+            activeEditorGroup === "primary" ? " active" : ""
+          }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
+          style={editorBackgroundStyle}
+          onFocusCapture={() => setActiveEditorGroup("primary")}
+          onPointerDown={() => setActiveEditorGroup("primary")}
+          onContextMenu={(event) => openEditorContextMenu(event, "primary")}
+        >
+          {editorBackgroundStyle ? (
+            <div className="editor-background-image" aria-hidden="true" />
+          ) : null}
+          {renderEditorTabStrip("primary")}
+          <div className="editor-buffer">
+            <SqlEditor
+              ref={editorApiRef}
+              value={primaryQuery}
+              onChange={onPrimaryQueryChange}
+              onSelectionChange={(selection) => {
+                setActiveEditorGroup("primary");
+                setEditorSelection("primary", selection);
+              }}
+              engine={editorEngine}
+              metadata={activeMetadata}
+              snippets={sqlSnippets}
+              theme={theme}
+              vimMode={vimMode}
+              formatter={formatter}
+              linter={sqlLinter}
+              onMetadataJump={onMetadataJump}
+              onMetadataToolWindow={setMetadataToolWindow}
+            />
+          </div>
+        </div>
+        {editorSplitOpen ? (
+          <>
+            <div
+              className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
+              role="separator"
+              aria-label="Resize editor split"
+              aria-orientation={
+                editorSplitMode === "down" ? "horizontal" : "vertical"
+              }
+              tabIndex={0}
+              onPointerDown={beginEditorSplitResize}
+              onKeyDown={onEditorSplitResizeKey}
+            />
+            <div
+              className={`editor-shell editor-group${
+                activeEditorGroup === "secondary" ? " active" : ""
+              }${editorBackgroundStyle ? " editor-shell-has-background" : ""}`}
+              style={editorBackgroundStyle}
+              onFocusCapture={() => setActiveEditorGroup("secondary")}
+              onPointerDown={() => setActiveEditorGroup("secondary")}
+              onContextMenu={(event) => openEditorContextMenu(event, "secondary")}
+            >
+              {editorBackgroundStyle ? (
+                <div className="editor-background-image" aria-hidden="true" />
+              ) : null}
+              {renderEditorTabStrip("secondary")}
+              <div className="editor-buffer">
+                <SqlEditor
+                  ref={secondaryEditorApiRef}
+                  value={secondaryQuery}
+                  onChange={onSecondaryQueryChange}
+                  onSelectionChange={(selection) => {
+                    setActiveEditorGroup("secondary");
+                    setEditorSelection("secondary", selection);
+                  }}
+                  engine={editorEngine}
+                  metadata={activeMetadata}
+                  snippets={sqlSnippets}
+                  theme={theme}
+                  vimMode={vimMode}
+                  formatter={formatter}
+                  linter={sqlLinter}
+                  onMetadataJump={onMetadataJump}
+                  onMetadataToolWindow={setMetadataToolWindow}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
+      {metadataToolWindow ? (
+        <MetadataToolWindow
+          request={metadataToolWindow}
+          query={activeQuery}
+          onClose={() => setMetadataToolWindow(null)}
+          onEdit={() => {
+            onMetadataJump?.(metadataToolWindow.target);
+            setMetadataToolWindow(null);
+          }}
+          onRevealUsage={revealMetadataUsage}
+        />
+      ) : null}
       {contextMenu ? (
         <div
           className="app-menu-popover editor-context-menu"
@@ -726,7 +719,8 @@ export function QueryEditorPane({
           </button>
         </div>
       ) : null}
-    </section>
+      </section>
+    </>
   );
 }
 

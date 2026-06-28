@@ -8,10 +8,12 @@
 //! just as safe as the embedded one, only its mistakes get rejected instead of
 //! prevented. Uses a blocking client so it fits the synchronous [`GrammarModel`].
 
+use std::io::{BufRead, BufReader};
 use std::time::Duration;
 
 use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
 
+use crate::chat::{ChatMessage, ChatModel};
 use crate::runtime::{DecodeOptions, GrammarModel, ModelDescription, ModelOutput};
 
 #[derive(Debug, Clone)]
@@ -170,6 +172,166 @@ impl GrammarModel for OpenAiCompatModel {
             text,
             tokens_in: token_count(&value, "/usage/prompt_tokens"),
             tokens_out: token_count(&value, "/usage/completion_tokens"),
+        })
+    }
+
+    fn describe(&self) -> ModelDescription {
+        ModelDescription {
+            name: self.config.label.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Streaming chat
+// ---------------------------------------------------------------------------
+
+fn messages_json(messages: &[ChatMessage]) -> Vec<serde_json::Value> {
+    messages
+        .iter()
+        .map(|m| {
+            serde_json::json!({ "role": m.role.as_api_str(), "content": m.content })
+        })
+        .collect()
+}
+
+impl ChatModel for OllamaModel {
+    /// Streams via Ollama's `/api/chat` (newline-delimited JSON objects, each with
+    /// `message.content` deltas; the final object carries `done: true` + counts).
+    fn chat(
+        &self,
+        messages: &[ChatMessage],
+        options: &DecodeOptions,
+        on_token: &mut dyn FnMut(&str),
+    ) -> Result<ModelOutput> {
+        let url = format!("{}/api/chat", self.config.endpoint.trim_end_matches('/'));
+        let body = serde_json::json!({
+            "model": self.config.model,
+            "messages": messages_json(messages),
+            "stream": true,
+            "options": { "temperature": options.temperature },
+        });
+        let response = client(self.config.timeout_secs)?
+            .post(url)
+            .json(&body)
+            .send()
+            .map_err(|e| IrodoriError::transport(format!("ollama request failed: {e}")))?;
+        if !response.status().is_success() {
+            return Err(IrodoriError::transport(format!(
+                "ollama returned HTTP {}",
+                response.status()
+            )));
+        }
+
+        let mut text = String::new();
+        let mut tokens_in = 0u32;
+        let mut tokens_out = 0u32;
+        let reader = BufReader::new(response);
+        for line in reader.lines() {
+            let line = line.map_err(|e| internal(format!("ollama stream: {e}")))?;
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let value: serde_json::Value = match serde_json::from_str(line) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if let Some(chunk) = value.pointer("/message/content").and_then(|v| v.as_str()) {
+                if !chunk.is_empty() {
+                    text.push_str(chunk);
+                    on_token(chunk);
+                }
+            }
+            if value.get("done").and_then(|v| v.as_bool()).unwrap_or(false) {
+                tokens_in = token_count(&value, "prompt_eval_count");
+                tokens_out = token_count(&value, "eval_count");
+            }
+        }
+        Ok(ModelOutput {
+            text,
+            tokens_in,
+            tokens_out,
+        })
+    }
+
+    fn describe(&self) -> ModelDescription {
+        ModelDescription {
+            name: self.config.label.clone(),
+        }
+    }
+}
+
+impl ChatModel for OpenAiCompatModel {
+    /// Streams via Server-Sent Events (`stream: true`): each `data:` line is a
+    /// JSON chunk with `choices[0].delta.content`; the stream ends on
+    /// `data: [DONE]`. Works for OpenAI, Gemini's OpenAI-compatible endpoint,
+    /// DeepSeek, OpenRouter, Azure, and self-hosted gateways.
+    fn chat(
+        &self,
+        messages: &[ChatMessage],
+        options: &DecodeOptions,
+        on_token: &mut dyn FnMut(&str),
+    ) -> Result<ModelOutput> {
+        let body = serde_json::json!({
+            "model": self.config.model,
+            "temperature": options.temperature,
+            "stream": true,
+            "stream_options": { "include_usage": true },
+            "messages": messages_json(messages),
+        });
+        let mut request = client(self.config.timeout_secs)?
+            .post(self.url())
+            .json(&body);
+        if let Some(key) = &self.config.api_key {
+            request = request.bearer_auth(key);
+        }
+        let response = request
+            .send()
+            .map_err(|e| IrodoriError::transport(format!("api request failed: {e}")))?;
+        if !response.status().is_success() {
+            return Err(IrodoriError::transport(format!(
+                "api returned HTTP {}",
+                response.status()
+            )));
+        }
+
+        let mut text = String::new();
+        let mut tokens_in = 0u32;
+        let mut tokens_out = 0u32;
+        let reader = BufReader::new(response);
+        for line in reader.lines() {
+            let line = line.map_err(|e| internal(format!("api stream: {e}")))?;
+            let line = line.trim();
+            let Some(payload) = line.strip_prefix("data:") else {
+                continue;
+            };
+            let payload = payload.trim();
+            if payload == "[DONE]" {
+                break;
+            }
+            let value: serde_json::Value = match serde_json::from_str(payload) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if let Some(chunk) = value
+                .pointer("/choices/0/delta/content")
+                .and_then(|v| v.as_str())
+            {
+                if !chunk.is_empty() {
+                    text.push_str(chunk);
+                    on_token(chunk);
+                }
+            }
+            if let Some(usage) = value.get("usage").filter(|u| !u.is_null()) {
+                tokens_in = token_count(usage, "prompt_tokens");
+                tokens_out = token_count(usage, "completion_tokens");
+            }
+        }
+        Ok(ModelOutput {
+            text,
+            tokens_in,
+            tokens_out,
         })
     }
 

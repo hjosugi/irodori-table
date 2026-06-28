@@ -7,11 +7,12 @@
 //! schema-validated, so even an unconstrained agent can't yield invalid or
 //! hallucinated SQL — it's just rejected. No extra dependencies (std only).
 
-use std::io::Write;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
 
 use irodori_error::{IrodoriError, IrodoriErrorKind, Result};
 
+use crate::chat::{flatten_transcript, ChatMessage, ChatModel};
 use crate::runtime::{DecodeOptions, GrammarModel, ModelDescription, ModelOutput};
 
 /// `{prompt}` placeholder substituted into args; if absent, the prompt is piped
@@ -105,6 +106,94 @@ impl GrammarModel for CommandModel {
         }
 
         let text = String::from_utf8_lossy(&output.stdout).into_owned();
+        Ok(ModelOutput {
+            text,
+            tokens_in: 0,
+            tokens_out: 0,
+        })
+    }
+
+    fn describe(&self) -> ModelDescription {
+        ModelDescription {
+            name: self.config.label.clone(),
+        }
+    }
+}
+
+impl ChatModel for CommandModel {
+    /// Runs the CLI with the flattened conversation as its prompt and streams its
+    /// stdout line by line as it is produced. A CLI can't honor a structured
+    /// message list, so the transcript is rendered to text (the same shape the
+    /// embedded model sees). stderr is captured and surfaced on non-zero exit.
+    fn chat(
+        &self,
+        messages: &[ChatMessage],
+        _options: &DecodeOptions,
+        on_token: &mut dyn FnMut(&str),
+    ) -> Result<ModelOutput> {
+        let prompt = flatten_transcript(messages);
+        let uses_placeholder = self
+            .config
+            .args
+            .iter()
+            .any(|a| a.contains(PROMPT_PLACEHOLDER));
+
+        let mut command = Command::new(&self.config.program);
+        for arg in &self.config.args {
+            command.arg(arg.replace(PROMPT_PLACEHOLDER, &prompt));
+        }
+        command.stdout(Stdio::piped()).stderr(Stdio::piped());
+        if !uses_placeholder {
+            command.stdin(Stdio::piped());
+        }
+
+        let mut child = command.spawn().map_err(|e| {
+            IrodoriError::new(
+                IrodoriErrorKind::Unsupported,
+                format!("failed to start `{}`: {e}", self.config.program),
+            )
+        })?;
+
+        if !uses_placeholder {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(prompt.as_bytes()).map_err(|e| {
+                    IrodoriError::new(IrodoriErrorKind::Internal, format!("write stdin: {e}"))
+                })?;
+                // Drop stdin so the child sees EOF and can produce output.
+            }
+        }
+
+        let mut text = String::new();
+        if let Some(stdout) = child.stdout.take() {
+            let mut reader = BufReader::new(stdout);
+            let mut line = String::new();
+            loop {
+                line.clear();
+                let n = reader
+                    .read_line(&mut line)
+                    .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("read stdout: {e}")))?;
+                if n == 0 {
+                    break;
+                }
+                text.push_str(&line);
+                on_token(&line);
+            }
+        }
+
+        let status = child.wait().map_err(|e| {
+            IrodoriError::new(IrodoriErrorKind::Internal, format!("command failed: {e}"))
+        })?;
+        if !status.success() {
+            let mut stderr = String::new();
+            if let Some(mut err) = child.stderr.take() {
+                let _ = err.read_to_string(&mut stderr);
+            }
+            return Err(IrodoriError::new(
+                IrodoriErrorKind::Internal,
+                format!("`{}` exited with error: {}", self.config.program, stderr.trim()),
+            ));
+        }
+
         Ok(ModelOutput {
             text,
             tokens_in: 0,

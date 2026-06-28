@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
+  Bot,
   Columns3,
   Database,
   Flame,
@@ -35,6 +36,7 @@ import {
   type WorkspaceConnection,
 } from "@/features/connections";
 import type { WorkbenchViewId } from "../types";
+import type { WorkbenchSide } from "../types";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
@@ -42,13 +44,17 @@ type SidebarViewId = WorkbenchViewId;
 
 type SidebarProps = {
   sidebarOpen: boolean;
+  side: WorkbenchSide;
   activeView: SidebarViewId;
+  availableViews?: readonly SidebarViewId[];
+  showConnectionRail?: boolean;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
   planPanel: ReactNode;
   lakehousePanel: ReactNode;
   biPanel: ReactNode;
   gitPanel: ReactNode;
+  aiChatPanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
   activeConnectionId: string;
@@ -86,13 +92,17 @@ type SidebarProps = {
 
 export function Sidebar({
   sidebarOpen,
+  side,
   activeView,
+  availableViews,
+  showConnectionRail,
   completionPanel,
   historyPanel,
   planPanel,
   lakehousePanel,
   biPanel,
   gitPanel,
+  aiChatPanel,
   connections,
   profileById,
   activeConnectionId,
@@ -221,14 +231,21 @@ export function Sidebar({
         return biPanel;
       case "git":
         return gitPanel;
+      case "aiChat":
+        return aiChatPanel;
       case "objectBrowser":
         return null;
     }
   }
 
+  const availableViewSet = new Set(availableViews ?? []);
+  const isViewAvailable = (viewId: SidebarViewId) =>
+    !availableViews || availableViewSet.has(viewId);
+
   return (
     <>
-      <nav className="connection-rail" aria-label="Connections">
+      {showConnectionRail !== false ? (
+        <nav className="connection-rail" aria-label="Connections">
         <button
           className="rail-action"
           type="button"
@@ -269,97 +286,126 @@ export function Sidebar({
             );
           })}
         </div>
-      </nav>
+        </nav>
+      ) : null}
       {sidebarOpen ? (
-        <aside className="sidebar">
+        <aside className={`sidebar sidebar-${side}`}>
           <div className="sidebar-view-switcher" role="tablist" aria-label="Sidebar views">
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "objectBrowser" ? "active" : undefined}
-              aria-selected={activeView === "objectBrowser"}
-              title="Tables"
-              aria-label="Tables"
-              onClick={() => onSelectView("objectBrowser")}
-            >
-              <Table2 size={14} />
-              <span>Tables</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "completion" ? "active" : undefined}
-              aria-selected={activeView === "completion"}
-              title="Completion"
-              aria-label="Completion"
-              onClick={() => onSelectView("completion")}
-            >
-              <ListPlus size={14} />
-              <span>Completion</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "queryHistory" ? "active" : undefined}
-              aria-selected={activeView === "queryHistory"}
-              title="History"
-              aria-label="History"
-              onClick={() => onSelectView("queryHistory")}
-            >
-              <History size={14} />
-              <span>History</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "plan" ? "active" : undefined}
-              aria-selected={activeView === "plan"}
-              title="Plan"
-              aria-label="Plan"
-              onClick={() => onSelectView("plan")}
-            >
-              <Flame size={14} />
-              <span>Plan</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "lakehouse" ? "active" : undefined}
-              aria-selected={activeView === "lakehouse"}
-              title="Lakehouse"
-              aria-label="Lakehouse"
-              onClick={() => onSelectView("lakehouse")}
-            >
-              <Layers3 size={14} />
-              <span>Lake</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "bi" ? "active" : undefined}
-              aria-selected={activeView === "bi"}
-              title="BI"
-              aria-label="BI"
-              onClick={() => onSelectView("bi")}
-            >
-              <BarChart3 size={14} />
-              <span>BI</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={activeView === "git" ? "active" : undefined}
-              aria-selected={activeView === "git"}
-              title="Git"
-              aria-label="Git"
-              onClick={() => onSelectView("git")}
-            >
-              <GitBranch size={14} />
-              <span>Git</span>
-            </button>
+            {isViewAvailable("objectBrowser") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "objectBrowser" ? "active" : undefined}
+                aria-selected={activeView === "objectBrowser"}
+                title="Tables"
+                aria-label="Tables"
+                onClick={() => onSelectView("objectBrowser")}
+              >
+                <Table2 size={14} />
+                <span>Tables</span>
+              </button>
+            ) : null}
+            {isViewAvailable("completion") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "completion" ? "active" : undefined}
+                aria-selected={activeView === "completion"}
+                title="Completion"
+                aria-label="Completion"
+                onClick={() => onSelectView("completion")}
+              >
+                <ListPlus size={14} />
+                <span>Completion</span>
+              </button>
+            ) : null}
+            {isViewAvailable("queryHistory") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "queryHistory" ? "active" : undefined}
+                aria-selected={activeView === "queryHistory"}
+                title="History"
+                aria-label="History"
+                onClick={() => onSelectView("queryHistory")}
+              >
+                <History size={14} />
+                <span>History</span>
+              </button>
+            ) : null}
+            {isViewAvailable("plan") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "plan" ? "active" : undefined}
+                aria-selected={activeView === "plan"}
+                title="Plan"
+                aria-label="Plan"
+                onClick={() => onSelectView("plan")}
+              >
+                <Flame size={14} />
+                <span>Plan</span>
+              </button>
+            ) : null}
+            {isViewAvailable("lakehouse") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "lakehouse" ? "active" : undefined}
+                aria-selected={activeView === "lakehouse"}
+                title="Lakehouse"
+                aria-label="Lakehouse"
+                onClick={() => onSelectView("lakehouse")}
+              >
+                <Layers3 size={14} />
+                <span>Lake</span>
+              </button>
+            ) : null}
+            {isViewAvailable("bi") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "bi" ? "active" : undefined}
+                aria-selected={activeView === "bi"}
+                title="BI"
+                aria-label="BI"
+                onClick={() => onSelectView("bi")}
+              >
+                <BarChart3 size={14} />
+                <span>BI</span>
+              </button>
+            ) : null}
+            {isViewAvailable("git") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "git" ? "active" : undefined}
+                aria-selected={activeView === "git"}
+                title="Git"
+                aria-label="Git"
+                onClick={() => onSelectView("git")}
+              >
+                <GitBranch size={14} />
+                <span>Git</span>
+              </button>
+            ) : null}
+            {isViewAvailable("aiChat") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "aiChat" ? "active" : undefined}
+                aria-selected={activeView === "aiChat"}
+                title="AI Chat"
+                aria-label="AI Chat"
+                onClick={() => onSelectView("aiChat")}
+              >
+                <Bot size={14} />
+                <span>Chat</span>
+              </button>
+            ) : null}
           </div>
           {activeView === "objectBrowser" ? (
-          <section className="sidebar-section browser-section">
+            <section className="sidebar-section browser-section">
             <div className="section-heading">
               <span>
                 {activeMetadata

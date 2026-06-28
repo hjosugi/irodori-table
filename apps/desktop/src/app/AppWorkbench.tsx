@@ -144,6 +144,7 @@ import {
 } from "@/features/schema-designer";
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
+import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
 import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import {
   UI_ZOOM_DEFAULT,
@@ -155,7 +156,7 @@ import {
 } from "@/features/preferences";
 import { createTranslator, normalizeLocale } from "@/i18n";
 import {
-  activeWorkbenchView,
+  activeWorkbenchViewForSide,
   createWorkbenchCommandHandler,
   InspectorContent,
   INSPECTOR_WIDTH_MAX,
@@ -175,9 +176,9 @@ import {
   quoteSqlIdentifier,
   tablePreviewSql,
   useWorkbenchStore,
+  workbenchViewsForSide,
   workbenchViewIds,
   type CompletionHint,
-  type WorkbenchSide,
   type WorkbenchViewId,
   type WorkbenchViewPlacements,
   type WorkbenchViewVisibility,
@@ -331,6 +332,49 @@ function sqlDownloadFileName(label: string) {
   return `${base || "query"}.sql`;
 }
 
+type EditorGroupState = {
+  activeTabId: string;
+  openTabIds: string[];
+  queryByTabId: Record<string, string>;
+  selectionsByTabId: Record<string, EditorSelections>;
+};
+
+type EditorGroupStates = Record<EditorGroup, EditorGroupState>;
+
+const defaultEditorSelections: EditorSelections = [{ from: 0, to: 0 }];
+
+function createEditorGroupState(initialQuery: string): EditorGroupState {
+  return {
+    activeTabId: tabs[0].id,
+    openTabIds: tabs.map((tab) => tab.id),
+    queryByTabId: Object.fromEntries(
+      tabs.map((tab, index) => [tab.id, index === 0 ? initialQuery : ""]),
+    ) as Record<string, string>,
+    selectionsByTabId: Object.fromEntries(
+      tabs.map((tab) => [tab.id, defaultEditorSelections]),
+    ) as Record<string, EditorSelections>,
+  };
+}
+
+function queryForEditorGroup(state: EditorGroupState) {
+  return state.queryByTabId[state.activeTabId] ?? "";
+}
+
+function selectionsForEditorGroup(state: EditorGroupState) {
+  return state.selectionsByTabId[state.activeTabId] ?? defaultEditorSelections;
+}
+
+function openTabsForEditorGroup(state: EditorGroupState) {
+  return tabs.filter((tab) => state.openTabIds.includes(tab.id));
+}
+
+function activeTabLabelForEditorGroup(state: EditorGroupState) {
+  return (
+    openTabsForEditorGroup(state).find((tab) => tab.id === state.activeTabId)
+      ?.label ?? "Scratch"
+  );
+}
+
 const MigrationStudioDialog = lazy(() =>
   import("@/features/migration").then((module) => ({
     default: module.MigrationStudioDialog,
@@ -373,19 +417,19 @@ export function AppWorkbench() {
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
-  const [editorSelections, setEditorSelections] = useState<EditorSelections>([
-    { from: 0, to: 0 },
-  ]);
+  const [editorGroupStates, setEditorGroupStates] = useState<EditorGroupStates>(
+    () => ({
+      primary: createEditorGroupState(loadSavedQuery()),
+      secondary: createEditorGroupState(""),
+    }),
+  );
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
-  const [activeTab, setActiveTab] = useState(tabs[0].id);
-  const [openTabIds, setOpenTabIds] = useState(() => tabs.map((tab) => tab.id));
   const activeConnectionId = useConnectionStore(
     (state) => state.activeConnectionId,
   );
   const setActiveConnectionId = useConnectionStore(
     (state) => state.setActiveConnectionId,
   );
-  const [query, setQuery] = useState(loadSavedQuery);
   const locale = usePreferencesStore((state) => state.locale);
   const setLocale = usePreferencesStore((state) => state.setLocale);
   const { t } = useMemo(() => createTranslator(locale), [locale]);
@@ -452,18 +496,31 @@ export function AppWorkbench() {
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
-  const sidebarSide = useWorkbenchStore((state) => state.sidebarSide);
-  const setSidebarSide = useWorkbenchStore((state) => state.setSidebarSide);
+  const rightSidebarOpen = useWorkbenchStore((state) => state.rightSidebarOpen);
+  const setRightSidebarOpen = useWorkbenchStore(
+    (state) => state.setRightSidebarOpen,
+  );
   const viewPlacements = useWorkbenchStore((state) => state.viewPlacements);
-  const setViewPlacement = useWorkbenchStore((state) => state.setViewPlacement);
   const setViewPlacements = useWorkbenchStore(
     (state) => state.setViewPlacements,
   );
+  const setViewOpen = useWorkbenchStore((state) => state.setViewOpen);
   const viewVisibility = useWorkbenchStore((state) => state.viewVisibility);
   const setViewVisibility = useWorkbenchStore(
     (state) => state.setViewVisibility,
   );
-  const activeSidebarView = activeWorkbenchView(viewVisibility);
+  const leftSidebarViews = workbenchViewsForSide(viewPlacements, "left");
+  const rightSidebarViews = workbenchViewsForSide(viewPlacements, "right");
+  const activeLeftSidebarView = activeWorkbenchViewForSide(
+    viewVisibility,
+    viewPlacements,
+    "left",
+  );
+  const activeRightSidebarView = activeWorkbenchViewForSide(
+    viewVisibility,
+    viewPlacements,
+    "right",
+  );
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
   const inspectorWidth = useWorkbenchStore((state) => state.inspectorWidth);
@@ -483,7 +540,6 @@ export function AppWorkbench() {
     (state) => state.setEditorSplitPercent,
   );
   const { beginPanelResize, onPanelResizeKey } = createPanelResizeController({
-    sidebarSide,
     sidebarWidth,
     inspectorWidth,
     resultsHeight,
@@ -498,30 +554,103 @@ export function AppWorkbench() {
     useState<EditorGroup>("primary");
   const activeEditorGroup: EditorGroup =
     editorSplitMode === "single" ? "primary" : preferredEditorGroup;
+  const activeEditorGroupState = editorGroupStates[activeEditorGroup];
+  const query = queryForEditorGroup(activeEditorGroupState);
+  const editorSelections = selectionsForEditorGroup(activeEditorGroupState);
+  const activeTabLabel = activeTabLabelForEditorGroup(activeEditorGroupState);
   const [running, setRunning] = useState(false);
 
-  function setPrimarySidebarSide(side: WorkbenchSide) {
-    setSidebarSide(side);
-    setViewPlacement("objectBrowser", side);
+  function updateEditorGroupState(
+    group: EditorGroup,
+    updater: (state: EditorGroupState) => EditorGroupState,
+  ) {
+    setEditorGroupStates((current) => ({
+      ...current,
+      [group]: updater(current[group]),
+    }));
+  }
+
+  function setEditorGroupQuery(group: EditorGroup, nextQuery: string) {
+    updateEditorGroupState(group, (state) => ({
+      ...state,
+      queryByTabId: {
+        ...state.queryByTabId,
+        [state.activeTabId]: nextQuery,
+      },
+    }));
+  }
+
+  function setQuery(nextQuery: string) {
+    setEditorGroupQuery(activeEditorGroup, nextQuery);
+  }
+
+  function setEditorGroupSelection(
+    group: EditorGroup,
+    selection: EditorSelections,
+  ) {
+    updateEditorGroupState(group, (state) => ({
+      ...state,
+      selectionsByTabId: {
+        ...state.selectionsByTabId,
+        [state.activeTabId]: selection,
+      },
+    }));
+  }
+
+  function selectEditorTab(group: EditorGroup, tabId: string) {
+    setActiveEditorGroup(group);
+    updateEditorGroupState(group, (state) => ({
+      ...state,
+      activeTabId: tabId,
+    }));
   }
 
   function setActiveSidebarView(viewId: WorkbenchViewId) {
-    setSidebarSide(viewPlacements[viewId] ?? "left");
-    setSidebarOpen(true);
-    setViewVisibility(() =>
-      workbenchViewIds.reduce(
-        (next, id) => ({ ...next, [id]: id === viewId }),
-        {} as WorkbenchViewVisibility,
-      ),
-    );
+    const side = viewPlacements[viewId] ?? "left";
+    if (side === "right") {
+      setRightSidebarOpen(true);
+    } else {
+      setSidebarOpen(true);
+    }
+    setViewVisibility((current) => {
+      const next = { ...current };
+      workbenchViewIds.forEach((id) => {
+        if (viewPlacements[id] === side) {
+          next[id] = id === viewId;
+        }
+      });
+      return next;
+    });
+  }
+
+  function closeSidebarView(viewId: WorkbenchViewId) {
+    const side = viewPlacements[viewId] ?? "left";
+    setViewOpen(viewId, false);
+    if (side === "right") {
+      setRightSidebarOpen(false);
+      return;
+    }
+    setActiveSidebarView("objectBrowser");
   }
 
   function toggleSidebarView(
     viewId: Exclude<WorkbenchViewId, "objectBrowser">,
   ) {
-    setActiveSidebarView(
-      activeSidebarView === viewId ? "objectBrowser" : viewId,
-    );
+    const side = viewPlacements[viewId] ?? "left";
+    const sideOpen = side === "right" ? rightSidebarOpen : sidebarOpen;
+    if (sideOpen && viewVisibility[viewId]) {
+      closeSidebarView(viewId);
+      return;
+    }
+    setActiveSidebarView(viewId);
+  }
+
+  function toggleRightSidebar() {
+    if (rightSidebarOpen) {
+      setRightSidebarOpen(false);
+      return;
+    }
+    setActiveSidebarView(activeRightSidebarView);
   }
 
   function openGitPanel() {
@@ -992,12 +1121,6 @@ export function AppWorkbench() {
     return profile?.engine ?? draft.engine ?? "postgres";
   }, [profiles, activeConnectionId, draft.engine]);
 
-  const openTabs = useMemo(
-    () => tabs.filter((tab) => openTabIds.includes(tab.id)),
-    [openTabIds],
-  );
-  const activeTabLabel =
-    openTabs.find((tab) => tab.id === activeTab)?.label ?? "Scratch";
   const selectedEditorSql = selectedSqlFromSelections(query, editorSelections);
   const hasSelectedEditorSql = selectedEditorSql.length > 0;
   const runPrimaryLabel = hasSelectedEditorSql
@@ -1244,6 +1367,9 @@ export function AppWorkbench() {
   const selectionStatus = selectionSummary
     ? formatResultSelectionStatus(selectionSummary)
     : null;
+  const biOpen =
+    viewVisibility.bi &&
+    (viewPlacements.bi === "right" ? rightSidebarOpen : sidebarOpen);
 
   const chartCandidateAvailable =
     Boolean(activeResult) && !spillInfo && resultColumns.length > 0;
@@ -1254,7 +1380,7 @@ export function AppWorkbench() {
     if (
       resultGridView.windowed &&
       resultMode !== "chart" &&
-      activeSidebarView !== "bi"
+      !biOpen
     ) {
       return null;
     }
@@ -1268,7 +1394,7 @@ export function AppWorkbench() {
     return model.defaultSelection ? model : null;
   }, [
     activeResult,
-    activeSidebarView,
+    biOpen,
     chartCandidateAvailable,
     resultColumns,
     resultGridView,
@@ -1828,9 +1954,13 @@ export function AppWorkbench() {
   }
 
   // Run a command by id (the keybinding handler and the Commands list share this).
-  function closeActiveSqlTab() {
-    const activeIndex = openTabs.findIndex((tab) => tab.id === activeTab);
-    if (openTabs.length <= 1 || activeIndex < 0) {
+  function closeActiveSqlTab(group: EditorGroup = activeEditorGroup) {
+    const state = editorGroupStates[group];
+    const groupOpenTabs = openTabsForEditorGroup(state);
+    const activeIndex = groupOpenTabs.findIndex(
+      (tab) => tab.id === state.activeTabId,
+    );
+    if (groupOpenTabs.length <= 1 || activeIndex < 0) {
       showActionNotice(
         "info",
         "Tab kept open",
@@ -1838,22 +1968,32 @@ export function AppWorkbench() {
       );
       return;
     }
-    const closedTab = openTabs[activeIndex];
+    const closedTab = groupOpenTabs[activeIndex];
     const nextTab =
-      openTabs[activeIndex + 1] ?? openTabs[activeIndex - 1] ?? openTabs[0];
-    setOpenTabIds((current) => current.filter((id) => id !== closedTab.id));
-    setActiveTab(nextTab.id);
+      groupOpenTabs[activeIndex + 1] ??
+      groupOpenTabs[activeIndex - 1] ??
+      groupOpenTabs[0];
+    updateEditorGroupState(group, (current) => ({
+      ...current,
+      openTabIds: current.openTabIds.filter((id) => id !== closedTab.id),
+      activeTabId: nextTab.id,
+    }));
     showActionNotice("info", "Tab closed", closedTab.label);
   }
 
-  function reopenSqlTab() {
-    const closedTab = tabs.find((tab) => !openTabIds.includes(tab.id));
+  function reopenSqlTab(group: EditorGroup = activeEditorGroup) {
+    const state = editorGroupStates[group];
+    const closedTab = tabs.find((tab) => !state.openTabIds.includes(tab.id));
     if (!closedTab) {
       showActionNotice("info", "Tabs already open");
       return;
     }
-    setOpenTabIds((current) => [...current, closedTab.id]);
-    setActiveTab(closedTab.id);
+    setActiveEditorGroup(group);
+    updateEditorGroupState(group, (current) => ({
+      ...current,
+      openTabIds: [...current.openTabIds, closedTab.id],
+      activeTabId: closedTab.id,
+    }));
     showActionNotice("success", "Tab restored", closedTab.label);
   }
 
@@ -2011,7 +2151,7 @@ export function AppWorkbench() {
         layout: {
           uiZoom,
           sidebarOpen,
-          sidebarSide,
+          rightSidebarOpen,
           viewPlacements,
           viewVisibility,
           sidebarWidth,
@@ -2253,11 +2393,14 @@ export function AppWorkbench() {
         if (typeof parsed.layout.sidebarOpen === "boolean") {
           setSidebarOpen(parsed.layout.sidebarOpen);
         }
+        if (typeof parsed.layout.rightSidebarOpen === "boolean") {
+          setRightSidebarOpen(parsed.layout.rightSidebarOpen);
+        }
         if (
           parsed.layout.sidebarSide === "left" ||
           parsed.layout.sidebarSide === "right"
         ) {
-          setPrimarySidebarSide(parsed.layout.sidebarSide);
+          setRightSidebarOpen(parsed.layout.sidebarSide === "right");
         }
         const viewPlacements = parsed.layout.viewPlacements;
         if (isRecord(viewPlacements)) {
@@ -2271,9 +2414,6 @@ export function AppWorkbench() {
           setViewPlacements((current) => {
             return { ...current, ...importedPlacements };
           });
-          if (importedPlacements.objectBrowser) {
-            setPrimarySidebarSide(importedPlacements.objectBrowser);
-          }
         }
         const viewVisibility = parsed.layout.viewVisibility;
         if (isRecord(viewVisibility)) {
@@ -4141,9 +4281,15 @@ export function AppWorkbench() {
     }
   }
 
-  const completionOpen = activeSidebarView === "completion";
-  const historyOpen = activeSidebarView === "queryHistory";
-  const planOpen = activeSidebarView === "plan";
+  const completionOpen =
+    viewVisibility.completion &&
+    (viewPlacements.completion === "right" ? rightSidebarOpen : sidebarOpen);
+  const historyOpen =
+    viewVisibility.queryHistory &&
+    (viewPlacements.queryHistory === "right" ? rightSidebarOpen : sidebarOpen);
+  const planOpen =
+    viewVisibility.plan &&
+    (viewPlacements.plan === "right" ? rightSidebarOpen : sidebarOpen);
   const appStyle = useMemo(
     () =>
       ({
@@ -4171,6 +4317,167 @@ export function AppWorkbench() {
     return () => window.clearTimeout(timer);
   }, [themeKind, activeDefaultThemeId, activeCustomThemeId]);
 
+  function renderEditorTabStrip(group: EditorGroup) {
+    const state = editorGroupStates[group];
+    const groupOpenTabs = openTabsForEditorGroup(state);
+    return (
+      <div className="tab-strip editor-tab-strip">
+        {groupOpenTabs.map((tab) => (
+          <button
+            className={tab.id === state.activeTabId ? "tab active" : "tab"}
+            key={tab.id}
+            type="button"
+            onClick={() => selectEditorTab(group, tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+        <button
+          className="mini-button"
+          type="button"
+          title="Reopen closed tab"
+          aria-label="Reopen closed tab"
+          disabled={groupOpenTabs.length === tabs.length}
+          onClick={() => reopenSqlTab(group)}
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  function renderSidebar(side: "left" | "right") {
+    const right = side === "right";
+    return (
+      <Sidebar
+        sidebarOpen={right ? rightSidebarOpen : sidebarOpen}
+        side={side}
+        activeView={right ? activeRightSidebarView : activeLeftSidebarView}
+        availableViews={right ? rightSidebarViews : leftSidebarViews}
+        showConnectionRail={!right}
+        completionPanel={
+          <InspectorContent
+            activeConnectionId={activeConnectionId}
+            editorEngine={editorEngine}
+            connectionById={connectionById}
+            activeMetadataLoading={activeMetadataLoading}
+            activeMetadataError={activeMetadataError}
+            completionHints={completionHints}
+            onInsertCompletionHint={insertCompletionHint}
+            onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+            onLoadHistorySql={setQuery}
+            onCloseCompletion={() => closeSidebarView("completion")}
+            showCompletion
+            showHistory={false}
+          />
+        }
+        historyPanel={
+          <InspectorContent
+            activeConnectionId={activeConnectionId}
+            editorEngine={editorEngine}
+            connectionById={connectionById}
+            activeMetadataLoading={activeMetadataLoading}
+            activeMetadataError={activeMetadataError}
+            completionHints={completionHints}
+            onInsertCompletionHint={insertCompletionHint}
+            onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+            onLoadHistorySql={setQuery}
+            onCloseHistory={() => closeSidebarView("queryHistory")}
+            showCompletion={false}
+            showHistory
+          />
+        }
+        planPanel={
+          <PlanPanel
+            plan={planAnalysis}
+            loading={planLoading}
+            error={planError}
+            activeConnectionOpen={activeConnectionOpen}
+            activeConnectionName={activeConnection.name}
+            onExplainPlan={() => void explainCurrentQuery("plan")}
+            onExplainAnalyze={() => void explainCurrentQuery("analyze")}
+            onCopyFormat={(format) => void copyPlanFormat(format)}
+            onClose={() => closeSidebarView("plan")}
+          />
+        }
+        lakehousePanel={
+          <LakehousePanel
+            editorEngine={editorEngine}
+            activeConnectionName={activeConnection.name}
+            activeConnectionOpen={activeConnectionOpen}
+            activeMetadata={activeMetadata}
+            onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+            onLoadSql={setQuery}
+            onClose={() => closeSidebarView("lakehouse")}
+          />
+        }
+        biPanel={
+          <BiPanel
+            result={activeResult}
+            chartModel={chartResultModel}
+            chartAvailable={chartAvailable}
+            onOpenChartMode={() => setResultMode("chart")}
+            onClose={() => closeSidebarView("bi")}
+          />
+        }
+        gitPanel={
+          <GitPanel
+            variant="sidebar"
+            onClose={() => closeSidebarView("git")}
+          />
+        }
+        aiChatPanel={
+          <AiChatPanel
+            activeConnectionId={activeConnectionId}
+            activeConnectionName={activeConnection.name}
+            activeConnectionOpen={activeConnectionOpen}
+            engine={editorEngine}
+            onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+            onClose={() => closeSidebarView("aiChat")}
+            notify={showActionNotice}
+          />
+        }
+        connections={connections}
+        profileById={profileById}
+        activeConnectionId={activeConnectionId}
+        activeConnection={activeConnection}
+        activeConnectionOpen={activeConnectionOpen}
+        activeMetadata={activeMetadata}
+        activeMetadataLoading={activeMetadataLoading}
+        activeMetadataError={activeMetadataError}
+        connectedIds={connectedIds}
+        objectActionMenu={objectActionMenu}
+        objectKindLabel={objectKindLabel}
+        formatObjectName={(object) => qualifiedObjectName(editorEngine, object)}
+        onAddProfile={() => {
+          addProfile();
+          setConnectionManagerOpen(true);
+        }}
+        onOpenConnectionManager={() => setConnectionManagerOpen(true)}
+        onSelectConnection={selectSidebarConnection}
+        onOpenBlankSchemaDesigner={openBlankSchemaDesigner}
+        onNewTableFromFile={() => importFileRef.current?.click()}
+        onOpenObjectSchemaDesigner={openObjectSchemaDesigner}
+        onOpenDiagram={() => setDiagramOpen(true)}
+        onRefreshObjects={() => refreshObjects(activeConnectionId, true, true)}
+        onOpenTableData={(object) => void openTableData(object)}
+        onOpenSnapshotObject={openSnapshotObject}
+        onShowObjectInDiagram={showObjectInDiagram}
+        onSetObjectActionMenu={setObjectActionMenu}
+        onSelectView={setActiveSidebarView}
+        onCloseSidebar={() =>
+          right ? setRightSidebarOpen(false) : setSidebarOpen(false)
+        }
+        onBeginResize={(event) =>
+          beginPanelResize(right ? "rightSidebar" : "sidebar", event)
+        }
+        onResizeKey={(event) =>
+          onPanelResizeKey(right ? "rightSidebar" : "sidebar", event)
+        }
+      />
+    );
+  }
+
   return (
     <div
       className="app-root"
@@ -4183,11 +4490,11 @@ export function AppWorkbench() {
         appName={APP_NAME}
         themeKind={theme.kind}
         activeKeyScope={activeKeyScope}
-        sidebarOpen={sidebarOpen}
+        leftSidebarOpen={sidebarOpen}
+        rightSidebarOpen={rightSidebarOpen}
         completionOpen={completionOpen}
         historyOpen={historyOpen}
         planOpen={planOpen}
-        sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
         resultsHeight={resultsHeight}
@@ -4216,162 +4523,29 @@ export function AppWorkbench() {
           activeKeyScopeRef.current = scope;
           setActiveKeyScope(scope);
         }}
-        onToggleSidebar={() => setSidebarOpen((open) => !open)}
-        onToggleSidebarSide={() => {
-          const nextSide: WorkbenchSide =
-            sidebarSide === "left" ? "right" : "left";
-          setSidebarSide(nextSide);
-          setViewPlacement(activeSidebarView, nextSide);
-          setSidebarOpen(true);
-        }}
+        onToggleLeftSidebar={() => setSidebarOpen((open) => !open)}
+        onToggleRightSidebar={toggleRightSidebar}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
         onRunCommand={runCommand}
         onCloseWorkspaceMenu={() => setWorkspaceMenuOpen(false)}
-        sidebar={
-          <Sidebar
-            sidebarOpen={sidebarOpen}
-            activeView={activeSidebarView}
-            completionPanel={
-              <InspectorContent
-                activeConnectionId={activeConnectionId}
-                editorEngine={editorEngine}
-                connectionById={connectionById}
-                activeMetadataLoading={activeMetadataLoading}
-                activeMetadataError={activeMetadataError}
-                completionHints={completionHints}
-                onInsertCompletionHint={insertCompletionHint}
-                onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-                onLoadHistorySql={setQuery}
-                onCloseCompletion={() => setActiveSidebarView("objectBrowser")}
-                showCompletion
-                showHistory={false}
-              />
-            }
-            historyPanel={
-              <InspectorContent
-                activeConnectionId={activeConnectionId}
-                editorEngine={editorEngine}
-                connectionById={connectionById}
-                activeMetadataLoading={activeMetadataLoading}
-                activeMetadataError={activeMetadataError}
-                completionHints={completionHints}
-                onInsertCompletionHint={insertCompletionHint}
-                onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-                onLoadHistorySql={setQuery}
-                onCloseHistory={() => setActiveSidebarView("objectBrowser")}
-                showCompletion={false}
-                showHistory
-              />
-            }
-            planPanel={
-              <PlanPanel
-                plan={planAnalysis}
-                loading={planLoading}
-                error={planError}
-                activeConnectionOpen={activeConnectionOpen}
-                activeConnectionName={activeConnection.name}
-                onExplainPlan={() => void explainCurrentQuery("plan")}
-                onExplainAnalyze={() => void explainCurrentQuery("analyze")}
-                onCopyFormat={(format) => void copyPlanFormat(format)}
-                onClose={() => setActiveSidebarView("objectBrowser")}
-              />
-            }
-            lakehousePanel={
-              <LakehousePanel
-                editorEngine={editorEngine}
-                activeConnectionName={activeConnection.name}
-                activeConnectionOpen={activeConnectionOpen}
-                activeMetadata={activeMetadata}
-                onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-                onLoadSql={setQuery}
-                onClose={() => setActiveSidebarView("objectBrowser")}
-              />
-            }
-            biPanel={
-              <BiPanel
-                result={activeResult}
-                chartModel={chartResultModel}
-                chartAvailable={chartAvailable}
-                onOpenChartMode={() => setResultMode("chart")}
-                onClose={() => setActiveSidebarView("objectBrowser")}
-              />
-            }
-            gitPanel={
-              <GitPanel
-                variant="sidebar"
-                onClose={() => setActiveSidebarView("objectBrowser")}
-              />
-            }
-            connections={connections}
-            profileById={profileById}
-            activeConnectionId={activeConnectionId}
-            activeConnection={activeConnection}
-            activeConnectionOpen={activeConnectionOpen}
-            activeMetadata={activeMetadata}
-            activeMetadataLoading={activeMetadataLoading}
-            activeMetadataError={activeMetadataError}
-            connectedIds={connectedIds}
-            objectActionMenu={objectActionMenu}
-            objectKindLabel={objectKindLabel}
-            formatObjectName={(object) =>
-              qualifiedObjectName(editorEngine, object)
-            }
-            onAddProfile={() => {
-              addProfile();
-              setConnectionManagerOpen(true);
-            }}
-            onOpenConnectionManager={() => setConnectionManagerOpen(true)}
-            onSelectConnection={selectSidebarConnection}
-            onOpenBlankSchemaDesigner={openBlankSchemaDesigner}
-            onNewTableFromFile={() => importFileRef.current?.click()}
-            onOpenObjectSchemaDesigner={openObjectSchemaDesigner}
-            onOpenDiagram={() => setDiagramOpen(true)}
-            onRefreshObjects={() =>
-              refreshObjects(activeConnectionId, true, true)
-            }
-            onOpenTableData={(object) => void openTableData(object)}
-            onOpenSnapshotObject={openSnapshotObject}
-            onShowObjectInDiagram={showObjectInDiagram}
-            onSetObjectActionMenu={setObjectActionMenu}
-            onSelectView={setActiveSidebarView}
-            onCloseSidebar={() => setSidebarOpen(false)}
-            onBeginResize={(event) => beginPanelResize("sidebar", event)}
-            onResizeKey={(event) => onPanelResizeKey("sidebar", event)}
-          />
-        }
+        leftSidebar={renderSidebar("left")}
+        rightSidebar={renderSidebar("right")}
       >
         <section className="main-pane">
-          <div className="tab-strip">
-            {openTabs.map((tab) => (
-              <button
-                className={tab.id === activeTab ? "tab active" : "tab"}
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-            <button
-              className="mini-button"
-              type="button"
-              title="Reopen closed tab"
-              aria-label="Reopen closed tab"
-              disabled={openTabs.length === tabs.length}
-              onClick={reopenSqlTab}
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-
           <div className="editor-and-inspector">
             <QueryEditorPane
               activeTabLabel={activeTabLabel}
-              activeConnectionOpen={activeConnectionOpen}
               running={running}
               formatter={formatter}
-              query={query}
-              onQueryChange={setQuery}
+              primaryQuery={queryForEditorGroup(editorGroupStates.primary)}
+              secondaryQuery={queryForEditorGroup(editorGroupStates.secondary)}
+              onPrimaryQueryChange={(next) =>
+                setEditorGroupQuery("primary", next)
+              }
+              onSecondaryQueryChange={(next) =>
+                setEditorGroupQuery("secondary", next)
+              }
+              renderEditorTabStrip={renderEditorTabStrip}
               editorEngine={editorEngine}
               activeMetadata={activeMetadata}
               sqlSnippets={sqlSnippets}
@@ -4388,7 +4562,7 @@ export function AppWorkbench() {
               setEditorSplitMode={setEditorSplitMode}
               activeEditorGroup={activeEditorGroup}
               setActiveEditorGroup={setActiveEditorGroup}
-              setEditorSelection={setEditorSelections}
+              setEditorSelection={setEditorGroupSelection}
               runPrimaryLabel={runPrimaryLabel}
               runShortcutLabel={runShortcutLabel}
               runCurrentShortcutLabel={runCurrentShortcutLabel}

@@ -16,6 +16,7 @@
 //! The deterministic completion in `irodori-completion` remains the always-on
 //! default; this is the opt-in generation path.
 
+pub mod chat;
 pub mod command;
 pub mod plan;
 pub mod project;
@@ -29,6 +30,7 @@ pub mod llama;
 #[cfg(feature = "http")]
 pub mod http;
 
+pub use chat::{ChatMessage, ChatModel, ChatRole, GrammarChatAdapter};
 pub use command::{CommandConfig, CommandModel};
 pub use plan::QueryPlan;
 pub use runtime::{DecodeOptions, EchoModel, GrammarModel, ModelDescription, ModelOutput};

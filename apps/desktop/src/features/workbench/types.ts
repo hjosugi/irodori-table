@@ -18,6 +18,7 @@ export const workbenchViewIds = [
   "lakehouse",
   "bi",
   "git",
+  "aiChat",
 ] as const;
 
 export type WorkbenchViewId = (typeof workbenchViewIds)[number];
@@ -34,6 +35,7 @@ export const defaultWorkbenchViewPlacements: WorkbenchViewPlacements = {
   lakehouse: "right",
   bi: "right",
   git: "left",
+  aiChat: "right",
 };
 
 export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
@@ -44,6 +46,7 @@ export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
   lakehouse: false,
   bi: false,
   git: false,
+  aiChat: false,
 };
 
 export function activeWorkbenchView(
@@ -53,5 +56,26 @@ export function activeWorkbenchView(
     workbenchViewIds.find(
       (viewId) => viewId !== "objectBrowser" && visibility[viewId],
     ) ?? "objectBrowser"
+  );
+}
+
+export function workbenchViewsForSide(
+  placements: WorkbenchViewPlacements,
+  side: WorkbenchSide,
+): WorkbenchViewId[] {
+  return workbenchViewIds.filter((viewId) => placements[viewId] === side);
+}
+
+export function activeWorkbenchViewForSide(
+  visibility: WorkbenchViewVisibility,
+  placements: WorkbenchViewPlacements,
+  side: WorkbenchSide,
+): WorkbenchViewId {
+  return (
+    workbenchViewIds.find(
+      (viewId) => placements[viewId] === side && visibility[viewId],
+    ) ??
+    workbenchViewsForSide(placements, side)[0] ??
+    (side === "left" ? "objectBrowser" : "plan")
   );
 }

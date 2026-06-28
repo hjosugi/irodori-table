@@ -3,13 +3,14 @@ import type {
   PointerEvent as ReactPointerEvent,
   RefObject,
 } from "react";
-import type { EditorSplitMode, SidebarSide } from "./store/workbench-store";
+import type { EditorSplitMode } from "./store/workbench-store";
 
 type ValueUpdater<T> = T | ((current: T) => T);
 type NumberSetter = (value: ValueUpdater<number>) => void;
 
 export type PanelResizeKind =
   | "sidebar"
+  | "rightSidebar"
   | "leftInspector"
   | "inspector"
   | "results"
@@ -29,7 +30,6 @@ function clampNumber(value: number, min: number, max: number) {
 }
 
 type PanelResizeControllerOptions = {
-  sidebarSide: SidebarSide;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -42,7 +42,6 @@ type PanelResizeControllerOptions = {
 };
 
 export function createPanelResizeController({
-  sidebarSide,
   sidebarWidth,
   inspectorWidth,
   resultsHeight,
@@ -56,6 +55,7 @@ export function createPanelResizeController({
   function resizePanel(kind: PanelResizeKind, delta: number) {
     switch (kind) {
       case "sidebar":
+      case "rightSidebar":
         setSidebarWidth((current) =>
           clampNumber(current + delta, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX),
         );
@@ -114,11 +114,11 @@ export function createPanelResizeController({
         );
         return;
       }
-      if (kind === "sidebar") {
+      if (kind === "sidebar" || kind === "rightSidebar") {
         const delta = moveEvent.clientX - startX;
         setSidebarWidth(
           clampNumber(
-            startSidebarWidth + (sidebarSide === "right" ? -delta : delta),
+            startSidebarWidth + (kind === "rightSidebar" ? -delta : delta),
             SIDEBAR_WIDTH_MIN,
             SIDEBAR_WIDTH_MAX,
           ),
@@ -192,8 +192,8 @@ export function createPanelResizeController({
       resizePanel(kind, event.key === "ArrowUp" ? step : -step);
       return;
     }
-    if (kind === "sidebar") {
-      const direction = sidebarSide === "right" ? -1 : 1;
+    if (kind === "sidebar" || kind === "rightSidebar") {
+      const direction = kind === "rightSidebar" ? -1 : 1;
       resizePanel(kind, (event.key === "ArrowRight" ? step : -step) * direction);
       return;
     }

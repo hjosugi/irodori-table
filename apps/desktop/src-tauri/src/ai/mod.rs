@@ -7,6 +7,9 @@
 //! `llama`) and loaded lazily; without it (or without a preinstalled model) the
 //! commands fail cleanly so the deterministic completion path is unaffected.
 
+pub mod chat;
+
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -17,12 +20,14 @@ use ts_rs::TS;
 use irodori_completion::{MetadataObjectKind, MetadataSnapshot};
 use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use irodori_generate::{
-    generate, CommandConfig, CommandModel, DecodeOptions, GenColumn, GenForeignKey, GenSchema,
-    GenTable, GenerateRequest, GrammarModel, HttpConfig, OllamaModel, OpenAiCompatModel,
-    RelationKind,
+    generate, ChatModel, CommandConfig, CommandModel, DecodeOptions, GenColumn, GenForeignKey,
+    GenSchema, GenTable, GenerateRequest, GrammarChatAdapter, GrammarModel, HttpConfig, OllamaModel,
+    OpenAiCompatModel, RelationKind,
 };
 
 use crate::db::{DbEngine, DbState, QueryPlanAnalysis};
+
+pub use chat::{ai_chat, ai_chat_cancel};
 
 /// Default local model: small, strong at text-to-SQL, CPU-friendly (~0.4 GB).
 const DEFAULT_MODEL_FILE: &str = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf";
@@ -35,6 +40,10 @@ const PROSE_GBNF: &str = "root ::= char+\nchar ::= [^\\x00]";
 #[derive(Default)]
 pub struct AiState {
     inner: Mutex<AiInner>,
+    /// In-flight chat sessions, keyed by the session id the frontend assigns, so
+    /// `ai_chat_cancel` can stop a run and any query it spawned. Cleaned up when
+    /// the session ends (normally or by error).
+    chats: Mutex<HashMap<String, Arc<chat::ChatHandle>>>,
 }
 
 #[derive(Default)]
@@ -284,6 +293,44 @@ pub fn ai_engine_status(ai: State<'_, AiState>, app: AppHandle) -> IrodoriResult
     })
 }
 
+/// Unload the embedded local model from memory, freeing its RAM at once. The next
+/// local request reloads it lazily (cheap mmap), so this is a safe "stop" the user
+/// can hit any time to reclaim resources without losing the ability to resume.
+#[tauri::command]
+pub fn ai_unload_local(ai: State<'_, AiState>) -> IrodoriResult<()> {
+    let mut inner = ai
+        .inner
+        .lock()
+        .map_err(|_| IrodoriError::new(IrodoriErrorKind::Internal, "ai state poisoned"))?;
+    inner.model = None;
+    inner.loaded_path = None;
+    Ok(())
+}
+
+/// Delete the embedded model file from disk to reclaim storage. Unloads it first
+/// so the file is no longer mmapped. A no-op (Ok) if the file is already gone.
+#[tauri::command]
+pub fn ai_delete_local_model(ai: State<'_, AiState>, app: AppHandle) -> IrodoriResult<()> {
+    {
+        let mut inner = ai
+            .inner
+            .lock()
+            .map_err(|_| IrodoriError::new(IrodoriErrorKind::Internal, "ai state poisoned"))?;
+        inner.model = None;
+        inner.loaded_path = None;
+    }
+    let path = model_path(&app)?;
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| {
+            IrodoriError::new(
+                IrodoriErrorKind::Internal,
+                format!("could not delete model at {}: {e}", path.display()),
+            )
+        })?;
+    }
+    Ok(())
+}
+
 /// Set the active generation provider (local model, Ollama, an HTTP API, or a CLI).
 #[tauri::command]
 pub fn ai_set_provider(ai: State<'_, AiState>, config: AiProviderConfig) -> IrodoriResult<()> {
@@ -420,8 +467,87 @@ fn load_model(_path: &Path) -> IrodoriResult<Box<dyn GrammarModel>> {
     ))
 }
 
+/// Build the configured provider as a streaming chat model. Mirrors
+/// [`build_provider`]: Local reuses the cached embedded model (wrapped so its
+/// single-shot completion satisfies the chat trait); the HTTP and CLI providers
+/// stream natively and are cheap to construct per request.
+pub(crate) fn build_chat_provider(
+    ai: &AiState,
+    app: &AppHandle,
+) -> IrodoriResult<Arc<dyn ChatModel>> {
+    let config = ai
+        .inner
+        .lock()
+        .map(|inner| inner.provider.clone())
+        .unwrap_or_default();
+
+    match config.kind {
+        AiProviderKind::Local => {
+            let model = ensure_model(ai, app)?;
+            Ok(Arc::new(GrammarChatAdapter::new(model)))
+        }
+        AiProviderKind::Ollama => {
+            if config.model.trim().is_empty() {
+                return Err(IrodoriError::validation("an Ollama model name is required"));
+            }
+            let endpoint = config
+                .endpoint
+                .unwrap_or_else(|| "http://localhost:11434".to_string());
+            Ok(Arc::new(OllamaModel::new(HttpConfig::new(
+                endpoint,
+                config.model,
+            ))))
+        }
+        AiProviderKind::OpenaiCompat => {
+            let endpoint = config
+                .endpoint
+                .ok_or_else(|| IrodoriError::validation("an API endpoint is required"))?;
+            if config.model.trim().is_empty() {
+                return Err(IrodoriError::validation("a model id is required"));
+            }
+            let mut http = HttpConfig::new(endpoint, config.model);
+            if let Some(key) = config.api_key {
+                http = http.with_api_key(key);
+            }
+            Ok(Arc::new(OpenAiCompatModel::new(http)))
+        }
+        AiProviderKind::Command => {
+            if config.program.trim().is_empty() {
+                return Err(IrodoriError::validation("a command program is required"));
+            }
+            let label = config.program.clone();
+            Ok(Arc::new(CommandModel::new(CommandConfig::new(
+                config.program,
+                config.args,
+                label,
+            ))))
+        }
+    }
+}
+
+/// Register a chat session so it can be cancelled; returns its cancellation handle.
+pub(crate) fn register_chat(ai: &AiState, session_id: &str) -> Arc<chat::ChatHandle> {
+    let handle = Arc::new(chat::ChatHandle::default());
+    if let Ok(mut chats) = ai.chats.lock() {
+        chats.insert(session_id.to_string(), Arc::clone(&handle));
+    }
+    handle
+}
+
+/// Drop a finished chat session from the cancellation registry.
+pub(crate) fn unregister_chat(ai: &AiState, session_id: &str) {
+    if let Ok(mut chats) = ai.chats.lock() {
+        chats.remove(session_id);
+    }
+}
+
+/// Look up a live chat session's cancellation handle.
+pub(crate) fn chat_handle(ai: &AiState, session_id: &str) -> Option<Arc<chat::ChatHandle>> {
+    ai.chats.lock().ok()?.get(session_id).cloned()
+}
+
 /// Convert the completion metadata snapshot into the engine's schema shape.
-fn snapshot_to_gen_schema(snapshot: &MetadataSnapshot) -> GenSchema {
+pub(crate) fn snapshot_to_gen_schema(snapshot: &MetadataSnapshot) -> GenSchema {
     let mut tables = Vec::new();
     for schema in &snapshot.schemas {
         for object in &schema.objects {

@@ -22,7 +22,6 @@ import {
   type Keymap,
 } from "@/core/keybindings";
 import type { ThemeKind } from "@/theme";
-import type { WorkbenchSide } from "../types";
 
 export type WorkbenchStatusBarItem = {
   id: string;
@@ -38,11 +37,11 @@ type WorkbenchShellProps = {
   appVersion?: string;
   themeKind: ThemeKind;
   activeKeyScope: KeybindingScope;
-  sidebarOpen: boolean;
+  leftSidebarOpen: boolean;
+  rightSidebarOpen: boolean;
   completionOpen: boolean;
   historyOpen: boolean;
   planOpen: boolean;
-  sidebarSide: WorkbenchSide;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -64,12 +63,13 @@ type WorkbenchShellProps = {
   selectionStatus: string | null;
   statusBarItems?: readonly WorkbenchStatusBarItem[];
   shellStyle: CSSProperties;
-  sidebar: ReactNode;
+  leftSidebar: ReactNode;
+  rightSidebar?: ReactNode;
   children: ReactNode;
   onScopeFocus: (event: FocusEvent<HTMLElement>) => void;
   onScopeMouseDown: (event: MouseEvent<HTMLElement>) => void;
-  onToggleSidebar: () => void;
-  onToggleSidebarSide: () => void;
+  onToggleLeftSidebar: () => void;
+  onToggleRightSidebar: () => void;
   onToggleTheme?: () => void;
   onToggleWorkspaceMenu?: () => void;
   onOpenSettings?: () => void;
@@ -83,11 +83,11 @@ export function WorkbenchShell({
   appName,
   themeKind,
   activeKeyScope,
-  sidebarOpen,
+  leftSidebarOpen,
+  rightSidebarOpen,
   completionOpen,
   historyOpen,
   planOpen,
-  sidebarSide,
   sidebarWidth,
   inspectorWidth,
   resultsHeight,
@@ -107,12 +107,13 @@ export function WorkbenchShell({
   selectionStatus,
   statusBarItems = [],
   shellStyle,
-  sidebar,
+  leftSidebar,
+  rightSidebar,
   children,
   onScopeFocus,
   onScopeMouseDown,
-  onToggleSidebar,
-  onToggleSidebarSide,
+  onToggleLeftSidebar,
+  onToggleRightSidebar,
   onOpenConnectionManager,
   onRunCommand,
   onCloseWorkspaceMenu,
@@ -157,12 +158,9 @@ export function WorkbenchShell({
   };
 
   const titleFor = (command: CommandMeta) => {
-    const sidebarSideTarget = sidebarSide === "left" ? "Right" : "Left";
     switch (command.id) {
       case "view.sidebar.toggle":
-        return sidebarOpen ? "Hide Sidebar" : "Show Sidebar";
-      case "view.sidebar.swap":
-        return `Move Sidebar ${sidebarSideTarget}`;
+        return leftSidebarOpen ? "Hide Left Sidebar" : "Show Left Sidebar";
       case "view.completion.toggle":
         return completionOpen ? "Hide Completion" : "Show Completion";
       case "view.history.toggle":
@@ -183,19 +181,8 @@ export function WorkbenchShell({
     onCloseWorkspaceMenu();
     onRunCommand(commandId);
   };
-  const SidebarToggleIcon =
-    sidebarSide === "right"
-      ? sidebarOpen
-        ? PanelRightClose
-        : PanelRightOpen
-      : sidebarOpen
-        ? PanelLeftClose
-        : PanelLeftOpen;
-  const sidebarToggleTitle = sidebarOpen
-    ? `Hide ${sidebarSide} sidebar`
-    : `Show ${sidebarSide} sidebar`;
-  const SidebarMoveIcon =
-    sidebarSide === "left" ? PanelRightOpen : PanelLeftOpen;
+  const LeftSidebarIcon = leftSidebarOpen ? PanelLeftClose : PanelLeftOpen;
+  const RightSidebarIcon = rightSidebarOpen ? PanelRightClose : PanelRightOpen;
 
   const renderMenuButtons = (section: AppMenuSection) =>
     section.items.map((item) => {
@@ -267,6 +254,7 @@ export function WorkbenchShell({
         {
           ...shellStyle,
           "--sidebar-width": `${sidebarWidth}px`,
+          "--right-sidebar-width": `${sidebarWidth}px`,
           "--inspector-width": `${inspectorWidth}px`,
           "--results-height": `${resultsHeight}px`,
           "--editor-split-primary": `${editorSplitPercent}%`,
@@ -331,45 +319,35 @@ export function WorkbenchShell({
             className={[
               "icon-button",
               "layout-toggle-button",
-              sidebarOpen ? "active" : null,
-              `sidebar-${sidebarSide}`,
+              leftSidebarOpen ? "active" : null,
+              "sidebar-left",
             ]
               .filter(Boolean)
               .join(" ")}
             type="button"
-            title={sidebarToggleTitle}
-            aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-            aria-pressed={sidebarOpen}
-            data-sidebar-toggle="visibility"
-            data-sidebar-side={sidebarSide}
-            onClick={onToggleSidebar}
+            title={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+            aria-label={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+            aria-pressed={leftSidebarOpen}
+            data-sidebar-toggle="left"
+            onClick={onToggleLeftSidebar}
           >
-            <SidebarToggleIcon size={15} />
+            <LeftSidebarIcon size={15} />
           </button>
           <button
             className={[
               "icon-button",
               "layout-toggle-button",
-              "sidebar-move-button",
-              `sidebar-${sidebarSide}`,
+              rightSidebarOpen ? "active" : null,
+              "sidebar-right",
             ].join(" ")}
             type="button"
-            title={
-              sidebarSide === "left"
-                ? "Move sidebar right"
-                : "Move sidebar left"
-            }
-            aria-label={
-              sidebarSide === "left"
-                ? "Move sidebar right"
-                : "Move sidebar left"
-            }
-            aria-pressed={sidebarSide === "right"}
-            data-sidebar-toggle="side"
-            data-sidebar-side={sidebarSide}
-            onClick={onToggleSidebarSide}
+            title={rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"}
+            aria-label={rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"}
+            aria-pressed={rightSidebarOpen}
+            data-sidebar-toggle="right"
+            onClick={onToggleRightSidebar}
           >
-            <SidebarMoveIcon size={15} />
+            <RightSidebarIcon size={15} />
           </button>
         </div>
       </header>
@@ -377,14 +355,15 @@ export function WorkbenchShell({
       <div
         className={[
           "workspace",
-          sidebarOpen ? null : "sidebar-collapsed",
-          `sidebar-${sidebarSide}`,
+          leftSidebarOpen ? null : "left-sidebar-collapsed",
+          rightSidebarOpen ? null : "right-sidebar-collapsed",
         ]
           .filter(Boolean)
           .join(" ")}
       >
-        {sidebar}
+        {leftSidebar}
         {children}
+        {rightSidebar}
       </div>
 
       <footer className="statusbar">
