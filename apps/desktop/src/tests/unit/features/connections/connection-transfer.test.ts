@@ -13,11 +13,13 @@ function profile(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
     engine: "postgres",
     mode: "fields",
     url: "",
+    connectionTransport: "tcp",
     host: "db.example.test",
     port: "5432",
     user: "analyst",
     password: "secret",
     database: "analytics",
+    socketPath: "",
     readOnly: false,
     ...patch,
   };

@@ -2133,9 +2133,7 @@ export function AppWorkbench() {
   function closeSqlTab(group: EditorGroup, tabId: string) {
     const state = editorGroupStates[group];
     const groupOpenTabs = openTabsForEditorGroup(state);
-    const activeIndex = groupOpenTabs.findIndex(
-      (tab) => tab.id === tabId,
-    );
+    const activeIndex = groupOpenTabs.findIndex((tab) => tab.id === tabId);
     if (groupOpenTabs.length <= 1 || activeIndex < 0) {
       showActionNotice(
         "info",
@@ -2173,7 +2171,9 @@ export function AppWorkbench() {
 
   function reopenSqlTab(group: EditorGroup = activeEditorGroup) {
     const state = editorGroupStates[group];
-    const closedTab = state.tabs.find((tab) => !state.openTabIds.includes(tab.id));
+    const closedTab = state.tabs.find(
+      (tab) => !state.openTabIds.includes(tab.id),
+    );
     if (!closedTab) {
       showActionNotice("info", "Tabs already open");
       return;
@@ -3800,10 +3800,16 @@ export function AppWorkbench() {
   }
 
   async function formatQuery() {
-    const error = (await activeEditorApi()?.format()) ?? null;
-    setQueryError(error ?? null);
+    const result = await activeEditorApi()?.format();
+    const error = result?.error ?? null;
+    setQueryError(error);
     if (error) {
       showActionNotice("error", "Format failed", error);
+    } else if (!result?.changed) {
+      showActionNotice(
+        "info",
+        result?.skipped === "empty" ? "Nothing to format" : "SQL already formatted",
+      );
     } else {
       showActionNotice("success", "SQL formatted", formatter);
     }
@@ -3817,10 +3823,16 @@ export function AppWorkbench() {
   }
 
   async function cleanupQuery() {
-    const error = (await activeEditorApi()?.cleanup()) ?? null;
-    setQueryError(error ?? null);
+    const result = await activeEditorApi()?.cleanup();
+    const error = result?.error ?? null;
+    setQueryError(error);
     if (error) {
       showActionNotice("error", "Cleanup failed", error);
+    } else if (!result?.changed) {
+      showActionNotice(
+        "info",
+        result?.skipped === "empty" ? "Nothing to clean up" : "Code already clean",
+      );
     } else {
       showActionNotice("success", "Code cleanup complete");
     }

@@ -559,10 +559,11 @@ export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
     user: resolvedDraft.user.trim() || undefined,
     password: resolvedDraft.password || undefined,
     database: resolvedDraft.database.trim() || undefined,
-    socketPath:
+    transport:
       supportsSocketTransport(resolvedDraft.engine) &&
-      resolvedDraft.connectionTransport === "socket"
-        ? resolvedDraft.socketPath.trim() || undefined
+      resolvedDraft.connectionTransport === "socket" &&
+      resolvedDraft.socketPath.trim()
+        ? { kind: "localFile", path: resolvedDraft.socketPath.trim() }
         : undefined,
     ...readOnly,
   };

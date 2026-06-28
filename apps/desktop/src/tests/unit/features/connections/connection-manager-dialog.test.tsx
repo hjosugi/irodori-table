@@ -18,11 +18,13 @@ function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
     engine: "postgres",
     mode: "fields",
     url: "",
+    connectionTransport: "tcp",
     host: "127.0.0.1",
     port: "5432",
     user: "irodori",
     password: "",
     database: "samples",
+    socketPath: "",
     readOnly: false,
     ...patch,
   };
