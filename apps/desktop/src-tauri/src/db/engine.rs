@@ -483,8 +483,8 @@ mod tests {
             url: None,
             transport: None,
             read_only: false,
-        options: Default::default(),
-}
+            options: Default::default(),
+        }
     }
 
     #[test]

@@ -19,6 +19,7 @@ function createHandler(calls: string[]) {
     toggleSidebar: () => calls.push("sidebar"),
     toggleCompletion: () => calls.push("completion"),
     toggleHistory: () => calls.push("history-toggle"),
+    togglePlan: () => calls.push("plan-toggle"),
     toggleBi: () => calls.push("bi-toggle"),
     zoomIn: () => calls.push("zoom-in"),
     zoomOut: () => calls.push("zoom-out"),
@@ -41,6 +42,12 @@ function createHandler(calls: string[]) {
     },
     runAllQuery: async () => {
       calls.push("query-all");
+    },
+    explainPlan: async () => {
+      calls.push("explain-plan");
+    },
+    explainAnalyze: async () => {
+      calls.push("explain-analyze");
     },
     cancelQuery: async () => {
       calls.push("query-cancel");
@@ -119,6 +126,25 @@ describe("createWorkbenchCommandHandler", () => {
       "devtools",
       "migration",
       "query-cancel",
+    ]);
+  });
+
+  it("routes editor transform commands", () => {
+    const calls: string[] = [];
+    const runCommand = createHandler(calls);
+
+    runCommand("editor.transform.uppercase");
+    runCommand("editor.transform.lowercase");
+    runCommand("editor.transform.unformat");
+    runCommand("editor.transform.addCommas");
+    runCommand("editor.transform.doubleToSingleQuotes");
+
+    expect(calls).toEqual([
+      "transform:uppercase",
+      "transform:lowercase",
+      "transform:unformat",
+      "transform:appendCommas",
+      "transform:doubleToSingleQuotes",
     ]);
   });
 });

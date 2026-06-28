@@ -160,6 +160,7 @@ import {
   INSPECTOR_WIDTH_MAX,
   INSPECTOR_WIDTH_MIN,
   LakehousePanel,
+  PlanPanel,
   RESULTS_HEIGHT_MAX,
   RESULTS_HEIGHT_MIN,
   Sidebar,
@@ -198,6 +199,7 @@ import {
   dbCancel,
   dbConnect,
   dbDisconnect,
+  dbExplainQuery,
   dbListObjects,
   dbQueryParameters,
   dbReleaseResult,
@@ -209,6 +211,9 @@ import {
   type DbObjectMetadata,
   type JobList,
   type QueryParameterInput,
+  type QueryPlanAnalysis,
+  type QueryPlanCopyFormat,
+  type QueryPlanMode,
   type QueryResult,
   type QueryResultSet,
   type RowDelete,
@@ -225,6 +230,7 @@ import { isSqlLinterId } from "@/sql/linter";
 import type { SqlEditorTransformAction } from "@/sql/editor-transforms";
 import type { SqlMetadataTarget } from "@/sql/metadata-inspection";
 import { selectedOrCurrentStatement } from "@/sql/statements";
+import { sqlMayWrite } from "@/sql/read-only";
 import {
   cssVariables,
   customThemeEntryFromJson,
@@ -267,6 +273,96 @@ function scaledUiPixels(value: number, zoom: number) {
 
 function scaledUiFont(value: number, zoom: number) {
   return `${Math.round(value * zoom * 100) / 100}px`;
+}
+
+function sqlLiteralForEditor(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "NULL";
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "NULL";
+  }
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  if (typeof value === "boolean") {
+    return value ? "TRUE" : "FALSE";
+  }
+  const text =
+    typeof value === "object"
+      ? JSON.stringify(jsonSafeSqlValue(value))
+      : String(value);
+  return `'${text.replace(/'/g, "''")}'`;
+}
+
+function jsonSafeSqlValue(value: unknown): unknown {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  if (Array.isArray(value)) {
+    return value.map(jsonSafeSqlValue);
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        jsonSafeSqlValue(nested),
+      ]),
+    );
+  }
+  return value;
+}
+
+function buildSelectedRowUpdateSql({
+  engine,
+  target,
+  columns,
+  row,
+}: {
+  engine: DbEngine;
+  target: ResultEditTarget;
+  columns: readonly string[];
+  row: readonly unknown[];
+}) {
+  const keyLookup = new Set(
+    target.keyColumns.map((column) => column.toLowerCase()),
+  );
+  const tableName = [target.schema, target.table]
+    .filter(Boolean)
+    .map((part) => quoteSqlIdentifier(engine, part!))
+    .join(".");
+  const setLines = columns
+    .map((column, index) => ({ column, index }))
+    .filter(({ column }) => !keyLookup.has(column.toLowerCase()))
+    .map(
+      ({ column, index }) =>
+        `  ${quoteSqlIdentifier(engine, column)} = ${sqlLiteralForEditor(row[index])}`,
+    );
+  const whereLines = target.keyColumns.map((column) => {
+    const columnIndex = columns.findIndex(
+      (candidate) => candidate.toLowerCase() === column.toLowerCase(),
+    );
+    const value = row[columnIndex];
+    const quoted = quoteSqlIdentifier(engine, column);
+    return value === null || value === undefined
+      ? `  ${quoted} IS NULL`
+      : `  ${quoted} = ${sqlLiteralForEditor(value)}`;
+  });
+  const begin = engine === "sqlserver" ? "BEGIN TRANSACTION;" : "BEGIN;";
+  return [
+    "-- Generated from the selected result row. Review before running.",
+    "-- Edit the SET values, then run this transaction.",
+    begin,
+    `UPDATE ${tableName}`,
+    "SET",
+    setLines.length > 0
+      ? setLines.join(",\n")
+      : "  -- TODO: add columns to update",
+    "WHERE",
+    whereLines.join("\n  AND "),
+    ";",
+    "COMMIT;",
+  ].join("\n");
 }
 
 function uiZoomStyleVariables(zoom: number): Record<string, string> {
@@ -328,8 +424,16 @@ export function AppWorkbench() {
     window.addEventListener("contextmenu", preventNativeContextMenu, options);
     document.addEventListener("contextmenu", preventNativeContextMenu, options);
     return () => {
-      window.removeEventListener("contextmenu", preventNativeContextMenu, options);
-      document.removeEventListener("contextmenu", preventNativeContextMenu, options);
+      window.removeEventListener(
+        "contextmenu",
+        preventNativeContextMenu,
+        options,
+      );
+      document.removeEventListener(
+        "contextmenu",
+        preventNativeContextMenu,
+        options,
+      );
     };
   }, []);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -347,9 +451,7 @@ export function AppWorkbench() {
   ]);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const [activeTab, setActiveTab] = useState(tabs[0].id);
-  const [openTabIds, setOpenTabIds] = useState(() =>
-    tabs.map((tab) => tab.id),
-  );
+  const [openTabIds, setOpenTabIds] = useState(() => tabs.map((tab) => tab.id));
   const activeConnectionId = useConnectionStore(
     (state) => state.activeConnectionId,
   );
@@ -379,9 +481,7 @@ export function AppWorkbench() {
     (state) => state.setActiveCustomThemeId,
   );
   const customThemes = usePreferencesStore((state) => state.customThemes);
-  const setCustomThemes = usePreferencesStore(
-    (state) => state.setCustomThemes,
-  );
+  const setCustomThemes = usePreferencesStore((state) => state.setCustomThemes);
   const activeCustomTheme = useMemo(
     () =>
       customThemes.find((entry) => entry.id === activeCustomThemeId) ?? null,
@@ -413,7 +513,9 @@ export function AppWorkbench() {
   const setEditorBackgroundOpacity = usePreferencesStore(
     (state) => state.setEditorBackgroundOpacity,
   );
-  const animationsEnabled = usePreferencesStore((state) => state.animationsEnabled);
+  const animationsEnabled = usePreferencesStore(
+    (state) => state.animationsEnabled,
+  );
   const setAnimationsEnabled = usePreferencesStore(
     (state) => state.setAnimationsEnabled,
   );
@@ -442,12 +544,8 @@ export function AppWorkbench() {
     (state) => state.setInspectorWidth,
   );
   const resultsHeight = useWorkbenchStore((state) => state.resultsHeight);
-  const setResultsHeight = useWorkbenchStore(
-    (state) => state.setResultsHeight,
-  );
-  const editorSplitMode = useWorkbenchStore(
-    (state) => state.editorSplitMode,
-  );
+  const setResultsHeight = useWorkbenchStore((state) => state.setResultsHeight);
+  const editorSplitMode = useWorkbenchStore((state) => state.editorSplitMode);
   const setEditorSplitMode = useWorkbenchStore(
     (state) => state.setEditorSplitMode,
   );
@@ -491,8 +589,12 @@ export function AppWorkbench() {
     );
   }
 
-  function toggleSidebarView(viewId: Exclude<WorkbenchViewId, "objectBrowser">) {
-    setActiveSidebarView(activeSidebarView === viewId ? "objectBrowser" : viewId);
+  function toggleSidebarView(
+    viewId: Exclude<WorkbenchViewId, "objectBrowser">,
+  ) {
+    setActiveSidebarView(
+      activeSidebarView === viewId ? "objectBrowser" : viewId,
+    );
   }
 
   function openGitPanel() {
@@ -504,7 +606,9 @@ export function AppWorkbench() {
   const cancelRequestedQueryIdRef = useRef<string | null>(null);
   const profiles = useConnectionStore((state) => state.profiles);
   const setProfiles = useConnectionStore((state) => state.setProfiles);
-  const selectedProfileId = useConnectionStore((state) => state.selectedProfileId);
+  const selectedProfileId = useConnectionStore(
+    (state) => state.selectedProfileId,
+  );
   const setSelectedProfileId = useConnectionStore(
     (state) => state.setSelectedProfileId,
   );
@@ -516,7 +620,9 @@ export function AppWorkbench() {
   const setConnectionManagerOpen = useConnectionStore(
     (state) => state.setConnectionManagerOpen,
   );
-  const connectionSearch = useConnectionStore((state) => state.connectionSearch);
+  const connectionSearch = useConnectionStore(
+    (state) => state.connectionSearch,
+  );
   const setConnectionSearch = useConnectionStore(
     (state) => state.setConnectionSearch,
   );
@@ -549,8 +655,12 @@ export function AppWorkbench() {
     (state) => state.setMetadataLoading,
   );
   const metadataErrors = useConnectionStore((state) => state.metadataErrors);
-  const setMetadataErrors = useConnectionStore((state) => state.setMetadataErrors);
-  const objectActionMenu = useConnectionStore((state) => state.objectActionMenu);
+  const setMetadataErrors = useConnectionStore(
+    (state) => state.setMetadataErrors,
+  );
+  const objectActionMenu = useConnectionStore(
+    (state) => state.objectActionMenu,
+  );
   const setObjectActionMenu = useConnectionStore(
     (state) => state.setObjectActionMenu,
   );
@@ -583,7 +693,9 @@ export function AppWorkbench() {
   const bumpGridWindowVersion = useResultGridStore(
     (state) => state.bumpGridWindowVersion,
   );
-  const spillRef = useRef<{ handle: string; source: WindowedRows } | null>(null);
+  const spillRef = useRef<{ handle: string; source: WindowedRows } | null>(
+    null,
+  );
   const pendingPagesRef = useRef<Set<number>>(new Set());
   const activeResultIndex = useResultGridStore(
     (state) => state.activeResultIndex,
@@ -598,6 +710,11 @@ export function AppWorkbench() {
     (state) => state.setTableViewObject,
   );
   const [queryError, setQueryError] = useState<string | null>(null);
+  const [planAnalysis, setPlanAnalysis] = useState<QueryPlanAnalysis | null>(
+    null,
+  );
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
   // SQL of the last run, used to infer the editable target table.
   const [lastRunSql, setLastRunSql] = useState<string>("");
   // Staged (non-immediate) result editing: changes accumulate until Commit.
@@ -723,7 +840,9 @@ export function AppWorkbench() {
   );
   const [importError, setImportError] = useState<string | null>(null);
   const schemaDesignerOpen = useSchemaDesignerStore((state) => state.open);
-  const setSchemaDesignerOpen = useSchemaDesignerStore((state) => state.setOpen);
+  const setSchemaDesignerOpen = useSchemaDesignerStore(
+    (state) => state.setOpen,
+  );
   const schemaDraft = useSchemaDesignerStore((state) => state.draft);
   const setSchemaDraft = useSchemaDesignerStore((state) => state.setDraft);
   const openBlankSchemaDesigner = useSchemaDesignerStore(
@@ -836,10 +955,13 @@ export function AppWorkbench() {
   const activeEngine = activeProfile?.engine ?? draft.engine;
   const editorSplitOpen = editorSplitMode !== "single";
   const activeConnectionOpen = connectedIds.has(activeConnectionId);
+  const activeConnectionReadOnly = activeProfile?.readOnly ?? false;
   const activeConnectionColor =
-    activeProfile?.color || profileById.get(activeConnectionId)?.color || defaultConnectionColor;
+    activeProfile?.color ||
+    profileById.get(activeConnectionId)?.color ||
+    defaultConnectionColor;
   const activeConnectionStatus = activeConnectionOpen
-    ? `Connected · ${activeConnection.latencyMs} ms`
+    ? `${activeConnectionReadOnly ? "Read-only · " : ""}Connected · ${activeConnection.latencyMs} ms`
     : "Disconnected";
   const activeTransportLabel =
     activeConnection.proxy === "direct"
@@ -951,7 +1073,9 @@ export function AppWorkbench() {
     openTabs.find((tab) => tab.id === activeTab)?.label ?? "Scratch";
   const selectedEditorSql = selectedSqlFromSelections(query, editorSelections);
   const hasSelectedEditorSql = selectedEditorSql.length > 0;
-  const runPrimaryLabel = hasSelectedEditorSql ? "Run Selection" : "Run Current";
+  const runPrimaryLabel = hasSelectedEditorSql
+    ? "Run Selection"
+    : "Run Current";
   const runShortcutLabel = formatKeySequence(keymap["query.run"] ?? "");
   const runCurrentShortcutLabel = formatKeySequence(
     keymap["query.runCurrent"] ?? "",
@@ -1156,9 +1280,7 @@ export function AppWorkbench() {
     : null;
 
   const chartCandidateAvailable =
-    Boolean(activeResult) &&
-    !spillInfo &&
-    resultColumns.length > 0;
+    Boolean(activeResult) && !spillInfo && resultColumns.length > 0;
   const chartResultModel = useMemo(() => {
     if (!chartCandidateAvailable || !activeResult || spillInfo) {
       return null;
@@ -1300,7 +1422,6 @@ export function AppWorkbench() {
     setGridWindowVersion(0);
   }
 
-
   function beginCellEdit(key: string, col: number, seed?: string) {
     if (!editMode) {
       return;
@@ -1323,7 +1444,9 @@ export function AppWorkbench() {
       const key = `o${origin.index}:${col}`;
       const originalRaw = activeResult?.rows[origin.index]?.[col] ?? null;
       const unchanged =
-        value === null ? originalRaw === null : value === formatCell(originalRaw);
+        value === null
+          ? originalRaw === null
+          : value === formatCell(originalRaw);
       if (unchanged) {
         cellEdits.delete(key);
       } else {
@@ -1353,12 +1476,16 @@ export function AppWorkbench() {
     col: number,
     value: GridCellDraft,
   ) {
-    updateEditDraft((draft) => applyCellValueToDraft(draft, origin, col, value));
+    updateEditDraft((draft) =>
+      applyCellValueToDraft(draft, origin, col, value),
+    );
   }
 
   function addNewRow() {
     if (!canEditActiveResult()) {
-      setCommitError("result editing needs a single table query with a visible key");
+      setCommitError(
+        "result editing needs a single table query with a visible key",
+      );
       return;
     }
     updateEditDraft((draft) => ({
@@ -1489,9 +1616,13 @@ export function AppWorkbench() {
   async function copyVisibleResult() {
     const errorResult = activeResult ? null : errorResultSetForExport();
     if (errorResult) {
-      await copyGridText(formatResultGridTsv(errorResult.columns, [
-        { cells: errorResult.rows[0]?.map((cell) => String(cell ?? "")) ?? [] },
-      ]));
+      await copyGridText(
+        formatResultGridTsv(errorResult.columns, [
+          {
+            cells: errorResult.rows[0]?.map((cell) => String(cell ?? "")) ?? [],
+          },
+        ]),
+      );
       return;
     }
     if (editingCell || resultColumns.length === 0) {
@@ -1612,7 +1743,41 @@ export function AppWorkbench() {
   }
 
   function canEditActiveResult(): boolean {
-    return Boolean(result && inferEditTarget());
+    return !activeConnectionReadOnly && Boolean(result && inferEditTarget());
+  }
+
+  function generateSelectedRowChangeSql() {
+    if (activeConnectionReadOnly) {
+      const message = "read-only connection: data edits are blocked";
+      setCommitError(message);
+      showActionNotice("error", "Row SQL blocked", message);
+      return;
+    }
+    const target = inferEditTarget();
+    if (!target) {
+      const message =
+        "row SQL needs a single-table result with a visible primary or unique key";
+      setCommitError(message);
+      showActionNotice("error", "Row SQL unavailable", message);
+      return;
+    }
+    if (!selectedRowValues) {
+      showActionNotice("info", "Select a row first");
+      return;
+    }
+    const sql = buildSelectedRowUpdateSql({
+      engine: activeEngine,
+      target,
+      columns: resultColumns,
+      row: selectedRowValues,
+    });
+    activeEditorApi()?.insertText(`\n${sql}\n`);
+    activeEditorApi()?.focus();
+    showActionNotice(
+      "success",
+      "Row SQL generated",
+      "Review the transaction in the SQL editor before running it",
+    );
   }
 
   function originalCell(rowIndex: number, column: string): CellValue {
@@ -1621,9 +1786,16 @@ export function AppWorkbench() {
   }
 
   async function commitEdits() {
+    if (activeConnectionReadOnly) {
+      const message = "read-only connection: data edits are blocked";
+      setCommitError(message);
+      showActionNotice("error", "Commit failed", message);
+      return;
+    }
     const target = inferEditTarget();
     if (!target) {
-      const message = "could not detect an editable target table from the query";
+      const message =
+        "could not detect an editable target table from the query";
       setCommitError(message);
       showActionNotice("error", "Commit failed", message);
       return;
@@ -1745,6 +1917,7 @@ export function AppWorkbench() {
     toggleSidebar: () => setSidebarOpen((open) => !open),
     toggleCompletion: () => toggleSidebarView("completion"),
     toggleHistory: () => toggleSidebarView("queryHistory"),
+    togglePlan: () => toggleSidebarView("plan"),
     toggleBi: () => toggleSidebarView("bi"),
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
@@ -1758,6 +1931,8 @@ export function AppWorkbench() {
     runCurrentQuery,
     runFromStartQuery,
     runAllQuery,
+    explainPlan: () => explainCurrentQuery("plan"),
+    explainAnalyze: () => explainCurrentQuery("analyze"),
     cancelQuery,
     focusEditor: () => activeEditorApi()?.focus(),
     formatQuery,
@@ -1789,8 +1964,11 @@ export function AppWorkbench() {
       .includes(paletteQuery.trim().toLowerCase()),
   );
 
-  function activateBuiltInTheme(value: ThemeKind | ((kind: ThemeKind) => ThemeKind)) {
-    const nextThemeKind = typeof value === "function" ? value(themeKind) : value;
+  function activateBuiltInTheme(
+    value: ThemeKind | ((kind: ThemeKind) => ThemeKind),
+  ) {
+    const nextThemeKind =
+      typeof value === "function" ? value(themeKind) : value;
     setThemeKind(nextThemeKind);
     setActiveDefaultThemeId(
       defaultThemeEntryForKind(nextThemeKind, activeDefaultThemeId)?.id ?? null,
@@ -1822,7 +2000,9 @@ export function AppWorkbench() {
       setActiveCustomThemeId(null);
       return;
     }
-    const entry = customThemes.find((customTheme) => customTheme.id === themeId);
+    const entry = customThemes.find(
+      (customTheme) => customTheme.id === themeId,
+    );
     if (!entry) {
       setActiveCustomThemeId(null);
       return;
@@ -1930,10 +2110,7 @@ export function AppWorkbench() {
         }
         setCustomThemes(nextCustomThemes);
       }
-      if (
-        typeof parsed.theme === "string" &&
-        defaultThemeById(parsed.theme)
-      ) {
+      if (typeof parsed.theme === "string" && defaultThemeById(parsed.theme)) {
         const entry = defaultThemeById(parsed.theme);
         if (entry) {
           setThemeKind(entry.kind);
@@ -1995,7 +2172,9 @@ export function AppWorkbench() {
             : `Converted VS Code theme: ${importResult.theme.name}`;
       } else if (
         typeof parsed.activeCustomThemeId === "string" &&
-        nextCustomThemes.some((entry) => entry.id === parsed.activeCustomThemeId)
+        nextCustomThemes.some(
+          (entry) => entry.id === parsed.activeCustomThemeId,
+        )
       ) {
         const entry = nextCustomThemes.find(
           (themeEntry) => themeEntry.id === parsed.activeCustomThemeId,
@@ -2017,7 +2196,10 @@ export function AppWorkbench() {
           }
         }
       }
-      if (nextActiveCustomThemeId === undefined && Array.isArray(parsed.customThemes)) {
+      if (
+        nextActiveCustomThemeId === undefined &&
+        Array.isArray(parsed.customThemes)
+      ) {
         setActiveCustomThemeId(null);
       }
       if (isRecord(parsed.editor)) {
@@ -2082,9 +2264,7 @@ export function AppWorkbench() {
         }
         const nextMemoryBudget = Number(parsed.results.memoryBudget);
         if (Number.isFinite(nextMemoryBudget)) {
-          setResultMemoryBudget(
-            clampNumber(nextMemoryBudget, 1_000, 100_000),
-          );
+          setResultMemoryBudget(clampNumber(nextMemoryBudget, 1_000, 100_000));
         }
       }
       if (isRecord(parsed.layout)) {
@@ -2134,11 +2314,7 @@ export function AppWorkbench() {
         const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
         if (Number.isFinite(nextSidebarWidth)) {
           setSidebarWidth(
-            clampNumber(
-              nextSidebarWidth,
-              SIDEBAR_WIDTH_MIN,
-              SIDEBAR_WIDTH_MAX,
-            ),
+            clampNumber(nextSidebarWidth, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX),
           );
         }
         const nextInspectorWidth = Number(parsed.layout.inspectorWidth);
@@ -2164,7 +2340,9 @@ export function AppWorkbench() {
       }
       if (isRecord(parsed.keymapOverrides)) {
         const nextKeymap: Keymap = {};
-        for (const [commandId, chord] of Object.entries(parsed.keymapOverrides)) {
+        for (const [commandId, chord] of Object.entries(
+          parsed.keymapOverrides,
+        )) {
           if (typeof chord === "string") {
             nextKeymap[commandId] = chord;
           }
@@ -2183,7 +2361,9 @@ export function AppWorkbench() {
         if (nextProfiles.length > 0) {
           const selectedId =
             typeof parsed.activeConnectionId === "string" &&
-            nextProfiles.some((profile) => profile.id === parsed.activeConnectionId)
+            nextProfiles.some(
+              (profile) => profile.id === parsed.activeConnectionId,
+            )
               ? parsed.activeConnectionId
               : nextProfiles[0].id;
           const selectedProfile =
@@ -2235,10 +2415,13 @@ export function AppWorkbench() {
       title,
       detail,
     });
-    actionNoticeTimerRef.current = window.setTimeout(() => {
-      setActionNotice(null);
-      actionNoticeTimerRef.current = null;
-    }, kind === "error" ? 5200 : 3200);
+    actionNoticeTimerRef.current = window.setTimeout(
+      () => {
+        setActionNotice(null);
+        actionNoticeTimerRef.current = null;
+      },
+      kind === "error" ? 5200 : 3200,
+    );
   }
 
   // Keep the keydown listener stable while reading the latest state via refs.
@@ -2584,7 +2767,9 @@ export function AppWorkbench() {
     try {
       const exported = exportConnectionProfiles(profiles, format);
       downloadBlob(
-        new Blob([exported.content], { type: `${exported.mime};charset=utf-8` }),
+        new Blob([exported.content], {
+          type: `${exported.mime};charset=utf-8`,
+        }),
         exported.fileName,
       );
       const skipped =
@@ -2931,7 +3116,11 @@ export function AppWorkbench() {
         erdFileName(activeConnectionId, "svg"),
       );
       setDiagramError(null);
-      showActionNotice("success", "ERD SVG exported", erdFileName(activeConnectionId, "svg"));
+      showActionNotice(
+        "success",
+        "ERD SVG exported",
+        erdFileName(activeConnectionId, "svg"),
+      );
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
@@ -2945,7 +3134,11 @@ export function AppWorkbench() {
       const blob = await svgMarkupToPngBlob(markup, width, height);
       downloadBlob(blob, erdFileName(activeConnectionId, "png"));
       setDiagramError(null);
-      showActionNotice("success", "ERD PNG exported", erdFileName(activeConnectionId, "png"));
+      showActionNotice(
+        "success",
+        "ERD PNG exported",
+        erdFileName(activeConnectionId, "png"),
+      );
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
@@ -3121,7 +3314,11 @@ export function AppWorkbench() {
     );
     setImportPreview(null);
     setImportError(null);
-    showActionNotice("success", "Import SQL generated", importPreview.tableName);
+    showActionNotice(
+      "success",
+      "Import SQL generated",
+      importPreview.tableName,
+    );
   }
 
   function putMigrationTextInEditor(text: string) {
@@ -3290,6 +3487,7 @@ export function AppWorkbench() {
     const label: Record<SqlEditorTransformAction, string> = {
       uppercase: "Uppercase",
       lowercase: "Lowercase",
+      unformat: "Unformatted to one line",
       appendCommas: "Commas added",
       doubleToSingleQuotes: "Quotes converted",
     };
@@ -3298,7 +3496,10 @@ export function AppWorkbench() {
 
   async function runQuery() {
     setRunMenuOpen(false);
-    const selectedSql = selectedSqlFromSelections(query, activeEditorSelections());
+    const selectedSql = selectedSqlFromSelections(
+      query,
+      activeEditorSelections(),
+    );
     if (selectedSql) {
       await runEditorSql(selectedSql, { allowMagic: true });
       return;
@@ -3310,6 +3511,15 @@ export function AppWorkbench() {
       query,
     );
     await runEditorSql(sqlToRun, { allowMagic: true });
+  }
+
+  async function copyPlanFormat(format: QueryPlanCopyFormat) {
+    try {
+      await writeTextToClipboard(format.content);
+      showActionNotice("success", "Plan copied", format.label);
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
   }
 
   async function runSelectionQuery() {
@@ -3328,6 +3538,59 @@ export function AppWorkbench() {
     const cursor = selection.to;
     const sqlToRun = selectedOrCurrentStatement(cursor, cursor, query);
     await runEditorSql(sqlToRun, { allowMagic: true });
+  }
+
+  function explainTargetSql() {
+    const selectedSql = selectedSqlFromSelections(query, activeEditorSelections());
+    if (selectedSql) {
+      return selectedSql;
+    }
+    const selection = activeMainEditorSelection();
+    const cursor = selection.to;
+    return selectedOrCurrentStatement(cursor, cursor, query);
+  }
+
+  async function explainCurrentQuery(mode: QueryPlanMode) {
+    setRunMenuOpen(false);
+    const sqlToExplain = explainTargetSql().trim();
+    if (!activeConnectionOpen) {
+      const message = `not connected: ${activeConnectionId}`;
+      setPlanError(message);
+      showActionNotice("error", "Explain failed", message);
+      setActiveSidebarView("plan");
+      return;
+    }
+    const runtimeError = tauriRuntimeError();
+    if (runtimeError) {
+      setPlanError(runtimeError);
+      showActionNotice("error", "Explain failed", runtimeError);
+      setActiveSidebarView("plan");
+      return;
+    }
+    if (!sqlToExplain) {
+      setPlanError("query is empty");
+      showActionNotice("info", "Nothing to explain");
+      setActiveSidebarView("plan");
+      return;
+    }
+    setActiveSidebarView("plan");
+    setPlanLoading(true);
+    setPlanError(null);
+    try {
+      const plan = await dbExplainQuery(activeConnectionId, sqlToExplain, mode);
+      setPlanAnalysis(plan);
+      showActionNotice(
+        "success",
+        mode === "analyze" ? "Analyse complete" : "Plan ready",
+        `${plan.nodes.length} nodes · ${plan.findings.length} findings`,
+      );
+    } catch (error) {
+      const message = errorMessage(error);
+      setPlanError(message);
+      showActionNotice("error", "Explain failed", message);
+    } finally {
+      setPlanLoading(false);
+    }
   }
 
   async function runFromStartQuery() {
@@ -3364,7 +3627,9 @@ export function AppWorkbench() {
       showActionNotice("info", "Nothing to run");
       return;
     }
-    const magic = options.allowMagic ? parseQueryMagic(sqlToRun, activeEngine) : null;
+    const magic = options.allowMagic
+      ? parseQueryMagic(sqlToRun, activeEngine)
+      : null;
     if (magic) {
       await runQueryMagic(magic);
       return;
@@ -3409,7 +3674,20 @@ export function AppWorkbench() {
     }
   }
 
+  function blockReadOnlySql(sqlToRun: string) {
+    if (!activeConnectionReadOnly || !sqlMayWrite(sqlToRun)) {
+      return false;
+    }
+    const message = "read-only connection: write statements are blocked";
+    setQueryError(message);
+    showActionNotice("error", "Read-only mode", message);
+    return true;
+  }
+
   async function runSqlWithParameterPrompt(sqlToRun: string) {
+    if (blockReadOnlySql(sqlToRun)) {
+      return;
+    }
     const openedPrompt = await openQueryParameterPrompt(sqlToRun, false);
     if (openedPrompt) {
       return;
@@ -3479,6 +3757,9 @@ export function AppWorkbench() {
       showActionNotice("info", "Nothing to run");
       return;
     }
+    if (blockReadOnlySql(sqlToRun)) {
+      return;
+    }
     setRunning(true);
     setQueryError(null);
     setLastRunSql(sqlToRun);
@@ -3504,7 +3785,8 @@ export function AppWorkbench() {
     const ranAt = new Date().toISOString();
     const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     runningQueryIdRef.current = queryId;
-    const cancelRequestedForRun = () => cancelRequestedQueryIdRef.current === queryId;
+    const cancelRequestedForRun = () =>
+      cancelRequestedQueryIdRef.current === queryId;
     const showCancelledRun = () => {
       setQueryError(null);
       showActionNotice("info", "Query cancelled");
@@ -3679,90 +3961,95 @@ export function AppWorkbench() {
                 scheduleStreamResultPublish();
                 break;
               case "done":
-              for (const summary of event.resultSets) {
-                const set = ensureResultSet(summary.resultSetIndex);
-                set.rowCount = BigInt(summary.rowCount);
-                set.elapsedMs = BigInt(summary.elapsedMs || event.elapsedMs);
-                set.truncated = summary.truncated;
-                set.message = summary.truncated
-                  ? "result capped at 10000 rows"
-                  : undefined;
-              }
-              publishStreamResultNow();
-              {
-                const first = ensureResultSet(0);
-                const historyResult = createQueryHistoryResultSnapshot(
-                  {
-                    columns: first.columns,
-                    rows: first.rows,
-                    rowCount: BigInt(event.rowCount),
-                    elapsedMs: BigInt(event.elapsedMs),
+                for (const summary of event.resultSets) {
+                  const set = ensureResultSet(summary.resultSetIndex);
+                  set.rowCount = BigInt(summary.rowCount);
+                  set.elapsedMs = BigInt(summary.elapsedMs || event.elapsedMs);
+                  set.truncated = summary.truncated;
+                  set.message = summary.truncated
+                    ? "result capped at 10000 rows"
+                    : undefined;
+                }
+                publishStreamResultNow();
+                {
+                  const first = ensureResultSet(0);
+                  const historyResult = createQueryHistoryResultSnapshot(
+                    {
+                      columns: first.columns,
+                      rows: first.rows,
+                      rowCount: BigInt(event.rowCount),
+                      elapsedMs: BigInt(event.elapsedMs),
+                      truncated: event.truncated,
+                      message: first.message,
+                      resultSets:
+                        streamResultSets.length > 1
+                          ? streamResultSets.map((set) => ({
+                              statementIndex: set.statementIndex,
+                              statement: set.statement,
+                              columns: set.columns,
+                              rows: set.rows,
+                              rowCount: set.rowCount,
+                              elapsedMs: set.elapsedMs,
+                              truncated: set.truncated,
+                              message: set.message,
+                            }))
+                          : undefined,
+                    },
+                    queryHistoryResultRows,
+                  );
+                  appendHistory({
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    connectionId: activeConnectionId,
+                    connectionName: activeConnection.name,
+                    engine: activeConnection.engine,
+                    sql: sqlToRun,
+                    status: "ok",
+                    rowCount: event.rowCount,
+                    elapsedMs: event.elapsedMs,
                     truncated: event.truncated,
-                    message: first.message,
-                    resultSets:
-                      streamResultSets.length > 1
-                        ? streamResultSets.map((set) => ({
-                            statementIndex: set.statementIndex,
-                            statement: set.statement,
-                            columns: set.columns,
-                            rows: set.rows,
-                            rowCount: set.rowCount,
-                            elapsedMs: set.elapsedMs,
-                            truncated: set.truncated,
-                            message: set.message,
-                          }))
-                        : undefined,
-                  },
-                  queryHistoryResultRows,
+                    result: historyResult,
+                    ranAt,
+                  });
+                }
+                if (
+                  /^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)
+                ) {
+                  void refreshObjects(activeConnectionId, true);
+                }
+                showActionNotice(
+                  "success",
+                  "Query finished",
+                  `${toCount(event.rowCount)} rows in ${toCount(event.elapsedMs)} ms`,
                 );
+                break;
+              case "error":
+                if (
+                  cancelRequestedForRun() &&
+                  isQueryCancelledMessage(event.message)
+                ) {
+                  showCancelledRun();
+                  break;
+                }
+                setQueryError(event.message);
+                showActionNotice("error", "Query failed", event.message);
                 appendHistory({
                   id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                   connectionId: activeConnectionId,
                   connectionName: activeConnection.name,
                   engine: activeConnection.engine,
                   sql: sqlToRun,
-                  status: "ok",
-                  rowCount: event.rowCount,
-                  elapsedMs: event.elapsedMs,
-                  truncated: event.truncated,
-                  result: historyResult,
+                  status: "error",
+                  rowCount: 0,
+                  elapsedMs: Math.max(
+                    1,
+                    Math.round(performance.now() - started),
+                  ),
+                  truncated: false,
+                  error: event.message,
                   ranAt,
                 });
-              }
-              if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
-                void refreshObjects(activeConnectionId, true);
-              }
-              showActionNotice(
-                "success",
-                "Query finished",
-                `${toCount(event.rowCount)} rows in ${toCount(event.elapsedMs)} ms`,
-              );
-              break;
-            case "error":
-              if (
-                cancelRequestedForRun() &&
-                isQueryCancelledMessage(event.message)
-              ) {
-                showCancelledRun();
                 break;
-              }
-              setQueryError(event.message);
-              showActionNotice("error", "Query failed", event.message);
-              appendHistory({
-                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                connectionId: activeConnectionId,
-                connectionName: activeConnection.name,
-                engine: activeConnection.engine,
-                sql: sqlToRun,
-                status: "error",
-                rowCount: 0,
-                elapsedMs: Math.max(1, Math.round(performance.now() - started)),
-                truncated: false,
-                error: event.message,
-                ranAt,
-              });
-              break;
-          }
+            }
           },
         );
       }
@@ -3848,6 +4135,7 @@ export function AppWorkbench() {
 
   const completionOpen = activeSidebarView === "completion";
   const historyOpen = activeSidebarView === "queryHistory";
+  const planOpen = activeSidebarView === "plan";
   const appStyle = useMemo(
     () =>
       ({
@@ -3890,6 +4178,7 @@ export function AppWorkbench() {
         sidebarOpen={sidebarOpen}
         completionOpen={completionOpen}
         historyOpen={historyOpen}
+        planOpen={planOpen}
         sidebarSide={sidebarSide}
         sidebarWidth={sidebarWidth}
         inspectorWidth={inspectorWidth}
@@ -3966,6 +4255,19 @@ export function AppWorkbench() {
                 showHistory
               />
             }
+            planPanel={
+              <PlanPanel
+                plan={planAnalysis}
+                loading={planLoading}
+                error={planError}
+                activeConnectionOpen={activeConnectionOpen}
+                activeConnectionName={activeConnection.name}
+                onExplainPlan={() => void explainCurrentQuery("plan")}
+                onExplainAnalyze={() => void explainCurrentQuery("analyze")}
+                onCopyFormat={(format) => void copyPlanFormat(format)}
+                onClose={() => setActiveSidebarView("objectBrowser")}
+              />
+            }
             lakehousePanel={
               <LakehousePanel
                 editorEngine={editorEngine}
@@ -4003,7 +4305,9 @@ export function AppWorkbench() {
             connectedIds={connectedIds}
             objectActionMenu={objectActionMenu}
             objectKindLabel={objectKindLabel}
-            formatObjectName={(object) => qualifiedObjectName(editorEngine, object)}
+            formatObjectName={(object) =>
+              qualifiedObjectName(editorEngine, object)
+            }
             onAddProfile={() => {
               addProfile();
               setConnectionManagerOpen(true);
@@ -4014,7 +4318,9 @@ export function AppWorkbench() {
             onNewTableFromFile={() => importFileRef.current?.click()}
             onOpenObjectSchemaDesigner={openObjectSchemaDesigner}
             onOpenDiagram={() => setDiagramOpen(true)}
-            onRefreshObjects={() => refreshObjects(activeConnectionId, true, true)}
+            onRefreshObjects={() =>
+              refreshObjects(activeConnectionId, true, true)
+            }
             onOpenTableData={(object) => void openTableData(object)}
             onOpenSnapshotObject={openSnapshotObject}
             onShowObjectInDiagram={showObjectInDiagram}
@@ -4050,9 +4356,7 @@ export function AppWorkbench() {
             </button>
           </div>
 
-          <div
-            className="editor-and-inspector"
-          >
+          <div className="editor-and-inspector">
             <QueryEditorPane
               activeTabLabel={activeTabLabel}
               activeConnectionOpen={activeConnectionOpen}
@@ -4124,6 +4428,7 @@ export function AppWorkbench() {
           />
           <ResultsPane
             running={running}
+            readOnly={activeConnectionReadOnly}
             tableViewObject={tableViewObject}
             resultMode={resultMode}
             chartModel={chartResultModel}
@@ -4151,7 +4456,9 @@ export function AppWorkbench() {
             importFileRef={importFileRef}
             activeMetadata={activeMetadata}
             activeConnectionId={activeConnectionId}
-            formatObjectName={(object) => qualifiedObjectName(editorEngine, object)}
+            formatObjectName={(object) =>
+              qualifiedObjectName(editorEngine, object)
+            }
             formatCount={toCount}
             onResultModeChange={setResultMode}
             onSelectResultSet={selectResultSet}
@@ -4195,7 +4502,15 @@ export function AppWorkbench() {
                 resetEdits();
                 setEditMode(false);
               },
+              onGenerateRowChangeSql: generateSelectedRowChangeSql,
               onEnableEditMode: () => {
+                if (activeConnectionReadOnly) {
+                  const message =
+                    "read-only connection: data edits are blocked";
+                  setCommitError(message);
+                  showActionNotice("error", "Edit blocked", message);
+                  return;
+                }
                 setCommitError(null);
                 setEditMode(true);
               },
@@ -4365,7 +4680,9 @@ export function AppWorkbench() {
           appName={APP_NAME}
           appVersion={APP_VERSION}
           appIdentifier={APP_IDENTIFIER}
-          runtimeLabel={tauriRuntimeError() ? "Browser preview" : "Tauri desktop"}
+          runtimeLabel={
+            tauriRuntimeError() ? "Browser preview" : "Tauri desktop"
+          }
           activeConnectionLabel={`${activeConnection.name} \u00b7 ${
             activeConnectionOpen ? "connected" : "closed"
           }`}
@@ -4373,7 +4690,6 @@ export function AppWorkbench() {
           onCopyDiagnostics={() => void copyAppDiagnostics()}
         />
       ) : null}
-
 
       {queryHistoryDialogOpen ? (
         <Suspense fallback={null}>

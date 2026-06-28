@@ -166,7 +166,10 @@ export function importConnectionProfiles(
   }
 
   if (looksLikeXml(sourceText)) {
-    return normalizeImportResult(importXmlConnections(extractXmlPayload(sourceText)), fileName);
+    return normalizeImportResult(
+      importXmlConnections(extractXmlPayload(sourceText)),
+      fileName,
+    );
   }
 
   return normalizeImportResult(importIniConnections(sourceText), fileName);
@@ -436,7 +439,9 @@ function importXmlConnections(text: string): ConnectionImportResult {
 
   if (candidates.length === 0) {
     const genericNodes = Array.from(
-      document.querySelectorAll("connection, server, datasource, dataSource, profile"),
+      document.querySelectorAll(
+        "connection, server, datasource, dataSource, profile",
+      ),
     );
     candidates.push(...genericNodes.map(xmlNodeCandidate).filter(isCandidate));
   }
@@ -471,7 +476,9 @@ function extractXmlPayload(text: string) {
   if (fragments.length > 0) {
     return `<connections>${fragments.join("\n")}</connections>`;
   }
-  const xmlStart = trimmed.search(/<\s*(\?xml|data-source|data-sources|connection|connections|server|Reference|data|project)\b/i);
+  const xmlStart = trimmed.search(
+    /<\s*(\?xml|data-source|data-sources|connection|connections|server|Reference|data|project)\b/i,
+  );
   if (xmlStart === -1) {
     return trimmed;
   }
@@ -511,7 +518,13 @@ function candidateFromRecord(
   );
   const host = pickString(
     getAny(value, ["host", "hostname", "server", "address", "hostName"]),
-    getAny(configuration, ["host", "hostname", "server", "address", "hostName"]),
+    getAny(configuration, [
+      "host",
+      "hostname",
+      "server",
+      "address",
+      "hostName",
+    ]),
   );
   const port = pickString(
     getAny(value, ["port"]),
@@ -554,8 +567,24 @@ function candidateFromRecord(
     getAny(configuration, ["name", "label", "title", "displayName"]),
   );
   const driver = pickString(
-    getAny(value, ["engine", "driver", "driverName", "driverId", "provider", "type", "dialect"]),
-    getAny(configuration, ["engine", "driver", "driverName", "driverId", "provider", "type", "dialect"]),
+    getAny(value, [
+      "engine",
+      "driver",
+      "driverName",
+      "driverId",
+      "provider",
+      "type",
+      "dialect",
+    ]),
+    getAny(configuration, [
+      "engine",
+      "driver",
+      "driverName",
+      "driverId",
+      "provider",
+      "type",
+      "dialect",
+    ]),
   );
   const engine = detectEngine(driver, url, name, host);
   const candidate: ConnectionCandidate = {
@@ -614,14 +643,22 @@ function dataGripCandidate(node: Element): ConnectionCandidate | null {
 
 function workbenchCandidate(node: Element): ConnectionCandidate | null {
   const driver = keyedXmlValue(node, ["driver", "driverName", "driver_id"]);
-  const hostIdentifier = parseHostIdentifier(keyedXmlValue(node, ["hostIdentifier"]));
+  const hostIdentifier = parseHostIdentifier(
+    keyedXmlValue(node, ["hostIdentifier"]),
+  );
   const candidate: ConnectionCandidate = {
     id: node.getAttribute("id") ?? undefined,
     name: keyedXmlValue(node, ["name"]),
     engine: detectEngine(driver, "mysql"),
-    host: pickString(keyedXmlValue(node, ["hostName", "host"]), hostIdentifier.host),
+    host: pickString(
+      keyedXmlValue(node, ["hostName", "host"]),
+      hostIdentifier.host,
+    ),
     port: pickString(keyedXmlValue(node, ["port"]), hostIdentifier.port),
-    user: pickString(keyedXmlValue(node, ["userName", "user", "username"]), hostIdentifier.user),
+    user: pickString(
+      keyedXmlValue(node, ["userName", "user", "username"]),
+      hostIdentifier.user,
+    ),
     database: keyedXmlValue(node, ["schema", "database", "defaultSchema"]),
   };
   return candidateHasTarget(candidate) ? candidate : null;
@@ -659,10 +696,22 @@ function xmlNodeCandidate(node: Element): ConnectionCandidate | null {
       childText(node, "driver"),
       childText(node, "url"),
     ),
-    url: pickString(node.getAttribute("url"), childText(node, "url"), childText(node, "jdbc-url")),
-    host: pickString(node.getAttribute("host"), childText(node, "host"), childText(node, "server")),
+    url: pickString(
+      node.getAttribute("url"),
+      childText(node, "url"),
+      childText(node, "jdbc-url"),
+    ),
+    host: pickString(
+      node.getAttribute("host"),
+      childText(node, "host"),
+      childText(node, "server"),
+    ),
     port: pickString(node.getAttribute("port"), childText(node, "port")),
-    user: pickString(node.getAttribute("user"), childText(node, "user"), childText(node, "username")),
+    user: pickString(
+      node.getAttribute("user"),
+      childText(node, "user"),
+      childText(node, "username"),
+    ),
     database: pickString(
       node.getAttribute("database"),
       childText(node, "database"),
@@ -703,13 +752,18 @@ function collectGenericJsonCandidates(
     return;
   }
   if (Array.isArray(value)) {
-    value.forEach((item) => collectGenericJsonCandidates(item, candidates, depth + 1));
+    value.forEach((item) =>
+      collectGenericJsonCandidates(item, candidates, depth + 1),
+    );
     return;
   }
   if (!isRecord(value)) {
     return;
   }
-  const candidate = candidateFromRecord(value, `connection-${candidates.length + 1}`);
+  const candidate = candidateFromRecord(
+    value,
+    `connection-${candidates.length + 1}`,
+  );
   if (candidate) {
     candidates.push(candidate);
     return;
@@ -717,7 +771,9 @@ function collectGenericJsonCandidates(
   for (const key of importContainers) {
     const child = getAny(value, [key]);
     if (Array.isArray(child)) {
-      child.forEach((item) => collectGenericJsonCandidates(item, candidates, depth + 1));
+      child.forEach((item) =>
+        collectGenericJsonCandidates(item, candidates, depth + 1),
+      );
     } else if (isRecord(child)) {
       Object.values(child).forEach((item) =>
         collectGenericJsonCandidates(item, candidates, depth + 1),
@@ -729,13 +785,20 @@ function collectGenericJsonCandidates(
 function candidateToDraft(candidate: ConnectionCandidate, index: number) {
   const parsed = parseConnectionUrl(candidate.url ?? "");
   const engine =
-    candidate.engine ?? parsed.engine ?? detectEngine(candidate.url, candidate.name) ?? "postgres";
+    candidate.engine ??
+    parsed.engine ??
+    detectEngine(candidate.url, candidate.name) ??
+    "postgres";
   const defaults = {
     ...newDraft(index + 1),
     ...memoryDefaults(engine),
   };
   const host = pickString(candidate.host, parsed.host, defaults.host);
-  const database = pickString(candidate.database, parsed.database, defaults.database);
+  const database = pickString(
+    candidate.database,
+    parsed.database,
+    defaults.database,
+  );
   const mode: ConnectionInputMode =
     candidate.mode ??
     (engine === "sqlite" || engine === "duckdb" || host ? "fields" : "url");
@@ -752,9 +815,15 @@ function candidateToDraft(candidate: ConnectionCandidate, index: number) {
     color: normalizeConnectionColor(candidate.color, defaultConnectionColor),
     engine,
     mode,
-    url: redactPasswordFromConnectionUrl(pickString(candidate.url, parsed.url, defaults.url)),
+    url: redactPasswordFromConnectionUrl(
+      pickString(candidate.url, parsed.url, defaults.url),
+    ),
     host,
-    port: pickString(candidate.port, parsed.port, defaults.port || defaultPort(engine)),
+    port: pickString(
+      candidate.port,
+      parsed.port,
+      defaults.port || defaultPort(engine),
+    ),
     user: pickString(candidate.user, parsed.user, defaults.user),
     password: "",
     database,
@@ -782,7 +851,8 @@ function parseConnectionUrl(raw: string): ParsedUrl {
     };
   }
 
-  const oracleService = /^jdbc:oracle:[^@]*:@\/\/([^/:]+)(?::(\d+))?\/(.+)$/i.exec(url);
+  const oracleService =
+    /^jdbc:oracle:[^@]*:@\/\/([^/:]+)(?::(\d+))?\/(.+)$/i.exec(url);
   if (oracleService) {
     return {
       url,
@@ -834,9 +904,19 @@ function parseConnectionUrl(raw: string): ParsedUrl {
       engine:
         detectEngine(keyValues.driver, keyValues.engine) ??
         (looksLikeSqlServer ? "sqlserver" : undefined),
-      host: pickString(keyValues.host, keyValues.hostname, keyValues.server, keyValues.address),
+      host: pickString(
+        keyValues.host,
+        keyValues.hostname,
+        keyValues.server,
+        keyValues.address,
+      ),
       port: keyValues.port,
-      user: pickString(keyValues.user, keyValues.username, keyValues.uid, keyValues["user id"]),
+      user: pickString(
+        keyValues.user,
+        keyValues.username,
+        keyValues.uid,
+        keyValues["user id"],
+      ),
       database: pickString(
         keyValues.database,
         keyValues.db,
@@ -981,9 +1061,14 @@ function buildPgAdminExport(
   profiles: readonly ConnectionDraft[],
 ): ConnectionExportResult {
   const supported = profiles.filter((profile) =>
-    ["postgres", "timescaledb", "neon", "cockroachdb", "yugabytedb", "redshift"].includes(
-      profile.engine,
-    ),
+    [
+      "postgres",
+      "timescaledb",
+      "neon",
+      "cockroachdb",
+      "yugabytedb",
+      "redshift",
+    ].includes(profile.engine),
   );
   const servers = Object.fromEntries(
     supported.map((profile, index) => {
@@ -1030,9 +1115,15 @@ function buildMySqlWorkbenchExport(
         )}</value>`,
         '    <value type="dict" key="parameterValues">',
         `      <value type="string" key="hostName">${xmlText(view.host)}</value>`,
-        view.port ? `      <value type="int" key="port">${xmlText(view.port)}</value>` : "",
-        view.user ? `      <value type="string" key="userName">${xmlText(view.user)}</value>` : "",
-        view.database ? `      <value type="string" key="schema">${xmlText(view.database)}</value>` : "",
+        view.port
+          ? `      <value type="int" key="port">${xmlText(view.port)}</value>`
+          : "",
+        view.user
+          ? `      <value type="string" key="userName">${xmlText(view.user)}</value>`
+          : "",
+        view.database
+          ? `      <value type="string" key="schema">${xmlText(view.database)}</value>`
+          : "",
         "    </value>",
         "  </value>",
       ]
@@ -1166,7 +1257,10 @@ function exportView(profile: ConnectionDraft) {
   const port = pickString(clean.port, parsed.port, defaultPort(clean.engine));
   const database = pickString(clean.database, parsed.database);
   const user = pickString(clean.user, parsed.user);
-  const url = pickString(clean.url, standardUrlFor(clean.engine, host, port, database, user));
+  const url = pickString(
+    clean.url,
+    standardUrlFor(clean.engine, host, port, database, user),
+  );
   return {
     ...clean,
     host,
@@ -1317,7 +1411,9 @@ function candidateHasTarget(candidate: ConnectionCandidate) {
   return Boolean(candidate.url || candidate.host || candidate.database);
 }
 
-function isCandidate(value: ConnectionCandidate | null): value is ConnectionCandidate {
+function isCandidate(
+  value: ConnectionCandidate | null,
+): value is ConnectionCandidate {
   return value !== null;
 }
 
@@ -1325,7 +1421,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function firstRecord(...values: unknown[]): Record<string, unknown> | undefined {
+function firstRecord(
+  ...values: unknown[]
+): Record<string, unknown> | undefined {
   return values.find(isRecord);
 }
 
@@ -1435,7 +1533,11 @@ function parseDelimitedProperties(value: string) {
     .replace(/^[;?&]+/, "")
     .split(/[;&\n]/)
     .forEach((part) => {
-      const separator = part.includes("=") ? "=" : part.includes(":") ? ":" : "";
+      const separator = part.includes("=")
+        ? "="
+        : part.includes(":")
+          ? ":"
+          : "";
       if (!separator) {
         return;
       }
@@ -1473,28 +1575,38 @@ function parseIniSections(text: string) {
 }
 
 function childText(node: Element, localName: string) {
-  return Array.from(node.children).find((child) => child.localName === localName)
-    ?.textContent
-    ?.trim();
+  return Array.from(node.children)
+    .find((child) => child.localName === localName)
+    ?.textContent?.trim();
 }
 
 function optionValue(node: Element, name: string) {
-  return Array.from(node.querySelectorAll("option")).find(
-    (child) => child.getAttribute("name")?.toLowerCase() === name.toLowerCase(),
-  )?.getAttribute("value") ?? undefined;
+  return (
+    Array.from(node.querySelectorAll("option"))
+      .find(
+        (child) =>
+          child.getAttribute("name")?.toLowerCase() === name.toLowerCase(),
+      )
+      ?.getAttribute("value") ?? undefined
+  );
 }
 
 function propertyValue(node: Element, name: string) {
-  return Array.from(node.querySelectorAll("property")).find(
-    (child) => child.getAttribute("name")?.toLowerCase() === name.toLowerCase(),
-  )?.getAttribute("value") ?? undefined;
+  return (
+    Array.from(node.querySelectorAll("property"))
+      .find(
+        (child) =>
+          child.getAttribute("name")?.toLowerCase() === name.toLowerCase(),
+      )
+      ?.getAttribute("value") ?? undefined
+  );
 }
 
 function keyedXmlValue(node: Element, keys: readonly string[]) {
   const wanted = new Set(keys.map(normalizeKey));
-  return Array.from(node.querySelectorAll("[key]")).find((child) =>
-    wanted.has(normalizeKey(child.getAttribute("key") ?? "")),
-  )?.textContent?.trim();
+  return Array.from(node.querySelectorAll("[key]"))
+    .find((child) => wanted.has(normalizeKey(child.getAttribute("key") ?? "")))
+    ?.textContent?.trim();
 }
 
 function refAddrValue(node: Element, keys: readonly string[]) {

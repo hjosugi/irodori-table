@@ -192,6 +192,7 @@ pub fn run() {
             indexing::db_search_schema,
             db::db_connect,
             db::db_query_parameters,
+            db::db_explain_query,
             db::db_run_query,
             db::db_run_query_stream,
             db::db_run_query_spill,
@@ -321,6 +322,18 @@ mod typegen {
             .decl(&decl::<db::QueryParameterInput>())
             .decl(&decl::<db::QueryParameterPrompt>())
             .decl(&decl::<db::QueryParameterPromptSet>())
+            .decl(&decl::<db::QueryPlanMode>())
+            .decl(&decl::<db::QueryPlanSource>())
+            .decl(&decl::<db::QueryPlanSeverity>())
+            .decl(&decl::<db::QueryPlanProperty>())
+            .decl(&decl::<db::QueryPlanNode>())
+            .decl(&decl::<db::QueryPlanEdge>())
+            .decl(&decl::<db::QueryPlanFlameFrame>())
+            .decl(&decl::<db::QueryPlanMetric>())
+            .decl(&decl::<db::QueryPlanFinding>())
+            .decl(&decl::<db::QueryPlanMetricGuide>())
+            .decl(&decl::<db::QueryPlanCopyFormat>())
+            .decl(&decl::<db::QueryPlanAnalysis>())
             .decl(&decl::<db::DatabaseMetadata>())
             .decl(&decl::<db::SchemaMetadata>())
             .decl(&decl::<db::ForeignKey>())
@@ -378,6 +391,12 @@ mod typegen {
             .command(
                 Command::new("db_query_parameters", "QueryParameterPromptSet")
                     .arg(Arg::new("sql", TsType::string())),
+            )
+            .command(
+                Command::new("db_explain_query", "QueryPlanAnalysis")
+                    .arg(Arg::rust("connection_id", TsType::string()))
+                    .arg(Arg::new("sql", TsType::string()))
+                    .arg(Arg::new("mode", TsType::named("QueryPlanMode"))),
             )
             .command(
                 Command::new("db_run_query", "QueryResult")

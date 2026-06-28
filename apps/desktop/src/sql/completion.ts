@@ -34,7 +34,10 @@ export {
   snippetsForEngine,
   sqlSnippetEngines,
   sqlSnippetsFromJson,
+  sqlSnippetsFromText,
   type SqlSnippetDefinition,
+  type SqlSnippetImportFormat,
+  type SqlSnippetImportResult,
   type SqlSnippetScope,
 } from "./snippets";
 

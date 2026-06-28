@@ -16,6 +16,7 @@ type WorkbenchCommandHandlerDeps = {
   toggleSidebar: () => void;
   toggleCompletion: () => void;
   toggleHistory: () => void;
+  togglePlan: () => void;
   toggleBi: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -29,6 +30,8 @@ type WorkbenchCommandHandlerDeps = {
   runCurrentQuery: () => Promise<void>;
   runFromStartQuery: () => Promise<void>;
   runAllQuery: () => Promise<void>;
+  explainPlan: () => Promise<void>;
+  explainAnalyze: () => Promise<void>;
   cancelQuery: () => Promise<void>;
   focusEditor: () => void;
   formatQuery: () => void;
@@ -69,6 +72,7 @@ export function createWorkbenchCommandHandler({
   toggleSidebar,
   toggleCompletion,
   toggleHistory,
+  togglePlan,
   toggleBi,
   zoomIn,
   zoomOut,
@@ -82,6 +86,8 @@ export function createWorkbenchCommandHandler({
   runCurrentQuery,
   runFromStartQuery,
   runAllQuery,
+  explainPlan,
+  explainAnalyze,
   cancelQuery,
   focusEditor,
   formatQuery,
@@ -127,6 +133,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "view.history.toggle":
         toggleHistory();
+        break;
+      case "view.plan.toggle":
+        togglePlan();
         break;
       case "view.bi.toggle":
         toggleBi();
@@ -189,6 +198,12 @@ export function createWorkbenchCommandHandler({
       case "query.runAll":
         void runAllQuery();
         break;
+      case "query.explainPlan":
+        void explainPlan();
+        break;
+      case "query.explainAnalyze":
+        void explainAnalyze();
+        break;
       case "query.cancel":
         void cancelQuery();
         break;
@@ -215,6 +230,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "editor.transform.lowercase":
         transformEditorSelection("lowercase");
+        break;
+      case "editor.transform.unformat":
+        transformEditorSelection("unformat");
         break;
       case "editor.transform.addCommas":
         transformEditorSelection("appendCommas");

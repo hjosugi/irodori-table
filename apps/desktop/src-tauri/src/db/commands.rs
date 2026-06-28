@@ -203,6 +203,46 @@ pub async fn db_query_parameters(sql: String) -> IrodoriResult<QueryParameterPro
 }
 
 #[tauri::command]
+pub async fn db_explain_query(
+    state: tauri::State<'_, DbState>,
+    security: tauri::State<'_, SecurityState>,
+    connection_id: String,
+    sql: String,
+    mode: QueryPlanMode,
+) -> IrodoriResult<QueryPlanAnalysis> {
+    let audit_connection_id = connection_id.clone();
+    let audit_sql = sql.clone();
+    match explain_query_impl(state.inner(), connection_id, sql, mode).await {
+        Ok(plan) => {
+            security
+                .record(
+                    AuditEventKind::QueryRun,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([
+                        ("planMode".to_string(), format!("{:?}", plan.mode)),
+                        ("planSource".to_string(), format!("{:?}", plan.source)),
+                        ("planNodes".to_string(), plan.nodes.len().to_string()),
+                    ]),
+                )
+                .await;
+            Ok(plan)
+        }
+        Err(error) => {
+            security
+                .record(
+                    AuditEventKind::QueryFailed,
+                    Some(audit_connection_id),
+                    audit_sql,
+                    BTreeMap::from([("error".to_string(), error.clone())]),
+                )
+                .await;
+            Err(IrodoriError::from(error))
+        }
+    }
+}
+
+#[tauri::command]
 pub async fn db_run_query(
     state: tauri::State<'_, DbState>,
     security: tauri::State<'_, SecurityState>,

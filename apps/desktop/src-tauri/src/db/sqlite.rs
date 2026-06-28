@@ -5,9 +5,10 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions, SqliteRow};
 use sqlx::{Row, ValueRef};
 
 use super::meta::MetaBuilder;
+use super::{engine::Wire, explain};
 use super::{
     hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, DbQuickSample,
-    IndexMetadata, PreparedQuery, RawResultSet, RowSet,
+    IndexMetadata, PreparedQuery, QueryPlanAnalysis, QueryPlanMode, RawResultSet, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<SqlitePool, String> {
@@ -214,6 +215,34 @@ pub async fn stream_query_sets(
     })
 }
 
+pub async fn explain_query(
+    pool: &SqlitePool,
+    wire: Wire,
+    sql: &str,
+    mode: QueryPlanMode,
+) -> Result<QueryPlanAnalysis, String> {
+    let statement = single_explain_statement(sql)?;
+    let explain_sql = format!("EXPLAIN QUERY PLAN {statement}");
+    let rows = sqlx::query(super::audited_sql(&explain_sql))
+        .fetch_all(pool)
+        .await
+        .map_err(|e| format!("SQLite explain failed: {e}"))?
+        .into_iter()
+        .map(|row| {
+            let id = row.try_get::<i64, _>(0).unwrap_or_default();
+            let parent = row.try_get::<i64, _>(1).unwrap_or_default();
+            let detail = row
+                .try_get::<String, _>(3)
+                .or_else(|_| row.try_get::<String, _>("detail"))
+                .unwrap_or_default();
+            (id, parent, detail)
+        })
+        .collect();
+    Ok(explain::analysis_from_sqlite_rows(
+        wire, &statement, mode, rows,
+    ))
+}
+
 pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
     let object_rows = sqlx::query(
         r#"
@@ -406,6 +435,20 @@ fn sample_cell(value: serde_json::Value) -> String {
         serde_json::Value::Null => "NULL".to_string(),
         serde_json::Value::String(value) => value,
         other => other.to_string(),
+    }
+}
+
+fn single_explain_statement(sql: &str) -> Result<String, String> {
+    let statements = super::split_sql_statements(sql);
+    let statements = if statements.is_empty() {
+        vec![sql.trim().trim_end_matches(';').trim().to_string()]
+    } else {
+        statements
+    };
+    match statements.as_slice() {
+        [statement] if !statement.is_empty() => Ok(statement.clone()),
+        [] => Err("query is empty".into()),
+        _ => Err("Explain Plan supports one statement at a time".into()),
     }
 }
 

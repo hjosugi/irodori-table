@@ -37,7 +37,6 @@ pub struct ConnectionProfile {
     #[ts(optional)]
     pub transport: Option<irodori_core::TransportConfig>,
     #[serde(default, skip_serializing_if = "is_false")]
-    #[ts(optional)]
     pub read_only: bool,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub options: BTreeMap<String, String>,
@@ -232,8 +231,8 @@ mod tests {
             url: Some("postgres://user:secret@localhost/samples".into()),
             transport: None,
             read_only: false,
-        options: Default::default(),
-}
+            options: Default::default(),
+        }
     }
 
     #[test]
@@ -249,8 +248,8 @@ mod tests {
             url: None,
             transport: None,
             read_only: false,
-        options: Default::default(),
-})
+            options: Default::default(),
+        })
         .expect("valid profile");
 
         assert_eq!(normalized.id, "demo");

@@ -5,7 +5,9 @@ import {
   completeSqlLightweight,
   defaultSqlSnippets,
   mergeDefaultSqlSnippets,
+  snippetsForEngine,
   sqlSnippetsFromJson,
+  sqlSnippetsFromText,
   type SqlSnippetDefinition,
 } from "@/sql/completion";
 import type {
@@ -114,6 +116,16 @@ function completeWithSnippets(
   snippets: readonly SqlSnippetDefinition[],
 ): readonly Completion[] {
   return completeWithEngine(sql, metadata, "postgres", false, snippets);
+}
+
+function defaultSnippetForEngine(engine: DbEngine, label: string) {
+  return snippetsForEngine(defaultSqlSnippets, engine).find(
+    (snippet) => snippet.label === label,
+  );
+}
+
+function snippetTestKey(snippet: SqlSnippetDefinition) {
+  return `${snippet.label}:${snippet.engines?.join(",") ?? "*"}`;
 }
 
 function labels(sql: string, explicit = false): string[] {
@@ -388,12 +400,47 @@ describe("completeSqlLightweight", () => {
     expect(merged.some((snippet) => snippet.label === "delop")).toBe(true);
     expect(merged.some((snippet) => snippet.label === "updop")).toBe(true);
     expect(merged.some((snippet) => snippet.label === "mine")).toBe(true);
-    expect(new Set(merged.map((snippet) => snippet.label)).size).toBe(
+    expect(new Set(merged.map(snippetTestKey)).size).toBe(
       merged.length,
     );
     expect(defaultSqlSnippets.some((snippet) => snippet.label === "checksum")).toBe(
       true,
     );
+  });
+
+  it("filters default snippets to the active database dialect", () => {
+    expect(defaultSnippetForEngine("postgres", "upsert")?.template).toContain(
+      "on conflict",
+    );
+    expect(defaultSnippetForEngine("mysql", "upsert")?.template).toContain(
+      "on duplicate key update",
+    );
+    expect(defaultSnippetForEngine("oracle", "selw")?.template).toContain(
+      "fetch first",
+    );
+    expect(defaultSnippetForEngine("sqlserver", "begin")?.template).toContain(
+      "begin transaction",
+    );
+    expect(defaultSnippetForEngine("mongodb", "sel")).toBeUndefined();
+    expect(
+      snippetsForEngine(defaultSqlSnippets, "bigquery").filter(
+        (snippet) => snippet.label === "touch",
+      ),
+    ).toHaveLength(1);
+    expect(defaultSnippetForEngine("bigquery", "touch")?.template).toContain(
+      "current_timestamp()",
+    );
+  });
+
+  it("uses dialect-specific snippet variants in completion", () => {
+    const mysqlUpsert = completeWithEngine("ups", metadata, "mysql").find(
+      (option) => option.label === "upsert",
+    );
+    const oracleDeleteOperation = defaultSnippetForEngine("oracle", "delop");
+
+    expect(mysqlUpsert?.detail).toBe("insert on duplicate key update");
+    expect(oracleDeleteOperation?.template).toContain("fetch first");
+    expect(oracleDeleteOperation?.template).not.toContain("limit");
   });
 
   it("adds clause snippets in column-capable contexts", () => {
@@ -428,6 +475,68 @@ describe("completeSqlLightweight", () => {
     expect(completeWithSnippets("sel", snippets).map((option) => option.label)).not.toContain(
       "sel",
     );
+  });
+
+  it("loads engine-scoped snippet definitions from JSON", () => {
+    const snippets = sqlSnippetsFromJson([
+      {
+        label: "sf",
+        detail: "snowflake only",
+        template: "select current_warehouse();${0}",
+        scope: "statement",
+        engines: ["snowflake"],
+      },
+    ]);
+
+    expect(snippets[0]?.engines).toEqual(["snowflake"]);
+    expect(completeWithEngine("sf", metadata, "snowflake", false, snippets)).toHaveLength(1);
+    expect(completeWithEngine("sf", metadata, "postgres", false, snippets)).toHaveLength(0);
+  });
+
+  it("imports snippets from JSON text wrappers", async () => {
+    const imported = await sqlSnippetsFromText(
+      JSON.stringify({
+        editor: {
+          snippets: [
+            {
+              label: "ops",
+              detail: "ops select",
+              template: "select ${1:*};${0}",
+              scope: "statement",
+              engines: ["postgres"],
+            },
+          ],
+        },
+      }),
+      "snippets.json",
+    );
+
+    expect(imported.format).toBe("json");
+    expect(imported.snippets).toHaveLength(1);
+    expect(imported.snippets[0]?.engines).toEqual(["postgres"]);
+  });
+
+  it("imports snippets from YAML text", async () => {
+    const imported = await sqlSnippetsFromText(
+      `
+snippets:
+  - label: delop_sf
+    detail: Snowflake delete operation
+    scope: statement
+    engines: [snowflake]
+    template: |
+      delete from \${1:table}
+      where \${2:condition};
+      \${0}
+`,
+      "snippets.yaml",
+    );
+
+    expect(imported.format).toBe("yaml");
+    expect(imported.snippets[0]?.label).toBe("delop_sf");
+    expect(imported.snippets[0]?.template).toContain("delete from ${1:table}");
+    expect(completeWithEngine("delop_sf", metadata, "snowflake", false, imported.snippets)).toHaveLength(1);
+    expect(completeWithEngine("delop_sf", metadata, "postgres", false, imported.snippets)).toHaveLength(0);
   });
 
   it("falls back to cheap keyword completion without metadata matches", () => {

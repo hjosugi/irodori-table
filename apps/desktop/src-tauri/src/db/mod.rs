@@ -44,6 +44,7 @@ mod connection;
 mod duck;
 mod edit;
 mod engine;
+mod explain;
 mod influx;
 mod meta;
 #[cfg(feature = "mongo")]
@@ -70,6 +71,11 @@ pub use commands::*;
 use connection::{connect_engine, Connection};
 pub use edit::{AppliedEdits, CellValue, RowDelete, RowInsert, RowUpdate, TableEdits};
 pub use engine::DbEngine;
+pub use explain::{
+    QueryPlanAnalysis, QueryPlanCopyFormat, QueryPlanEdge, QueryPlanFinding, QueryPlanFlameFrame,
+    QueryPlanMetric, QueryPlanMetricGuide, QueryPlanMode, QueryPlanNode, QueryPlanProperty,
+    QueryPlanSeverity, QueryPlanSource,
+};
 use meta::{convert_inspection_card, convert_metadata_to_snapshot, convert_snapshot_to_metadata};
 pub use meta::{
     DbColumnInspection, DbColumnReference, DbCompletionItem, DbCompletionItemKind,
@@ -523,6 +529,45 @@ pub async fn run_query_with_params_impl(
         .collect();
     refresh_metadata_after_query_if_needed(state, &connection_id, &metadata_sql).await;
     Ok(query_result_from_sets(result_sets, elapsed_ms))
+}
+
+pub async fn explain_query_impl(
+    state: &DbState,
+    connection_id: String,
+    sql: String,
+    mode: QueryPlanMode,
+) -> Result<QueryPlanAnalysis, String> {
+    let connection_id = connection_id.trim().to_string();
+    if connection_id.is_empty() {
+        return Err("connection id is required".into());
+    }
+    let sql = sql.trim().to_string();
+    if sql.is_empty() {
+        return Err("query is empty".into());
+    }
+    if sql.len() > MAX_SQL_BYTES {
+        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+    }
+    if mode == QueryPlanMode::Analyze && sql_may_write(&sql) {
+        return Err(
+            "Explain Analyse is blocked for write statements because it can execute the statement"
+                .into(),
+        );
+    }
+
+    let conn = {
+        let guard = state.conns.lock().await;
+        guard
+            .get(&connection_id)
+            .cloned()
+            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+    };
+    match conn.explain_query(&sql, mode).await {
+        Ok(plan) => Ok(plan),
+        Err(error) => {
+            Ok(explain::static_analysis(conn.wire(), &sql, mode).with_native_error(error))
+        }
+    }
 }
 
 /// Run a query under the lifecycle controls the UI needs: an optional `timeout_ms`

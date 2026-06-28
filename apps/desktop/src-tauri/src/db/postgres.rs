@@ -6,9 +6,10 @@ use sqlx::types::{BigDecimal, Uuid};
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use super::meta::MetaBuilder;
+use super::{engine::Wire, explain};
 use super::{
     hex_encode, ColumnMetadata, DatabaseMetadata, DbEngine, DbObjectMetadata, DbObjectMetadataKind,
-    DbQuickSample, IndexMetadata, PreparedQuery, RowSet,
+    DbQuickSample, IndexMetadata, PreparedQuery, QueryPlanAnalysis, QueryPlanMode, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<PgPool, String> {
@@ -62,6 +63,28 @@ pub async fn stream_prepared_query(
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
     super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
+}
+
+pub async fn explain_query(
+    pool: &PgPool,
+    wire: Wire,
+    sql: &str,
+    mode: QueryPlanMode,
+) -> Result<QueryPlanAnalysis, String> {
+    let statement = single_explain_statement(sql)?;
+    let prefix = match mode {
+        QueryPlanMode::Plan => "EXPLAIN (FORMAT JSON)",
+        QueryPlanMode::Analyze => "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)",
+    };
+    let explain_sql = format!("{prefix} {statement}");
+    let json = sqlx::query_scalar::<_, serde_json::Value>(super::audited_sql(&explain_sql))
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("PostgreSQL explain failed: {e}"))?;
+    let raw = serde_json::to_string_pretty(&json).unwrap_or_else(|_| json.to_string());
+    Ok(explain::analysis_from_postgres_json(
+        wire, &statement, mode, json, raw,
+    ))
 }
 
 /// Apply result-grid edits in one transaction (rolls back on the first failure).
@@ -599,6 +622,20 @@ fn qualified_ident(schema: &str, name: &str) -> String {
 
 fn quote_ident(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+fn single_explain_statement(sql: &str) -> Result<String, String> {
+    let statements = super::split_sql_statements(sql);
+    let statements = if statements.is_empty() {
+        vec![sql.trim().trim_end_matches(';').trim().to_string()]
+    } else {
+        statements
+    };
+    match statements.as_slice() {
+        [statement] if !statement.is_empty() => Ok(statement.clone()),
+        [] => Err("query is empty".into()),
+        _ => Err("Explain Plan supports one statement at a time".into()),
+    }
 }
 
 fn sample_cell(value: serde_json::Value) -> String {

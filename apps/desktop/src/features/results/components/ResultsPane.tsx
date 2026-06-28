@@ -84,6 +84,7 @@ export type ResultsPaneEditing = {
   onUndoEdit: () => void;
   onCommitEdits: () => void;
   onDiscardEdits: () => void;
+  onGenerateRowChangeSql: () => void;
   onEnableEditMode: () => void;
   onBeginCellEdit: (key: string, col: number, seed?: string) => void;
   onSetCellValue: (
@@ -107,7 +108,11 @@ export type ResultsPaneSelection = {
   selectedRowValues: unknown[] | null;
   rowDetailTable: DbObjectMetadata | null;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
+  onSelectGridCell: (
+    rowKey: string,
+    col: number,
+    extendRange?: boolean,
+  ) => void;
   onCloseRowDetail: () => void;
 };
 
@@ -131,6 +136,7 @@ export type ResultsPaneGridGeometry = {
 
 type ResultsPaneProps = {
   running: boolean;
+  readOnly: boolean;
   tableViewObject: DbObjectMetadata | null;
   resultMode: ResultMode;
   chartModel: ChartResultModel | null;
@@ -175,6 +181,7 @@ type ResultsPaneProps = {
 
 export function ResultsPane({
   running,
+  readOnly,
   tableViewObject,
   resultMode,
   chartModel,
@@ -248,6 +255,7 @@ export function ResultsPane({
     onUndoEdit,
     onCommitEdits,
     onDiscardEdits,
+    onGenerateRowChangeSql,
     onEnableEditMode,
     onBeginCellEdit,
     onSetCellValue,
@@ -336,7 +344,10 @@ export function ResultsPane({
     <section className={running ? "results-pane is-running" : "results-pane"}>
       <div className="results-header">
         <div className="results-title">
-          {tableViewObject || chartAvailable || graphAvailable || webGlAvailable ? (
+          {tableViewObject ||
+          chartAvailable ||
+          graphAvailable ||
+          webGlAvailable ? (
             <div className="segmented-control result-mode-toggle">
               <button
                 type="button"
@@ -485,7 +496,11 @@ export function ResultsPane({
                   >
                     <span>{format.label}</span>
                     <small>
-                      .{buildResultExport({ columns: [], rows: [] }, format.id).extension}
+                      .
+                      {
+                        buildResultExport({ columns: [], rows: [] }, format.id)
+                          .extension
+                      }
                     </small>
                   </button>
                 ))}
@@ -504,6 +519,8 @@ export function ResultsPane({
           <button
             className="text-button"
             type="button"
+            disabled={readOnly}
+            title={readOnly ? "Read-only connection" : undefined}
             onClick={() => importFileRef.current?.click()}
           >
             <Upload size={13} />
@@ -522,13 +539,39 @@ export function ResultsPane({
               }
             }}
           />
+          <button
+            className="text-button"
+            type="button"
+            disabled={
+              readOnly ||
+              !selectedRowValues ||
+              !canEditActiveResult() ||
+              showingStructure
+            }
+            title={
+              readOnly
+                ? "Read-only connection"
+                : selectedRowValues
+                  ? "Generate a BEGIN/COMMIT wrapped UPDATE for the selected row"
+                  : "Select a result row first"
+            }
+            onClick={onGenerateRowChangeSql}
+          >
+            Row SQL
+          </button>
           {editMode ? (
             <>
               <button
                 className="text-button"
                 type="button"
-                disabled={!canEditActiveResult() || showingStructure}
-                title="Requires a single-table result with a visible primary or unique key"
+                disabled={
+                  readOnly || !canEditActiveResult() || showingStructure
+                }
+                title={
+                  readOnly
+                    ? "Read-only connection"
+                    : "Requires a single-table result with a visible primary or unique key"
+                }
                 onClick={onAddNewRow}
               >
                 + Row
@@ -550,14 +593,23 @@ export function ResultsPane({
               <button
                 className="text-button"
                 type="button"
-                disabled={pendingCount === 0 || committing || showingStructure}
+                disabled={
+                  readOnly ||
+                  pendingCount === 0 ||
+                  committing ||
+                  showingStructure
+                }
                 onClick={onCommitEdits}
               >
                 {committing
-                  ? "Committing..."
-                  : `Commit${pendingCount ? ` (${pendingCount})` : ""}`}
+                  ? "Saving..."
+                  : `Save Changes${pendingCount ? ` (${pendingCount})` : ""}`}
               </button>
-              <button className="text-button" type="button" onClick={onDiscardEdits}>
+              <button
+                className="text-button"
+                type="button"
+                onClick={onDiscardEdits}
+              >
                 Discard
               </button>
             </>
@@ -565,8 +617,12 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              disabled={!canEditActiveResult() || showingStructure}
-              title="Requires a single-table result with a visible primary or unique key"
+              disabled={readOnly || !canEditActiveResult() || showingStructure}
+              title={
+                readOnly
+                  ? "Read-only connection"
+                  : "Requires a single-table result with a visible primary or unique key"
+              }
               onClick={onEnableEditMode}
             >
               Edit Data

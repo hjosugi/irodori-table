@@ -380,6 +380,39 @@
   font-size: 11px;
 }
 
+.connection-readonly-toggle {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text) !important;
+  background: var(--surface-muted);
+  text-transform: none !important;
+  cursor: pointer;
+}
+
+.connection-readonly-toggle input {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+}
+
+.connection-readonly-toggle span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.connection-readonly-toggle strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .connection-transport {
   display: flex;
   align-items: center;

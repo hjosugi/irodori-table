@@ -1,6 +1,9 @@
+import { useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, FileUp, ListPlus } from "lucide-react";
 import {
   cloneDefaultSqlSnippets,
   isSqlSnippetScope,
+  sqlSnippetsFromText,
   type SqlSnippetDefinition,
   type SqlSnippetScope,
 } from "../../../sql/completion";
@@ -24,6 +27,36 @@ function uniqueSnippetLabel(snippets: readonly SqlSnippetDefinition[]) {
   return `custom${index}`;
 }
 
+function snippetKey(snippet: SqlSnippetDefinition) {
+  const engines =
+    snippet.engines && snippet.engines.length > 0
+      ? [...snippet.engines].sort().join(",")
+      : "*";
+  return `${snippet.label}:${engines}`;
+}
+
+function mergeImportedSnippets(
+  current: readonly SqlSnippetDefinition[],
+  imported: readonly SqlSnippetDefinition[],
+) {
+  const merged = current.map((snippet) => ({ ...snippet }));
+  const indexByKey = new Map(
+    merged.map((snippet, index) => [snippetKey(snippet), index]),
+  );
+  for (const snippet of imported) {
+    const key = snippetKey(snippet);
+    const index = indexByKey.get(key);
+    const nextSnippet = { ...snippet };
+    if (index === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(nextSnippet);
+    } else {
+      merged[index] = nextSnippet;
+    }
+  }
+  return merged;
+}
+
 export interface SnippetsTabProps {
   t: TranslateFn;
   sqlSnippets: SqlSnippetDefinition[];
@@ -31,6 +64,12 @@ export interface SnippetsTabProps {
 }
 
 export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps) {
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+  const [importDraft, setImportDraft] = useState("");
+  const [importSourceName, setImportSourceName] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importNotice, setImportNotice] = useState<string | null>(null);
+
   function updateSnippet(
     index: number,
     patch: Partial<SqlSnippetDefinition>,
@@ -61,6 +100,44 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
     );
   }
 
+  async function applySnippetImport(mode: "merge" | "replace") {
+    try {
+      const result = await sqlSnippetsFromText(importDraft, importSourceName);
+      setSqlSnippets((current) =>
+        mode === "replace"
+          ? result.snippets.map((snippet) => ({ ...snippet }))
+          : mergeImportedSnippets(current, result.snippets),
+      );
+      setImportError(null);
+      setImportNotice(
+        t("settings.snippets.importSuccess", {
+          count: String(result.snippets.length),
+          format: result.format.toUpperCase(),
+        }),
+      );
+    } catch (error) {
+      setImportNotice(null);
+      setImportError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function loadSnippetImportFile(file: File) {
+    try {
+      const text = await file.text();
+      setImportDraft(text);
+      setImportSourceName(file.name);
+      setImportError(null);
+      setImportNotice(
+        t("settings.snippets.fileLoaded", {
+          name: file.name,
+        }),
+      );
+    } catch (error) {
+      setImportNotice(null);
+      setImportError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   return (
     <div className="settings-snippets">
       <div className="settings-json-toolbar">
@@ -87,6 +164,76 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
         >
           {t("settings.snippets.add")}
         </button>
+      </div>
+      <div className="snippet-import-panel">
+        <div className="snippet-import-header">
+          <span>
+            <strong>{t("settings.snippets.importTitle")}</strong>
+            <small>{t("settings.snippets.importDescription")}</small>
+          </span>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml"
+            hidden
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              if (file) {
+                void loadSnippetImportFile(file);
+              }
+            }}
+          />
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => importFileRef.current?.click()}
+          >
+            <FileUp size={14} />
+            {t("settings.snippets.importFile")}
+          </button>
+        </div>
+        <textarea
+          value={importDraft}
+          spellCheck={false}
+          placeholder={t("settings.snippets.importPlaceholder")}
+          onChange={(event) => {
+            setImportDraft(event.currentTarget.value);
+            setImportSourceName("");
+            setImportError(null);
+            setImportNotice(null);
+          }}
+        />
+        <div className="snippet-import-actions">
+          <button
+            className="primary-button"
+            type="button"
+            disabled={importDraft.trim().length === 0}
+            onClick={() => void applySnippetImport("merge")}
+          >
+            <ListPlus size={14} />
+            {t("settings.snippets.importMerge")}
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={importDraft.trim().length === 0}
+            onClick={() => void applySnippetImport("replace")}
+          >
+            {t("settings.snippets.importReplace")}
+          </button>
+        </div>
+        {importError ? (
+          <div className="inline-error settings-json-error">
+            <AlertTriangle size={13} />
+            <span>{importError}</span>
+          </div>
+        ) : importNotice ? (
+          <div className="inline-success snippet-import-notice">
+            <CheckCircle2 size={13} />
+            <span>{importNotice}</span>
+          </div>
+        ) : null}
       </div>
       {sqlSnippets.length > 0 ? (
         <div className="snippet-editor-list">

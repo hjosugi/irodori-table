@@ -129,7 +129,10 @@ describe("connection transfer", () => {
       [profile({ readOnly: true })],
       "irodori",
     );
-    const imported = importConnectionProfiles(exported.content, exported.fileName);
+    const imported = importConnectionProfiles(
+      exported.content,
+      exported.fileName,
+    );
 
     expect(imported.profiles[0]).toMatchObject({
       id: "warehouse",

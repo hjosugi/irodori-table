@@ -762,7 +762,7 @@ fn temp_sqlite_profile(id: &str) -> ConnectionProfile {
         transport: None,
         read_only: false,
         options: Default::default(),
-}
+    }
 }
 
 #[tokio::test]
@@ -857,7 +857,7 @@ async fn sqlite_memory_profile_uses_in_memory_database() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     connect_impl(&state, &SecurityState::default(), profile)
         .await
         .expect("connect memory");
@@ -903,7 +903,7 @@ async fn spill_run_keeps_memory_flat_and_pages_deep_rows_from_disk() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     connect_impl(&state, &SecurityState::default(), profile)
         .await
         .expect("connect memory");
@@ -1001,7 +1001,7 @@ async fn spill_run_offload_disabled_caps_at_budget() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     connect_impl(&state, &SecurityState::default(), profile)
         .await
         .expect("connect memory");
@@ -1048,7 +1048,7 @@ async fn command_boundary_rejects_invalid_inputs() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     let err = connect_impl(&state, &SecurityState::default(), missing_host)
         .await
         .unwrap_err();
@@ -1066,7 +1066,7 @@ async fn command_boundary_rejects_invalid_inputs() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     let err = connect_impl(&state, &SecurityState::default(), unsupported)
         .await
         .unwrap_err();
@@ -1095,8 +1095,8 @@ async fn query_bounds_are_enforced() {
             url: None,
             transport: None,
             read_only: false,
-        options: Default::default(),
-},
+            options: Default::default(),
+        },
     )
     .await
     .expect("connect memory");
@@ -1165,7 +1165,7 @@ async fn reconnect_replaces_existing_connection() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     connect_impl(&state, &SecurityState::default(), profile.clone())
         .await
         .expect("connect memory");
@@ -1204,7 +1204,7 @@ fn secret_redaction_handles_urls_and_connection_strings() {
         transport: None,
         read_only: false,
         options: Default::default(),
-};
+    };
     let message =
         "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other;";
     let redacted = redact_secret_text(message, &profile);

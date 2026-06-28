@@ -15,6 +15,7 @@ use super::cassandra;
 use super::duck;
 use super::edit::{AppliedEdits, TableEdits};
 use super::engine::{self, Wire};
+use super::explain::{self, QueryPlanAnalysis, QueryPlanMode};
 #[cfg(feature = "mongo")]
 use super::mongo;
 #[cfg(feature = "sqlserver")]
@@ -64,6 +65,17 @@ pub(crate) trait Connection: Send + Sync {
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String>;
     async fn close(&self);
+
+    /// Return a normalized, DataGrip-style plan model. Engines with native
+    /// EXPLAIN support override this; every other engine still gets a structural
+    /// static analysis so the UI can show the same cards everywhere.
+    async fn explain_query(
+        &self,
+        sql: &str,
+        mode: QueryPlanMode,
+    ) -> Result<QueryPlanAnalysis, String> {
+        Ok(explain::static_analysis(self.wire(), sql, mode))
+    }
 
     /// Commit a batch of result-grid edits in one transaction. The default refuses;
     /// the sqlx engines (Postgres-wire, MySQL-wire, SQLite) override it.
@@ -169,6 +181,13 @@ impl Connection for PgConn {
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         postgres::metadata(&self.pool, self.engine).await
     }
+    async fn explain_query(
+        &self,
+        sql: &str,
+        mode: QueryPlanMode,
+    ) -> Result<QueryPlanAnalysis, String> {
+        postgres::explain_query(&self.pool, self.wire(), sql, mode).await
+    }
     async fn close(&self) {
         self.pool.close().await
     }
@@ -254,6 +273,13 @@ impl Connection for MysqlConn {
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         mysql::metadata(&self.0).await
     }
+    async fn explain_query(
+        &self,
+        sql: &str,
+        mode: QueryPlanMode,
+    ) -> Result<QueryPlanAnalysis, String> {
+        mysql::explain_query(&self.0, self.wire(), sql, mode).await
+    }
     async fn close(&self) {
         self.0.close().await
     }
@@ -308,6 +334,13 @@ impl Connection for SqliteConn {
     }
     async fn metadata(&self) -> Result<DatabaseMetadata, String> {
         sqlite::metadata(&self.0).await
+    }
+    async fn explain_query(
+        &self,
+        sql: &str,
+        mode: QueryPlanMode,
+    ) -> Result<QueryPlanAnalysis, String> {
+        sqlite::explain_query(&self.0, self.wire(), sql, mode).await
     }
     async fn close(&self) {
         self.0.close().await

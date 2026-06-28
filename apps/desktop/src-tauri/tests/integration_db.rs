@@ -24,6 +24,7 @@ fn url_profile(id: &str, engine: DbEngine, url: String) -> ConnectionProfile {
         database: None,
         url: Some(url),
         transport: None,
+        read_only: false,
         options: Default::default(),
     }
 }
@@ -666,6 +667,7 @@ fn oracle_samples() {
         database: Some(env("IRODORI_ORACLE_SERVICE", "FREEPDB1")),
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
     };
     tokio::runtime::Runtime::new()

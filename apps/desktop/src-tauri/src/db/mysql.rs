@@ -6,9 +6,10 @@ use sqlx::types::BigDecimal;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use super::meta::MetaBuilder;
+use super::{engine::Wire, explain};
 use super::{
     hex_encode, ColumnMetadata, DatabaseMetadata, DbObjectMetadataKind, DbQuickSample,
-    IndexMetadata, PreparedQuery, RowSet,
+    IndexMetadata, PreparedQuery, QueryPlanAnalysis, QueryPlanMode, RowSet,
 };
 
 pub async fn connect(url: &str) -> Result<MySqlPool, String> {
@@ -62,6 +63,47 @@ pub async fn stream_prepared_query(
     ctx: &super::stream::StreamCtx,
 ) -> Result<super::stream::StreamSummary, String> {
     super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
+}
+
+pub async fn explain_query(
+    pool: &MySqlPool,
+    wire: Wire,
+    sql: &str,
+    mode: QueryPlanMode,
+) -> Result<QueryPlanAnalysis, String> {
+    let statement = single_explain_statement(sql)?;
+    let json_sql = format!("EXPLAIN FORMAT=JSON {statement}");
+    match sqlx::query_scalar::<_, String>(super::audited_sql(&json_sql))
+        .fetch_one(pool)
+        .await
+    {
+        Ok(raw) => {
+            let json = serde_json::from_str::<serde_json::Value>(&raw)
+                .map_err(|e| format!("MySQL explain JSON parse failed: {e}"))?;
+            Ok(explain::analysis_from_mysql_json(
+                wire, &statement, mode, json, raw,
+            ))
+        }
+        Err(json_error) => {
+            let table_sql = format!("EXPLAIN {statement}");
+            let (columns, rows, _) =
+                run_query(pool, &table_sql, 100)
+                    .await
+                    .map_err(|table_error| {
+                        format!(
+                            "MySQL explain failed: {json_error}; fallback failed: {table_error}"
+                        )
+                    })?;
+            Ok(explain::analysis_from_row_table(
+                wire,
+                &statement,
+                mode,
+                columns,
+                rows,
+                "MySQL EXPLAIN table",
+            ))
+        }
+    }
 }
 
 /// Apply result-grid edits in one transaction (rolls back on the first failure).
@@ -156,6 +198,20 @@ fn bind_json<'q>(
         };
     }
     q
+}
+
+fn single_explain_statement(sql: &str) -> Result<String, String> {
+    let statements = super::split_sql_statements(sql);
+    let statements = if statements.is_empty() {
+        vec![sql.trim().trim_end_matches(';').trim().to_string()]
+    } else {
+        statements
+    };
+    match statements.as_slice() {
+        [statement] if !statement.is_empty() => Ok(statement.clone()),
+        [] => Err("query is empty".into()),
+        _ => Err("Explain Plan supports one statement at a time".into()),
+    }
 }
 
 pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {

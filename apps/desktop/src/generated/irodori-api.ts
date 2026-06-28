@@ -132,7 +132,7 @@ export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, p
 /**
  * Raw connection URL/DSN. Overrides the structured fields when present.
  */
-url?: string, transport?: TransportConfig, options?: { [key in string]: string }, };
+url?: string, transport?: TransportConfig, readOnly?: boolean, options?: { [key in string]: string }, };
 
 export type ConnectionInfo = { id: string, engine: DbEngine, serverVersion: string, };
 
@@ -181,6 +181,30 @@ export type QueryParameterInput = { key: QueryParameterKey, value: JsonValue, };
 export type QueryParameterPrompt = { key: QueryParameterKey, id: string, label: string, placeholder: string, };
 
 export type QueryParameterPromptSet = { signature: string, prompts: Array<QueryParameterPrompt>, };
+
+export type QueryPlanMode = "plan" | "analyze";
+
+export type QueryPlanSource = "native" | "nativeWithStaticAnalysis" | "staticAnalysis";
+
+export type QueryPlanSeverity = "info" | "warning" | "critical";
+
+export type QueryPlanProperty = { name: string, value: string, };
+
+export type QueryPlanNode = { id: string, parentId?: string, depth: number, label: string, operation: string, object?: string, estimatedRows?: number, actualRows?: number, startupCost?: number, totalCost?: number, actualStartupMs?: number, actualTotalMs?: number, loops?: number, width?: number, impactScore: number, properties?: Array<QueryPlanProperty>, notes?: Array<string>, };
+
+export type QueryPlanEdge = { from: string, to: string, label: string, };
+
+export type QueryPlanFlameFrame = { id: string, parentId?: string, label: string, depth: number, value: number, unit: string, ratio: number, };
+
+export type QueryPlanMetric = { key: string, label: string, value: string, unit: string, severity: QueryPlanSeverity, description: string, };
+
+export type QueryPlanFinding = { severity: QueryPlanSeverity, title: string, detail: string, action: string, nodeId?: string, };
+
+export type QueryPlanMetricGuide = { key: string, label: string, meaning: string, good: string, warning: string, };
+
+export type QueryPlanCopyFormat = { label: string, mimeType: string, content: string, };
+
+export type QueryPlanAnalysis = { mode: QueryPlanMode, source: QueryPlanSource, engineFamily: string, headline: string, summary: string, sql: string, nodes: Array<QueryPlanNode>, edges: Array<QueryPlanEdge>, flameGraph: Array<QueryPlanFlameFrame>, metrics: Array<QueryPlanMetric>, findings: Array<QueryPlanFinding>, metricGuide: Array<QueryPlanMetricGuide>, copyFormats: Array<QueryPlanCopyFormat>, };
 
 export type DatabaseMetadata = { schemas: Array<SchemaMetadata>, };
 
@@ -289,6 +313,10 @@ export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {
 
 export function dbQueryParameters(sql: string): Promise<QueryParameterPromptSet> {
   return invoke<QueryParameterPromptSet>("db_query_parameters", { sql });
+}
+
+export function dbExplainQuery(connectionId: string, sql: string, mode: QueryPlanMode): Promise<QueryPlanAnalysis> {
+  return invoke<QueryPlanAnalysis>("db_explain_query", { connectionId, sql, mode });
 }
 
 export function dbRunQuery(connectionId: string, sql: string, maxRows?: number, timeoutMs?: number, queryId?: string, params?: Array<QueryParameterInput>): Promise<QueryResult> {

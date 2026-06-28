@@ -10,6 +10,7 @@ import {
   BarChart3,
   Columns3,
   Database,
+  Flame,
   Folder,
   GitBranch,
   History,
@@ -44,6 +45,7 @@ type SidebarProps = {
   activeView: SidebarViewId;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
+  planPanel: ReactNode;
   lakehousePanel: ReactNode;
   biPanel: ReactNode;
   gitPanel: ReactNode;
@@ -87,6 +89,7 @@ export function Sidebar({
   activeView,
   completionPanel,
   historyPanel,
+  planPanel,
   lakehousePanel,
   biPanel,
   gitPanel,
@@ -210,6 +213,8 @@ export function Sidebar({
         return completionPanel;
       case "queryHistory":
         return historyPanel;
+      case "plan":
+        return planPanel;
       case "lakehouse":
         return lakehousePanel;
       case "bi":
@@ -303,6 +308,18 @@ export function Sidebar({
             >
               <History size={14} />
               <span>History</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={activeView === "plan" ? "active" : undefined}
+              aria-selected={activeView === "plan"}
+              title="Plan"
+              aria-label="Plan"
+              onClick={() => onSelectView("plan")}
+            >
+              <Flame size={14} />
+              <span>Plan</span>
             </button>
             <button
               type="button"

@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { CSSProperties } from "react";
 import {
+  AlignJustify,
   AlignLeft,
   ChevronDown,
   FileSearch,
@@ -438,6 +439,15 @@ export function QueryEditorPane({
             <button
               className="icon-button"
               type="button"
+              title="Unformat SQL to one line"
+              aria-label="Unformat SQL to one line"
+              onClick={() => runCommand("editor.transform.unformat")}
+            >
+              <AlignJustify size={15} />
+            </button>
+            <button
+              className="icon-button"
+              type="button"
               title="Toggle SQL comment"
               aria-label="Toggle SQL comment"
               onClick={() => runCommand("editor.comment.toggle")}
@@ -673,6 +683,13 @@ export function QueryEditorPane({
             onClick={() => runContextCommand("editor.transform.lowercase")}
           >
             <span>Lowercase selection</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextCommand("editor.transform.unformat")}
+          >
+            <span>Unformat to one line</span>
           </button>
           <button
             type="button"

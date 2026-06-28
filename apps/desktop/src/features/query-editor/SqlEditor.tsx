@@ -29,6 +29,11 @@ import {
 } from "@codemirror/state";
 import { acceptCompletion, completionStatus } from "@codemirror/autocomplete";
 import {
+  highlightSelectionMatches,
+  search,
+  searchKeymap,
+} from "@codemirror/search";
+import {
   linter,
   lintGutter,
   lintKeymap,
@@ -180,6 +185,9 @@ function createSqlEditorState({
       editorSelectAllShortcut(),
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
+      search({ top: true }),
+      highlightSelectionMatches(),
+      Prec.highest(keymap.of(searchKeymap)),
       keymap.of([{ key: "Tab", run: acceptCompletionWithTab }, indentWithTab]),
       compartments.sql.of(
         buildEditorSqlExtensions(

@@ -41,6 +41,7 @@ type WorkbenchShellProps = {
   sidebarOpen: boolean;
   completionOpen: boolean;
   historyOpen: boolean;
+  planOpen: boolean;
   sidebarSide: WorkbenchSide;
   sidebarWidth: number;
   inspectorWidth: number;
@@ -85,6 +86,7 @@ export function WorkbenchShell({
   sidebarOpen,
   completionOpen,
   historyOpen,
+  planOpen,
   sidebarSide,
   sidebarWidth,
   inspectorWidth,
@@ -165,6 +167,8 @@ export function WorkbenchShell({
         return completionOpen ? "Hide Completion" : "Show Completion";
       case "view.history.toggle":
         return historyOpen ? "Hide History" : "Show History";
+      case "view.plan.toggle":
+        return planOpen ? "Hide Plan" : "Show Plan";
       case "theme.toggle":
         return themeKind === "dark" ? "Light Theme" : "Dark Theme";
       case "about.open":

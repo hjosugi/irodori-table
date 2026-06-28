@@ -152,6 +152,12 @@ export const commandCatalog: CommandMeta[] = [
     scope: "editor",
   },
   {
+    id: "editor.transform.unformat",
+    title: "Unformat selection to one line",
+    category: "Editor",
+    scope: "editor",
+  },
+  {
     id: "editor.transform.addCommas",
     title: "Add commas to selected lines",
     category: "Editor",
@@ -227,6 +233,7 @@ export const defaultKeymap: Keymap = {
   "editor.quickFix": "Alt+Enter",
   "editor.cleanup": "",
   "editor.comment.toggle": "Mod+/",
+  "editor.transform.unformat": "",
   "result.export": "Mod+Shift+S",
   "edit.toggle": "Mod+E",
   "edit.undo": "Mod+Z",
