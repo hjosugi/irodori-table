@@ -231,8 +231,9 @@ mod tests {
             database: None,
             url: Some("postgres://user:secret@localhost/samples".into()),
             transport: None,
-            options: Default::default(),
-        }
+            read_only: false,
+        options: Default::default(),
+}
     }
 
     #[test]
@@ -247,8 +248,9 @@ mod tests {
             database: Some("  samples  ".into()),
             url: None,
             transport: None,
-            options: Default::default(),
-        })
+            read_only: false,
+        options: Default::default(),
+})
         .expect("valid profile");
 
         assert_eq!(normalized.id, "demo");

@@ -482,8 +482,9 @@ mod tests {
             database: Some("sample".into()),
             url: None,
             transport: None,
-            options: Default::default(),
-        }
+            read_only: false,
+        options: Default::default(),
+}
     }
 
     #[test]

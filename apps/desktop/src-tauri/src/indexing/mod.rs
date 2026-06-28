@@ -288,8 +288,9 @@ mod tests {
             database: Some(":memory:".into()),
             url: None,
             transport: None,
-            options: Default::default(),
-        }
+            read_only: false,
+        options: Default::default(),
+}
     }
 
     #[tokio::test]

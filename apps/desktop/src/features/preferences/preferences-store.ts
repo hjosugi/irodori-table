@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   cloneDefaultSqlSnippets,
+  mergeDefaultSqlSnippets,
   sqlSnippetsFromJson,
   type SqlSnippetDefinition,
 } from "../../sql/completion";
@@ -232,7 +233,9 @@ function loadSqlSnippets(): SqlSnippetDefinition[] {
     return cloneDefaultSqlSnippets();
   }
   try {
-    return sqlSnippetsFromJson(JSON.parse(stored) as unknown);
+    return mergeDefaultSqlSnippets(
+      sqlSnippetsFromJson(JSON.parse(stored) as unknown),
+    );
   } catch {
     return cloneDefaultSqlSnippets();
   }

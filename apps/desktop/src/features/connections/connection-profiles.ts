@@ -29,6 +29,7 @@ export type ConnectionDraft = {
   user: string;
   password: string;
   database: string;
+  readOnly: boolean;
 };
 
 export const profilesStorageKey = "irodori.connectionProfiles.v1";
@@ -187,6 +188,7 @@ export const starterProfiles: ConnectionDraft[] = [
     user: "irodori",
     password: "",
     database: "samples",
+    readOnly: false,
   },
   {
     id: "local-mysql",
@@ -200,6 +202,7 @@ export const starterProfiles: ConnectionDraft[] = [
     user: "irodori",
     password: "",
     database: "samples",
+    readOnly: false,
   },
   {
     id: "sqlite-memory",
@@ -213,6 +216,7 @@ export const starterProfiles: ConnectionDraft[] = [
     user: "",
     password: "",
     database: ":memory:",
+    readOnly: false,
   },
   {
     id: "duckdb-memory",
@@ -226,6 +230,7 @@ export const starterProfiles: ConnectionDraft[] = [
     user: "",
     password: "",
     database: ":memory:",
+    readOnly: false,
   },
 ];
 
@@ -293,6 +298,7 @@ export function newDraft(seed: number): ConnectionDraft {
     user: "",
     password: "",
     database: "",
+    readOnly: false,
   };
 }
 
@@ -525,6 +531,7 @@ export function settingsProfileFromJson(
       user: jsonString(value.user, defaults.user),
       password: "",
       database: jsonString(value.database, defaults.database),
+      readOnly: value.readOnly === true,
     }),
   );
 }
@@ -593,11 +600,13 @@ export function validateDraft(draft: ConnectionDraft): string | null {
 
 export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
+  const readOnly = resolvedDraft.readOnly ? { readOnly: true } : {};
   if (resolvedDraft.mode === "url") {
     return {
       id: resolvedDraft.id.trim(),
       engine: resolvedDraft.engine,
       url: resolvedDraft.url.trim(),
+      ...readOnly,
     };
   }
   return {
@@ -608,5 +617,6 @@ export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
     user: resolvedDraft.user.trim() || undefined,
     password: resolvedDraft.password || undefined,
     database: resolvedDraft.database.trim() || undefined,
+    ...readOnly,
   };
 }

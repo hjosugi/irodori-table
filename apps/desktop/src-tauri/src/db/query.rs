@@ -359,7 +359,6 @@ fn is_write_keyword(token: String) -> bool {
             | "rename"
             | "replace"
             | "revoke"
-            | "set"
             | "truncate"
             | "update"
             | "upsert"

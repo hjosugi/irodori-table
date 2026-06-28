@@ -18,6 +18,7 @@ function profile(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
     user: "analyst",
     password: "secret",
     database: "analytics",
+    readOnly: false,
     ...patch,
   };
 }
@@ -120,6 +121,19 @@ describe("connection transfer", () => {
       port: "3306",
       user: "root",
       database: "sakila",
+    });
+  });
+
+  it("round-trips read-only mode in native exports", () => {
+    const exported = exportConnectionProfiles(
+      [profile({ readOnly: true })],
+      "irodori",
+    );
+    const imported = importConnectionProfiles(exported.content, exported.fileName);
+
+    expect(imported.profiles[0]).toMatchObject({
+      id: "warehouse",
+      readOnly: true,
     });
   });
 

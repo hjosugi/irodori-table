@@ -17,7 +17,7 @@
 //! engine, with exact numerics/temporals rendered as strings to avoid precision
 //! and timezone loss. Oracle awaits a pure-Rust thin TNS driver.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -79,7 +79,8 @@ pub use profile::ConnectionProfile;
 use profile::{normalize_profile, redact_secret_text};
 pub(crate) use query::{
     bounded_query_cap, prepare_query, query_result_from_sets, query_result_set,
-    split_sql_statements, sql_may_change_metadata, PreparedQuery, RawResultSet, RowSet,
+    split_sql_statements, sql_may_change_metadata, sql_may_write, PreparedQuery, RawResultSet,
+    RowSet,
 };
 pub use query::{
     query_parameter_prompt_set, QueryParameterInput, QueryParameterKey, QueryParameterPrompt,
@@ -237,6 +238,7 @@ pub struct IndexMetadata {
 #[derive(Clone)]
 pub struct DbState {
     conns: Arc<Mutex<HashMap<String, Arc<dyn Connection>>>>,
+    read_only_connections: Arc<Mutex<HashSet<String>>>,
     /// In-flight cancellable queries keyed by a caller-supplied `query_id`, so
     /// `db_cancel` can stop a specific run. Entries are removed when the run ends.
     cancels: Arc<Mutex<HashMap<String, CancellationToken>>>,
@@ -262,6 +264,7 @@ impl Default for DbState {
     fn default() -> Self {
         Self {
             conns: Arc::new(Mutex::new(HashMap::new())),
+            read_only_connections: Arc::new(Mutex::new(HashSet::new())),
             cancels: Arc::new(Mutex::new(HashMap::new())),
             metadata_cache: Arc::new(Mutex::new(MetadataCache::new())),
             metadata_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
@@ -270,6 +273,32 @@ impl Default for DbState {
             result_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
+}
+
+async fn is_connection_read_only(state: &DbState, connection_id: &str) -> bool {
+    state
+        .read_only_connections
+        .lock()
+        .await
+        .contains(connection_id)
+}
+
+async fn ensure_connection_can_run_sql(
+    state: &DbState,
+    connection_id: &str,
+    sql: &str,
+) -> Result<(), String> {
+    if !sql_may_write(sql) || !is_connection_read_only(state, connection_id).await {
+        return Ok(());
+    }
+    Err("read-only connection: write statements are blocked".into())
+}
+
+async fn ensure_connection_writable(state: &DbState, connection_id: &str) -> Result<(), String> {
+    if is_connection_read_only(state, connection_id).await {
+        return Err("read-only connection: write operations are blocked".into());
+    }
+    Ok(())
 }
 
 fn trigger_background_refresh(state: DbState, connection_id: String) {
@@ -367,9 +396,19 @@ pub async fn connect_impl(
     };
 
     let server_version = conn.version().await.unwrap_or_else(|| "unknown".into());
-    let old = state.conns.lock().await.insert(profile.id.clone(), conn);
+    let connection_id = profile.id.clone();
+    let read_only = profile.read_only;
+    let old = state.conns.lock().await.insert(connection_id.clone(), conn);
     if let Some(old) = old {
         old.close().await;
+    }
+    {
+        let mut read_only_connections = state.read_only_connections.lock().await;
+        if read_only {
+            read_only_connections.insert(connection_id.clone());
+        } else {
+            read_only_connections.remove(&connection_id);
+        }
     }
 
     if let Some(cancel_token) = resolved_tunnel {
@@ -377,17 +416,17 @@ pub async fn connect_impl(
             .tunnels
             .lock()
             .await
-            .insert(profile.id.clone(), cancel_token);
+            .insert(connection_id.clone(), cancel_token);
         if let Some(old) = old {
             old.cancel();
         }
     }
 
     // Trigger background refresh immediately to warm up the cache!
-    trigger_background_refresh(state.clone(), profile.id.clone());
+    trigger_background_refresh(state.clone(), connection_id.clone());
 
     Ok(ConnectionInfo {
-        id: profile.id,
+        id: connection_id,
         engine: profile.engine,
         server_version,
     })
@@ -458,6 +497,7 @@ pub async fn run_query_with_params_impl(
             .cloned()
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
+    ensure_connection_can_run_sql(state, &connection_id, &sql).await?;
 
     let cap = bounded_query_cap(max_rows)?;
     let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
@@ -642,6 +682,7 @@ pub(crate) async fn run_query_stream_capped_impl(
             .cloned()
             .ok_or_else(|| format!("no open connection: {connection_id}"))?
     };
+    ensure_connection_can_run_sql(state, &connection_id, &sql).await?;
     let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
     let metadata_sql = prepared.sql.clone();
 
@@ -955,6 +996,11 @@ pub async fn apply_edits_impl(
     connection_id: String,
     edits: TableEdits,
 ) -> Result<AppliedEdits, String> {
+    let connection_id = connection_id.trim().to_string();
+    if connection_id.is_empty() {
+        return Err("connection id is required".into());
+    }
+    ensure_connection_writable(state, &connection_id).await?;
     let conn = {
         let guard = state.conns.lock().await;
         guard
@@ -976,6 +1022,11 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
     if let Some(cancel_token) = state.tunnels.lock().await.remove(&connection_id) {
         cancel_token.cancel();
     }
+    state
+        .read_only_connections
+        .lock()
+        .await
+        .remove(&connection_id);
     release_results_for_connection(state, &connection_id).await;
     {
         let mut cache = state.metadata_cache.lock().await;

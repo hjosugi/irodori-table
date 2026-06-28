@@ -1152,6 +1152,7 @@ function exportProfile(profile: ConnectionDraft) {
     port: view.port,
     user: view.user,
     database: view.database,
+    readOnly: view.readOnly ? true : undefined,
   });
 }
 

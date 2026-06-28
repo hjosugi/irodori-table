@@ -119,6 +119,94 @@ fn detects_sql_that_can_change_metadata() {
     ));
 }
 
+#[test]
+fn detects_sql_that_can_write_for_read_only_connections() {
+    assert!(!sql_may_write(
+        "select 'delete from users' as sql_text, $$create table fake$$"
+    ));
+    assert!(!sql_may_write(
+        r#"select "update" as quoted_identifier from users"#
+    ));
+    assert!(sql_may_write(
+        "with changed as (select 1) insert into audit_log select * from changed"
+    ));
+    assert!(sql_may_write("/* maintenance */ vacuum; analyze users"));
+    assert!(sql_may_write("call refresh_rollups()"));
+}
+
+#[tokio::test]
+async fn read_only_connection_blocks_writes_and_grid_edits() {
+    let state = DbState::default();
+    let mut profile = temp_sqlite_profile("readonly");
+    connect_impl(&state, &SecurityState::default(), profile.clone())
+        .await
+        .expect("connect writable");
+    run_query_impl(
+        &state,
+        "readonly".into(),
+        "create table t(id integer primary key, name text)".into(),
+        None,
+    )
+    .await
+    .expect("create");
+    disconnect_impl(&state, "readonly".into())
+        .await
+        .expect("disconnect writable");
+
+    profile.read_only = true;
+    connect_impl(&state, &SecurityState::default(), profile)
+        .await
+        .expect("connect read-only");
+
+    run_query_impl(&state, "readonly".into(), "select 1 as ok".into(), None)
+        .await
+        .expect("select allowed");
+
+    let err = run_query_impl(
+        &state,
+        "readonly".into(),
+        "insert into t(name) values ('blocked')".into(),
+        None,
+    )
+    .await
+    .unwrap_err();
+    assert!(err.contains("read-only connection"), "{err}");
+
+    let (tx, _rx) = mpsc::channel(2);
+    let err = run_query_stream_impl(
+        &state,
+        "readonly".into(),
+        "delete from t".into(),
+        None,
+        None,
+        None,
+        tx,
+    )
+    .await
+    .unwrap_err();
+    assert!(err.contains("read-only connection"), "{err}");
+
+    let err = apply_edits_impl(
+        &state,
+        "readonly".into(),
+        TableEdits {
+            schema: Some("main".into()),
+            table: "t".into(),
+            updates: Vec::new(),
+            inserts: vec![RowInsert {
+                values: vec![CellValue {
+                    column: "name".into(),
+                    value: serde_json::json!("blocked"),
+                }],
+            }],
+            deletes: Vec::new(),
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(err.contains("read-only connection"), "{err}");
+}
+
 #[tokio::test]
 async fn successful_mutation_refreshes_metadata_without_manual_invalidation() {
     let state = DbState::default();
@@ -672,8 +760,9 @@ fn temp_sqlite_profile(id: &str) -> ConnectionProfile {
         database: None,
         url: Some(format!("sqlite://{}?mode=rwc", path.display())),
         transport: None,
+        read_only: false,
         options: Default::default(),
-    }
+}
 }
 
 #[tokio::test]
@@ -766,8 +855,9 @@ async fn sqlite_memory_profile_uses_in_memory_database() {
         database: Some(":memory:".into()),
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     connect_impl(&state, &SecurityState::default(), profile)
         .await
         .expect("connect memory");
@@ -811,8 +901,9 @@ async fn spill_run_keeps_memory_flat_and_pages_deep_rows_from_disk() {
         database: Some(":memory:".into()),
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     connect_impl(&state, &SecurityState::default(), profile)
         .await
         .expect("connect memory");
@@ -908,8 +999,9 @@ async fn spill_run_offload_disabled_caps_at_budget() {
         database: Some(":memory:".into()),
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     connect_impl(&state, &SecurityState::default(), profile)
         .await
         .expect("connect memory");
@@ -954,8 +1046,9 @@ async fn command_boundary_rejects_invalid_inputs() {
         database: Some("samples".into()),
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     let err = connect_impl(&state, &SecurityState::default(), missing_host)
         .await
         .unwrap_err();
@@ -971,8 +1064,9 @@ async fn command_boundary_rejects_invalid_inputs() {
         database: None,
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     let err = connect_impl(&state, &SecurityState::default(), unsupported)
         .await
         .unwrap_err();
@@ -1000,8 +1094,9 @@ async fn query_bounds_are_enforced() {
             database: Some(":memory:".into()),
             url: None,
             transport: None,
-            options: Default::default(),
-        },
+            read_only: false,
+        options: Default::default(),
+},
     )
     .await
     .expect("connect memory");
@@ -1068,8 +1163,9 @@ async fn reconnect_replaces_existing_connection() {
         database: Some(":memory:".into()),
         url: None,
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     connect_impl(&state, &SecurityState::default(), profile.clone())
         .await
         .expect("connect memory");
@@ -1106,8 +1202,9 @@ fn secret_redaction_handles_urls_and_connection_strings() {
         database: None,
         url: Some("postgres://user:secret@localhost/samples".into()),
         transport: None,
+        read_only: false,
         options: Default::default(),
-    };
+};
     let message =
         "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other;";
     let redacted = redact_secret_text(message, &profile);

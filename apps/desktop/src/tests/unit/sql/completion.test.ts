@@ -3,6 +3,8 @@ import type { Completion } from "@codemirror/autocomplete";
 import {
   buildSqlCompletionIndex,
   completeSqlLightweight,
+  defaultSqlSnippets,
+  mergeDefaultSqlSnippets,
   sqlSnippetsFromJson,
   type SqlSnippetDefinition,
 } from "@/sql/completion";
@@ -339,6 +341,59 @@ describe("completeSqlLightweight", () => {
     ]);
     expect(snippet?.detail).toBe("select statement");
     expect(typeof snippet?.apply).toBe("function");
+  });
+
+  it("adds operational SQL snippets for safe DML workflows", () => {
+    const deleteOperation = complete("delop").find(
+      (option) => option.label === "delop",
+    );
+    const updateOperation = complete("updop").find(
+      (option) => option.label === "updop",
+    );
+    const transaction = complete("begin").find(
+      (option) => option.label === "begin",
+    );
+
+    expect(deleteOperation?.detail).toBe("delete operation: select/delete/select");
+    expect(updateOperation?.detail).toBe("update operation: preview/update/verify");
+    expect(typeof transaction?.apply).toBe("function");
+    expect(defaultSqlSnippets.find((snippet) => snippet.label === "delop")?.template).toContain(
+      "rollback",
+    );
+    expect(defaultSqlSnippets.find((snippet) => snippet.label === "begin")?.template).toContain(
+      "-- commit;",
+    );
+  });
+
+  it("keeps new default snippets when merging stored custom snippets", () => {
+    const merged = mergeDefaultSqlSnippets([
+      {
+        label: "sel",
+        detail: "custom select override",
+        template: "select 1;${0}",
+        scope: "statement",
+        rank: 999,
+      },
+      {
+        label: "mine",
+        detail: "custom snippet",
+        template: "select ${1:value};${0}",
+        scope: "statement",
+      },
+    ]);
+
+    expect(merged.find((snippet) => snippet.label === "sel")?.detail).toBe(
+      "custom select override",
+    );
+    expect(merged.some((snippet) => snippet.label === "delop")).toBe(true);
+    expect(merged.some((snippet) => snippet.label === "updop")).toBe(true);
+    expect(merged.some((snippet) => snippet.label === "mine")).toBe(true);
+    expect(new Set(merged.map((snippet) => snippet.label)).size).toBe(
+      merged.length,
+    );
+    expect(defaultSqlSnippets.some((snippet) => snippet.label === "checksum")).toBe(
+      true,
+    );
   });
 
   it("adds clause snippets in column-capable contexts", () => {

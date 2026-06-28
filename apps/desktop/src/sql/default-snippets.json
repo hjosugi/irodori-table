@@ -1,0 +1,240 @@
+[
+  {
+    "label": "sel",
+    "detail": "select statement",
+    "template": "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
+    "rank": 540,
+    "scope": "statement"
+  },
+  {
+    "label": "selw",
+    "detail": "select with where/order/limit",
+    "template": "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition}\norder by ${4:column}\nlimit ${5:100};\n${0}",
+    "rank": 535,
+    "scope": "statement"
+  },
+  {
+    "label": "cte",
+    "detail": "with common table expression",
+    "template": "with ${1:cte_name} as (\n  select ${2:*}\n  from ${3:table}\n)\nselect ${4:*}\nfrom ${1:cte_name};\n${0}",
+    "rank": 530,
+    "scope": "statement"
+  },
+  {
+    "label": "ins",
+    "detail": "insert statement",
+    "template": "insert into ${1:table} (${2:columns})\nvalues (${3:values});\n${0}",
+    "rank": 525,
+    "scope": "statement"
+  },
+  {
+    "label": "insel",
+    "detail": "insert from select",
+    "template": "insert into ${1:target_table} (${2:columns})\nselect ${2:columns}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
+    "rank": 523,
+    "scope": "statement"
+  },
+  {
+    "label": "upsert",
+    "detail": "insert on conflict update",
+    "template": "insert into ${1:table} (${2:columns})\nvalues (${3:values})\non conflict (${4:key_column}) do update\nset ${5:column} = excluded.${5:column};\n${0}",
+    "rank": 520,
+    "scope": "statement"
+  },
+  {
+    "label": "upd",
+    "detail": "update statement",
+    "template": "update ${1:table}\nset ${2:column} = ${3:value}\nwhere ${4:condition};\n${0}",
+    "rank": 525,
+    "scope": "statement"
+  },
+  {
+    "label": "updop",
+    "detail": "update operation: preview/update/verify",
+    "template": "-- preview target rows\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\nbegin;\n\nupdate ${1:table}\nset ${4:column} = ${5:value}\nwhere ${2:condition};\n\n-- verify after update before commit\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\n-- commit;\nrollback;\n${0}",
+    "rank": 524,
+    "scope": "statement"
+  },
+  {
+    "label": "touch",
+    "detail": "update audit timestamp",
+    "template": "update ${1:table}\nset ${2:updated_at} = current_timestamp\nwhere ${3:condition};\n${0}",
+    "rank": 510,
+    "scope": "statement"
+  },
+  {
+    "label": "del",
+    "detail": "delete statement",
+    "template": "delete from ${1:table}\nwhere ${2:condition};\n${0}",
+    "rank": 525,
+    "scope": "statement"
+  },
+  {
+    "label": "delop",
+    "detail": "delete operation: select/delete/select",
+    "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\nbegin;\n\ndelete from ${1:table}\nwhere ${2:condition};\n\n-- verify no unexpected rows remain before commit\nselect count(*) as remaining_count\nfrom ${1:table}\nwhere ${2:condition};\n\n-- commit;\nrollback;\n${0}",
+    "rank": 524,
+    "scope": "statement"
+  },
+  {
+    "label": "delret",
+    "detail": "delete returning rows",
+    "template": "delete from ${1:table}\nwhere ${2:condition}\nreturning ${3:*};\n${0}",
+    "rank": 512,
+    "scope": "statement"
+  },
+  {
+    "label": "softdel",
+    "detail": "soft delete operation",
+    "template": "update ${1:table}\nset ${2:deleted_at} = current_timestamp\nwhere ${3:condition};\n${0}",
+    "rank": 512,
+    "scope": "statement"
+  },
+  {
+    "label": "begin",
+    "detail": "safe transaction block",
+    "template": "begin;\n\n${1:statement}\n\n-- commit;\nrollback;\n${0}",
+    "rank": 524,
+    "scope": "statement"
+  },
+  {
+    "label": "commit",
+    "detail": "commit transaction",
+    "template": "commit;\n${0}",
+    "rank": 500,
+    "scope": "statement"
+  },
+  {
+    "label": "rollback",
+    "detail": "rollback transaction",
+    "template": "rollback;\n${0}",
+    "rank": 500,
+    "scope": "statement"
+  },
+  {
+    "label": "sp",
+    "detail": "savepoint with rollback",
+    "template": "savepoint ${1:sp_name};\n\n${2:statement}\n\n-- rollback to savepoint ${1:sp_name};\n-- release savepoint ${1:sp_name};\n${0}",
+    "rank": 495,
+    "scope": "statement"
+  },
+  {
+    "label": "join",
+    "detail": "join clause",
+    "template": "join ${1:table} on ${2:condition}${0}",
+    "rank": 520,
+    "scope": "clause"
+  },
+  {
+    "label": "case",
+    "detail": "case expression",
+    "template": "case\n  when ${1:condition} then ${2:value}\n  else ${3:fallback}\nend${0}",
+    "rank": 515,
+    "scope": "expression"
+  },
+  {
+    "label": "ct",
+    "detail": "create table",
+    "template": "create table ${1:table} (\n  ${2:id} ${3:integer} primary key,\n  ${4:created_at} ${5:timestamp}\n);\n${0}",
+    "rank": 510,
+    "scope": "statement"
+  },
+  {
+    "label": "ctas",
+    "detail": "create table as select",
+    "template": "create table ${1:new_table} as\nselect ${2:*}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
+    "rank": 508,
+    "scope": "statement"
+  },
+  {
+    "label": "tempt",
+    "detail": "create temp staging table",
+    "template": "create temporary table ${1:staging_table} as\nselect ${2:*}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
+    "rank": 506,
+    "scope": "statement"
+  },
+  {
+    "label": "idx",
+    "detail": "create index",
+    "template": "create index ${1:index_name}\non ${2:table} (${3:column});\n${0}",
+    "rank": 505,
+    "scope": "statement"
+  },
+  {
+    "label": "cnt",
+    "detail": "count rows with filter",
+    "template": "select count(*) as row_count\nfrom ${1:table}\nwhere ${2:condition};\n${0}",
+    "rank": 518,
+    "scope": "statement"
+  },
+  {
+    "label": "sample",
+    "detail": "sample rows for inspection",
+    "template": "select *\nfrom ${1:table}\nwhere ${2:condition}\norder by ${3:column}\nlimit ${4:100};\n${0}",
+    "rank": 516,
+    "scope": "statement"
+  },
+  {
+    "label": "exists",
+    "detail": "exists check",
+    "template": "select exists (\n  select 1\n  from ${1:table}\n  where ${2:condition}\n) as exists_flag;\n${0}",
+    "rank": 508,
+    "scope": "statement"
+  },
+  {
+    "label": "dupes",
+    "detail": "find duplicate keys",
+    "template": "select ${1:key_column}, count(*) as duplicate_count\nfrom ${2:table}\ngroup by ${1:key_column}\nhaving count(*) > 1\norder by duplicate_count desc\nlimit ${3:100};\n${0}",
+    "rank": 506,
+    "scope": "statement"
+  },
+  {
+    "label": "nulls",
+    "detail": "profile null counts",
+    "template": "select\n  count(*) as row_count,\n  sum(case when ${1:column} is null then 1 else 0 end) as null_count\nfrom ${2:table};\n${0}",
+    "rank": 504,
+    "scope": "statement"
+  },
+  {
+    "label": "checksum",
+    "detail": "row count and hash fingerprint",
+    "template": "select\n  count(*) as row_count,\n  min(${1:hash_column}) as min_hash,\n  max(${1:hash_column}) as max_hash\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
+    "rank": 502,
+    "scope": "statement"
+  },
+  {
+    "label": "explain",
+    "detail": "explain query plan",
+    "template": "explain\n${1:select * from table where condition};\n${0}",
+    "rank": 500,
+    "scope": "statement"
+  },
+  {
+    "label": "lock",
+    "detail": "select rows for update",
+    "template": "select *\nfrom ${1:table}\nwhere ${2:condition}\nfor update;\n${0}",
+    "rank": 498,
+    "scope": "statement"
+  },
+  {
+    "label": "merge",
+    "detail": "merge/upsert operation",
+    "template": "merge into ${1:target_table} as target\nusing ${2:source_table} as source\non ${3:target.id = source.id}\nwhen matched then update set\n  ${4:column} = source.${4:column}\nwhen not matched then insert (${5:columns})\nvalues (${6:source_columns});\n${0}",
+    "rank": 496,
+    "scope": "statement"
+  },
+  {
+    "label": "win",
+    "detail": "window expression",
+    "template": "${1:sum}(${2:amount}) over (partition by ${3:group_column} order by ${4:sort_column})${0}",
+    "rank": 500,
+    "scope": "expression"
+  },
+  {
+    "label": "tx",
+    "detail": "transaction block",
+    "template": "begin;\n\n${1:statement}\n\n-- commit;\nrollback;\n${0}",
+    "rank": 495,
+    "scope": "statement"
+  }
+]

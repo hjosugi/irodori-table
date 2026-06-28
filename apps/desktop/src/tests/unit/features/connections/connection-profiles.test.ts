@@ -26,6 +26,7 @@ function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
     user: "irodori",
     password: "secret",
     database: "samples",
+    readOnly: false,
     ...patch,
   };
 }
@@ -72,6 +73,22 @@ describe("connection profiles", () => {
       password: "",
     });
     expect(profile.color).toBe(defaultConnectionColor);
+    expect(profile.readOnly).toBe(false);
+  });
+
+  it("normalizes read-only mode from settings JSON", () => {
+    const profile = settingsProfileFromJson(
+      {
+        id: "prod-reader",
+        name: "Prod Reader",
+        engine: "postgres",
+        host: "prod.example.test",
+        readOnly: true,
+      },
+      0,
+    );
+
+    expect(profile.readOnly).toBe(true);
   });
 
   it("redacts passwords from portable connection definitions", () => {
@@ -158,7 +175,7 @@ describe("connection profiles", () => {
   });
 
   it("validates and converts field drafts into API profiles", () => {
-    const profile = draft({ mode: "fields", port: "15432" });
+    const profile = draft({ mode: "fields", port: "15432", readOnly: true });
 
     expect(validateDraft(profile)).toBeNull();
     expect(profileFromDraft(profile)).toEqual({
@@ -169,6 +186,7 @@ describe("connection profiles", () => {
       user: "irodori",
       password: "secret",
       database: "samples",
+      readOnly: true,
     });
   });
 });
