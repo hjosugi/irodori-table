@@ -1,29 +1,8 @@
+# Foundation crates were extracted into the sibling repo `irodori-kit`
+# (https://github.com/hjosugi/irodori-kit) and are consumed via git tag below.
+# This repo is the app only.
 [workspace]
-members = [
-    "apps/desktop/src-tauri",
-    "crates/irodori-connection",
-    "crates/irodori-security",
-    "crates/irodori-core",
-    "crates/irodori-proxy",
-    "crates/irodori-secure-store",
-    "crates/irodori-completion",
-    "crates/irodori-generate",
-    "crates/irodori-extension",
-    "crates/irodori-io",
-    "crates/irodori-server",
-]
-default-members = [
-    "crates/irodori-connection",
-    "crates/irodori-security",
-    "crates/irodori-core",
-    "crates/irodori-proxy",
-    "crates/irodori-secure-store",
-    "crates/irodori-completion",
-    "crates/irodori-generate",
-    "crates/irodori-extension",
-    "crates/irodori-io",
-    "crates/irodori-server",
-]
+members = ["apps/desktop/src-tauri"]
 resolver = "2"
 
 [workspace.package]
@@ -37,3 +16,10 @@ irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", tag = "v0.2.24" 
 irodori-error = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
 irodori-jobs = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
 irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
+# Foundation crates, extracted to the irodori-kit sibling repo. For local
+# co-development, override with a `[patch]` pointing at a `../irodori-kit` checkout.
+irodori-core = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
+irodori-proxy = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
+irodori-secure-store = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
+irodori-completion = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
+irodori-generate = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }

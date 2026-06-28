@@ -23,14 +23,14 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-irodori-core = { path = "../../../crates/irodori-core" }
-irodori-proxy = { path = "../../../crates/irodori-proxy" }
-irodori-secure-store = { path = "../../../crates/irodori-secure-store" }
+irodori-core = { workspace = true }
+irodori-proxy = { workspace = true }
+irodori-secure-store = { workspace = true }
 irodori-sql.workspace = true
-irodori-completion = { path = "../../../crates/irodori-completion" }
+irodori-completion = { workspace = true }
 # `http` (Ollama + OpenAI-compatible APIs) and the CLI provider are always on so
 # external/subscription models work without the heavy embedded `llama` build.
-irodori-generate = { path = "../../../crates/irodori-generate", features = ["http"] }
+irodori-generate = { workspace = true, features = ["http"] }
 irodori-knowledge.workspace = true
 sql-dialect-fmt-formatter = { git = "https://github.com/hjosugi/sql-dialect-fmt", tag = "v1.0.0" }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
