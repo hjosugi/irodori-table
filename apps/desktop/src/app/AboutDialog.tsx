@@ -1,4 +1,5 @@
 import { Copy, Info } from "lucide-react";
+import { DialogShell } from "@/components/DialogShell";
 
 export function AboutDialog({
   appName,
@@ -18,13 +19,11 @@ export function AboutDialog({
   onCopyDiagnostics: () => void;
 }) {
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <div
-        className="data-dialog about-dialog"
-        role="dialog"
-        aria-label={`About ${appName}`}
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogShell
+      className="data-dialog about-dialog"
+      label={`About ${appName}`}
+      onClose={onClose}
+    >
         <div className="dialog-header">
           <strong>About {appName}</strong>
           <span>Version and support information</span>
@@ -76,7 +75,6 @@ export function AboutDialog({
             Copy diagnostics
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

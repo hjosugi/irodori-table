@@ -10,6 +10,7 @@ import {
   type DbEngine,
 } from "@/generated/irodori-api";
 import { errorMessage, isIrodoriError } from "@/core/errors";
+import { DialogShell } from "@/components/DialogShell";
 import "./ai-generate-dialog.css";
 
 type ActionNoticeKind = "success" | "error" | "info";
@@ -127,16 +128,12 @@ export function AiGenerateDialog({
   const notCompiled = provider.kind === "local" && status ? !status.compiled : false;
 
   return (
-    <div
-      className="ai-generate-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Generate SQL with AI"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+    <DialogShell
+      className="ai-generate-panel"
+      overlayClassName="ai-generate-overlay"
+      label="Generate SQL with AI"
+      onClose={onClose}
     >
-      <div className="ai-generate-panel">
         <header className="ai-generate-header">
           <span className="ai-generate-title">Generate SQL</span>
           <button type="button" className="ai-generate-close" aria-label="Close" onClick={onClose}>
@@ -155,8 +152,6 @@ export function AiGenerateDialog({
             if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
               event.preventDefault();
               void submit();
-            } else if (event.key === "Escape") {
-              onClose();
             }
           }}
         />
@@ -295,7 +290,6 @@ export function AiGenerateDialog({
             </button>
           </div>
         </footer>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

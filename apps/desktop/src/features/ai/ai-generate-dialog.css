@@ -1,12 +1,13 @@
 .ai-generate-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  /* Above standard dialogs (palette-overlay = 50) and the terminal dock (40). */
+  z-index: 60;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 12vh;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--scrim);
 }
 
 .ai-generate-panel {
@@ -16,10 +17,10 @@
   gap: 10px;
   padding: 16px;
   border-radius: 10px;
-  background: var(--surface, var(--background, #1e1e22));
-  color: var(--foreground, #e6e6e6);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 48px var(--shadow-color-strong);
 }
 
 .ai-generate-header {
@@ -30,20 +31,24 @@
 
 .ai-generate-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-ui-lg);
 }
 
 .ai-generate-close {
   border: none;
   background: transparent;
-  color: inherit;
+  color: var(--muted);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.7;
+  border-radius: 4px;
+  padding: 0 4px;
 }
-.ai-generate-close:hover {
-  opacity: 1;
+.ai-generate-close:hover,
+.ai-generate-close:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+  outline: none;
 }
 
 .ai-generate-input {
@@ -52,36 +57,39 @@
   padding: 10px;
   border-radius: 8px;
   font: inherit;
-  color: inherit;
-  background: var(--input-background, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+  font-size: var(--font-ui-md);
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
 }
-.ai-generate-input:focus {
-  outline: none;
-  border-color: var(--accent, #5b9dff);
+.ai-generate-input:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+  border-color: var(--focus);
 }
 
 .ai-generate-note {
   margin: 0;
-  font-size: 12px;
-  opacity: 0.85;
+  font-size: var(--font-ui-sm);
+  color: var(--muted);
 }
 .ai-generate-note code {
   padding: 1px 4px;
   border-radius: 4px;
-  background: rgba(127, 127, 127, 0.2);
+  background: var(--surface-muted);
+  font-size: var(--font-code);
 }
 
 .ai-generate-error {
   margin: 0;
-  font-size: 12px;
-  color: var(--error, #ff6b6b);
+  font-size: var(--font-ui-sm);
+  color: var(--red);
 }
 
 .ai-generate-link {
   border: none;
   background: transparent;
-  color: var(--accent, #5b9dff);
+  color: var(--accent);
   cursor: pointer;
   padding: 0;
   font: inherit;
@@ -91,9 +99,13 @@
   opacity: 0.6;
   cursor: default;
 }
+.ai-generate-link:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
 
 .ai-generate-provider {
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-top: 1px solid var(--border);
   padding-top: 8px;
 }
 
@@ -108,12 +120,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--font-ui-sm);
 }
 .ai-generate-field > span {
   width: 72px;
   flex: 0 0 auto;
-  opacity: 0.8;
+  color: var(--muted);
 }
 .ai-generate-field select,
 .ai-generate-field input {
@@ -121,14 +133,15 @@
   padding: 5px 8px;
   border-radius: 6px;
   font: inherit;
-  color: inherit;
-  background: var(--input-background, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
 }
-.ai-generate-field select:focus,
-.ai-generate-field input:focus {
-  outline: none;
-  border-color: var(--accent, #5b9dff);
+.ai-generate-field select:focus-visible,
+.ai-generate-field input:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+  border-color: var(--focus);
 }
 
 .ai-generate-footer {
@@ -139,8 +152,8 @@
 }
 
 .ai-generate-hint {
-  font-size: 11px;
-  opacity: 0.6;
+  font-size: var(--font-ui-xs);
+  color: var(--muted);
 }
 
 .ai-generate-actions {
@@ -152,13 +165,18 @@
   padding: 6px 14px;
   border-radius: 6px;
   font: inherit;
+  font-size: var(--font-ui-sm);
   cursor: pointer;
-  color: inherit;
-  background: var(--button-background, rgba(255, 255, 255, 0.08));
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+  color: var(--text);
+  background: var(--hover);
+  border: 1px solid var(--border);
 }
 .ai-generate-button:hover:not(:disabled) {
-  background: var(--button-hover, rgba(255, 255, 255, 0.14));
+  background: var(--surface-muted);
+}
+.ai-generate-button:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
 }
 .ai-generate-button:disabled {
   opacity: 0.5;
@@ -166,10 +184,22 @@
 }
 
 .ai-generate-button--primary {
-  background: var(--accent, #4f7fff);
-  border-color: var(--accent, #4f7fff);
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
 }
 .ai-generate-button--primary:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+@media (max-width: 720px) {
+  .ai-generate-field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .ai-generate-field > span {
+    width: auto;
+  }
 }

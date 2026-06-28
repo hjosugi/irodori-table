@@ -14,9 +14,18 @@ function decodeBase64(value: string): Uint8Array {
   return bytes;
 }
 
+/** Derive the xterm palette from the app's theme CSS variables (light/dark/custom). */
+function readXtermTheme(el: HTMLElement): { background: string; foreground: string } {
+  const styles = getComputedStyle(el);
+  const background = styles.getPropertyValue("--editor-bg").trim() || "#1a1b1e";
+  const foreground = styles.getPropertyValue("--text").trim() || "#e6e6e6";
+  return { background, foreground };
+}
+
 /**
  * One xterm.js terminal bound to a PTY session. WebGL rendering gives it
  * Ghostty/WezTerm-class throughput; output is base64-decoded from the channel.
+ * The palette follows the app theme via CSS variables.
  */
 export function TerminalView({ active }: { active: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,7 +43,7 @@ export function TerminalView({ active }: { active: boolean }) {
         'ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace',
       cursorBlink: true,
       allowProposedApi: true,
-      theme: { background: "#1a1b1e", foreground: "#e6e6e6" },
+      theme: readXtermTheme(container),
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -47,6 +56,16 @@ export function TerminalView({ active }: { active: boolean }) {
     fit.fit();
     termRef.current = term;
     fitRef.current = fit;
+
+    // Keep the palette in sync when the app theme changes.
+    const themeRoot = container.closest<HTMLElement>(".app-root") ?? document.documentElement;
+    const themeObserver = new MutationObserver(() => {
+      term.options.theme = readXtermTheme(container);
+    });
+    themeObserver.observe(themeRoot, {
+      attributes: true,
+      attributeFilter: ["data-theme", "class", "style"],
+    });
 
     let disposed = false;
     void ptySpawn({ cols: term.cols, rows: term.rows }, (event: PtyEvent) => {
@@ -80,6 +99,7 @@ export function TerminalView({ active }: { active: boolean }) {
       disposed = true;
       dataSub.dispose();
       resizeObserver.disconnect();
+      themeObserver.disconnect();
       const id = idRef.current;
       if (id) void ptyKill(id);
       term.dispose();

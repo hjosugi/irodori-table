@@ -9,8 +9,23 @@ mdBook:
 
 ## Still local in this repo
 
+**Architecture & planning**
+
 - [implementation-architecture.md](implementation-architecture.md) — current
   codebase map, module boundaries, Tauri/API flow, and implementation diagrams.
+- [roadmap-1.0.md](roadmap-1.0.md) — what's required for a 1.0 release (scope,
+  P0/P1, deferrals).
+- [distribution.md](distribution.md) — download/update channels (GitHub Releases,
+  Tauri updater, cargo, package managers) and their status.
+
+**Feature notes** (subsystems built in this repo)
+
+- [ai-local-sql-generation.md](ai-local-sql-generation.md) — local,
+  grammar-constrained NL→SQL generation + pluggable model providers.
+- [integrated-terminal.md](integrated-terminal.md) — the PTY-backed xterm.js
+  terminal panel.
+- [headless-data-api.md](headless-data-api.md) — the optional local HTTP data API
+  (`irodori-server`).
 
 ## Still generated in this repo
 

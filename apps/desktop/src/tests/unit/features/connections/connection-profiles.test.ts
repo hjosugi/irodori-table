@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  connectionCustomColorOptions,
   defaultConnectionColor,
   normalizeConnectionColor,
   portableProfile,
@@ -34,6 +35,18 @@ describe("connection profiles", () => {
     expect(normalizeConnectionColor("#ABCDEF")).toBe("#abcdef");
     expect(normalizeConnectionColor("#0f8")).toBe("#00ff88");
     expect(normalizeConnectionColor("bad")).toBe(defaultConnectionColor);
+  });
+
+  it("provides a broad custom connection color palette", () => {
+    expect(connectionCustomColorOptions.length).toBeGreaterThanOrEqual(32);
+    expect(new Set(connectionCustomColorOptions).size).toBe(
+      connectionCustomColorOptions.length,
+    );
+    expect(
+      connectionCustomColorOptions.every((color) =>
+        /^#[0-9a-f]{6}$/.test(color),
+      ),
+    ).toBe(true);
   });
 
   it("normalizes settings JSON and strips stored passwords", () => {

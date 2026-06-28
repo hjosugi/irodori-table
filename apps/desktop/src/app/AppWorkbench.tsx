@@ -342,24 +342,6 @@ export function AppWorkbench() {
   const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
   const pendingDiagramSearchRef = useRef<string | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
-  const gridScrollRaf = useRef<number | null>(null);
-  const pendingGridScroll = useRef({ top: 0, left: 0 });
-  const gridScrollTop = useResultGridStore((state) => state.gridScrollTop);
-  const setGridScrollTop = useResultGridStore((state) => state.setGridScrollTop);
-  const gridScrollLeft = useResultGridStore((state) => state.gridScrollLeft);
-  const setGridScrollLeft = useResultGridStore((state) => state.setGridScrollLeft);
-  const gridViewportHeight = useResultGridStore(
-    (state) => state.gridViewportHeight,
-  );
-  const setGridViewportHeight = useResultGridStore(
-    (state) => state.setGridViewportHeight,
-  );
-  const gridViewportWidth = useResultGridStore(
-    (state) => state.gridViewportWidth,
-  );
-  const setGridViewportWidth = useResultGridStore(
-    (state) => state.setGridViewportWidth,
-  );
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
@@ -927,22 +909,6 @@ export function AppWorkbench() {
     activeMetadataLoading,
   ]);
 
-  // Track the result grid viewport so both row and column windows cover it.
-  useEffect(() => {
-    const element = gridRef.current;
-    if (!element) {
-      return;
-    }
-    const measure = () => {
-      setGridViewportHeight(element.clientHeight);
-      setGridViewportWidth(element.clientWidth);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [result]);
-
   // Dialect for the editor: prefer the active connection's profile engine,
   // then the connection-form draft, then Postgres.
   const editorEngine = useMemo<DbEngine>(() => {
@@ -1058,6 +1024,26 @@ export function AppWorkbench() {
   const gridColumnWidth = scaledUiPixels(GRID_COLUMN_WIDTH, uiZoom);
   const gridGutterColumnWidth = scaledUiPixels(GRID_GUTTER_WIDTH, uiZoom);
   const gridGutterWidth = editMode ? gridGutterColumnWidth : 0;
+  const {
+    gridScrollTop,
+    gridScrollLeft,
+    gridViewportHeight,
+    gridViewportWidth,
+    setGridScrollTop,
+    setGridScrollLeft,
+    onGridScroll,
+    resetGridScrollPosition,
+    scrollGridCellIntoView,
+  } = useResultGridScroll({
+    gridRef,
+    result,
+    gridRowHeight,
+    gridGutterWidth,
+    gridColumnWidth,
+    setSelectedRowKey,
+    setSelectedCell,
+    setSelectedRange,
+  });
   const gridTotalWidth = Math.max(
     1,
     gridGutterWidth + resultColumns.length * gridColumnWidth,
@@ -4067,11 +4053,30 @@ export function AppWorkbench() {
     [theme, uiZoom],
   );
 
+  // Briefly enable color transitions only while the theme is actually changing,
+  // so light/dark switches fade instead of snapping — without leaving a
+  // permanent transition on every surface (which would make hover feel laggy).
+  const [themeSwitching, setThemeSwitching] = useState(false);
+  const themeKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${themeKind}|${activeDefaultThemeId ?? ""}|${activeCustomThemeId ?? ""}`;
+    if (themeKeyRef.current === null) {
+      themeKeyRef.current = key;
+      return;
+    }
+    if (themeKeyRef.current === key) return;
+    themeKeyRef.current = key;
+    setThemeSwitching(true);
+    const timer = window.setTimeout(() => setThemeSwitching(false), 280);
+    return () => window.clearTimeout(timer);
+  }, [themeKind, activeDefaultThemeId, activeCustomThemeId]);
+
   return (
     <div
       className="app-root"
       data-theme={theme.kind}
       data-animations={animationsEnabled ? "on" : "off"}
+      data-theme-switching={themeSwitching ? "on" : undefined}
       style={appStyle}
     >
       <WorkbenchShell

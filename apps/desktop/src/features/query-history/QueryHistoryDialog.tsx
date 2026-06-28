@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { AlertTriangle, Clock3, Play, Search, Trash2, X } from "lucide-react";
+import { DialogShell } from "@/components/DialogShell";
 import {
   type QueryHistoryItem,
   useQueryHistoryStore,
@@ -77,17 +78,12 @@ export function QueryHistoryDialog({
   }
 
   return (
-    <div
-      className="palette-overlay history-overlay"
-      onClick={closeDialog}
-      role="presentation"
+    <DialogShell
+      className="data-dialog history-dialog"
+      overlayClassName="palette-overlay history-overlay"
+      label="Query history"
+      onClose={closeDialog}
     >
-      <div
-        className="data-dialog history-dialog"
-        role="dialog"
-        aria-label="Query history"
-        onClick={(event) => event.stopPropagation()}
-      >
         <div className="dialog-header">
           <strong>Query History</strong>
           <span>
@@ -108,11 +104,6 @@ export function QueryHistoryDialog({
               placeholder="Search SQL, connection, engine, or error"
               aria-label="Search query history"
               onChange={(event) => setSearch(event.currentTarget.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  closeDialog();
-                }
-              }}
             />
             {hasSearch ? (
               <button
@@ -292,8 +283,7 @@ export function QueryHistoryDialog({
             )}
           </section>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }
 

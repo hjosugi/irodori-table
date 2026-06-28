@@ -307,10 +307,29 @@
 }
 
 .connection-color-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  align-items: start;
+}
+
+.connection-color-presets,
+.connection-color-palette {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
   gap: 7px;
+  min-width: 0;
+}
+
+.connection-color-presets {
+  grid-column: 1 / -1;
+}
+
+.connection-color-palette {
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
+  max-width: min(100%, 520px);
 }
 
 .connection-color-swatch {
@@ -321,7 +340,17 @@
   cursor: pointer;
 }
 
-.connection-color-swatch.active {
+.connection-color-chip {
+  width: 100%;
+  min-width: 18px;
+  height: 20px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 78%, transparent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.connection-color-swatch.active,
+.connection-color-chip.active {
   box-shadow:
     0 0 0 2px var(--surface-raised),
     0 0 0 4px var(--focus);
@@ -331,6 +360,8 @@
   display: inline-grid !important;
   grid-template-columns: 30px minmax(82px, 108px);
   align-items: center;
+  align-self: start;
+  grid-column: 2;
   gap: 6px !important;
   text-transform: none !important;
 }
@@ -404,6 +435,15 @@
 
   .connection-form-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .connection-color-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .connection-color-palette,
+  .connection-custom-color {
+    grid-column: 1;
   }
 
   .form-toggle {

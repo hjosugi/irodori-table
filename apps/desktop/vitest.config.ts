@@ -1,7 +1,8 @@
 import { defineConfig } from "vitest/config";
 
 // jsdom because some units import CodeMirror packages that expect DOM globals
-// at module load. The tests themselves exercise pure logic (no rendering).
+// at module load. Most units exercise pure logic; a few `.test.tsx` files render
+// small shared components (DialogShell, ErrorBoundary) against the jsdom DOM.
 export default defineConfig({
   resolve: {
     alias: {
@@ -10,6 +11,6 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/tests/unit/**/*.test.ts"],
+    include: ["src/tests/unit/**/*.test.ts", "src/tests/unit/**/*.test.tsx"],
   },
 });

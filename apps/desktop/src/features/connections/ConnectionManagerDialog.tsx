@@ -18,7 +18,9 @@ import {
   Upload,
 } from "lucide-react";
 import type { DbEngine } from "@/generated/irodori-api";
+import { DialogShell } from "@/components/DialogShell";
 import {
+  connectionCustomColorOptions,
   connectionColorOptions,
   engineConnectionSettings,
   engineLabel,
@@ -47,13 +49,7 @@ const environmentLabels: Record<(typeof environmentOrder)[number], string> = {
 };
 
 function connectionSearchText(profile: ConnectionDraft) {
-  return [
-    profile.id,
-    profile.name,
-    profile.host,
-    profile.database,
-    profile.url,
-  ]
+  return [profile.id, profile.name, profile.host, profile.database, profile.url]
     .join(" ")
     .toLowerCase();
 }
@@ -146,6 +142,7 @@ export function ConnectionManagerDialog({
     () => groupConnectionProfiles(profiles),
     [profiles],
   );
+  const normalizedDraftColor = normalizeConnectionColor(draft.color);
 
   useEffect(() => {
     if (!transferMenuOpen) {
@@ -254,129 +251,132 @@ export function ConnectionManagerDialog({
   }
 
   return (
-    <div
-      className="palette-overlay connection-overlay"
-      onClick={onClose}
-      role="presentation"
+    <DialogShell
+      className="connection-dialog"
+      overlayClassName="palette-overlay connection-overlay"
+      label="Connection manager"
+      onClose={onClose}
+      autoFocus={false}
     >
-      <div
-        className="connection-dialog"
-        role="dialog"
-        aria-label="Connection manager"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <aside className="connection-picker">
-          <div className="connection-picker-header">
+      <aside className="connection-picker">
+        <div className="connection-picker-header">
+          <button
+            className="icon-button"
+            type="button"
+            title="New connection"
+            aria-label="New connection"
+            onClick={onAddProfile}
+          >
+            <Plus size={16} />
+          </button>
+          <div className="connection-action-menu-wrap" ref={transferMenuRef}>
             <button
-              className="icon-button"
+              className={
+                transferMenuOpen ? "icon-button active" : "icon-button"
+              }
               type="button"
-              title="New connection"
-              aria-label="New connection"
-              onClick={onAddProfile}
+              title="Connection import and export"
+              aria-label="Connection import and export"
+              aria-expanded={transferMenuOpen}
+              onClick={() => setTransferMenuOpen((open) => !open)}
             >
-              <Plus size={16} />
+              <MoreHorizontal size={16} />
             </button>
-            <div className="connection-action-menu-wrap" ref={transferMenuRef}>
-              <button
-                className={transferMenuOpen ? "icon-button active" : "icon-button"}
-                type="button"
-                title="Connection import and export"
-                aria-label="Connection import and export"
-                aria-expanded={transferMenuOpen}
-                onClick={() => setTransferMenuOpen((open) => !open)}
-              >
-                <MoreHorizontal size={16} />
-              </button>
-              {transferMenuOpen ? (
-                <div className="connection-action-menu" role="menu">
+            {transferMenuOpen ? (
+              <div className="connection-action-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setTransferMenuOpen(false);
+                    importInputRef.current?.click();
+                  }}
+                >
+                  <span>Import Connections...</span>
+                  <Upload size={13} />
+                </button>
+                <span className="connection-action-menu-separator" />
+                {connectionTransferFormatOptions.map((format) => (
                   <button
+                    key={format.value}
                     type="button"
                     role="menuitem"
+                    disabled={profiles.length === 0}
                     onClick={() => {
                       setTransferMenuOpen(false);
-                      importInputRef.current?.click();
+                      onExportProfiles(format.value);
                     }}
                   >
-                    <span>Import Connections...</span>
-                    <Upload size={13} />
+                    <span>Export {format.label}</span>
+                    <small>No passwords</small>
                   </button>
-                  <span className="connection-action-menu-separator" />
-                  {connectionTransferFormatOptions.map((format) => (
-                    <button
-                      key={format.value}
-                      type="button"
-                      role="menuitem"
-                      disabled={profiles.length === 0}
-                      onClick={() => {
-                        setTransferMenuOpen(false);
-                        onExportProfiles(format.value);
-                      }}
-                    >
-                      <span>Export {format.label}</span>
-                      <small>No passwords</small>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            <label className="connection-search">
-              <Search size={15} />
-              <input
-                autoFocus
-                value={search}
-                placeholder="Search connections"
-                onChange={(event) => onSearchChange(event.currentTarget.value)}
-              />
-            </label>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <label className="connection-search">
+            <Search size={15} />
             <input
-              ref={importInputRef}
-              className="hidden-file-input"
-              type="file"
-              accept=".json,.xml,.csv,.ini,.txt,.conf,.tableplusconnection"
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                event.currentTarget.value = "";
-                if (file) {
-                  onImportProfiles(file);
-                }
-              }}
+              autoFocus
+              value={search}
+              placeholder="Search connections"
+              onChange={(event) => onSearchChange(event.currentTarget.value)}
             />
-          </div>
-          <div className="connection-profile-list">
-            {groupedProfiles.map(renderGroup)}
-          </div>
-          <div className="connection-picker-empty">
-            {profiles.length === 0 ? "No matching connections" : null}
-          </div>
-        </aside>
-        <form className="connection-form" onSubmit={onConnect}>
-          <div className="dialog-header">
-            <strong>{draft.name.trim() || "New Connection"}</strong>
-            <span>{engineLabel(draft.engine)}</span>
-            <button className="text-button" type="button" onClick={onClose}>
-              Close
-            </button>
-          </div>
-          <div className="dialog-body connection-form-body">
-            <label className="full-row">
-              <span>Connection name</span>
-              <input
-                value={draft.name}
-                placeholder="Connection's name"
-                onChange={(event) =>
-                  onUpdateDraft({ name: event.currentTarget.value })
-                }
-              />
-            </label>
-            <div className="connection-color-row full-row">
-              <span>Color tag</span>
-              <div className="connection-color-options">
+          </label>
+          <input
+            ref={importInputRef}
+            className="hidden-file-input"
+            type="file"
+            accept=".json,.xml,.csv,.ini,.txt,.conf,.tableplusconnection"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              if (file) {
+                onImportProfiles(file);
+              }
+            }}
+          />
+        </div>
+        <div className="connection-profile-list">
+          {groupedProfiles.map(renderGroup)}
+        </div>
+        <div className="connection-picker-empty">
+          {profiles.length === 0 ? "No matching connections" : null}
+        </div>
+      </aside>
+      <form className="connection-form" onSubmit={onConnect}>
+        <div className="dialog-header">
+          <strong>{draft.name.trim() || "New Connection"}</strong>
+          <span>{engineLabel(draft.engine)}</span>
+          <button className="text-button" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="dialog-body connection-form-body">
+          <label className="full-row">
+            <span>Connection name</span>
+            <input
+              value={draft.name}
+              placeholder="Connection's name"
+              onChange={(event) =>
+                onUpdateDraft({ name: event.currentTarget.value })
+              }
+            />
+          </label>
+          <div className="connection-color-row full-row">
+            <span>Color tag</span>
+            <div className="connection-color-options">
+              <div
+                className="connection-color-presets"
+                role="group"
+                aria-label="Connection color presets"
+              >
                 {connectionColorOptions.map((color) => (
                   <button
                     key={color}
                     type="button"
                     className={
-                      draft.color === color
+                      normalizedDraftColor === color
                         ? "connection-color-swatch active"
                         : "connection-color-swatch"
                     }
@@ -385,203 +385,223 @@ export function ConnectionManagerDialog({
                     onClick={() => onUpdateDraft({ color })}
                   />
                 ))}
-                <label className="connection-custom-color">
-                  <input
-                    type="color"
-                    value={normalizeConnectionColor(draft.color)}
-                    onChange={(event) =>
-                      onUpdateDraft({ color: event.currentTarget.value })
-                    }
-                    aria-label="Use custom connection color"
-                  />
-                  <input
-                    value={draft.color}
-                    spellCheck={false}
-                    aria-label="Connection color hex"
-                    onBlur={() =>
-                      onUpdateDraft({
-                        color: normalizeConnectionColor(draft.color),
-                      })
-                    }
-                    onChange={(event) =>
-                      onUpdateDraft({ color: event.currentTarget.value })
-                    }
-                  />
-                </label>
               </div>
-            </div>
-            <div className="connection-form-grid">
-              <label>
-                <span>Engine</span>
-                <select
-                  value={draft.engine}
+              <div
+                className="connection-color-palette"
+                role="group"
+                aria-label="Connection custom color palette"
+              >
+                {connectionCustomColorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={
+                      normalizedDraftColor === color
+                        ? "connection-color-chip active"
+                        : "connection-color-chip"
+                    }
+                    style={{ background: color }}
+                    aria-label={`Use color ${color}`}
+                    onClick={() => onUpdateDraft({ color })}
+                  />
+                ))}
+              </div>
+              <label className="connection-custom-color">
+                <input
+                  type="color"
+                  value={normalizedDraftColor}
                   onChange={(event) =>
+                    onUpdateDraft({ color: event.currentTarget.value })
+                  }
+                  aria-label="Use custom connection color"
+                />
+                <input
+                  value={draft.color}
+                  spellCheck={false}
+                  aria-label="Connection color hex"
+                  onBlur={() =>
                     onUpdateDraft({
-                      engine: event.currentTarget.value as DbEngine,
+                      color: normalizeConnectionColor(draft.color),
                     })
                   }
-                >
-                  {engineOptions.map((engine) => (
-                    <option key={engine.value} value={engine.value}>
-                      {engine.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Profile ID</span>
-                <input
-                  value={draft.id}
                   onChange={(event) =>
-                    onUpdateDraft({ id: event.currentTarget.value })
+                    onUpdateDraft({ color: event.currentTarget.value })
                   }
                 />
               </label>
-              <div
-                className="mode-toggle form-toggle"
-                aria-label="Connection input mode"
-              >
-                <button
-                  className={draft.mode === "url" ? "active" : ""}
-                  type="button"
-                  onClick={() => onUpdateDraft({ mode: "url" })}
-                >
-                  URL
-                </button>
-                <button
-                  className={draft.mode === "fields" ? "active" : ""}
-                  type="button"
-                  onClick={() => onUpdateDraft({ mode: "fields" })}
-                >
-                  {engineSettings.fieldsLabel}
-                </button>
-              </div>
             </div>
-            {draft.mode === "url" ? (
-              <label className="full-row">
-                <span>{engineSettings.urlLabel}</span>
-                <input
-                  value={draft.url}
-                  placeholder={engineSettings.urlPlaceholder}
-                  onChange={(event) =>
-                    onUpdateDraft({ url: event.currentTarget.value })
-                  }
-                />
-              </label>
-            ) : (
-              <div className="connection-form-grid">
-                {engineSettings.showHost ? (
-                  <label>
-                    <span>{engineSettings.hostLabel}</span>
-                    <input
-                      value={draft.host}
-                      placeholder={engineSettings.hostPlaceholder}
-                      onChange={(event) =>
-                        onUpdateDraft({ host: event.currentTarget.value })
-                      }
-                    />
-                  </label>
-                ) : null}
-                {engineSettings.showPort ? (
-                  <label>
-                    <span>{engineSettings.portLabel}</span>
-                    <input
-                      inputMode="numeric"
-                      value={draft.port}
-                      onChange={(event) =>
-                        onUpdateDraft({ port: event.currentTarget.value })
-                      }
-                    />
-                  </label>
-                ) : null}
-                {engineSettings.showUser ? (
-                  <label>
-                    <span>{engineSettings.userLabel}</span>
-                    <input
-                      value={draft.user}
-                      placeholder={engineSettings.userPlaceholder}
-                      onChange={(event) =>
-                        onUpdateDraft({ user: event.currentTarget.value })
-                      }
-                    />
-                  </label>
-                ) : null}
-                {engineSettings.showPassword ? (
-                  <label>
-                    <span>{engineSettings.passwordLabel}</span>
-                    <input
-                      type="password"
-                      value={draft.password}
-                      placeholder={engineSettings.passwordPlaceholder}
-                      onChange={(event) =>
-                        onUpdateDraft({ password: event.currentTarget.value })
-                      }
-                    />
-                  </label>
-                ) : null}
-                <label className="full-row">
-                  <span>{engineSettings.databaseLabel}</span>
+          </div>
+          <div className="connection-form-grid">
+            <label>
+              <span>Engine</span>
+              <select
+                value={draft.engine}
+                onChange={(event) =>
+                  onUpdateDraft({
+                    engine: event.currentTarget.value as DbEngine,
+                  })
+                }
+              >
+                {engineOptions.map((engine) => (
+                  <option key={engine.value} value={engine.value}>
+                    {engine.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Profile ID</span>
+              <input
+                value={draft.id}
+                onChange={(event) =>
+                  onUpdateDraft({ id: event.currentTarget.value })
+                }
+              />
+            </label>
+            <div
+              className="mode-toggle form-toggle"
+              aria-label="Connection input mode"
+            >
+              <button
+                className={draft.mode === "url" ? "active" : ""}
+                type="button"
+                onClick={() => onUpdateDraft({ mode: "url" })}
+              >
+                URL
+              </button>
+              <button
+                className={draft.mode === "fields" ? "active" : ""}
+                type="button"
+                onClick={() => onUpdateDraft({ mode: "fields" })}
+              >
+                {engineSettings.fieldsLabel}
+              </button>
+            </div>
+          </div>
+          {draft.mode === "url" ? (
+            <label className="full-row">
+              <span>{engineSettings.urlLabel}</span>
+              <input
+                value={draft.url}
+                placeholder={engineSettings.urlPlaceholder}
+                onChange={(event) =>
+                  onUpdateDraft({ url: event.currentTarget.value })
+                }
+              />
+            </label>
+          ) : (
+            <div className="connection-form-grid">
+              {engineSettings.showHost ? (
+                <label>
+                  <span>{engineSettings.hostLabel}</span>
                   <input
-                    value={draft.database}
-                    placeholder={engineSettings.databasePlaceholder}
+                    value={draft.host}
+                    placeholder={engineSettings.hostPlaceholder}
                     onChange={(event) =>
-                      onUpdateDraft({ database: event.currentTarget.value })
+                      onUpdateDraft({ host: event.currentTarget.value })
                     }
                   />
                 </label>
-              </div>
-            )}
-            <div className="connection-transport full-row">
-              <ShieldCheck size={15} />
-              <span>Transport</span>
-              <strong>{engineSettings.transportLabel}</strong>
+              ) : null}
+              {engineSettings.showPort ? (
+                <label>
+                  <span>{engineSettings.portLabel}</span>
+                  <input
+                    inputMode="numeric"
+                    value={draft.port}
+                    onChange={(event) =>
+                      onUpdateDraft({ port: event.currentTarget.value })
+                    }
+                  />
+                </label>
+              ) : null}
+              {engineSettings.showUser ? (
+                <label>
+                  <span>{engineSettings.userLabel}</span>
+                  <input
+                    value={draft.user}
+                    placeholder={engineSettings.userPlaceholder}
+                    onChange={(event) =>
+                      onUpdateDraft({ user: event.currentTarget.value })
+                    }
+                  />
+                </label>
+              ) : null}
+              {engineSettings.showPassword ? (
+                <label>
+                  <span>{engineSettings.passwordLabel}</span>
+                  <input
+                    type="password"
+                    value={draft.password}
+                    placeholder={engineSettings.passwordPlaceholder}
+                    onChange={(event) =>
+                      onUpdateDraft({ password: event.currentTarget.value })
+                    }
+                  />
+                </label>
+              ) : null}
+              <label className="full-row">
+                <span>{engineSettings.databaseLabel}</span>
+                <input
+                  value={draft.database}
+                  placeholder={engineSettings.databasePlaceholder}
+                  onChange={(event) =>
+                    onUpdateDraft({ database: event.currentTarget.value })
+                  }
+                />
+              </label>
             </div>
-            {error ? (
-              <p className="inline-error full-row">
-                <AlertTriangle size={13} />
-                <span>{error}</span>
-              </p>
-            ) : null}
+          )}
+          <div className="connection-transport full-row">
+            <ShieldCheck size={15} />
+            <span>Transport</span>
+            <strong>{engineSettings.transportLabel}</strong>
           </div>
-          <div className="dialog-footer">
-            <button
-              className="text-button danger"
-              type="button"
-              onClick={onDeleteProfile}
-            >
-              Delete
-            </button>
-            <button
-              className="text-button"
-              type="button"
-              disabled={!activeConnectionOpen}
-              onClick={onDisconnect}
-            >
-              <Power size={13} />
-              Disconnect
-            </button>
-            <button className="text-button" type="button" onClick={onSave}>
-              Save
-            </button>
-            <button
-              className="text-button"
-              type="button"
-              disabled={testing}
-              onClick={onTest}
-            >
-              {testing ? "Testing" : "Test"}
-            </button>
-            <button
-              className="primary-action"
-              type="submit"
-              disabled={connecting}
-            >
-              <Database size={14} />
-              {connecting ? "Connecting" : "Connect"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          {error ? (
+            <p className="inline-error full-row">
+              <AlertTriangle size={13} />
+              <span>{error}</span>
+            </p>
+          ) : null}
+        </div>
+        <div className="dialog-footer">
+          <button
+            className="text-button danger"
+            type="button"
+            onClick={onDeleteProfile}
+          >
+            Delete
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={!activeConnectionOpen}
+            onClick={onDisconnect}
+          >
+            <Power size={13} />
+            Disconnect
+          </button>
+          <button className="text-button" type="button" onClick={onSave}>
+            Save
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            disabled={testing}
+            onClick={onTest}
+          >
+            {testing ? "Testing" : "Test"}
+          </button>
+          <button
+            className="primary-action"
+            type="submit"
+            disabled={connecting}
+          >
+            <Database size={14} />
+            {connecting ? "Connecting" : "Connect"}
+          </button>
+        </div>
+      </form>
+    </DialogShell>
   );
 }

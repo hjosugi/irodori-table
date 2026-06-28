@@ -1,4 +1,5 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
+import { DialogShell } from "@/components/DialogShell";
 import {
   AlertTriangle,
   Copy,
@@ -70,13 +71,7 @@ export function ErdDialog({
   onCopyMermaid: () => void;
 }) {
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <div
-        className="diagram"
-        role="dialog"
-        aria-label="ER diagram"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogShell className="diagram" label="ER diagram" onClose={onClose}>
         <div className="diagram-header">
           <strong>ER Diagram</strong>
           <span>
@@ -280,7 +275,6 @@ export function ErdDialog({
             </div>
           ) : null}
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

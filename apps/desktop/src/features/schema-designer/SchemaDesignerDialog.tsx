@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { DialogShell } from "@/components/DialogShell";
 import {
   schemaDraftId,
   type SchemaColumnDraft,
@@ -54,13 +55,11 @@ export function SchemaDesignerDialog({
   }
 
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <div
-        className="data-dialog schema-dialog"
-        role="dialog"
-        aria-label="Schema designer"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogShell
+      className="data-dialog schema-dialog"
+      label="Schema designer"
+      onClose={onClose}
+    >
         <div className="dialog-header">
           <strong>Schema Designer</strong>
           <span>{draft.mode === "create" ? "CREATE TABLE" : "ALTER TABLE"}</span>
@@ -452,7 +451,6 @@ export function SchemaDesignerDialog({
             Put SQL in editor
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { KeyRound, Play } from "lucide-react";
+import { DialogShell } from "@/components/DialogShell";
 import type { QueryParameterPromptSet } from "@/generated/irodori-api";
 
 export type PendingQueryParameters = {
@@ -29,14 +30,12 @@ export function QueryParameterDialog({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <form
-        className="parameter-dialog"
-        role="dialog"
-        aria-label="Query parameters"
-        onSubmit={onSubmit}
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogShell
+      className="parameter-dialog"
+      label="Query parameters"
+      onClose={onClose}
+    >
+      <form onSubmit={onSubmit}>
         <div className="parameter-header">
           <KeyRound size={16} />
           <strong>Query Parameters</strong>
@@ -72,6 +71,6 @@ export function QueryParameterDialog({
           </button>
         </div>
       </form>
-    </div>
+    </DialogShell>
   );
 }

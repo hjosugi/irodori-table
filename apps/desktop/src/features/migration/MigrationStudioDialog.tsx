@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { DialogShell } from "@/components/DialogShell";
 import { Copy, FileText } from "lucide-react";
 import {
   buildMigrationPlan,
@@ -44,13 +45,11 @@ export function MigrationStudioDialog({
   }
 
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <div
-        className="data-dialog migration-dialog"
-        role="dialog"
-        aria-label="Migration Studio"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogShell
+      className="data-dialog migration-dialog"
+      label="Migration Studio"
+      onClose={onClose}
+    >
         <div className="dialog-header">
           <strong>Migration Studio</strong>
           <span>{plan.title}</span>
@@ -293,8 +292,7 @@ export function MigrationStudioDialog({
             <span>{editorButtonLabel}</span>
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }
 

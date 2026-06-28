@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import { DialogShell } from "@/components/DialogShell";
 import type { ImportTextFormat, ParsedImport } from "./importers";
 
 export type ImportPreview = ParsedImport & {
@@ -28,13 +29,11 @@ export function ImportDialog({
   formatCount: (value: bigint | number) => string;
 }) {
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <div
-        className="data-dialog import-dialog"
-        role="dialog"
-        aria-label="Import preview"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogShell
+      className="data-dialog import-dialog"
+      label="Import preview"
+      onClose={onClose}
+    >
         <div className="dialog-header">
           <strong>Import</strong>
           <span>
@@ -119,7 +118,6 @@ export function ImportDialog({
             </div>
           </>
         ) : null}
-      </div>
-    </div>
+    </DialogShell>
   );
 }

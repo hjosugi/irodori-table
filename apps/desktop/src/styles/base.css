@@ -59,6 +59,34 @@ textarea:disabled {
   opacity: 0.58;
 }
 
+/*
+ * Cross-theme primitive scales (theme-independent). Defined once for both
+ * shell roots; color tokens still live per-theme in .app-shell below.
+ */
+.app-root,
+.app-shell {
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;
+  --space-8: 16px;
+  --space-9: 20px;
+  --space-10: 24px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-pill: 999px;
+  --elevation-1: 0 1px 2px var(--shadow-color);
+  --elevation-2: 0 6px 18px var(--shadow-color);
+  --elevation-3: 0 18px 50px var(--shadow-color-strong);
+  --modal-z: 50;
+}
+
 .app-root {
   --font-ui-xs: 11px;
   --font-ui-sm: 12px;
@@ -887,6 +915,19 @@ textarea:disabled {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Theme cross-fade: enabled only for the ~280ms window while data-theme-switching
+ * is "on", so surfaces fade between light/dark without a persistent transition
+ * that would otherwise make hover/active feedback feel sluggish. */
+.app-root[data-theme-switching="on"] *,
+.app-root[data-theme-switching="on"] *::before,
+.app-root[data-theme-switching="on"] *::after {
+  transition:
+    background-color 240ms ease,
+    border-color 240ms ease,
+    color 240ms ease,
+    fill 240ms ease;
 }
 
 .app-root[data-animations="off"] *,

@@ -1,4 +1,5 @@
 export {
+  connectionCustomColorOptions,
   connectionColorOptions,
   defaultConnectionColor,
   describeConnection,
