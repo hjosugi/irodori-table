@@ -191,6 +191,83 @@
   padding: 0;
 }
 
+.vim-keymap-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.vim-keymap-header,
+.vim-keymap-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vim-keymap-header span,
+.vim-keymap-command {
+  min-width: 0;
+}
+
+.vim-keymap-header strong,
+.vim-keymap-header small,
+.vim-keymap-command strong,
+.vim-keymap-command small {
+  display: block;
+}
+
+.vim-keymap-header strong,
+.vim-keymap-command strong {
+  font-size: 13px;
+}
+
+.vim-keymap-header small,
+.vim-keymap-command small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.vim-keymap-conflicts {
+  display: grid;
+  gap: 6px;
+}
+
+.vim-keymap-conflict {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-muted);
+}
+
+.vim-keymap-conflict select {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-sm);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.settings-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .settings-json {
   display: grid;
   grid-template-rows: auto minmax(280px, 1fr) auto;

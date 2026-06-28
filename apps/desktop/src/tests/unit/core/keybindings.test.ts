@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyVimKeybindingResolutions,
   canonicalKeySequence,
   commandHasConflict,
   defaultKeymap,
+  defaultVimKeybindingResolutions,
   findConflicts,
+  findVimKeybindingConflicts,
   formatKeySequence,
   resolveKeybinding,
   type Keymap,
@@ -160,5 +163,36 @@ describe("keybinding resolver", () => {
   it("canonicalizes and formats key sequences", () => {
     expect(canonicalKeySequence("mod+k   mod+f")).toBe("Mod+K Mod+F");
     expect(formatKeySequence("Mod+K Mod+F")).toContain("K");
+  });
+
+  it("finds Vim mode conflicts and applies bulk resolutions", () => {
+    const keymap: Keymap = {
+      ...defaultKeymap,
+      "tab.new": "Ctrl+T",
+      "tab.close": "Ctrl+W",
+      "palette.open": "Ctrl+Shift+P",
+    };
+    const conflicts = findVimKeybindingConflicts(keymap, appCommandCatalog);
+
+    expect(conflicts.map((conflict) => conflict.commandId)).toEqual([
+      "tab.new",
+      "tab.close",
+    ]);
+    expect(conflicts[0].suggestedSequence).toBe("Alt+Shift+T");
+
+    const recommended = defaultVimKeybindingResolutions(conflicts);
+    expect(
+      applyVimKeybindingResolutions({}, conflicts, recommended),
+    ).toMatchObject({
+      "tab.new": "Alt+Shift+T",
+      "tab.close": "Alt+Shift+W",
+    });
+
+    expect(
+      applyVimKeybindingResolutions({}, conflicts, {
+        "tab.new": "unset",
+        "tab.close": "keep",
+      }),
+    ).toEqual({ "tab.new": "" });
   });
 });

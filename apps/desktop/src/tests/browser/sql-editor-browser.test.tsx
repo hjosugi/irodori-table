@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import SqlEditor, {
   type SqlEditorHandle,
 } from "@/features/query-editor/SqlEditor";
@@ -77,6 +77,64 @@ describe("SQL editor browser shortcuts", () => {
 
     root.unmount();
     host.remove();
+  });
+
+  it("uses Ctrl+Shift+C and Ctrl+Shift+V for clipboard in Vim mode", async () => {
+    const sql = "select alpha;";
+    let changed = sql;
+    const clipboard = {
+      writeText: vi.fn(async () => undefined),
+      readText: vi.fn(async () => " where beta = 1"),
+    };
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: clipboard,
+    });
+    const { host, root, editorRef } = renderSqlEditor({
+      value: sql,
+      vimMode: true,
+      onChange: (next) => {
+        changed = next;
+      },
+    });
+    const content = await waitForEditor(host);
+
+    editorRef.current?.revealRange({ from: 0, to: 6 });
+    const copyEvent = new KeyboardEvent("keydown", {
+      key: "C",
+      code: "KeyC",
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    content.dispatchEvent(copyEvent);
+
+    expect(copyEvent.defaultPrevented).toBe(true);
+    expect(clipboard.writeText).toHaveBeenCalledWith("select");
+
+    editorRef.current?.revealRange({ from: sql.length, to: sql.length });
+    const pasteEvent = new KeyboardEvent("keydown", {
+      key: "V",
+      code: "KeyV",
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    content.dispatchEvent(pasteEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(pasteEvent.defaultPrevented).toBe(true);
+    expect(changed).toBe("select alpha; where beta = 1");
+
+    root.unmount();
+    host.remove();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
   });
 
   it("inserts completion text at every cursor", async () => {
