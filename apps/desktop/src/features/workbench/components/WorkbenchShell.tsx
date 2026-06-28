@@ -79,6 +79,16 @@ type WorkbenchShellProps = {
   onCloseWorkspaceMenu: () => void;
 };
 
+type WorkbenchContextMenu = {
+  x: number;
+  y: number;
+  label: string | null;
+  copyText: string | null;
+  selectedText: string | null;
+  activatable: HTMLElement | null;
+  editable: HTMLInputElement | HTMLTextAreaElement | null;
+};
+
 export function WorkbenchShell({
   appName,
   themeKind,
@@ -119,8 +129,39 @@ export function WorkbenchShell({
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
   const [activeMenuLabel, setActiveMenuLabel] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<WorkbenchContextMenu | null>(
+    null,
+  );
   const menubarRef = useRef<HTMLElement | null>(null);
-  const commandById = new Map(commandCatalog.map((command) => [command.id, command]));
+  const commandById = new Map(
+    commandCatalog.map((command) => [command.id, command]),
+  );
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+    const close = () => setContextMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setContextMenu(null);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", close);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", close);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!activeMenuLabel) {
@@ -178,8 +219,67 @@ export function WorkbenchShell({
 
   const runMenuCommand = (commandId: string) => {
     setActiveMenuLabel(null);
+    setContextMenu(null);
     onCloseWorkspaceMenu();
     onRunCommand(commandId);
+  };
+
+  const openWorkbenchContextMenu = (event: MouseEvent<HTMLElement>) => {
+    const target =
+      event.target instanceof Element ? event.target : event.currentTarget;
+
+    if (target.closest(".app-menu-popover, .object-action-menu")) {
+      event.preventDefault();
+      return;
+    }
+
+    event.preventDefault();
+    setActiveMenuLabel(null);
+    onCloseWorkspaceMenu();
+
+    const editable = editableTargetFrom(target);
+    const activatable = activatableTargetFrom(target);
+    const selectedText = cleanContextText(window.getSelection()?.toString() ?? "");
+    const label = contextLabelFrom(target, activatable, editable);
+    const copyText =
+      selectedText || editable?.value || readableTextFrom(target) || label;
+
+    setContextMenu({
+      ...clampWorkbenchContextMenuPosition(event.clientX, event.clientY),
+      label,
+      copyText: copyText || null,
+      selectedText: selectedText || null,
+      activatable,
+      editable,
+    });
+  };
+
+  const activateContextTarget = () => {
+    const target = contextMenu?.activatable;
+    setContextMenu(null);
+    if (!target || isDisabledElement(target)) {
+      return;
+    }
+    target.click();
+  };
+
+  const clearContextField = () => {
+    const target = contextMenu?.editable;
+    setContextMenu(null);
+    if (!target || target.readOnly || target.disabled) {
+      return;
+    }
+    target.value = "";
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+    target.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  const copyContextText = (text: string | null) => {
+    setContextMenu(null);
+    if (!text) {
+      return;
+    }
+    void navigator.clipboard?.writeText(text);
   };
   const LeftSidebarIcon = leftSidebarOpen ? PanelLeftClose : PanelLeftOpen;
   const RightSidebarIcon = rightSidebarOpen ? PanelRightClose : PanelRightOpen;
@@ -264,7 +364,7 @@ export function WorkbenchShell({
       data-key-scope={activeKeyScope}
       onFocusCapture={onScopeFocus}
       onMouseDownCapture={onScopeMouseDown}
-      onContextMenuCapture={(event) => event.preventDefault()}
+      onContextMenu={openWorkbenchContextMenu}
     >
       <header className="titlebar">
         <div className="titlebar-menu-zone">
@@ -392,6 +492,177 @@ export function WorkbenchShell({
         </div>
       </footer>
 
+      {contextMenu ? (
+        <div
+          className="app-menu-popover workbench-context-menu"
+          role="menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onContextMenu={(event) => event.preventDefault()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {contextMenu.activatable ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={isDisabledElement(contextMenu.activatable)}
+              onClick={activateContextTarget}
+          >
+            <span>
+              {contextMenu.label ? `Activate ${contextMenu.label}` : "Activate"}
+            </span>
+          </button>
+          ) : null}
+          {contextMenu.selectedText ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => copyContextText(contextMenu.selectedText)}
+            >
+              <span>Copy Selected Text</span>
+            </button>
+          ) : contextMenu.copyText ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => copyContextText(contextMenu.copyText)}
+            >
+              <span>{contextMenu.editable ? "Copy Value" : "Copy Text"}</span>
+            </button>
+          ) : null}
+          {contextMenu.editable ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={
+                contextMenu.editable.readOnly || contextMenu.editable.disabled
+              }
+              onClick={clearContextField}
+            >
+              <span>Clear Field</span>
+            </button>
+          ) : null}
+          <span className="menu-separator" aria-hidden="true" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runMenuCommand("palette.open")}
+          >
+            <span>Command Palette</span>
+            {shortcutFor("palette.open") ? (
+              <kbd>{shortcutFor("palette.open")}</kbd>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runMenuCommand("connection.manager")}
+          >
+            <span>Connection Manager</span>
+            {shortcutFor("connection.manager") ? (
+              <kbd>{shortcutFor("connection.manager")}</kbd>
+            ) : null}
+          </button>
+          <span className="menu-separator" aria-hidden="true" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setContextMenu(null);
+              onToggleLeftSidebar();
+            }}
+          >
+            <span>
+              {leftSidebarOpen ? "Hide Left Sidebar" : "Show Left Sidebar"}
+            </span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setContextMenu(null);
+              onToggleRightSidebar();
+            }}
+          >
+            <span>
+              {rightSidebarOpen ? "Hide Right Sidebar" : "Show Right Sidebar"}
+            </span>
+          </button>
+        </div>
+      ) : null}
     </main>
   );
+}
+
+function editableTargetFrom(
+  target: Element,
+): HTMLInputElement | HTMLTextAreaElement | null {
+  const editable = target.closest("input, textarea");
+  if (
+    editable instanceof HTMLInputElement ||
+    editable instanceof HTMLTextAreaElement
+  ) {
+    return editable;
+  }
+  return null;
+}
+
+function activatableTargetFrom(target: Element): HTMLElement | null {
+  const activatable = target.closest(
+    "button, a, [role='button'], [role='tab'], [role='menuitem'], summary",
+  );
+  if (!(activatable instanceof HTMLElement)) {
+    return null;
+  }
+  return activatable;
+}
+
+function contextLabelFrom(
+  target: Element,
+  activatable: HTMLElement | null,
+  editable: HTMLInputElement | HTMLTextAreaElement | null,
+) {
+  if (editable) {
+    return editable.getAttribute("aria-label") ?? editable.placeholder ?? "field";
+  }
+  const labelTarget =
+    activatable ?? target.closest("[aria-label], [title]") ?? target;
+  if (!(labelTarget instanceof HTMLElement)) {
+    return null;
+  }
+  return (
+    cleanContextText(labelTarget.getAttribute("aria-label") ?? "") ||
+    cleanContextText(labelTarget.getAttribute("title") ?? "") ||
+    readableTextFrom(labelTarget)
+  );
+}
+
+function readableTextFrom(target: Element | null) {
+  if (!target) {
+    return null;
+  }
+  return cleanContextText(target.textContent ?? "") || null;
+}
+
+function cleanContextText(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 160 ? `${normalized.slice(0, 157)}...` : normalized;
+}
+
+function isDisabledElement(target: HTMLElement) {
+  return (
+    target.getAttribute("aria-disabled") === "true" ||
+    (target instanceof HTMLButtonElement && target.disabled)
+  );
+}
+
+function clampWorkbenchContextMenuPosition(x: number, y: number) {
+  if (typeof window === "undefined") {
+    return { x, y };
+  }
+  const menuWidth = 270;
+  const menuHeight = 246;
+  return {
+    x: Math.max(8, Math.min(x, window.innerWidth - menuWidth - 8)),
+    y: Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8)),
+  };
 }

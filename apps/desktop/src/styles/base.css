@@ -468,6 +468,14 @@ textarea:disabled {
   left: 0;
 }
 
+.workbench-context-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  min-width: 238px;
+  max-width: 300px;
+}
+
 .app-menu-section {
   display: grid;
   gap: 1px;
