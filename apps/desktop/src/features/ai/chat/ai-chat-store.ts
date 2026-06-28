@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 /** A query result the agent ran, rendered inline in the conversation. */
 export type ChatResultView = {
@@ -33,6 +34,9 @@ type AiChatState = {
   setInput: (value: string) => void;
   setAgentMode: (value: boolean) => void;
   clear: () => void;
+  /** Remove the last assistant turn (used by Regenerate). Returns the preceding
+   * user message, if any, so the caller can resend it. */
+  dropLastAssistant: () => string | null;
 
   pushUser: (content: string) => void;
   startAssistant: (id: string, sessionId: string) => void;
@@ -51,7 +55,9 @@ function patchTurn(
   return turns.map((turn) => (turn.id === id ? patch(turn) : turn));
 }
 
-export const useAiChatStore = create<AiChatState>((set) => ({
+export const useAiChatStore = create<AiChatState>()(
+  persist(
+    (set, get) => ({
   turns: [],
   input: "",
   agentMode: true,
@@ -60,6 +66,27 @@ export const useAiChatStore = create<AiChatState>((set) => ({
   setInput: (value) => set({ input: value }),
   setAgentMode: (value) => set({ agentMode: value }),
   clear: () => set({ turns: [], activeSessionId: null }),
+
+  dropLastAssistant: () => {
+    const turns = get().turns;
+    let lastAssistant = -1;
+    for (let i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].role === "assistant") {
+        lastAssistant = i;
+        break;
+      }
+    }
+    if (lastAssistant === -1) return null;
+    let user: string | null = null;
+    for (let i = lastAssistant - 1; i >= 0; i--) {
+      if (turns[i].role === "user") {
+        user = turns[i].content;
+        break;
+      }
+    }
+    set({ turns: turns.slice(0, lastAssistant), activeSessionId: null });
+    return user;
+  },
 
   pushUser: (content) =>
     set((state) => ({
@@ -134,4 +161,25 @@ export const useAiChatStore = create<AiChatState>((set) => ({
         streaming: false,
       })),
     })),
-}));
+    }),
+    {
+      name: "irodori.aichat.v1",
+      // Persist the conversation + agent toggle, but never the in-flight session
+      // and never large result payloads (cap stored rows to keep localStorage small).
+      partialize: (state) => ({
+        agentMode: state.agentMode,
+        turns: state.turns.map((turn) => ({
+          ...turn,
+          streaming: false,
+          results: turn.results.map((r) => ({ ...r, rows: r.rows.slice(0, 20) })),
+        })),
+      }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<AiChatState>),
+        // A persisted session id is stale on reload.
+        activeSessionId: null,
+      }),
+    },
+  ),
+);

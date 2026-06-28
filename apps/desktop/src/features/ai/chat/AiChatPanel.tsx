@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Bot, Copy, Database, Eraser, Plus, Send, Square, X } from "lucide-react";
+import { Bot, Copy, Database, Eraser, Plus, RefreshCw, Send, Square, X } from "lucide-react";
 import type { DbEngine } from "@/generated/irodori-api";
 import {
   aiChat,
@@ -10,6 +10,7 @@ import {
 } from "./chat-bridge";
 import { useAiChatStore, type ChatResultView } from "./ai-chat-store";
 import { ProviderPicker } from "./ProviderPicker";
+import { Markdown } from "./Markdown";
 import "./ai-chat.css";
 
 type Notify = (kind: "success" | "error", title: string, detail?: string) => void;
@@ -115,6 +116,7 @@ export function AiChatPanel({
   const setInput = useAiChatStore((s) => s.setInput);
   const setAgentMode = useAiChatStore((s) => s.setAgentMode);
   const clear = useAiChatStore((s) => s.clear);
+  const dropLastAssistant = useAiChatStore((s) => s.dropLastAssistant);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const streaming = activeSessionId !== null;
@@ -131,18 +133,17 @@ export function AiChatPanel({
     };
   }, []);
 
-  const send = useCallback(async () => {
-    const store = useAiChatStore.getState();
-    const text = store.input.trim();
-    if (!text || store.activeSessionId) return;
+  const runChat = useCallback(
+    async (text: string) => {
+      const store = useAiChatStore.getState();
+      if (!text || store.activeSessionId) return;
 
-    const history: ChatMessageDto[] = store.turns
-      .filter((t) => t.content.trim().length > 0)
-      .map((t) => ({ role: t.role, content: t.content }));
-    history.push({ role: "user", content: text });
+      const history: ChatMessageDto[] = store.turns
+        .filter((t) => t.content.trim().length > 0)
+        .map((t) => ({ role: t.role, content: t.content }));
+      history.push({ role: "user", content: text });
 
-    store.pushUser(text);
-    store.setInput("");
+      store.pushUser(text);
 
     const sessionId = newChatSessionId();
     const assistantId = `a-${sessionId}`;
@@ -165,12 +166,30 @@ export function AiChatPanel({
     } finally {
       useAiChatStore.getState().finishAssistant(assistantId);
     }
-  }, [activeConnectionId, activeConnectionOpen, agentMode, engine, notify]);
+    },
+    [activeConnectionId, activeConnectionOpen, agentMode, engine, notify],
+  );
+
+  const send = useCallback(() => {
+    const store = useAiChatStore.getState();
+    const text = store.input.trim();
+    if (!text || store.activeSessionId) return;
+    store.setInput("");
+    void runChat(text);
+  }, [runChat]);
+
+  const regenerate = useCallback(() => {
+    if (useAiChatStore.getState().activeSessionId) return;
+    const user = dropLastAssistant();
+    if (user) void runChat(user);
+  }, [dropLastAssistant, runChat]);
 
   const stop = useCallback(() => {
     const sessionId = useAiChatStore.getState().activeSessionId;
     if (sessionId) void aiChatCancel(sessionId);
   }, []);
+
+  const lastAssistantId = [...turns].reverse().find((t) => t.role === "assistant")?.id;
 
   return (
     <section className="aichat-panel" aria-label="AI Chat">
@@ -219,9 +238,9 @@ export function AiChatPanel({
                 {splitContent(turn.content).map((seg, i) =>
                   seg.kind === "text" ? (
                     seg.text.trim() ? (
-                      <p key={i} className="aichat-text">
-                        {seg.text}
-                      </p>
+                      <div key={i} className="aichat-md">
+                        <Markdown text={seg.text} />
+                      </div>
                     ) : null
                   ) : (
                     <div key={i} className="aichat-code">
@@ -262,6 +281,20 @@ export function AiChatPanel({
                 ))}
                 {turn.streaming && !turn.content ? (
                   <span className="aichat-cursor">▍</span>
+                ) : null}
+                {!turn.streaming && turn.id === lastAssistantId ? (
+                  <div className="aichat-turn-footer">
+                    <button type="button" onClick={regenerate} disabled={streaming} title="Regenerate">
+                      <RefreshCw size={12} /> Regenerate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard?.writeText(turn.content)}
+                      title="Copy reply"
+                    >
+                      <Copy size={12} /> Copy
+                    </button>
+                  </div>
                 ) : null}
               </div>
             ) : (
