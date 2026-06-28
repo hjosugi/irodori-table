@@ -1949,16 +1949,14 @@ Engine status from \`knowledge/engines.json\`: \`${engineMeta.status}\`.
 
 function makefile(realDriverLinked) {
   const lintCommand = realDriverLinked
-    ? "$(CARGO) clippy --all-targets --no-default-features -- -D warnings"
+    ? "$(CARGO) clippy --all-targets --features bundled-duckdb -- -D warnings"
     : "$(CARGO) clippy --all-targets -- -D warnings";
   const testCommand = realDriverLinked
-    ? "$(CARGO) check --tests --no-default-features"
+    ? "$(CARGO) test --features bundled-duckdb"
     : "$(CARGO) test";
   const duckDbCheckTarget = realDriverLinked
     ? `
-check-duckdb-bundled: fmt
-\t$(CARGO) clippy --all-targets --features bundled-duckdb -- -D warnings
-\t$(CARGO) test --features bundled-duckdb
+check-duckdb-bundled: check
 `
     : "";
   const phonyTargets = realDriverLinked
