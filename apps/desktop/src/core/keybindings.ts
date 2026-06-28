@@ -7,6 +7,11 @@
 
 export type Keymap = Record<string, string>;
 export type KeybindingScope = "global" | "editor" | "grid";
+export type VimKeybindingConflictResolution = "suggested" | "unset" | "keep";
+export type VimKeybindingConflictResolutions = Record<
+  string,
+  VimKeybindingConflictResolution
+>;
 
 export const keybindingScopes: readonly KeybindingScope[] = [
   "global",
@@ -29,6 +34,18 @@ export interface CommandMeta {
   category: string;
   scope: KeybindingScope;
 }
+
+export interface VimKeybindingConflict {
+  commandId: string;
+  sequence: string;
+  vimUse: string;
+  suggestedSequence: string | null;
+}
+
+export const vimModeClipboardShortcuts = {
+  copy: "Ctrl+Shift+C",
+  paste: "Ctrl+Shift+V",
+} as const;
 
 export const commandCatalog: CommandMeta[] = [
   {
@@ -241,6 +258,35 @@ export const defaultKeymap: Keymap = {
   "edit.commit": "Mod+S",
 };
 
+const vimReservedEditorShortcuts: Record<string, string> = {
+  "Ctrl+A": "Increment number",
+  "Ctrl+B": "Page up",
+  "Ctrl+C": "Exit insert mode",
+  "Ctrl+D": "Half-page down / de-indent",
+  "Ctrl+E": "Scroll down",
+  "Ctrl+F": "Page down",
+  "Ctrl+I": "Jump forward",
+  "Ctrl+N": "Move down",
+  "Ctrl+O": "Jump back / one normal command",
+  "Ctrl+P": "Move up",
+  "Ctrl+Q": "Block visual mode",
+  "Ctrl+R": "Redo / insert register",
+  "Ctrl+T": "Indent in insert mode",
+  "Ctrl+U": "Half-page up / delete to line start",
+  "Ctrl+V": "Block visual mode",
+  "Ctrl+W": "Delete word / window prefix",
+  "Ctrl+X": "Decrement number",
+  "Ctrl+Y": "Scroll up",
+  "Ctrl+[": "Escape",
+  "Ctrl+Backspace": "Move back by word",
+  "Ctrl+Space": "Move forward by word",
+};
+
+const vimModeSuggestedKeymap: Keymap = {
+  "tab.new": "Alt+Shift+T",
+  "tab.close": "Alt+Shift+W",
+};
+
 interface Parsed {
   mod: boolean;
   ctrl: boolean;
@@ -308,6 +354,20 @@ function canonicalChord(parsed: Parsed): string {
   if (parsed.shift) parts.push("Shift");
   if (parsed.key) parts.push(parsed.key);
   return parts.join("+");
+}
+
+function vimReservedShortcutKey(sequence: string): string | null {
+  const parts = sequenceParts(sequence);
+  if (parts.length !== 1) {
+    return null;
+  }
+  const parsed = parse(parts[0]);
+  const ctrl = parsed.ctrl || (!isMac && parsed.mod);
+  const meta = parsed.meta || (isMac && parsed.mod);
+  if (!ctrl || meta || parsed.alt || parsed.shift || !parsed.key) {
+    return null;
+  }
+  return `Ctrl+${parsed.key}`;
 }
 
 function sequenceParts(sequence: string): string[] {
@@ -457,6 +517,64 @@ export function commandHasConflict(
   return scopes.some((currentScope) =>
     Object.values(conflicts[currentScope]).some((ids) => ids.includes(commandId)),
   );
+}
+
+export function findVimKeybindingConflicts(
+  keymap: Keymap,
+  commands: readonly CommandMeta[] = commandCatalog,
+): VimKeybindingConflict[] {
+  const conflicts: VimKeybindingConflict[] = [];
+  for (const command of commands) {
+    if (!commandAppliesToScope(command, "editor")) {
+      continue;
+    }
+    const sequence = canonicalKeySequence(keymap[command.id] ?? "");
+    if (!sequence) {
+      continue;
+    }
+    const reservedKey = vimReservedShortcutKey(sequence);
+    const vimUse = reservedKey ? vimReservedEditorShortcuts[reservedKey] : null;
+    if (!vimUse) {
+      continue;
+    }
+    conflicts.push({
+      commandId: command.id,
+      sequence,
+      vimUse,
+      suggestedSequence: vimModeSuggestedKeymap[command.id] ?? null,
+    });
+  }
+  return conflicts;
+}
+
+export function defaultVimKeybindingResolutions(
+  conflicts: readonly VimKeybindingConflict[],
+): VimKeybindingConflictResolutions {
+  return Object.fromEntries(
+    conflicts.map((conflict) => [
+      conflict.commandId,
+      conflict.suggestedSequence ? "suggested" : "keep",
+    ]),
+  ) as VimKeybindingConflictResolutions;
+}
+
+export function applyVimKeybindingResolutions(
+  overrides: Keymap,
+  conflicts: readonly VimKeybindingConflict[],
+  resolutions: VimKeybindingConflictResolutions,
+): Keymap {
+  const next = { ...overrides };
+  for (const conflict of conflicts) {
+    const resolution =
+      resolutions[conflict.commandId] ??
+      (conflict.suggestedSequence ? "suggested" : "keep");
+    if (resolution === "suggested" && conflict.suggestedSequence) {
+      next[conflict.commandId] = conflict.suggestedSequence;
+    } else if (resolution === "unset") {
+      next[conflict.commandId] = "";
+    }
+  }
+  return next;
 }
 
 export type KeybindingResolution =

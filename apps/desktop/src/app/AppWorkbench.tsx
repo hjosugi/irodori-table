@@ -183,13 +183,16 @@ import {
 } from "@/features/workbench";
 import {
   KEY_SEQUENCE_TIMEOUT_MS,
+  applyVimKeybindingResolutions as applyVimKeybindingResolutionOverrides,
   errorMessage,
   effectiveKeymap,
   eventToChord,
   findConflicts,
+  findVimKeybindingConflicts,
   formatKeySequence,
   type KeybindingScope,
   type Keymap,
+  type VimKeybindingConflictResolutions,
   loadOverrides,
   resolveKeybinding,
   saveOverrides,
@@ -394,6 +397,19 @@ function isQueryCancelledMessage(message: string) {
   return normalized === "cancelled" || normalized.includes("query cancelled");
 }
 
+function isPrimaryRefreshShortcut(event: KeyboardEvent) {
+  const isRKey = event.key.toLowerCase() === "r" || event.code === "KeyR";
+  if (!isRKey || event.altKey || event.shiftKey) {
+    return false;
+  }
+  const mac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  return mac
+    ? event.metaKey && !event.ctrlKey
+    : event.ctrlKey && !event.metaKey;
+}
+
 function sqlDownloadFileName(label: string) {
   const base = label
     .replace(/\.sql$/i, "")
@@ -494,7 +510,7 @@ export function AppWorkbench() {
   const theme =
     activeCustomTheme?.theme ?? builtInTheme(themeKind, activeDefaultThemeId);
   const vimMode = usePreferencesStore((state) => state.vimMode);
-  const setVimMode = usePreferencesStore((state) => state.setVimMode);
+  const setStoredVimMode = usePreferencesStore((state) => state.setVimMode);
   const formatter = usePreferencesStore((state) => state.formatter);
   const setFormatter = usePreferencesStore((state) => state.setFormatter);
   const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
@@ -1252,6 +1268,45 @@ export function AppWorkbench() {
     totalRowCount,
     unfilteredRowCount,
   } = resultGridView;
+
+  useEffect(() => {
+    if (pendingCount === 0) {
+      return;
+    }
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const interceptRefresh = (event: KeyboardEvent) => {
+      if (!isPrimaryRefreshShortcut(event)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const discard = window.confirm(
+        `Discard ${pendingCount} unsaved result change${pendingCount === 1 ? "" : "s"} and reload?`,
+      );
+      if (!discard) {
+        showActionNotice(
+          "info",
+          "Reload cancelled",
+          "Use Save Changes or Discard before refreshing.",
+        );
+        return;
+      }
+      resetEdits();
+      window.location.reload();
+    };
+    window.addEventListener("beforeunload", preventUnload);
+    window.addEventListener("keydown", interceptRefresh, { capture: true });
+    return () => {
+      window.removeEventListener("beforeunload", preventUnload);
+      window.removeEventListener("keydown", interceptRefresh, {
+        capture: true,
+      });
+    };
+  }, [pendingCount]);
+
   const {
     selectedRangeBounds,
     selectionSummary,
@@ -1958,6 +2013,10 @@ export function AppWorkbench() {
   });
 
   const keymapConflicts = findConflicts(keymap, appCommandCatalog);
+  const vimKeymapConflicts = findVimKeybindingConflicts(
+    keymap,
+    appCommandCatalog,
+  );
   const paletteResults = appCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
@@ -2063,6 +2122,13 @@ export function AppWorkbench() {
     if (tab === "json") {
       setSettingsJsonDraft(buildSettingsJson());
       setSettingsJsonError(null);
+    }
+  }
+
+  function setVimMode(value: boolean) {
+    setStoredVimMode(value);
+    if (value) {
+      openSettingsSection("keymap");
     }
   }
 
@@ -2207,7 +2273,7 @@ export function AppWorkbench() {
           setAnimationsEnabled(parsed.editor.animationsEnabled);
         }
         if (typeof parsed.editor.vimMode === "boolean") {
-          setVimMode(parsed.editor.vimMode);
+          setStoredVimMode(parsed.editor.vimMode);
         }
         if (typeof parsed.editor.autoCommit === "boolean") {
           setAutoCommit(parsed.editor.autoCommit);
@@ -2646,6 +2712,34 @@ export function AppWorkbench() {
       saveOverrides(next);
       return next;
     });
+  }
+
+  function applyVimKeybindingPlan(
+    resolutions: VimKeybindingConflictResolutions,
+  ) {
+    cancelRecording();
+    setKeymapOverrides((prev) => {
+      const currentKeymap = {
+        ...resultCopyDefaultKeymap,
+        ...effectiveKeymap(prev),
+      };
+      const conflicts = findVimKeybindingConflicts(
+        currentKeymap,
+        appCommandCatalog,
+      );
+      const next = applyVimKeybindingResolutionOverrides(
+        prev,
+        conflicts,
+        resolutions,
+      );
+      saveOverrides(next);
+      return next;
+    });
+    showActionNotice(
+      "success",
+      "Vim shortcuts updated",
+      "Conflicting app shortcuts were adjusted for Vim mode.",
+    );
   }
 
   const resultSummary = activeResult
@@ -4657,11 +4751,13 @@ export function AppWorkbench() {
           keymap={keymap}
           keymapOverrides={keymapOverrides}
           keymapConflicts={keymapConflicts}
+          vimKeymapConflicts={vimKeymapConflicts}
           recordingCommand={recordingCommand}
           recordingSequence={recordingSequence}
           runCommand={runCommand}
           beginRecording={beginRecording}
           resetKeybinding={resetKeybinding}
+          applyVimKeybindingResolutions={applyVimKeybindingPlan}
           jobs={jobs}
           jobsLoading={jobsLoading}
           jobsError={jobsError}

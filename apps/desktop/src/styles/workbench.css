@@ -441,6 +441,23 @@
   background: var(--surface-raised);
 }
 
+/* Heat-tint plan tree nodes by their cost share (--heat: 0..1, set inline).
+ * Hotter nodes get a redder left edge + faint fill so the expensive subtree
+ * stands out at a glance. */
+.plan-tree-node {
+  border-left-width: 3px;
+  border-left-color: color-mix(
+    in srgb,
+    var(--red) calc(var(--heat, 0) * 100%),
+    var(--border)
+  );
+  background: color-mix(
+    in srgb,
+    var(--red) calc(var(--heat, 0) * 12%),
+    var(--surface-raised)
+  );
+}
+
 .plan-finding {
   border-left-width: 3px;
 }

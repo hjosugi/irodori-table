@@ -9,6 +9,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 import type {
   QueryPlanAnalysis,
   QueryPlanCopyFormat,
@@ -270,8 +271,20 @@ function MetricTile({ metric }: { metric: QueryPlanMetric }) {
 }
 
 function PlanTreeNode({ node }: { node: QueryPlanNode }) {
+  // Heat-tint each node by its share of the plan's cost so the expensive
+  // subtree pops in the structural view (the flame bar already encodes this
+  // via width; the tree previously showed no hotness at all).
+  const heat = Math.max(0, Math.min(1, node.impactScore));
   return (
-    <div className="plan-tree-node" style={{ paddingLeft: `${Math.min(node.depth, 6) * 12}px` }}>
+    <div
+      className="plan-tree-node"
+      style={
+        {
+          paddingLeft: `${Math.min(node.depth, 6) * 12}px`,
+          "--heat": heat,
+        } as CSSProperties
+      }
+    >
       <strong>{node.operation}</strong>
       <span>{node.object ?? node.label}</span>
       <small>

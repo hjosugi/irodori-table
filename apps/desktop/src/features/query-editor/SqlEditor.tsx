@@ -116,6 +116,7 @@ interface SqlEditorProps {
 }
 
 interface SqlEditorCompartments {
+  clipboard: Compartment;
   vim: Compartment;
   sql: Compartment;
   lint: Compartment;
@@ -150,6 +151,7 @@ interface FormatEditorResult {
 
 function createSqlEditorCompartments(): SqlEditorCompartments {
   return {
+    clipboard: new Compartment(),
     vim: new Compartment(),
     sql: new Compartment(),
     lint: new Compartment(),
@@ -183,6 +185,7 @@ function createSqlEditorState({
     doc: value,
     extensions: [
       editorSelectAllShortcut(),
+      compartments.clipboard.of(vimMode ? vimClipboardShortcuts() : []),
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
       search({ top: true }),
@@ -227,6 +230,56 @@ function editorSelectAllShortcut(): Extension {
         return selectAll(view);
       },
     }),
+  );
+}
+
+function vimClipboardShortcuts(): Extension {
+  return Prec.highest(
+    EditorView.domEventHandlers({
+      keydown(event, view) {
+        if (matchesCtrlShiftKey(event, "c")) {
+          event.preventDefault();
+          event.stopPropagation();
+          const text = selectedEditorText(view.state);
+          if (text) {
+            void navigator.clipboard?.writeText(text).catch(() => undefined);
+          }
+          return true;
+        }
+        if (matchesCtrlShiftKey(event, "v")) {
+          event.preventDefault();
+          event.stopPropagation();
+          void navigator.clipboard?.readText?.()
+            .then((text) => {
+              if (!text || !view.dom.isConnected) {
+                return;
+              }
+              view.dispatch(view.state.replaceSelection(text));
+              view.focus();
+            })
+            .catch(() => undefined);
+          return true;
+        }
+        return false;
+      },
+    }),
+  );
+}
+
+function selectedEditorText(state: EditorState): string {
+  return state.selection.ranges
+    .filter((range) => !range.empty)
+    .map((range) => state.sliceDoc(range.from, range.to))
+    .join("\n");
+}
+
+function matchesCtrlShiftKey(event: KeyboardEvent, key: "c" | "v"): boolean {
+  return (
+    event.ctrlKey &&
+    event.shiftKey &&
+    !event.altKey &&
+    !event.metaKey &&
+    (event.key.toLowerCase() === key || event.code === `Key${key.toUpperCase()}`)
   );
 }
 
@@ -856,7 +909,10 @@ function reconfigureVimMode(
   vimMode: boolean,
 ) {
   view?.dispatch({
-    effects: compartments.vim.reconfigure(vimMode ? vim() : []),
+    effects: [
+      compartments.clipboard.reconfigure(vimMode ? vimClipboardShortcuts() : []),
+      compartments.vim.reconfigure(vimMode ? vim() : []),
+    ],
   });
 }
 

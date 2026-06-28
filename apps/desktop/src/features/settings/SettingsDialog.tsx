@@ -16,6 +16,8 @@ import type {
   CommandMeta,
   Keymap,
   KeymapConflicts,
+  VimKeybindingConflict,
+  VimKeybindingConflictResolutions,
 } from "@/core/keybindings";
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
@@ -90,11 +92,15 @@ export interface SettingsDialogProps {
   keymap: Keymap;
   keymapOverrides: Keymap;
   keymapConflicts: KeymapConflicts;
+  vimKeymapConflicts: VimKeybindingConflict[];
   recordingCommand: string | null;
   recordingSequence: string[];
   runCommand: (commandId: string) => void;
   beginRecording: (commandId: string) => void;
   resetKeybinding: (commandId: string) => void;
+  applyVimKeybindingResolutions: (
+    resolutions: VimKeybindingConflictResolutions,
+  ) => void;
   jobs: JobList;
   jobsLoading: boolean;
   jobsError: string | null;
@@ -157,11 +163,13 @@ export function SettingsDialog({
   keymap,
   keymapOverrides,
   keymapConflicts,
+  vimKeymapConflicts,
   recordingCommand,
   recordingSequence,
   runCommand,
   beginRecording,
   resetKeybinding,
+  applyVimKeybindingResolutions,
   jobs,
   jobsLoading,
   jobsError,
@@ -306,11 +314,16 @@ export function SettingsDialog({
                 keymap={keymap}
                 keymapOverrides={keymapOverrides}
                 keymapConflicts={keymapConflicts}
+                vimMode={vimMode}
+                vimKeymapConflicts={vimKeymapConflicts}
                 recordingCommand={recordingCommand}
                 recordingSequence={recordingSequence}
                 runCommand={runCommand}
                 beginRecording={beginRecording}
                 resetKeybinding={resetKeybinding}
+                applyVimKeybindingResolutions={
+                  applyVimKeybindingResolutions
+                }
               />
             ) : settingsTab === "snippets" ? (
               <SnippetsTab
