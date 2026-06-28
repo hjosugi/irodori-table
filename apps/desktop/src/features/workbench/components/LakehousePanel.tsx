@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Cloud, Copy, Database, FileText, Play, Wrench, X } from "lucide-react";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 
@@ -155,6 +155,11 @@ export function LakehousePanel({
   onClose,
 }: LakehousePanelProps) {
   const actions = useMemo(() => lakehouseActions(editorEngine), [editorEngine]);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    action: LakehouseAction;
+  } | null>(null);
   const tableCount =
     activeMetadata?.schemas.reduce(
       (count, schema) =>
@@ -164,9 +169,67 @@ export function LakehousePanel({
       0,
     ) ?? 0;
   const lakehouseEngine = isLakehouseEngine(editorEngine);
+  const contextAction = contextMenu?.action;
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return undefined;
+    }
+    const close = () => setContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        close();
+      }
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => {
+    setContextMenu(null);
+  }, [editorEngine]);
+
+  const openContextMenu = (
+    event: ReactMouseEvent,
+    action: LakehouseAction = actions[0],
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({
+      ...clampLakehouseMenuPosition(event.clientX, event.clientY),
+      action,
+    });
+  };
+
+  const loadSql = (sql: string) => {
+    onLoadSql(sql);
+    setContextMenu(null);
+  };
+
+  const insertSql = (sql: string) => {
+    onInsertSql(`\n${sql}\n`);
+    setContextMenu(null);
+  };
+
+  const copySql = (sql: string) => {
+    void navigator.clipboard?.writeText(sql);
+    setContextMenu(null);
+  };
 
   return (
-    <section className="lakehouse-panel" aria-label="Lakehouse">
+    <section
+      className="lakehouse-panel"
+      aria-label="Lakehouse"
+      onContextMenu={(event) => openContextMenu(event)}
+    >
       <div className="lakehouse-header">
         <div>
           <strong>Lakehouse</strong>
@@ -199,7 +262,11 @@ export function LakehousePanel({
 
       <div className="lakehouse-action-list">
         {actions.map((action) => (
-          <article className="lakehouse-action" key={action.id}>
+          <article
+            className="lakehouse-action"
+            key={action.id}
+            onContextMenu={(event) => openContextMenu(event, action)}
+          >
             <div>
               <strong>{action.title}</strong>
               <span>{action.detail}</span>
@@ -208,7 +275,7 @@ export function LakehousePanel({
               <button
                 type="button"
                 title={`Load ${action.title} SQL`}
-                onClick={() => onLoadSql(action.sql)}
+                onClick={() => loadSql(action.sql)}
               >
                 <Play size={14} />
                 <span>Load</span>
@@ -216,7 +283,7 @@ export function LakehousePanel({
               <button
                 type="button"
                 title={`Insert ${action.title} SQL`}
-                onClick={() => onInsertSql(`\n${action.sql}\n`)}
+                onClick={() => insertSql(action.sql)}
               >
                 <Wrench size={14} />
                 <span>Insert</span>
@@ -225,7 +292,7 @@ export function LakehousePanel({
                 type="button"
                 title={`Copy ${action.title} SQL`}
                 aria-label={`Copy ${action.title} SQL`}
-                onClick={() => void navigator.clipboard?.writeText(action.sql)}
+                onClick={() => copySql(action.sql)}
               >
                 <Copy size={14} />
               </button>
@@ -245,6 +312,54 @@ export function LakehousePanel({
           ))}
         </div>
       ) : null}
+
+      {contextAction ? (
+        <div
+          className="app-menu-popover lakehouse-context-menu"
+          role="menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => loadSql(contextAction.sql)}
+          >
+            <span>Load {contextAction.title} SQL</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => insertSql(contextAction.sql)}
+          >
+            <span>Insert {contextAction.title} SQL</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => copySql(contextAction.sql)}
+          >
+            <span>Copy {contextAction.title} SQL</span>
+          </button>
+          <span className="menu-separator" aria-hidden="true" />
+          <button type="button" role="menuitem" onClick={onClose}>
+            <span>Close Lakehouse</span>
+          </button>
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function clampLakehouseMenuPosition(x: number, y: number) {
+  if (typeof window === "undefined") {
+    return { x, y };
+  }
+  const menuWidth = 238;
+  const menuHeight = 136;
+  return {
+    x: Math.max(8, Math.min(x, window.innerWidth - menuWidth - 8)),
+    y: Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8)),
+  };
 }
