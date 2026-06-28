@@ -10,7 +10,6 @@ import {
   BarChart3,
   Bot,
   Columns3,
-  Database,
   Flame,
   Folder,
   GitBranch,

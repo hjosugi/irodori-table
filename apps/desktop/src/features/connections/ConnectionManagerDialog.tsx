@@ -578,66 +578,106 @@ export function ConnectionManagerDialog({
               />
             </label>
           ) : (
-            <div className="connection-form-grid">
-              {engineSettings.showHost ? (
-                <label>
-                  <span>{engineSettings.hostLabel}</span>
+            <div className="connection-form-stack full-row">
+              {socketSupported ? (
+                <div
+                  className="connection-transport-toggle form-toggle"
+                  aria-label="Connection transport"
+                >
+                  <button
+                    className={transportMode === "tcp" ? "active" : ""}
+                    type="button"
+                    onClick={() => onUpdateDraft({ connectionTransport: "tcp" })}
+                  >
+                    Direct TCP
+                  </button>
+                  <button
+                    className={transportMode === "socket" ? "active" : ""}
+                    type="button"
+                    onClick={() =>
+                      onUpdateDraft({ connectionTransport: "socket" })
+                    }
+                  >
+                    Unix socket
+                  </button>
+                </div>
+              ) : null}
+              <div className="connection-form-grid">
+                {transportMode === "socket" ? (
+                  <label className="full-row">
+                    <span>{socketPathLabel(draft.engine)}</span>
+                    <input
+                      value={draft.socketPath}
+                      placeholder={socketPathPlaceholder(draft.engine)}
+                      onChange={(event) =>
+                        onUpdateDraft({ socketPath: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : (
+                  <>
+                    {engineSettings.showHost ? (
+                      <label>
+                        <span>{engineSettings.hostLabel}</span>
+                        <input
+                          value={draft.host}
+                          placeholder={engineSettings.hostPlaceholder}
+                          onChange={(event) =>
+                            onUpdateDraft({ host: event.currentTarget.value })
+                          }
+                        />
+                      </label>
+                    ) : null}
+                    {engineSettings.showPort ? (
+                      <label>
+                        <span>{engineSettings.portLabel}</span>
+                        <input
+                          inputMode="numeric"
+                          value={draft.port}
+                          onChange={(event) =>
+                            onUpdateDraft({ port: event.currentTarget.value })
+                          }
+                        />
+                      </label>
+                    ) : null}
+                  </>
+                )}
+                {engineSettings.showUser ? (
+                  <label>
+                    <span>{engineSettings.userLabel}</span>
+                    <input
+                      value={draft.user}
+                      placeholder={engineSettings.userPlaceholder}
+                      onChange={(event) =>
+                        onUpdateDraft({ user: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : null}
+                {engineSettings.showPassword ? (
+                  <label>
+                    <span>{engineSettings.passwordLabel}</span>
+                    <input
+                      type="password"
+                      value={draft.password}
+                      placeholder={engineSettings.passwordPlaceholder}
+                      onChange={(event) =>
+                        onUpdateDraft({ password: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                ) : null}
+                <label className="full-row">
+                  <span>{engineSettings.databaseLabel}</span>
                   <input
-                    value={draft.host}
-                    placeholder={engineSettings.hostPlaceholder}
+                    value={draft.database}
+                    placeholder={engineSettings.databasePlaceholder}
                     onChange={(event) =>
-                      onUpdateDraft({ host: event.currentTarget.value })
+                      onUpdateDraft({ database: event.currentTarget.value })
                     }
                   />
                 </label>
-              ) : null}
-              {engineSettings.showPort ? (
-                <label>
-                  <span>{engineSettings.portLabel}</span>
-                  <input
-                    inputMode="numeric"
-                    value={draft.port}
-                    onChange={(event) =>
-                      onUpdateDraft({ port: event.currentTarget.value })
-                    }
-                  />
-                </label>
-              ) : null}
-              {engineSettings.showUser ? (
-                <label>
-                  <span>{engineSettings.userLabel}</span>
-                  <input
-                    value={draft.user}
-                    placeholder={engineSettings.userPlaceholder}
-                    onChange={(event) =>
-                      onUpdateDraft({ user: event.currentTarget.value })
-                    }
-                  />
-                </label>
-              ) : null}
-              {engineSettings.showPassword ? (
-                <label>
-                  <span>{engineSettings.passwordLabel}</span>
-                  <input
-                    type="password"
-                    value={draft.password}
-                    placeholder={engineSettings.passwordPlaceholder}
-                    onChange={(event) =>
-                      onUpdateDraft({ password: event.currentTarget.value })
-                    }
-                  />
-                </label>
-              ) : null}
-              <label className="full-row">
-                <span>{engineSettings.databaseLabel}</span>
-                <input
-                  value={draft.database}
-                  placeholder={engineSettings.databasePlaceholder}
-                  onChange={(event) =>
-                    onUpdateDraft({ database: event.currentTarget.value })
-                  }
-                />
-              </label>
+              </div>
             </div>
           )}
           <label className="connection-readonly-toggle full-row">
@@ -656,7 +696,11 @@ export function ConnectionManagerDialog({
           <div className="connection-transport full-row">
             <ShieldCheck size={15} />
             <span>Transport</span>
-            <strong>{engineSettings.transportLabel}</strong>
+            <strong>
+              {draft.mode === "fields" && transportMode === "socket"
+                ? socketPathLabel(draft.engine)
+                : engineSettings.transportLabel}
+            </strong>
           </div>
           {error ? (
             <p className="inline-error full-row">
