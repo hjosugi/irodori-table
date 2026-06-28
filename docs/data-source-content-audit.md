@@ -77,7 +77,9 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
 
 ## Coverage gaps
 
-- **Cheatsheets: only 3 of 36 engines** (postgres, neo4j, questdb).
+- **Cheatsheets: only 3 of 36 engines in the public docs** (postgres, neo4j,
+  questdb). The table repo keeps only generator snapshots it needs locally;
+  QuestDB's human-facing page now lives in `irodori-docs/src/cheatsheets/`.
   MySQL/MariaDB/SQLite/SQL Server listed "Planned"; Oracle/Firebird/all others
   absent.
 - **Connectors: 0 of 36 implemented** at audit time (empty repos).
@@ -116,7 +118,7 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
   snippets for QuestDB time-series extensions.
 - ✅ **QuestDB time-series expansion**: added richer `SAMPLE BY` fill/range/
   alignment and `ASOF JOIN TOLERANCE` snippets, QuestDB-specific completion
-  keywords, and a hand-seeded `docs/cheatsheets/questdb.md`.
+  keywords, and a hand-seeded `irodori-docs/src/cheatsheets/questdb.md`.
 - ✅ **SQL Server delete-returning**: added a `delret` variant using
   `OUTPUT deleted.*`.
 
@@ -126,4 +128,4 @@ DuckDB, MotherDuck, PostgreSQL, SQLite.
   `../irodori-extensions/` are now being populated (no longer empty), so the
   flag is becoming legitimate. Owned by the connector-population effort; not
   edited here.
-- Cheatsheet coverage (3/36 engines).
+- Public cheatsheet coverage (3/36 engines).

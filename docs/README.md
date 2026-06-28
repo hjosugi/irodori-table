@@ -46,13 +46,14 @@ implementation shape or are edited while changing this repo:
 
 ## Generated Or Mirrored Here
 
-These reference pages are produced from this repo's tooling and mirrored into
-irodori-docs; edit the generators, not the output:
+These reference pages are produced from this repo's tooling. The public mdBook
+copy lives in `irodori-docs`; keep only snapshots here when table-repo tooling or
+CI needs them:
 
 - [data-source-support-status.md](data-source-support-status.md) — engine support
   matrix (`tools/docs/support-status.mjs`)
-- [cheatsheets/](cheatsheets/) — per-engine cheatsheets
-  (`tools/knowledge/cheatsheet.mjs`)
+- [cheatsheets/](cheatsheets/) — repo-local generator snapshots for selected
+  per-engine cheatsheets (`tools/knowledge/cheatsheet.mjs`)
 - [extension-marketplace/](extension-marketplace/) — extension catalog JSON
   consumed by the desktop app and generated/validated by `tools/docs/*`.
 - [agent-workstreams.json](agent-workstreams.json) — machine-readable
@@ -75,7 +76,8 @@ deployed by `.github/workflows/pages.yml`.
 - If a doc is stable, public-facing, and not generated from this repo, move it to
   `irodori-docs`.
 - If a doc is generated from code, registry data, or local knowledge tools, keep
-  the generated snapshot here and mirror it outward.
+  it here only when a table-repo tool or CI check consumes it; mirror the public
+  reader-facing copy into `irodori-docs`.
 - If a doc is historical/internal/research-only, archive it in private
   `irodori-archive`; leave only a short public replacement or index entry when
   needed.

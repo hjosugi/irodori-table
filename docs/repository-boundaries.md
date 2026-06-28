@@ -26,7 +26,7 @@ mdBook, a samples repo, or the private archive.
   implementation, such as query plan analysis, local SQL generation, terminal,
   data diff, and headless API notes.
 - Generated snapshots that are consumed by tooling or the desktop app:
-  `docs/data-source-support-status.md`, `docs/cheatsheets/`, and
+  `docs/data-source-support-status.md`, selected `docs/cheatsheets/`, and
   `docs/extension-marketplace/*.json`.
 - `docs/site/`, which is the project landing/blog site. This is not the mdBook.
 
@@ -80,8 +80,9 @@ Generated docs are edited at their inputs:
 | `docs/cheatsheets/*.md` | `knowledge/cheatsheets/*.json`, the knowledge DB, `tools/knowledge/cheatsheet.mjs` |
 | `docs/extension-marketplace/catalog.json` | `docs/extension-marketplace/index.json`, `tools/docs/build-extension-catalog.mjs` |
 
-Generated snapshots can be mirrored into `irodori-docs`, but the generator and
-app-consumed source stay in `irodori-table`.
+Generated snapshots should be mirrored into `irodori-docs` for public reading.
+Keep a Markdown snapshot in `irodori-table` only when a local generator, CI guard,
+or app-consumed source needs it.
 
 ## Parallel Agent Boundary
 

@@ -20,7 +20,6 @@ automatic data collection that feeds it are specified in
 |---|---|---|
 | [neo4j.md](neo4j.md) | Neo4j (graph, Bolt/Cypher); Memgraph notes | Seed (flagship) |
 | [postgres.md](postgres.md) | PostgreSQL (+ Cockroach/Yugabyte/Redshift/Timescale/Neon) | Generated (`knowledge/cheatsheets/postgres.json`) |
-| [questdb.md](questdb.md) | QuestDB (Postgres wire + time-series SQL extensions) | Seed |
 | _mysql.md_ | MySQL / MariaDB / TiDB | Planned |
 | _sqlite.md_ | SQLite | Planned |
 | _sqlserver.md_ | SQL Server | Planned |
@@ -51,3 +50,6 @@ so readers build muscle memory:
 
 The **Sources** footer is load-bearing: it ties each page back to the official docs
 in the knowledge registry so a refresh can detect when a page is stale.
+
+Human-facing mdBook pages that are not required as table-repo generator
+snapshots live in `hjosugi/irodori-docs` under `src/cheatsheets/`.
