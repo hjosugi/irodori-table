@@ -4,11 +4,11 @@ export type JsonValue = unknown;
 
 export type ExtensionRuntime = "typescript" | "javascript" | "wasm" | "native";
 
-export type PermissionScope = "commands" | "keybindings" | "workspace:read" | "connections:read" | "connections:write" | "queries:run" | "queryResults:read" | "queryResults:write" | "metadata:read" | "files:read" | "files:write" | "themes" | "sqlDialects" | "statusBar" | "resultRenderers" | "logs" | "dev:fixtures" | "native" | "wasm";
+export type PermissionScope = "commands" | "keybindings" | "workspace:read" | "connections:read" | "connections:write" | "connectors" | "queries:run" | "queryResults:read" | "queryResults:write" | "metadata:read" | "files:read" | "files:write" | "themes" | "sqlDialects" | "statusBar" | "resultRenderers" | "logs" | "dev:fixtures" | "native" | "wasm";
 
 export type ExtensionManifest = { manifestVersion: number, id: string, name: string, version: string, publisher?: string, description?: string, license: string, repository?: string, apiVersion: string, runtime: ExtensionRuntime, entry: string, permissions: Array<PermissionScope>, contributes: ExtensionContributions, capabilities: ExtensionCapabilities, dev?: ExtensionDevConfig, };
 
-export type ExtensionContributions = { commands: Array<CommandContribution>, keybindings: Array<KeybindingContribution>, resultGridActions: Array<ResultGridActionContribution>, resultGridRenderers: Array<ResultGridRendererContribution>, statusBarItems: Array<StatusBarItemContribution>, themes: Array<ThemeContribution>, sqlDialects: Array<SqlDialectContribution>, };
+export type ExtensionContributions = { commands: Array<CommandContribution>, keybindings: Array<KeybindingContribution>, resultGridActions: Array<ResultGridActionContribution>, resultGridRenderers: Array<ResultGridRendererContribution>, statusBarItems: Array<StatusBarItemContribution>, themes: Array<ThemeContribution>, sqlDialects: Array<SqlDialectContribution>, connectors: Array<ConnectorContribution>, };
 
 export type ExtensionCapabilities = { wasmModules: Array<WasmModuleContribution>, nativeModules: Array<NativeModuleContribution>, };
 
@@ -45,6 +45,10 @@ export type SqlSnippet = { label: string, insertText: string, detail?: string, }
 export type SqlFormatterConfig = { keywordCase?: SqlKeywordCase, identifierQuote?: string, };
 
 export type SqlKeywordCase = "upper" | "lower" | "preserve";
+
+export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, };
+
+export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing";
 
 export type WasmModuleContribution = { id: string, path: string, abi: string, exports: Array<string>, };
 

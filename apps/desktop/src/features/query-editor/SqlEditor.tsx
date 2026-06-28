@@ -241,37 +241,44 @@ function vimClipboardShortcuts(): Extension {
         if (matchesCtrlShiftKey(event, "c")) {
           event.preventDefault();
           event.stopPropagation();
-          const text = selectedEditorText(view.state);
-          const writeText = navigator.clipboard?.writeText;
-          if (text && writeText) {
-            void writeText
-              .call(navigator.clipboard, text)
-              .catch(() => undefined);
-          }
+          copyEditorSelectionToClipboard(view.state);
           return true;
         }
         if (matchesCtrlShiftKey(event, "v")) {
           event.preventDefault();
           event.stopPropagation();
-          const readText = navigator.clipboard?.readText;
-          if (readText) {
-            void readText
-              .call(navigator.clipboard)
-              .then((text) => {
-                if (!text || !view.dom.isConnected) {
-                  return;
-                }
-                view.dispatch(view.state.replaceSelection(text));
-                view.focus();
-              })
-              .catch(() => undefined);
-          }
+          pasteClipboardIntoEditor(view);
           return true;
         }
         return false;
       },
     }),
   );
+}
+
+function copyEditorSelectionToClipboard(state: EditorState) {
+  const text = selectedEditorText(state);
+  const writeText = navigator.clipboard?.writeText;
+  if (text && writeText) {
+    void writeText.call(navigator.clipboard, text).catch(() => undefined);
+  }
+}
+
+function pasteClipboardIntoEditor(view: EditorView) {
+  const readText = navigator.clipboard?.readText;
+  if (!readText) {
+    return;
+  }
+  void readText
+    .call(navigator.clipboard)
+    .then((text) => {
+      if (!text || !view.dom.isConnected) {
+        return;
+      }
+      view.dispatch(view.state.replaceSelection(text));
+      view.focus();
+    })
+    .catch(() => undefined);
 }
 
 function selectedEditorText(state: EditorState): string {

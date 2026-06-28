@@ -31,6 +31,7 @@ export {
   isSqlSnippetScope,
   isSqlSnippetEngine,
   mergeDefaultSqlSnippets,
+  mergeImportedSqlSnippets,
   snippetsForEngine,
   sqlSnippetEngines,
   sqlSnippetsFromJson,
@@ -210,6 +211,7 @@ interface LightweightCompletionInput {
   index: SqlCompletionIndex;
   limit?: number;
   pos?: number;
+  snippetVariables?: Readonly<Record<string, string | undefined>>;
   snippets?: readonly SqlSnippetDefinition[];
 }
 
@@ -240,6 +242,7 @@ export function lightweightSqlCompletionSource(
       explicit: context.explicit,
       index,
       pos: context.pos - windowStart,
+      snippetVariables: snippetVariablesForContext(context),
       snippets,
     });
     if (!result) return null;
@@ -320,6 +323,7 @@ export function completeSqlLightweight(
     input.index,
     context,
     input.explicit ?? false,
+    input.snippetVariables ?? defaultSqlSnippetVariables(),
     snippetsForEngine(input.snippets ?? defaultSqlSnippets, input.engine),
   );
   const options = rankedCompletionOptions(candidates, input.limit ?? DEFAULT_LIMIT);
@@ -364,6 +368,7 @@ function collectCompletionCandidates(
   index: SqlCompletionIndex,
   context: ParsedCompletionContext,
   explicit: boolean,
+  snippetVariables: Readonly<Record<string, string | undefined>>,
   snippets: readonly SqlSnippetDefinition[],
 ): Candidate[] {
   const candidates: Candidate[] = [];
@@ -393,10 +398,14 @@ function collectCompletionCandidates(
         explicit,
       );
       addRoutineCandidates(candidates, index, context.prefix);
-      addSnippetCandidates(candidates, snippets, context.prefix, explicit, [
-        "expression",
-        "clause",
-      ]);
+      addSnippetCandidates(
+        candidates,
+        snippets,
+        context.prefix,
+        explicit,
+        snippetVariables,
+        ["expression", "clause"],
+      );
       if (context.prefix.length > 0 || explicit) {
         addRelationCandidates(candidates, index, context.prefix, {
           lowPriority: true,
@@ -411,7 +420,13 @@ function collectCompletionCandidates(
       addRelationCandidates(candidates, index, context.prefix);
       addSchemaCandidates(candidates, index, context.prefix);
       addRoutineCandidates(candidates, index, context.prefix);
-      addSnippetCandidates(candidates, snippets, context.prefix, explicit);
+      addSnippetCandidates(
+        candidates,
+        snippets,
+        context.prefix,
+        explicit,
+        snippetVariables,
+      );
       addKeywordCandidates(candidates, engine, context.prefix);
       break;
   }
@@ -641,6 +656,7 @@ function addSnippetCandidates(
   snippets: readonly SqlSnippetDefinition[],
   prefix: string,
   explicit: boolean,
+  snippetVariables: Readonly<Record<string, string | undefined>>,
   scopes?: readonly SqlSnippetDefinition["scope"][],
 ) {
   if (!explicit && prefix.length === 0) return;
@@ -653,15 +669,97 @@ function addSnippetCandidates(
     candidates.push({
       key: `snippet:${definition.label}`,
       rank,
-      option: snippetCompletion(definition.template, {
-        label: definition.label,
-        detail: definition.detail,
-        type: "keyword",
-        section: SNIPPET_SECTION,
-        boost: clampBoost(rank - 500),
-      }),
+      option: snippetCompletion(
+        expandSqlSnippetVariables(definition.template, snippetVariables),
+        {
+          label: definition.label,
+          detail: definition.detail,
+          type: "keyword",
+          section: SNIPPET_SECTION,
+          boost: clampBoost(rank - 500),
+        },
+      ),
     });
   }
+}
+
+export function expandSqlSnippetVariables(
+  template: string,
+  variables: Readonly<Record<string, string | undefined>> = defaultSqlSnippetVariables(),
+): string {
+  return template.replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (match, name: string) => {
+    const value = variables[name];
+    return value === undefined ? match : escapeSnippetLiteral(value);
+  });
+}
+
+function snippetVariablesForContext(
+  context: CompletionContext,
+): Readonly<Record<string, string | undefined>> {
+  const line = context.state.doc.lineAt(context.pos);
+  const selectedText = context.state.selection.ranges
+    .filter((range) => !range.empty)
+    .map((range) => context.state.sliceDoc(range.from, range.to))
+    .join("\n");
+
+  return defaultSqlSnippetVariables({
+    TM_CURRENT_LINE: line.text,
+    TM_LINE_INDEX: String(line.number - 1),
+    TM_LINE_NUMBER: String(line.number),
+    TM_SELECTED_TEXT: selectedText,
+  });
+}
+
+function defaultSqlSnippetVariables(
+  overrides: Readonly<Record<string, string | undefined>> = {},
+): Readonly<Record<string, string | undefined>> {
+  const now = new Date();
+  const random = Math.floor(Math.random() * 1_000_000);
+  return {
+    CURRENT_DATE: padDatePart(now.getDate()),
+    CURRENT_DAY_NAME: now.toLocaleDateString(undefined, { weekday: "long" }),
+    CURRENT_DAY_NAME_SHORT: now.toLocaleDateString(undefined, {
+      weekday: "short",
+    }),
+    CURRENT_HOUR: padDatePart(now.getHours()),
+    CURRENT_MINUTE: padDatePart(now.getMinutes()),
+    CURRENT_MONTH: padDatePart(now.getMonth() + 1),
+    CURRENT_MONTH_NAME: now.toLocaleDateString(undefined, { month: "long" }),
+    CURRENT_MONTH_NAME_SHORT: now.toLocaleDateString(undefined, {
+      month: "short",
+    }),
+    CURRENT_SECOND: padDatePart(now.getSeconds()),
+    CURRENT_SECONDS_UNIX: String(Math.floor(now.getTime() / 1000)),
+    CURRENT_YEAR: String(now.getFullYear()),
+    CURRENT_YEAR_SHORT: String(now.getFullYear()).slice(-2),
+    RANDOM: String(random).padStart(6, "0"),
+    RANDOM_HEX: random.toString(16).padStart(6, "0"),
+    TM_CURRENT_LINE: "",
+    TM_LINE_INDEX: "",
+    TM_LINE_NUMBER: "",
+    TM_SELECTED_TEXT: "",
+    UUID: randomUuid(),
+    ...overrides,
+  };
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function randomUuid() {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16);
+    const nibble = char === "x" ? value : (value & 0x3) | 0x8;
+    return nibble.toString(16);
+  });
+}
+
+function escapeSnippetLiteral(value: string) {
+  return value.replace(/[\\$}]/g, (char) => `\\${char}`);
 }
 
 function addKeywordCandidates(

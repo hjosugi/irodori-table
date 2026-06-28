@@ -8,6 +8,7 @@ const manifestPath = join(cliOptions.extensionDir, "irodori.extension.json");
 
 const sensitivePermissions = new Set([
   "connections:write",
+  "connectors",
   "queries:run",
   "queryResults:read",
   "queryResults:write",
@@ -24,6 +25,7 @@ const contributionPermissionRules = [
   ["statusBarItems", "statusBar", "contributes.statusBarItems requires permissions: statusBar"],
   ["themes", "themes", "contributes.themes requires permissions: themes"],
   ["sqlDialects", "sqlDialects", "contributes.sqlDialects requires permissions: sqlDialects"],
+  ["connectors", "connectors", "contributes.connectors requires permissions: connectors"],
 ];
 
 const capabilityPermissionRules = [

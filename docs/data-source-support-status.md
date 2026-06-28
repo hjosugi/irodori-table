@@ -25,9 +25,9 @@ Status legend:
   extension marketplace; the app browses `docs/extension-marketplace/catalog.json`
   and install/details stay in `docs/extension-marketplace/index.json` instead of
   being compiled into the core desktop build.
-- **Recognized, no connector** — present in `DbEngine` but rejected at connect by
-  `is_unimplemented_wire()` (`"recognized but does not have a production connector
-  yet"`).
+- **Recognized, extension required** — present in `DbEngine` but rejected at
+  connect by `is_unimplemented_wire()` until an installable connector extension
+  is present.
 - **Not registered** — named in the roadmap/coverage strategy but **absent from the
   `DbEngine` enum** — i.e. not selectable in the app at all yet.
 
@@ -71,10 +71,12 @@ Status legend:
 None today. If an adapter has a dedicated `Wire` but intentionally returns a
 not-ready error, list it here instead of mixing it with production connectors.
 
-## 3. Recognized, no connector (in the enum, rejected at connect)
+## 3. Recognized, extension required (in the enum, rejected at connect)
 
 These appear in `DbEngine` but `is_unimplemented_wire()` rejects them with
-*"`<Engine>` is recognized but does not have a production connector yet."*
+*"Install connector extension `irodori.<engine>`."* Public marketplace entries
+are listed in `docs/extension-marketplace/index.json`; `kvStore` remains an
+internal target and is not published as a public extension.
 
 | Engine | `DbEngine` id | Family | Closest existing wire | Note |
 |---|---|---|---|---|

@@ -93,6 +93,7 @@
         "workspace:read",
         "connections:read",
         "connections:write",
+        "connectors",
         "queries:run",
         "queryResults:read",
         "queryResults:write",
@@ -153,6 +154,12 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/sqlDialectContribution"
+          }
+        },
+        "connectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorContribution"
           }
         }
       }
@@ -318,6 +325,63 @@
           "items": {
             "type": "string",
             "pattern": "^\\.[A-Za-z0-9_-]+$"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "connectorContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "engine", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "engine": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "defaultPort": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "wire": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "dialect": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "sql",
+              "metadata",
+              "transactions",
+              "streaming",
+              "preparedQueries",
+              "explain",
+              "resultEditing"
+            ]
           },
           "uniqueItems": true
         }

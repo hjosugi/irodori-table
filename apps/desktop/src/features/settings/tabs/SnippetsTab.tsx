@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, FileUp, ListPlus } from "lucide-react";
 import {
   cloneDefaultSqlSnippets,
   isSqlSnippetScope,
+  mergeImportedSqlSnippets,
   sqlSnippetsFromText,
   type SqlSnippetDefinition,
   type SqlSnippetScope,
@@ -25,36 +26,6 @@ function uniqueSnippetLabel(snippets: readonly SqlSnippetDefinition[]) {
   let index = 2;
   while (used.has(`custom${index}`)) index += 1;
   return `custom${index}`;
-}
-
-function snippetKey(snippet: SqlSnippetDefinition) {
-  const engines =
-    snippet.engines && snippet.engines.length > 0
-      ? [...snippet.engines].sort().join(",")
-      : "*";
-  return `${snippet.label}:${engines}`;
-}
-
-function mergeImportedSnippets(
-  current: readonly SqlSnippetDefinition[],
-  imported: readonly SqlSnippetDefinition[],
-) {
-  const merged = current.map((snippet) => ({ ...snippet }));
-  const indexByKey = new Map(
-    merged.map((snippet, index) => [snippetKey(snippet), index]),
-  );
-  for (const snippet of imported) {
-    const key = snippetKey(snippet);
-    const index = indexByKey.get(key);
-    const nextSnippet = { ...snippet };
-    if (index === undefined) {
-      indexByKey.set(key, merged.length);
-      merged.push(nextSnippet);
-    } else {
-      merged[index] = nextSnippet;
-    }
-  }
-  return merged;
 }
 
 export interface SnippetsTabProps {
@@ -106,7 +77,7 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
       setSqlSnippets((current) =>
         mode === "replace"
           ? result.snippets.map((snippet) => ({ ...snippet }))
-          : mergeImportedSnippets(current, result.snippets),
+          : mergeImportedSqlSnippets(current, result.snippets),
       );
       setImportError(null);
       setImportNotice(

@@ -278,6 +278,33 @@ impl DbEngine {
         }
     }
 
+    pub(crate) fn connector_extension_id(self) -> Option<&'static str> {
+        match self {
+            DbEngine::Memgraph => Some("irodori.memgraph"),
+            DbEngine::Qdrant => Some("irodori.qdrant"),
+            DbEngine::Milvus => Some("irodori.milvus"),
+            DbEngine::Pinecone => Some("irodori.pinecone"),
+            DbEngine::TrinoPresto => Some("irodori.trino-presto"),
+            DbEngine::Firebird => Some("irodori.firebird"),
+            DbEngine::Databricks => Some("irodori.databricks"),
+            DbEngine::Elasticsearch => Some("irodori.elasticsearch"),
+            DbEngine::OpenSearch => Some("irodori.opensearch"),
+            DbEngine::Couchbase => Some("irodori.couchbase"),
+            DbEngine::DynamoDb => Some("irodori.dynamodb"),
+            DbEngine::CloudSpanner => Some("irodori.cloud-spanner"),
+            DbEngine::ArangoDb => Some("irodori.arangodb"),
+            DbEngine::IoTDb => Some("irodori.iotdb"),
+            DbEngine::Hive => Some("irodori.hive"),
+            DbEngine::Athena => Some("irodori.athena"),
+            DbEngine::S3Tables => Some("irodori.s3-tables"),
+            DbEngine::ObjectStore => Some("irodori.object-store"),
+            DbEngine::DeltaLake => Some("irodori.delta-lake"),
+            DbEngine::Hudi => Some("irodori.hudi"),
+            DbEngine::KvStore => None,
+            _ => None,
+        }
+    }
+
     #[allow(dead_code)]
     pub(crate) fn dialect(self) -> Box<dyn SqlDialect> {
         match self.wire() {

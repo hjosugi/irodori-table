@@ -69,10 +69,7 @@ pub(super) fn normalize_profile(
 
     let wire = profile.engine.wire();
     if is_unimplemented_wire(wire) {
-        return Err(format!(
-            "{:?} is recognized but does not have a production connector yet",
-            profile.engine
-        ));
+        return Err(connector_extension_required_message(profile.engine));
     }
 
     if profile.url.is_some() {
@@ -163,6 +160,17 @@ fn is_unimplemented_wire(wire: Wire) -> bool {
             | Wire::Lakehouse
             | Wire::ObjectStore
     )
+}
+
+fn connector_extension_required_message(engine: DbEngine) -> String {
+    match engine.connector_extension_id() {
+        Some(extension_id) => format!(
+            "{engine:?} is recognized, but its connector is not built into the core app. Install connector extension `{extension_id}`."
+        ),
+        None => format!(
+            "{engine:?} is recognized as an internal connector target, but no public connector extension is published for it."
+        ),
+    }
 }
 
 fn redact_url_password(input: &str) -> String {

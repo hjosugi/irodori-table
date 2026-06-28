@@ -1,22 +1,25 @@
-import {
-  AlertTriangle,
-  Copy,
-  Flame,
-  Network,
-  Play,
-  Table2,
-  TreePine,
-  X,
-  Zap,
-} from "lucide-react";
-import type { CSSProperties } from "react";
+import { AlertTriangle, Play, X, Zap } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   QueryPlanAnalysis,
   QueryPlanCopyFormat,
-  QueryPlanFinding,
-  QueryPlanMetric,
   QueryPlanNode,
 } from "@/generated/irodori-api";
+import { PlanAiExplanation } from "./plan-panel/PlanAiExplanation";
+import { PlanNodeDetail } from "./plan-panel/PlanNodeDetail";
+import {
+  CopyView,
+  FlameView,
+  GraphView,
+  GuideView,
+  OverviewView,
+  PlanSummary,
+  TableView,
+  TreeView,
+  planViews,
+  type PlanView,
+} from "./plan-panel/PlanViews";
+import { severityRank } from "./plan-panel/plan-format";
 
 type PlanPanelProps = {
   plan: QueryPlanAnalysis | null;
@@ -30,12 +33,6 @@ type PlanPanelProps = {
   onClose: () => void;
 };
 
-const severityRank: Record<QueryPlanFinding["severity"], number> = {
-  critical: 0,
-  warning: 1,
-  info: 2,
-};
-
 export function PlanPanel({
   plan,
   loading,
@@ -47,12 +44,55 @@ export function PlanPanel({
   onCopyFormat,
   onClose,
 }: PlanPanelProps) {
-  const sortedFindings = [...(plan?.findings ?? [])].sort(
-    (left, right) => severityRank[left.severity] - severityRank[right.severity],
+  const [activeView, setActiveView] = useState<PlanView>("overview");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const sortedFindings = useMemo(
+    () =>
+      [...(plan?.findings ?? [])].sort(
+        (left, right) =>
+          severityRank[left.severity] - severityRank[right.severity],
+      ),
+    [plan],
   );
-  const hotNodes = [...(plan?.nodes ?? [])]
-    .sort((left, right) => right.impactScore - left.impactScore)
-    .slice(0, 6);
+  const hotNodes = useMemo(
+    () =>
+      [...(plan?.nodes ?? [])]
+        .sort((left, right) => right.impactScore - left.impactScore)
+        .slice(0, 8),
+    [plan],
+  );
+  const nodeById = useMemo(
+    () => new Map((plan?.nodes ?? []).map((node) => [node.id, node])),
+    [plan],
+  );
+  const selectedNode = selectedNodeId
+    ? (nodeById.get(selectedNodeId) ?? null)
+    : null;
+  const selectedNodeFindings = selectedNode
+    ? sortedFindings.filter((finding) => finding.nodeId === selectedNode.id)
+    : [];
+
+  useEffect(() => {
+    if (!plan || plan.nodes.length === 0) {
+      setSelectedNodeId(null);
+      return;
+    }
+
+    setSelectedNodeId((current) => {
+      if (current && hasNode(plan.nodes, current)) {
+        return current;
+      }
+      return preferredPlanNodeId(plan, sortedFindings, hotNodes);
+    });
+  }, [hotNodes, plan, sortedFindings]);
+
+  const selectNode = (nodeId: string | undefined) => {
+    if (nodeId && nodeById.has(nodeId)) {
+      setSelectedNodeId(nodeId);
+    }
+  };
+
   return (
     <section className="plan-panel" aria-label="Explain plan">
       <div className="plan-panel-header">
@@ -60,7 +100,12 @@ export function PlanPanel({
           <strong>Plan</strong>
           <span>{activeConnectionName}</span>
         </div>
-        <button type="button" title="Close Plan" aria-label="Close Plan" onClick={onClose}>
+        <button
+          type="button"
+          title="Close Plan"
+          aria-label="Close Plan"
+          onClick={onClose}
+        >
           <X size={13} />
         </button>
       </div>
@@ -101,223 +146,165 @@ export function PlanPanel({
         </div>
       ) : (
         <>
-          <div className="plan-summary">
-            <div>
-              <strong>{plan.headline}</strong>
-              <span>{sourceLabel(plan.source)} · {plan.engineFamily}</span>
+          <PlanSummary plan={plan} />
+          <PlanAiExplanation plan={plan} />
+          <PlanViewTabs activeView={activeView} onChange={setActiveView} />
+
+          <div className="plan-analysis-grid">
+            <div className="plan-main-view">
+              <ActivePlanView
+                activeView={activeView}
+                plan={plan}
+                sortedFindings={sortedFindings}
+                hotNodes={hotNodes}
+                nodeById={nodeById}
+                selectedNodeId={selectedNodeId}
+                selectedNode={selectedNode}
+                selectedNodeFindings={selectedNodeFindings}
+                onSelectNode={selectNode}
+                onCopyFormat={onCopyFormat}
+              />
             </div>
-            <p>{plan.summary}</p>
+
+            {selectedNode ? (
+              <PlanNodeDetail
+                node={selectedNode}
+                findings={selectedNodeFindings}
+                onCopyFormat={onCopyFormat}
+              />
+            ) : null}
           </div>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <AlertTriangle size={14} />
-              <span>Findings</span>
-            </div>
-            <div className="plan-finding-list">
-              {sortedFindings.map((finding, index) => (
-                <article
-                  className={`plan-finding ${finding.severity}`}
-                  key={`${finding.title}:${index}`}
-                >
-                  <strong>{finding.title}</strong>
-                  <span>{finding.detail}</span>
-                  <small>{finding.action}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <Table2 size={14} />
-              <span>Metrics</span>
-            </div>
-            <div className="plan-metric-grid">
-              {plan.metrics.map((metric) => (
-                <MetricTile metric={metric} key={metric.key} />
-              ))}
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <Flame size={14} />
-              <span>Hot Path</span>
-            </div>
-            <div className="plan-flame-list">
-              {(plan.flameGraph.length > 0 ? plan.flameGraph : hotNodes).map((frame) => {
-                const ratio = "ratio" in frame ? frame.ratio : frame.impactScore;
-                return (
-                  <div className="plan-flame-row" key={frame.id}>
-                    <span style={{ paddingLeft: `${Math.min(frame.depth, 5) * 12}px` }}>
-                      {frame.label}
-                    </span>
-                    <i>
-                      <b style={{ width: `${Math.max(6, ratio * 100)}%` }} />
-                    </i>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <TreePine size={14} />
-              <span>Tree</span>
-            </div>
-            <div className="plan-tree">
-              {plan.nodes.map((node) => (
-                <PlanTreeNode node={node} key={node.id} />
-              ))}
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <Network size={14} />
-              <span>Diagram</span>
-            </div>
-            <div className="plan-diagram">
-              {hotNodes.map((node) => (
-                <div className="plan-diagram-node" key={node.id}>
-                  <strong>{node.operation}</strong>
-                  <span>{node.object ?? node.label}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <Table2 size={14} />
-              <span>Table</span>
-            </div>
-            <div className="plan-table-wrap">
-              <table className="plan-table">
-                <thead>
-                  <tr>
-                    <th>Operation</th>
-                    <th>Object</th>
-                    <th>Rows</th>
-                    <th>Cost</th>
-                    <th>Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.nodes.map((node) => (
-                    <tr key={node.id}>
-                      <td>{node.operation}</td>
-                      <td>{node.object ?? ""}</td>
-                      <td>{formatMaybe(node.actualRows ?? node.estimatedRows)}</td>
-                      <td>{formatMaybe(node.totalCost)}</td>
-                      <td>{formatMaybe(node.actualTotalMs)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <Copy size={14} />
-              <span>Copy</span>
-            </div>
-            <div className="plan-copy-list">
-              {plan.copyFormats.map((format) => (
-                <button
-                  type="button"
-                  key={format.label}
-                  onClick={() => onCopyFormat(format)}
-                >
-                  <Copy size={13} />
-                  <span>{format.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="plan-section">
-            <div className="plan-section-title">
-              <Zap size={14} />
-              <span>Guide</span>
-            </div>
-            <div className="plan-guide-list">
-              {plan.metricGuide.map((guide) => (
-                <article key={guide.key}>
-                  <strong>{guide.label}</strong>
-                  <span>{guide.meaning}</span>
-                  <small>{guide.warning}</small>
-                </article>
-              ))}
-            </div>
-          </section>
         </>
       )}
     </section>
   );
 }
 
-function MetricTile({ metric }: { metric: QueryPlanMetric }) {
-  return (
-    <div className={`plan-metric ${metric.severity}`}>
-      <span>{metric.label}</span>
-      <strong>{metric.value}</strong>
-      <small>{metric.description}</small>
-    </div>
-  );
-}
-
-function PlanTreeNode({ node }: { node: QueryPlanNode }) {
-  // Heat-tint each node by its share of the plan's cost so the expensive
-  // subtree pops in the structural view (the flame bar already encodes this
-  // via width; the tree previously showed no hotness at all).
-  const heat = Math.max(0, Math.min(1, node.impactScore));
+function PlanViewTabs({
+  activeView,
+  onChange,
+}: {
+  activeView: PlanView;
+  onChange: (view: PlanView) => void;
+}) {
   return (
     <div
-      className="plan-tree-node"
-      style={
-        {
-          paddingLeft: `${Math.min(node.depth, 6) * 12}px`,
-          "--heat": heat,
-        } as CSSProperties
-      }
+      className="plan-view-tabs"
+      role="tablist"
+      aria-label="Plan analysis views"
     >
-      <strong>{node.operation}</strong>
-      <span>{node.object ?? node.label}</span>
-      <small>
-        {[
-          node.estimatedRows !== undefined ? `est ${formatMaybe(node.estimatedRows)}` : "",
-          node.actualRows !== undefined ? `actual ${formatMaybe(node.actualRows)}` : "",
-          node.totalCost !== undefined ? `cost ${formatMaybe(node.totalCost)}` : "",
-          node.actualTotalMs !== undefined ? `${formatMaybe(node.actualTotalMs)} ms` : "",
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </small>
+      {planViews.map((view) => (
+        <button
+          type="button"
+          key={view.id}
+          role="tab"
+          aria-selected={activeView === view.id}
+          className={activeView === view.id ? "active" : ""}
+          onClick={() => onChange(view.id)}
+        >
+          {view.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-function sourceLabel(source: QueryPlanAnalysis["source"]) {
-  switch (source) {
-    case "native":
-      return "Native";
-    case "nativeWithStaticAnalysis":
-      return "Native + static checks";
-    case "staticAnalysis":
-      return "Static fallback";
+function ActivePlanView({
+  activeView,
+  plan,
+  sortedFindings,
+  hotNodes,
+  nodeById,
+  selectedNodeId,
+  selectedNode,
+  selectedNodeFindings,
+  onSelectNode,
+  onCopyFormat,
+}: {
+  activeView: PlanView;
+  plan: QueryPlanAnalysis;
+  sortedFindings: QueryPlanAnalysis["findings"];
+  hotNodes: QueryPlanNode[];
+  nodeById: Map<string, QueryPlanNode>;
+  selectedNodeId: string | null;
+  selectedNode: QueryPlanNode | null;
+  selectedNodeFindings: QueryPlanAnalysis["findings"];
+  onSelectNode: (nodeId: string | undefined) => void;
+  onCopyFormat: (format: QueryPlanCopyFormat) => void;
+}) {
+  switch (activeView) {
+    case "overview":
+      return (
+        <OverviewView
+          plan={plan}
+          findings={sortedFindings}
+          hotNodes={hotNodes}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+        />
+      );
+    case "tree":
+      return (
+        <TreeView
+          nodes={plan.nodes}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+        />
+      );
+    case "table":
+      return (
+        <TableView
+          nodes={plan.nodes}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+        />
+      );
+    case "graph":
+      return (
+        <GraphView
+          plan={plan}
+          nodes={hotNodes.length > 0 ? hotNodes : plan.nodes.slice(0, 8)}
+          nodeById={nodeById}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+        />
+      );
+    case "flame":
+      return (
+        <FlameView
+          plan={plan}
+          hotNodes={hotNodes}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+        />
+      );
+    case "guide":
+      return <GuideView plan={plan} />;
+    case "copy":
+      return (
+        <CopyView
+          plan={plan}
+          selectedNode={selectedNode}
+          selectedNodeFindings={selectedNodeFindings}
+          onCopyFormat={onCopyFormat}
+        />
+      );
   }
 }
 
-function formatMaybe(value: number | undefined) {
-  if (value === undefined || Number.isNaN(value)) {
-    return "";
-  }
-  if (Math.abs(value) >= 1000) {
-    return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
-  }
-  return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
+function preferredPlanNodeId(
+  plan: QueryPlanAnalysis,
+  findings: QueryPlanAnalysis["findings"],
+  hotNodes: QueryPlanNode[],
+) {
+  return (
+    findings.find((finding) => finding.nodeId)?.nodeId ??
+    hotNodes[0]?.id ??
+    plan.nodes[0]?.id ??
+    null
+  );
+}
+
+function hasNode(nodes: QueryPlanNode[], nodeId: string) {
+  return nodes.some((node) => node.id === nodeId);
 }

@@ -1070,7 +1070,8 @@ async fn command_boundary_rejects_invalid_inputs() {
     let err = connect_impl(&state, &SecurityState::default(), unsupported)
         .await
         .unwrap_err();
-    assert!(err.contains("production connector"));
+    assert!(err.contains("irodori.pinecone"));
+    assert!(err.contains("connector extension"));
 
     let err = run_query_impl(&state, " ".into(), "select 1".into(), None)
         .await

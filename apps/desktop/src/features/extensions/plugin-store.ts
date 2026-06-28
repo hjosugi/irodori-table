@@ -58,7 +58,6 @@ export const bundledPluginStoreCatalog: PluginStoreCatalog = {
     connector("irodori.bigtable", "Bigtable Connector", ["bigtable"]),
     connector("irodori.cloud-spanner", "Cloud Spanner Connector", ["cloudSpanner"]),
     connector("irodori.redis", "Redis Connector", ["redis"]),
-    connector("irodori.kv-store", "KV Store Connector", ["kvStore"]),
     connector("irodori.dynamodb", "DynamoDB Connector", ["dynamodb"]),
     connector("irodori.mongodb", "MongoDB Connector", ["mongodb"]),
     connector("irodori.clickhouse", "ClickHouse Connector", ["clickhouse"]),

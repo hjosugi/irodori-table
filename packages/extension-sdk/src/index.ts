@@ -7,6 +7,7 @@ export {
 } from "./testing";
 
 import type {
+  ConnectorContribution,
   ExtensionManifest,
   KeybindingContribution,
   PermissionInspection,
@@ -55,6 +56,10 @@ export interface SqlDialectRegistry {
   registerDialect(dialect: SqlDialectDefinition): Disposable;
 }
 
+export interface ConnectorRegistry {
+  registerConnector(connector: ConnectorContribution): Disposable;
+}
+
 export interface StatusBarRegistry {
   registerItem(item: StatusBarItemContribution): Disposable;
 }
@@ -81,6 +86,7 @@ export interface ExtensionContext {
   readonly resultGrid: ResultGridApi;
   readonly themes: ThemeRegistry;
   readonly sqlDialects: SqlDialectRegistry;
+  readonly connectors: ConnectorRegistry;
   readonly statusBar: StatusBarRegistry;
   readonly permissions: PermissionApi;
   readonly log: ExtensionLogger;

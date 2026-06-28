@@ -4,7 +4,9 @@ import {
   buildSqlCompletionIndex,
   completeSqlLightweight,
   defaultSqlSnippets,
+  expandSqlSnippetVariables,
   mergeDefaultSqlSnippets,
+  mergeImportedSqlSnippets,
   snippetsForEngine,
   sqlSnippetsFromJson,
   sqlSnippetsFromText,
@@ -477,6 +479,23 @@ describe("completeSqlLightweight", () => {
     );
   });
 
+  it("expands VS Code-style named snippet variables without touching tabstops", () => {
+    const template =
+      "select ${TM_SELECTED_TEXT} as ${1:alias}, '${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}' as day, '${UUID}' as id;${0}";
+
+    expect(
+      expandSqlSnippetVariables(template, {
+        CURRENT_DATE: "28",
+        CURRENT_MONTH: "06",
+        CURRENT_YEAR: "2026",
+        TM_SELECTED_TEXT: "price_$raw}",
+        UUID: "123e4567-e89b-12d3-a456-426614174000",
+      }),
+    ).toBe(
+      "select price_\\$raw\\} as ${1:alias}, '2026-06-28' as day, '123e4567-e89b-12d3-a456-426614174000' as id;${0}",
+    );
+  });
+
   it("loads engine-scoped snippet definitions from JSON", () => {
     const snippets = sqlSnippetsFromJson([
       {
@@ -491,6 +510,51 @@ describe("completeSqlLightweight", () => {
     expect(snippets[0]?.engines).toEqual(["snowflake"]);
     expect(completeWithEngine("sf", metadata, "snowflake", false, snippets)).toHaveLength(1);
     expect(completeWithEngine("sf", metadata, "postgres", false, snippets)).toHaveLength(0);
+  });
+
+  it("merges imported snippets by label and engine scope", () => {
+    const merged = mergeImportedSqlSnippets(
+      [
+        {
+          label: "ops",
+          detail: "old postgres",
+          template: "select 1;${0}",
+          scope: "statement",
+          engines: ["postgres"],
+        },
+        {
+          label: "ops",
+          detail: "mysql variant",
+          template: "select 2;${0}",
+          scope: "statement",
+          engines: ["mysql"],
+        },
+      ],
+      [
+        {
+          label: "ops",
+          detail: "new postgres",
+          template: "select 3;${0}",
+          scope: "statement",
+          engines: ["postgres"],
+        },
+        {
+          label: "mine",
+          detail: "new custom",
+          template: "select 4;${0}",
+          scope: "statement",
+        },
+      ],
+    );
+
+    expect(merged.map(snippetTestKey)).toEqual([
+      "ops:postgres",
+      "ops:mysql",
+      "mine:*",
+    ]);
+    expect(merged.find((snippet) => snippetTestKey(snippet) === "ops:postgres")?.detail).toBe(
+      "new postgres",
+    );
   });
 
   it("imports snippets from JSON text wrappers", async () => {

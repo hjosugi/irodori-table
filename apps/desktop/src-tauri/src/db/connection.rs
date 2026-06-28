@@ -705,10 +705,16 @@ pub(crate) async fn connect_engine(
         | Wire::TimeSeries
         | Wire::Lakehouse
         | Wire::ObjectStore => {
-            return Err(format!(
-                "{:?} driver is not yet fully implemented",
-                profile.engine
-            ));
+            return Err(match profile.engine.connector_extension_id() {
+                Some(extension_id) => format!(
+                    "{:?} requires connector extension `{extension_id}`; the core app has no built-in driver for this engine",
+                    profile.engine
+                ),
+                None => format!(
+                    "{:?} has no public connector extension and no built-in driver",
+                    profile.engine
+                ),
+            });
         }
     };
     Ok(conn)

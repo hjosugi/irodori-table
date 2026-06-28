@@ -394,6 +394,10 @@ pub(crate) fn analysis_from_postgres_json(
     raw: String,
 ) -> QueryPlanAnalysis {
     let mut nodes = Vec::new();
+    let root_item = json
+        .as_array()
+        .and_then(|items| items.first())
+        .or_else(|| json.as_object().map(|_| &json));
     let root_plan = json
         .as_array()
         .and_then(|items| items.first())
@@ -409,6 +413,7 @@ pub(crate) fn analysis_from_postgres_json(
     }
 
     let mut analysis = native_analysis(wire, sql, mode, nodes, "PostgreSQL JSON plan");
+    enrich_postgres_root_metrics(&mut analysis, root_item);
     analysis.findings.extend(postgres_findings(&analysis.nodes));
     merge_static_findings(&mut analysis, wire, sql, mode);
     analysis.copy_formats = copy_formats(
@@ -634,6 +639,51 @@ fn native_analysis(
     analysis
 }
 
+fn enrich_postgres_root_metrics(
+    analysis: &mut QueryPlanAnalysis,
+    root_item: Option<&serde_json::Value>,
+) {
+    let Some(root_item) = root_item else {
+        return;
+    };
+    let planning_ms = number_field(root_item, "Planning Time");
+    let execution_ms = number_field(root_item, "Execution Time");
+
+    if let Some(root) = analysis.nodes.first_mut() {
+        push_number_property(&mut root.properties, "planningTimeMs", planning_ms);
+        push_number_property(&mut root.properties, "executionTimeMs", execution_ms);
+    }
+
+    if let Some(planning_ms) = planning_ms {
+        analysis.metrics.push(QueryPlanMetric {
+            key: "planningTime".into(),
+            label: "Planning time".into(),
+            value: format_number(planning_ms),
+            unit: "ms".into(),
+            severity: if planning_ms >= 500.0 {
+                QueryPlanSeverity::Warning
+            } else {
+                QueryPlanSeverity::Info
+            },
+            description: "Time PostgreSQL spent choosing the execution plan.".into(),
+        });
+    }
+    if let Some(execution_ms) = execution_ms {
+        analysis.metrics.push(QueryPlanMetric {
+            key: "executionTime".into(),
+            label: "Execution time".into(),
+            value: format_number(execution_ms),
+            unit: "ms".into(),
+            severity: if execution_ms >= 1000.0 {
+                QueryPlanSeverity::Warning
+            } else {
+                QueryPlanSeverity::Info
+            },
+            description: "Total runtime reported by PostgreSQL for the statement.".into(),
+        });
+    }
+}
+
 fn collect_postgres_plan_nodes(
     plan: &serde_json::Value,
     parent_id: Option<String>,
@@ -671,6 +721,103 @@ fn collect_postgres_plan_nodes(
         "actualTotalTime",
         number_field(plan, "Actual Total Time"),
     );
+    push_number_property(
+        &mut properties,
+        "actualLoops",
+        number_field(plan, "Actual Loops"),
+    );
+    push_number_property(
+        &mut properties,
+        "planWidth",
+        number_field(plan, "Plan Width"),
+    );
+    push_number_property(
+        &mut properties,
+        "rowsRemovedByFilter",
+        number_field(plan, "Rows Removed by Filter"),
+    );
+    push_number_property(
+        &mut properties,
+        "rowsRemovedByJoinFilter",
+        number_field(plan, "Rows Removed by Join Filter"),
+    );
+    push_number_property(
+        &mut properties,
+        "sharedHitBlocks",
+        number_field(plan, "Shared Hit Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "sharedReadBlocks",
+        number_field(plan, "Shared Read Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "sharedDirtiedBlocks",
+        number_field(plan, "Shared Dirtied Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "sharedWrittenBlocks",
+        number_field(plan, "Shared Written Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "localReadBlocks",
+        number_field(plan, "Local Read Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "tempReadBlocks",
+        number_field(plan, "Temp Read Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "tempWrittenBlocks",
+        number_field(plan, "Temp Written Blocks"),
+    );
+    push_number_property(
+        &mut properties,
+        "ioReadTimeMs",
+        number_field(plan, "I/O Read Time"),
+    );
+    push_number_property(
+        &mut properties,
+        "ioWriteTimeMs",
+        number_field(plan, "I/O Write Time"),
+    );
+    push_number_property(
+        &mut properties,
+        "sortSpaceUsed",
+        number_field(plan, "Sort Space Used"),
+    );
+    push_number_property(
+        &mut properties,
+        "hashBatches",
+        number_field(plan, "Hash Batches"),
+    );
+    push_number_property(
+        &mut properties,
+        "peakMemoryUsage",
+        number_field(plan, "Peak Memory Usage"),
+    );
+    push_number_property(
+        &mut properties,
+        "workersPlanned",
+        number_field(plan, "Workers Planned"),
+    );
+    push_number_property(
+        &mut properties,
+        "workersLaunched",
+        number_field(plan, "Workers Launched"),
+    );
+    push_number_property(
+        &mut properties,
+        "walRecords",
+        number_field(plan, "WAL Records"),
+    );
+    push_number_property(&mut properties, "walFpi", number_field(plan, "WAL FPI"));
+    push_number_property(&mut properties, "walBytes", number_field(plan, "WAL Bytes"));
     if let Some(alias) = alias {
         properties.push(property("alias", alias));
     }
@@ -680,10 +827,42 @@ fn collect_postgres_plan_nodes(
     if let Some(filter) = string_field(plan, "Filter") {
         properties.push(property("filter", filter));
     }
-    if let Some(cond) = string_field(plan, "Index Cond").or_else(|| string_field(plan, "Hash Cond"))
-    {
-        properties.push(property("condition", cond));
-    }
+    push_string_property(
+        &mut properties,
+        "indexCond",
+        string_field(plan, "Index Cond"),
+    );
+    push_string_property(&mut properties, "hashCond", string_field(plan, "Hash Cond"));
+    push_string_property(
+        &mut properties,
+        "mergeCond",
+        string_field(plan, "Merge Cond"),
+    );
+    push_string_property(
+        &mut properties,
+        "joinFilter",
+        string_field(plan, "Join Filter"),
+    );
+    push_string_property(
+        &mut properties,
+        "recheckCond",
+        string_field(plan, "Recheck Cond"),
+    );
+    push_string_property(
+        &mut properties,
+        "sortMethod",
+        string_field(plan, "Sort Method"),
+    );
+    push_string_property(
+        &mut properties,
+        "sortSpaceType",
+        string_field(plan, "Sort Space Type"),
+    );
+    push_string_property(
+        &mut properties,
+        "parallelAware",
+        string_field(plan, "Parallel Aware"),
+    );
 
     let actual_total_ms = number_field(plan, "Actual Total Time");
     let total_cost = number_field(plan, "Total Cost");
@@ -869,7 +1048,124 @@ fn postgres_findings(nodes: &[QueryPlanNode]) -> Vec<QueryPlanFinding> {
                     action: "Refresh statistics and check predicates with skewed values.".into(),
                     node_id: Some(node.id.clone()),
                 });
+            } else if actual > 0.0 && estimated / actual >= 10.0 {
+                findings.push(QueryPlanFinding {
+                    severity: QueryPlanSeverity::Info,
+                    title: "Row estimate overstatement".into(),
+                    detail: format!(
+                        "{} returned about {}x fewer rows than estimated.",
+                        node.label,
+                        format_number(estimated / actual)
+                    ),
+                    action:
+                        "Check statistics and predicates; overestimates can still push bad join order or memory choices."
+                            .into(),
+                    node_id: Some(node.id.clone()),
+                });
             }
+        }
+        let rows_removed = node_property_f64(node, "rowsRemovedByFilter").unwrap_or(0.0)
+            + node_property_f64(node, "rowsRemovedByJoinFilter").unwrap_or(0.0);
+        if rows_removed >= 10_000.0 {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "Late row rejection".into(),
+                detail: format!(
+                    "{} removed about {} rows after reading them.",
+                    node.label,
+                    format_number(rows_removed)
+                ),
+                action:
+                    "Push the predicate into an indexable condition or reduce rows before this filter/join."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+        let temp_blocks = node_property_f64(node, "tempReadBlocks").unwrap_or(0.0)
+            + node_property_f64(node, "tempWrittenBlocks").unwrap_or(0.0);
+        let sort_spilled = node_property_text(node, "sortSpaceType")
+            .map(|value| value.eq_ignore_ascii_case("disk"))
+            .unwrap_or(false);
+        if temp_blocks > 0.0 || sort_spilled {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "Disk-backed temp work".into(),
+                detail: format!(
+                    "{} used temporary disk work{}.",
+                    node.label,
+                    if temp_blocks > 0.0 {
+                        format!(" ({} temp blocks)", format_number(temp_blocks))
+                    } else {
+                        String::new()
+                    }
+                ),
+                action:
+                    "Check work_mem, sort/hash inputs, indexes that avoid sorting, and whether the result can be reduced earlier."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+        if node_property_f64(node, "hashBatches").unwrap_or(1.0) > 1.0 {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "Hash work batched".into(),
+                detail: format!("{} split hash work into multiple batches.", node.label),
+                action: "Reduce hash input rows or memory pressure; check work_mem and join order."
+                    .into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+        let shared_read_blocks = node_property_f64(node, "sharedReadBlocks").unwrap_or(0.0);
+        if shared_read_blocks >= 10_000.0 {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Info,
+                title: "I/O-heavy read".into(),
+                detail: format!(
+                    "{} read about {} shared blocks from storage/cache misses.",
+                    node.label,
+                    format_number(shared_read_blocks)
+                ),
+                action:
+                    "Check buffer hit ratio, table/index size, cache pressure, and whether the scan can become more selective."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
+        }
+        if let (Some(planned), Some(launched)) = (
+            node_property_f64(node, "workersPlanned"),
+            node_property_f64(node, "workersLaunched"),
+        ) {
+            if planned > launched {
+                findings.push(QueryPlanFinding {
+                    severity: QueryPlanSeverity::Info,
+                    title: "Parallel worker shortfall".into(),
+                    detail: format!(
+                        "{} planned {} worker(s) but launched {}.",
+                        node.label,
+                        format_number(planned),
+                        format_number(launched)
+                    ),
+                    action:
+                        "Check max_parallel_workers settings and concurrent workload when comparing Analyse runs."
+                            .into(),
+                    node_id: Some(node.id.clone()),
+                });
+            }
+        }
+        if op.contains("scan") && node.loops.unwrap_or(0.0) >= 100.0 {
+            findings.push(QueryPlanFinding {
+                severity: QueryPlanSeverity::Warning,
+                title: "Repeated scan loop".into(),
+                detail: format!(
+                    "{} ran about {} loop(s).",
+                    node.label,
+                    format_number(node.loops.unwrap_or_default())
+                ),
+                action:
+                    "Inspect the parent join; a nested loop may be repeatedly scanning an expensive inner side."
+                        .into(),
+                node_id: Some(node.id.clone()),
+            });
         }
     }
     findings
@@ -927,6 +1223,24 @@ fn native_metrics(nodes: &[QueryPlanNode], mode: QueryPlanMode) -> Vec<QueryPlan
         .iter()
         .filter(|node| node.operation.to_ascii_lowercase().contains("scan"))
         .count();
+    let temp_blocks = nodes
+        .iter()
+        .map(|node| {
+            node_property_f64(node, "tempReadBlocks").unwrap_or(0.0)
+                + node_property_f64(node, "tempWrittenBlocks").unwrap_or(0.0)
+        })
+        .sum::<f64>();
+    let max_rows_removed = nodes
+        .iter()
+        .map(|node| {
+            node_property_f64(node, "rowsRemovedByFilter").unwrap_or(0.0)
+                + node_property_f64(node, "rowsRemovedByJoinFilter").unwrap_or(0.0)
+        })
+        .fold(0.0_f64, f64::max);
+    let max_estimate_error = nodes
+        .iter()
+        .filter_map(|node| estimate_error_ratio(node.estimated_rows, node.actual_rows))
+        .fold(0.0_f64, f64::max);
     let mut metrics = vec![
         QueryPlanMetric {
             key: "nodes".into(),
@@ -987,6 +1301,45 @@ fn native_metrics(nodes: &[QueryPlanNode], mode: QueryPlanMode) -> Vec<QueryPlan
                 QueryPlanSeverity::Info
             },
             description: "Runtime reported by the database for the slowest/root operation.".into(),
+        });
+    }
+    if max_estimate_error >= 1.0 {
+        metrics.push(QueryPlanMetric {
+            key: "estimateError".into(),
+            label: "Worst row error".into(),
+            value: format_number(max_estimate_error),
+            unit: "x".into(),
+            severity: if max_estimate_error >= 10.0 {
+                QueryPlanSeverity::Warning
+            } else {
+                QueryPlanSeverity::Info
+            },
+            description: "Largest gap between estimated and actual rows on any node.".into(),
+        });
+    }
+    if max_rows_removed > 0.0 {
+        metrics.push(QueryPlanMetric {
+            key: "rowsRemoved".into(),
+            label: "Rows removed".into(),
+            value: format_number(max_rows_removed),
+            unit: "rows".into(),
+            severity: if max_rows_removed >= 10_000.0 {
+                QueryPlanSeverity::Warning
+            } else {
+                QueryPlanSeverity::Info
+            },
+            description: "Largest number of rows rejected after scan/join processing.".into(),
+        });
+    }
+    if temp_blocks > 0.0 {
+        metrics.push(QueryPlanMetric {
+            key: "tempBlocks".into(),
+            label: "Temp blocks".into(),
+            value: format_number(temp_blocks),
+            unit: "blocks".into(),
+            severity: QueryPlanSeverity::Warning,
+            description: "Temporary blocks read/written by sort, hash, or materialization work."
+                .into(),
         });
     }
     metrics
@@ -1071,6 +1424,41 @@ fn metric_guide(mode: QueryPlanMode) -> Vec<QueryPlanMetricGuide> {
             meaning: "Estimated bytes per row flowing through a node.".into(),
             good: "Only required columns are projected before joins/sorts.".into(),
             warning: "Wide rows make sorting, hashing, network transfer, and temporary storage more expensive.".into(),
+        },
+        QueryPlanMetricGuide {
+            key: "estimateError".into(),
+            label: "Row estimate error".into(),
+            meaning: "Largest ratio between estimated and actual rows on a node.".into(),
+            good: "Close to 1x. The optimizer understood the data distribution.".into(),
+            warning: "10x or more can produce bad join order, bad memory sizing, and wrong access paths.".into(),
+        },
+        QueryPlanMetricGuide {
+            key: "rowsRemoved".into(),
+            label: "Rows removed".into(),
+            meaning: "Rows read by a node and then rejected by a filter or join filter.".into(),
+            good: "Small compared with rows returned by the node.".into(),
+            warning: "Large values usually mean predicates are being applied late or are not indexable.".into(),
+        },
+        QueryPlanMetricGuide {
+            key: "tempBlocks".into(),
+            label: "Temp blocks".into(),
+            meaning: "Temporary disk blocks used by sort, hash, materialize, or aggregate work.".into(),
+            good: "Zero for interactive queries unless a large report intentionally spills.".into(),
+            warning: "Any temp I/O is a bottleneck candidate; check memory, sort inputs, hash inputs, and indexes.".into(),
+        },
+        QueryPlanMetricGuide {
+            key: "planningTime".into(),
+            label: "Planning time".into(),
+            meaning: "Time the database spent choosing the execution plan.".into(),
+            good: "Small compared with execution time for repeated application queries.".into(),
+            warning: "High planning time can come from complex joins, partitions, statistics, or prepared statement choices.".into(),
+        },
+        QueryPlanMetricGuide {
+            key: "executionTime".into(),
+            label: "Execution time".into(),
+            meaning: "End-to-end statement runtime reported by the database.".into(),
+            good: "Matches the expected latency budget for the workflow.".into(),
+            warning: "Use the hot node, temp blocks, row estimate error, and rows removed to locate the likely cause.".into(),
         },
     ];
     if mode == QueryPlanMode::Analyze {
@@ -1349,6 +1737,33 @@ fn push_number_property(props: &mut Vec<QueryPlanProperty>, name: &str, value: O
     }
 }
 
+fn push_string_property(props: &mut Vec<QueryPlanProperty>, name: &str, value: Option<String>) {
+    if let Some(value) = value {
+        props.push(property(name, value));
+    }
+}
+
+fn node_property_text<'a>(node: &'a QueryPlanNode, name: &str) -> Option<&'a str> {
+    node.properties
+        .iter()
+        .find(|property| property.name == name)
+        .map(|property| property.value.as_str())
+}
+
+fn node_property_f64(node: &QueryPlanNode, name: &str) -> Option<f64> {
+    node_property_text(node, name).and_then(parse_f64)
+}
+
+fn estimate_error_ratio(estimated: Option<f64>, actual: Option<f64>) -> Option<f64> {
+    let (Some(estimated), Some(actual)) = (estimated, actual) else {
+        return None;
+    };
+    if estimated <= 0.0 || actual <= 0.0 {
+        return None;
+    }
+    Some((actual / estimated).max(estimated / actual))
+}
+
 fn string_field(value: &serde_json::Value, key: &str) -> Option<String> {
     value
         .get(key)
@@ -1531,5 +1946,77 @@ mod tests {
             .findings
             .iter()
             .any(|finding| finding.title == "Large sequential scan"));
+    }
+
+    #[test]
+    fn postgres_json_surfaces_runtime_io_and_spill_signals() {
+        let raw = serde_json::json!([
+            {
+                "Planning Time": 12.5,
+                "Execution Time": 1550.0,
+                "Plan": {
+                    "Node Type": "Sort",
+                    "Total Cost": 1000.0,
+                    "Plan Rows": 100,
+                    "Actual Rows": 50000,
+                    "Actual Total Time": 1200.0,
+                    "Sort Method": "external merge",
+                    "Sort Space Used": 8192,
+                    "Sort Space Type": "Disk",
+                    "Temp Read Blocks": 256,
+                    "Temp Written Blocks": 512,
+                    "Plans": [
+                        {
+                            "Node Type": "Seq Scan",
+                            "Relation Name": "events",
+                            "Plan Rows": 100,
+                            "Actual Rows": 50000,
+                            "Rows Removed by Filter": 25000,
+                            "Shared Read Blocks": 12000,
+                            "Actual Loops": 1,
+                            "Actual Total Time": 900.0
+                        }
+                    ]
+                }
+            }
+        ]);
+        let plan = analysis_from_postgres_json(
+            Wire::Postgres,
+            "select * from events order by created_at",
+            QueryPlanMode::Analyze,
+            raw.clone(),
+            serde_json::to_string_pretty(&raw).unwrap(),
+        );
+
+        let sort = plan
+            .nodes
+            .iter()
+            .find(|node| node.operation == "Sort")
+            .unwrap();
+        assert!(sort
+            .properties
+            .iter()
+            .any(|property| property.name == "sortSpaceType" && property.value == "Disk"));
+        assert!(plan
+            .metrics
+            .iter()
+            .any(|metric| metric.key == "executionTime" && metric.value == "1550"));
+        assert!(plan
+            .metrics
+            .iter()
+            .any(|metric| metric.key == "tempBlocks"
+                && metric.severity == QueryPlanSeverity::Warning));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "Disk-backed temp work"));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "Late row rejection"));
+        assert!(plan
+            .findings
+            .iter()
+            .any(|finding| finding.title == "Row estimate mismatch"));
     }
 }

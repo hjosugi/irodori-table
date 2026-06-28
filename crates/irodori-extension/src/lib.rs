@@ -49,6 +49,9 @@ pub enum PermissionScope {
     #[serde(rename = "connections:write")]
     #[ts(rename = "connections:write")]
     ConnectionsWrite,
+    #[serde(rename = "connectors")]
+    #[ts(rename = "connectors")]
+    Connectors,
     #[serde(rename = "queries:run")]
     #[ts(rename = "queries:run")]
     QueriesRun,
@@ -143,6 +146,8 @@ pub struct ExtensionContributions {
     pub themes: Vec<ThemeContribution>,
     #[serde(default)]
     pub sql_dialects: Vec<SqlDialectContribution>,
+    #[serde(default)]
+    pub connectors: Vec<ConnectorContribution>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -296,6 +301,44 @@ pub struct SqlDialectContribution {
     pub path: String,
     #[serde(default)]
     pub file_extensions: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorContribution {
+    pub id: String,
+    pub engine: String,
+    pub label: String,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub default_port: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub wire: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub module: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub dialect: Option<String>,
+    #[serde(default)]
+    pub features: Vec<ConnectorFeature>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub enum ConnectorFeature {
+    Sql,
+    Metadata,
+    Transactions,
+    Streaming,
+    PreparedQueries,
+    Explain,
+    ResultEditing,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -594,7 +637,8 @@ mod tests {
                     "resultGridRenderers": [],
                     "statusBarItems": [],
                     "themes": [],
-                    "sqlDialects": []
+                    "sqlDialects": [],
+                    "connectors": []
                 },
                 "capabilities": {
                     "wasmModules": [],
@@ -658,6 +702,8 @@ mod typegen {
             .decl(&decl::<SqlSnippet>())
             .decl(&decl::<SqlFormatterConfig>())
             .decl(&decl::<SqlKeywordCase>())
+            .decl(&decl::<ConnectorContribution>())
+            .decl(&decl::<ConnectorFeature>())
             .decl(&decl::<WasmModuleContribution>())
             .decl(&decl::<NativeModuleContribution>())
             .decl(&decl::<NativePlatform>())

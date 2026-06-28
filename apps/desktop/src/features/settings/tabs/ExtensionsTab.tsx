@@ -111,7 +111,7 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
   const recommendedPluginStoreExtensions = useMemo(
     () =>
       pluginStore.extensions.filter((extension) =>
-        ["duckdb", "snowflake", "bigquery", "cloudSpanner", "kvStore"].some(
+        ["duckdb", "snowflake", "bigquery", "cloudSpanner", "dynamodb"].some(
           (engine) => extension.engines.includes(engine),
         ),
       ),

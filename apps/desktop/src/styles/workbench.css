@@ -249,7 +249,8 @@
 }
 
 .plan-panel-header,
-.plan-section-title {
+.plan-section-title,
+.plan-node-detail-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -278,6 +279,12 @@
 .plan-finding strong,
 .plan-finding span,
 .plan-finding small,
+.plan-hot-node strong,
+.plan-hot-node small,
+.plan-node-detail-header strong,
+.plan-node-detail-header span,
+.plan-node-block strong,
+.plan-node-block span,
 .plan-guide-list strong,
 .plan-guide-list span,
 .plan-guide-list small,
@@ -285,7 +292,10 @@
 .plan-tree-node span,
 .plan-tree-node small,
 .plan-diagram-node strong,
-.plan-diagram-node span {
+.plan-diagram-node span,
+.plan-diagram-node small,
+.plan-edge-list span,
+.plan-edge-list b {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -303,7 +313,16 @@
 
 .plan-panel-header button,
 .plan-actions button,
-.plan-copy-list button {
+.plan-view-tabs button,
+.plan-copy-list button,
+.plan-ai-explain-button,
+.plan-node-detail-header button,
+.plan-finding,
+.plan-hot-node,
+.plan-tree-node,
+.plan-diagram-node,
+.plan-edge-list button,
+.plan-flame-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -313,6 +332,7 @@
   color: var(--text);
   background: var(--surface-raised);
   cursor: pointer;
+  font: inherit;
 }
 
 .plan-panel-header button {
@@ -334,24 +354,58 @@
 }
 
 .plan-actions button,
-.plan-copy-list button {
+.plan-copy-list button,
+.plan-view-tabs button,
+.plan-ai-explain-button {
   min-width: 0;
   height: 28px;
   padding: 0 8px;
   font-size: var(--font-ui-sm);
 }
 
+.plan-ai-explain-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-ai-narration {
+  margin: 8px 0 0;
+  font-size: var(--font-ui-sm);
+  line-height: 1.5;
+  color: var(--text);
+}
+
 .plan-actions button:hover:not(:disabled),
 .plan-actions button:focus-visible,
+.plan-view-tabs button:hover,
+.plan-view-tabs button:focus-visible,
 .plan-copy-list button:hover,
 .plan-copy-list button:focus-visible,
+.plan-ai-explain-button:hover:not(:disabled),
+.plan-ai-explain-button:focus-visible,
 .plan-panel-header button:hover,
-.plan-panel-header button:focus-visible {
+.plan-panel-header button:focus-visible,
+.plan-node-detail-header button:hover,
+.plan-node-detail-header button:focus-visible,
+.plan-finding:hover:not(:disabled),
+.plan-finding:focus-visible,
+.plan-hot-node:hover,
+.plan-hot-node:focus-visible,
+.plan-tree-node:hover,
+.plan-tree-node:focus-visible,
+.plan-diagram-node:hover,
+.plan-diagram-node:focus-visible,
+.plan-edge-list button:hover,
+.plan-edge-list button:focus-visible,
+.plan-flame-row:hover,
+.plan-flame-row:focus-visible {
   border-color: color-mix(in srgb, var(--focus) 40%, var(--border));
   background: var(--hover);
 }
 
-.plan-actions button:disabled {
+.plan-actions button:disabled,
+.plan-ai-explain-button:disabled {
   color: var(--muted);
   cursor: not-allowed;
   opacity: 0.65;
@@ -401,12 +455,50 @@
   white-space: normal;
 }
 
+.plan-view-tabs {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.plan-view-tabs button {
+  flex: 0 0 auto;
+  color: var(--muted);
+  background: transparent;
+}
+
+.plan-view-tabs button.active,
+.plan-view-tabs button[aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--focus) 55%, var(--border));
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.plan-analysis-grid,
+.plan-main-view {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
 .plan-section {
   display: grid;
   gap: 6px;
   min-width: 0;
   padding: 8px;
   border-bottom: 1px solid var(--border);
+}
+
+.plan-section.compact {
+  padding-bottom: 10px;
+}
+
+.plan-section.flush {
+  border-bottom: 0;
 }
 
 .plan-section-title {
@@ -421,7 +513,9 @@
 .plan-guide-list,
 .plan-flame-list,
 .plan-tree,
-.plan-copy-list {
+.plan-copy-list,
+.plan-hot-list,
+.plan-edge-list {
   display: grid;
   gap: 5px;
   min-width: 0;
@@ -431,7 +525,9 @@
 .plan-guide-list article,
 .plan-tree-node,
 .plan-metric,
-.plan-diagram-node {
+.plan-diagram-node,
+.plan-node-detail,
+.plan-empty-card {
   display: grid;
   gap: 2px;
   min-width: 0;
@@ -441,10 +537,20 @@
   background: var(--surface-raised);
 }
 
-/* Heat-tint plan tree nodes by their cost share (--heat: 0..1, set inline).
- * Hotter nodes get a redder left edge + faint fill so the expensive subtree
- * stands out at a glance. */
+.plan-empty-card {
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+}
+
+.plan-finding,
+.plan-tree-node,
+.plan-diagram-node {
+  justify-items: start;
+  text-align: left;
+}
+
 .plan-tree-node {
+  width: 100%;
   border-left-width: 3px;
   border-left-color: color-mix(
     in srgb,
@@ -458,37 +564,62 @@
   );
 }
 
+.plan-finding.active,
+.plan-hot-node.active,
+.plan-tree-node.active,
+.plan-diagram-node.active,
+.plan-flame-row.active,
+.plan-table tr.active td {
+  border-color: color-mix(in srgb, var(--focus) 65%, var(--border));
+  background: color-mix(in srgb, var(--focus) 12%, var(--surface-raised));
+}
+
 .plan-finding {
+  width: 100%;
   border-left-width: 3px;
 }
 
+.plan-finding:disabled {
+  cursor: default;
+}
+
 .plan-finding.warning,
-.plan-metric.warning {
+.plan-metric.warning,
+.plan-node-finding.warning {
   border-left-color: var(--amber);
 }
 
 .plan-finding.critical,
-.plan-metric.critical {
+.plan-metric.critical,
+.plan-node-finding.critical {
   border-left-color: var(--red);
 }
 
 .plan-finding.info,
-.plan-metric.info {
+.plan-metric.info,
+.plan-node-finding.info {
   border-left-color: var(--blue);
 }
 
 .plan-finding strong,
+.plan-hot-node strong,
 .plan-guide-list strong,
 .plan-tree-node strong,
 .plan-metric span,
-.plan-diagram-node strong {
+.plan-diagram-node strong,
+.plan-node-detail-header strong,
+.plan-node-block strong {
   font-size: var(--font-ui-sm);
 }
 
 .plan-finding span,
+.plan-hot-node small,
 .plan-guide-list span,
 .plan-tree-node span,
-.plan-diagram-node span {
+.plan-diagram-node span,
+.plan-diagram-node small,
+.plan-node-detail-header span,
+.plan-node-block span {
   color: var(--text);
   font-size: var(--font-ui-sm);
 }
@@ -496,7 +627,11 @@
 .plan-finding small,
 .plan-guide-list small,
 .plan-tree-node small,
-.plan-metric small {
+.plan-metric small,
+.plan-node-kv dt,
+.plan-node-kv dd,
+.plan-edge-list b,
+.plan-flame-row small {
   color: var(--muted);
   font-size: 11px;
   line-height: var(--line-normal);
@@ -516,13 +651,53 @@
   font-size: var(--font-ui-md);
 }
 
+.plan-hot-node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  justify-items: stretch;
+  min-width: 0;
+  padding: 6px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.plan-hot-node b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 10px;
+}
+
+.plan-hot-node span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.plan-hot-node i {
+  grid-column: 1 / -1;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber), var(--red));
+}
+
 .plan-flame-row {
   display: grid;
-  grid-template-columns: minmax(80px, 1fr) minmax(72px, 35%);
+  grid-template-columns: minmax(80px, 1fr) minmax(72px, 35%) 48px;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  height: 24px;
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  text-align: left;
 }
 
 .plan-flame-row span {
@@ -556,17 +731,27 @@
 }
 
 .plan-diagram-node {
-  position: relative;
   min-height: 58px;
+  text-align: left;
 }
 
-.plan-diagram-node:not(:last-child)::after {
-  content: "→";
-  position: absolute;
-  right: -7px;
-  top: 18px;
+.plan-edge-list {
+  margin-top: 2px;
+}
+
+.plan-edge-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 26px;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.plan-edge-list b {
+  padding: 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-weight: 800;
 }
 
 .plan-table-wrap {
@@ -601,6 +786,95 @@
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.plan-table tbody tr {
+  cursor: pointer;
+}
+
+.plan-table tbody tr:hover td,
+.plan-table tbody tr:focus-visible td {
+  background: var(--hover);
+}
+
+.plan-copy-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-copy-preview {
+  max-height: 160px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 11px;
+  line-height: var(--line-normal);
+  white-space: pre-wrap;
+}
+
+.plan-node-detail {
+  margin: 8px;
+  border-left-width: 3px;
+  border-left-color: color-mix(in srgb, var(--focus) 55%, var(--border));
+}
+
+.plan-node-detail-header {
+  align-items: flex-start;
+}
+
+.plan-node-detail-header > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.plan-node-detail-header button {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.plan-node-kv,
+.plan-node-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.plan-node-kv {
+  grid-template-columns: minmax(82px, auto) minmax(0, 1fr);
+  margin: 4px 0 0;
+}
+
+.plan-node-kv div {
+  display: contents;
+}
+
+.plan-node-kv dt,
+.plan-node-kv dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.plan-node-kv dd {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+
+.plan-node-block {
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.plan-node-finding {
+  padding-left: 6px;
+  border-left: 3px solid var(--border);
 }
 
 .section-heading-actions {
@@ -1347,11 +1621,17 @@
 }
 
 .editor-split-right {
-  grid-template-columns: minmax(0, var(--editor-split-primary, 50%)) 4px minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--editor-split-primary, 50%)) 4px minmax(
+      0,
+      1fr
+    );
 }
 
 .editor-split-down {
-  grid-template-rows: minmax(0, var(--editor-split-primary, 50%)) 4px minmax(0, 1fr);
+  grid-template-rows: minmax(0, var(--editor-split-primary, 50%)) 4px minmax(
+      0,
+      1fr
+    );
 }
 
 .editor-shell {

@@ -54,9 +54,35 @@ export function mergeDefaultSqlSnippets(
   return [
     ...snippets.map(cloneSnippet),
     ...defaultSqlSnippets
-      .filter((snippetDefinition) => !seen.has(snippetIdentityKey(snippetDefinition)))
+      .filter(
+        (snippetDefinition) => !seen.has(snippetIdentityKey(snippetDefinition)),
+      )
       .map(cloneSnippet),
   ];
+}
+
+export function mergeImportedSqlSnippets(
+  current: readonly SqlSnippetDefinition[],
+  imported: readonly SqlSnippetDefinition[],
+): SqlSnippetDefinition[] {
+  const merged = current.map(cloneSnippet);
+  const indexByKey = new Map(
+    merged.map((snippet, index) => [snippetIdentityKey(snippet), index]),
+  );
+
+  for (const snippet of imported) {
+    const nextSnippet = cloneSnippet(snippet);
+    const key = snippetIdentityKey(nextSnippet);
+    const existingIndex = indexByKey.get(key);
+    if (existingIndex === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(nextSnippet);
+    } else {
+      merged[existingIndex] = nextSnippet;
+    }
+  }
+
+  return merged;
 }
 
 export function snippetsForEngine(

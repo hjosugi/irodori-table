@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { delimiter, dirname, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const schemaPath = resolve(root, "extension.schema.json");
 const manifestRoots = [
   resolve(root, "packages/extension-sdk/templates"),
   resolve(root, "examples/extensions"),
+  ...extraManifestRoots(),
 ];
 
 const schema = JSON.parse(read(schemaPath));
@@ -26,6 +27,7 @@ const contributionShapes = {
   statusBarItems: defs.statusBarItem,
   themes: defs.themeContribution,
   sqlDialects: defs.sqlDialectContribution,
+  connectors: defs.connectorContribution,
 };
 const capabilityShapes = {
   wasmModules: defs.wasmModule,
@@ -39,6 +41,7 @@ const contributionPermissionRules = [
   ["statusBarItems", "statusBar"],
   ["themes", "themes"],
   ["sqlDialects", "sqlDialects"],
+  ["connectors", "connectors"],
 ];
 const capabilityPermissionRules = [
   ["wasmModules", "wasm"],
@@ -71,8 +74,8 @@ function validateManifest(manifestPath, manifest) {
 
   if (manifest.$schema !== undefined) {
     requireString(manifest.$schema, `${label}.$schema`);
-    const schemaRef = resolve(dir, manifest.$schema);
-    if (!existsSync(schemaRef)) {
+    const schemaRef = isHttpUrl(manifest.$schema) ? null : resolve(dir, manifest.$schema);
+    if (schemaRef && !existsSync(schemaRef)) {
       error(`${label}.$schema points to missing file ${manifest.$schema}`);
     }
   }
@@ -321,6 +324,13 @@ function validateProperty(value, property, label) {
   if (property.type === "integer") {
     if (!Number.isInteger(value)) {
       error(`${label} must be an integer`);
+    } else {
+      if (property.minimum !== undefined && value < property.minimum) {
+        error(`${label} must be >= ${property.minimum}`);
+      }
+      if (property.maximum !== undefined && value > property.maximum) {
+        error(`${label} must be <= ${property.maximum}`);
+      }
     }
     return;
   }
@@ -441,6 +451,18 @@ function findManifests(dir) {
     }
     return entry.isFile() && entry.name === "irodori.extension.json" ? [path] : [];
   });
+}
+
+function extraManifestRoots() {
+  return (process.env.IRODORI_EXTENSION_MANIFEST_ROOTS ?? "")
+    .split(delimiter)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => resolve(root, entry));
+}
+
+function isHttpUrl(value) {
+  return /^https?:\/\//i.test(value);
 }
 
 function read(path) {

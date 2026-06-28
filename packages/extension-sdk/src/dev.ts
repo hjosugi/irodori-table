@@ -22,6 +22,7 @@ export interface ExtensionDevHost {
 
 export const sensitivePermissionScopes: readonly PermissionScope[] = [
   "connections:write",
+  "connectors",
   "queries:run",
   "queryResults:read",
   "queryResults:write",
