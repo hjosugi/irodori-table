@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { isSqlLinterId, lintSqlDocument } from "@/sql/linter";
 
 function messages(sql: string) {
-  return lintSqlDocument(sql, "postgres").map((diagnostic) => diagnostic.message);
+  return lintSqlDocument(sql, "postgres").map(
+    (diagnostic) => diagnostic.message,
+  );
 }
 
 describe("gentle SQL linter", () => {
@@ -23,9 +25,9 @@ describe("gentle SQL linter", () => {
   });
 
   it("does not warn for scoped row-changing statements", () => {
-    expect(messages("update customers set active = false where id = 1;")).toEqual(
-      [],
-    );
+    expect(
+      messages("update customers set active = false where id = 1;"),
+    ).toEqual([]);
     expect(messages("delete from customers where id = 1;")).toEqual([]);
   });
 
@@ -41,14 +43,18 @@ describe("gentle SQL linter", () => {
 
   it("ignores keywords inside strings and comments", () => {
     expect(
-      messages("select 'delete from customers' as sample; -- update x set y = 1"),
+      messages(
+        "select 'delete from customers' as sample; -- update x set y = 1",
+      ),
     ).toEqual([]);
   });
 
   it("reports unclosed SQL delimiters", () => {
     expect(messages("select 'open")).toContain("Unclosed string literal.");
     expect(messages("select /* open")).toContain("Unclosed block comment.");
-    expect(messages("select (1 + 2")).toContain("Unclosed opening parenthesis.");
+    expect(messages("select (1 + 2")).toContain(
+      "Unclosed opening parenthesis.",
+    );
   });
 
   it("flags destructive DDL explicitly", () => {

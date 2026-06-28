@@ -66,7 +66,10 @@ function installMatchMedia(matches: boolean) {
     setMatches(nextMatches: boolean) {
       currentMatches = nextMatches;
       for (const listener of listeners) {
-        listener({ matches: nextMatches, media: media.media } as MediaQueryListEvent);
+        listener({
+          matches: nextMatches,
+          media: media.media,
+        } as MediaQueryListEvent);
       }
     },
   };

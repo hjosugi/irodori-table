@@ -237,7 +237,10 @@ export function lightweightSqlCompletionSource(
 ): CompletionSource {
   return (context: CompletionContext) => {
     const windowStart = Math.max(0, context.pos - MAX_SCAN_CHARS);
-    const windowEnd = Math.min(context.state.doc.length, context.pos + MAX_SCAN_CHARS);
+    const windowEnd = Math.min(
+      context.state.doc.length,
+      context.pos + MAX_SCAN_CHARS,
+    );
     const doc = context.state.sliceDoc(windowStart, windowEnd);
     const result = completeSqlLightweight({
       doc,
@@ -286,7 +289,10 @@ function schemaEntry(schema: SchemaMetadata): SchemaEntry {
   };
 }
 
-function objectEntry(schemaName: string, object: DbObjectMetadata): ObjectEntry {
+function objectEntry(
+  schemaName: string,
+  object: DbObjectMetadata,
+): ObjectEntry {
   return {
     schema: schemaName,
     name: object.name,
@@ -295,7 +301,9 @@ function objectEntry(schemaName: string, object: DbObjectMetadata): ObjectEntry 
   };
 }
 
-function groupObjectsByName(objects: readonly ObjectEntry[]): Map<string, ObjectEntry[]> {
+function groupObjectsByName(
+  objects: readonly ObjectEntry[],
+): Map<string, ObjectEntry[]> {
   return objects.reduce((grouped, object) => {
     pushMap(grouped, object.name.toLowerCase(), object);
     return grouped;
@@ -329,7 +337,10 @@ export function completeSqlLightweight(
     input.snippetVariables ?? defaultSqlSnippetVariables(),
     snippetsForEngine(input.snippets ?? defaultSqlSnippets, input.engine),
   );
-  const options = rankedCompletionOptions(candidates, input.limit ?? DEFAULT_LIMIT);
+  const options = rankedCompletionOptions(
+    candidates,
+    input.limit ?? DEFAULT_LIMIT,
+  );
   if (options.length === 0) return null;
   return {
     from: context.word.from,
@@ -353,7 +364,9 @@ function parseCompletionContext(
   const word = wordBefore(docBeforeCursor, pos);
   const qualification = qualificationBefore(docBeforeCursor, word.from);
   const prefix = word.text;
-  const tokensBeforePrefix = tokenizeSql(doc.slice(statementRange.start, word.from));
+  const tokensBeforePrefix = tokenizeSql(
+    doc.slice(statementRange.start, word.from),
+  );
   const statementTokens = tokenizeSql(statement);
   const aliases = resolveRelationRefs(statementTokens, index);
   const mode = classifyCompletion(tokensBeforePrefix, qualification, aliases);
@@ -418,7 +431,13 @@ function collectCompletionCandidates(
       break;
     case "general":
       if (explicit) {
-        addScopedColumnCandidates(candidates, index, context.aliases, context.prefix, true);
+        addScopedColumnCandidates(
+          candidates,
+          index,
+          context.aliases,
+          context.prefix,
+          true,
+        );
       }
       addRelationCandidates(candidates, index, context.prefix);
       addSchemaCandidates(candidates, index, context.prefix);
@@ -454,8 +473,8 @@ function addQualifiedCandidates(
       return;
     }
 
-    const schema = index.schemas.find(
-      (candidate) => sameIdentifier(candidate.name, name),
+    const schema = index.schemas.find((candidate) =>
+      sameIdentifier(candidate.name, name),
     );
     if (schema) {
       addRelationCandidates(candidates, index, prefix, {
@@ -502,7 +521,12 @@ function addScopedColumnCandidates(
   for (const ref of refs) {
     const forceQualified = refs.length > 1 || ref.explicitAlias;
     for (const column of ref.entry.object.columns) {
-      const label = scopedColumnLabel(ref, column, columnCounts, forceQualified);
+      const label = scopedColumnLabel(
+        ref,
+        column,
+        columnCounts,
+        forceQualified,
+      );
       if (!matchesAny(prefix, [label, column.name])) continue;
       const detail = `${ref.entry.name}.${column.name} ${columnDetail(column)}`;
       const rank =
@@ -542,7 +566,9 @@ function scopedColumnLabel(
   forceQualified: boolean,
 ): string {
   const ambiguous = (columnCounts.get(column.name.toLowerCase()) ?? 0) > 1;
-  return forceQualified || ambiguous ? `${ref.alias}.${column.name}` : column.name;
+  return forceQualified || ambiguous
+    ? `${ref.alias}.${column.name}`
+    : column.name;
 }
 
 function addColumnCandidates(
@@ -553,7 +579,8 @@ function addColumnCandidates(
 ) {
   for (const column of entry.object.columns) {
     if (!matchesAny(prefix, [column.name])) continue;
-    const detailPrefix = options.detailPrefix ?? `${entry.schema}.${entry.name}`;
+    const detailPrefix =
+      options.detailPrefix ?? `${entry.schema}.${entry.name}`;
     const rank =
       (options.baseRank ?? 520) +
       columnRankBonus(entry.object, column) +
@@ -688,7 +715,9 @@ function addSnippetCandidates(
 
 export function expandSqlSnippetVariables(
   template: string,
-  variables: Readonly<Record<string, string | undefined>> = defaultSqlSnippetVariables(),
+  variables: Readonly<
+    Record<string, string | undefined>
+  > = defaultSqlSnippetVariables(),
 ): string {
   return template.replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (match, name: string) => {
     const value = variables[name];
@@ -890,7 +919,8 @@ function referencesObject(
   sourceSchema: string,
   target: ObjectEntry,
 ): boolean {
-  if (fk.referencesTable.toLowerCase() !== target.name.toLowerCase()) return false;
+  if (fk.referencesTable.toLowerCase() !== target.name.toLowerCase())
+    return false;
   const referencesSchema = fk.referencesSchema ?? sourceSchema;
   return referencesSchema.toLowerCase() === target.schema.toLowerCase();
 }
@@ -914,7 +944,9 @@ function classifyCompletion(
   return { kind: "general" };
 }
 
-function relationContextKeyword(tokens: SqlToken[]): RelationCompletionKeyword | null {
+function relationContextKeyword(
+  tokens: SqlToken[],
+): RelationCompletionKeyword | null {
   const lastWord = lastWordLower(tokens);
   if (lastWord && RELATION_START_KEYWORDS.has(lastWord)) {
     return lastWord === "join" ? "join" : "relation";
@@ -1030,11 +1062,16 @@ function readQualifiedName(
   return { parts, next };
 }
 
-function findObject(index: SqlCompletionIndex, parts: string[]): ObjectEntry | null {
+function findObject(
+  index: SqlCompletionIndex,
+  parts: string[],
+): ObjectEntry | null {
   if (parts.length >= 2) {
     const schema = parts[parts.length - 2];
     const object = parts[parts.length - 1];
-    return index.objectByQualifiedName.get(qualifiedKey(schema, object)) ?? null;
+    return (
+      index.objectByQualifiedName.get(qualifiedKey(schema, object)) ?? null
+    );
   }
 
   const name = parts[0];
@@ -1074,7 +1111,11 @@ function tokenizeSql(sql: string): SqlToken[] {
     if (char === '"' || char === "`") {
       const quoted = readQuotedIdentifier(sql, i, char, char);
       if (quoted) {
-        tokens.push({ type: "word", text: quoted.text, lower: quoted.text.toLowerCase() });
+        tokens.push({
+          type: "word",
+          text: quoted.text,
+          lower: quoted.text.toLowerCase(),
+        });
         i = quoted.end;
         continue;
       }
@@ -1082,7 +1123,11 @@ function tokenizeSql(sql: string): SqlToken[] {
     if (char === "[") {
       const quoted = readQuotedIdentifier(sql, i, "[", "]");
       if (quoted) {
-        tokens.push({ type: "word", text: quoted.text, lower: quoted.text.toLowerCase() });
+        tokens.push({
+          type: "word",
+          text: quoted.text,
+          lower: quoted.text.toLowerCase(),
+        });
         i = quoted.end;
         continue;
       }
@@ -1251,9 +1296,7 @@ function lastToken(tokens: SqlToken[]): SqlToken | null {
 
 function isAliasToken(token: SqlToken | undefined): token is SqlToken {
   return Boolean(
-    token &&
-      token.type === "word" &&
-      !RESERVED_ALIAS_WORDS.has(token.lower),
+    token && token.type === "word" && !RESERVED_ALIAS_WORDS.has(token.lower),
   );
 }
 
@@ -1269,7 +1312,10 @@ function uniqueRelationRefs(refs: RelationRef[]): RelationRef[] {
   return unique;
 }
 
-function rankedCompletionOptions(candidates: Candidate[], limit: number): Completion[] {
+function rankedCompletionOptions(
+  candidates: Candidate[],
+  limit: number,
+): Completion[] {
   return uniqueCandidates(candidates)
     .sort(compareCandidateRank)
     .slice(0, limit)
@@ -1278,13 +1324,12 @@ function rankedCompletionOptions(candidates: Candidate[], limit: number): Comple
 
 function uniqueCandidates(candidates: Candidate[]): Candidate[] {
   const seen = new Set<string>();
-  return candidates
-    .filter((candidate) => {
-      const key = candidateDedupKey(candidate);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  return candidates.filter((candidate) => {
+    const key = candidateDedupKey(candidate);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function candidateDedupKey(candidate: Candidate): string {
@@ -1316,7 +1361,10 @@ function matchBonus(prefix: string, ...texts: string[]): number {
   return bestMatchBonus(prefix, texts) ?? 0;
 }
 
-function bestMatchBonus(prefix: string, texts: readonly string[]): number | null {
+function bestMatchBonus(
+  prefix: string,
+  texts: readonly string[],
+): number | null {
   const needle = prefix.toLowerCase();
   let best: number | null = null;
   for (const text of texts) {
@@ -1337,10 +1385,14 @@ function textMatchBonus(needle: string, text: string): number | null {
   return null;
 }
 
-function columnRankBonus(object: DbObjectMetadata, column: ColumnMetadata): number {
+function columnRankBonus(
+  object: DbObjectMetadata,
+  column: ColumnMetadata,
+): number {
   let bonus = 30 - Math.min(column.ordinal, 30);
   if (object.primaryKey.includes(column.name)) bonus += 35;
-  if (object.foreignKeys.some((fk) => fk.columns.includes(column.name))) bonus += 18;
+  if (object.foreignKeys.some((fk) => fk.columns.includes(column.name)))
+    bonus += 18;
   return bonus;
 }
 
@@ -1372,8 +1424,13 @@ function keywordList(engine: DbEngine): string[] {
   return [...new Set([...common, ...engineKeywords])];
 }
 
-function relationInsertName(entry: ObjectEntry, index: SqlCompletionIndex): string {
-  return shouldQualifyRelationName(entry, index) ? qualifiedName(entry) : entry.name;
+function relationInsertName(
+  entry: ObjectEntry,
+  index: SqlCompletionIndex,
+): string {
+  return shouldQualifyRelationName(entry, index)
+    ? qualifiedName(entry)
+    : entry.name;
 }
 
 function shouldQualifyRelationName(

@@ -77,39 +77,54 @@ function createErdMockBackend(): ErdMockBackend {
           name: "sales",
           objects: [
             table("sales", "customers", ["id", "name", "email"]),
-            table("sales", "orders", ["id", "customer_id", "owner_id"], [
-              {
-                columns: ["customer_id"],
-                referencesTable: "customers",
-                referencesColumns: ["id"],
-              },
-              {
-                columns: ["owner_id"],
-                referencesSchema: "auth",
-                referencesTable: "users",
-                referencesColumns: ["id"],
-              },
-            ]),
-            table("sales", "order_items", ["id", "order_id", "sku"], [
-              {
-                columns: ["order_id"],
-                referencesTable: "orders",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "sales",
+              "orders",
+              ["id", "customer_id", "owner_id"],
+              [
+                {
+                  columns: ["customer_id"],
+                  referencesTable: "customers",
+                  referencesColumns: ["id"],
+                },
+                {
+                  columns: ["owner_id"],
+                  referencesSchema: "auth",
+                  referencesTable: "users",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
+            table(
+              "sales",
+              "order_items",
+              ["id", "order_id", "sku"],
+              [
+                {
+                  columns: ["order_id"],
+                  referencesTable: "orders",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
           name: "auth",
           objects: [
             table("auth", "users", ["id", "display_name"]),
-            table("auth", "teams", ["id", "owner_id"], [
-              {
-                columns: ["owner_id"],
-                referencesTable: "users",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "auth",
+              "teams",
+              ["id", "owner_id"],
+              [
+                {
+                  columns: ["owner_id"],
+                  referencesTable: "users",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
       ],
@@ -177,13 +192,18 @@ async function connect(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
 }
 
 async function openErd(page: Page) {

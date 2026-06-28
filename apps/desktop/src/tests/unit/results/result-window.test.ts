@@ -10,25 +10,45 @@ function row(n: number): readonly unknown[] {
   return [n, `row_${n}`];
 }
 
-function fetchInto(source: WindowedRows, request: { offset: number; limit: number }) {
-  const rows = Array.from({ length: request.limit }, (_, i) => row(request.offset + i));
+function fetchInto(
+  source: WindowedRows,
+  request: { offset: number; limit: number },
+) {
+  const rows = Array.from({ length: request.limit }, (_, i) =>
+    row(request.offset + i),
+  );
   source.ingest(request.offset, rows);
 }
 
 describe("WindowedRows", () => {
   it("computes page geometry and fetch requests", () => {
-    const source = new WindowedRows({ total: 2_500, columnCount: 2, pageSize: 1_000 });
+    const source = new WindowedRows({
+      total: 2_500,
+      columnCount: 2,
+      pageSize: 1_000,
+    });
     expect(source.pageCount).toBe(3);
     expect(source.pageIndexOf(0)).toBe(0);
     expect(source.pageIndexOf(1_500)).toBe(1);
     // The last page is short and the request limit is clamped to the total.
-    expect(source.pageRequest(2)).toEqual({ pageIndex: 2, offset: 2_000, limit: 500 });
+    expect(source.pageRequest(2)).toEqual({
+      pageIndex: 2,
+      offset: 2_000,
+      limit: 500,
+    });
   });
 
   it("ingests rows across page boundaries and reads them back by absolute index", () => {
-    const source = new WindowedRows({ total: 2_500, columnCount: 2, pageSize: 1_000 });
+    const source = new WindowedRows({
+      total: 2_500,
+      columnCount: 2,
+      pageSize: 1_000,
+    });
     // A fetch that straddles the page-0/page-1 boundary.
-    source.ingest(900, Array.from({ length: 200 }, (_, i) => row(900 + i)));
+    source.ingest(
+      900,
+      Array.from({ length: 200 }, (_, i) => row(900 + i)),
+    );
     expect(source.getRow(950)).toEqual(row(950));
     expect(source.getRow(1_050)).toEqual(row(1_050));
     expect(source.hasPage(0)).toBe(true);
@@ -39,7 +59,11 @@ describe("WindowedRows", () => {
   });
 
   it("reports only the missing pages for a visible range", () => {
-    const source = new WindowedRows({ total: 5_000, columnCount: 2, pageSize: 1_000 });
+    const source = new WindowedRows({
+      total: 5_000,
+      columnCount: 2,
+      pageSize: 1_000,
+    });
     fetchInto(source, source.pageRequest(2));
     const missing = source.missingPages(1_500, 3_200);
     // Range spans pages 1,2,3; page 2 is resident, so only 1 and 3 are requested.
@@ -101,14 +125,21 @@ describe("makePlaceholderRow", () => {
 
 describe("createWindowedRowsProxy", () => {
   it("indexes resident rows and falls back to a placeholder", () => {
-    const source = new WindowedRows({ total: 1_000, columnCount: 2, pageSize: 500 });
+    const source = new WindowedRows({
+      total: 1_000,
+      columnCount: 2,
+      pageSize: 500,
+    });
     const proxy = createWindowedRowsProxy(source);
     expect(proxy.length).toBe(1_000);
 
     // Before any fetch every row is a placeholder logical row.
     const before = proxy[5];
     expect(before.length).toBe(2);
-    expect(before.map((cell) => cell)).toEqual([WINDOW_PLACEHOLDER, WINDOW_PLACEHOLDER]);
+    expect(before.map((cell) => cell)).toEqual([
+      WINDOW_PLACEHOLDER,
+      WINDOW_PLACEHOLDER,
+    ]);
 
     fetchInto(source, source.pageRequest(0));
     expect(proxy[5]).toEqual(row(5));

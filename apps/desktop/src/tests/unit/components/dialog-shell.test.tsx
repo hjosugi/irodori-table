@@ -24,7 +24,11 @@ function render(node: React.ReactNode) {
 describe("DialogShell", () => {
   it("renders an accessible dialog with the supplied label", () => {
     render(
-      <DialogShell className="data-dialog" label="Test dialog" onClose={() => {}}>
+      <DialogShell
+        className="data-dialog"
+        label="Test dialog"
+        onClose={() => {}}
+      >
         <button type="button">Inside</button>
       </DialogShell>,
     );

@@ -122,7 +122,10 @@ describe("result grid view model", () => {
   });
 
   it("uses a windowed model for large unsorted results", () => {
-    const rows = Array.from({ length: 20 }, (_, index) => [index, `row_${index}`]);
+    const rows = Array.from({ length: 20 }, (_, index) => [
+      index,
+      `row_${index}`,
+    ]);
     const model = buildResultGridViewModel(
       {
         rows,

@@ -8,7 +8,7 @@ ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo d
 
 .PHONY: help setup setup-desktop setup-fast \
         dev test build typegen e2e doctor \
-        desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
+        desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-format desktop-format-check desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
         check security security-strict extension-manifests db db-verify db-all db-up db-down \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
@@ -40,6 +40,8 @@ help:
 	@printf "  make desktop-vite      Vite only, for manual debug binaries\n"
 	@printf "  make desktop-typegen   regenerate Rust -> TypeScript bindings\n"
 	@printf "  make desktop-typegen-check verify generated bindings are current\n"
+	@printf "  make desktop-format    format desktop JS/TS sources with oxfmt\n"
+	@printf "  make desktop-format-check verify desktop JS/TS formatting with oxfmt\n"
 	@printf "  make desktop-test      Vitest\n"
 	@printf "  make desktop-test-rust-ts Vitest + cargo test in parallel\n"
 	@printf "  make desktop-test-watch Vitest watch mode\n"
@@ -93,6 +95,12 @@ desktop-typegen:
 
 desktop-typegen-check:
 	$(call js-run,apps/desktop,typegen:check)
+
+desktop-format:
+	$(call js-run,apps/desktop,format)
+
+desktop-format-check:
+	$(call js-run,apps/desktop,format:check)
 
 desktop-test:
 	$(call js-run,apps/desktop,test)

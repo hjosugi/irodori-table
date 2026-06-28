@@ -4,7 +4,10 @@
 // multi-schema grouping, and zoom/search controls are deterministic and testable.
 // Mermaid source is still generated for copy/paste interoperability.
 
-import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import type {
+  DatabaseMetadata,
+  DbObjectMetadata,
+} from "@/generated/irodori-api";
 
 export type ErdColumn = {
   name: string;
@@ -157,11 +160,15 @@ export function buildErdModel(
   const maxColumns = options.maxColumns ?? DEFAULT_MAX_COLUMNS;
   const search = (options.search ?? "").trim().toLowerCase();
   const schemaFilter =
-    options.schemaNames === undefined ? undefined : new Set(options.schemaNames);
+    options.schemaNames === undefined
+      ? undefined
+      : new Set(options.schemaNames);
   const allTables = metadata.schemas
     .flatMap((schema) => schema.objects)
     .filter((object) => object.kind === "table");
-  const byQualified = new Map(allTables.map((table) => [tableId(table.schema, table.name), table]));
+  const byQualified = new Map(
+    allTables.map((table) => [tableId(table.schema, table.name), table]),
+  );
   const byName = new Map<string, DbObjectMetadata[]>();
   for (const table of allTables) {
     const list = byName.get(table.name) ?? [];
@@ -174,9 +181,13 @@ export function buildErdModel(
       (schemaFilter === undefined || schemaFilter.has(table.schema)) &&
       tableMatchesSearch(table, search),
   );
-  const visibleIds = new Set(visibleSourceTables.map((table) => tableId(table.schema, table.name)));
+  const visibleIds = new Set(
+    visibleSourceTables.map((table) => tableId(table.schema, table.name)),
+  );
   const duplicateNames = new Set(
-    [...byName.entries()].filter(([, tables]) => tables.length > 1).map(([name]) => name),
+    [...byName.entries()]
+      .filter(([, tables]) => tables.length > 1)
+      .map(([name]) => name),
   );
 
   const tables: ErdTable[] = visibleSourceTables.map((table) => {
@@ -192,7 +203,9 @@ export function buildErdModel(
       id: tableId(table.schema, table.name),
       schema: table.schema,
       name: table.name,
-      label: duplicateNames.has(table.name) ? `${table.schema}.${table.name}` : table.name,
+      label: duplicateNames.has(table.name)
+        ? `${table.schema}.${table.name}`
+        : table.name,
       columns,
       hiddenColumnCount: Math.max(0, table.columns.length - columns.length),
     };
@@ -214,7 +227,11 @@ export function buildErdModel(
         continue;
       }
       const targetId = tableId(target.schema, target.name);
-      if (!visibleIds.has(targetId) || !tableMap.has(sourceId) || !tableMap.has(targetId)) {
+      if (
+        !visibleIds.has(targetId) ||
+        !tableMap.has(sourceId) ||
+        !tableMap.has(targetId)
+      ) {
         continue;
       }
       const label = fk.columns.length > 0 ? fk.columns.join(", ") : "ref";
@@ -290,7 +307,13 @@ export function layoutErdModel(model: ErdModel): ErdLayout {
       const priorHeight = rowHeights
         .slice(0, row)
         .reduce((sum, height) => sum + height, 0);
-      return y + SCHEMA_HEADER_HEIGHT + SCHEMA_PADDING + priorHeight + row * TABLE_GAP_Y;
+      return (
+        y +
+        SCHEMA_HEADER_HEIGHT +
+        SCHEMA_PADDING +
+        priorHeight +
+        row * TABLE_GAP_Y
+      );
     });
     schema.tables.forEach((table, index) => {
       const column = index % columnCount;
@@ -308,15 +331,19 @@ export function layoutErdModel(model: ErdModel): ErdLayout {
     y += groupHeight + SCHEMA_GAP_Y;
   }
 
-  const tableLayout = new Map(layoutTables.map((table) => [table.table.id, table]));
-  const edges = avoidEdgeLabelOverlaps(model.edges.flatMap((edge, index): ErdLayoutEdge[] => {
-    const source = tableLayout.get(edge.sourceId);
-    const target = tableLayout.get(edge.targetId);
-    if (!source || !target) {
-      return [];
-    }
-    return [layoutEdge(edge, source, target, index)];
-  }));
+  const tableLayout = new Map(
+    layoutTables.map((table) => [table.table.id, table]),
+  );
+  const edges = avoidEdgeLabelOverlaps(
+    model.edges.flatMap((edge, index): ErdLayoutEdge[] => {
+      const source = tableLayout.get(edge.sourceId);
+      const target = tableLayout.get(edge.targetId);
+      if (!source || !target) {
+        return [];
+      }
+      return [layoutEdge(edge, source, target, index)];
+    }),
+  );
   for (const edge of edges) {
     width = Math.max(
       width,
@@ -336,14 +363,17 @@ export function layoutErdModel(model: ErdModel): ErdLayout {
 
 function avoidEdgeLabelOverlaps(edges: ErdLayoutEdge[]): ErdLayoutEdge[] {
   const resolved = [...edges].sort(
-    (a, b) => a.labelY - b.labelY || a.labelX - b.labelX || a.id.localeCompare(b.id),
+    (a, b) =>
+      a.labelY - b.labelY || a.labelX - b.labelX || a.id.localeCompare(b.id),
   );
 
   for (let pass = 0; pass < resolved.length * resolved.length; pass += 1) {
     let moved = false;
     for (let i = 0; i < resolved.length; i += 1) {
       for (let j = i + 1; j < resolved.length; j += 1) {
-        if (!labelRectsOverlap(resolved[i], resolved[j], EDGE_LABEL_COLLISION_GAP)) {
+        if (
+          !labelRectsOverlap(resolved[i], resolved[j], EDGE_LABEL_COLLISION_GAP)
+        ) {
           continue;
         }
         resolved[j] = {
@@ -360,7 +390,8 @@ function avoidEdgeLabelOverlaps(edges: ErdLayoutEdge[]): ErdLayoutEdge[] {
       break;
     }
     resolved.sort(
-      (a, b) => a.labelY - b.labelY || a.labelX - b.labelX || a.id.localeCompare(b.id),
+      (a, b) =>
+        a.labelY - b.labelY || a.labelX - b.labelX || a.id.localeCompare(b.id),
     );
   }
 
@@ -368,9 +399,7 @@ function avoidEdgeLabelOverlaps(edges: ErdLayoutEdge[]): ErdLayoutEdge[] {
   return edges.map((edge) => byId.get(edge.id) ?? edge);
 }
 
-function labelRectBottom(
-  edge: Pick<ErdLayoutEdge, "labelY" | "labelHeight">,
-) {
+function labelRectBottom(edge: Pick<ErdLayoutEdge, "labelY" | "labelHeight">) {
   return edge.labelY - 12 + edge.labelHeight;
 }
 
@@ -428,7 +457,8 @@ function layoutEdge(
       ? target.x
       : target.x + target.width;
   const sy = source.y + Math.min(source.height - 16, 44 + (index % 4) * 20);
-  const ty = target.y + Math.min(target.height - 16, 44 + ((index + 2) % 4) * 20);
+  const ty =
+    target.y + Math.min(target.height - 16, 44 + ((index + 2) % 4) * 20);
   const curve = Math.max(70, Math.abs(tx - sx) * 0.42);
   return {
     ...edge,
@@ -441,7 +471,9 @@ function layoutEdge(
 }
 
 export function toMermaidErd(metadata: DatabaseMetadata): string {
-  const model = buildErdModel(metadata, { maxColumns: Number.MAX_SAFE_INTEGER });
+  const model = buildErdModel(metadata, {
+    maxColumns: Number.MAX_SAFE_INTEGER,
+  });
   const lines: string[] = ["erDiagram"];
   for (const table of model.tables) {
     const id = safeId(table.id);
@@ -451,7 +483,9 @@ export function toMermaidErd(metadata: DatabaseMetadata): string {
       if (column.primaryKey) keys.push("PK");
       if (column.foreignKey) keys.push("FK");
       const suffix = keys.length > 0 ? ` ${keys.join(",")}` : "";
-      lines.push(`    ${safeType(column.dataType)} ${safeId(column.name)}${suffix}`);
+      lines.push(
+        `    ${safeType(column.dataType)} ${safeId(column.name)}${suffix}`,
+      );
     }
     lines.push("  }");
   }

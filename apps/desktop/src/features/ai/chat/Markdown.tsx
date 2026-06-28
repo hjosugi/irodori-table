@@ -67,7 +67,7 @@ function renderBlocks(text: string): ReactNode[] {
       flushParagraph();
       flushList();
       const level = heading[1].length;
-      const Tag = (`h${Math.min(level + 2, 6)}`) as "h3" | "h4" | "h5" | "h6";
+      const Tag = `h${Math.min(level + 2, 6)}` as "h3" | "h4" | "h5" | "h6";
       blocks.push(
         <Tag key={key++} className="md-h">
           {renderInline(heading[2])}

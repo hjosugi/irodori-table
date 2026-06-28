@@ -11,11 +11,7 @@ import type { CSSProperties } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { GitChangesView } from "./GitChangesView";
 import { GitGraphView } from "./GitGraphView";
-import {
-  branchSummary,
-  gitAccentColor,
-  providerLabel,
-} from "./git-format";
+import { branchSummary, gitAccentColor, providerLabel } from "./git-format";
 import { useGitStore } from "./git-store";
 
 function ViewButton({
@@ -28,7 +24,11 @@ function ViewButton({
   onClick: () => void;
 }) {
   return (
-    <button className={active ? "active" : undefined} type="button" onClick={onClick}>
+    <button
+      className={active ? "active" : undefined}
+      type="button"
+      onClick={onClick}
+    >
       {label}
     </button>
   );
@@ -86,7 +86,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   const files = status?.files ?? [];
   const hasChanges = files.length > 0;
   const selectedFile = selectedPath
-    ? files.find((file) => file.path === selectedPath) ?? null
+    ? (files.find((file) => file.path === selectedPath) ?? null)
     : null;
   const selectedPaths = selectedPath ? [selectedPath] : [];
   const primaryRemote = status?.remotes[0];
@@ -131,7 +131,11 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     if (!selectedPath) {
       return;
     }
-    if (!window.confirm(`Discard local changes in ${selectedPath}? This cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Discard local changes in ${selectedPath}? This cannot be undone.`,
+      )
+    ) {
       return;
     }
     await discardPaths([selectedPath]);
@@ -152,7 +156,10 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     if (!branch || branch === status?.branch) {
       return;
     }
-    if (hasChanges && !window.confirm(`Switch to ${branch} with local changes present?`)) {
+    if (
+      hasChanges &&
+      !window.confirm(`Switch to ${branch} with local changes present?`)
+    ) {
       return;
     }
     await checkoutBranch(branch);
@@ -185,7 +192,10 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
           <GitBranch size={16} />
           <strong>Git</strong>
         </span>
-        <div className="segmented-control git-view-switch" aria-label="Git view">
+        <div
+          className="segmented-control git-view-switch"
+          aria-label="Git view"
+        >
           <ViewButton
             active={view === "graph"}
             label="Graph"
@@ -231,7 +241,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             </strong>
             <small title={status.repoRoot}>{status.repoRoot}</small>
           </span>
-          <span className={`git-clean-badge ${status.clean ? "clean" : "dirty"}`}>
+          <span
+            className={`git-clean-badge ${status.clean ? "clean" : "dirty"}`}
+          >
             {status.clean ? <CheckCircle2 size={13} /> : <FileDiff size={13} />}
             {status.clean ? "Clean" : `${status.files.length} changes`}
           </span>
@@ -239,11 +251,23 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             {status.remotes.length > 0 ? (
               status.remotes.map((remote) => (
                 <span className="git-provider-badge" key={remote.name}>
-                  <i style={{ background: gitAccentColor(remote.provider, repoColors[status.repoRoot]) }} />
+                  <i
+                    style={{
+                      background: gitAccentColor(
+                        remote.provider,
+                        repoColors[status.repoRoot],
+                      ),
+                    }}
+                  />
                   {providerLabel(remote.provider)}
                   <small>{remote.name}</small>
                   {remote.webUrl ? (
-                    <a href={remote.webUrl} target="_blank" rel="noreferrer" title={remote.webUrl}>
+                    <a
+                      href={remote.webUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={remote.webUrl}
+                    >
                       <ExternalLink size={11} />
                     </a>
                   ) : null}
@@ -260,7 +284,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               <input
                 type="color"
                 value={accentColor}
-                onChange={(event) => setRepoColor(status.repoRoot, event.currentTarget.value)}
+                onChange={(event) =>
+                  setRepoColor(status.repoRoot, event.currentTarget.value)
+                }
               />
             </label>
           </div>
@@ -270,17 +296,27 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               placeholder={repoPath || status.repoRoot}
               onChange={(event) => setRepoPathDraft(event.currentTarget.value)}
             />
-            <button className="text-button" type="button" onClick={() => setRepoPath(repoPathDraft)}>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setRepoPath(repoPathDraft)}
+            >
               Use
             </button>
-            <button className="text-button" type="button" onClick={() => void onBrowseRepo()}>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => void onBrowseRepo()}
+            >
               Browse
             </button>
           </div>
           <div className="git-branch-row">
             <select
               value={status.branch}
-              onChange={(event) => void onCheckoutBranch(event.currentTarget.value)}
+              onChange={(event) =>
+                void onCheckoutBranch(event.currentTarget.value)
+              }
             >
               {status.branches.map((branch) => (
                 <option key={branch.name} value={branch.name}>
@@ -294,7 +330,11 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               placeholder="new-branch"
               onChange={(event) => setBranchDraft(event.currentTarget.value)}
             />
-            <button className="text-button" type="button" onClick={() => void createBranch(branchDraft)}>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => void createBranch(branchDraft)}
+            >
               Create
             </button>
             <button
@@ -316,7 +356,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
         </div>
       ) : null}
 
-      <div className={`git-drawer-body ${view === "graph" ? "graph-mode" : ""}`}>
+      <div
+        className={`git-drawer-body ${view === "graph" ? "graph-mode" : ""}`}
+      >
         {view === "graph" ? (
           <GitGraphView
             commits={graphCommits}

@@ -39,15 +39,8 @@
       "timescaledb",
       "neon"
     ],
-    "mysqlFamily": [
-      "mysql",
-      "mariadb",
-      "tidb"
-    ],
-    "duckFamily": [
-      "duckdb",
-      "motherduck"
-    ],
+    "mysqlFamily": ["mysql", "mariadb", "tidb"],
+    "duckFamily": ["duckdb", "motherduck"],
     "postgresConflictEngines": [
       "postgres",
       "cockroachdb",
@@ -85,13 +78,8 @@
       "deltaLake",
       "hudi"
     ],
-    "fetchFirstEngines": [
-      "oracle",
-      "firebird"
-    ],
-    "topEngines": [
-      "sqlserver"
-    ],
+    "fetchFirstEngines": ["oracle", "firebird"],
+    "topEngines": ["sqlserver"],
     "explicitTransactionEngines": [
       "postgres",
       "cockroachdb",
@@ -314,9 +302,7 @@
       "template": "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
       "rank": 540,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "selw",
@@ -324,9 +310,7 @@
       "template": "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition}\norder by ${4:column}\nlimit ${5:100};\n${0}",
       "rank": 535,
       "scope": "statement",
-      "engineGroups": [
-        "limitEngines"
-      ]
+      "engineGroups": ["limitEngines"]
     },
     {
       "label": "selw",
@@ -334,9 +318,7 @@
       "template": "select ${1:*}\nfrom ${2:table}\nwhere ${3:condition}\norder by ${4:column}\nfetch first ${5:100} rows only;\n${0}",
       "rank": 535,
       "scope": "statement",
-      "engineGroups": [
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["fetchFirstEngines"]
     },
     {
       "label": "selw",
@@ -344,9 +326,7 @@
       "template": "select top (${5:100}) ${1:*}\nfrom ${2:table}\nwhere ${3:condition}\norder by ${4:column};\n${0}",
       "rank": 535,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "cte",
@@ -354,9 +334,7 @@
       "template": "with ${1:cte_name} as (\n  select ${2:*}\n  from ${3:table}\n)\nselect ${4:*}\nfrom ${1:cte_name};\n${0}",
       "rank": 530,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "ins",
@@ -364,9 +342,7 @@
       "template": "insert into ${1:table} (${2:columns})\nvalues (${3:values});\n${0}",
       "rank": 525,
       "scope": "statement",
-      "engineGroups": [
-        "dmlEngines"
-      ]
+      "engineGroups": ["dmlEngines"]
     },
     {
       "label": "insel",
@@ -374,9 +350,7 @@
       "template": "insert into ${1:target_table} (${2:columns})\nselect ${2:columns}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
       "rank": 523,
       "scope": "statement",
-      "engineGroups": [
-        "dmlEngines"
-      ]
+      "engineGroups": ["dmlEngines"]
     },
     {
       "label": "upsert",
@@ -384,9 +358,7 @@
       "template": "insert into ${1:table} (${2:columns})\nvalues (${3:values})\non conflict (${4:key_column}) do update\nset ${5:column} = excluded.${5:column};\n${0}",
       "rank": 520,
       "scope": "statement",
-      "engineGroups": [
-        "postgresConflictEngines"
-      ]
+      "engineGroups": ["postgresConflictEngines"]
     },
     {
       "label": "upsert",
@@ -394,9 +366,7 @@
       "template": "insert into ${1:table} (${2:columns})\nvalues (${3:values})\non duplicate key update\n  ${4:column} = values(${4:column});\n${0}",
       "rank": 520,
       "scope": "statement",
-      "engineGroups": [
-        "mysqlFamily"
-      ]
+      "engineGroups": ["mysqlFamily"]
     },
     {
       "label": "upsert",
@@ -404,9 +374,7 @@
       "template": "merge into ${1:target_table} as target\nusing ${2:source_table} as source\non ${3:target.id = source.id}\nwhen matched then update set\n  ${4:column} = source.${4:column}\nwhen not matched then insert (${5:columns})\nvalues (${6:source_columns});\n${0}",
       "rank": 520,
       "scope": "statement",
-      "engineGroups": [
-        "mergeEngines"
-      ]
+      "engineGroups": ["mergeEngines"]
     },
     {
       "label": "upd",
@@ -414,9 +382,7 @@
       "template": "update ${1:table}\nset ${2:column} = ${3:value}\nwhere ${4:condition};\n${0}",
       "rank": 525,
       "scope": "statement",
-      "engineGroups": [
-        "dmlEngines"
-      ]
+      "engineGroups": ["dmlEngines"]
     },
     {
       "label": "updop",
@@ -424,9 +390,7 @@
       "template": "-- preview target rows\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\nbegin;\n\nupdate ${1:table}\nset ${4:column} = ${5:value}\nwhere ${2:condition};\n\n-- verify after update before commit\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\n-- commit;\nrollback;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "limitEngines"
-      ]
+      "engineGroups": ["limitEngines"]
     },
     {
       "label": "updop",
@@ -434,9 +398,7 @@
       "template": "-- preview target rows\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nfetch first ${3:100} rows only;\n\nupdate ${1:table}\nset ${4:column} = ${5:value}\nwhere ${2:condition};\n\n-- verify after update before commit\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nfetch first ${3:100} rows only;\n\n-- commit;\nrollback;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["fetchFirstEngines"]
     },
     {
       "label": "updop",
@@ -444,9 +406,7 @@
       "template": "-- preview target rows\nselect top (${3:100}) *\nfrom ${1:table}\nwhere ${2:condition};\n\nbegin transaction;\n\nupdate ${1:table}\nset ${4:column} = ${5:value}\nwhere ${2:condition};\n\n-- verify after update before commit\nselect top (${3:100}) *\nfrom ${1:table}\nwhere ${2:condition};\n\n-- commit transaction;\nrollback transaction;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "updop",
@@ -454,9 +414,7 @@
       "template": "-- preview target rows\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\nupdate ${1:table}\nset ${4:column} = ${5:value}\nwhere ${2:condition};\n\n-- verify after update\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "noExplicitTransactionDmlEngines"
-      ]
+      "engineGroups": ["noExplicitTransactionDmlEngines"]
     },
     {
       "label": "touch",
@@ -464,9 +422,7 @@
       "template": "update ${1:table}\nset ${2:updated_at} = current_timestamp\nwhere ${3:condition};\n${0}",
       "rank": 510,
       "scope": "statement",
-      "engineGroups": [
-        "dmlEngines"
-      ]
+      "engineGroups": ["dmlEngines"]
     },
     {
       "label": "touch",
@@ -474,9 +430,7 @@
       "template": "update ${1:table}\nset ${2:updated_at} = current_timestamp()\nwhere ${3:condition};\n${0}",
       "rank": 510,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "del",
@@ -484,9 +438,7 @@
       "template": "delete from ${1:table}\nwhere ${2:condition};\n${0}",
       "rank": 525,
       "scope": "statement",
-      "engineGroups": [
-        "deleteEngines"
-      ]
+      "engineGroups": ["deleteEngines"]
     },
     {
       "label": "del",
@@ -494,9 +446,7 @@
       "template": "alter table ${1:table}\ndelete where ${2:condition};\n${0}",
       "rank": 525,
       "scope": "statement",
-      "engines": [
-        "clickhouse"
-      ]
+      "engines": ["clickhouse"]
     },
     {
       "label": "delop",
@@ -504,9 +454,7 @@
       "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\nbegin;\n\ndelete from ${1:table}\nwhere ${2:condition};\n\n-- verify no unexpected rows remain before commit\nselect count(*) as remaining_count\nfrom ${1:table}\nwhere ${2:condition};\n\n-- commit;\nrollback;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "limitDeleteEngines"
-      ]
+      "engineGroups": ["limitDeleteEngines"]
     },
     {
       "label": "delop",
@@ -514,9 +462,7 @@
       "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\n-- ClickHouse delete mutations are asynchronous.\nalter table ${1:table}\ndelete where ${2:condition};\n\n-- verify mutation progress\nselect database, table, mutation_id, command, is_done, latest_failed_part, latest_fail_reason\nfrom system.mutations\nwhere table = '${1:table}'\norder by create_time desc\nlimit 10;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engines": [
-        "clickhouse"
-      ]
+      "engines": ["clickhouse"]
     },
     {
       "label": "delop",
@@ -524,9 +470,7 @@
       "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nfetch first ${3:100} rows only;\n\ndelete from ${1:table}\nwhere ${2:condition};\n\n-- verify no unexpected rows remain before commit\nselect count(*) as remaining_count\nfrom ${1:table}\nwhere ${2:condition};\n\n-- commit;\nrollback;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["fetchFirstEngines"]
     },
     {
       "label": "delop",
@@ -534,9 +478,7 @@
       "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect top (${3:100}) *\nfrom ${1:table}\nwhere ${2:condition};\n\nbegin transaction;\n\ndelete from ${1:table}\nwhere ${2:condition};\n\n-- verify no unexpected rows remain before commit\nselect count(*) as remaining_count\nfrom ${1:table}\nwhere ${2:condition};\n\n-- commit transaction;\nrollback transaction;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "delop",
@@ -544,9 +486,7 @@
       "template": "-- preview rows to delete\nselect count(*) as target_count\nfrom ${1:table}\nwhere ${2:condition};\n\nselect *\nfrom ${1:table}\nwhere ${2:condition}\nlimit ${3:100};\n\ndelete from ${1:table}\nwhere ${2:condition};\n\n-- verify no unexpected rows remain\nselect count(*) as remaining_count\nfrom ${1:table}\nwhere ${2:condition};\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "noTxnDeleteEngines"
-      ]
+      "engineGroups": ["noTxnDeleteEngines"]
     },
     {
       "label": "delret",
@@ -554,9 +494,7 @@
       "template": "delete from ${1:table}\nwhere ${2:condition}\nreturning ${3:*};\n${0}",
       "rank": 512,
       "scope": "statement",
-      "engineGroups": [
-        "returningEngines"
-      ]
+      "engineGroups": ["returningEngines"]
     },
     {
       "label": "delret",
@@ -564,9 +502,7 @@
       "template": "delete from ${1:table}\noutput deleted.${3:*}\nwhere ${2:condition};\n${0}",
       "rank": 512,
       "scope": "statement",
-      "engines": [
-        "sqlserver"
-      ]
+      "engines": ["sqlserver"]
     },
     {
       "label": "softdel",
@@ -574,9 +510,7 @@
       "template": "update ${1:table}\nset ${2:deleted_at} = current_timestamp\nwhere ${3:condition};\n${0}",
       "rank": 512,
       "scope": "statement",
-      "engineGroups": [
-        "dmlEngines"
-      ]
+      "engineGroups": ["dmlEngines"]
     },
     {
       "label": "softdel",
@@ -584,9 +518,7 @@
       "template": "update ${1:table}\nset ${2:deleted_at} = current_timestamp()\nwhere ${3:condition};\n${0}",
       "rank": 512,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "begin",
@@ -594,9 +526,7 @@
       "template": "begin;\n\n${1:statement}\n\n-- commit;\nrollback;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "explicitTransactionEngines"
-      ]
+      "engineGroups": ["explicitTransactionEngines"]
     },
     {
       "label": "begin",
@@ -604,9 +534,7 @@
       "template": "begin transaction;\n\n${1:statement}\n\n-- commit transaction;\nrollback transaction;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "begin",
@@ -614,9 +542,7 @@
       "template": "begin transaction;\n\n${1:statement}\n\n-- commit transaction;\nrollback transaction;\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "begin",
@@ -624,9 +550,7 @@
       "template": "begin\n  ${1:null;}\nend;\n/\n${0}",
       "rank": 524,
       "scope": "statement",
-      "engines": [
-        "oracle"
-      ]
+      "engines": ["oracle"]
     },
     {
       "label": "commit",
@@ -634,10 +558,7 @@
       "template": "commit;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "explicitTransactionEngines",
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["explicitTransactionEngines", "fetchFirstEngines"]
     },
     {
       "label": "commit",
@@ -645,9 +566,7 @@
       "template": "commit transaction;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "commit",
@@ -655,9 +574,7 @@
       "template": "commit transaction;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "rollback",
@@ -665,10 +582,7 @@
       "template": "rollback;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "explicitTransactionEngines",
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["explicitTransactionEngines", "fetchFirstEngines"]
     },
     {
       "label": "rollback",
@@ -676,9 +590,7 @@
       "template": "rollback transaction;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "rollback",
@@ -686,9 +598,7 @@
       "template": "rollback transaction;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "sp",
@@ -696,9 +606,7 @@
       "template": "savepoint ${1:sp_name};\n\n${2:statement}\n\n-- rollback to savepoint ${1:sp_name};\n-- release savepoint ${1:sp_name};\n${0}",
       "rank": 495,
       "scope": "statement",
-      "engineGroups": [
-        "savepointEngines"
-      ]
+      "engineGroups": ["savepointEngines"]
     },
     {
       "label": "sp",
@@ -706,9 +614,7 @@
       "template": "savepoint ${1:sp_name};\n\n${2:statement}\n\n-- rollback to ${1:sp_name};\n${0}",
       "rank": 495,
       "scope": "statement",
-      "engines": [
-        "oracle"
-      ]
+      "engines": ["oracle"]
     },
     {
       "label": "sp",
@@ -716,9 +622,7 @@
       "template": "save transaction ${1:sp_name};\n\n${2:statement}\n\n-- rollback transaction ${1:sp_name};\n${0}",
       "rank": 495,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "join",
@@ -726,9 +630,7 @@
       "template": "join ${1:table} on ${2:condition}${0}",
       "rank": 520,
       "scope": "clause",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "case",
@@ -736,9 +638,7 @@
       "template": "case\n  when ${1:condition} then ${2:value}\n  else ${3:fallback}\nend${0}",
       "rank": 515,
       "scope": "expression",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "ct",
@@ -746,9 +646,7 @@
       "template": "create table ${1:table} (\n  ${2:id} ${3:integer} primary key,\n  ${4:created_at} ${5:timestamp}\n);\n${0}",
       "rank": 510,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "ctas",
@@ -756,9 +654,7 @@
       "template": "create table ${1:new_table} as\nselect ${2:*}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
       "rank": 508,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "tempt",
@@ -766,9 +662,7 @@
       "template": "create temporary table ${1:staging_table} as\nselect ${2:*}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
       "rank": 506,
       "scope": "statement",
-      "engineGroups": [
-        "limitEngines"
-      ]
+      "engineGroups": ["limitEngines"]
     },
     {
       "label": "tempt",
@@ -776,9 +670,7 @@
       "template": "create global temporary table ${1:staging_table}\non commit preserve rows as\nselect ${2:*}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
       "rank": 506,
       "scope": "statement",
-      "engines": [
-        "oracle"
-      ]
+      "engines": ["oracle"]
     },
     {
       "label": "tempt",
@@ -786,9 +678,7 @@
       "template": "select ${2:*}\ninto #${1:staging_table}\nfrom ${3:source_table}\nwhere ${4:condition};\n${0}",
       "rank": 506,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "idx",
@@ -796,9 +686,7 @@
       "template": "create index ${1:index_name}\non ${2:table} (${3:column});\n${0}",
       "rank": 505,
       "scope": "statement",
-      "engineGroups": [
-        "indexEngines"
-      ]
+      "engineGroups": ["indexEngines"]
     },
     {
       "label": "cnt",
@@ -806,9 +694,7 @@
       "template": "select count(*) as row_count\nfrom ${1:table}\nwhere ${2:condition};\n${0}",
       "rank": 518,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "sample",
@@ -816,9 +702,7 @@
       "template": "select *\nfrom ${1:table}\nwhere ${2:condition}\norder by ${3:column}\nlimit ${4:100};\n${0}",
       "rank": 516,
       "scope": "statement",
-      "engineGroups": [
-        "limitEngines"
-      ]
+      "engineGroups": ["limitEngines"]
     },
     {
       "label": "sample",
@@ -826,9 +710,7 @@
       "template": "select *\nfrom ${1:table}\nwhere ${2:condition}\norder by ${3:column}\nfetch first ${4:100} rows only;\n${0}",
       "rank": 516,
       "scope": "statement",
-      "engineGroups": [
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["fetchFirstEngines"]
     },
     {
       "label": "sample",
@@ -836,9 +718,7 @@
       "template": "select top (${4:100}) *\nfrom ${1:table}\nwhere ${2:condition}\norder by ${3:column};\n${0}",
       "rank": 516,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "exists",
@@ -846,9 +726,7 @@
       "template": "select exists (\n  select 1\n  from ${1:table}\n  where ${2:condition}\n) as exists_flag;\n${0}",
       "rank": 508,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "dupes",
@@ -856,9 +734,7 @@
       "template": "select ${1:key_column}, count(*) as duplicate_count\nfrom ${2:table}\ngroup by ${1:key_column}\nhaving count(*) > 1\norder by duplicate_count desc\nlimit ${3:100};\n${0}",
       "rank": 506,
       "scope": "statement",
-      "engineGroups": [
-        "limitEngines"
-      ]
+      "engineGroups": ["limitEngines"]
     },
     {
       "label": "dupes",
@@ -866,9 +742,7 @@
       "template": "select ${1:key_column}, count(*) as duplicate_count\nfrom ${2:table}\ngroup by ${1:key_column}\nhaving count(*) > 1\norder by duplicate_count desc\nfetch first ${3:100} rows only;\n${0}",
       "rank": 506,
       "scope": "statement",
-      "engineGroups": [
-        "fetchFirstEngines"
-      ]
+      "engineGroups": ["fetchFirstEngines"]
     },
     {
       "label": "dupes",
@@ -876,9 +750,7 @@
       "template": "select top (${3:100}) ${1:key_column}, count(*) as duplicate_count\nfrom ${2:table}\ngroup by ${1:key_column}\nhaving count(*) > 1\norder by duplicate_count desc;\n${0}",
       "rank": 506,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "nulls",
@@ -886,9 +758,7 @@
       "template": "select\n  count(*) as row_count,\n  sum(case when ${1:column} is null then 1 else 0 end) as null_count\nfrom ${2:table};\n${0}",
       "rank": 504,
       "scope": "statement",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "checksum",
@@ -896,9 +766,7 @@
       "template": "select\n  count(*) as row_count,\n  md5(string_agg(md5(concat_ws('|', ${1:columns})), '' order by ${2:key_column})) as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engineGroups": [
-        "postgresFamily"
-      ]
+      "engineGroups": ["postgresFamily"]
     },
     {
       "label": "checksum",
@@ -906,9 +774,7 @@
       "template": "select\n  count(*) as row_count,\n  md5(group_concat(md5(concat_ws('|', ${1:columns})) order by ${2:key_column} separator '')) as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engineGroups": [
-        "mysqlFamily"
-      ]
+      "engineGroups": ["mysqlFamily"]
     },
     {
       "label": "checksum",
@@ -916,9 +782,7 @@
       "template": "select\n  count(*) as row_count,\n  group_concat(${1:columns}, '|') as fingerprint_input\nfrom (\n  select ${1:columns}\n  from ${2:table}\n  where ${3:condition}\n  order by ${4:key_column}\n);\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "sqlite"
-      ]
+      "engines": ["sqlite"]
     },
     {
       "label": "checksum",
@@ -926,9 +790,7 @@
       "template": "select\n  count(*) as row_count,\n  md5(string_agg(md5(concat_ws('|', ${1:columns})), '' order by ${2:key_column})) as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engineGroups": [
-        "duckFamily"
-      ]
+      "engineGroups": ["duckFamily"]
     },
     {
       "label": "checksum",
@@ -936,9 +798,7 @@
       "template": "select\n  count(*) as row_count,\n  standard_hash(listagg(standard_hash(${1:column_expression}, 'SHA256'), '') within group (order by ${2:key_column}), 'SHA256') as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "oracle"
-      ]
+      "engines": ["oracle"]
     },
     {
       "label": "checksum",
@@ -946,9 +806,7 @@
       "template": "select\n  count(*) as row_count,\n  checksum_agg(binary_checksum(${1:columns})) as data_hash\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "checksum",
@@ -956,9 +814,7 @@
       "template": "select\n  count(*) as row_count,\n  sha2(listagg(sha2(concat_ws('|', ${1:columns}), 256), '') within group (order by ${2:key_column}), 256) as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "snowflake"
-      ]
+      "engines": ["snowflake"]
     },
     {
       "label": "checksum",
@@ -966,9 +822,7 @@
       "template": "select\n  count(*) as row_count,\n  to_hex(md5(string_agg(to_hex(md5(to_json_string(struct(${1:columns})))), '' order by ${2:key_column}))) as data_hash\nfrom `${3:project.dataset.table}`\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "checksum",
@@ -976,12 +830,7 @@
       "template": "select\n  count(*) as row_count,\n  md5(concat_ws('', sort_array(collect_list(md5(concat_ws('|', ${1:columns})))))) as data_hash\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "hive",
-        "databricks",
-        "deltaLake",
-        "hudi"
-      ]
+      "engines": ["hive", "databricks", "deltaLake", "hudi"]
     },
     {
       "label": "checksum",
@@ -989,12 +838,7 @@
       "template": "select\n  count(*) as row_count,\n  to_hex(md5(cast(array_join(array_agg(to_hex(md5(cast(json_format(cast(row(${1:columns}) as json)) as varbinary))) order by ${2:key_column}), '') as varbinary))) as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "athena",
-        "trinoPresto",
-        "iceberg",
-        "s3Tables"
-      ]
+      "engines": ["athena", "trinoPresto", "iceberg", "s3Tables"]
     },
     {
       "label": "checksum",
@@ -1002,9 +846,7 @@
       "template": "select\n  count() as row_count,\n  hex(MD5(arrayStringConcat(arraySort(groupArray(hex(MD5(concat(${1:columns}))))), ''))) as data_hash\nfrom ${2:table}\nwhere ${3:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "clickhouse"
-      ]
+      "engines": ["clickhouse"]
     },
     {
       "label": "checksum",
@@ -1012,9 +854,7 @@
       "template": "select\n  count(*) as row_count,\n  md5(listagg(md5(${1:column_expression}), '') within group (order by ${2:key_column})) as data_hash\nfrom ${3:table}\nwhere ${4:condition};\n${0}",
       "rank": 502,
       "scope": "statement",
-      "engines": [
-        "redshift"
-      ]
+      "engines": ["redshift"]
     },
     {
       "label": "explain",
@@ -1022,9 +862,7 @@
       "template": "explain (analyze, buffers, verbose)\n${1:select * from table where condition};\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "postgresFamily"
-      ]
+      "engineGroups": ["postgresFamily"]
     },
     {
       "label": "explain",
@@ -1032,9 +870,7 @@
       "template": "explain format=json\n${1:select * from table where condition};\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "mysqlFamily"
-      ]
+      "engineGroups": ["mysqlFamily"]
     },
     {
       "label": "explain",
@@ -1042,9 +878,7 @@
       "template": "explain plan for\n${1:select * from table where condition};\n\nselect * from table(dbms_xplan.display);\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engines": [
-        "oracle"
-      ]
+      "engines": ["oracle"]
     },
     {
       "label": "explain",
@@ -1052,9 +886,7 @@
       "template": "set showplan_text on;\n${1:select * from table where condition};\nset showplan_text off;\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "explain",
@@ -1062,9 +894,7 @@
       "template": "explain\n${1:select * from table where condition};\n${0}",
       "rank": 500,
       "scope": "statement",
-      "engineGroups": [
-        "duckFamily"
-      ],
+      "engineGroups": ["duckFamily"],
       "engines": [
         "snowflake",
         "bigquery",
@@ -1088,9 +918,7 @@
       "template": "select *\nfrom ${1:table}\nwhere ${2:condition}\nfor update;\n${0}",
       "rank": 498,
       "scope": "statement",
-      "engineGroups": [
-        "lockForUpdateEngines"
-      ]
+      "engineGroups": ["lockForUpdateEngines"]
     },
     {
       "label": "lock",
@@ -1098,9 +926,7 @@
       "template": "select *\nfrom ${1:table} with (updlock, rowlock)\nwhere ${2:condition};\n${0}",
       "rank": 498,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "sampleby",
@@ -1108,9 +934,7 @@
       "template": "select ${1:timestamp}, ${2:avg(price)} as ${3:avg_price}, count() as rows\nfrom ${4:trades}\nwhere ${1:timestamp} in '${5:2026-01-01}'\nsample by ${6:1h};\n${0}",
       "rank": 498,
       "scope": "statement",
-      "engines": [
-        "questdb"
-      ]
+      "engines": ["questdb"]
     },
     {
       "label": "samplebyfill",
@@ -1118,9 +942,7 @@
       "template": "select ${1:timestamp}, ${2:avg(price)} as ${3:avg_price}\nfrom ${4:trades}\nwhere ${1:timestamp} between '${5:2026-01-01T00:00:00Z}' and '${6:2026-01-02T00:00:00Z}'\nsample by ${7:5m}\n  from '${5:2026-01-01T00:00:00Z}' to '${6:2026-01-02T00:00:00Z}'\n  fill(${8:prev})\n  align to calendar time zone '${9:UTC}';\n${0}",
       "rank": 497,
       "scope": "statement",
-      "engines": [
-        "questdb"
-      ]
+      "engines": ["questdb"]
     },
     {
       "label": "lateston",
@@ -1128,9 +950,7 @@
       "template": "select ${1:*}\nfrom ${2:trades}\nwhere ${3:timestamp} in '${4:2026-01-01}'\nlatest on ${3:timestamp}\npartition by ${5:symbol};\n${0}",
       "rank": 497,
       "scope": "statement",
-      "engines": [
-        "questdb"
-      ]
+      "engines": ["questdb"]
     },
     {
       "label": "asofjoin",
@@ -1138,9 +958,7 @@
       "template": "select ${1:l.timestamp}, ${2:l.symbol}, ${3:l.price}, ${4:r.bid_price}\nfrom ${5:trades} l\nasof join ${6:quotes} r on (${7:symbol});\n${0}",
       "rank": 497,
       "scope": "statement",
-      "engines": [
-        "questdb"
-      ]
+      "engines": ["questdb"]
     },
     {
       "label": "asofjointol",
@@ -1148,9 +966,7 @@
       "template": "select ${1:l.timestamp}, ${2:l.symbol}, ${3:l.price}, ${4:r.bid_price}\nfrom ${5:trades} l\nasof join ${6:quotes} r on (${7:symbol}) tolerance ${8:50T}\nwhere ${1:l.timestamp} in '${9:2026-01-01}';\n${0}",
       "rank": 496,
       "scope": "statement",
-      "engines": [
-        "questdb"
-      ]
+      "engines": ["questdb"]
     },
     {
       "label": "qdbmeta",
@@ -1158,9 +974,7 @@
       "template": "select table_name,\n       table_row_count,\n       table_min_timestamp,\n       table_max_timestamp,\n       walEnabled,\n       wal_pending_row_count\nfrom tables()\norder by table_max_timestamp desc\nlimit ${1:20};\n${0}",
       "rank": 494,
       "scope": "statement",
-      "engines": [
-        "questdb"
-      ]
+      "engines": ["questdb"]
     },
     {
       "label": "merge",
@@ -1168,9 +982,7 @@
       "template": "merge into ${1:target_table} as target\nusing ${2:source_table} as source\non ${3:target.id = source.id}\nwhen matched then update set\n  ${4:column} = source.${4:column}\nwhen not matched then insert (${5:columns})\nvalues (${6:source_columns});\n${0}",
       "rank": 496,
       "scope": "statement",
-      "engineGroups": [
-        "mergeEngines"
-      ]
+      "engineGroups": ["mergeEngines"]
     },
     {
       "label": "win",
@@ -1178,9 +990,7 @@
       "template": "${1:sum}(${2:amount}) over (partition by ${3:group_column} order by ${4:sort_column})${0}",
       "rank": 500,
       "scope": "expression",
-      "engineGroups": [
-        "sqlSnippetEngines"
-      ]
+      "engineGroups": ["sqlSnippetEngines"]
     },
     {
       "label": "tx",
@@ -1188,9 +998,7 @@
       "template": "begin;\n\n${1:statement}\n\n-- commit;\nrollback;\n${0}",
       "rank": 495,
       "scope": "statement",
-      "engineGroups": [
-        "explicitTransactionEngines"
-      ]
+      "engineGroups": ["explicitTransactionEngines"]
     },
     {
       "label": "tx",
@@ -1198,9 +1006,7 @@
       "template": "begin transaction;\n\n${1:statement}\n\n-- commit transaction;\nrollback transaction;\n${0}",
       "rank": 495,
       "scope": "statement",
-      "engineGroups": [
-        "topEngines"
-      ]
+      "engineGroups": ["topEngines"]
     },
     {
       "label": "tx",
@@ -1208,9 +1014,7 @@
       "template": "begin transaction;\n\n${1:statement}\n\n-- commit transaction;\nrollback transaction;\n${0}",
       "rank": 495,
       "scope": "statement",
-      "engines": [
-        "bigquery"
-      ]
+      "engines": ["bigquery"]
     },
     {
       "label": "readparquet",
@@ -1218,9 +1022,7 @@
       "template": "select ${1:*}\nfrom read_parquet('${2:s3://bucket/path/*.parquet}')\nlimit ${3:100};\n${0}",
       "rank": 490,
       "scope": "statement",
-      "engineGroups": [
-        "lakehouseEngines"
-      ]
+      "engineGroups": ["lakehouseEngines"]
     },
     {
       "label": "readcsv",
@@ -1228,9 +1030,7 @@
       "template": "select ${1:*}\nfrom read_csv('${2:path/to/file.csv}', header = true)\nlimit ${3:100};\n${0}",
       "rank": 490,
       "scope": "statement",
-      "engineGroups": [
-        "duckFamily"
-      ]
+      "engineGroups": ["duckFamily"]
     },
     {
       "label": "attachiceberg",
@@ -1238,12 +1038,7 @@
       "template": "install httpfs;\nload httpfs;\ninstall iceberg;\nload iceberg;\n\ncreate secret ${1:s3_secret} (\n  type s3,\n  key_id '${2:AWS_ACCESS_KEY_ID}',\n  secret '${3:AWS_SECRET_ACCESS_KEY}',\n  region '${4:us-east-1}'\n);\n\nattach '${5:warehouse}' as ${6:iceberg_db} (\n  type iceberg,\n  endpoint_url '${7:https://catalog.example.com}'\n);\n${0}",
       "rank": 488,
       "scope": "statement",
-      "engines": [
-        "duckdb",
-        "motherduck",
-        "iceberg",
-        "s3Tables"
-      ]
+      "engines": ["duckdb", "motherduck", "iceberg", "s3Tables"]
     },
     {
       "label": "snapshots",
@@ -1251,12 +1046,7 @@
       "template": "select *\nfrom ${1:catalog.schema.table}$snapshots\norder by committed_at desc\nlimit ${2:20};\n${0}",
       "rank": 486,
       "scope": "statement",
-      "engines": [
-        "iceberg",
-        "s3Tables",
-        "athena",
-        "databricks"
-      ]
+      "engines": ["iceberg", "s3Tables", "athena", "databricks"]
     }
   ]
 }

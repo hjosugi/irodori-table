@@ -32,7 +32,11 @@ export function ptyWrite(id: string, data: string): Promise<void> {
   return invoke("pty_write", { id, data });
 }
 
-export function ptyResize(id: string, cols: number, rows: number): Promise<void> {
+export function ptyResize(
+  id: string,
+  cols: number,
+  rows: number,
+): Promise<void> {
   return invoke("pty_resize", { id, cols, rows });
 }
 

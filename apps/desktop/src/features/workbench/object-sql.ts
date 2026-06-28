@@ -17,13 +17,14 @@ export function objectKindLabel(object: DbObjectMetadata) {
 
 export function quoteSqlIdentifier(engine: DbEngine, name: string) {
   const quote =
-    engine === "mysql" || engine === "mariadb" || engine === "tidb"
-      ? "`"
-      : '"';
+    engine === "mysql" || engine === "mariadb" || engine === "tidb" ? "`" : '"';
   return `${quote}${name.split(quote).join(quote + quote)}${quote}`;
 }
 
-export function qualifiedObjectName(engine: DbEngine, object: DbObjectMetadata) {
+export function qualifiedObjectName(
+  engine: DbEngine,
+  object: DbObjectMetadata,
+) {
   const parts = [object.schema, object.name].filter(Boolean);
   return parts.map((part) => quoteSqlIdentifier(engine, part)).join(".");
 }

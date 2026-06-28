@@ -365,8 +365,8 @@ describe("result grid model", () => {
 
   it("escapes cells for spreadsheet-safe TSV copy", () => {
     expect(escapeResultGridTsvCell("plain")).toBe("plain");
-    expect(escapeResultGridTsvCell("with\ttab")).toBe("\"with\ttab\"");
-    expect(escapeResultGridTsvCell("line\r\nbreak")).toBe("\"line\nbreak\"");
+    expect(escapeResultGridTsvCell("with\ttab")).toBe('"with\ttab"');
+    expect(escapeResultGridTsvCell("line\r\nbreak")).toBe('"line\nbreak"');
     expect(escapeResultGridTsvCell('say "hi"')).toBe('"say ""hi"""');
   });
 
@@ -389,6 +389,8 @@ describe("result grid model", () => {
           { cells: ["3", "Minato", "has\ttab"] },
         ],
       ),
-    ).toBe('id\tname\tnote\n1\tAster\tplain\n2\tKawase\t\n3\tMinato\t"has\ttab"');
+    ).toBe(
+      'id\tname\tnote\n1\tAster\tplain\n2\tKawase\t\n3\tMinato\t"has\ttab"',
+    );
   });
 });

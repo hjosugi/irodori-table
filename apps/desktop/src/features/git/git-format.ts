@@ -114,7 +114,10 @@ export function providerDefaultColor(provider: GitRemoteProvider | undefined) {
   }
 }
 
-export function normalizeHexColor(value: string | undefined, fallback = "#6b7280") {
+export function normalizeHexColor(
+  value: string | undefined,
+  fallback = "#6b7280",
+) {
   const raw = (value ?? "").trim();
   if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
     return raw.toLowerCase();

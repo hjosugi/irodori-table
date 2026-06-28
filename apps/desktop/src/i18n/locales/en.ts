@@ -25,7 +25,8 @@ export const en = {
   "query.parameterMissing": "Value required for {name}",
   "editor.dropSqlFile": "Drop .sql file to load",
   "editor.dropFailed": "Drop failed",
-  "editor.dropUnsupportedFile": "Only .sql files can be dropped into the editor.",
+  "editor.dropUnsupportedFile":
+    "Only .sql files can be dropped into the editor.",
   "settings.title": "Settings",
   "settings.subtitle": "Editor, theme, shortcuts",
   "settings.sections": "Settings sections",
@@ -37,9 +38,11 @@ export const en = {
   "settings.nav.jobs": "Jobs",
   "settings.nav.json": "JSON",
   "settings.general.language.title": "Language",
-  "settings.general.language.description": "Display language for the desktop UI.",
+  "settings.general.language.description":
+    "Display language for the desktop UI.",
   "settings.general.uiZoom.title": "UI zoom",
-  "settings.general.uiZoom.description": "Scale the workbench, editor, menus, and result grid together.",
+  "settings.general.uiZoom.description":
+    "Scale the workbench, editor, menus, and result grid together.",
   "settings.general.uiZoom.zoomIn": "Zoom in",
   "settings.general.uiZoom.zoomOut": "Zoom out",
   "settings.general.uiZoom.reset": "Reset zoom",
@@ -48,43 +51,59 @@ export const en = {
   "settings.general.editorMode.default": "Default",
   "settings.general.editorMode.vim": "Vim",
   "settings.general.editorBackground.title": "Editor background image",
-  "settings.general.editorBackground.description": "Optional faint image shown behind the SQL editor. Empty means no image.",
+  "settings.general.editorBackground.description":
+    "Optional faint image shown behind the SQL editor. Empty means no image.",
   "settings.general.editorBackground.placeholder": "Image URL or data URL",
   "settings.general.editorBackground.choose": "Choose",
   "settings.general.editorBackground.opacity": "Background image opacity",
   "settings.general.animations.title": "Animations",
-  "settings.general.animations.description": "Use short transitions for menus, panes, and controls. Reduced-motion system settings are still respected.",
+  "settings.general.animations.description":
+    "Use short transitions for menus, panes, and controls. Reduced-motion system settings are still respected.",
   "settings.general.autoCommit.title": "Auto Commit",
-  "settings.general.autoCommit.description": "Commit each statement automatically after it runs.",
+  "settings.general.autoCommit.description":
+    "Commit each statement automatically after it runs.",
   "settings.general.formatter.title": "SQL formatter",
-  "settings.general.formatter.description": "Formatter used by the toolbar and keybinding.",
+  "settings.general.formatter.description":
+    "Formatter used by the toolbar and keybinding.",
   "settings.general.linter.title": "SQL linter",
-  "settings.general.linter.description": "Gentle syntax and high-risk statement checks.",
+  "settings.general.linter.description":
+    "Gentle syntax and high-risk statement checks.",
   "settings.general.resultOffload.title": "Result offload",
-  "settings.general.resultOffload.description": "Page large result sets from disk instead of capping in RAM.",
+  "settings.general.resultOffload.description":
+    "Page large result sets from disk instead of capping in RAM.",
   "settings.general.residentRows.title": "Resident rows",
-  "settings.general.residentRows.description": "Rows kept in memory before the disk-backed result takes over.",
+  "settings.general.residentRows.description":
+    "Rows kept in memory before the disk-backed result takes over.",
   "settings.general.queryHistory.title": "Query history",
-  "settings.general.queryHistory.description": "Number of query runs retained locally. Set to 0 to disable history.",
+  "settings.general.queryHistory.description":
+    "Number of query runs retained locally. Set to 0 to disable history.",
   "settings.general.historyRows.title": "History result rows",
-  "settings.general.historyRows.description": "Rows saved with each successful query. Set to 0 to keep SQL only.",
+  "settings.general.historyRows.description":
+    "Rows saved with each successful query. Set to 0 to keep SQL only.",
   "settings.general.sidebar.title": "Sidebar",
-  "settings.general.sidebar.description": "Object browser and connection switcher.",
+  "settings.general.sidebar.description":
+    "Object browser and connection switcher.",
   "settings.general.sidebarSide.title": "Sidebar position",
-  "settings.general.sidebarSide.description": "Choose the side used by the primary database sidebar.",
+  "settings.general.sidebarSide.description":
+    "Choose the side used by the primary database sidebar.",
   "settings.general.sidebarSide.left": "Left",
   "settings.general.sidebarSide.right": "Right",
   "settings.general.completionSide.title": "Completion pane",
-  "settings.general.completionSide.description": "Choose where completion and metadata suggestions appear.",
+  "settings.general.completionSide.description":
+    "Choose where completion and metadata suggestions appear.",
   "settings.general.historySide.title": "History pane",
-  "settings.general.historySide.description": "Choose where searchable query history appears.",
+  "settings.general.historySide.description":
+    "Choose where searchable query history appears.",
   "settings.theme.colorMode.title": "Color mode",
   "settings.theme.colorMode.customDescription": "Using custom: {name}",
-  "settings.theme.colorMode.builtinDescription": "Follow the system theme unless a fixed mode is selected.",
+  "settings.theme.colorMode.builtinDescription":
+    "Follow the system theme unless a fixed mode is selected.",
   "settings.theme.defaultThemes.title": "Default themes",
-  "settings.theme.defaultThemes.description": "Choose from curated built-in themes stored as JSON definitions.",
+  "settings.theme.defaultThemes.description":
+    "Choose from curated built-in themes stored as JSON definitions.",
   "settings.theme.savedThemes.title": "Saved themes",
-  "settings.theme.savedThemes.description": "Choose a custom theme imported through Settings JSON.",
+  "settings.theme.savedThemes.description":
+    "Choose a custom theme imported through Settings JSON.",
   "settings.theme.savedThemes.builtin": "Built-in theme",
   "settings.theme.activeTheme.title": "Active theme",
   "settings.theme.activeTheme.customDescription": "Custom theme: {name}",
@@ -92,17 +111,20 @@ export const en = {
   "settings.theme.activeTheme.builtinDescription": "Built-in {kind} theme",
   "settings.theme.activeTheme.useBuiltin": "Use Built-in",
   "settings.theme.importThemes.title": "Import themes",
-  "settings.theme.importThemes.description": "Paste an Irodori or VS Code theme in the JSON section to save it here.",
+  "settings.theme.importThemes.description":
+    "Paste an Irodori or VS Code theme in the JSON section to save it here.",
   "settings.theme.importThemes.openJson": "Open JSON",
   "settings.keymap.runTitle": "Run: {title}",
-  "settings.keymap.recordingTitle": "Press one or two chords for the new shortcut",
+  "settings.keymap.recordingTitle":
+    "Press one or two chords for the new shortcut",
   "settings.keymap.conflictTitle": "Shortcut conflict - click to rebind",
   "settings.keymap.rebindTitle": "Click to rebind",
   "settings.keymap.recordingLabel": "Press keys...",
   "settings.keymap.unset": "unset",
   "settings.keymap.resetTitle": "Reset to default",
   "settings.keymap.vim.title": "Vim shortcut adjustments",
-  "settings.keymap.vim.clipboard": "Editor copy uses {copy}; paste uses {paste}.",
+  "settings.keymap.vim.clipboard":
+    "Editor copy uses {copy}; paste uses {paste}.",
   "settings.keymap.vim.applyRecommended": "Apply Recommended",
   "settings.keymap.vim.applySelected": "Apply Selected",
   "settings.keymap.vim.moveTo": "Move to {shortcut}",
@@ -110,12 +132,15 @@ export const en = {
   "settings.keymap.vim.keep": "Keep current",
   "settings.keymap.vim.noConflicts": "No app shortcuts conflict with Vim mode.",
   "settings.snippets.title": "SQL Snippets",
-  "settings.snippets.description": "Completion triggers can use CodeMirror snippet placeholders such as {first} and {final}.",
+  "settings.snippets.description":
+    "Completion triggers can use CodeMirror snippet placeholders such as {first} and {final}.",
   "settings.snippets.resetDefaults": "Reset defaults",
   "settings.snippets.add": "Add snippet",
   "settings.snippets.importTitle": "Import snippets",
-  "settings.snippets.importDescription": "Paste JSON or YAML. Accepts an array, snippets, or editor.snippets. Use schemaVersion: 1 for versioned imports.",
-  "settings.snippets.importPlaceholder": "schemaVersion: 1\nsnippets:\n  - label: delop_sf\n    detail: Snowflake delete operation\n    scope: statement\n    engines: [snowflake]\n    template: |\n      delete from ${1:table}\n      where ${2:condition};\n      ${0}",
+  "settings.snippets.importDescription":
+    "Paste JSON or YAML. Accepts an array, snippets, or editor.snippets. Use schemaVersion: 1 for versioned imports.",
+  "settings.snippets.importPlaceholder":
+    "schemaVersion: 1\nsnippets:\n  - label: delop_sf\n    detail: Snowflake delete operation\n    scope: statement\n    engines: [snowflake]\n    template: |\n      delete from ${1:table}\n      where ${2:condition};\n      ${0}",
   "settings.snippets.importFile": "Import file",
   "settings.snippets.importMerge": "Merge import",
   "settings.snippets.importReplace": "Replace",
@@ -139,7 +164,8 @@ export const en = {
   "settings.extensions.noMatches": "No marketplace extensions match the search",
   "settings.extensions.noRecommended": "No recommended extensions",
   "settings.jobs.title": "Background Jobs",
-  "settings.jobs.description": "Active and recent local work tracked by the shared job runtime.",
+  "settings.jobs.description":
+    "Active and recent local work tracked by the shared job runtime.",
   "settings.jobs.active": "Active",
   "settings.jobs.history": "History",
   "settings.jobs.attempt": "Attempt {attempt}",
@@ -148,7 +174,8 @@ export const en = {
   "settings.jobs.noActive": "No active jobs",
   "settings.jobs.noFinished": "No finished jobs",
   "settings.json.title": "Settings JSON",
-  "settings.json.description": "Edits apply to theme JSON, editor, layout, keymap, and saved connections.",
+  "settings.json.description":
+    "Edits apply to theme JSON, editor, layout, keymap, and saved connections.",
   "settings.json.resetFromCurrent": "Reset from current",
   "settings.json.apply": "Apply JSON",
   "errors.unknown": "Something went wrong",

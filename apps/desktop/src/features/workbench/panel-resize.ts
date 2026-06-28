@@ -194,7 +194,10 @@ export function createPanelResizeController({
     }
     if (kind === "sidebar" || kind === "rightSidebar") {
       const direction = kind === "rightSidebar" ? -1 : 1;
-      resizePanel(kind, (event.key === "ArrowRight" ? step : -step) * direction);
+      resizePanel(
+        kind,
+        (event.key === "ArrowRight" ? step : -step) * direction,
+      );
       return;
     }
     if (kind === "leftInspector") {

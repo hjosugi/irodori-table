@@ -30,7 +30,9 @@ export const useSearchStore = create<SearchState>((set) => ({
   setQuery: (value) => set({ query: value }),
   setReplacement: (value) => set({ replacement: value }),
   toggleOption: (key) =>
-    set((state) => ({ options: { ...state.options, [key]: !state.options[key] } })),
+    set((state) => ({
+      options: { ...state.options, [key]: !state.options[key] },
+    })),
   setShowReplace: (value) => set({ showReplace: value }),
   openWith: (query) =>
     set((state) => ({

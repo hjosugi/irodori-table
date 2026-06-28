@@ -56,7 +56,9 @@ describe("migration studio plan generation", () => {
     expect(plan.warnings).toContain(
       "A stable business key is required for row-level diff.",
     );
-    expect(plan.diffSql).toContain("Row-level diff needs a stable business key");
+    expect(plan.diffSql).toContain(
+      "Row-level diff needs a stable business key",
+    );
   });
 
   it("builds a DuckDB-backed Iceberg/S3 Tables plan", () => {
@@ -73,13 +75,21 @@ describe("migration studio plan generation", () => {
 
     expect(plan.sourceSql).toContain("INSTALL iceberg");
     expect(plan.sourceSql).toContain("ATTACH '${ICEBERG_WAREHOUSE}'");
-    expect(plan.sourceSql).toContain("DuckDB-Wasm runs this shape inside a browser tab");
-    expect(plan.targetSql).toContain("CREATE OR REPLACE TABLE irodori_iceberg.analytics.orders AS");
-    expect(plan.targetSql).toContain("read_parquet('${EXPORT_PATH}/*.parquet')");
+    expect(plan.sourceSql).toContain(
+      "DuckDB-Wasm runs this shape inside a browser tab",
+    );
+    expect(plan.targetSql).toContain(
+      "CREATE OR REPLACE TABLE irodori_iceberg.analytics.orders AS",
+    );
+    expect(plan.targetSql).toContain(
+      "read_parquet('${EXPORT_PATH}/*.parquet')",
+    );
     expect(plan.warnings).toContain(
       "Browser DuckDB/Iceberg flows must keep credentials out of shareable URLs and exported runbooks.",
     );
-    expect(plan.pairNotes.join("\n")).toContain("client-is-the-server compute layer");
+    expect(plan.pairNotes.join("\n")).toContain(
+      "client-is-the-server compute layer",
+    );
   });
 
   it("parses comma and newline column lists with case-insensitive de-dupe", () => {

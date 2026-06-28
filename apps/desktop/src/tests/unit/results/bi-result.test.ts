@@ -31,7 +31,9 @@ describe("BI result summary", () => {
       elapsedLabel: "42 ms",
       statusLabel: "current result",
     });
-    expect(summary?.profiles.map((profile) => [profile.name, profile.role])).toEqual([
+    expect(
+      summary?.profiles.map((profile) => [profile.name, profile.role]),
+    ).toEqual([
       ["day", "time"],
       ["region", "dimension"],
       ["revenue", "measure"],

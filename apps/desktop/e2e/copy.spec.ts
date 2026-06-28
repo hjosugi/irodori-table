@@ -186,17 +186,24 @@ async function connectAndRun(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
   await page.locator(".cm-content").click();
   await page.keyboard.type("select * from customers");
   await page.getByRole("button", { name: "Run Current", exact: true }).click();
-  await page.waitForFunction(() => (window.__IRODORI_COPY_DONE_COUNT__ ?? 0) >= 1);
+  await page.waitForFunction(
+    () => (window.__IRODORI_COPY_DONE_COUNT__ ?? 0) >= 1,
+  );
   await expect(page.locator(".statusbar")).toContainText("idle");
   await expect(page.locator(".results-title")).toContainText("2 rows");
 }

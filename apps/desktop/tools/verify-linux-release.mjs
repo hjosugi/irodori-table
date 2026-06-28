@@ -10,7 +10,12 @@ const repoRoot = resolve(desktopRoot, "../..");
 
 const options = parseArgs(process.argv.slice(2));
 const profile = options.debug ? "debug" : "release";
-const bundleDir = resolve(repoRoot, ".irodori-local/target", profile, "bundle/appimage");
+const bundleDir = resolve(
+  repoRoot,
+  ".irodori-local/target",
+  profile,
+  "bundle/appimage",
+);
 const appImage = await newestAppImage(bundleDir);
 
 if (!appImage) {
@@ -42,7 +47,9 @@ async function verifyAppImage(file, version) {
     fail(`AppImage is not executable: ${file}`);
   });
   if (!file.includes(version)) {
-    fail(`AppImage filename does not include package version ${version}: ${file}`);
+    fail(
+      `AppImage filename does not include package version ${version}: ${file}`,
+    );
   }
 
   const handle = await open(file, "r");
@@ -52,7 +59,12 @@ async function verifyAppImage(file, version) {
   } finally {
     await handle.close();
   }
-  if (header[0] !== 0x7f || header[1] !== 0x45 || header[2] !== 0x4c || header[3] !== 0x46) {
+  if (
+    header[0] !== 0x7f ||
+    header[1] !== 0x45 ||
+    header[2] !== 0x4c ||
+    header[3] !== 0x46
+  ) {
     fail(`AppImage is not an ELF executable: ${file}`);
   }
 
@@ -62,7 +74,11 @@ async function verifyAppImage(file, version) {
 }
 
 async function runAppImageHelp(file) {
-  const { code, output } = await runWithTimeout(file, ["--appimage-help"], 10_000);
+  const { code, output } = await runWithTimeout(
+    file,
+    ["--appimage-help"],
+    10_000,
+  );
   if (code !== 0) {
     fail(`AppImage --appimage-help exited ${code}: ${output.trim()}`);
   }

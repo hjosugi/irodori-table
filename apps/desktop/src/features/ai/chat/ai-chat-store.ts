@@ -58,109 +58,109 @@ function patchTurn(
 export const useAiChatStore = create<AiChatState>()(
   persist(
     (set, get) => ({
-  turns: [],
-  input: "",
-  agentMode: true,
-  activeSessionId: null,
-
-  setInput: (value) => set({ input: value }),
-  setAgentMode: (value) => set({ agentMode: value }),
-  clear: () => set({ turns: [], activeSessionId: null }),
-
-  dropLastAssistant: () => {
-    const turns = get().turns;
-    let lastAssistant = -1;
-    for (let i = turns.length - 1; i >= 0; i--) {
-      if (turns[i].role === "assistant") {
-        lastAssistant = i;
-        break;
-      }
-    }
-    if (lastAssistant === -1) return null;
-    let user: string | null = null;
-    for (let i = lastAssistant - 1; i >= 0; i--) {
-      if (turns[i].role === "user") {
-        user = turns[i].content;
-        break;
-      }
-    }
-    set({ turns: turns.slice(0, lastAssistant), activeSessionId: null });
-    return user;
-  },
-
-  pushUser: (content) =>
-    set((state) => ({
-      turns: [
-        ...state.turns,
-        {
-          id: `u-${state.turns.length}-${content.length}`,
-          role: "user",
-          content,
-          results: [],
-          steps: [],
-          errors: [],
-          streaming: false,
-        },
-      ],
-    })),
-
-  startAssistant: (id, sessionId) =>
-    set((state) => ({
-      activeSessionId: sessionId,
-      turns: [
-        ...state.turns,
-        {
-          id,
-          role: "assistant",
-          content: "",
-          results: [],
-          steps: [],
-          errors: [],
-          streaming: true,
-        },
-      ],
-    })),
-
-  appendToken: (id, text) =>
-    set((state) => ({
-      turns: patchTurn(state.turns, id, (turn) => ({
-        ...turn,
-        content: turn.content + text,
-      })),
-    })),
-
-  addResult: (id, result) =>
-    set((state) => ({
-      turns: patchTurn(state.turns, id, (turn) => ({
-        ...turn,
-        results: [...turn.results, result],
-      })),
-    })),
-
-  addStep: (id, message) =>
-    set((state) => ({
-      turns: patchTurn(state.turns, id, (turn) => ({
-        ...turn,
-        steps: [...turn.steps, message],
-      })),
-    })),
-
-  addError: (id, message) =>
-    set((state) => ({
-      turns: patchTurn(state.turns, id, (turn) => ({
-        ...turn,
-        errors: [...turn.errors, message],
-      })),
-    })),
-
-  finishAssistant: (id) =>
-    set((state) => ({
+      turns: [],
+      input: "",
+      agentMode: true,
       activeSessionId: null,
-      turns: patchTurn(state.turns, id, (turn) => ({
-        ...turn,
-        streaming: false,
-      })),
-    })),
+
+      setInput: (value) => set({ input: value }),
+      setAgentMode: (value) => set({ agentMode: value }),
+      clear: () => set({ turns: [], activeSessionId: null }),
+
+      dropLastAssistant: () => {
+        const turns = get().turns;
+        let lastAssistant = -1;
+        for (let i = turns.length - 1; i >= 0; i--) {
+          if (turns[i].role === "assistant") {
+            lastAssistant = i;
+            break;
+          }
+        }
+        if (lastAssistant === -1) return null;
+        let user: string | null = null;
+        for (let i = lastAssistant - 1; i >= 0; i--) {
+          if (turns[i].role === "user") {
+            user = turns[i].content;
+            break;
+          }
+        }
+        set({ turns: turns.slice(0, lastAssistant), activeSessionId: null });
+        return user;
+      },
+
+      pushUser: (content) =>
+        set((state) => ({
+          turns: [
+            ...state.turns,
+            {
+              id: `u-${state.turns.length}-${content.length}`,
+              role: "user",
+              content,
+              results: [],
+              steps: [],
+              errors: [],
+              streaming: false,
+            },
+          ],
+        })),
+
+      startAssistant: (id, sessionId) =>
+        set((state) => ({
+          activeSessionId: sessionId,
+          turns: [
+            ...state.turns,
+            {
+              id,
+              role: "assistant",
+              content: "",
+              results: [],
+              steps: [],
+              errors: [],
+              streaming: true,
+            },
+          ],
+        })),
+
+      appendToken: (id, text) =>
+        set((state) => ({
+          turns: patchTurn(state.turns, id, (turn) => ({
+            ...turn,
+            content: turn.content + text,
+          })),
+        })),
+
+      addResult: (id, result) =>
+        set((state) => ({
+          turns: patchTurn(state.turns, id, (turn) => ({
+            ...turn,
+            results: [...turn.results, result],
+          })),
+        })),
+
+      addStep: (id, message) =>
+        set((state) => ({
+          turns: patchTurn(state.turns, id, (turn) => ({
+            ...turn,
+            steps: [...turn.steps, message],
+          })),
+        })),
+
+      addError: (id, message) =>
+        set((state) => ({
+          turns: patchTurn(state.turns, id, (turn) => ({
+            ...turn,
+            errors: [...turn.errors, message],
+          })),
+        })),
+
+      finishAssistant: (id) =>
+        set((state) => ({
+          activeSessionId: null,
+          turns: patchTurn(state.turns, id, (turn) => ({
+            ...turn,
+            streaming: false,
+          })),
+        })),
     }),
     {
       name: "irodori.aichat.v1",
@@ -171,7 +171,10 @@ export const useAiChatStore = create<AiChatState>()(
         turns: state.turns.map((turn) => ({
           ...turn,
           streaming: false,
-          results: turn.results.map((r) => ({ ...r, rows: r.rows.slice(0, 20) })),
+          results: turn.results.map((r) => ({
+            ...r,
+            rows: r.rows.slice(0, 20),
+          })),
         })),
       }),
       merge: (persisted, current) => ({

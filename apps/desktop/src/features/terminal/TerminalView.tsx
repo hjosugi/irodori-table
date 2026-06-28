@@ -3,7 +3,13 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { ptyKill, ptyResize, ptySpawn, ptyWrite, type PtyEvent } from "@/lib/tauri/pty";
+import {
+  ptyKill,
+  ptyResize,
+  ptySpawn,
+  ptyWrite,
+  type PtyEvent,
+} from "@/lib/tauri/pty";
 
 function decodeBase64(value: string): Uint8Array {
   const binary = atob(value);
@@ -15,7 +21,10 @@ function decodeBase64(value: string): Uint8Array {
 }
 
 /** Derive the xterm palette from the app's theme CSS variables (light/dark/custom). */
-function readXtermTheme(el: HTMLElement): { background: string; foreground: string } {
+function readXtermTheme(el: HTMLElement): {
+  background: string;
+  foreground: string;
+} {
   const styles = getComputedStyle(el);
   const background = styles.getPropertyValue("--editor-bg").trim() || "#1a1b1e";
   const foreground = styles.getPropertyValue("--text").trim() || "#e6e6e6";
@@ -58,7 +67,8 @@ export function TerminalView({ active }: { active: boolean }) {
     fitRef.current = fit;
 
     // Keep the palette in sync when the app theme changes.
-    const themeRoot = container.closest<HTMLElement>(".app-root") ?? document.documentElement;
+    const themeRoot =
+      container.closest<HTMLElement>(".app-root") ?? document.documentElement;
     const themeObserver = new MutationObserver(() => {
       term.options.theme = readXtermTheme(container);
     });

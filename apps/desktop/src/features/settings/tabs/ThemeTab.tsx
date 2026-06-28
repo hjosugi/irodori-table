@@ -88,16 +88,12 @@ export function ThemeTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.theme.defaultThemes.title")}</strong>
-          <small>
-            {t("settings.theme.defaultThemes.description")}
-          </small>
+          <small>{t("settings.theme.defaultThemes.description")}</small>
         </span>
         <select
           value={activeDefaultThemeId ?? ""}
           onChange={(event) =>
-            setActiveDefaultThemeId(
-              event.currentTarget.value || null,
-            )
+            setActiveDefaultThemeId(event.currentTarget.value || null)
           }
         >
           {defaultThemeEntries.map((theme) => (
@@ -110,9 +106,7 @@ export function ThemeTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.theme.savedThemes.title")}</strong>
-          <small>
-            {t("settings.theme.savedThemes.description")}
-          </small>
+          <small>{t("settings.theme.savedThemes.description")}</small>
         </span>
         <select
           value={activeCustomThemeId ?? ""}
@@ -120,9 +114,7 @@ export function ThemeTab({
             setActiveCustomThemeId(event.currentTarget.value || null)
           }
         >
-          <option value="">
-            {t("settings.theme.savedThemes.builtin")}
-          </option>
+          <option value="">{t("settings.theme.savedThemes.builtin")}</option>
           {customThemes.map((theme) => (
             <option key={theme.id} value={theme.id}>
               {theme.name}
@@ -142,9 +134,9 @@ export function ThemeTab({
                 ? t("settings.theme.activeTheme.builtinNameDescription", {
                     name: activeDefaultThemeName,
                   })
-              : t("settings.theme.activeTheme.builtinDescription", {
-                  kind: themeKind,
-                })}
+                : t("settings.theme.activeTheme.builtinDescription", {
+                    kind: themeKind,
+                  })}
           </small>
         </span>
         {activeCustomThemeName ? (
@@ -160,9 +152,7 @@ export function ThemeTab({
       <div className="settings-row">
         <span>
           <strong>{t("settings.theme.importThemes.title")}</strong>
-          <small>
-            {t("settings.theme.importThemes.description")}
-          </small>
+          <small>{t("settings.theme.importThemes.description")}</small>
         </span>
         <button
           className="text-button"

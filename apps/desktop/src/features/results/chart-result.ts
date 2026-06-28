@@ -123,9 +123,13 @@ export function buildChartResultSeries(
   selection: ChartResultSelection,
 ): ChartResultSeries {
   const yColumn =
-    selection.yColumnIndex === null ? null : model.columns[selection.yColumnIndex];
+    selection.yColumnIndex === null
+      ? null
+      : model.columns[selection.yColumnIndex];
   const xColumn =
-    selection.xColumnIndex === null ? null : model.columns[selection.xColumnIndex];
+    selection.xColumnIndex === null
+      ? null
+      : model.columns[selection.xColumnIndex];
   const rawPoints =
     selection.kind === "scatter"
       ? buildScatterPoints(model, selection, xColumn)
@@ -137,8 +141,14 @@ export function buildChartResultSeries(
     : sortedPoints;
   const limit = clampLimit(selection.limit);
   const limitedPoints = points.slice(0, limit);
-  const xDomain = domain(limitedPoints.map((point) => point.x), selection.kind !== "scatter");
-  const yDomain = domain(limitedPoints.map((point) => point.y), true);
+  const xDomain = domain(
+    limitedPoints.map((point) => point.x),
+    selection.kind !== "scatter",
+  );
+  const yDomain = domain(
+    limitedPoints.map((point) => point.y),
+    true,
+  );
   return {
     kind: selection.kind,
     aggregation: selection.aggregation,
@@ -159,9 +169,13 @@ export function chartSelectionIsValid(
     return false;
   }
   const yColumn =
-    selection.yColumnIndex === null ? null : model.columns[selection.yColumnIndex];
+    selection.yColumnIndex === null
+      ? null
+      : model.columns[selection.yColumnIndex];
   const xColumn =
-    selection.xColumnIndex === null ? null : model.columns[selection.xColumnIndex];
+    selection.xColumnIndex === null
+      ? null
+      : model.columns[selection.xColumnIndex];
   if (selection.xColumnIndex !== null && !xColumn) {
     return false;
   }
@@ -174,7 +188,10 @@ export function chartSelectionIsValid(
     }
     return true;
   }
-  if (selection.aggregation !== "count" && (!yColumn || yColumn.kind !== "number")) {
+  if (
+    selection.aggregation !== "count" &&
+    (!yColumn || yColumn.kind !== "number")
+  ) {
     return false;
   }
   return true;
@@ -237,7 +254,9 @@ function parseTimestamp(value: unknown): number | null {
   const text = value.trim();
   if (
     !text ||
-    !/[/-]|T|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(text)
+    !/[/-]|T|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(
+      text,
+    )
   ) {
     return null;
   }
@@ -328,7 +347,9 @@ function buildScatterPoints(
     return [
       {
         key: String(rowIndex),
-        label: xColumn ? row.cells[xColumn.index]?.label || String(rowIndex + 1) : String(rowIndex + 1),
+        label: xColumn
+          ? row.cells[xColumn.index]?.label || String(rowIndex + 1)
+          : String(rowIndex + 1),
         x,
         y,
       },
@@ -378,7 +399,9 @@ function buildGroupedPoints(
     const xCell = row.cells[xColumn.index];
     const label = xCell?.label || "(blank)";
     const sortValue =
-      xColumn.kind === "date" && xCell?.timestamp !== null && xCell?.timestamp !== undefined
+      xColumn.kind === "date" &&
+      xCell?.timestamp !== null &&
+      xCell?.timestamp !== undefined
         ? xCell.timestamp
         : groups.size;
     const current = groups.get(label);
@@ -455,7 +478,9 @@ function sortChartPoints(
       sorted.sort((left, right) => left.y - right.y);
       break;
     default:
-      sorted.sort((left, right) => (left.sourceIndex ?? 0) - (right.sourceIndex ?? 0));
+      sorted.sort(
+        (left, right) => (left.sourceIndex ?? 0) - (right.sourceIndex ?? 0),
+      );
       break;
   }
   return sorted.map(({ sourceIndex: _sourceIndex, ...point }) => point);
@@ -485,7 +510,10 @@ function clampLimit(value: number) {
   return Math.min(maxSeriesPoints, Math.max(1, Math.floor(value)));
 }
 
-function domain(values: readonly number[], includeZero: boolean): [number, number] {
+function domain(
+  values: readonly number[],
+  includeZero: boolean,
+): [number, number] {
   const finite = values.filter(Number.isFinite);
   if (finite.length === 0) {
     return includeZero ? [0, 1] : [0, 1];

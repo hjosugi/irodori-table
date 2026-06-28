@@ -11,7 +11,9 @@ export function isVectorEngine(engine: DbEngine) {
   return engine === "qdrant" || engine === "milvus" || engine === "pinecone";
 }
 
-export function vectorHelperTemplates(engine: DbEngine): VectorHelperTemplate[] {
+export function vectorHelperTemplates(
+  engine: DbEngine,
+): VectorHelperTemplate[] {
   switch (engine) {
     case "qdrant":
       return [

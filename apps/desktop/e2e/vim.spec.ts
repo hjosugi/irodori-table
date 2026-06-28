@@ -55,21 +55,24 @@ test("Vim mode handles insert, normal-mode delete, and cleanly toggles off", asy
     .click();
   await expect(page.locator(".cm-vimMode")).toBeVisible();
 
-  await content.locator(".cm-line").first().click({ position: { x: 1, y: 8 } });
+  await content
+    .locator(".cm-line")
+    .first()
+    .click({ position: { x: 1, y: 8 } });
   await page.keyboard.press("Escape");
   await page.keyboard.press("i");
   await page.keyboard.type("-- inserted in vim\n");
-  await expect.poll(() => editorText(page)).toBe(
-    "-- inserted in vim\nselect alpha;\nselect beta;\nselect gamma;",
-  );
+  await expect
+    .poll(() => editorText(page))
+    .toBe("-- inserted in vim\nselect alpha;\nselect beta;\nselect gamma;");
 
   await page.keyboard.press("Escape");
   await page.keyboard.press("j");
   await page.keyboard.press("d");
   await page.keyboard.press("d");
-  await expect.poll(() => editorText(page)).toBe(
-    "-- inserted in vim\nselect alpha;\nselect gamma;",
-  );
+  await expect
+    .poll(() => editorText(page))
+    .toBe("-- inserted in vim\nselect alpha;\nselect gamma;");
 
   await openSettings(page);
   await expect(settingsDialog).toBeVisible();

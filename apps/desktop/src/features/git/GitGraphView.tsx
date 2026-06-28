@@ -82,13 +82,20 @@ function GraphSvg({ row }: { row: GitGraphRow }) {
           />
         ),
       )}
-      <circle cx={commitX} cy={midY} r="4.6" style={{ fill: laneColor(row.lane) }} />
+      <circle
+        cx={commitX}
+        cy={midY}
+        r="4.6"
+        style={{ fill: laneColor(row.lane) }}
+      />
     </svg>
   );
 }
 
 function RefBadge({ refName }: { refName: string }) {
-  return <em className={`git-ref-badge ${refKind(refName)}`}>{refLabel(refName)}</em>;
+  return (
+    <em className={`git-ref-badge ${refKind(refName)}`}>{refLabel(refName)}</em>
+  );
 }
 
 const GraphCommitRow = memo(function GraphCommitRow({
@@ -135,7 +142,9 @@ const GraphCommitRow = memo(function GraphCommitRow({
           ) : null}
         </span>
       </span>
-      <span className="git-graph-date">{formatCommitTime(commit.timestampSeconds)}</span>
+      <span className="git-graph-date">
+        {formatCommitTime(commit.timestampSeconds)}
+      </span>
       <span className="git-graph-author">{commit.author}</span>
       <code className="git-graph-hash">{commit.shortHash}</code>
     </button>
@@ -357,7 +366,9 @@ export function GitGraphView({
       <div className="git-graph-toolbar">
         <div className="git-section-title">
           <strong>Git Graph</strong>
-          <span>{filteredCommits.length}/{commits.length}</span>
+          <span>
+            {filteredCommits.length}/{commits.length}
+          </span>
         </div>
         <label className="git-graph-filter">
           <span>Branches:</span>
@@ -432,7 +443,9 @@ export function GitGraphView({
               >
                 <div
                   className="git-graph-virtual-rows"
-                  style={{ transform: `translateY(${virtualWindow.offsetTop}px)` }}
+                  style={{
+                    transform: `translateY(${virtualWindow.offsetTop}px)`,
+                  }}
                 >
                   {virtualWindow.rows.map((row, index) => {
                     const rowIndex = virtualWindow.startIndex + index;

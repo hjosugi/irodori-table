@@ -40,7 +40,10 @@ function escapeRegExp(value: string): string {
  * Compile the query into a global RegExp honoring the options, or return null if
  * the query is empty or an invalid regex.
  */
-export function buildPattern(query: string, opts: SearchOptions): RegExp | null {
+export function buildPattern(
+  query: string,
+  opts: SearchOptions,
+): RegExp | null {
   if (!query) return null;
   let source = opts.useRegex ? query : escapeRegExp(query);
   if (opts.wholeWord) {
@@ -100,7 +103,8 @@ export function findMatches(
     const start = m.index;
     const lineIdx = lineIndexAt(starts, start);
     const lineStart = starts[lineIdx];
-    const lineEnd = lineIdx + 1 < starts.length ? starts[lineIdx + 1] - 1 : text.length;
+    const lineEnd =
+      lineIdx + 1 < starts.length ? starts[lineIdx + 1] - 1 : text.length;
     matches.push({
       start,
       end: start + m[0].length,
@@ -114,7 +118,11 @@ export function findMatches(
 }
 
 /** Count of matches without materializing them. */
-export function countMatches(text: string, query: string, opts: SearchOptions): number {
+export function countMatches(
+  text: string,
+  query: string,
+  opts: SearchOptions,
+): number {
   const re = buildPattern(query, opts);
   if (!re) return 0;
   const found = text.match(re);
@@ -141,7 +149,9 @@ export function replaceAllInText(
   const next = text.replace(re, (matched: string, ...rest: unknown[]) => {
     if (matched === "") return matched;
     count += 1;
-    return opts.useRegex ? expandGroups(replacement, matched, rest) : replacement;
+    return opts.useRegex
+      ? expandGroups(replacement, matched, rest)
+      : replacement;
   });
   return { text: next, count };
 }
@@ -169,7 +179,11 @@ export function replaceMatchAt(
 }
 
 /** Expand `$1`..`$9`, `$&`, `$$` in a regex replacement string. */
-function expandGroups(replacement: string, matched: string, groups: unknown[]): string {
+function expandGroups(
+  replacement: string,
+  matched: string,
+  groups: unknown[],
+): string {
   return replacement.replace(/\$(\$|&|\d{1,2})/g, (_token, ref: string) => {
     if (ref === "$") return "$";
     if (ref === "&") return matched;

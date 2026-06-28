@@ -56,7 +56,9 @@ describe("schema designer SQL", () => {
     expect(sql).toContain(
       'CONSTRAINT "fk_orders_customer_id" FOREIGN KEY ("customer_id") REFERENCES "public"."customers" ("id") ON DELETE CASCADE',
     );
-    expect(sql).toContain('CREATE INDEX "idx_orders_customer_id" ON "public"."orders" ("customer_id");');
+    expect(sql).toContain(
+      'CREATE INDEX "idx_orders_customer_id" ON "public"."orders" ("customer_id");',
+    );
   });
 
   it("builds alter SQL only for newly added items", () => {
@@ -93,7 +95,9 @@ describe("schema designer SQL", () => {
     });
 
     const sql = buildSchemaSql(draft);
-    expect(sql).toContain('ALTER TABLE "public"."customers" ADD COLUMN "email" TEXT;');
+    expect(sql).toContain(
+      'ALTER TABLE "public"."customers" ADD COLUMN "email" TEXT;',
+    );
     expect(sql).toContain(
       'CREATE UNIQUE INDEX "idx_customers_email" ON "public"."customers" ("email");',
     );
@@ -142,7 +146,10 @@ describe("schema designer SQL", () => {
   it("returns a placeholder when alter mode has no additions", () => {
     const draft = blankSchemaDraft();
     draft.mode = "alter";
-    draft.columns = draft.columns.map((column) => ({ ...column, existing: true }));
+    draft.columns = draft.columns.map((column) => ({
+      ...column,
+      existing: true,
+    }));
     expect(buildSchemaSql(draft)).toBe(
       "-- Add a new column, index, or foreign key to generate ALTER SQL.\n",
     );

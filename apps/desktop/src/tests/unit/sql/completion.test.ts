@@ -80,7 +80,9 @@ const metadata: DatabaseMetadata = {
 
 function withCursor(sql: string): { doc: string; pos: number } {
   const pos = sql.indexOf("|");
-  return pos >= 0 ? { doc: sql.replace("|", ""), pos } : { doc: sql, pos: sql.length };
+  return pos >= 0
+    ? { doc: sql.replace("|", ""), pos }
+    : { doc: sql, pos: sql.length };
 }
 
 function complete(sql: string, explicit = false): readonly Completion[] {
@@ -137,10 +139,15 @@ function labels(sql: string, explicit = false): string[] {
 }
 
 function applies(sql: string, explicit = false): string[] {
-  return complete(sql, explicit).map((option) => String(option.apply ?? option.label));
+  return complete(sql, explicit).map((option) =>
+    String(option.apply ?? option.label),
+  );
 }
 
-function appliesWithMetadata(sql: string, completionMetadata: DatabaseMetadata): string[] {
+function appliesWithMetadata(
+  sql: string,
+  completionMetadata: DatabaseMetadata,
+): string[] {
   return completeWithMetadata(sql, completionMetadata).map((option) =>
     String(option.apply ?? option.label),
   );
@@ -249,15 +256,21 @@ const engineCompletionFixtures: EngineCompletionFixture[] = [
   },
 ];
 
-function labelsForEngine(sql: string, fixture: EngineCompletionFixture): string[] {
+function labelsForEngine(
+  sql: string,
+  fixture: EngineCompletionFixture,
+): string[] {
   return completeWithEngine(sql, fixture.metadata, fixture.engine).map(
     (option) => option.label,
   );
 }
 
-function appliesForEngine(sql: string, fixture: EngineCompletionFixture): string[] {
-  return completeWithEngine(sql, fixture.metadata, fixture.engine).map((option) =>
-    String(option.apply ?? option.label),
+function appliesForEngine(
+  sql: string,
+  fixture: EngineCompletionFixture,
+): string[] {
+  return completeWithEngine(sql, fixture.metadata, fixture.engine).map(
+    (option) => String(option.apply ?? option.label),
   );
 }
 
@@ -317,14 +330,17 @@ describe("completeSqlLightweight", () => {
       ],
     };
 
-    expect(appliesWithMetadata("select * from cust", duplicateMetadata)).toEqual([
-      "public.customers",
-      "sales.customers",
-    ]);
+    expect(
+      appliesWithMetadata("select * from cust", duplicateMetadata),
+    ).toEqual(["public.customers", "sales.customers"]);
   });
 
   it("suggests columns after aliases without keywords or tables", () => {
-    expect(labels("select c.| from customers c")).toEqual(["id", "name", "email"]);
+    expect(labels("select c.| from customers c")).toEqual([
+      "id",
+      "name",
+      "email",
+    ]);
   });
 
   it("qualifies unqualified columns when aliases are present", () => {
@@ -342,7 +358,8 @@ describe("completeSqlLightweight", () => {
   it("adds foreign-key join snippets in JOIN relation context", () => {
     const options = complete("select * from customers c join ord");
     const join = options.find(
-      (option) => option.label === "orders" && String(option.apply).includes(" on "),
+      (option) =>
+        option.label === "orders" && String(option.apply).includes(" on "),
     );
     expect(join?.apply).toBe("orders o on o.customer_id = c.id");
   });
@@ -370,15 +387,19 @@ describe("completeSqlLightweight", () => {
       (option) => option.label === "begin",
     );
 
-    expect(deleteOperation?.detail).toBe("delete operation: select/delete/select");
-    expect(updateOperation?.detail).toBe("update operation: preview/update/verify");
+    expect(deleteOperation?.detail).toBe(
+      "delete operation: select/delete/select",
+    );
+    expect(updateOperation?.detail).toBe(
+      "update operation: preview/update/verify",
+    );
     expect(typeof transaction?.apply).toBe("function");
-    expect(defaultSqlSnippets.find((snippet) => snippet.label === "delop")?.template).toContain(
-      "rollback",
-    );
-    expect(defaultSqlSnippets.find((snippet) => snippet.label === "begin")?.template).toContain(
-      "-- commit;",
-    );
+    expect(
+      defaultSqlSnippets.find((snippet) => snippet.label === "delop")?.template,
+    ).toContain("rollback");
+    expect(
+      defaultSqlSnippets.find((snippet) => snippet.label === "begin")?.template,
+    ).toContain("-- commit;");
   });
 
   it("loads versioned SQL content configs", () => {
@@ -410,12 +431,10 @@ describe("completeSqlLightweight", () => {
     expect(merged.some((snippet) => snippet.label === "delop")).toBe(true);
     expect(merged.some((snippet) => snippet.label === "updop")).toBe(true);
     expect(merged.some((snippet) => snippet.label === "mine")).toBe(true);
-    expect(new Set(merged.map(snippetTestKey)).size).toBe(
-      merged.length,
-    );
-    expect(defaultSqlSnippets.some((snippet) => snippet.label === "checksum")).toBe(
-      true,
-    );
+    expect(new Set(merged.map(snippetTestKey)).size).toBe(merged.length);
+    expect(
+      defaultSqlSnippets.some((snippet) => snippet.label === "checksum"),
+    ).toBe(true);
   });
 
   it("filters default snippets to the active database dialect", () => {
@@ -434,9 +453,9 @@ describe("completeSqlLightweight", () => {
     expect(defaultSnippetForEngine("bigquery", "begin")?.template).toContain(
       "begin transaction",
     );
-    expect(defaultSnippetForEngine("bigquery", "begin")?.template).not.toContain(
-      "begin;\n",
-    );
+    expect(
+      defaultSnippetForEngine("bigquery", "begin")?.template,
+    ).not.toContain("begin;\n");
     expect(defaultSnippetForEngine("bigquery", "tx")?.template).toContain(
       "rollback transaction",
     );
@@ -459,13 +478,25 @@ describe("completeSqlLightweight", () => {
       (option) => option.label === "upsert",
     );
     const oracleDeleteOperation = defaultSnippetForEngine("oracle", "delop");
-    const clickHouseDeleteOperation = defaultSnippetForEngine("clickhouse", "delop");
-    const sqlServerDeleteReturning = defaultSnippetForEngine("sqlserver", "delret");
+    const clickHouseDeleteOperation = defaultSnippetForEngine(
+      "clickhouse",
+      "delop",
+    );
+    const sqlServerDeleteReturning = defaultSnippetForEngine(
+      "sqlserver",
+      "delret",
+    );
     const questDbSampleBy = defaultSnippetForEngine("questdb", "sampleby");
-    const questDbSampleByFill = defaultSnippetForEngine("questdb", "samplebyfill");
+    const questDbSampleByFill = defaultSnippetForEngine(
+      "questdb",
+      "samplebyfill",
+    );
     const questDbLatestOn = defaultSnippetForEngine("questdb", "lateston");
     const questDbAsofJoin = defaultSnippetForEngine("questdb", "asofjoin");
-    const questDbAsofJoinTolerance = defaultSnippetForEngine("questdb", "asofjointol");
+    const questDbAsofJoinTolerance = defaultSnippetForEngine(
+      "questdb",
+      "asofjointol",
+    );
     const questDbMeta = defaultSnippetForEngine("questdb", "qdbmeta");
 
     expect(mysqlUpsert?.detail).toBe("insert on duplicate key update");
@@ -476,7 +507,9 @@ describe("completeSqlLightweight", () => {
     );
     expect(clickHouseDeleteOperation?.template).toContain("alter table");
     expect(clickHouseDeleteOperation?.template).not.toContain("delete from");
-    expect(sqlServerDeleteReturning?.template).toContain("output deleted.${3:*}");
+    expect(sqlServerDeleteReturning?.template).toContain(
+      "output deleted.${3:*}",
+    );
     expect(questDbSampleBy?.template).toContain("sample by");
     expect(questDbSampleByFill?.template).toContain("fill(${8:prev})");
     expect(questDbSampleByFill?.template).toContain("align to calendar");
@@ -490,14 +523,10 @@ describe("completeSqlLightweight", () => {
   it("adds QuestDB time-series SQL keywords", () => {
     expect(labels("samp", false)).not.toContain("sample by");
     expect(completeWithEngine("samp", metadata, "questdb")).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ label: "sample by" }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ label: "sample by" })]),
     );
     expect(completeWithEngine("aso", metadata, "questdb")).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ label: "asof join" }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ label: "asof join" })]),
     );
     expect(completeWithEngine("query_", metadata, "questdb")).toEqual(
       expect.arrayContaining([
@@ -535,9 +564,9 @@ describe("completeSqlLightweight", () => {
     expect(options.map((option) => option.label)).toEqual(["sf"]);
     expect(options[0]?.detail).toBe("select first rows");
     expect(typeof options[0]?.apply).toBe("function");
-    expect(completeWithSnippets("sel", snippets).map((option) => option.label)).not.toContain(
-      "sel",
-    );
+    expect(
+      completeWithSnippets("sel", snippets).map((option) => option.label),
+    ).not.toContain("sel");
   });
 
   it("expands VS Code-style named snippet variables without touching tabstops", () => {
@@ -569,8 +598,12 @@ describe("completeSqlLightweight", () => {
     ]);
 
     expect(snippets[0]?.engines).toEqual(["snowflake"]);
-    expect(completeWithEngine("sf", metadata, "snowflake", false, snippets)).toHaveLength(1);
-    expect(completeWithEngine("sf", metadata, "postgres", false, snippets)).toHaveLength(0);
+    expect(
+      completeWithEngine("sf", metadata, "snowflake", false, snippets),
+    ).toHaveLength(1);
+    expect(
+      completeWithEngine("sf", metadata, "postgres", false, snippets),
+    ).toHaveLength(0);
   });
 
   it("merges imported snippets by label and engine scope", () => {
@@ -613,9 +646,10 @@ describe("completeSqlLightweight", () => {
       "ops:mysql",
       "mine:*",
     ]);
-    expect(merged.find((snippet) => snippetTestKey(snippet) === "ops:postgres")?.detail).toBe(
-      "new postgres",
-    );
+    expect(
+      merged.find((snippet) => snippetTestKey(snippet) === "ops:postgres")
+        ?.detail,
+    ).toBe("new postgres");
   });
 
   it("imports snippets from JSON text wrappers", async () => {
@@ -664,8 +698,24 @@ snippets:
     expect(imported.schemaVersion).toBe(SQL_SNIPPETS_SCHEMA_VERSION);
     expect(imported.snippets[0]?.label).toBe("delop_sf");
     expect(imported.snippets[0]?.template).toContain("delete from ${1:table}");
-    expect(completeWithEngine("delop_sf", metadata, "snowflake", false, imported.snippets)).toHaveLength(1);
-    expect(completeWithEngine("delop_sf", metadata, "postgres", false, imported.snippets)).toHaveLength(0);
+    expect(
+      completeWithEngine(
+        "delop_sf",
+        metadata,
+        "snowflake",
+        false,
+        imported.snippets,
+      ),
+    ).toHaveLength(1);
+    expect(
+      completeWithEngine(
+        "delop_sf",
+        metadata,
+        "postgres",
+        false,
+        imported.snippets,
+      ),
+    ).toHaveLength(0);
   });
 
   it("rejects unsupported snippet import schema versions", async () => {
@@ -686,30 +736,44 @@ snippets:
   });
 
   it("does not leak common SQL keywords into non-SQL engines", () => {
-    expect(completeWithEngine("sel", metadata, "mongodb").map((option) => option.label)).not.toContain(
-      "select",
-    );
-    expect(completeWithEngine("ag", metadata, "elasticsearch").map((option) => option.label)).toContain(
-      "aggs",
-    );
-    expect(completeWithEngine("sel", metadata, "elasticsearch").map((option) => option.label)).not.toContain(
-      "select",
-    );
+    expect(
+      completeWithEngine("sel", metadata, "mongodb").map(
+        (option) => option.label,
+      ),
+    ).not.toContain("select");
+    expect(
+      completeWithEngine("ag", metadata, "elasticsearch").map(
+        (option) => option.label,
+      ),
+    ).toContain("aggs");
+    expect(
+      completeWithEngine("sel", metadata, "elasticsearch").map(
+        (option) => option.label,
+      ),
+    ).not.toContain("select");
   });
 
   it("adds dialect-specific keyword completions", () => {
-    expect(completeWithEngine("dual", metadata, "oracle").map((option) => option.label)).toContain(
-      "dual",
-    );
-    expect(completeWithEngine("row", metadata, "oracle").map((option) => option.label)).toContain(
-      "rownum",
-    );
-    expect(completeWithEngine("firs", metadata, "firebird").map((option) => option.label)).toContain(
-      "first",
-    );
-    expect(completeWithEngine("next", metadata, "firebird").map((option) => option.label)).toContain(
-      "next value for",
-    );
+    expect(
+      completeWithEngine("dual", metadata, "oracle").map(
+        (option) => option.label,
+      ),
+    ).toContain("dual");
+    expect(
+      completeWithEngine("row", metadata, "oracle").map(
+        (option) => option.label,
+      ),
+    ).toContain("rownum");
+    expect(
+      completeWithEngine("firs", metadata, "firebird").map(
+        (option) => option.label,
+      ),
+    ).toContain("first");
+    expect(
+      completeWithEngine("next", metadata, "firebird").map(
+        (option) => option.label,
+      ),
+    ).toContain("next value for");
   });
 
   it("ignores semicolons inside strings when resolving the current statement", () => {

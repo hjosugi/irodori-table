@@ -59,7 +59,10 @@ export type ResultGridViewModel = {
   pendingCount: number;
   windowed: boolean;
   rowAt: (displayIndex: number) => ResultGridDisplayRow | null;
-  rowsInRange: (firstDisplayIndex: number, lastDisplayIndex: number) => ResultGridDisplayRow[];
+  rowsInRange: (
+    firstDisplayIndex: number,
+    lastDisplayIndex: number,
+  ) => ResultGridDisplayRow[];
   displayIndexForKey: (key: string) => number;
   sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
 };
@@ -116,7 +119,12 @@ function buildOriginalDisplayRowsInRange(
   }
   const out: ResultGridDisplayRow[] = [];
   for (let displayIndex = start; displayIndex < end; displayIndex += 1) {
-    const row = originalDisplayRowAt(rows, cellEdits, deletedRows, displayIndex);
+    const row = originalDisplayRowAt(
+      rows,
+      cellEdits,
+      deletedRows,
+      displayIndex,
+    );
     if (!row) {
       break;
     }
@@ -131,7 +139,9 @@ function buildOriginalDisplayRows(
   deletedRows: ReadonlySet<number>,
 ): ResultGridDisplayRow[] {
   return rows.flatMap((row, index) =>
-    deletedRows.has(index) ? [] : [buildOriginalDisplayRow(row, index, cellEdits)],
+    deletedRows.has(index)
+      ? []
+      : [buildOriginalDisplayRow(row, index, cellEdits)],
   );
 }
 
@@ -214,7 +224,8 @@ function canUseWindowedViewModel(
   cellThreshold: number,
 ): boolean {
   const firstRowWidth = input.rows[0]?.length ?? input.newRows[0]?.length ?? 0;
-  const estimatedCellCount = (input.rows.length + input.newRows.length) * firstRowWidth;
+  const estimatedCellCount =
+    (input.rows.length + input.newRows.length) * firstRowWidth;
   return (
     (input.rows.length > rowThreshold || estimatedCellCount > cellThreshold) &&
     input.quickFilter.trim().length === 0 &&
@@ -227,7 +238,10 @@ function buildWindowedResultGridViewModel(
   input: ResultGridViewModelInput,
   activeFilters: ResultFilterRule[],
 ): ResultGridViewModel {
-  const sortedDeletedRows = sortedDeletedRowIndexes(input.deletedRows, input.rows.length);
+  const sortedDeletedRows = sortedDeletedRowIndexes(
+    input.deletedRows,
+    input.rows.length,
+  );
   const originalRowCount = input.rows.length - sortedDeletedRows.length;
   const totalRowCount = originalRowCount + input.newRows.length;
   const rowAt = (displayIndex: number): ResultGridDisplayRow | null => {
@@ -294,7 +308,12 @@ function buildWindowedResultGridViewModel(
     rowAt,
     rowsInRange,
     displayIndexForKey: (key) =>
-      displayIndexForRowKey(key, input.rows.length, sortedDeletedRows, originalRowCount),
+      displayIndexForRowKey(
+        key,
+        input.rows.length,
+        sortedDeletedRows,
+        originalRowCount,
+      ),
     sortRuleByColumn: buildSortRulePriorityMap(input.sortRules),
   };
 }
@@ -345,7 +364,8 @@ export function buildResultGridViewModel(
         clampIndex(firstDisplayIndex, 0, displayRows.length),
         clampIndex(lastDisplayIndex, 0, displayRows.length),
       ),
-    displayIndexForKey: (key) => displayRows.findIndex((row) => row.key === key),
+    displayIndexForKey: (key) =>
+      displayRows.findIndex((row) => row.key === key),
     sortRuleByColumn: buildSortRulePriorityMap(input.sortRules),
   };
 }
@@ -367,7 +387,10 @@ function displayIndexForRowKey(
   if (match[1] === "n") {
     return originalDisplayRowCount + index;
   }
-  if (index >= originalRowCount || deletedRowIndexHas(sortedDeletedRows, index)) {
+  if (
+    index >= originalRowCount ||
+    deletedRowIndexHas(sortedDeletedRows, index)
+  ) {
     return -1;
   }
   return index - countDeletedBefore(sortedDeletedRows, index);
@@ -383,7 +406,10 @@ function originalIndexForDisplayIndex(
   }
   let originalIndex = displayIndex;
   while (originalIndex < originalRowCount) {
-    const deletedBeforeOrAt = countDeletedBeforeOrAt(deletedRows, originalIndex);
+    const deletedBeforeOrAt = countDeletedBeforeOrAt(
+      deletedRows,
+      originalIndex,
+    );
     const next = displayIndex + deletedBeforeOrAt;
     if (next === originalIndex && !deletedRows.has(originalIndex)) {
       return originalIndex;
@@ -398,15 +424,24 @@ function sortedDeletedRowIndexes(
   originalRowCount: number,
 ): number[] {
   return [...deletedRows]
-    .filter((index) => Number.isInteger(index) && index >= 0 && index < originalRowCount)
+    .filter(
+      (index) =>
+        Number.isInteger(index) && index >= 0 && index < originalRowCount,
+    )
     .sort((left, right) => left - right);
 }
 
-function deletedRowIndexHas(sortedDeletedRows: readonly number[], index: number) {
+function deletedRowIndexHas(
+  sortedDeletedRows: readonly number[],
+  index: number,
+) {
   return sortedDeletedRows.includes(index);
 }
 
-function countDeletedBefore(sortedDeletedRows: readonly number[], index: number) {
+function countDeletedBefore(
+  sortedDeletedRows: readonly number[],
+  index: number,
+) {
   return sortedDeletedRows.filter((deleted) => deleted < index).length;
 }
 

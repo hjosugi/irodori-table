@@ -9,12 +9,11 @@ import {
   StandardSQL,
   type SQLDialect,
 } from "@codemirror/lang-sql";
+import { buildSqlConfig, cmDialect, formatterLanguage } from "@/sql/dialect";
 import {
-  buildSqlConfig,
-  cmDialect,
-  formatterLanguage,
-} from "@/sql/dialect";
-import { buildSqlCompletionIndex, completeSqlLightweight } from "@/sql/completion";
+  buildSqlCompletionIndex,
+  completeSqlLightweight,
+} from "@/sql/completion";
 import type {
   ColumnMetadata,
   DatabaseMetadata,
@@ -78,17 +77,17 @@ describe("cmDialect", () => {
   };
 
   it("maps every engine to the expected CodeMirror SQL dialect", () => {
-    for (const [engine, expected] of Object.entries(engineExpectations) as Array<
-      [DbEngine, (typeof engineExpectations)[DbEngine]]
-    >) {
+    for (const [engine, expected] of Object.entries(
+      engineExpectations,
+    ) as Array<[DbEngine, (typeof engineExpectations)[DbEngine]]>) {
       expect(cmDialect(engine), engine).toBe(expected.dialect);
     }
   });
 
   it("maps every engine to the expected sql-formatter language", () => {
-    for (const [engine, expected] of Object.entries(engineExpectations) as Array<
-      [DbEngine, (typeof engineExpectations)[DbEngine]]
-    >) {
+    for (const [engine, expected] of Object.entries(
+      engineExpectations,
+    ) as Array<[DbEngine, (typeof engineExpectations)[DbEngine]]>) {
       expect(formatterLanguage(engine), engine).toBe(expected.formatter);
     }
   });
@@ -128,7 +127,9 @@ const meta: DatabaseMetadata = {
           schema: "public",
           name: "v_active",
           kind: "view",
-          columns: [{ name: "id", dataType: "int4", nullable: false, ordinal: 1 }],
+          columns: [
+            { name: "id", dataType: "int4", nullable: false, ordinal: 1 },
+          ],
           indexes: [],
           primaryKey: [],
           foreignKeys: [],
@@ -179,7 +180,11 @@ function sqlWithCursor(sql: string): { doc: string; pos: number } {
   return { doc: sql.slice(0, pos) + sql.slice(pos + 1), pos };
 }
 
-function completionLabels(sql: string, metadata = meta, explicit = false): string[] {
+function completionLabels(
+  sql: string,
+  metadata = meta,
+  explicit = false,
+): string[] {
   const { doc, pos } = sqlWithCursor(sql);
   return (
     completeSqlLightweight({
@@ -192,7 +197,11 @@ function completionLabels(sql: string, metadata = meta, explicit = false): strin
   );
 }
 
-function completionApplies(sql: string, metadata = meta, explicit = false): string[] {
+function completionApplies(
+  sql: string,
+  metadata = meta,
+  explicit = false,
+): string[] {
   const { doc, pos } = sqlWithCursor(sql);
   return (
     completeSqlLightweight({
@@ -275,7 +284,9 @@ describe("completeSqlLightweight", () => {
 
   it("qualifies column labels when more than one relation is in scope", () => {
     expect(
-      completionLabels("select * from users u join orders o on o.user_id = u.id where id"),
+      completionLabels(
+        "select * from users u join orders o on o.user_id = u.id where id",
+      ),
     ).toEqual(expect.arrayContaining(["u.id", "o.id"]));
   });
 
@@ -295,7 +306,9 @@ describe("completeSqlLightweight", () => {
       ],
     };
 
-    expect(completionLabels("select * from ", manyTables, true)).toHaveLength(50);
+    expect(completionLabels("select * from ", manyTables, true)).toHaveLength(
+      50,
+    );
     expect(completionLabels("select * from table_7", manyTables)).toEqual([
       "table_70",
       "table_71",

@@ -97,9 +97,7 @@ describe("theme model", () => {
     expect(vscode.tokenColors.some((rule) => rule.name === "Comments")).toBe(
       true,
     );
-    expect(vscode.semanticTokenColors.keyword).toBe(
-      entry.theme.syntax.keyword,
-    );
+    expect(vscode.semanticTokenColors.keyword).toBe(entry.theme.syntax.keyword);
   });
 
   it("maps ui colors onto shell CSS custom properties", () => {
@@ -137,7 +135,7 @@ describe("theme model", () => {
         colors: {
           "editor.background": "#101418",
           "editor.foreground": "#d8dee9",
-          "focusBorder": "#4ea1ff",
+          focusBorder: "#4ea1ff",
         },
         tokenColors: [
           { scope: "keyword", settings: { foreground: "#82aaff" } },
@@ -195,7 +193,7 @@ describe("theme model", () => {
           "sideBarSectionHeader.background": "#1a2030",
           "panel.background": "#181d27",
           "titleBar.activeBackground": "#0c1016",
-          "focusBorder": "#82aaff",
+          focusBorder: "#82aaff",
           "input.background": "#1b2230",
           "list.hoverBackground": "#202a38",
           "list.activeSelectionBackground": "#263b54",
@@ -331,7 +329,9 @@ describe("theme model", () => {
     expect(result.theme.syntax.name).toBe("#eeffff");
     expect(result.theme.syntax.bool).toBe("#ff5370");
     expect(result.unsupported.tokenScopes).toContain("markup.heading");
-    expect(result.unsupported.semanticTokenColors).toContain("unknownTokenType");
+    expect(result.unsupported.semanticTokenColors).toContain(
+      "unknownTokenType",
+    );
     expect(
       result.warnings.some((warning) => warning.includes("Broken foreground")),
     ).toBe(true);
@@ -367,7 +367,7 @@ describe("theme model", () => {
     expect(partial.licenseNote).toContain("Apache-2.0");
     expect(partial.warnings).toEqual(
       expect.arrayContaining([
-        "Ignored VS Code workbench color \"editor.foreground\" because it is not a supported hex color.",
+        'Ignored VS Code workbench color "editor.foreground" because it is not a supported hex color.',
         "Ignored VS Code tokenColors because it is not an array.",
       ]),
     );

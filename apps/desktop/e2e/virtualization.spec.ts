@@ -277,7 +277,10 @@ async function installVirtualizationMock(
     };
 
     const rowsFrom = (startIndex: number, count: number) => {
-      const length = Math.max(0, Math.min(count, fixture.rowCount - startIndex));
+      const length = Math.max(
+        0,
+        Math.min(count, fixture.rowCount - startIndex),
+      );
       metrics.batches += 1;
       metrics.sentRows += length;
 
@@ -400,13 +403,18 @@ async function connectMockDatabase(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
 }
 
 async function replaceEditorText(page: Page, text: string) {
@@ -489,7 +497,11 @@ async function expectRenderedColumnsWithinBudget(
     width: element.clientWidth,
     left: element.scrollLeft,
   }));
-  const budget = virtualColumnBudget(viewport.width, columnCount, viewport.left);
+  const budget = virtualColumnBudget(
+    viewport.width,
+    columnCount,
+    viewport.left,
+  );
 
   await expect
     .poll(() => headers.count(), {
@@ -526,7 +538,11 @@ async function expectedFirstColumnText(grid: Locator, columnCount: number) {
     width: element.clientWidth,
     left: element.scrollLeft,
   }));
-  const window = virtualColumnBudget(viewport.width, columnCount, viewport.left);
+  const window = virtualColumnBudget(
+    viewport.width,
+    columnCount,
+    viewport.left,
+  );
   return `col_${window.firstColumnIndex}`;
 }
 
@@ -672,9 +688,7 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     await page.goto("/");
     const webglSupported = await page.evaluate(() => {
       const canvas = document.createElement("canvas");
-      return Boolean(
-        canvas.getContext("webgl2") ?? canvas.getContext("webgl"),
-      );
+      return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
     });
     test.skip(!webglSupported, "Chromium did not expose WebGL in this run");
 
@@ -726,7 +740,9 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
       ".grid-row.header [role='columnheader']",
     );
     await expect(grid).toBeVisible();
-    await expect(page.locator(".results-title")).toContainText("1,000,000 rows");
+    await expect(page.locator(".results-title")).toContainText(
+      "1,000,000 rows",
+    );
     await expect(grid).toHaveAttribute("aria-rowcount", "1000001");
     await expect(grid).toHaveAttribute(
       "aria-colcount",
@@ -798,7 +814,10 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
       ),
     );
     await expect(renderedHeaders.first()).toContainText(
-      await expectedFirstColumnText(grid, millionRowTableFixture.columns.length),
+      await expectedFirstColumnText(
+        grid,
+        millionRowTableFixture.columns.length,
+      ),
     );
     await expectRenderedColumnsWithinBudget(
       grid,
@@ -828,10 +847,8 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     await expect(renderedRows.first()).toHaveAttribute(
       "aria-rowindex",
       String(
-        expectedFirstRowIndex(
-          benchmark.top,
-          millionRowTableFixture.rowCount,
-        ) + 2,
+        expectedFirstRowIndex(benchmark.top, millionRowTableFixture.rowCount) +
+          2,
       ),
     );
     await expectRenderedRowsWithinBudget(
@@ -878,7 +895,9 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     await scrollGridTo(grid, { top: deepScrollTop, left: deepScrollLeft });
     await expect(renderedRows.first()).toHaveAttribute(
       "aria-rowindex",
-      String(expectedFirstRowIndex(deepScrollTop, wideTableFixture.rowCount) + 2),
+      String(
+        expectedFirstRowIndex(deepScrollTop, wideTableFixture.rowCount) + 2,
+      ),
     );
     await expect(renderedHeaders.first()).toContainText(
       await expectedFirstColumnText(grid, wideTableFixture.columns.length),

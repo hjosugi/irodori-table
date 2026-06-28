@@ -1,5 +1,11 @@
 export type PlanView =
-  "overview" | "tree" | "table" | "graph" | "flame" | "guide" | "copy";
+  | "overview"
+  | "tree"
+  | "table"
+  | "graph"
+  | "flame"
+  | "guide"
+  | "copy";
 
 export type PlanNodeSelector = (nodeId: string | undefined) => void;
 

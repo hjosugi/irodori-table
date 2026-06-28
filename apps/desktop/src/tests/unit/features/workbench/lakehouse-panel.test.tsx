@@ -17,7 +17,9 @@ afterEach(() => {
   container.remove();
 });
 
-function renderPanel(overrides: Partial<Parameters<typeof LakehousePanel>[0]> = {}) {
+function renderPanel(
+  overrides: Partial<Parameters<typeof LakehousePanel>[0]> = {},
+) {
   const props: Parameters<typeof LakehousePanel>[0] = {
     editorEngine: "mysql",
     activeConnectionName: "Local Postgres",
@@ -60,7 +62,9 @@ describe("LakehousePanel", () => {
     });
 
     expect(dispatched).toBe(false);
-    const menu = container.querySelector<HTMLElement>(".lakehouse-context-menu");
+    const menu = container.querySelector<HTMLElement>(
+      ".lakehouse-context-menu",
+    );
     expect(menu?.textContent).toContain("Load DuckDB Iceberg SQL");
 
     menu?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.click();

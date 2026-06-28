@@ -115,7 +115,10 @@ export function inspectSqlMetadataAt(
   }
 
   const statement = statementWindow(doc, pos);
-  const tokens = tokenizeSql(doc.slice(statement.from, statement.to), statement.from);
+  const tokens = tokenizeSql(
+    doc.slice(statement.from, statement.to),
+    statement.from,
+  );
   const identifier = qualifiedIdentifierAt(tokens, pos);
   if (!identifier) {
     return null;
@@ -137,8 +140,12 @@ export function sqlMetadataTargetSubtitle(target: SqlMetadataTarget): string {
     const flags = [
       target.column.dataType,
       target.column.nullable ? "nullable" : "not null",
-      target.object.primaryKey.includes(target.column.name) ? "primary key" : null,
-      foreignKeyForColumn(target.object, target.column.name) ? "foreign key" : null,
+      target.object.primaryKey.includes(target.column.name)
+        ? "primary key"
+        : null,
+      foreignKeyForColumn(target.object, target.column.name)
+        ? "foreign key"
+        : null,
     ].filter(Boolean);
     return flags.join(" · ");
   }
@@ -229,7 +236,9 @@ export function sqlColumnSampleValues(
   if (!sample) {
     return [];
   }
-  const columnIndex = sample.columns.findIndex((name) => eqId(name, column.name));
+  const columnIndex = sample.columns.findIndex((name) =>
+    eqId(name, column.name),
+  );
   if (columnIndex < 0) {
     return [];
   }
@@ -306,14 +315,20 @@ function tokenizeSql(sql: string, offset = 0): SqlToken[] {
     }
     if (char === '"') {
       const end = skipQuoted(sql, index, '"', '"');
-      const text = sql.slice(index + 1, end - 1).split('""').join('"');
+      const text = sql
+        .slice(index + 1, end - 1)
+        .split('""')
+        .join('"');
       pushWord(tokens, text, offset + index, offset + end);
       index = end;
       continue;
     }
     if (char === "`") {
       const end = skipQuoted(sql, index, "`", "`");
-      const text = sql.slice(index + 1, end - 1).split("``").join("`");
+      const text = sql
+        .slice(index + 1, end - 1)
+        .split("``")
+        .join("`");
       pushWord(tokens, text, offset + index, offset + end);
       index = end;
       continue;
@@ -490,7 +505,11 @@ function readRelation(
   tokens: readonly SqlToken[],
   startIndex: number,
   index: MetadataIndex,
-): { object: DbObjectMetadata; alias: string | null; nextIndex: number } | null {
+): {
+  object: DbObjectMetadata;
+  alias: string | null;
+  nextIndex: number;
+} | null {
   const relation = readRelationObject(tokens, startIndex, index);
   if (!relation) {
     return null;
@@ -561,7 +580,9 @@ function resolveQualifiedIdentifier(
       return { kind: "object", range: identifier.range, object };
     }
     const column = lookupColumn(object, parts[parts.length - 1]);
-    return column ? { kind: "column", range: identifier.range, object, column } : null;
+    return column
+      ? { kind: "column", range: identifier.range, object, column }
+      : null;
   }
 
   if (parts.length === 2) {
@@ -616,7 +637,10 @@ function lookupRefObject(
   alias: string,
 ): DbObjectMetadata | null {
   const matches = refs.filter((ref) => eqId(ref.alias, alias));
-  const uniqueObjects = uniqueBy(matches.map((match) => match.object), qualifiedObjectName);
+  const uniqueObjects = uniqueBy(
+    matches.map((match) => match.object),
+    qualifiedObjectName,
+  );
   return uniqueObjects.length === 1 ? uniqueObjects[0] : null;
 }
 

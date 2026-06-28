@@ -15,7 +15,8 @@ export function downloadBlob(blob: Blob, fileName: string) {
 export function erdFileName(connectionId: string, extension: string) {
   const safeConnectionId = sanitizeFileNamePart(connectionId, "connection");
   const safeExtension =
-    sanitizeFileNamePart(extension, "dat").replace(/\./g, "").toLowerCase() || "dat";
+    sanitizeFileNamePart(extension, "dat").replace(/\./g, "").toLowerCase() ||
+    "dat";
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   return `irodori-erd-${safeConnectionId}-${timestamp}.${safeExtension}`;
 }
@@ -75,7 +76,12 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 function erdPngScale(width: number, height: number) {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
     throw new Error("ERD has invalid dimensions");
   }
   const maxSafeScale = Math.min(
@@ -95,7 +101,9 @@ export function svgMarkupToPngBlob(
   height: number,
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+    const svgBlob = new Blob([svgMarkup], {
+      type: "image/svg+xml;charset=utf-8",
+    });
     const url = URL.createObjectURL(svgBlob);
     const image = new Image();
     image.onload = () => {
@@ -175,6 +183,7 @@ export async function writePngBlobToClipboard(blob: Blob) {
   ) {
     throw new Error("PNG clipboard is not supported in this environment");
   }
-  const pngBlob = blob.type === "image/png" ? blob : new Blob([blob], { type: "image/png" });
+  const pngBlob =
+    blob.type === "image/png" ? blob : new Blob([blob], { type: "image/png" });
   await clipboard.write([new ClipboardItemCtor({ "image/png": pngBlob })]);
 }

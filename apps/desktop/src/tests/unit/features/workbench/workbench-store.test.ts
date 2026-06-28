@@ -130,7 +130,9 @@ describe("workbench store view placements", () => {
   it("loads default view visibility", async () => {
     const store = await loadWorkbenchStore();
 
-    expect(store.getState().viewVisibility).toEqual(defaultWorkbenchViewVisibility);
+    expect(store.getState().viewVisibility).toEqual(
+      defaultWorkbenchViewVisibility,
+    );
   });
 
   it("sets and persists a single view visibility", async () => {

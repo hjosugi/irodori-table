@@ -7,7 +7,9 @@ describe("parseQueryMagic", () => {
   });
 
   it("expands explain without using analyze by default", () => {
-    expect(parseQueryMagic("\\explain select * from orders;", "postgres")).toMatchObject({
+    expect(
+      parseQueryMagic("\\explain select * from orders;", "postgres"),
+    ).toMatchObject({
       kind: "sql",
       command: "explain",
       sql: "EXPLAIN select * from orders;",
@@ -15,7 +17,9 @@ describe("parseQueryMagic", () => {
   });
 
   it("uses Oracle explain-plan syntax", () => {
-    expect(parseQueryMagic("\\explain select * from users", "oracle")).toMatchObject({
+    expect(
+      parseQueryMagic("\\explain select * from users", "oracle"),
+    ).toMatchObject({
       kind: "sql",
       command: "explain",
       sql: "EXPLAIN PLAN FOR select * from users;",
@@ -31,7 +35,9 @@ describe("parseQueryMagic", () => {
     expect(action?.kind === "sql" ? action.sql : "").toContain(
       "table_schema = 'sales'",
     );
-    expect(action?.kind === "sql" ? action.sql : "").toContain("table_name = 'orders'");
+    expect(action?.kind === "sql" ? action.sql : "").toContain(
+      "table_name = 'orders'",
+    );
   });
 
   it("uses pragma table_info for SQLite", () => {

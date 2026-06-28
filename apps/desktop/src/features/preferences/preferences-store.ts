@@ -5,10 +5,7 @@ import {
   sqlSnippetsFromJson,
   type SqlSnippetDefinition,
 } from "../../sql/completion";
-import {
-  isSqlFormatterId,
-  type SqlFormatterId,
-} from "../../sql/formatter";
+import { isSqlFormatterId, type SqlFormatterId } from "../../sql/formatter";
 import { detectBrowserLocale, normalizeLocale, type Locale } from "../../i18n";
 import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
 import {
@@ -32,8 +29,7 @@ const formatterStorageKey = "irodori.editor.formatter.v1";
 const linterStorageKey = "irodori.editor.linter.v1";
 const snippetsStorageKey = "irodori.editor.snippets.v1";
 const editorBackgroundImageStorageKey = "irodori.editor.backgroundImage.v1";
-const editorBackgroundOpacityStorageKey =
-  "irodori.editor.backgroundOpacity.v1";
+const editorBackgroundOpacityStorageKey = "irodori.editor.backgroundOpacity.v1";
 const animationsEnabledStorageKey = "irodori.ui.animationsEnabled.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const localeStorageKey = "irodori.locale.v1";
@@ -131,10 +127,7 @@ function themeKindForPreference(preference: ThemePreference): ThemeKind {
   return preference === "system" ? systemThemeKind() : preference;
 }
 
-function defaultThemeIdForKind(
-  kind: ThemeKind,
-  preferredId?: string | null,
-) {
+function defaultThemeIdForKind(kind: ThemeKind, preferredId?: string | null) {
   return defaultThemeEntryForKind(kind, preferredId)?.id ?? null;
 }
 
@@ -207,8 +200,7 @@ function loadActiveCustomThemeId(customThemes: CustomThemeEntry[]) {
   if (stored && customThemes.some((theme) => theme.id === stored)) {
     return stored;
   }
-  return customThemes.length === 1 &&
-    readStorage(legacyCustomThemeStorageKey)
+  return customThemes.length === 1 && readStorage(legacyCustomThemeStorageKey)
     ? customThemes[0].id
     : null;
 }
@@ -317,7 +309,9 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   autoCommit: loadAutoCommit(),
   uiZoom: loadUiZoom(),
   setLocale: (value) =>
-    set((state) => ({ locale: normalizeLocale(resolveValue(state.locale, value)) })),
+    set((state) => ({
+      locale: normalizeLocale(resolveValue(state.locale, value)),
+    })),
   setThemePreference: (value) =>
     set((state) => {
       const themePreference = normalizeThemePreference(
@@ -393,7 +387,9 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
   setUiZoom: (value) =>
-    set((state) => ({ uiZoom: normalizeUiZoom(resolveValue(state.uiZoom, value)) })),
+    set((state) => ({
+      uiZoom: normalizeUiZoom(resolveValue(state.uiZoom, value)),
+    })),
 }));
 
 usePreferencesStore.subscribe((state) => {
@@ -405,25 +401,16 @@ usePreferencesStore.subscribe((state) => {
     removeStorage(activeDefaultThemeStorageKey);
   }
   if (state.activeCustomThemeId) {
-    writeStorage(
-      activeCustomThemeStorageKey,
-      state.activeCustomThemeId,
-    );
+    writeStorage(activeCustomThemeStorageKey, state.activeCustomThemeId);
   } else {
     removeStorage(activeCustomThemeStorageKey);
   }
-  writeStorage(
-    customThemesStorageKey,
-    JSON.stringify(state.customThemes),
-  );
+  writeStorage(customThemesStorageKey, JSON.stringify(state.customThemes));
   removeStorage(legacyCustomThemeStorageKey);
   writeStorage(vimModeStorageKey, String(state.vimMode));
   writeStorage(formatterStorageKey, state.formatter);
   writeStorage(linterStorageKey, state.sqlLinter);
-  writeStorage(
-    snippetsStorageKey,
-    JSON.stringify(state.sqlSnippets),
-  );
+  writeStorage(snippetsStorageKey, JSON.stringify(state.sqlSnippets));
   if (state.editorBackgroundImage) {
     writeStorage(editorBackgroundImageStorageKey, state.editorBackgroundImage);
   } else {

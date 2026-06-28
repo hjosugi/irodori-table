@@ -31,20 +31,39 @@ type ProviderPreset = {
   needsKey?: boolean;
 };
 
-const EMPTY: AiProviderConfig = { kind: "local", model: "", program: "", args: [] };
+const EMPTY: AiProviderConfig = {
+  kind: "local",
+  model: "",
+  program: "",
+  args: [],
+};
 
 const PRESETS: ProviderPreset[] = [
-  { id: "local", label: "Local (embedded)", config: { ...EMPTY, kind: "local" } },
+  {
+    id: "local",
+    label: "Local (embedded)",
+    config: { ...EMPTY, kind: "local" },
+  },
   {
     id: "ollama",
     label: "Ollama",
-    config: { ...EMPTY, kind: "ollama", model: "qwen2.5-coder", endpoint: "http://localhost:11434" },
+    config: {
+      ...EMPTY,
+      kind: "ollama",
+      model: "qwen2.5-coder",
+      endpoint: "http://localhost:11434",
+    },
   },
   {
     id: "openai",
     label: "OpenAI (ChatGPT)",
     needsKey: true,
-    config: { ...EMPTY, kind: "openaiCompat", model: "gpt-4o-mini", endpoint: "https://api.openai.com" },
+    config: {
+      ...EMPTY,
+      kind: "openaiCompat",
+      model: "gpt-4o-mini",
+      endpoint: "https://api.openai.com",
+    },
   },
   {
     id: "gemini",
@@ -61,7 +80,12 @@ const PRESETS: ProviderPreset[] = [
     id: "deepseek",
     label: "DeepSeek",
     needsKey: true,
-    config: { ...EMPTY, kind: "openaiCompat", model: "deepseek-chat", endpoint: "https://api.deepseek.com" },
+    config: {
+      ...EMPTY,
+      kind: "openaiCompat",
+      model: "deepseek-chat",
+      endpoint: "https://api.deepseek.com",
+    },
   },
   {
     id: "claude",
@@ -130,7 +154,11 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
     setBusy(true);
     try {
       await aiUnloadLocal();
-      notify?.("success", "Local model unloaded", "Memory freed; it reloads on next use.");
+      notify?.(
+        "success",
+        "Local model unloaded",
+        "Memory freed; it reloads on next use.",
+      );
     } catch (err) {
       notify?.("error", "Could not unload model", errorMessage(err));
     } finally {
@@ -140,13 +168,21 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
   }, [notify, refreshStatus]);
 
   const deleteLocal = useCallback(async () => {
-    if (!window.confirm("Delete the embedded model file from disk? It must be reinstalled to use the local provider again.")) {
+    if (
+      !window.confirm(
+        "Delete the embedded model file from disk? It must be reinstalled to use the local provider again.",
+      )
+    ) {
       return;
     }
     setBusy(true);
     try {
       await aiDeleteLocalModel();
-      notify?.("success", "Local model deleted", "The model file was removed from disk.");
+      notify?.(
+        "success",
+        "Local model deleted",
+        "The model file was removed from disk.",
+      );
     } catch (err) {
       notify?.("error", "Could not delete model", errorMessage(err));
     } finally {
@@ -193,13 +229,18 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       <div className="aichat-provider-row">
         <label className="aichat-provider-select">
           <span>Model</span>
-          <select value={presetId} onChange={(e) => applyPreset(e.target.value)}>
+          <select
+            value={presetId}
+            onChange={(e) => applyPreset(e.target.value)}
+          >
             {PRESETS.map((preset) => (
               <option key={preset.id} value={preset.id}>
                 {preset.label}
               </option>
             ))}
-            {presetId === "custom" ? <option value="custom">Custom…</option> : null}
+            {presetId === "custom" ? (
+              <option value="custom">Custom…</option>
+            ) : null}
           </select>
         </label>
         <button
@@ -227,8 +268,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       ) : null}
       {isCommand ? (
         <p className="aichat-provider-hint">
-          Sign in via the CLI itself (e.g. <code>claude</code> / <code>codex</code> login). Irodori
-          runs your authenticated CLI — no API key needed here.
+          Sign in via the CLI itself (e.g. <code>claude</code> /{" "}
+          <code>codex</code> login). Irodori runs your authenticated CLI — no
+          API key needed here.
         </p>
       ) : null}
 
@@ -272,15 +314,20 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
             <select
               value={config.kind}
               onChange={(e) => {
-                setConfig((c) => ({ ...c, kind: e.target.value as AiProviderKind }));
+                setConfig((c) => ({
+                  ...c,
+                  kind: e.target.value as AiProviderKind,
+                }));
                 setPresetId("custom");
               }}
             >
-              {(Object.keys(PROVIDER_LABELS) as AiProviderKind[]).map((kind) => (
-                <option key={kind} value={kind}>
-                  {PROVIDER_LABELS[kind]}
-                </option>
-              ))}
+              {(Object.keys(PROVIDER_LABELS) as AiProviderKind[]).map(
+                (kind) => (
+                  <option key={kind} value={kind}>
+                    {PROVIDER_LABELS[kind]}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
@@ -290,8 +337,12 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
                 <span>Model</span>
                 <input
                   value={config.model}
-                  placeholder={config.kind === "ollama" ? "qwen2.5-coder" : "gpt-4o-mini"}
-                  onChange={(e) => setConfig((c) => ({ ...c, model: e.target.value }))}
+                  placeholder={
+                    config.kind === "ollama" ? "qwen2.5-coder" : "gpt-4o-mini"
+                  }
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, model: e.target.value }))
+                  }
                 />
               </label>
               <label className="aichat-field">
@@ -300,7 +351,10 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
                   value={config.endpoint ?? ""}
                   placeholder="https://api.openai.com"
                   onChange={(e) =>
-                    setConfig((c) => ({ ...c, endpoint: e.target.value || undefined }))
+                    setConfig((c) => ({
+                      ...c,
+                      endpoint: e.target.value || undefined,
+                    }))
                   }
                 />
               </label>
@@ -314,7 +368,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
                 <input
                   value={config.program}
                   placeholder="claude"
-                  onChange={(e) => setConfig((c) => ({ ...c, program: e.target.value }))}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, program: e.target.value }))
+                  }
                 />
               </label>
               <label className="aichat-field">
@@ -323,7 +379,10 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
                   value={config.args.join(" ")}
                   placeholder="-p  (or use {prompt})"
                   onChange={(e) =>
-                    setConfig((c) => ({ ...c, args: e.target.value.split(/\s+/).filter(Boolean) }))
+                    setConfig((c) => ({
+                      ...c,
+                      args: e.target.value.split(/\s+/).filter(Boolean),
+                    }))
                   }
                 />
               </label>

@@ -183,14 +183,15 @@ export const useGitStore = create<GitState>((set, get) => ({
         gitLog(repoPath, 80),
       ]);
       const selectedPath =
-        get().selectedPath && status.files.some((file) => file.path === get().selectedPath)
+        get().selectedPath &&
+        status.files.some((file) => file.path === get().selectedPath)
           ? get().selectedPath
-          : status.files[0]?.path ?? null;
+          : (status.files[0]?.path ?? null);
       const selectedCommitHash =
         get().selectedCommitHash &&
         graphCommits.some((commit) => commit.hash === get().selectedCommitHash)
           ? get().selectedCommitHash
-          : graphCommits[0]?.hash ?? null;
+          : (graphCommits[0]?.hash ?? null);
       set({
         status,
         graphCommits,
@@ -342,7 +343,11 @@ export const useGitStore = create<GitState>((set, get) => ({
     }
     set({ loading: true, error: null, commandOutput: null });
     try {
-      const commandOutput = await gitCheckoutBranch(target, false, repoArg(get()));
+      const commandOutput = await gitCheckoutBranch(
+        target,
+        false,
+        repoArg(get()),
+      );
       set({ commandOutput, loading: false });
       await get().refresh();
       return true;
@@ -359,7 +364,11 @@ export const useGitStore = create<GitState>((set, get) => ({
     }
     set({ loading: true, error: null, commandOutput: null });
     try {
-      const commandOutput = await gitCheckoutBranch(target, true, repoArg(get()));
+      const commandOutput = await gitCheckoutBranch(
+        target,
+        true,
+        repoArg(get()),
+      );
       set({ commandOutput, branchDraft: "", loading: false });
       await get().refresh();
       return true;
@@ -376,7 +385,11 @@ export const useGitStore = create<GitState>((set, get) => ({
     }
     set({ loading: true, error: null, commandOutput: null });
     try {
-      const commandOutput = await gitDeleteBranch(target, force, repoArg(get()));
+      const commandOutput = await gitDeleteBranch(
+        target,
+        force,
+        repoArg(get()),
+      );
       set({ commandOutput, loading: false });
       await get().refresh();
       return true;

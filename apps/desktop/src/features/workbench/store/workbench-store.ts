@@ -298,12 +298,18 @@ useWorkbenchStore.subscribe((state) => {
     viewVisibilityStorageKey,
     JSON.stringify(state.viewVisibility),
   );
-  window.localStorage.setItem(sidebarWidthStorageKey, String(state.sidebarWidth));
+  window.localStorage.setItem(
+    sidebarWidthStorageKey,
+    String(state.sidebarWidth),
+  );
   window.localStorage.setItem(
     inspectorWidthStorageKey,
     String(state.inspectorWidth),
   );
-  window.localStorage.setItem(resultsHeightStorageKey, String(state.resultsHeight));
+  window.localStorage.setItem(
+    resultsHeightStorageKey,
+    String(state.resultsHeight),
+  );
   window.localStorage.setItem(editorSplitModeStorageKey, state.editorSplitMode);
   window.localStorage.setItem(
     editorSplitSizeStorageKey,

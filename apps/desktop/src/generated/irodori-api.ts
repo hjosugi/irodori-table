@@ -88,25 +88,25 @@ export type ConnectionDiagnostics = { target: DialTarget, stages: Array<Diagnost
 
 export type DesktopSecretPurpose = "password" | "token" | "privateKey" | "privateKeyPassphrase" | "sshPassword" | "proxyPassword";
 
-export type AiGenerateResult = { sql: string, model: string, tokensIn: number, tokensOut: number, 
+export type AiGenerateResult = { sql: string, model: string, tokensIn: number, tokensOut: number,
 /**
  * True when validation canonicalized the model's output.
  */
-repaired: boolean, 
+repaired: boolean,
 /**
  * Tables the planner selected from the prompt.
  */
 tables: Array<string>, };
 
-export type AiEngineStatus = { 
+export type AiEngineStatus = {
 /**
  * Built with the `llama` feature.
  */
-compiled: boolean, 
+compiled: boolean,
 /**
  * The model file is present on disk.
  */
-modelPresent: boolean, 
+modelPresent: boolean,
 /**
  * The model is loaded in memory.
  */
@@ -128,7 +128,12 @@ export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnecti
 
 export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "cloudSpanner" | "kvStore" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "openSearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "objectStore" | "deltaLake" | "hudi";
 
-export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string, 
+export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string,
+/**
+ * Unix-domain socket path. For Postgres this is the socket directory; for
+ * MySQL this is the socket file path. Used instead of TCP host/port when set.
+ */
+socketPath?: string,
 /**
  * Raw connection URL/DSN. Overrides the structured fields when present.
  */
@@ -138,7 +143,7 @@ export type ConnectionInfo = { id: string, engine: DbEngine, serverVersion: stri
 
 export type QueryResultSet = { statementIndex: number, statement: string, columns: Array<string>, rows: Array<Array<JsonValue>>, rowCount: bigint, elapsedMs: bigint, truncated: boolean, message?: string, };
 
-export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>>, rowCount: bigint, elapsedMs: bigint, 
+export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>>, rowCount: bigint, elapsedMs: bigint,
 /**
  * True when the result was capped at `max_rows` and more rows remain on the
  * server, so the UI can offer "load more" / run-to-file instead of silently
@@ -146,29 +151,29 @@ export type QueryResult = { columns: Array<string>, rows: Array<Array<JsonValue>
  */
 truncated: boolean, message?: string, resultSets?: Array<QueryResultSet>, };
 
-export type SpillRunResult = { 
+export type SpillRunResult = {
 /**
  * Opaque id for `db_result_window` / `db_release_result`.
  */
-handle: string, columns: Array<string>, 
+handle: string, columns: Array<string>,
 /**
  * Total rows retained (resident + spilled).
  */
-totalRows: bigint, 
+totalRows: bigint,
 /**
  * Rows kept resident in RAM and streamed to the UI (the first page).
  */
-inMemoryRows: bigint, 
+inMemoryRows: bigint,
 /**
  * Whether any rows were written to the temp spill file.
  */
-spilled: boolean, 
+spilled: boolean,
 /**
  * Whether rows were dropped (offload off and over budget, or the hard ceiling).
  */
 truncated: boolean, elapsedMs: bigint, };
 
-export type ResultWindow = { 
+export type ResultWindow = {
 /**
  * Absolute index of the first returned row.
  */
@@ -214,12 +219,12 @@ export type ForeignKey = { columns: Array<string>, referencesSchema?: string, re
 
 export type DbQuickSample = { columns: Array<string>, rows: Array<Array<string>>, truncated: boolean, };
 
-export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, comment?: string, ddl?: string, rowEstimate?: bigint, sample?: DbQuickSample, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, 
+export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, comment?: string, ddl?: string, rowEstimate?: bigint, sample?: DbQuickSample, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>,
 /**
  * Primary-key column names in key order (empty when there is no PK). Used for
  * safe edit keys and the ER diagram's key markers.
  */
-primaryKey: Array<string>, 
+primaryKey: Array<string>,
 /**
  * Outgoing foreign keys — the edges of the ER diagram.
  */
@@ -255,11 +260,11 @@ export type DbColumnInspection = { schema: string, object: string, name: string,
 
 export type DbColumnReference = { schema: string, object: string, column: string, };
 
-export type SchemaSearchHit = { 
+export type SchemaSearchHit = {
 /**
  * The qualified object the term matched (e.g. `public.users`).
  */
-object: string, 
+object: string,
 /**
  * How many indexed terms in that object matched.
  */

@@ -46,7 +46,11 @@ type WebGlResultGridProps = {
   onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
   onToggleSort: (col: number, additive?: boolean) => void;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
+  onSelectGridCell: (
+    rowKey: string,
+    col: number,
+    extendRange?: boolean,
+  ) => void;
 };
 
 type Rect = {
@@ -354,9 +358,7 @@ function GridState({
 }
 
 function hitFromPointerEvent(
-  event:
-    | ReactPointerEvent<HTMLDivElement>
-    | ReactMouseEvent<HTMLDivElement>,
+  event: ReactPointerEvent<HTMLDivElement> | ReactMouseEvent<HTMLDivElement>,
   {
     columnCount,
     columnWidth,
@@ -498,8 +500,12 @@ function drawWebGlLayer({
   );
 
   if (selectedCell) {
-    const rowIndex = visibleRows.findIndex((row) => row.key === selectedCell.key);
-    const selectedColumnVisible = visibleColumnIndexes.includes(selectedCell.col);
+    const rowIndex = visibleRows.findIndex(
+      (row) => row.key === selectedCell.key,
+    );
+    const selectedColumnVisible = visibleColumnIndexes.includes(
+      selectedCell.col,
+    );
     if (rowIndex >= 0 && selectedColumnVisible) {
       const logicalRowIndex = firstVisible + rowIndex;
       painter.rects(
@@ -527,7 +533,12 @@ function drawWebGlLayer({
       height: viewport.height,
     });
   }
-  gridLineRects.push({ x: 0, y: rowHeight - 1, width: viewport.width, height: 1 });
+  gridLineRects.push({
+    x: 0,
+    y: rowHeight - 1,
+    width: viewport.width,
+    height: 1,
+  });
   const firstLine = Math.max(0, Math.floor(scrollTop / rowHeight) - 1);
   const lastLine = Math.min(
     totalRows,
@@ -710,7 +721,12 @@ function resizeCanvas(
 function createWebGlRectPainter(
   canvas: HTMLCanvasElement,
 ): WebGlRectPainter | null {
-  const attrs = { alpha: false, antialias: false, depth: false, stencil: false };
+  const attrs = {
+    alpha: false,
+    antialias: false,
+    depth: false,
+    stencil: false,
+  };
   const gl = (canvas.getContext("webgl2", attrs) ??
     canvas.getContext("webgl", attrs)) as
     | WebGLRenderingContext
@@ -727,7 +743,12 @@ function createWebGlRectPainter(
   const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
   const colorLocation = gl.getUniformLocation(program, "u_color");
   const buffer = gl.createBuffer();
-  if (positionLocation < 0 || !resolutionLocation || !colorLocation || !buffer) {
+  if (
+    positionLocation < 0 ||
+    !resolutionLocation ||
+    !colorLocation ||
+    !buffer
+  ) {
     return null;
   }
 

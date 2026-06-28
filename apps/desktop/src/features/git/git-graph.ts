@@ -82,7 +82,9 @@ export function nextGraphCommitHash(
     return null;
   }
 
-  const selectedIndex = commits.findIndex((commit) => commit.hash === selectedHash);
+  const selectedIndex = commits.findIndex(
+    (commit) => commit.hash === selectedHash,
+  );
   const currentIndex = selectedIndex < 0 ? 0 : selectedIndex;
   const nextIndex = graphNavigationIndex(
     currentIndex,

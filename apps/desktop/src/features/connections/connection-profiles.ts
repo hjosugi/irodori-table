@@ -320,14 +320,15 @@ export function repairBuiltinSampleProfile(
     const sample = starterProfileById.get("local-mysql");
     const url = profile.url.trim();
     const looksLikeBundledSample =
-      !url ||
-      /(?:localhost|127\.0\.0\.1):55306(?:\/samples)?(?:[?#].*)?$/.test(
-        url,
-      ) ||
-      profile.host === "localhost" ||
-      profile.host === "127.0.0.1" ||
-      profile.database === "samples" ||
-      profile.name === "Local MySQL";
+      profile.connectionTransport !== "socket" &&
+      (!url ||
+        /(?:localhost|127\.0\.0\.1):55306(?:\/samples)?(?:[?#].*)?$/.test(
+          url,
+        ) ||
+        profile.host === "localhost" ||
+        profile.host === "127.0.0.1" ||
+        profile.database === "samples" ||
+        profile.name === "Local MySQL");
     if (sample && looksLikeBundledSample) {
       return {
         ...profile,
@@ -363,13 +364,14 @@ export function repairBuiltinSampleProfile(
   }
   const url = profile.url.trim();
   const looksLikeBundledSample =
-    !url ||
-    /(?:localhost|127\.0\.0\.1):55432(?:\/samples)?(?:[?#].*)?$/.test(url) ||
-    profile.host === "localhost" ||
-    profile.host === "127.0.0.1" ||
-    profile.database === "samples" ||
-    profile.name === "Local Warehouse" ||
-    profile.name === "Local Postgres";
+    profile.connectionTransport !== "socket" &&
+    (!url ||
+      /(?:localhost|127\.0\.0\.1):55432(?:\/samples)?(?:[?#].*)?$/.test(url) ||
+      profile.host === "localhost" ||
+      profile.host === "127.0.0.1" ||
+      profile.database === "samples" ||
+      profile.name === "Local Warehouse" ||
+      profile.name === "Local Postgres");
   if (!looksLikeBundledSample) {
     return profile;
   }
@@ -543,6 +545,11 @@ export function validateDraft(draft: ConnectionDraft): string | null {
 export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
   const readOnly = resolvedDraft.readOnly ? { readOnly: true } : {};
+  const socketPath =
+    supportsSocketTransport(resolvedDraft.engine) &&
+    resolvedDraft.connectionTransport === "socket"
+      ? resolvedDraft.socketPath.trim() || undefined
+      : undefined;
   if (resolvedDraft.mode === "url") {
     return {
       id: resolvedDraft.id.trim(),
@@ -559,12 +566,8 @@ export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
     user: resolvedDraft.user.trim() || undefined,
     password: resolvedDraft.password || undefined,
     database: resolvedDraft.database.trim() || undefined,
-    transport:
-      supportsSocketTransport(resolvedDraft.engine) &&
-      resolvedDraft.connectionTransport === "socket" &&
-      resolvedDraft.socketPath.trim()
-        ? { kind: "localFile", path: resolvedDraft.socketPath.trim() }
-        : undefined,
+    socketPath,
+    transport: socketPath ? { kind: "localFile", path: socketPath } : undefined,
     ...readOnly,
   };
 }

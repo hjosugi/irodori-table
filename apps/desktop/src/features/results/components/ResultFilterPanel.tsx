@@ -126,7 +126,8 @@ export function ResultFilterPanel({
                   value={rule.operator}
                   onChange={(event) =>
                     onUpdateFilterRule(rule.id, {
-                      operator: event.currentTarget.value as ResultFilterOperator,
+                      operator: event.currentTarget
+                        .value as ResultFilterOperator,
                     })
                   }
                 >

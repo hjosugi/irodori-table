@@ -22,8 +22,12 @@ describe("import helpers", () => {
     expect(() => parseImportText("", "xlsx")).toThrow(
       "Native XLSX/XLS import is not supported.",
     );
-    expect(() => parseImportText("", "parquet")).toThrow("Parquet import is not supported.");
-    expect(() => parseImportText("", "avro")).toThrow("Avro import is not supported.");
+    expect(() => parseImportText("", "parquet")).toThrow(
+      "Parquet import is not supported.",
+    );
+    expect(() => parseImportText("", "avro")).toThrow(
+      "Avro import is not supported.",
+    );
     expect(() => parseImportText("", "sql")).toThrow(
       "SQL files are loaded into the editor and are not parsed as table data.",
     );
@@ -33,7 +37,10 @@ describe("import helpers", () => {
   });
 
   it("parses quoted CSV rows", () => {
-    const parsed = parseImportText('id,name,note\r\n1,"Bob, Jr.","line\nbreak"\n', "csv");
+    const parsed = parseImportText(
+      'id,name,note\r\n1,"Bob, Jr.","line\nbreak"\n',
+      "csv",
+    );
     expect(parsed.columns).toEqual(["id", "name", "note"]);
     expect(parsed.rows).toEqual([["1", "Bob, Jr.", "line\nbreak"]]);
     expect(parsed.truncated).toBe(false);
@@ -45,7 +52,10 @@ describe("import helpers", () => {
   });
 
   it("keeps delimited rows aligned when cells are missing or headers are blank", () => {
-    const parsed = parseImportText("id,,note\n1,Alice\n2,Bob,extra,tail\n", "csv");
+    const parsed = parseImportText(
+      "id,,note\n1,Alice\n2,Bob,extra,tail\n",
+      "csv",
+    );
 
     expect(parsed.columns).toEqual(["id", "column_2", "note", "column_4"]);
     expect(parsed.rows).toEqual([
@@ -55,7 +65,10 @@ describe("import helpers", () => {
   });
 
   it("maps quoted TSV cells and missing trailing cells", () => {
-    const parsed = parseImportText('id\tname\tflag\n1\t"Alice\tA."\ttrue\n2\tBob\n', "tsv");
+    const parsed = parseImportText(
+      'id\tname\tflag\n1\t"Alice\tA."\ttrue\n2\tBob\n',
+      "tsv",
+    );
 
     expect(parsed.columns).toEqual(["id", "name", "flag"]);
     expect(parsed.rows).toEqual([
@@ -66,7 +79,10 @@ describe("import helpers", () => {
 
   it("parses JSON object arrays without losing spaced keys", () => {
     const parsed = parseImportText(
-      JSON.stringify([{ "first name": "Alice", age: 31 }, { "first name": "Bob" }]),
+      JSON.stringify([
+        { "first name": "Alice", age: 31 },
+        { "first name": "Bob" },
+      ]),
       "json",
     );
     expect(parsed.columns).toEqual(["first name", "age"]);
@@ -77,7 +93,11 @@ describe("import helpers", () => {
   });
 
   it("parses JSONL and caps rows", () => {
-    const parsed = parseImportText('{"id":1}\n{"id":2}\n{"id":3}\n', "jsonl", 2);
+    const parsed = parseImportText(
+      '{"id":1}\n{"id":2}\n{"id":3}\n',
+      "jsonl",
+      2,
+    );
     expect(parsed.rows).toEqual([[1], [2]]);
     expect(parsed.totalRows).toBe(3);
     expect(parsed.truncated).toBe(true);
@@ -109,7 +129,9 @@ describe("import helpers", () => {
   it("can generate insert-only SQL", () => {
     const sql = generateImportSql("people", ["name"], [["O'Hara"]], false);
     expect(sql).not.toContain("CREATE TABLE");
-    expect(sql).toBe('INSERT INTO "people" ("name") VALUES\n  (\'O\'\'Hara\');\n');
+    expect(sql).toBe(
+      "INSERT INTO \"people\" (\"name\") VALUES\n  ('O''Hara');\n",
+    );
   });
 
   it("normalizes duplicate and blank import column names", () => {
@@ -123,11 +145,15 @@ describe("import helpers", () => {
     expect(sql).toContain('"name_2" TEXT');
     expect(sql).toContain('"column_3" INTEGER');
     expect(sql).toContain('"column_4" INTEGER');
-    expect(sql).toContain('INSERT INTO "people" ("Name", "name_2", "column_3", "column_4")');
+    expect(sql).toContain(
+      'INSERT INTO "people" ("Name", "name_2", "column_3", "column_4")',
+    );
   });
 
   it("infers safe table names from files", () => {
-    expect(inferImportTableName("/tmp/customer-orders.csv")).toBe("customer_orders");
+    expect(inferImportTableName("/tmp/customer-orders.csv")).toBe(
+      "customer_orders",
+    );
     expect(sanitizeSqlName("123 bad name")).toBe("_123_bad_name");
   });
 });

@@ -26,7 +26,9 @@ function FileStatusRow({
     <button
       className={`git-file-row ${selected ? "active" : ""} ${file.kind}`}
       type="button"
-      title={file.originalPath ? `${file.originalPath} -> ${file.path}` : file.path}
+      title={
+        file.originalPath ? `${file.originalPath} -> ${file.path}` : file.path
+      }
       onClick={onSelect}
     >
       <span className="git-file-kind">{changeLabel(file.kind)}</span>

@@ -2,10 +2,17 @@ import { createRef } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import type { ColumnMetadata, DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import type {
+  ColumnMetadata,
+  DatabaseMetadata,
+  DbObjectMetadata,
+} from "@/generated/irodori-api";
 import { buildErdModel, layoutErdModel } from "@/features/erd/erd";
 import { ErdSvg, erdSvgStyle } from "@/features/erd/erd-svg";
-import { serializeSvgElement, svgMarkupToPngBlob } from "@/features/erd/erd-export";
+import {
+  serializeSvgElement,
+  svgMarkupToPngBlob,
+} from "@/features/erd/erd-export";
 import { lightTheme } from "@/theme";
 
 function table(
@@ -37,26 +44,36 @@ function metadata(): DatabaseMetadata {
         name: "sales",
         objects: [
           table("sales", "customers", ["id", "name"]),
-          table("sales", "orders", ["id", "customer_id"], [
-            {
-              columns: ["customer_id"],
-              referencesTable: "customers",
-              referencesColumns: ["id"],
-            },
-          ]),
+          table(
+            "sales",
+            "orders",
+            ["id", "customer_id"],
+            [
+              {
+                columns: ["customer_id"],
+                referencesTable: "customers",
+                referencesColumns: ["id"],
+              },
+            ],
+          ),
         ],
       },
       {
         name: "auth",
         objects: [
           table("auth", "users", ["id", "display_name"]),
-          table("auth", "sessions", ["id", "user_id"], [
-            {
-              columns: ["user_id"],
-              referencesTable: "users",
-              referencesColumns: ["id"],
-            },
-          ]),
+          table(
+            "auth",
+            "sessions",
+            ["id", "user_id"],
+            [
+              {
+                columns: ["user_id"],
+                referencesTable: "users",
+                referencesColumns: ["id"],
+              },
+            ],
+          ),
         ],
       },
     ],
@@ -88,7 +105,9 @@ async function decodePng(blob: Blob) {
       const alpha = pixels[offset + 3];
       if (alpha > 0) {
         opaqueSamples += 1;
-        colors.add(`${pixels[offset]},${pixels[offset + 1]},${pixels[offset + 2]},${alpha}`);
+        colors.add(
+          `${pixels[offset]},${pixels[offset + 1]},${pixels[offset + 2]},${alpha}`,
+        );
       }
     }
     return {
@@ -109,13 +128,15 @@ describe("ERD browser rendering", () => {
     document.body.append(host);
 
     const root = createRoot(host);
-    flushSync(() => root.render(
-      <ErdSvg
-        layout={layout}
-        svgRef={createRef<SVGSVGElement>()}
-        svgStyle={erdSvgStyle(lightTheme)}
-      />,
-    ));
+    flushSync(() =>
+      root.render(
+        <ErdSvg
+          layout={layout}
+          svgRef={createRef<SVGSVGElement>()}
+          svgStyle={erdSvgStyle(lightTheme)}
+        />,
+      ),
+    );
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     const svg = host.querySelector("svg.erd-svg");

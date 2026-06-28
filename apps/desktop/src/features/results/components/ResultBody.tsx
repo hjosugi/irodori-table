@@ -139,7 +139,11 @@ export function ResultBody({
   onGridCopy: (event: ReactClipboardEvent<HTMLDivElement>) => void;
   onToggleSort: (col: number, additive?: boolean) => void;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
-  onSelectGridCell: (rowKey: string, col: number, extendRange?: boolean) => void;
+  onSelectGridCell: (
+    rowKey: string,
+    col: number,
+    extendRange?: boolean,
+  ) => void;
   onBeginCellEdit: (key: string, col: number, seed?: string) => void;
   onSetCellValue: (
     origin: ResultGridRowOrigin,
@@ -235,7 +239,9 @@ export function ResultBody({
         onCopy={onGridCopy}
       >
         <div className="grid-row header" role="row" style={gridRowStyle}>
-          {editMode ? <span className="grid-gutter" aria-hidden="true" /> : null}
+          {editMode ? (
+            <span className="grid-gutter" aria-hidden="true" />
+          ) : null}
           {leftColumnPad > 0 ? (
             <span className="grid-col-pad" aria-hidden="true" />
           ) : null}
@@ -488,7 +494,9 @@ function StructureView({
           <strong>{formatObjectName(object)}</strong>
           <span>
             {object.columns.length} columns
-            {object.rowEstimate ? ` \u00b7 ~${formatCount(object.rowEstimate)} rows` : ""}
+            {object.rowEstimate
+              ? ` \u00b7 ~${formatCount(object.rowEstimate)} rows`
+              : ""}
           </span>
         </header>
         <div className="structure-table-wrap">

@@ -7,13 +7,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-import {
-  ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
-} from "lucide-react";
+import { ChevronDown, PanelLeft, PanelRight } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
 import {
   formatKeySequence,
@@ -239,7 +233,9 @@ export function WorkbenchShell({
 
     const editable = editableTargetFrom(target);
     const activatable = activatableTargetFrom(target);
-    const selectedText = cleanContextText(window.getSelection()?.toString() ?? "");
+    const selectedText = cleanContextText(
+      window.getSelection()?.toString() ?? "",
+    );
     const label = contextLabelFrom(target, activatable, editable);
     const copyText =
       selectedText || editable?.value || readableTextFrom(target) || label;
@@ -281,8 +277,8 @@ export function WorkbenchShell({
     }
     void navigator.clipboard?.writeText(text);
   };
-  const LeftSidebarIcon = leftSidebarOpen ? PanelLeftClose : PanelLeftOpen;
-  const RightSidebarIcon = rightSidebarOpen ? PanelRightClose : PanelRightOpen;
+  const LeftSidebarIcon = PanelLeft;
+  const RightSidebarIcon = PanelRight;
 
   const renderMenuButtons = (section: AppMenuSection) =>
     section.items.map((item) => {
@@ -371,7 +367,11 @@ export function WorkbenchShell({
           <div className="brand" title={appName} aria-label={appName}>
             <img className="brand-icon" src="/irodori-icon.svg" alt="" />
           </div>
-          <nav className="menubar" aria-label="Application menu" ref={menubarRef}>
+          <nav
+            className="menubar"
+            aria-label="Application menu"
+            ref={menubarRef}
+          >
             {menuBarSections.map((section) => (
               <div className="menubar-item" key={section.label}>
                 <button
@@ -426,7 +426,9 @@ export function WorkbenchShell({
               .join(" ")}
             type="button"
             title={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
-            aria-label={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+            aria-label={
+              leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"
+            }
             aria-pressed={leftSidebarOpen}
             data-sidebar-toggle="left"
             onClick={onToggleLeftSidebar}
@@ -441,8 +443,12 @@ export function WorkbenchShell({
               "sidebar-right",
             ].join(" ")}
             type="button"
-            title={rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"}
-            aria-label={rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"}
+            title={
+              rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"
+            }
+            aria-label={
+              rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"
+            }
             aria-pressed={rightSidebarOpen}
             data-sidebar-toggle="right"
             onClick={onToggleRightSidebar}
@@ -506,11 +512,13 @@ export function WorkbenchShell({
               role="menuitem"
               disabled={isDisabledElement(contextMenu.activatable)}
               onClick={activateContextTarget}
-          >
-            <span>
-              {contextMenu.label ? `Activate ${contextMenu.label}` : "Activate"}
-            </span>
-          </button>
+            >
+              <span>
+                {contextMenu.label
+                  ? `Activate ${contextMenu.label}`
+                  : "Activate"}
+              </span>
+            </button>
           ) : null}
           {contextMenu.selectedText ? (
             <button
@@ -622,7 +630,9 @@ function contextLabelFrom(
   editable: HTMLInputElement | HTMLTextAreaElement | null,
 ) {
   if (editable) {
-    return editable.getAttribute("aria-label") ?? editable.placeholder ?? "field";
+    return (
+      editable.getAttribute("aria-label") ?? editable.placeholder ?? "field"
+    );
   }
   const labelTarget =
     activatable ?? target.closest("[aria-label], [title]") ?? target;
@@ -645,7 +655,9 @@ function readableTextFrom(target: Element | null) {
 
 function cleanContextText(text: string) {
   const normalized = text.replace(/\s+/g, " ").trim();
-  return normalized.length > 160 ? `${normalized.slice(0, 157)}...` : normalized;
+  return normalized.length > 160
+    ? `${normalized.slice(0, 157)}...`
+    : normalized;
 }
 
 function isDisabledElement(target: HTMLElement) {

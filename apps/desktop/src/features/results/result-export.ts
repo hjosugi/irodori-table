@@ -29,7 +29,11 @@ export const resultExportFormats: Array<{
   { id: "json", label: "JSON", title: "JSON array" },
   { id: "jsonl", label: "JSONL", title: "One JSON object per line" },
   { id: "sql", label: "SQL", title: "INSERT statements" },
-  { id: "excel", label: "Excel-compatible", title: "HTML workbook readable by Excel" },
+  {
+    id: "excel",
+    label: "Excel-compatible",
+    title: "HTML workbook readable by Excel",
+  },
   { id: "markdown", label: "Markdown", title: "Markdown table" },
 ];
 
@@ -111,7 +115,8 @@ const supportedResultExportFormats = new Set<string>(
 
 export function unsupportedResultExportFormatMessage(format: string): string {
   const normalized = format.trim().toLowerCase().replace(/^\./, "");
-  const supported = "CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown";
+  const supported =
+    "CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown";
   switch (normalized) {
     case "xlsx":
       return `Native XLSX export is not supported. Use the Excel-compatible HTML export, or export ${supported}.`;
@@ -146,7 +151,10 @@ function recordsFromResult(result: ResultLike): Array<Record<string, unknown>> {
   return result.rows.map((row) => rowToRecord(result.columns, row));
 }
 
-function rowToRecord(columns: readonly string[], row: readonly unknown[]): Record<string, unknown> {
+function rowToRecord(
+  columns: readonly string[],
+  row: readonly unknown[],
+): Record<string, unknown> {
   return Object.fromEntries(
     columns.map((column, index) => [column, jsonSafeValue(row[index] ?? null)]),
   );
@@ -164,7 +172,10 @@ function jsonSafeValue(value: unknown): unknown {
   }
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, nested]) => [key, jsonSafeValue(nested)]),
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        jsonSafeValue(nested),
+      ]),
     );
   }
   return value;
@@ -198,7 +209,10 @@ function delimitedFromResult(result: ResultLike, delimiter: string): string {
   ].join("\r\n");
 }
 
-function delimitedValues(values: readonly unknown[], delimiter: string): string {
+function delimitedValues(
+  values: readonly unknown[],
+  delimiter: string,
+): string {
   return values.map((value) => delimitedCell(value, delimiter)).join(delimiter);
 }
 
@@ -220,7 +234,10 @@ function sqlLiteral(value: unknown): string {
   if (typeof value === "boolean") {
     return value ? "TRUE" : "FALSE";
   }
-  const text = typeof value === "object" ? JSON.stringify(jsonSafeValue(value)) : String(value);
+  const text =
+    typeof value === "object"
+      ? JSON.stringify(jsonSafeValue(value))
+      : String(value);
   return `'${text.replace(/'/g, "''")}'`;
 }
 
@@ -235,7 +252,11 @@ function sqlInsertsFromResult(result: ResultLike, tableName: string): string {
     .join("\n")}\n`;
 }
 
-function sqlInsertStatement(table: string, columns: string, values: readonly unknown[]): string {
+function sqlInsertStatement(
+  table: string,
+  columns: string,
+  values: readonly unknown[],
+): string {
   return `INSERT INTO ${table} (${columns}) VALUES (${values.map(sqlLiteral).join(", ")});`;
 }
 
@@ -266,7 +287,9 @@ function escapeHtml(value: unknown): string {
 }
 
 function excelWorkbookFromResult(result: ResultLike): string {
-  const header = result.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+  const header = result.columns
+    .map((column) => `<th>${escapeHtml(column)}</th>`)
+    .join("");
   const rows = resultRows(result).map(htmlRow).join("");
   return [
     "<!doctype html>",
@@ -284,6 +307,9 @@ function resultRows(result: ResultLike): unknown[][] {
   return result.rows.map((row) => rowValues(result.columns, row));
 }
 
-function rowValues(columns: readonly string[], row: readonly unknown[]): unknown[] {
+function rowValues(
+  columns: readonly string[],
+  row: readonly unknown[],
+): unknown[] {
   return columns.map((_, index) => row[index]);
 }

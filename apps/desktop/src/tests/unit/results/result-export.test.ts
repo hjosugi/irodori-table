@@ -27,9 +27,9 @@ describe("result exports", () => {
       ["excel", "Excel-compatible"],
       ["markdown", "Markdown"],
     ]);
-    expect(resultExportFormats.find((format) => format.id === "excel")?.title).toBe(
-      "HTML workbook readable by Excel",
-    );
+    expect(
+      resultExportFormats.find((format) => format.id === "excel")?.title,
+    ).toBe("HTML workbook readable by Excel");
   });
 
   it("reports unsupported export formats with clear errors", () => {
@@ -40,7 +40,11 @@ describe("result exports", () => {
       "Parquet export is not supported.",
     );
     expect(() =>
-      resultExportFileName("local", "avro", new Date("2026-06-25T00:00:00.000Z")),
+      resultExportFileName(
+        "local",
+        "avro",
+        new Date("2026-06-25T00:00:00.000Z"),
+      ),
     ).toThrow("Avro export is not supported.");
     expect(unsupportedResultExportFormatMessage("xml")).toBe(
       'Unsupported export format "xml". Supported export formats: CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown.',
@@ -64,7 +68,9 @@ describe("result exports", () => {
 
   it("exports JSON and JSONL with bigint-safe values", () => {
     expect(buildResultExport(result, "json").content).toContain('"id": "3"');
-    expect(buildResultExport(result, "jsonl").content.trim().split("\n")).toHaveLength(3);
+    expect(
+      buildResultExport(result, "jsonl").content.trim().split("\n"),
+    ).toHaveLength(3);
   });
 
   it("exports JSON with date-safe nested values", () => {
@@ -81,7 +87,9 @@ describe("result exports", () => {
       "json",
     );
 
-    expect(exported.content).toContain('"created_at": "2026-06-25T00:00:00.000Z"');
+    expect(exported.content).toContain(
+      '"created_at": "2026-06-25T00:00:00.000Z"',
+    );
     expect(exported.content).toContain('"sentAt": "2026-06-25T01:02:03.000Z"');
     expect(exported.content).toContain('"count": "2"');
   });
@@ -114,9 +122,10 @@ describe("result exports", () => {
   });
 
   it("exports empty SQL results as a comment", () => {
-    expect(buildResultExport({ columns: ["id"], rows: [] }, "sql", "empty table").content).toBe(
-      '-- No rows to export for "empty table".\n',
-    );
+    expect(
+      buildResultExport({ columns: ["id"], rows: [] }, "sql", "empty table")
+        .content,
+    ).toBe('-- No rows to export for "empty table".\n');
   });
 
   it("exports Markdown tables with escaped pipes, backslashes, and newlines", () => {
@@ -142,10 +151,18 @@ describe("result exports", () => {
 
   it("uses the export extension in download names", () => {
     expect(
-      resultExportFileName("local", "jsonl", new Date("2026-06-25T00:00:00.000Z")),
+      resultExportFileName(
+        "local",
+        "jsonl",
+        new Date("2026-06-25T00:00:00.000Z"),
+      ),
     ).toBe("irodori-local-2026-06-25T00-00-00-000Z.jsonl");
     expect(
-      resultExportFileName("local", "excel", new Date("2026-06-25T00:00:00.000Z")),
+      resultExportFileName(
+        "local",
+        "excel",
+        new Date("2026-06-25T00:00:00.000Z"),
+      ),
     ).toBe("irodori-local-2026-06-25T00-00-00-000Z.xls");
   });
 });

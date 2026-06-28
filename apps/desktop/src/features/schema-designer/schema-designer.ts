@@ -72,7 +72,9 @@ export function blankSchemaDraft(): SchemaDesignerDraft {
   };
 }
 
-export function schemaDraftFromObject(object: DbObjectMetadata): SchemaDesignerDraft {
+export function schemaDraftFromObject(
+  object: DbObjectMetadata,
+): SchemaDesignerDraft {
   return {
     mode: "alter",
     schema: object.schema,
@@ -122,12 +124,15 @@ export function splitIdentifierList(value: string) {
 }
 
 function buildCreateSql(draft: SchemaDesignerDraft, table: string) {
-  const createTableStatement = createTableStatementFor(table, createTableItems(draft));
+  const createTableStatement = createTableStatementFor(
+    table,
+    createTableItems(draft),
+  );
   const statements = [
     createTableStatement,
-    ...draft.indexes.filter(hasIndexShape).map((index) =>
-      createIndexStatement(table, draft.table, index),
-    ),
+    ...draft.indexes
+      .filter(hasIndexShape)
+      .map((index) => createIndexStatement(table, draft.table, index)),
   ];
   return joinSqlStatements(statements);
 }
@@ -157,21 +162,26 @@ function tableConstraints(draft: SchemaDesignerDraft): string[] {
   ].filter(isPresent);
 }
 
-function createTableStatementFor(table: string, items: readonly string[]): string {
+function createTableStatementFor(
+  table: string,
+  items: readonly string[],
+): string {
   return `CREATE TABLE ${table} (\n${items.join(",\n")}\n);`;
 }
 
 function alterStatements(draft: SchemaDesignerDraft, table: string): string[] {
   return [
-    ...draft.columns.filter(isNewColumnWithName).map((column) =>
-      addColumnStatement(table, column),
-    ),
-    ...draft.indexes.filter(isNewIndexWithShape).map((index) =>
-      createIndexStatement(table, draft.table, index),
-    ),
-    ...draft.foreignKeys.filter(isNewForeignKeyWithShape).map((foreignKey) =>
-      addForeignKeyStatement(table, draft.table, foreignKey),
-    ),
+    ...draft.columns
+      .filter(isNewColumnWithName)
+      .map((column) => addColumnStatement(table, column)),
+    ...draft.indexes
+      .filter(isNewIndexWithShape)
+      .map((index) => createIndexStatement(table, draft.table, index)),
+    ...draft.foreignKeys
+      .filter(isNewForeignKeyWithShape)
+      .map((foreignKey) =>
+        addForeignKeyStatement(table, draft.table, foreignKey),
+      ),
   ];
 }
 
@@ -209,11 +219,14 @@ function addForeignKeyStatement(
   foreignKey: SchemaForeignKeyDraft,
 ) {
   return `ALTER TABLE ${table} ADD CONSTRAINT ${quoteIdentifier(
-    foreignKey.name || defaultForeignKeyName(tableName, splitIdentifierList(foreignKey.columns)),
+    foreignKey.name ||
+      defaultForeignKeyName(tableName, splitIdentifierList(foreignKey.columns)),
   )} ${foreignKeyReference(foreignKey)};`;
 }
 
-function primaryKeyConstraint(columns: readonly SchemaColumnDraft[]): string | null {
+function primaryKeyConstraint(
+  columns: readonly SchemaColumnDraft[],
+): string | null {
   const primaryKeyColumns = columns
     .filter((column) => column.primaryKey && hasColumnName(column))
     .map((column) => column.name);
@@ -250,13 +263,17 @@ function createIndexStatement(
   index: SchemaIndexDraft,
 ) {
   const columns = splitIdentifierList(index.columns);
-  const indexName = index.name.trim() || defaultIndexName(tableName, columns, index.unique);
+  const indexName =
+    index.name.trim() || defaultIndexName(tableName, columns, index.unique);
   return `CREATE ${index.unique ? "UNIQUE " : ""}INDEX ${quoteIdentifier(
     indexName,
   )} ON ${table} (${quoteIdentifierList(columns)});`;
 }
 
-function foreignKeyConstraint(tableName: string, foreignKey: SchemaForeignKeyDraft) {
+function foreignKeyConstraint(
+  tableName: string,
+  foreignKey: SchemaForeignKeyDraft,
+) {
   const name =
     foreignKey.name.trim() ||
     defaultForeignKeyName(tableName, splitIdentifierList(foreignKey.columns));
@@ -294,7 +311,10 @@ function defaultForeignKeyName(tableName: string, columns: readonly string[]) {
 }
 
 function qualifiedIdentifier(schema: string, table: string) {
-  return [schema, table].filter((part) => part.trim() !== "").map(quoteIdentifier).join(".");
+  return [schema, table]
+    .filter((part) => part.trim() !== "")
+    .map(quoteIdentifier)
+    .join(".");
 }
 
 function quoteIdentifierList(names: readonly string[]): string {

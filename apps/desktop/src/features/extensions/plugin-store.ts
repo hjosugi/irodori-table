@@ -55,7 +55,9 @@ export const bundledPluginStoreCatalog: PluginStoreCatalog = {
     connector("irodori.snowflake", "Snowflake Connector", ["snowflake"]),
     connector("irodori.bigquery", "BigQuery Connector", ["bigquery"]),
     connector("irodori.bigtable", "Bigtable Connector", ["bigtable"]),
-    connector("irodori.cloud-spanner", "Cloud Spanner Connector", ["cloudSpanner"]),
+    connector("irodori.cloud-spanner", "Cloud Spanner Connector", [
+      "cloudSpanner",
+    ]),
     connector("irodori.redis", "Redis Connector", ["redis"]),
     connector("irodori.dynamodb", "DynamoDB Connector", ["dynamodb"]),
     connector("irodori.mongodb", "MongoDB Connector", ["mongodb"]),
@@ -64,7 +66,9 @@ export const bundledPluginStoreCatalog: PluginStoreCatalog = {
     connector("irodori.scylladb", "ScyllaDB Connector", ["scylladb"]),
     connector("irodori.neo4j", "Neo4j Connector", ["neo4j"]),
     connector("irodori.memgraph", "Memgraph Connector", ["memgraph"]),
-    connector("irodori.elasticsearch", "Elasticsearch Connector", ["elasticsearch"]),
+    connector("irodori.elasticsearch", "Elasticsearch Connector", [
+      "elasticsearch",
+    ]),
     connector("irodori.opensearch", "OpenSearch Connector", ["openSearch"]),
     connector("irodori.sqlserver", "SQL Server Connector", ["sqlserver"]),
     connector("irodori.oracle", "Oracle Connector", ["oracle"]),
@@ -76,7 +80,9 @@ export const bundledPluginStoreCatalog: PluginStoreCatalog = {
     connector("irodori.arangodb", "ArangoDB Connector", ["arangodb"]),
     connector("irodori.questdb", "QuestDB Connector", ["questdb"]),
     connector("irodori.iotdb", "IoTDB Connector", ["iotdb"]),
-    connector("irodori.trino-presto", "Trino / Presto Connector", ["trinoPresto"]),
+    connector("irodori.trino-presto", "Trino / Presto Connector", [
+      "trinoPresto",
+    ]),
     connector("irodori.firebird", "Firebird Connector", ["firebird"]),
     connector("irodori.databricks", "Databricks Connector", ["databricks"]),
   ],
@@ -97,7 +103,10 @@ export async function fetchPluginStoreCatalog(
   return normalizePluginStoreCatalog(parsed, url);
 }
 
-function normalizePluginStoreCatalog(value: unknown, source: string): PluginStoreCatalog {
+function normalizePluginStoreCatalog(
+  value: unknown,
+  source: string,
+): PluginStoreCatalog {
   if (!value || typeof value !== "object") {
     throw new Error("plugin store catalog must be an object");
   }
@@ -133,7 +142,10 @@ function normalizePluginStoreExtension(value: unknown): PluginStoreExtension {
     categories: stringList(raw.categories),
     engines: stringList(raw.engines),
     permissions: stringList(raw.permissions),
-    runtime: requiredString(raw.runtime, "extension runtime") as PluginStoreExtension["runtime"],
+    runtime: requiredString(
+      raw.runtime,
+      "extension runtime",
+    ) as PluginStoreExtension["runtime"],
     verified: Boolean(raw.verified),
     publishedAt: requiredString(raw.publishedAt, "extension publishedAt"),
     install: raw.install ? normalizeInstallSource(raw.install) : undefined,
@@ -154,7 +166,11 @@ function normalizeInstallSource(value: unknown): PluginStoreInstallSource {
   };
 }
 
-function connector(id: string, name: string, engines: string[]): PluginStoreExtension {
+function connector(
+  id: string,
+  name: string,
+  engines: string[],
+): PluginStoreExtension {
   const repoName = `irodori-extension-${id.replace("irodori.", "")}`;
   return {
     id,

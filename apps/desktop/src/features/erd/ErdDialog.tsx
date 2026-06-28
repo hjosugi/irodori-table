@@ -72,209 +72,205 @@ export function ErdDialog({
 }) {
   return (
     <DialogShell className="diagram" label="ER diagram" onClose={onClose}>
-        <div className="diagram-header">
-          <strong>ER Diagram</strong>
-          <span>
-            {activeConnectionName}
-            {model
-              ? ` \u00b7 ${model.tables.length}/${model.totalTables} tables \u00b7 ${model.edges.length} edges`
-              : ""}
-          </span>
+      <div className="diagram-header">
+        <strong>ER Diagram</strong>
+        <span>
+          {activeConnectionName}
+          {model
+            ? ` \u00b7 ${model.tables.length}/${model.totalTables} tables \u00b7 ${model.edges.length} edges`
+            : ""}
+        </span>
+        <button
+          className="text-button"
+          type="button"
+          title="Fit diagram"
+          onClick={onFit}
+          disabled={!layout}
+        >
+          <Maximize2 size={13} />
+          <span>Fit</span>
+        </button>
+        <button
+          className="mini-button"
+          type="button"
+          title="Zoom out"
+          aria-label="Zoom out"
+          disabled={!layout}
+          onClick={() =>
+            onZoomChange((current) => clampNumber(current - 0.1, 0.25, 2))
+          }
+        >
+          <ZoomOut size={13} />
+        </button>
+        <span className="diagram-zoom">{Math.round(zoom * 100)}%</span>
+        <button
+          className="mini-button"
+          type="button"
+          title="Zoom in"
+          aria-label="Zoom in"
+          disabled={!layout}
+          onClick={() =>
+            onZoomChange((current) => clampNumber(current + 0.1, 0.25, 2))
+          }
+        >
+          <ZoomIn size={13} />
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          aria-label="Copy ERD SVG"
+          title="Copy ERD SVG"
+          onClick={onCopySvg}
+          disabled={!layout}
+        >
+          <Copy size={13} />
+          <span>SVG</span>
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          aria-label="Copy ERD PNG"
+          title="Copy ERD PNG"
+          onClick={onCopyPng}
+          disabled={!layout}
+        >
+          <Copy size={13} />
+          <span>PNG</span>
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          aria-label="Download ERD SVG"
+          title="Download ERD SVG"
+          onClick={onDownloadSvg}
+          disabled={!layout}
+        >
+          <Download size={13} />
+          <span>SVG</span>
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          aria-label="Download ERD PNG"
+          title="Download ERD PNG"
+          onClick={onDownloadPng}
+          disabled={!layout}
+        >
+          <ImageDown size={13} />
+          <span>PNG</span>
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          onClick={onDownloadSpecMarkdown}
+          disabled={!metadataLoaded}
+        >
+          Spec MD
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          onClick={onDownloadSpecJson}
+          disabled={!metadataLoaded}
+        >
+          Spec JSON
+        </button>
+        <button className="text-button" type="button" onClick={onLoadSpecDdl}>
+          Spec to DDL
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          onClick={onCopyMermaid}
+          disabled={!metadataLoaded}
+        >
+          Copy Mermaid
+        </button>
+        <button className="text-button" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div className="diagram-controls">
+        <label className="diagram-search">
+          <Search size={14} />
+          <input
+            value={search}
+            placeholder="Filter schemas, tables, columns"
+            onChange={(event) => onSearchChange(event.currentTarget.value)}
+          />
+        </label>
+        <div className="diagram-schema-actions">
           <button
-            className="text-button"
+            className="mini-button"
             type="button"
-            title="Fit diagram"
-            onClick={onFit}
-            disabled={!layout}
+            onClick={() => onSchemaNamesChange(availableSchemas)}
           >
-            <Maximize2 size={13} />
-            <span>Fit</span>
+            All
           </button>
           <button
             className="mini-button"
             type="button"
-            title="Zoom out"
-            aria-label="Zoom out"
-            disabled={!layout}
-            onClick={() =>
-              onZoomChange((current) => clampNumber(current - 0.1, 0.25, 2))
-            }
+            onClick={() => onSchemaNamesChange([])}
           >
-            <ZoomOut size={13} />
-          </button>
-          <span className="diagram-zoom">{Math.round(zoom * 100)}%</span>
-          <button
-            className="mini-button"
-            type="button"
-            title="Zoom in"
-            aria-label="Zoom in"
-            disabled={!layout}
-            onClick={() =>
-              onZoomChange((current) => clampNumber(current + 0.1, 0.25, 2))
-            }
-          >
-            <ZoomIn size={13} />
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            aria-label="Copy ERD SVG"
-            title="Copy ERD SVG"
-            onClick={onCopySvg}
-            disabled={!layout}
-          >
-            <Copy size={13} />
-            <span>SVG</span>
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            aria-label="Copy ERD PNG"
-            title="Copy ERD PNG"
-            onClick={onCopyPng}
-            disabled={!layout}
-          >
-            <Copy size={13} />
-            <span>PNG</span>
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            aria-label="Download ERD SVG"
-            title="Download ERD SVG"
-            onClick={onDownloadSvg}
-            disabled={!layout}
-          >
-            <Download size={13} />
-            <span>SVG</span>
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            aria-label="Download ERD PNG"
-            title="Download ERD PNG"
-            onClick={onDownloadPng}
-            disabled={!layout}
-          >
-            <ImageDown size={13} />
-            <span>PNG</span>
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            onClick={onDownloadSpecMarkdown}
-            disabled={!metadataLoaded}
-          >
-            Spec MD
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            onClick={onDownloadSpecJson}
-            disabled={!metadataLoaded}
-          >
-            Spec JSON
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            onClick={onLoadSpecDdl}
-          >
-            Spec to DDL
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            onClick={onCopyMermaid}
-            disabled={!metadataLoaded}
-          >
-            Copy Mermaid
-          </button>
-          <button className="text-button" type="button" onClick={onClose}>
-            Close
+            None
           </button>
         </div>
-        <div className="diagram-controls">
-          <label className="diagram-search">
-            <Search size={14} />
-            <input
-              value={search}
-              placeholder="Filter schemas, tables, columns"
-              onChange={(event) => onSearchChange(event.currentTarget.value)}
-            />
-          </label>
-          <div className="diagram-schema-actions">
-            <button
-              className="mini-button"
-              type="button"
-              onClick={() => onSchemaNamesChange(availableSchemas)}
-            >
-              All
-            </button>
-            <button
-              className="mini-button"
-              type="button"
-              onClick={() => onSchemaNamesChange([])}
-            >
-              None
-            </button>
-          </div>
-          <div className="diagram-schema-list" role="group" aria-label="Schemas">
-            {availableSchemas.map((schema) => {
-              const active = schemaNames.includes(schema);
-              return (
-                <button
-                  key={schema}
-                  className={active ? "schema-chip active" : "schema-chip"}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() =>
-                    onSchemaNamesChange((current) =>
-                      current.includes(schema)
-                        ? current.filter((item) => item !== schema)
-                        : [...current, schema],
-                    )
-                  }
-                >
-                  {schema}
-                </button>
-              );
-            })}
-          </div>
+        <div className="diagram-schema-list" role="group" aria-label="Schemas">
+          {availableSchemas.map((schema) => {
+            const active = schemaNames.includes(schema);
+            return (
+              <button
+                key={schema}
+                className={active ? "schema-chip active" : "schema-chip"}
+                type="button"
+                aria-pressed={active}
+                onClick={() =>
+                  onSchemaNamesChange((current) =>
+                    current.includes(schema)
+                      ? current.filter((item) => item !== schema)
+                      : [...current, schema],
+                  )
+                }
+              >
+                {schema}
+              </button>
+            );
+          })}
         </div>
-        <div className="diagram-canvas" ref={canvasRef}>
-          {error ? (
-            <div className="result-error" role="alert">
-              <AlertTriangle size={16} />
-              <span>{error}</span>
-            </div>
-          ) : null}
-          {!error && (!layout || layout.tables.length === 0) ? (
-            <div className="grid-state">
-              No tables match the current diagram filters
-            </div>
-          ) : null}
-          {!error && layout && layout.tables.length > 0 ? (
+      </div>
+      <div className="diagram-canvas" ref={canvasRef}>
+        {error ? (
+          <div className="result-error" role="alert">
+            <AlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+        ) : null}
+        {!error && (!layout || layout.tables.length === 0) ? (
+          <div className="grid-state">
+            No tables match the current diagram filters
+          </div>
+        ) : null}
+        {!error && layout && layout.tables.length > 0 ? (
+          <div
+            className="diagram-stage"
+            style={{
+              width: layout.width * zoom,
+              height: layout.height * zoom,
+            }}
+          >
             <div
-              className="diagram-stage"
+              className="diagram-scale"
               style={{
-                width: layout.width * zoom,
-                height: layout.height * zoom,
+                transform: `scale(${zoom})`,
+                width: layout.width,
+                height: layout.height,
               }}
             >
-              <div
-                className="diagram-scale"
-                style={{
-                  transform: `scale(${zoom})`,
-                  width: layout.width,
-                  height: layout.height,
-                }}
-              >
-                <ErdSvg layout={layout} svgRef={svgRef} svgStyle={svgStyle} />
-              </div>
+              <ErdSvg layout={layout} svgRef={svgRef} svgStyle={svgStyle} />
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+      </div>
     </DialogShell>
   );
 }

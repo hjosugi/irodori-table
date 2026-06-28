@@ -30,7 +30,9 @@ function loadResultOffload() {
 }
 
 function loadResultMemoryBudget() {
-  const stored = Number(window.localStorage.getItem(resultMemoryBudgetStorageKey));
+  const stored = Number(
+    window.localStorage.getItem(resultMemoryBudgetStorageKey),
+  );
   return Number.isFinite(stored)
     ? clampNumber(stored, resultMemoryBudgetMin, resultMemoryBudgetMax)
     : resultMemoryBudgetDefault;

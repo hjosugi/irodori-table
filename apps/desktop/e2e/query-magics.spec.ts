@@ -39,7 +39,11 @@ declare global {
   }
 }
 
-function table(schema: string, name: string, columns: readonly string[]): DbObjectMetadata {
+function table(
+  schema: string,
+  name: string,
+  columns: readonly string[],
+): DbObjectMetadata {
   return {
     schema,
     name,
@@ -188,13 +192,18 @@ async function connect(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
 }
 
 async function replaceEditorText(page: Page, text: string) {
@@ -213,7 +222,9 @@ test("query magic explain expands to visible SQL and executes it", async ({
   await replaceEditorText(page, "\\explain select * from customers");
   await page.getByRole("button", { name: "Run Current", exact: true }).click();
 
-  await page.waitForFunction(() => (window.__IRODORI_MAGIC_DONE_COUNT__ ?? 0) >= 1);
+  await page.waitForFunction(
+    () => (window.__IRODORI_MAGIC_DONE_COUNT__ ?? 0) >= 1,
+  );
   await expect(page.locator(".cm-content")).toContainText(
     "EXPLAIN select * from customers;",
   );
@@ -230,7 +241,7 @@ test("query magic erd opens the diagram filtered by text", async ({ page }) => {
   await page.getByRole("button", { name: "Run Current", exact: true }).click();
 
   await expect(page.getByRole("dialog", { name: "ER diagram" })).toBeVisible();
-  await expect(page.getByPlaceholder("Filter schemas, tables, columns")).toHaveValue(
-    "customers",
-  );
+  await expect(
+    page.getByPlaceholder("Filter schemas, tables, columns"),
+  ).toHaveValue("customers");
 });

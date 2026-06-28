@@ -55,7 +55,9 @@ describe("ErrorBoundary", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     flushSync(() =>
       root.render(
-        <ErrorBoundary fallback={(error) => <p className="custom">{error.message}</p>}>
+        <ErrorBoundary
+          fallback={(error) => <p className="custom">{error.message}</p>}
+        >
           <Boom explode={true} />
         </ErrorBoundary>,
       ),

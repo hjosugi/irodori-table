@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Cloud, Copy, Database, FileText, Play, Wrench, X } from "lucide-react";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 
@@ -98,7 +103,8 @@ function lakehouseActions(engine: DbEngine): LakehouseAction[] {
     {
       id: "iceberg-rest",
       title: "REST Catalog",
-      detail: "Attach a REST-compatible Iceberg catalog and query by table name.",
+      detail:
+        "Attach a REST-compatible Iceberg catalog and query by table name.",
       sql: restCatalogSql,
     },
     {
@@ -164,8 +170,9 @@ export function LakehousePanel({
     activeMetadata?.schemas.reduce(
       (count, schema) =>
         count +
-        schema.objects.filter((object) => object.kind === "table" || object.kind === "view")
-          .length,
+        schema.objects.filter(
+          (object) => object.kind === "table" || object.kind === "view",
+        ).length,
       0,
     ) ?? 0;
   const lakehouseEngine = isLakehouseEngine(editorEngine);
@@ -237,7 +244,12 @@ export function LakehousePanel({
             {activeConnectionName} · {editorEngine}
           </span>
         </div>
-        <button type="button" title="Close Lakehouse" aria-label="Close Lakehouse" onClick={onClose}>
+        <button
+          type="button"
+          title="Close Lakehouse"
+          aria-label="Close Lakehouse"
+          onClick={onClose}
+        >
           <X size={14} />
         </button>
       </div>
@@ -249,14 +261,19 @@ export function LakehousePanel({
         </div>
         <div>
           <FileText size={15} />
-          <span>{tableCount ? `${tableCount} objects` : "no catalog loaded"}</span>
+          <span>
+            {tableCount ? `${tableCount} objects` : "no catalog loaded"}
+          </span>
         </div>
       </div>
 
       {!lakehouseEngine ? (
         <div className="lakehouse-callout">
           <Cloud size={16} />
-          <span>Switch to DuckDB, MotherDuck, Athena, or Iceberg for lakehouse workflows.</span>
+          <span>
+            Switch to DuckDB, MotherDuck, Athena, or Iceberg for lakehouse
+            workflows.
+          </span>
         </div>
       ) : null}
 

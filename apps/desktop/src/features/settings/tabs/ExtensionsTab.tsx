@@ -55,7 +55,9 @@ function ExtensionSection({
                     title="Open release"
                     aria-label={`Open ${extension.name} release`}
                     onClick={() =>
-                      openExternalUrl(extension.install?.url ?? extension.repository)
+                      openExternalUrl(
+                        extension.install?.url ?? extension.repository,
+                      )
                     }
                   >
                     <Download size={15} />

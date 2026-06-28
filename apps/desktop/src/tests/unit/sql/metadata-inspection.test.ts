@@ -96,7 +96,9 @@ describe("inspectSqlMetadataAt", () => {
     const target = inspect("select * from cust|omers");
 
     expect(target?.kind).toBe("object");
-    expect(target ? sqlMetadataTargetTitle(target) : "").toBe("public.customers");
+    expect(target ? sqlMetadataTargetTitle(target) : "").toBe(
+      "public.customers",
+    );
   });
 
   it("resolves alias-qualified columns", () => {
@@ -109,7 +111,9 @@ describe("inspectSqlMetadataAt", () => {
       expect(sqlColumnDefinitionPreview(target.object, target.column)).toBe(
         "name text",
       );
-      expect(sqlColumnSampleValues(target.object, target.column)).toEqual(["Ada"]);
+      expect(sqlColumnSampleValues(target.object, target.column)).toEqual([
+        "Ada",
+      ]);
     }
   });
 

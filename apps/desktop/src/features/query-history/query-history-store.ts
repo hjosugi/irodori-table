@@ -127,9 +127,7 @@ function loadQueryHistoryMaxItems() {
 }
 
 function loadQueryHistoryResultRows() {
-  const stored = Number(
-    storage()?.getItem(queryHistoryResultRowsStorageKey),
-  );
+  const stored = Number(storage()?.getItem(queryHistoryResultRowsStorageKey));
   return Number.isFinite(stored)
     ? clampQueryHistoryResultRows(stored)
     : queryHistoryResultRowsDefault;
@@ -173,7 +171,8 @@ export function createQueryHistoryResultSnapshot(
     retainedRows: rows.length,
     elapsedMs: numberValue(result.elapsedMs),
     truncated: result.truncated,
-    retentionTruncated: rowCount > rows.length || result.rows.length > rows.length,
+    retentionTruncated:
+      rowCount > rows.length || result.rows.length > rows.length,
     message: result.message,
   };
   if (result.resultSets && result.resultSets.length > 1) {
@@ -200,7 +199,8 @@ function createQueryHistoryResultSetSnapshot(
     retainedRows: rows.length,
     elapsedMs: numberValue(result.elapsedMs),
     truncated: result.truncated,
-    retentionTruncated: rowCount > rows.length || result.rows.length > rows.length,
+    retentionTruncated:
+      rowCount > rows.length || result.rows.length > rows.length,
     message: result.message,
   };
 }
@@ -237,7 +237,8 @@ function sanitizeResultSnapshot(
             return [
               {
                 statementIndex: set.statementIndex as number | bigint,
-                statement: typeof set.statement === "string" ? set.statement : "",
+                statement:
+                  typeof set.statement === "string" ? set.statement : "",
                 columns: setColumns,
                 rows: rowArray(set.rows),
                 rowCount: set.rowCount as number | bigint,
@@ -296,7 +297,10 @@ function sanitizeQueryHistoryItemForSettings(
   };
 }
 
-function loadQueryHistory(maxItems: number, rowLimit: number): QueryHistoryItem[] {
+function loadQueryHistory(
+  maxItems: number,
+  rowLimit: number,
+): QueryHistoryItem[] {
   try {
     const raw = storage()?.getItem(queryHistoryStorageKey);
     if (!raw) {
@@ -349,7 +353,9 @@ export const useQueryHistoryStore = create<QueryHistoryState>((set) => ({
         items: state.items.slice(0, maxItems),
         selectedId:
           state.selectedId &&
-          state.items.slice(0, maxItems).some((item) => item.id === state.selectedId)
+          state.items
+            .slice(0, maxItems)
+            .some((item) => item.id === state.selectedId)
             ? state.selectedId
             : null,
       };
@@ -393,7 +399,8 @@ export const useQueryHistoryStore = create<QueryHistoryState>((set) => ({
 
 let lastPersistedItems = useQueryHistoryStore.getState().items;
 let lastPersistedMaxItems = useQueryHistoryStore.getState().maxItems;
-let lastPersistedResultRowLimit = useQueryHistoryStore.getState().resultRowLimit;
+let lastPersistedResultRowLimit =
+  useQueryHistoryStore.getState().resultRowLimit;
 useQueryHistoryStore.subscribe((state) => {
   const localStorage = storage();
   if (!localStorage) {

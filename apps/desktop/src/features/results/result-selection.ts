@@ -57,10 +57,10 @@ export function resultCellInRange(
 ): boolean {
   return Boolean(
     bounds &&
-      rowIndex >= bounds.rowStart &&
-      rowIndex <= bounds.rowEnd &&
-      columnIndex >= bounds.colStart &&
-      columnIndex <= bounds.colEnd,
+    rowIndex >= bounds.rowStart &&
+    rowIndex <= bounds.rowEnd &&
+    columnIndex >= bounds.colStart &&
+    columnIndex <= bounds.colEnd,
   );
 }
 
@@ -69,7 +69,11 @@ export function readResultCellRangeRows(
   bounds: Exclude<ResultCellRangeBounds, null>,
 ): string[][] {
   const rows: string[][] = [];
-  for (let rowIndex = bounds.rowStart; rowIndex <= bounds.rowEnd; rowIndex += 1) {
+  for (
+    let rowIndex = bounds.rowStart;
+    rowIndex <= bounds.rowEnd;
+    rowIndex += 1
+  ) {
     const row = view.rowAt(rowIndex);
     if (!row) {
       continue;
@@ -149,7 +153,11 @@ function readCellsInBounds(
   bounds: Exclude<ResultCellRangeBounds, null>,
 ): string[] {
   const cells: string[] = [];
-  for (let colIndex = bounds.colStart; colIndex <= bounds.colEnd; colIndex += 1) {
+  for (
+    let colIndex = bounds.colStart;
+    colIndex <= bounds.colEnd;
+    colIndex += 1
+  ) {
     cells.push(row.cells[colIndex] ?? "");
   }
   return cells;

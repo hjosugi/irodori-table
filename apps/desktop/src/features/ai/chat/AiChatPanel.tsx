@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Bot, Copy, Database, Eraser, Plus, RefreshCw, Send, Square, X } from "lucide-react";
+import {
+  Bot,
+  Copy,
+  Database,
+  Eraser,
+  Plus,
+  RefreshCw,
+  Send,
+  Square,
+  X,
+} from "lucide-react";
 import type { DbEngine } from "@/generated/irodori-api";
 import {
   aiChat,
@@ -13,7 +23,11 @@ import { ProviderPicker } from "./ProviderPicker";
 import { Markdown } from "./Markdown";
 import "./ai-chat.css";
 
-type Notify = (kind: "success" | "error", title: string, detail?: string) => void;
+type Notify = (
+  kind: "success" | "error",
+  title: string,
+  detail?: string,
+) => void;
 
 export type AiChatPanelProps = {
   activeConnectionId: string;
@@ -27,7 +41,9 @@ export type AiChatPanelProps = {
 };
 
 /** A segment of assistant text: prose or a fenced code block. */
-type Segment = { kind: "text"; text: string } | { kind: "code"; text: string; lang: string };
+type Segment =
+  | { kind: "text"; text: string }
+  | { kind: "code"; text: string; lang: string };
 
 function splitContent(content: string): Segment[] {
   const segments: Segment[] = [];
@@ -145,27 +161,27 @@ export function AiChatPanel({
 
       store.pushUser(text);
 
-    const sessionId = newChatSessionId();
-    const assistantId = `a-${sessionId}`;
-    store.startAssistant(assistantId, sessionId);
+      const sessionId = newChatSessionId();
+      const assistantId = `a-${sessionId}`;
+      store.startAssistant(assistantId, sessionId);
 
-    const connectionId = activeConnectionId || undefined;
-    try {
-      await aiChat(
-        {
-          sessionId,
-          messages: history,
-          connectionId,
-          engine: connectionId ? engine : undefined,
-          agentMode: agentMode && activeConnectionOpen,
-        },
-        (event: ChatEvent) => handleEvent(assistantId, event, notify),
-      );
-    } catch (err) {
-      useAiChatStore.getState().addError(assistantId, String(err));
-    } finally {
-      useAiChatStore.getState().finishAssistant(assistantId);
-    }
+      const connectionId = activeConnectionId || undefined;
+      try {
+        await aiChat(
+          {
+            sessionId,
+            messages: history,
+            connectionId,
+            engine: connectionId ? engine : undefined,
+            agentMode: agentMode && activeConnectionOpen,
+          },
+          (event: ChatEvent) => handleEvent(assistantId, event, notify),
+        );
+      } catch (err) {
+        useAiChatStore.getState().addError(assistantId, String(err));
+      } finally {
+        useAiChatStore.getState().finishAssistant(assistantId);
+      }
     },
     [activeConnectionId, activeConnectionOpen, agentMode, engine, notify],
   );
@@ -189,7 +205,9 @@ export function AiChatPanel({
     if (sessionId) void aiChatCancel(sessionId);
   }, []);
 
-  const lastAssistantId = [...turns].reverse().find((t) => t.role === "assistant")?.id;
+  const lastAssistantId = [...turns]
+    .reverse()
+    .find((t) => t.role === "assistant")?.id;
 
   return (
     <section className="aichat-panel" aria-label="AI Chat">
@@ -198,10 +216,20 @@ export function AiChatPanel({
           <Bot size={14} /> AI Chat
         </span>
         <div className="aichat-header-actions">
-          <button type="button" title="Clear conversation" aria-label="Clear" onClick={clear}>
+          <button
+            type="button"
+            title="Clear conversation"
+            aria-label="Clear"
+            onClick={clear}
+          >
             <Eraser size={13} />
           </button>
-          <button type="button" title="Close" aria-label="Close" onClick={onClose}>
+          <button
+            type="button"
+            title="Close"
+            aria-label="Close"
+            onClick={onClose}
+          >
             <X size={14} />
           </button>
         </div>
@@ -212,7 +240,10 @@ export function AiChatPanel({
           <Database size={12} />
           {activeConnectionOpen ? activeConnectionName : "No active connection"}
         </span>
-        <label className="aichat-agent-toggle" title="Let the assistant run read-only SELECT queries to answer with real data">
+        <label
+          className="aichat-agent-toggle"
+          title="Let the assistant run read-only SELECT queries to answer with real data"
+        >
           <input
             type="checkbox"
             checked={agentMode}
@@ -227,8 +258,9 @@ export function AiChatPanel({
       <div className="aichat-messages" ref={scrollRef}>
         {turns.length === 0 ? (
           <div className="aichat-empty">
-            Ask about your data. With <strong>Agent</strong> on, the assistant runs read-only
-            SELECT queries against the connected database and answers from the results.
+            Ask about your data. With <strong>Agent</strong> on, the assistant
+            runs read-only SELECT queries against the connected database and
+            answers from the results.
           </div>
         ) : null}
         {turns.map((turn) => (
@@ -257,7 +289,9 @@ export function AiChatPanel({
                         ) : null}
                         <button
                           type="button"
-                          onClick={() => void navigator.clipboard?.writeText(seg.text)}
+                          onClick={() =>
+                            void navigator.clipboard?.writeText(seg.text)
+                          }
                           title="Copy"
                         >
                           <Copy size={12} /> Copy
@@ -284,12 +318,19 @@ export function AiChatPanel({
                 ) : null}
                 {!turn.streaming && turn.id === lastAssistantId ? (
                   <div className="aichat-turn-footer">
-                    <button type="button" onClick={regenerate} disabled={streaming} title="Regenerate">
+                    <button
+                      type="button"
+                      onClick={regenerate}
+                      disabled={streaming}
+                      title="Regenerate"
+                    >
                       <RefreshCw size={12} /> Regenerate
                     </button>
                     <button
                       type="button"
-                      onClick={() => void navigator.clipboard?.writeText(turn.content)}
+                      onClick={() =>
+                        void navigator.clipboard?.writeText(turn.content)
+                      }
                       title="Copy reply"
                     >
                       <Copy size={12} /> Copy
@@ -318,7 +359,12 @@ export function AiChatPanel({
           }}
         />
         {streaming ? (
-          <button type="button" className="aichat-send aichat-stop" onClick={stop} title="Stop">
+          <button
+            type="button"
+            className="aichat-send aichat-stop"
+            onClick={stop}
+            title="Stop"
+          >
             <Square size={14} />
           </button>
         ) : (

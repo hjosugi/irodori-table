@@ -113,6 +113,8 @@ Useful desktop commands:
 ```sh
 make desktop-vite     # Vite only, useful when launching a debug binary manually
 make desktop-typegen  # regenerate Rust -> TypeScript bindings
+make desktop-format   # format desktop JS/TS sources with oxfmt
+make desktop-format-check # verify desktop JS/TS formatting with oxfmt
 make desktop-test     # Vitest
 make desktop-test-rust-ts # Vitest + cargo test in parallel
 make desktop-build    # TypeScript + Vite production build (fast, no Rust typegen)

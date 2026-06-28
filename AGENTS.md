@@ -56,6 +56,8 @@ against `apps/desktop`.
 - Desktop unit tests: `make desktop-test`
 - Desktop Rust/TS combined loop: `make desktop-test-rust-ts`
 - Type generation drift check: `make desktop-typegen-check`
+- Desktop JS/TS formatting: `make desktop-format`
+- Desktop JS/TS formatting check: `make desktop-format-check`
 - Frontend build: `make desktop-build`
 - Verified desktop build: `make desktop-build-verified`
 - Browser/e2e tests: `make desktop-e2e`
@@ -117,4 +119,3 @@ lockfiles as the reproducible path.
   `irodori-workstream-coordinator`.
 - Serialize shared contract changes before downstream UI, runtime, connector, or
   docs agents consume them.
-

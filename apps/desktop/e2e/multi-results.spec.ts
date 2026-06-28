@@ -156,7 +156,11 @@ async function installMultiResultMock(page: Page) {
                 resultSetIndex,
                 columns: [...set.columns],
               });
-              for (let rowIndex = 0; rowIndex < set.rows.length; rowIndex += 40) {
+              for (
+                let rowIndex = 0;
+                rowIndex < set.rows.length;
+                rowIndex += 40
+              ) {
                 channel.onmessage({
                   type: "rows",
                   resultSetIndex,
@@ -169,9 +173,15 @@ async function installMultiResultMock(page: Page) {
             }
             channel.onmessage({
               type: "done",
-              rowCount: resultSets.reduce((sum, set) => sum + set.rows.length, 0),
+              rowCount: resultSets.reduce(
+                (sum, set) => sum + set.rows.length,
+                0,
+              ),
               truncated: false,
-              elapsedMs: resultSets.reduce((sum, set) => sum + set.elapsedMs, 0),
+              elapsedMs: resultSets.reduce(
+                (sum, set) => sum + set.elapsedMs,
+                0,
+              ),
               resultSets: resultSets.map((set, resultSetIndex) => ({
                 resultSetIndex,
                 rowCount: set.rows.length,
@@ -211,13 +221,18 @@ async function connectMockDatabase(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
   }
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
 }
 
 async function runFixtureQuery(page: Page) {
@@ -287,8 +302,12 @@ test("streamed multi-statement results expose tabs, summaries, switching, and re
   await expect(resultTabs).toBeVisible();
   await expect(resultOneTab).toHaveAttribute("aria-selected", "true");
   await expect(resultTwoTab).toHaveAttribute("aria-selected", "false");
-  await expect(page.locator(".results-title")).toContainText("120 rows in 37 ms");
-  await expect(grid.getByRole("columnheader", { name: "account_id" })).toBeVisible();
+  await expect(page.locator(".results-title")).toContainText(
+    "120 rows in 37 ms",
+  );
+  await expect(
+    grid.getByRole("columnheader", { name: "account_id" }),
+  ).toBeVisible();
   await expect(grid.getByRole("cell", { name: "account_0" })).toBeVisible();
 
   const selectedCell = grid.getByRole("cell", { name: "metric_1_0" });
@@ -319,14 +338,20 @@ test("streamed multi-statement results expose tabs, summaries, switching, and re
   await expect(page.locator(".results-title")).toContainText("3 rows in 9 ms");
   await expectGridScrollPosition(grid, { top: 0, left: 0 });
   await expect(grid.locator(".grid-row.row-selected")).toHaveCount(0);
-  await expect(grid.locator("[role='cell'][aria-selected='true']")).toHaveCount(0);
-  await expect(grid.getByRole("columnheader", { name: "region" })).toBeVisible();
+  await expect(grid.locator("[role='cell'][aria-selected='true']")).toHaveCount(
+    0,
+  );
+  await expect(
+    grid.getByRole("columnheader", { name: "region" }),
+  ).toBeVisible();
   await expect(grid.getByRole("cell", { name: "apac" })).toBeVisible();
   await expect(grid.getByRole("cell", { name: "account_0" })).toHaveCount(0);
 
   await resultOneTab.click();
   await expect(resultOneTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".results-title")).toContainText("120 rows in 37 ms");
+  await expect(page.locator(".results-title")).toContainText(
+    "120 rows in 37 ms",
+  );
   await expectGridScrollPosition(grid, { top: 0, left: 0 });
   await expect(grid.locator(".grid-row.row-selected")).toHaveCount(0);
   await expect(grid.getByRole("cell", { name: "account_0" })).toBeVisible();

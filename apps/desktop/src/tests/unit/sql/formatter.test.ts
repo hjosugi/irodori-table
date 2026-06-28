@@ -11,9 +11,7 @@ describe("SQL formatter hook", () => {
   it("can disable formatting through configuration", async () => {
     await expect(
       formatSqlDocument("select 1", "postgres", "disabled"),
-    ).rejects.toThrow(
-      "SQL formatter is disabled",
-    );
+    ).rejects.toThrow("SQL formatter is disabled");
   });
 
   it("validates persisted formatter ids", () => {

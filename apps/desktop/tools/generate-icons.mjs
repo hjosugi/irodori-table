@@ -51,7 +51,15 @@ function run(command, args) {
 }
 
 function renderPng(out, size) {
-  run("rsvg-convert", ["--width", String(size), "--height", String(size), "--output", out, source]);
+  run("rsvg-convert", [
+    "--width",
+    String(size),
+    "--height",
+    String(size),
+    "--output",
+    out,
+    source,
+  ]);
 }
 
 function writeIcns(entries, out) {

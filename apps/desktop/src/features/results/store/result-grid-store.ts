@@ -167,7 +167,9 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
   commitError: null,
   editUndoStack: [],
   setGridScrollTop: (value) =>
-    set((state) => ({ gridScrollTop: resolveValue(state.gridScrollTop, value) })),
+    set((state) => ({
+      gridScrollTop: resolveValue(state.gridScrollTop, value),
+    })),
   setGridScrollLeft: (value) =>
     set((state) => ({
       gridScrollLeft: resolveValue(state.gridScrollLeft, value),
@@ -247,7 +249,9 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
       }
       return {
         ...after,
-        editUndoStack: [...state.editUndoStack, before].slice(-maxEditUndoDepth),
+        editUndoStack: [...state.editUndoStack, before].slice(
+          -maxEditUndoDepth,
+        ),
         editingCell: null,
         commitError: null,
       };

@@ -49,13 +49,19 @@ console.log(`Updated tauri.conf.json`);
 
 // src-tauri/Cargo.toml
 let tauriCargo = readFileSync(tauriCargoPath, "utf8");
-tauriCargo = tauriCargo.replace(/^(version\s*=\s*")[^"]*(")/m, `$1${newVersion}$2`);
+tauriCargo = tauriCargo.replace(
+  /^(version\s*=\s*")[^"]*(")/m,
+  `$1${newVersion}$2`,
+);
 writeFileSync(tauriCargoPath, tauriCargo, "utf8");
 console.log(`Updated apps/desktop/src-tauri/Cargo.toml`);
 
 // Cargo.toml (root)
 let rootCargo = readFileSync(rootCargoPath, "utf8");
-rootCargo = rootCargo.replace(/^(version\s*=\s*")[^"]*(")/m, `$1${newVersion}$2`);
+rootCargo = rootCargo.replace(
+  /^(version\s*=\s*")[^"]*(")/m,
+  `$1${newVersion}$2`,
+);
 writeFileSync(rootCargoPath, rootCargo, "utf8");
 console.log(`Updated root Cargo.toml`);
 
@@ -89,15 +95,20 @@ console.log(`Updated package-lock.json`);
 // 5. Git operations
 try {
   console.log("Staging modified files...");
-  execSync(`git add "${pkgJsonPath}" "${pkgLockPath}" "${tauriConfPath}" "${tauriCargoPath}" "${rootCargoPath}" "${rootCargoLockPath}" "${appConfigPath}"`, { stdio: "inherit" });
-  
+  execSync(
+    `git add "${pkgJsonPath}" "${pkgLockPath}" "${tauriConfPath}" "${tauriCargoPath}" "${rootCargoPath}" "${rootCargoLockPath}" "${appConfigPath}"`,
+    { stdio: "inherit" },
+  );
+
   const commitMsg = `chore: release v${newVersion}`;
   console.log(`Committing: ${commitMsg}`);
   execSync(`git commit -m "${commitMsg}"`, { stdio: "inherit" });
 
   const tagName = `v${newVersion}`;
   console.log(`Creating tag: ${tagName}`);
-  execSync(`git tag -a "${tagName}" -m "Release ${tagName}"`, { stdio: "inherit" });
+  execSync(`git tag -a "${tagName}" -m "Release ${tagName}"`, {
+    stdio: "inherit",
+  });
 
   console.log("Pushing commits and tags to GitHub...");
   execSync(`git push origin main --follow-tags`, { stdio: "inherit" });
@@ -113,7 +124,7 @@ function resolveNextVersion(currentVersion, bumpType) {
   if (!current) {
     return {
       ok: false,
-      message: `Invalid current version: ${currentVersion}`
+      message: `Invalid current version: ${currentVersion}`,
     };
   }
 
@@ -121,22 +132,31 @@ function resolveNextVersion(currentVersion, bumpType) {
     return { ok: true, version: formatSemver(current.major + 1, 0, 0) };
   }
   if (bumpType === "minor") {
-    return { ok: true, version: formatSemver(current.major, current.minor + 1, 0) };
+    return {
+      ok: true,
+      version: formatSemver(current.major, current.minor + 1, 0),
+    };
   }
   if (bumpType === "patch") {
-    return { ok: true, version: formatSemver(current.major, current.minor, current.patch + 1) };
+    return {
+      ok: true,
+      version: formatSemver(current.major, current.minor, current.patch + 1),
+    };
   }
 
   if (!/^\d+\.\d+\.\d+$/.test(bumpType)) {
     return {
       ok: false,
       message: `Unknown bump type or invalid version: ${bumpType}`,
-      usage: "Usage: npm run release [patch|minor|major|x.y.z]"
+      usage: "Usage: npm run release [patch|minor|major|x.y.z]",
     };
   }
 
   const custom = parseSemver(bumpType);
-  return { ok: true, version: formatSemver(custom.major, custom.minor, custom.patch) };
+  return {
+    ok: true,
+    version: formatSemver(custom.major, custom.minor, custom.patch),
+  };
 }
 
 function parseSemver(value) {

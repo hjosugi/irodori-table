@@ -157,7 +157,8 @@ interface CreateSqlEditorViewOptions {
   linter: SqlLinterId;
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
   onMetadataToolWindow:
-    ((request: SqlMetadataToolWindowRequest) => void) | undefined;
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined;
   compartments: SqlEditorCompartments;
 }
 
@@ -207,7 +208,10 @@ function createSqlEditorState({
       compartments.vim.of(vimMode ? vim() : []),
       basicSetup,
       indentOnInput(),
-      indentationMarkers({ highlightActiveBlock: true, hideFirstIndent: false }),
+      indentationMarkers({
+        highlightActiveBlock: true,
+        hideFirstIndent: false,
+      }),
       rainbowBrackets(),
       search({ top: true }),
       highlightSelectionMatches(),
@@ -374,7 +378,8 @@ function buildEditorSqlExtensions(
   snippets: readonly SqlSnippetDefinition[],
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ): Extension {
   return [
     buildSqlExtensions(engine, metadata, snippets),
@@ -391,7 +396,8 @@ type QuickDefinitionPopupState = {
   metadata: DatabaseMetadata;
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined;
   onMetadataToolWindow:
-    ((request: SqlMetadataToolWindowRequest) => void) | undefined;
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined;
   anchor: number;
   range: SqlEditorSelection;
   history: readonly SqlMetadataTarget[];
@@ -423,7 +429,8 @@ function sqlMetadataInsightExtensions(
   metadata: DatabaseMetadata | undefined,
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ): Extension[] {
   if (!metadata) {
     return [];
@@ -723,7 +730,8 @@ function openQuickDefinitionAtSelection(
   metadata: DatabaseMetadata,
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ): boolean {
   const target = inspectSqlMetadataAt(
     view.state.doc.toString(),
@@ -963,7 +971,8 @@ function reconfigureSqlExtensions(
   snippets: readonly SqlSnippetDefinition[],
   onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
   onMetadataToolWindow:
-    ((request: SqlMetadataToolWindowRequest) => void) | undefined,
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
 ) {
   view?.dispatch({
     effects: compartments.sql.reconfigure(
@@ -1046,7 +1055,9 @@ async function cleanupEditorDocument(
   return formatted.skipped ? formatted : { error: null, skipped: "unchanged" };
 }
 
-function toEditorCommandResult(result: FormatEditorResult): SqlEditorCommandResult {
+function toEditorCommandResult(
+  result: FormatEditorResult,
+): SqlEditorCommandResult {
   return {
     error: result.error,
     changed: result.formatted !== undefined,

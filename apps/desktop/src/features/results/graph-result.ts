@@ -51,7 +51,11 @@ export function buildGraphResultModel(
   const builder = new GraphBuilder();
   rows.forEach((row, rowIndex) => {
     row.forEach((cell, columnIndex) => {
-      builder.visit(cell, columns[columnIndex] ?? `col_${columnIndex}`, rowIndex);
+      builder.visit(
+        cell,
+        columns[columnIndex] ?? `col_${columnIndex}`,
+        rowIndex,
+      );
     });
   });
   return {
@@ -61,10 +65,15 @@ export function buildGraphResultModel(
   };
 }
 
-export function layoutGraphResultModel(model: GraphResultModel): GraphResultLayout {
+export function layoutGraphResultModel(
+  model: GraphResultModel,
+): GraphResultLayout {
   const columns = Math.max(1, Math.ceil(Math.sqrt(model.nodes.length)));
   const rows = Math.max(1, Math.ceil(model.nodes.length / columns));
-  const width = Math.max(360, layoutPadding * 2 + (columns - 1) * graphColumnGap);
+  const width = Math.max(
+    360,
+    layoutPadding * 2 + (columns - 1) * graphColumnGap,
+  );
   const height = Math.max(260, layoutPadding * 2 + (rows - 1) * graphRowGap);
   const nodes = model.nodes.map((node, index): GraphResultLayoutNode => {
     const column = index % columns;
@@ -129,7 +138,10 @@ class GraphBuilder {
   private readonly edgeMap = new Map<string, GraphResultEdge>();
 
   visit(value: unknown, column: string, rowIndex: number): string | null {
-    if (this.nodeMap.size >= maxGraphNodes && this.edgeMap.size >= maxGraphEdges) {
+    if (
+      this.nodeMap.size >= maxGraphNodes &&
+      this.edgeMap.size >= maxGraphEdges
+    ) {
       return null;
     }
     if (typeof value === "string") {
@@ -185,10 +197,15 @@ class GraphBuilder {
     column: string,
     rowIndex: number,
   ) {
-    const labels = readStringArray(record.labels) ?? readStringArray(record.label);
+    const labels =
+      readStringArray(record.labels) ?? readStringArray(record.label);
     const properties = readProperties(record);
     const idValue =
-      record.elementId ?? record.element_id ?? record.id ?? record.identity ?? record._id;
+      record.elementId ??
+      record.element_id ??
+      record.id ??
+      record.identity ??
+      record._id;
     const hasNodeShape = Boolean(labels?.length) || Boolean(record.properties);
     if (!hasNodeShape && idValue === undefined) {
       return null;
@@ -196,7 +213,9 @@ class GraphBuilder {
     if (this.nodeMap.size >= maxGraphNodes) {
       return null;
     }
-    const id = stableId(idValue ?? `${column}:${rowIndex}:${this.nodeMap.size}`);
+    const id = stableId(
+      idValue ?? `${column}:${rowIndex}:${this.nodeMap.size}`,
+    );
     const nextLabels = labels?.length ? labels : [column];
     const current = this.nodeMap.get(id);
     this.nodeMap.set(id, {
@@ -213,7 +232,9 @@ class GraphBuilder {
     column: string,
     rowIndex: number,
   ) {
-    const label = stringValue(record.type ?? record.relationshipType ?? record.label);
+    const label = stringValue(
+      record.type ?? record.relationshipType ?? record.label,
+    );
     const sourceValue =
       record.startNodeElementId ??
       record.start_node_element_id ??
@@ -234,10 +255,20 @@ class GraphBuilder {
     if (this.edgeMap.size >= maxGraphEdges) {
       return null;
     }
-    const sourceId = this.endpointId(sourceValue, `${column}:source:${rowIndex}`);
-    const targetId = this.endpointId(targetValue, `${column}:target:${rowIndex}`);
+    const sourceId = this.endpointId(
+      sourceValue,
+      `${column}:source:${rowIndex}`,
+    );
+    const targetId = this.endpointId(
+      targetValue,
+      `${column}:target:${rowIndex}`,
+    );
     const properties = readProperties(record);
-    const id = stableId(record.elementId ?? record.id ?? `${sourceId}->${targetId}:${label}:${this.edgeMap.size}`);
+    const id = stableId(
+      record.elementId ??
+        record.id ??
+        `${sourceId}->${targetId}:${label}:${this.edgeMap.size}`,
+    );
     this.edgeMap.set(id, {
       id,
       sourceId,
@@ -289,7 +320,9 @@ function readStringArray(value: unknown): string[] | null {
   if (!Array.isArray(value)) {
     return null;
   }
-  const strings = value.filter((item): item is string => typeof item === "string");
+  const strings = value.filter(
+    (item): item is string => typeof item === "string",
+  );
   return strings.length ? strings : null;
 }
 
@@ -320,13 +353,17 @@ function readProperties(record: Record<string, unknown>) {
     "properties",
   ]);
   const direct = Object.fromEntries(
-    Object.entries(record).filter(([key, value]) => !ignored.has(key) && isScalar(value)),
+    Object.entries(record).filter(
+      ([key, value]) => !ignored.has(key) && isScalar(value),
+    ),
   );
   return { ...direct, ...(nested ?? {}) };
 }
 
 function isScalar(value: unknown) {
-  return value === null || ["string", "number", "boolean"].includes(typeof value);
+  return (
+    value === null || ["string", "number", "boolean"].includes(typeof value)
+  );
 }
 
 function stableId(value: unknown) {
@@ -337,7 +374,11 @@ function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function nodeLabel(labels: readonly string[], properties: Record<string, unknown>, id: string) {
+function nodeLabel(
+  labels: readonly string[],
+  properties: Record<string, unknown>,
+  id: string,
+) {
   for (const key of ["name", "title", "label", "id"]) {
     const value = properties[key];
     if (typeof value === "string" || typeof value === "number") {

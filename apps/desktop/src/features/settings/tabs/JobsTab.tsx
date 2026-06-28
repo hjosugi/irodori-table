@@ -70,9 +70,7 @@ export function JobsTab({
       <div className="settings-json-toolbar">
         <span>
           <strong>{t("settings.jobs.title")}</strong>
-          <small>
-            {t("settings.jobs.description")}
-          </small>
+          <small>{t("settings.jobs.description")}</small>
         </span>
         <button
           className="text-button"
@@ -106,9 +104,7 @@ export function JobsTab({
                   </small>
                   {job.progress.percent !== undefined ? (
                     <div className="job-progress">
-                      <span
-                        style={{ width: `${job.progress.percent}%` }}
-                      />
+                      <span style={{ width: `${job.progress.percent}%` }} />
                     </div>
                   ) : null}
                 </div>
@@ -123,9 +119,7 @@ export function JobsTab({
             ))}
           </div>
         ) : (
-          <div className="empty-browser">
-            {t("settings.jobs.noActive")}
-          </div>
+          <div className="empty-browser">{t("settings.jobs.noActive")}</div>
         )}
       </section>
       <section className="jobs-section">
@@ -144,9 +138,7 @@ export function JobsTab({
                     {formatJobTime(job.finishedAtMs ?? job.updatedAtMs)}
                   </small>
                   {job.error ? (
-                    <small className="job-error">
-                      {job.error.message}
-                    </small>
+                    <small className="job-error">{job.error.message}</small>
                   ) : job.latestLogMessage ? (
                     <small>{job.latestLogMessage}</small>
                   ) : null}
@@ -164,9 +156,7 @@ export function JobsTab({
             ))}
           </div>
         ) : (
-          <div className="empty-browser">
-            {t("settings.jobs.noFinished")}
-          </div>
+          <div className="empty-browser">{t("settings.jobs.noFinished")}</div>
         )}
       </section>
     </div>

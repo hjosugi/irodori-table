@@ -36,9 +36,7 @@ export default defineConfig(async () => ({
           ) {
             return "react-vendor";
           }
-          if (
-            id.includes("/@replit/codemirror-vim/")
-          ) {
+          if (id.includes("/@replit/codemirror-vim/")) {
             return "editor-vim-vendor";
           }
           if (id.includes("/@codemirror/lang-sql/")) {

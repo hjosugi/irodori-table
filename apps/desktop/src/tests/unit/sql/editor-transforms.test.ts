@@ -3,8 +3,12 @@ import { transformSqlEditorText } from "@/sql/editor-transforms";
 
 describe("SQL editor transforms", () => {
   it("changes selection case", () => {
-    expect(transformSqlEditorText("select Name", "uppercase")).toBe("SELECT NAME");
-    expect(transformSqlEditorText("SELECT Name", "lowercase")).toBe("select name");
+    expect(transformSqlEditorText("select Name", "uppercase")).toBe(
+      "SELECT NAME",
+    );
+    expect(transformSqlEditorText("SELECT Name", "lowercase")).toBe(
+      "select name",
+    );
   });
 
   it("appends commas to non-empty lines once", () => {
@@ -23,14 +27,14 @@ describe("SQL editor transforms", () => {
   });
 
   it("keeps line comments from swallowing unformatted SQL", () => {
-    expect(transformSqlEditorText("select 1 -- marker\nfrom dual", "unformat")).toBe(
-      "select 1 /* marker */ from dual",
-    );
+    expect(
+      transformSqlEditorText("select 1 -- marker\nfrom dual", "unformat"),
+    ).toBe("select 1 /* marker */ from dual");
   });
 
   it("replaces double quotes with SQL single quotes", () => {
-    expect(transformSqlEditorText('"public"."customers"', "doubleToSingleQuotes")).toBe(
-      "'public'.'customers'",
-    );
+    expect(
+      transformSqlEditorText('"public"."customers"', "doubleToSingleQuotes"),
+    ).toBe("'public'.'customers'");
   });
 });

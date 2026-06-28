@@ -149,7 +149,8 @@ function cargoEnv() {
     CARGO_HOME:
       process.env.CARGO_HOME ?? resolve(repoRoot, ".irodori-local/cargo-home"),
     CARGO_TARGET_DIR:
-      process.env.CARGO_TARGET_DIR ?? resolve(repoRoot, ".irodori-local/test-target"),
+      process.env.CARGO_TARGET_DIR ??
+      resolve(repoRoot, ".irodori-local/test-target"),
   };
 }
 

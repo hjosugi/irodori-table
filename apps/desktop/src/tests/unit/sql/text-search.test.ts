@@ -8,7 +8,11 @@ import {
   type SearchOptions,
 } from "@/sql/text-search";
 
-const base: SearchOptions = { caseSensitive: false, wholeWord: false, useRegex: false };
+const base: SearchOptions = {
+  caseSensitive: false,
+  wholeWord: false,
+  useRegex: false,
+};
 
 describe("findMatches", () => {
   it("finds case-insensitive matches by default with line/column", () => {
@@ -22,12 +26,16 @@ describe("findMatches", () => {
   it("respects case sensitivity", () => {
     const text = "Id id ID";
     expect(findMatches(text, "id", base)).toHaveLength(3);
-    expect(findMatches(text, "id", { ...base, caseSensitive: true })).toHaveLength(1);
+    expect(
+      findMatches(text, "id", { ...base, caseSensitive: true }),
+    ).toHaveLength(1);
   });
 
   it("respects whole-word boundaries", () => {
     const text = "order orders reorder";
-    expect(findMatches(text, "order", { ...base, wholeWord: true })).toHaveLength(1);
+    expect(
+      findMatches(text, "order", { ...base, wholeWord: true }),
+    ).toHaveLength(1);
     expect(findMatches(text, "order", base)).toHaveLength(3);
   });
 
@@ -63,7 +71,12 @@ describe("replaceAllInText", () => {
 
   it("honors regex group references when useRegex is on", () => {
     const opts = { ...base, useRegex: true };
-    const { text, count } = replaceAllInText("2024-01", "(\\d+)-(\\d+)", "$2/$1", opts);
+    const { text, count } = replaceAllInText(
+      "2024-01",
+      "(\\d+)-(\\d+)",
+      "$2/$1",
+      opts,
+    );
     expect(text).toBe("01/2024");
     expect(count).toBe(1);
   });

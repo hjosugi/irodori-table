@@ -10,13 +10,18 @@ type Tab = { id: string; label: string };
  */
 export function TerminalPanel({ onClose }: { onClose: () => void }) {
   const counter = useRef(1);
-  const [tabs, setTabs] = useState<Tab[]>([{ id: "term-1", label: "Terminal 1" }]);
+  const [tabs, setTabs] = useState<Tab[]>([
+    { id: "term-1", label: "Terminal 1" },
+  ]);
   const [activeId, setActiveId] = useState("term-1");
 
   const addTab = useCallback(() => {
     counter.current += 1;
     const id = `term-${counter.current}`;
-    setTabs((current) => [...current, { id, label: `Terminal ${counter.current}` }]);
+    setTabs((current) => [
+      ...current,
+      { id, label: `Terminal ${counter.current}` },
+    ]);
     setActiveId(id);
   }, []);
 
@@ -28,7 +33,9 @@ export function TerminalPanel({ onClose }: { onClose: () => void }) {
           onClose();
           return current;
         }
-        setActiveId((active) => (active === id ? next[next.length - 1].id : active));
+        setActiveId((active) =>
+          active === id ? next[next.length - 1].id : active,
+        );
         return next;
       });
     },
@@ -59,11 +66,21 @@ export function TerminalPanel({ onClose }: { onClose: () => void }) {
               </button>
             </div>
           ))}
-          <button type="button" className="terminal-action" aria-label="New terminal" onClick={addTab}>
+          <button
+            type="button"
+            className="terminal-action"
+            aria-label="New terminal"
+            onClick={addTab}
+          >
             +
           </button>
         </div>
-        <button type="button" className="terminal-action" aria-label="Close panel" onClick={onClose}>
+        <button
+          type="button"
+          className="terminal-action"
+          aria-label="Close panel"
+          onClick={onClose}
+        >
           ⨯
         </button>
       </div>

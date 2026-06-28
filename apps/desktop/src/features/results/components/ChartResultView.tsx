@@ -40,7 +40,9 @@ export function ChartResultView({ model }: { model: ChartResultModel }) {
         : null,
     [effectiveSelection, model],
   );
-  const numericColumns = model.columns.filter((column) => column.kind === "number");
+  const numericColumns = model.columns.filter(
+    (column) => column.kind === "number",
+  );
   const xColumns =
     effectiveSelection?.kind === "scatter"
       ? numericColumns
@@ -137,7 +139,10 @@ function ChartToolbar({
       }
     >
       <strong>{windowed ? "Chart Window" : "Chart"}</strong>
-      <div className="segmented-control chart-kind-toggle" aria-label="Chart type">
+      <div
+        className="segmented-control chart-kind-toggle"
+        aria-label="Chart type"
+      >
         {(["bar", "line", "scatter"] as const).map((kind) => (
           <button
             type="button"
@@ -253,7 +258,9 @@ function ChartToolbar({
       </label>
       <span>
         {model.sampledRows.toLocaleString()} rows
-        {model.truncated ? ` sampled of ${model.sourceRows.toLocaleString()}` : ""}
+        {model.truncated
+          ? ` sampled of ${model.sourceRows.toLocaleString()}`
+          : ""}
         {series.truncated ? " · series limited" : ""}
       </span>
       {windowed ? (
@@ -283,7 +290,13 @@ function ChartCanvas({
   windowed?: boolean;
 }) {
   return (
-    <div className={windowed ? "chart-result-canvas chart-window-canvas" : "chart-result-canvas"}>
+    <div
+      className={
+        windowed
+          ? "chart-result-canvas chart-window-canvas"
+          : "chart-result-canvas"
+      }
+    >
       <svg
         className="chart-result-svg"
         role="img"
@@ -303,7 +316,9 @@ function normalizeSelection(
   model: ChartResultModel,
   selection: ChartResultSelection,
 ): ChartResultSelection {
-  const numericColumns = model.columns.filter((column) => column.kind === "number");
+  const numericColumns = model.columns.filter(
+    (column) => column.kind === "number",
+  );
   const limit = normalizeLimit(selection.limit);
   const sort = selection.sort ?? defaultSort(selection.kind);
   if (selection.kind === "scatter") {
@@ -319,7 +334,8 @@ function normalizeSelection(
     return {
       ...selection,
       aggregation: "sum",
-      xColumnIndex: !xColumn || xColumn.kind === "number" ? selection.xColumnIndex : null,
+      xColumnIndex:
+        !xColumn || xColumn.kind === "number" ? selection.xColumnIndex : null,
       yColumnIndex: yColumn,
       limit,
       sort,
@@ -334,7 +350,13 @@ function normalizeSelection(
     ? selection.yColumnIndex
     : numericColumns[0]?.index;
   if (yColumn === undefined) {
-    return { ...selection, aggregation: "count", yColumnIndex: null, limit, sort };
+    return {
+      ...selection,
+      aggregation: "count",
+      yColumnIndex: null,
+      limit,
+      sort,
+    };
   }
   return {
     ...selection,
@@ -358,7 +380,12 @@ function ChartAxes({ series }: { series: ChartResultSeries }) {
   return (
     <g className="chart-result-axes">
       {yTicks.map((tick) => {
-        const y = scale(tick, series.yDomain, margin.top + plotHeight, margin.top);
+        const y = scale(
+          tick,
+          series.yDomain,
+          margin.top + plotHeight,
+          margin.top,
+        );
         return (
           <g key={tick} transform={`translate(0 ${round(y)})`}>
             <line x1={margin.left} x2={margin.left + plotWidth} />
@@ -410,14 +437,24 @@ function ChartAxes({ series }: { series: ChartResultSeries }) {
 }
 
 function BarSeries({ series }: { series: ChartResultSeries }) {
-  const baseline = scale(0, series.yDomain, margin.top + plotHeight, margin.top);
+  const baseline = scale(
+    0,
+    series.yDomain,
+    margin.top + plotHeight,
+    margin.top,
+  );
   const step = plotWidth / Math.max(1, series.points.length);
   const barWidth = Math.max(3, Math.min(44, step * 0.68));
   return (
     <g className="chart-result-bars">
       {series.points.map((point, index) => {
         const x = xPosition(series, point, index) - barWidth / 2;
-        const y = scale(point.y, series.yDomain, margin.top + plotHeight, margin.top);
+        const y = scale(
+          point.y,
+          series.yDomain,
+          margin.top + plotHeight,
+          margin.top,
+        );
         const top = Math.min(y, baseline);
         const height = Math.max(1, Math.abs(baseline - y));
         return (
@@ -440,7 +477,12 @@ function LineSeries({ series }: { series: ChartResultSeries }) {
   const path = series.points
     .map((point, index) => {
       const x = xPosition(series, point, index);
-      const y = scale(point.y, series.yDomain, margin.top + plotHeight, margin.top);
+      const y = scale(
+        point.y,
+        series.yDomain,
+        margin.top + plotHeight,
+        margin.top,
+      );
       return `${index === 0 ? "M" : "L"} ${round(x)} ${round(y)}`;
     })
     .join(" ");
@@ -451,7 +493,9 @@ function LineSeries({ series }: { series: ChartResultSeries }) {
         <circle
           key={point.key}
           cx={round(xPosition(series, point, index))}
-          cy={round(scale(point.y, series.yDomain, margin.top + plotHeight, margin.top))}
+          cy={round(
+            scale(point.y, series.yDomain, margin.top + plotHeight, margin.top),
+          )}
           r="3.5"
         >
           <title>{`${point.label}: ${formatCompact(point.y)}`}</title>
@@ -468,7 +512,9 @@ function ScatterSeries({ series }: { series: ChartResultSeries }) {
         <circle
           key={point.key}
           cx={round(xPosition(series, point, index))}
-          cy={round(scale(point.y, series.yDomain, margin.top + plotHeight, margin.top))}
+          cy={round(
+            scale(point.y, series.yDomain, margin.top + plotHeight, margin.top),
+          )}
           r="4"
         >
           <title>{`${series.xLabel}: ${formatCompact(point.x)}, ${series.yLabel}: ${formatCompact(point.y)}`}</title>
@@ -543,7 +589,9 @@ function formatCompact(value: number) {
 }
 
 function truncate(value: string, maxLength: number) {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
+  return value.length > maxLength
+    ? `${value.slice(0, maxLength - 3)}...`
+    : value;
 }
 
 function round(value: number) {

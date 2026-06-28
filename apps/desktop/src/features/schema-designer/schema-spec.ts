@@ -1,4 +1,7 @@
-import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import type {
+  DatabaseMetadata,
+  DbObjectMetadata,
+} from "@/generated/irodori-api";
 import {
   buildSchemaSql,
   type SchemaDesignerDraft,
@@ -75,7 +78,9 @@ export function buildTableSpecDocument(
 ): TableSpecDocument {
   const search = (options.search ?? "").trim().toLowerCase();
   const schemaFilter =
-    options.schemaNames === undefined ? undefined : new Set(options.schemaNames);
+    options.schemaNames === undefined
+      ? undefined
+      : new Set(options.schemaNames);
   const visibleTables = visibleMetadataTables(metadata, schemaFilter, search);
   const visibleIds = new Set(
     visibleTables.map((table) => tableId(table.schema, table.name)),
@@ -89,7 +94,8 @@ export function buildTableSpecDocument(
       connectionName: options.connectionName,
       filtered:
         visibleTables.length !==
-        metadata.schemas.flatMap((schema) => schema.objects).filter(isTable).length,
+        metadata.schemas.flatMap((schema) => schema.objects).filter(isTable)
+          .length,
     },
     schemas: metadata.schemas
       .map((schema) => ({
@@ -111,7 +117,9 @@ export function tableSpecFileName(
   return `irodori-table-spec-${sanitizeFileNamePart(connectionId)}-${timestamp}.${extension}`;
 }
 
-export function exportTableSpecJson(document: TableSpecDocument): TableSpecExport {
+export function exportTableSpecJson(
+  document: TableSpecDocument,
+): TableSpecExport {
   return {
     content: `${JSON.stringify(document, null, 2)}\n`,
     mime: "application/json;charset=utf-8",
@@ -119,7 +127,9 @@ export function exportTableSpecJson(document: TableSpecDocument): TableSpecExpor
   };
 }
 
-export function exportTableSpecMarkdown(document: TableSpecDocument): TableSpecExport {
+export function exportTableSpecMarkdown(
+  document: TableSpecDocument,
+): TableSpecExport {
   return {
     content: tableSpecMarkdown(document),
     mime: "text/markdown;charset=utf-8",
@@ -130,7 +140,9 @@ export function exportTableSpecMarkdown(document: TableSpecDocument): TableSpecE
 export function parseTableSpecDocument(text: string): TableSpecDocument {
   const parsed = JSON.parse(text) as unknown;
   if (!isRecord(parsed) || parsed.format !== tableSpecFormat) {
-    throw new Error(`Unsupported table specification format. Expected ${tableSpecFormat}.`);
+    throw new Error(
+      `Unsupported table specification format. Expected ${tableSpecFormat}.`,
+    );
   }
   if (!Array.isArray(parsed.schemas)) {
     throw new Error("Table specification is missing schemas.");
@@ -154,7 +166,9 @@ export function parseTableSpecDocument(text: string): TableSpecDocument {
 
 export function ddlFromTableSpecDocument(document: TableSpecDocument): string {
   const statements = document.schemas.flatMap((schema) =>
-    schema.tables.map((table) => buildSchemaSql(draftFromSpecTable(schema.name, table)).trim()),
+    schema.tables.map((table) =>
+      buildSchemaSql(draftFromSpecTable(schema.name, table)).trim(),
+    ),
   );
   return `${statements.filter(Boolean).join("\n\n")}\n`;
 }
@@ -198,7 +212,10 @@ function tableMatchesSearch(table: DbObjectMetadata, search: string) {
     .includes(search);
 }
 
-function tableSpecTable(table: DbObjectMetadata, visibleIds: Set<string>): TableSpecTable {
+function tableSpecTable(
+  table: DbObjectMetadata,
+  visibleIds: Set<string>,
+): TableSpecTable {
   return {
     name: table.name,
     comment: table.comment,
@@ -220,7 +237,10 @@ function tableSpecTable(table: DbObjectMetadata, visibleIds: Set<string>): Table
     foreignKeys: table.foreignKeys
       .filter((foreignKey) =>
         visibleIds.has(
-          tableId(foreignKey.referencesSchema ?? table.schema, foreignKey.referencesTable),
+          tableId(
+            foreignKey.referencesSchema ?? table.schema,
+            foreignKey.referencesTable,
+          ),
         ),
       )
       .map((foreignKey, index) => ({
@@ -251,7 +271,13 @@ function tableSpecMarkdown(document: TableSpecDocument) {
       `- Source: ${document.source.connectionName ?? document.source.connectionId}`,
     );
   }
-  lines.push("", "## Entity List", "", "| Schema | Table | Columns | PK | FKs |", "| --- | --- | ---: | --- | ---: |");
+  lines.push(
+    "",
+    "## Entity List",
+    "",
+    "| Schema | Table | Columns | PK | FKs |",
+    "| --- | --- | ---: | --- | ---: |",
+  );
   for (const schema of document.schemas) {
     for (const table of schema.tables) {
       lines.push(
@@ -270,14 +296,21 @@ function tableSpecMarkdown(document: TableSpecDocument) {
       if (table.comment) {
         lines.push(escapeMarkdown(table.comment), "");
       }
-      lines.push("| Column | Type | Nullable | Default | Key | Comment |", "| --- | --- | --- | --- | --- | --- |");
+      lines.push(
+        "| Column | Type | Nullable | Default | Key | Comment |",
+        "| --- | --- | --- | --- | --- | --- |",
+      );
       for (const column of table.columns) {
         const key = [
           table.primaryKey.includes(column.name) ? "PK" : "",
-          table.foreignKeys.some((foreignKey) => foreignKey.columns.includes(column.name))
+          table.foreignKeys.some((foreignKey) =>
+            foreignKey.columns.includes(column.name),
+          )
             ? "FK"
             : "",
-        ].filter(Boolean).join(", ");
+        ]
+          .filter(Boolean)
+          .join(", ");
         lines.push(
           `| ${escapeMarkdown(column.name)} | ${escapeMarkdown(column.dataType)} | ${column.nullable ? "YES" : "NO"} | ${escapeMarkdown(column.defaultValue ?? "")} | ${key} | ${escapeMarkdown(column.comment ?? "")} |`,
         );
@@ -307,7 +340,10 @@ function tableSpecMarkdown(document: TableSpecDocument) {
   return `${lines.join("\n")}\n`;
 }
 
-function draftFromSpecTable(schemaName: string, table: TableSpecTable): SchemaDesignerDraft {
+function draftFromSpecTable(
+  schemaName: string,
+  table: TableSpecTable,
+): SchemaDesignerDraft {
   return {
     mode: "create",
     schema: schemaName,
@@ -326,15 +362,19 @@ function draftFromSpecTable(schemaName: string, table: TableSpecTable): SchemaDe
       columns: index.columns.join(", "),
       unique: index.unique,
     })),
-    foreignKeys: table.foreignKeys.map<SchemaForeignKeyDraft>((foreignKey, index) => ({
-      id: `spec-fk-${index}`,
-      name: foreignKey.name ?? defaultForeignKeyName(table.name, foreignKey.columns, index),
-      columns: foreignKey.columns.join(", "),
-      referencesSchema: foreignKey.referencesSchema ?? "",
-      referencesTable: foreignKey.referencesTable,
-      referencesColumns: foreignKey.referencesColumns.join(", "),
-      onDelete: "",
-    })),
+    foreignKeys: table.foreignKeys.map<SchemaForeignKeyDraft>(
+      (foreignKey, index) => ({
+        id: `spec-fk-${index}`,
+        name:
+          foreignKey.name ??
+          defaultForeignKeyName(table.name, foreignKey.columns, index),
+        columns: foreignKey.columns.join(", "),
+        referencesSchema: foreignKey.referencesSchema ?? "",
+        referencesTable: foreignKey.referencesTable,
+        referencesColumns: foreignKey.referencesColumns.join(", "),
+        onDelete: "",
+      }),
+    ),
   };
 }
 
@@ -371,7 +411,9 @@ function parseSpecTable(value: unknown): TableSpecTable {
     comment: optionalString(value.comment),
     columns: value.columns.map(parseSpecColumn),
     primaryKey: stringArray(value.primaryKey),
-    indexes: Array.isArray(value.indexes) ? value.indexes.map(parseSpecIndex) : [],
+    indexes: Array.isArray(value.indexes)
+      ? value.indexes.map(parseSpecIndex)
+      : [],
     foreignKeys: Array.isArray(value.foreignKeys)
       ? value.foreignKeys.map(parseSpecForeignKey)
       : [],
@@ -435,17 +477,26 @@ function qualifiedName(schema: string | undefined, table: string) {
 function sameIdentifierList(left: readonly string[], right: readonly string[]) {
   return (
     left.length === right.length &&
-    left.every((item, index) => item.toLowerCase() === right[index]?.toLowerCase())
+    left.every(
+      (item, index) => item.toLowerCase() === right[index]?.toLowerCase(),
+    )
   );
 }
 
-function defaultForeignKeyName(table: string, columns: readonly string[], index: number) {
+function defaultForeignKeyName(
+  table: string,
+  columns: readonly string[],
+  index: number,
+) {
   const suffix = columns.length > 0 ? columns.join("_") : `ref_${index + 1}`;
   return `fk_${table}_${suffix}`;
 }
 
 function escapeMarkdown(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>");
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, "<br>");
 }
 
 function sanitizeFileNamePart(value: string) {
@@ -471,7 +522,5 @@ function optionalString(value: unknown) {
 }
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.map(stringValue).filter(Boolean)
-    : [];
+  return Array.isArray(value) ? value.map(stringValue).filter(Boolean) : [];
 }

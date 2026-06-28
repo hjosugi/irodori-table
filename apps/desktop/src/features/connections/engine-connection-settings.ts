@@ -34,10 +34,13 @@ type EngineConnectionSettingsGroup = {
 const tcpDatabaseSettings =
   engineConnectionConfig.defaultSettings as EngineConnectionSettings;
 
-const configuredEngineSettings = new Map<DbEngine, EngineConnectionSettingsPatch>(
-  (engineConnectionConfig.engineSettings as EngineConnectionSettingsGroup[]).flatMap(
-    (group) => group.engines.map((engine) => [engine, group.settings]),
-  ),
+const configuredEngineSettings = new Map<
+  DbEngine,
+  EngineConnectionSettingsPatch
+>(
+  (
+    engineConnectionConfig.engineSettings as EngineConnectionSettingsGroup[]
+  ).flatMap((group) => group.engines.map((engine) => [engine, group.settings])),
 );
 
 const configuredDefaultPorts = engineConnectionConfig.defaultPorts as Partial<

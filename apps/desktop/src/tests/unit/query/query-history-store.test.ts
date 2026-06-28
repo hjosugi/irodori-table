@@ -21,7 +21,10 @@ function historyItem(id: string, rows = 3): QueryHistoryItem {
     result: createQueryHistoryResultSnapshot(
       {
         columns: ["id", "name"],
-        rows: Array.from({ length: rows }, (_, index) => [index + 1, `row-${index + 1}`]),
+        rows: Array.from({ length: rows }, (_, index) => [
+          index + 1,
+          `row-${index + 1}`,
+        ]),
         rowCount: rows,
         elapsedMs: 12,
         truncated: false,
@@ -49,10 +52,9 @@ describe("query history result retention", () => {
     store.append(historyItem("two"));
     store.append(historyItem("three"));
 
-    expect(useQueryHistoryStore.getState().items.map((item) => item.id)).toEqual([
-      "three",
-      "two",
-    ]);
+    expect(
+      useQueryHistoryStore.getState().items.map((item) => item.id),
+    ).toEqual(["three", "two"]);
   });
 
   it("keeps only the configured number of result rows", () => {

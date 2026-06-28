@@ -266,7 +266,38 @@ describe("connection profiles", () => {
       user: "irodori",
       password: "secret",
       database: "samples",
+      socketPath: undefined,
       readOnly: true,
     });
+  });
+
+  it("allows Postgres socket transport without a TCP host", () => {
+    const profile = draft({
+      connectionTransport: "socket",
+      host: "",
+      socketPath: "/var/run/postgresql",
+    });
+
+    expect(validateDraft(profile)).toBeNull();
+    expect(profileFromDraft(profile)).toMatchObject({
+      id: "local",
+      engine: "postgres",
+      socketPath: "/var/run/postgresql",
+      user: "irodori",
+      password: "secret",
+      database: "samples",
+    });
+  });
+
+  it("requires a socket path when socket transport is selected", () => {
+    expect(
+      validateDraft(
+        draft({
+          connectionTransport: "socket",
+          host: "",
+          socketPath: "",
+        }),
+      ),
+    ).toBe("socket path is required");
   });
 });

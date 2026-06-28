@@ -24,57 +24,57 @@ export function AboutDialog({
       label={`About ${appName}`}
       onClose={onClose}
     >
-        <div className="dialog-header">
-          <strong>About {appName}</strong>
-          <span>Version and support information</span>
-          <button className="text-button" type="button" onClick={onClose}>
-            Close
-          </button>
+      <div className="dialog-header">
+        <strong>About {appName}</strong>
+        <span>Version and support information</span>
+        <button className="text-button" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div className="about-body">
+        <div className="about-mark">
+          <img className="about-icon" src="/irodori-icon.svg" alt="" />
+          <span>
+            <strong>{appName}</strong>
+            <small>Database workbench</small>
+          </span>
         </div>
-        <div className="about-body">
-          <div className="about-mark">
-            <img className="about-icon" src="/irodori-icon.svg" alt="" />
-            <span>
-              <strong>{appName}</strong>
-              <small>Database workbench</small>
-            </span>
+        <dl className="about-grid">
+          <div>
+            <dt>Version</dt>
+            <dd>{appVersion}</dd>
           </div>
-          <dl className="about-grid">
-            <div>
-              <dt>Version</dt>
-              <dd>{appVersion}</dd>
-            </div>
-            <div>
-              <dt>Identifier</dt>
-              <dd>{appIdentifier}</dd>
-            </div>
-            <div>
-              <dt>Runtime</dt>
-              <dd>{runtimeLabel}</dd>
-            </div>
-            <div>
-              <dt>Active connection</dt>
-              <dd>{activeConnectionLabel}</dd>
-            </div>
-          </dl>
-          <div className="about-help">
-            <Info size={16} />
-            <span>
-              Use Connection Manager for saved database profiles, and copy
-              diagnostics when sharing runtime details for support.
-            </span>
+          <div>
+            <dt>Identifier</dt>
+            <dd>{appIdentifier}</dd>
           </div>
+          <div>
+            <dt>Runtime</dt>
+            <dd>{runtimeLabel}</dd>
+          </div>
+          <div>
+            <dt>Active connection</dt>
+            <dd>{activeConnectionLabel}</dd>
+          </div>
+        </dl>
+        <div className="about-help">
+          <Info size={16} />
+          <span>
+            Use Connection Manager for saved database profiles, and copy
+            diagnostics when sharing runtime details for support.
+          </span>
         </div>
-        <div className="dialog-footer">
-          <button
-            className="text-button"
-            type="button"
-            onClick={onCopyDiagnostics}
-          >
-            <Copy size={13} />
-            Copy diagnostics
-          </button>
-        </div>
+      </div>
+      <div className="dialog-footer">
+        <button
+          className="text-button"
+          type="button"
+          onClick={onCopyDiagnostics}
+        >
+          <Copy size={13} />
+          Copy diagnostics
+        </button>
+      </div>
     </DialogShell>
   );
 }

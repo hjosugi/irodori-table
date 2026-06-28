@@ -38,9 +38,13 @@ export function useResultGridScroll({
   const gridScrollRaf = useRef<number | null>(null);
   const pendingGridScroll = useRef({ top: 0, left: 0 });
   const gridScrollTop = useResultGridStore((state) => state.gridScrollTop);
-  const setGridScrollTop = useResultGridStore((state) => state.setGridScrollTop);
+  const setGridScrollTop = useResultGridStore(
+    (state) => state.setGridScrollTop,
+  );
   const gridScrollLeft = useResultGridStore((state) => state.gridScrollLeft);
-  const setGridScrollLeft = useResultGridStore((state) => state.setGridScrollLeft);
+  const setGridScrollLeft = useResultGridStore(
+    (state) => state.setGridScrollLeft,
+  );
   const gridViewportHeight = useResultGridStore(
     (state) => state.gridViewportHeight,
   );

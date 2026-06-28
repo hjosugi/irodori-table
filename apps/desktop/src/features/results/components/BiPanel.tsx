@@ -60,7 +60,10 @@ export function BiPanel({
             <div className="bi-field-list" aria-label="BI fields">
               <strong>Fields</strong>
               {visibleProfiles.map((profile) => (
-                <div className="bi-field-row" key={`${profile.index}-${profile.name}`}>
+                <div
+                  className="bi-field-row"
+                  key={`${profile.index}-${profile.name}`}
+                >
                   <span>{profile.name}</span>
                   <small>{profile.role}</small>
                   <em>
@@ -81,14 +84,20 @@ export function BiPanel({
         ) : (
           <div className="bi-panel-empty">
             <BarChart3 size={18} />
-            <strong>{result ? "No chartable result" : "No active result"}</strong>
+            <strong>
+              {result ? "No chartable result" : "No active result"}
+            </strong>
             <span>
               {result
                 ? "Use a result with numeric, date, or low-cardinality fields."
                 : "Run a tabular query to build a local BI view."}
             </span>
             {chartAvailable ? (
-              <button className="text-button" type="button" onClick={onOpenChartMode}>
+              <button
+                className="text-button"
+                type="button"
+                onClick={onOpenChartMode}
+              >
                 Open Chart
               </button>
             ) : null}

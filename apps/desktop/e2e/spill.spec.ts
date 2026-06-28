@@ -56,7 +56,9 @@ function cellFor(rowIndex: number, columnIndex: number): string {
 function rowsFor(offset: number, limit: number): string[][] {
   const length = Math.max(0, Math.min(limit, fixture.total - offset));
   return Array.from({ length }, (_, i) =>
-    fixture.columns.map((_column, columnIndex) => cellFor(offset + i, columnIndex)),
+    fixture.columns.map((_column, columnIndex) =>
+      cellFor(offset + i, columnIndex),
+    ),
   );
 }
 
@@ -89,7 +91,12 @@ async function installSpillMock(page: Page) {
   });
 
   await page.addInitScript(
-    (config: { columns: string[]; total: number; budget: number; pageSize: number }) => {
+    (config: {
+      columns: string[];
+      total: number;
+      budget: number;
+      pageSize: number;
+    }) => {
       const isRecord = (value: unknown): value is Record<string, unknown> =>
         typeof value === "object" && value !== null;
 
@@ -101,7 +108,9 @@ async function installSpillMock(page: Page) {
       const rows = (offset: number, limit: number) => {
         const length = Math.max(0, Math.min(limit, config.total - offset));
         return Array.from({ length }, (_unused, i) =>
-          config.columns.map((_column, columnIndex) => cell(offset + i, columnIndex)),
+          config.columns.map((_column, columnIndex) =>
+            cell(offset + i, columnIndex),
+          ),
         );
       };
 
@@ -124,7 +133,11 @@ async function installSpillMock(page: Page) {
             latencyMs: 5,
             proxy: "direct",
             objects: [
-              { name: "huge_table", kind: "table", rows: config.total.toLocaleString() },
+              {
+                name: "huge_table",
+                kind: "table",
+                rows: config.total.toLocaleString(),
+              },
             ],
           },
         ],
@@ -152,7 +165,10 @@ async function installSpillMock(page: Page) {
           },
         ],
       };
-      const promptSet: QueryParameterPromptSet = { prompts: [], signature: "mock" };
+      const promptSet: QueryParameterPromptSet = {
+        prompts: [],
+        signature: "mock",
+      };
 
       const channelFrom = (args?: MockInvokeArgs): MockStreamChannel => {
         const onEvent = args?.onEvent;
@@ -199,7 +215,8 @@ async function installSpillMock(page: Page) {
                   rows: rows(offset, Math.min(500, config.budget - offset)),
                 });
               }
-              window.__IRODORI_SPILL_DONE__ = (window.__IRODORI_SPILL_DONE__ ?? 0) + 1;
+              window.__IRODORI_SPILL_DONE__ =
+                (window.__IRODORI_SPILL_DONE__ ?? 0) + 1;
               return {
                 handle: "result-1",
                 columns: [...config.columns],
@@ -258,7 +275,10 @@ async function connectMock(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager" })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
@@ -270,7 +290,9 @@ async function connectMock(page: Page) {
     .getByPlaceholder("postgres://user:password@host:5432/database")
     .fill("postgres://u:p@localhost:5432/db");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
 }
 
 async function runHugeTable(page: Page, expectedDone: number) {
@@ -326,8 +348,12 @@ test.describe("EXEC-010 disk offload paging", () => {
     // paints immediately.
     await expect(page.locator(".results-title")).toContainText("120,000 rows");
     await expect(renderedRows.first()).toContainText("row_0");
-    const viewportHeight = await grid.evaluate((element) => element.clientHeight);
-    expect(await renderedRows.count()).toBeLessThanOrEqual(rowBudget(viewportHeight));
+    const viewportHeight = await grid.evaluate(
+      (element) => element.clientHeight,
+    );
+    expect(await renderedRows.count()).toBeLessThanOrEqual(
+      rowBudget(viewportHeight),
+    );
 
     // Scrolling deep into the spilled region triggers an on-demand page fetch and
     // renders the real far row (not the "…" placeholder).
@@ -336,7 +362,9 @@ test.describe("EXEC-010 disk offload paging", () => {
     const deepActualTop = await grid.evaluate((element) => element.scrollTop);
     const deepIndex = expectedFirstRowIndex(deepActualTop);
     await expect(renderedRows.first()).toContainText(`row_${deepIndex}`);
-    expect(await renderedRows.count()).toBeLessThanOrEqual(rowBudget(viewportHeight));
+    expect(await renderedRows.count()).toBeLessThanOrEqual(
+      rowBudget(viewportHeight),
+    );
 
     // Jump to the very bottom: the last row pages in from disk.
     const bottomTop = (fixture.total - 12) * GRID_ROW_HEIGHT_PX;
@@ -352,12 +380,16 @@ test.describe("EXEC-010 disk offload paging", () => {
       `paged ${metrics.windowCalls} windows; should stay far below a full load`,
     ).toBeLessThan(20);
     // The pages it fetched cover the regions we actually visited.
-    expect(metrics.windowOffsets.some((offset) => offset >= 59_000 && offset <= 61_000)).toBe(
-      true,
-    );
+    expect(
+      metrics.windowOffsets.some(
+        (offset) => offset >= 59_000 && offset <= 61_000,
+      ),
+    ).toBe(true);
   });
 
-  test("releases the retained result when a new run replaces it", async ({ page }) => {
+  test("releases the retained result when a new run replaces it", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
 
     await installSpillMock(page);
@@ -365,7 +397,9 @@ test.describe("EXEC-010 disk offload paging", () => {
     await connectAndRun(page);
 
     // A second run releases the first result's disk-backed store.
-    await page.getByRole("button", { name: "Run Current", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Run Current", exact: true })
+      .click();
     await page.waitForFunction(() => (window.__IRODORI_SPILL_DONE__ ?? 0) >= 2);
     const metrics = await readMetrics(page);
     expect(metrics.releaseCalls).toBeGreaterThanOrEqual(1);

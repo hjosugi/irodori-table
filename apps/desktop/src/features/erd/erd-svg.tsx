@@ -25,7 +25,9 @@ export function erdSvgStyle(theme: IrodoriTheme) {
 }
 
 function truncateErdText(value: string, maxLength: number) {
-  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
+  return value.length <= maxLength
+    ? value
+    : `${value.slice(0, maxLength - 1)}…`;
 }
 
 export function ErdSvg({
@@ -62,7 +64,13 @@ export function ErdSvg({
           <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
         </marker>
       </defs>
-      <rect className="erd-bg" x="0" y="0" width={layout.width} height={layout.height} />
+      <rect
+        className="erd-bg"
+        x="0"
+        y="0"
+        width={layout.width}
+        height={layout.height}
+      />
       {layout.schemas.map((schema) => (
         <g key={schema.name}>
           <rect
@@ -73,7 +81,11 @@ export function ErdSvg({
             height={schema.height}
             rx="7"
           />
-          <text className="erd-schema-title" x={schema.x + 16} y={schema.y + 22}>
+          <text
+            className="erd-schema-title"
+            x={schema.x + 16}
+            y={schema.y + 22}
+          >
             {schema.name}
           </text>
           <text
@@ -100,7 +112,12 @@ export function ErdSvg({
             height={edge.labelHeight}
             rx="3"
           />
-          <text className="erd-edge-label" x={edge.labelX} y={edge.labelY} textAnchor="middle">
+          <text
+            className="erd-edge-label"
+            x={edge.labelX}
+            y={edge.labelY}
+            textAnchor="middle"
+          >
             {truncateErdText(edge.label, 16)}
           </text>
         </g>
@@ -116,7 +133,14 @@ function ErdTableNode({ node }: { node: ErdLayoutTable }) {
   return (
     <g transform={`translate(${node.x} ${node.y})`}>
       <title>{node.table.id}</title>
-      <rect className="erd-table" x="0" y="0" width={node.width} height={node.height} rx="5" />
+      <rect
+        className="erd-table"
+        x="0"
+        y="0"
+        width={node.width}
+        height={node.height}
+        rx="5"
+      />
       <rect
         className="erd-table-header"
         x="0"
@@ -132,12 +156,25 @@ function ErdTableNode({ node }: { node: ErdLayoutTable }) {
         const y = 49 + index * 20;
         return (
           <g key={`${column.name}-${index}`}>
-            {column.primaryKey ? <ErdBadge x={9} y={y - 13} label="PK" /> : null}
-            {column.foreignKey ? <ErdBadge x={column.primaryKey ? 37 : 9} y={y - 13} label="FK" /> : null}
-            <text className="erd-column" x={column.primaryKey || column.foreignKey ? 68 : 12} y={y}>
+            {column.primaryKey ? (
+              <ErdBadge x={9} y={y - 13} label="PK" />
+            ) : null}
+            {column.foreignKey ? (
+              <ErdBadge x={column.primaryKey ? 37 : 9} y={y - 13} label="FK" />
+            ) : null}
+            <text
+              className="erd-column"
+              x={column.primaryKey || column.foreignKey ? 68 : 12}
+              y={y}
+            >
               {truncateErdText(column.name, 22)}
             </text>
-            <text className="erd-column-type" x={node.width - 10} y={y} textAnchor="end">
+            <text
+              className="erd-column-type"
+              x={node.width - 10}
+              y={y}
+              textAnchor="end"
+            >
               {truncateErdText(column.dataType, 18)}
             </text>
           </g>
@@ -156,7 +193,12 @@ function ErdBadge({ x, y, label }: { x: number; y: number; label: string }) {
   return (
     <g>
       <rect className="erd-badge" x={x} y={y} width="22" height="13" rx="3" />
-      <text className="erd-badge-text" x={x + 11} y={y + 10} textAnchor="middle">
+      <text
+        className="erd-badge-text"
+        x={x + 11}
+        y={y + 10}
+        textAnchor="middle"
+      >
         {label}
       </text>
     </g>

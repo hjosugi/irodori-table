@@ -143,7 +143,10 @@ function ConnectionColorPicker({
               onSelect={onChange}
             />
           ))}
-          <label className="connection-color-custom" title="Pick a custom color">
+          <label
+            className="connection-color-custom"
+            title="Pick a custom color"
+          >
             <span
               className="connection-color-custom-chip"
               style={{
@@ -284,7 +287,9 @@ export function ConnectionManagerDialog({
   const normalizedDraftColor = normalizeConnectionColor(draft.color);
   const socketSupported = supportsSocketTransport(draft.engine);
   const transportMode =
-    socketSupported && draft.connectionTransport === "socket" ? "socket" : "tcp";
+    socketSupported && draft.connectionTransport === "socket"
+      ? "socket"
+      : "tcp";
 
   useEffect(() => {
     if (!transferMenuOpen) {
@@ -587,7 +592,9 @@ export function ConnectionManagerDialog({
                   <button
                     className={transportMode === "tcp" ? "active" : ""}
                     type="button"
-                    onClick={() => onUpdateDraft({ connectionTransport: "tcp" })}
+                    onClick={() =>
+                      onUpdateDraft({ connectionTransport: "tcp" })
+                    }
                   >
                     Direct TCP
                   </button>

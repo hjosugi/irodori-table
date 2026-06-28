@@ -53,6 +53,8 @@ describe("SQL highlighting roles", () => {
   });
 
   it("creates a CodeMirror extension from theme syntax colors", () => {
-    expect(sqlHighlightingExtensions("postgres", lightTheme.syntax)).toBeTruthy();
+    expect(
+      sqlHighlightingExtensions("postgres", lightTheme.syntax),
+    ).toBeTruthy();
   });
 });

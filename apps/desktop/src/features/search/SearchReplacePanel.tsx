@@ -78,12 +78,23 @@ export function SearchReplacePanel({
     });
 
   const replaceOne = (tab: SearchTab, match: TextMatch) => {
-    const next = replaceMatchAt(tab.text, match.start, query, replacement, opts);
+    const next = replaceMatchAt(
+      tab.text,
+      match.start,
+      query,
+      replacement,
+      opts,
+    );
     if (next !== null) onReplaceTab(tab, next);
   };
 
   const replaceAllInTab = (tab: SearchTab) => {
-    const { text, count } = replaceAllInText(tab.text, query, replacement, opts);
+    const { text, count } = replaceAllInText(
+      tab.text,
+      query,
+      replacement,
+      opts,
+    );
     if (count > 0) onReplaceTab(tab, text);
   };
 
@@ -97,7 +108,12 @@ export function SearchReplacePanel({
         <span className="search-title">
           <Search size={14} /> Search
         </span>
-        <button type="button" title="Close" aria-label="Close" onClick={onClose}>
+        <button
+          type="button"
+          title="Close"
+          aria-label="Close"
+          onClick={onClose}
+        >
           <X size={14} />
         </button>
       </header>
@@ -198,7 +214,11 @@ export function SearchReplacePanel({
                   className="search-file-toggle"
                   onClick={() => toggleCollapsed(tab.key)}
                 >
-                  {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                  {isCollapsed ? (
+                    <ChevronRight size={13} />
+                  ) : (
+                    <ChevronDown size={13} />
+                  )}
                   <span className="search-file-name">{tab.label}</span>
                   <span className="search-file-count">{matches.length}</span>
                 </button>

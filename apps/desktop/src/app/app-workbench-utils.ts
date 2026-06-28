@@ -5,10 +5,7 @@ import type {
   ResultGridDraftCell as GridCellDraft,
   ResultSortRule,
 } from "@/features/results";
-import {
-  defaultThemeForKind,
-  type ThemeKind,
-} from "@/theme";
+import { defaultThemeForKind, type ThemeKind } from "@/theme";
 
 export function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -30,7 +27,9 @@ export function keyScopeFromTarget(
   return "global";
 }
 
-export function isEditableTarget(target: EventTarget | null): target is HTMLElement {
+export function isEditableTarget(
+  target: EventTarget | null,
+): target is HTMLElement {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
@@ -66,7 +65,10 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function builtInTheme(kind: ThemeKind, preferredThemeId?: string | null) {
+export function builtInTheme(
+  kind: ThemeKind,
+  preferredThemeId?: string | null,
+) {
   return defaultThemeForKind(kind, preferredThemeId);
 }
 

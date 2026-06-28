@@ -53,7 +53,10 @@ export function formatDetailValue(value: unknown): DetailValue {
     return { text: value.toString(), json: false };
   }
   if (typeof value === "object") {
-    return { text: JSON.stringify(toJsonSafeValue(value), null, 2), json: true };
+    return {
+      text: JSON.stringify(toJsonSafeValue(value), null, 2),
+      json: true,
+    };
   }
   return { text: String(value), json: false };
 }
@@ -91,7 +94,10 @@ export function formatRowAsJson(
 }
 
 /** Make unknown DB values safe for JSON.stringify and the tree viewer. */
-export function toJsonSafeValue(value: unknown, seen = new WeakSet<object>()): unknown {
+export function toJsonSafeValue(
+  value: unknown,
+  seen = new WeakSet<object>(),
+): unknown {
   if (value === undefined) {
     return null;
   }
@@ -130,7 +136,9 @@ export function toJsonSafeValue(value: unknown, seen = new WeakSet<object>()): u
     return array;
   }
   const object: RowJsonObject = {};
-  for (const [key, objectValue] of Object.entries(value as Record<string, unknown>)) {
+  for (const [key, objectValue] of Object.entries(
+    value as Record<string, unknown>,
+  )) {
     object[key] = toJsonSafeValue(objectValue, seen);
   }
   seen.delete(value);
@@ -138,7 +146,11 @@ export function toJsonSafeValue(value: unknown, seen = new WeakSet<object>()): u
 }
 
 /** Build a browsable JSON tree from a row JSON value. */
-export function buildJsonTree(value: unknown, key = "$", path = "$"): JsonTreeNode {
+export function buildJsonTree(
+  value: unknown,
+  key = "$",
+  path = "$",
+): JsonTreeNode {
   const safeValue = toJsonSafeValue(value);
   return {
     key,
@@ -152,18 +164,23 @@ export function buildJsonTree(value: unknown, key = "$", path = "$"): JsonTreeNo
 
 function jsonChildren(value: unknown, path: string): JsonTreeNode[] {
   if (Array.isArray(value)) {
-    return value.map((child, index) => buildJsonTree(child, String(index), `${path}[${index}]`));
+    return value.map((child, index) =>
+      buildJsonTree(child, String(index), `${path}[${index}]`),
+    );
   }
   if (value !== null && typeof value === "object") {
-    return Object.entries(value as Record<string, unknown>).map(([key, child]) =>
-      buildJsonTree(child, key, `${path}${jsonPathSegment(key)}`),
+    return Object.entries(value as Record<string, unknown>).map(
+      ([key, child]) =>
+        buildJsonTree(child, key, `${path}${jsonPathSegment(key)}`),
     );
   }
   return [];
 }
 
 function jsonPathSegment(key: string): string {
-  return /^[A-Za-z_$][\w$]*$/.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
+  return /^[A-Za-z_$][\w$]*$/.test(key)
+    ? `.${key}`
+    : `[${JSON.stringify(key)}]`;
 }
 
 function jsonValueType(value: unknown): string {
@@ -243,11 +260,16 @@ function allTables(metadata: DatabaseMetadata): DbObjectMetadata[] {
 }
 
 /** Whether every result column is present in the table (table is a superset). */
-function columnsSuperset(table: DbObjectMetadata, resultColumns: readonly string[]): boolean {
+function columnsSuperset(
+  table: DbObjectMetadata,
+  resultColumns: readonly string[],
+): boolean {
   if (resultColumns.length === 0) {
     return false;
   }
-  const names = new Set(table.columns.map((column) => normalizeId(column.name)));
+  const names = new Set(
+    table.columns.map((column) => normalizeId(column.name)),
+  );
   return resultColumns.every((column) => names.has(normalizeId(column)));
 }
 
@@ -257,7 +279,10 @@ type TableCandidateScore = {
   resultColumnsCovered: boolean;
 };
 
-function tableMatchesSource(table: DbObjectMetadata, source: SourceTableRef | null): boolean {
+function tableMatchesSource(
+  table: DbObjectMetadata,
+  source: SourceTableRef | null,
+): boolean {
   return (
     source !== null &&
     eqId(table.name, source.table) &&
@@ -277,7 +302,9 @@ function scoreTableCandidate(
   };
 }
 
-function pickSourceCandidate(candidates: TableCandidateScore[]): DbObjectMetadata | null {
+function pickSourceCandidate(
+  candidates: TableCandidateScore[],
+): DbObjectMetadata | null {
   const sourceMatches = candidates.filter((candidate) => candidate.sourceMatch);
   if (sourceMatches.length === 0) {
     return null;
@@ -286,14 +313,17 @@ function pickSourceCandidate(candidates: TableCandidateScore[]): DbObjectMetadat
     return sourceMatches[0].table;
   }
   return (
-    sourceMatches.find((candidate) => candidate.resultColumnsCovered) ?? sourceMatches[0]
+    sourceMatches.find((candidate) => candidate.resultColumnsCovered) ??
+    sourceMatches[0]
   ).table;
 }
 
 function pickUniqueResultColumnCandidate(
   candidates: TableCandidateScore[],
 ): DbObjectMetadata | null {
-  const resultColumnMatches = candidates.filter((candidate) => candidate.resultColumnsCovered);
+  const resultColumnMatches = candidates.filter(
+    (candidate) => candidate.resultColumnsCovered,
+  );
   return resultColumnMatches.length === 1 ? resultColumnMatches[0].table : null;
 }
 
@@ -313,7 +343,10 @@ export function findTableMetadata(
   const candidates = allTables(metadata).map((table) =>
     scoreTableCandidate(table, source, resultColumns),
   );
-  return pickSourceCandidate(candidates) ?? pickUniqueResultColumnCandidate(candidates);
+  return (
+    pickSourceCandidate(candidates) ??
+    pickUniqueResultColumnCandidate(candidates)
+  );
 }
 
 /** Look up a referenced table's metadata by (optional) schema and name. */
@@ -328,7 +361,8 @@ export function findTableByName(
   return (
     allTables(metadata).find(
       (object) =>
-        eqId(object.name, table) && (schema === undefined || eqId(object.schema, schema)),
+        eqId(object.name, table) &&
+        (schema === undefined || eqId(object.schema, schema)),
     ) ?? null
   );
 }
@@ -419,11 +453,18 @@ function foreignKeyTarget(fk: ForeignKey, engine: DbEngine): string {
     : quoteIdent(fk.referencesTable, engine);
 }
 
-function foreignKeyCondition(column: string, index: number, engine: DbEngine): string {
+function foreignKeyCondition(
+  column: string,
+  index: number,
+  engine: DbEngine,
+): string {
   return `${quoteIdent(column, engine)} = :fk${index}`;
 }
 
-function foreignKeyLookupParam(value: unknown, index: number): QueryParameterInput {
+function foreignKeyLookupParam(
+  value: unknown,
+  index: number,
+): QueryParameterInput {
   return {
     key: { kind: "name", name: `fk${index}` },
     value: value as never,

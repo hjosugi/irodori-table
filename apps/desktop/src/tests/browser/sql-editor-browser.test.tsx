@@ -223,4 +223,18 @@ describe("SQL editor browser shortcuts", () => {
     root.unmount();
     host.remove();
   });
+
+  it("reports empty format as a no-op instead of success", async () => {
+    const { host, root, editorRef } = renderSqlEditor({ value: "   \n" });
+    await waitForEditor(host);
+
+    await expect(editorRef.current?.format()).resolves.toEqual({
+      error: null,
+      changed: false,
+      skipped: "empty",
+    });
+
+    root.unmount();
+    host.remove();
+  });
 });

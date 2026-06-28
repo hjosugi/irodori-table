@@ -96,7 +96,9 @@ describe("WorkbenchShell", () => {
     expect(workspace).not.toBeNull();
     expect(rightClick(workspace as HTMLElement)).toBe(false);
 
-    const menu = container.querySelector<HTMLElement>(".workbench-context-menu");
+    const menu = container.querySelector<HTMLElement>(
+      ".workbench-context-menu",
+    );
     expect(menu?.textContent).toContain("Command Palette");
 
     const commandButton = Array.from(
@@ -117,7 +119,9 @@ describe("WorkbenchShell", () => {
     expect(sidebarButton).not.toBeNull();
     rightClick(sidebarButton as HTMLElement);
 
-    const menu = container.querySelector<HTMLElement>(".workbench-context-menu");
+    const menu = container.querySelector<HTMLElement>(
+      ".workbench-context-menu",
+    );
     expect(menu?.textContent).toContain("Activate Hide left sidebar");
 
     const activateButton = menu?.querySelector<HTMLButtonElement>("button");

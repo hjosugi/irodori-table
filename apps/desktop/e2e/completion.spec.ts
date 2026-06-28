@@ -80,7 +80,9 @@ function createCompletionMockBackend(): CompletionMockBackend {
         },
         {
           name: "sales",
-          objects: [table("sales", "invoices", ["id", "customer_id", "status"])],
+          objects: [
+            table("sales", "invoices", ["id", "customer_id", "status"]),
+          ],
         },
       ],
     },
@@ -162,7 +164,10 @@ async function connectMockDatabase(page: Page) {
   const connectionManager = page
     .getByRole("button", { name: "Connection manager", exact: true })
     .first();
-  if ((await connectionManager.count()) > 0 && (await connectionManager.isVisible())) {
+  if (
+    (await connectionManager.count()) > 0 &&
+    (await connectionManager.isVisible())
+  ) {
     await connectionManager.click();
   } else {
     await page.locator(".connection-select").click();
@@ -176,7 +181,9 @@ test("schema metadata drives table and column completion in the editor", async (
   await installCompletionMock(page);
   await page.goto("/");
   await connectMockDatabase(page);
-  await expect(page.locator(".statusbar-connection")).toContainText("Connected");
+  await expect(page.locator(".statusbar-connection")).toContainText(
+    "Connected",
+  );
   await page.getByRole("tab", { name: "Completion" }).click();
   await expect(page.locator(".sidebar .completion-item").first()).toContainText(
     "customers",

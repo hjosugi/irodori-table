@@ -72,12 +72,15 @@ describe("git graph lane layout", () => {
       commit("d444444", [], "Plain"),
     ];
 
-    expect(filterGraphCommits(commits, "", "branches").map((item) => item.hash))
-      .toEqual(["a111111", "b222222"]);
-    expect(filterGraphCommits(commits, "", "remotes").map((item) => item.hash))
-      .toEqual(["a111111"]);
-    expect(filterGraphCommits(commits, "", "tags").map((item) => item.hash))
-      .toEqual(["c333333"]);
+    expect(
+      filterGraphCommits(commits, "", "branches").map((item) => item.hash),
+    ).toEqual(["a111111", "b222222"]);
+    expect(
+      filterGraphCommits(commits, "", "remotes").map((item) => item.hash),
+    ).toEqual(["a111111"]);
+    expect(
+      filterGraphCommits(commits, "", "tags").map((item) => item.hash),
+    ).toEqual(["c333333"]);
   });
 
   it("navigates filtered commits predictably", () => {

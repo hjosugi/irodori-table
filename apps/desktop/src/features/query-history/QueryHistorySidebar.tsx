@@ -32,7 +32,8 @@ export function QueryHistorySidebar({
   const setSearch = useQueryHistoryStore((state) => state.setSearch);
   const openDialog = useQueryHistoryStore((state) => state.openDialog);
   const activeHistoryCount = useMemo(
-    () => items.filter((item) => item.connectionId === activeConnectionId).length,
+    () =>
+      items.filter((item) => item.connectionId === activeConnectionId).length,
     [activeConnectionId, items],
   );
   const scopedHistory = useMemo(

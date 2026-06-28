@@ -64,7 +64,7 @@ function unformatSqlToOneLine(text: string): string {
       continue;
     }
 
-    if (char === "'" || char === "\"" || char === "`") {
+    if (char === "'" || char === '"' || char === "`") {
       const quoted = readQuotedToken(text, index, char);
       append(quoted.value);
       index = quoted.end;

@@ -286,10 +286,11 @@ export const defaultThemeEntries: DefaultThemeEntry[] = (
   defaultThemeCatalog as unknown[]
 ).map(defaultThemeEntryFromJson);
 
-export const defaultThemeEntriesByKind: Record<ThemeKind, DefaultThemeEntry[]> = {
-  light: defaultThemeEntries.filter((entry) => entry.kind === "light"),
-  dark: defaultThemeEntries.filter((entry) => entry.kind === "dark"),
-};
+export const defaultThemeEntriesByKind: Record<ThemeKind, DefaultThemeEntry[]> =
+  {
+    light: defaultThemeEntries.filter((entry) => entry.kind === "light"),
+    dark: defaultThemeEntries.filter((entry) => entry.kind === "dark"),
+  };
 
 const defaultThemeEntryMap = new Map(
   defaultThemeEntries.map((entry) => [entry.id, entry]),
@@ -298,7 +299,7 @@ const defaultThemeEntryMap = new Map(
 export function defaultThemeById(
   id: string | null | undefined,
 ): DefaultThemeEntry | null {
-  return id ? defaultThemeEntryMap.get(id) ?? null : null;
+  return id ? (defaultThemeEntryMap.get(id) ?? null) : null;
 }
 
 export function isDefaultThemeId(value: unknown): value is string {
@@ -964,7 +965,9 @@ function applyVsCodeTokenColors(
 
   value.forEach((rule, index) => {
     if (!isJsonObject(rule)) {
-      warnings.push(`Ignored tokenColors[${index}] because it is not an object.`);
+      warnings.push(
+        `Ignored tokenColors[${index}] because it is not an object.`,
+      );
       return;
     }
     const settings = rule.settings;
@@ -1176,7 +1179,10 @@ function syntaxRolesForTextMateScope(scopeSelector: string): SyntaxTokenRole[] {
 }
 
 function syntaxRolesForSemanticTokenKey(key: string): SyntaxTokenRole[] {
-  const parts = key.toLowerCase().split(/[^a-z0-9_*]+/).filter(Boolean);
+  const parts = key
+    .toLowerCase()
+    .split(/[^a-z0-9_*]+/)
+    .filter(Boolean);
   for (const part of parts) {
     const role = semanticTokenRoleAliases[part];
     if (role) {
@@ -1217,7 +1223,9 @@ function textMateScopesForRule(
     return splitTextMateScopeSelector(value);
   }
   if (!Array.isArray(value)) {
-    warnings.push(`Ignored ${label} scope because it is not a string or array.`);
+    warnings.push(
+      `Ignored ${label} scope because it is not a string or array.`,
+    );
     return [];
   }
 
@@ -1259,7 +1267,10 @@ function inferVsCodeThemeKind(source: unknown): ThemeKind | undefined {
     return undefined;
   }
   const editorBackground = colors["editor.background"];
-  if (typeof editorBackground !== "string" || !isVsCodeColor(editorBackground)) {
+  if (
+    typeof editorBackground !== "string" ||
+    !isVsCodeColor(editorBackground)
+  ) {
     return undefined;
   }
   const luminance = relativeLuminance(editorBackground);
@@ -1318,9 +1329,7 @@ function readOptionalThemeColor(
 }
 
 function isVsCodeColor(value: string): boolean {
-  return /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(
-    value,
-  );
+  return /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value);
 }
 
 function licenseNoteForImport(
@@ -1332,7 +1341,7 @@ function licenseNoteForImport(
   }
 
   const declaredLicense = isJsonObject(source)
-    ? readString(source.license) ?? readString(source.licenseNote)
+    ? (readString(source.license) ?? readString(source.licenseNote))
     : undefined;
   if (declaredLicense) {
     return `Imported VS Code theme declares license: ${declaredLicense}. Verify terms before redistribution.`;

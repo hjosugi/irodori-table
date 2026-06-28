@@ -224,15 +224,18 @@ export function buildMigrationPlan(draft: MigrationDraft): MigrationPlan {
   ]
     .filter(Boolean)
     .join("\n\n");
-  const diffSql = statement(buildDiffSql(normalizedDraft.targetEngine, keys, normalizedDraft));
+  const diffSql = statement(
+    buildDiffSql(normalizedDraft.targetEngine, keys, normalizedDraft),
+  );
   const warnings = buildWarnings(normalizedDraft, keys, compareColumns);
   const pairNotes = buildPairNotes(normalizedDraft);
   const tasks = buildTasks(normalizedDraft, keys, hashColumns);
-  const title = `${sourceLabel} ${normalizedDraft.sourceVersion || ""} -> ${targetLabel} ${
-    normalizedDraft.targetVersion || ""
-  }`
-    .replace(/\s+/g, " ")
-    .trim();
+  const title =
+    `${sourceLabel} ${normalizedDraft.sourceVersion || ""} -> ${targetLabel} ${
+      normalizedDraft.targetVersion || ""
+    }`
+      .replace(/\s+/g, " ")
+      .trim();
 
   return {
     title,
@@ -247,7 +250,14 @@ export function buildMigrationPlan(draft: MigrationDraft): MigrationPlan {
     sourceSql,
     targetSql,
     diffSql,
-    runbook: buildRunbook(title, normalizedDraft, keys, hashColumns, warnings, pairNotes),
+    runbook: buildRunbook(
+      title,
+      normalizedDraft,
+      keys,
+      hashColumns,
+      warnings,
+      pairNotes,
+    ),
   };
 }
 
@@ -332,7 +342,9 @@ function buildHiveExportSql(
   hashColumns: readonly string[],
 ) {
   const dataColumns = uniqueCaseInsensitive([...keys, ...hashColumns]);
-  const selectColumns = dataColumns.map((column) => `  ${columnRef("hive", column)}`);
+  const selectColumns = dataColumns.map(
+    (column) => `  ${columnRef("hive", column)}`,
+  );
   const hash = buildRowHashExpression("hive", hashColumns, draft);
   const where = whereClause(draft.partitionPredicate);
   const storedAs =
@@ -393,7 +405,9 @@ function buildRowHashSelectSql(
   draft: MigrationDraft,
 ) {
   const dataColumns = uniqueCaseInsensitive([...keys, ...hashColumns]);
-  const selectColumns = dataColumns.map((column) => `  ${columnRef(engine, column)}`);
+  const selectColumns = dataColumns.map(
+    (column) => `  ${columnRef(engine, column)}`,
+  );
   const hash = buildRowHashExpression(engine, hashColumns, draft);
   const where = whereClause(predicate);
 
@@ -488,9 +502,7 @@ function buildDiffSql(
       return `s.${ref} = t.${ref}`;
     })
     .join("\n  AND ");
-  const orderBy = keys
-    .map((_, index) => String(index + 1))
-    .join(", ");
+  const orderBy = keys.map((_, index) => String(index + 1)).join(", ");
 
   return [
     "-- High-signal diff: missing rows first, changed rows with both hashes.",
@@ -629,32 +641,48 @@ function buildWarnings(
 ) {
   const warnings: string[] = [];
   if (!draft.sourceTable.trim() || !draft.targetTable.trim()) {
-    warnings.push("Source and target table names are required before execution.");
+    warnings.push(
+      "Source and target table names are required before execution.",
+    );
   }
   if (keys.length === 0) {
     warnings.push("A stable business key is required for row-level diff.");
   }
   if (compareColumns.length === 0) {
-    warnings.push("Compare columns are empty, so only key columns will be hashed.");
+    warnings.push(
+      "Compare columns are empty, so only key columns will be hashed.",
+    );
   }
   if (draft.sourceEngine === "hive" && draft.exportFormat !== "parquet") {
-    warnings.push("Hive CSV extraction is slower and riskier than Parquet for Snowflake loads.");
+    warnings.push(
+      "Hive CSV extraction is slower and riskier than Parquet for Snowflake loads.",
+    );
   }
   if (draft.sourceEngine === "oracle" || draft.targetEngine === "oracle") {
-    warnings.push("Oracle empty string, NLS date format, NUMBER precision, and timezone semantics need explicit mapping.");
+    warnings.push(
+      "Oracle empty string, NLS date format, NUMBER precision, and timezone semantics need explicit mapping.",
+    );
   }
   if (draft.sourceEngine === "mysql" || draft.targetEngine === "mysql") {
-    warnings.push("MySQL zero dates, unsigned numerics, charset, and collation can change comparison hashes.");
+    warnings.push(
+      "MySQL zero dates, unsigned numerics, charset, and collation can change comparison hashes.",
+    );
   }
   if (draft.targetEngine === "snowflake") {
-    warnings.push("Snowflake quoted identifiers are case-sensitive. Keep generated identifiers aligned with table DDL.");
+    warnings.push(
+      "Snowflake quoted identifiers are case-sensitive. Keep generated identifiers aligned with table DDL.",
+    );
   }
   if (
     isDuckDbLakehouseEngine(draft.sourceEngine) ||
     isDuckDbLakehouseEngine(draft.targetEngine)
   ) {
-    warnings.push("Browser DuckDB/Iceberg flows must keep credentials out of shareable URLs and exported runbooks.");
-    warnings.push("Iceberg REST Catalog and object-store endpoints must be reachable from the browser/runtime, including CORS where applicable.");
+    warnings.push(
+      "Browser DuckDB/Iceberg flows must keep credentials out of shareable URLs and exported runbooks.",
+    );
+    warnings.push(
+      "Iceberg REST Catalog and object-store endpoints must be reachable from the browser/runtime, including CORS where applicable.",
+    );
   }
   return warnings;
 }
@@ -811,7 +839,8 @@ function identifierRef(engine: MigrationEngine, value: string) {
   if (/^[A-Za-z_][A-Za-z0-9_$]*$/.test(trimmed)) {
     return trimmed;
   }
-  const quote = engine === "mysql" || engine === "mariadb" || engine === "hive" ? "`" : '"';
+  const quote =
+    engine === "mysql" || engine === "mariadb" || engine === "hive" ? "`" : '"';
   return `${quote}${trimmed.split(quote).join(quote + quote)}${quote}`;
 }
 

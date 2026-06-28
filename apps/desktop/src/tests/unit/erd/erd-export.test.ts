@@ -9,7 +9,10 @@ import {
 } from "@/features/erd/erd-export";
 import { buildErdModel, layoutErdModel } from "@/features/erd/erd";
 import { ErdSvg, erdSvgStyle } from "@/features/erd/erd-svg";
-import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import type {
+  DatabaseMetadata,
+  DbObjectMetadata,
+} from "@/generated/irodori-api";
 import { lightTheme } from "@/theme";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -49,7 +52,8 @@ describe("ERD exports", () => {
     svg.setAttribute("viewBox", "0 0 640 420");
 
     const style = document.createElementNS(SVG_NS, "style");
-    style.textContent = ".erd-table { fill: #fff; }\n.erd-edge { stroke: #333; }";
+    style.textContent =
+      ".erd-table { fill: #fff; }\n.erd-edge { stroke: #333; }";
     svg.append(style);
 
     const rect = document.createElementNS(SVG_NS, "rect");
@@ -71,7 +75,9 @@ describe("ERD exports", () => {
     expect(parsedSvg.getAttribute("width")).toBe("640");
     expect(parsedSvg.getAttribute("height")).toBe("420");
     expect(parsedSvg.getAttribute("viewBox")).toBe("0 0 640 420");
-    expect(parsedSvg.querySelector("style")?.getAttribute("type")).toBe("text/css");
+    expect(parsedSvg.querySelector("style")?.getAttribute("type")).toBe(
+      "text/css",
+    );
     expect(parsedSvg.querySelector("style")?.textContent).toContain(
       ".erd-edge { stroke: #333; }",
     );
@@ -85,19 +91,24 @@ describe("ERD exports", () => {
           name: "sales",
           objects: [
             table("sales", "customers", ["id", "email"]),
-            table("sales", "orders", ["id", "customer_id", "owner_id"], [
-              {
-                columns: ["customer_id"],
-                referencesTable: "customers",
-                referencesColumns: ["id"],
-              },
-              {
-                columns: ["owner_id"],
-                referencesSchema: "auth",
-                referencesTable: "users",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "sales",
+              "orders",
+              ["id", "customer_id", "owner_id"],
+              [
+                {
+                  columns: ["customer_id"],
+                  referencesTable: "customers",
+                  referencesColumns: ["id"],
+                },
+                {
+                  columns: ["owner_id"],
+                  referencesSchema: "auth",
+                  referencesTable: "users",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
@@ -130,7 +141,10 @@ describe("ERD exports", () => {
     expect(parsedSvg.getAttribute("viewBox")).toBe(
       `0 0 ${layout.width} ${layout.height}`,
     );
-    expect(svgTextContent(parsedSvg, ".erd-schema-title")).toEqual(["sales", "auth"]);
+    expect(svgTextContent(parsedSvg, ".erd-schema-title")).toEqual([
+      "sales",
+      "auth",
+    ]);
     expect(svgTextContent(parsedSvg, ".erd-table-title")).toEqual([
       "customers",
       "orders",
@@ -150,11 +164,11 @@ describe("ERD exports", () => {
     vi.useFakeTimers();
     const { createObjectURL, revokeObjectURL } = stubObjectUrls("blob:erd-svg");
     const clickedDownloads: string[] = [];
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
-      this: HTMLAnchorElement,
-    ) {
-      clickedDownloads.push(this.download);
-    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      function (this: HTMLAnchorElement) {
+        clickedDownloads.push(this.download);
+      },
+    );
     const blob = new Blob(["<svg />"], { type: "image/svg+xml" });
 
     downloadBlob(blob, "diagram.svg");
@@ -199,9 +213,9 @@ describe("ERD exports", () => {
     await expect(svgMarkupToPngBlob("<svg />", 0, 100)).rejects.toThrow(
       "ERD has invalid dimensions",
     );
-    await expect(svgMarkupToPngBlob("<svg />", 100, Number.POSITIVE_INFINITY)).rejects.toThrow(
-      "ERD has invalid dimensions",
-    );
+    await expect(
+      svgMarkupToPngBlob("<svg />", 100, Number.POSITIVE_INFINITY),
+    ).rejects.toThrow("ERD has invalid dimensions");
     await expect(svgMarkupToPngBlob("<svg />", 20_000, 100)).rejects.toThrow(
       "ERD is too large to export as PNG; export SVG instead",
     );
@@ -232,7 +246,10 @@ function table(
 }
 
 function svgTextContent(root: Element, selector: string) {
-  return Array.from(root.querySelectorAll(selector), (node) => node.textContent ?? "");
+  return Array.from(
+    root.querySelectorAll(selector),
+    (node) => node.textContent ?? "",
+  );
 }
 
 function stubObjectUrls(url: string) {

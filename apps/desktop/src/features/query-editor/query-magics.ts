@@ -50,7 +50,8 @@ export function parseQueryMagic(
   if (!match) {
     return {
       kind: "error",
-      message: "Unknown query magic. Use \\describe, \\explain, \\export, \\erd, or \\params.",
+      message:
+        "Unknown query magic. Use \\describe, \\explain, \\export, \\erd, or \\params.",
     };
   }
 
@@ -67,7 +68,9 @@ export function parseQueryMagic(
       return {
         kind: "erd",
         search: rest,
-        preview: rest ? `Open ERD filtered by "${rest}"` : "Open ERD for active connection",
+        preview: rest
+          ? `Open ERD filtered by "${rest}"`
+          : "Open ERD for active connection",
       };
     case "export":
       return exportMagic(rest);
@@ -121,7 +124,8 @@ function exportMagic(rest: string): QueryMagicAction {
   if (!exportFormats.has(format as ResultExportFormat)) {
     return {
       kind: "error",
-      message: "\\export needs one of: csv, tsv, json, jsonl, sql, excel, markdown.",
+      message:
+        "\\export needs one of: csv, tsv, json, jsonl, sql, excel, markdown.",
     };
   }
   return {

@@ -59,7 +59,12 @@ const importTextParsers: Record<ImportTextFormat, ImportTextParser> = {
   jsonl: parseJsonLinesImport,
 };
 
-const supportedImportTextFormats = new Set<string>(["csv", "tsv", "json", "jsonl"]);
+const supportedImportTextFormats = new Set<string>([
+  "csv",
+  "tsv",
+  "json",
+  "jsonl",
+]);
 
 export function unsupportedImportFormatMessage(format: string): string {
   const normalized = normalizeFormatName(format);
@@ -89,8 +94,12 @@ export function generateImportSql(
   const table = quoteIdentifier(sanitizeSqlName(tableName || "imported_rows"));
   const cleanedColumns = normalizeColumns(columns);
   const statements = [
-    includeCreate ? createImportTableStatement(table, cleanedColumns, rows) : null,
-    rows.length > 0 ? insertImportRowsStatement(table, cleanedColumns, rows) : null,
+    includeCreate
+      ? createImportTableStatement(table, cleanedColumns, rows)
+      : null,
+    rows.length > 0
+      ? insertImportRowsStatement(table, cleanedColumns, rows)
+      : null,
   ].filter(isPresent);
   return `${statements.join("\n\n")}\n`;
 }
@@ -186,7 +195,10 @@ function extractJsonRows(value: unknown): unknown[] {
   return firstJsonArrayProperty(value, ["rows", "data"]) ?? [value];
 }
 
-function rowsFromJsonValues(values: readonly unknown[], maxRows: number): ParsedImport {
+function rowsFromJsonValues(
+  values: readonly unknown[],
+  maxRows: number,
+): ParsedImport {
   const columns = columnsFromJsonValues(values);
   return parsedImport(
     columns,
@@ -202,14 +214,18 @@ function columnsFromJsonValues(values: readonly unknown[]): string[] {
   }
   const maxArrayLength = maxJsonArrayLength(values);
   if (maxArrayLength > 0) {
-    return Array.from({ length: maxArrayLength }, (_, index) => `column_${index + 1}`);
+    return Array.from(
+      { length: maxArrayLength },
+      (_, index) => `column_${index + 1}`,
+    );
   }
   return ["value"];
 }
 
 function maxJsonArrayLength(values: readonly unknown[]): number {
   return values.reduce<number>(
-    (maxLength, value) => (Array.isArray(value) ? Math.max(maxLength, value.length) : maxLength),
+    (maxLength, value) =>
+      Array.isArray(value) ? Math.max(maxLength, value.length) : maxLength,
     0,
   );
 }
@@ -233,11 +249,15 @@ function normalizeColumns(columns: readonly string[]): string[] {
 }
 
 function inferSqlType(values: readonly unknown[]): string {
-  const present = values.filter((value) => value !== null && value !== undefined && value !== "");
+  const present = values.filter(
+    (value) => value !== null && value !== undefined && value !== "",
+  );
   if (present.length === 0) {
     return "TEXT";
   }
-  return sqlTypeChecks.find(({ matches }) => present.every(matches))?.type ?? "TEXT";
+  return (
+    sqlTypeChecks.find(({ matches }) => present.every(matches))?.type ?? "TEXT"
+  );
 }
 
 function createImportTableStatement(
@@ -245,7 +265,9 @@ function createImportTableStatement(
   columns: readonly string[],
   rows: readonly (readonly unknown[])[],
 ): string {
-  const types = columns.map((_, index) => inferSqlType(rows.map((row) => row[index])));
+  const types = columns.map((_, index) =>
+    inferSqlType(rows.map((row) => row[index])),
+  );
   const definitions = columns
     .map((column, index) => `  ${quoteIdentifier(column)} ${types[index]}`)
     .join(",\n");
@@ -258,11 +280,16 @@ function insertImportRowsStatement(
   rows: readonly (readonly unknown[])[],
 ): string {
   const quotedColumns = columns.map(quoteIdentifier).join(", ");
-  const values = rows.map((row) => `  (${importRowSqlValues(columns, row)})`).join(",\n");
+  const values = rows
+    .map((row) => `  (${importRowSqlValues(columns, row)})`)
+    .join(",\n");
   return `INSERT INTO ${table} (${quotedColumns}) VALUES\n${values};`;
 }
 
-function importRowSqlValues(columns: readonly string[], row: readonly unknown[]): string {
+function importRowSqlValues(
+  columns: readonly string[],
+  row: readonly unknown[],
+): string {
   return columns.map((_, index) => sqlLiteral(row[index] ?? null)).join(", ");
 }
 
@@ -270,7 +297,11 @@ function emptyParsedImport(): ParsedImport {
   return { columns: [], rows: [], totalRows: 0, truncated: false };
 }
 
-function parsedImport(columns: string[], allRows: unknown[][], maxRows: number): ParsedImport {
+function parsedImport(
+  columns: string[],
+  allRows: unknown[][],
+  maxRows: number,
+): ParsedImport {
   const rows = allRows.slice(0, maxRows);
   return {
     columns,
@@ -285,7 +316,9 @@ function normalizeImportTextFormat(format: string): ImportTextFormat | null {
   if (normalized === "ndjson") {
     return "jsonl";
   }
-  return supportedImportTextFormats.has(normalized) ? (normalized as ImportTextFormat) : null;
+  return supportedImportTextFormats.has(normalized)
+    ? (normalized as ImportTextFormat)
+    : null;
 }
 
 function normalizeFormatName(format: string): string {
@@ -296,7 +329,10 @@ function maxDelimitedColumnCount(rows: readonly string[][]): number {
   return Math.max(...rows.map((row) => row.length));
 }
 
-function padDelimitedRow(row: readonly string[], columnCount: number): string[] {
+function padDelimitedRow(
+  row: readonly string[],
+  columnCount: number,
+): string[] {
   return Array.from({ length: columnCount }, (_, index) => row[index] ?? "");
 }
 
@@ -397,7 +433,10 @@ function sqlLiteral(value: unknown): string {
   if (typeof value === "boolean") {
     return value ? "TRUE" : "FALSE";
   }
-  const text = typeof value === "object" ? JSON.stringify(jsonSafeValue(value)) : String(value);
+  const text =
+    typeof value === "object"
+      ? JSON.stringify(jsonSafeValue(value))
+      : String(value);
   return `'${text.replace(/'/g, "''")}'`;
 }
 
@@ -410,7 +449,10 @@ function jsonSafeValue(value: unknown): unknown {
   }
   if (isRecord(value)) {
     return Object.fromEntries(
-      Object.entries(value).map(([key, nested]) => [key, jsonSafeValue(nested)]),
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        jsonSafeValue(nested),
+      ]),
     );
   }
   return value;

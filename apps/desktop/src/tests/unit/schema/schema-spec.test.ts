@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
+import type {
+  DatabaseMetadata,
+  DbObjectMetadata,
+} from "@/generated/irodori-api";
 import {
   buildTableSpecDocument,
   ddlFromTableSpecDocument,
@@ -119,7 +122,9 @@ describe("table specification documents", () => {
     const document = buildTableSpecDocument(metadata, { search: "total" });
 
     expect(document.source?.filtered).toBe(true);
-    expect(document.schemas[0].tables.map((item) => item.name)).toEqual(["orders"]);
+    expect(document.schemas[0].tables.map((item) => item.name)).toEqual([
+      "orders",
+    ]);
     expect(document.schemas[0].tables[0].foreignKeys).toEqual([]);
   });
 });

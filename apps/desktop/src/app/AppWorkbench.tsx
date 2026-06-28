@@ -724,7 +724,8 @@ export function AppWorkbench() {
         key: `${group}:${tab.id}`,
         group,
         tabId: tab.id,
-        label: editorSplitMode === "single" ? tab.label : `${tab.label} · ${group}`,
+        label:
+          editorSplitMode === "single" ? tab.label : `${tab.label} · ${group}`,
         text: state.queryByTabId[tab.id] ?? "",
       }));
     });
@@ -1470,11 +1471,7 @@ export function AppWorkbench() {
     if (!chartCandidateAvailable || !activeResult || spillInfo) {
       return null;
     }
-    if (
-      resultGridView.windowed &&
-      resultMode !== "chart" &&
-      !biOpen
-    ) {
+    if (resultGridView.windowed && resultMode !== "chart" && !biOpen) {
       return null;
     }
     const rows = resultGridView
@@ -2093,6 +2090,7 @@ export function AppWorkbench() {
         item.id === tabId ? { ...item, label: next } : item,
       ),
     }));
+    setActiveEditorGroup(group);
     showActionNotice("success", "Tab renamed", next);
   }
 
@@ -2218,7 +2216,7 @@ export function AppWorkbench() {
     zoomIn: () => updateUiZoom(uiZoom + UI_ZOOM_STEP),
     zoomOut: () => updateUiZoom(uiZoom - UI_ZOOM_STEP),
     zoomReset: () => updateUiZoom(UI_ZOOM_DEFAULT),
-    newSqlTab: reopenSqlTab,
+    newSqlTab,
     closeActiveTab: closeActiveSqlTab,
     saveQuery: saveCurrentQuery,
     saveQueryAs: saveCurrentQueryAsFile,
@@ -3808,7 +3806,9 @@ export function AppWorkbench() {
     } else if (!result?.changed) {
       showActionNotice(
         "info",
-        result?.skipped === "empty" ? "Nothing to format" : "SQL already formatted",
+        result?.skipped === "empty"
+          ? "Nothing to format"
+          : "SQL already formatted",
       );
     } else {
       showActionNotice("success", "SQL formatted", formatter);
@@ -3831,7 +3831,9 @@ export function AppWorkbench() {
     } else if (!result?.changed) {
       showActionNotice(
         "info",
-        result?.skipped === "empty" ? "Nothing to clean up" : "Code already clean",
+        result?.skipped === "empty"
+          ? "Nothing to clean up"
+          : "Code already clean",
       );
     } else {
       showActionNotice("success", "Code cleanup complete");
@@ -4551,14 +4553,33 @@ export function AppWorkbench() {
   function renderEditorTabStrip(group: EditorGroup) {
     const state = editorGroupStates[group];
     const groupOpenTabs = openTabsForEditorGroup(state);
+    const closedTabsAvailable = state.tabs.some(
+      (tab) => !state.openTabIds.includes(tab.id),
+    );
+    const menuOpenForGroup = editorTabMenu?.group === group;
     return (
-      <div className="tab-strip editor-tab-strip">
+      <div
+        className="tab-strip editor-tab-strip"
+        onContextMenu={(event) => event.stopPropagation()}
+      >
         {groupOpenTabs.map((tab) => (
           <button
             className={tab.id === state.activeTabId ? "tab active" : "tab"}
             key={tab.id}
             type="button"
+            title={tab.label}
             onClick={() => selectEditorTab(group, tab.id)}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              selectEditorTab(group, tab.id);
+              setEditorTabMenu({
+                x: event.clientX,
+                y: event.clientY,
+                group,
+                tabId: tab.id,
+              });
+            }}
           >
             {tab.label}
           </button>
@@ -4566,13 +4587,91 @@ export function AppWorkbench() {
         <button
           className="mini-button"
           type="button"
-          title="Reopen closed tab"
-          aria-label="Reopen closed tab"
-          disabled={groupOpenTabs.length === tabs.length}
-          onClick={() => reopenSqlTab(group)}
+          title="New SQL tab"
+          aria-label="New SQL tab"
+          onClick={() => newSqlTab(group)}
         >
           <Plus size={14} />
         </button>
+        {menuOpenForGroup && editorTabMenu ? (
+          <div
+            className="app-menu-popover editor-tab-menu"
+            role="menu"
+            style={{ left: editorTabMenu.x, top: editorTabMenu.y }}
+            onContextMenu={(event) => event.preventDefault()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const { group } = editorTabMenu;
+                setEditorTabMenu(null);
+                newSqlTab(group);
+              }}
+            >
+              <span>New SQL Tab</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const { group, tabId } = editorTabMenu;
+                setEditorTabMenu(null);
+                renameSqlTab(group, tabId);
+              }}
+            >
+              <span>Rename Tab</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const { group, tabId } = editorTabMenu;
+                setEditorTabMenu(null);
+                duplicateSqlTab(group, tabId);
+              }}
+            >
+              <span>Duplicate Tab</span>
+            </button>
+            <span className="menu-separator" aria-hidden="true" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const { group, tabId } = editorTabMenu;
+                setEditorTabMenu(null);
+                closeSqlTab(group, tabId);
+              }}
+            >
+              <span>Close Tab</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={groupOpenTabs.length <= 1}
+              onClick={() => {
+                const { group, tabId } = editorTabMenu;
+                setEditorTabMenu(null);
+                closeOtherSqlTabs(group, tabId);
+              }}
+            >
+              <span>Close Other Tabs</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!closedTabsAvailable}
+              onClick={() => {
+                const { group } = editorTabMenu;
+                setEditorTabMenu(null);
+                reopenSqlTab(group);
+              }}
+            >
+              <span>Reopen Closed Tab</span>
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -4652,10 +4751,7 @@ export function AppWorkbench() {
           />
         }
         gitPanel={
-          <GitPanel
-            variant="sidebar"
-            onClose={() => closeSidebarView("git")}
-          />
+          <GitPanel variant="sidebar" onClose={() => closeSidebarView("git")} />
         }
         aiChatPanel={
           <AiChatPanel

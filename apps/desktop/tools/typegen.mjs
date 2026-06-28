@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,7 +24,9 @@ const generators = [
   {
     id: "extension",
     label: "extension SDK bindings",
-    generatedFiles: ["packages/extension-sdk/src/generated/irodori-extension-api.ts"],
+    generatedFiles: [
+      "packages/extension-sdk/src/generated/irodori-extension-api.ts",
+    ],
     command: "cargo",
     args: ["test", "-p", "irodori-extension", "export_typescript_bindings"],
   },
@@ -54,15 +57,17 @@ async function main() {
     });
   }
 
+  const generatedFiles = selectedGenerators.flatMap(
+    (generator) => generator.generatedFiles,
+  );
+  await normalizeGeneratedFiles(generatedFiles);
+
   if (options.check) {
-    const generatedFiles = selectedGenerators.flatMap((generator) => generator.generatedFiles);
-    const diff = await runCapture("git", [
-      "diff",
-      "--no-ext-diff",
-      "HEAD",
-      "--",
-      ...generatedFiles,
-    ], { cwd: repoRoot });
+    const diff = await runCapture(
+      "git",
+      ["diff", "--no-ext-diff", "HEAD", "--", ...generatedFiles],
+      { cwd: repoRoot },
+    );
 
     if (diff.code === 0 && diff.stdout.trim().length === 0) {
       console.log("Generated TypeScript bindings are up to date.");
@@ -90,6 +95,22 @@ async function main() {
   }
 
   console.log("Generated desktop and extension TypeScript bindings.");
+}
+
+async function normalizeGeneratedFiles(files) {
+  await Promise.all(
+    files.map(async (file) => {
+      const path = resolve(repoRoot, file);
+      const source = await readFile(path, "utf8");
+      let normalized = source.replace(/[ \t]+$/gm, "");
+      if (!normalized.endsWith("\n")) {
+        normalized += "\n";
+      }
+      if (normalized !== source) {
+        await writeFile(path, normalized);
+      }
+    }),
+  );
 }
 
 function parseArgs(argv) {
@@ -172,7 +193,9 @@ function run(command, args, options) {
         return;
       }
 
-      reject(new Error(`${command} ${args.join(" ")} failed with exit code ${code}`));
+      reject(
+        new Error(`${command} ${args.join(" ")} failed with exit code ${code}`),
+      );
     });
   });
 }

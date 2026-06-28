@@ -27,7 +27,12 @@ import {
   type SqlLinterId,
 } from "../../../sql/linter";
 import { localeLabels, supportedLocales, type Locale } from "../../../i18n";
-import { clampNumber, type BooleanUpdater, type TranslateFn, type ValueUpdater } from "./shared";
+import {
+  clampNumber,
+  type BooleanUpdater,
+  type TranslateFn,
+  type ValueUpdater,
+} from "./shared";
 
 export interface GeneralTabProps {
   t: TranslateFn;
@@ -116,9 +121,7 @@ export function GeneralTab({
         </span>
         <select
           value={locale}
-          onChange={(event) =>
-            setLocale(event.currentTarget.value as Locale)
-          }
+          onChange={(event) => setLocale(event.currentTarget.value as Locale)}
         >
           {supportedLocales.map((supportedLocale) => (
             <option key={supportedLocale} value={supportedLocale}>
@@ -179,9 +182,7 @@ export function GeneralTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.editorMode.title")}</strong>
-          <small>
-            {t("settings.general.editorMode.description")}
-          </small>
+          <small>{t("settings.general.editorMode.description")}</small>
         </span>
         <div className="segmented-control">
           <button
@@ -202,12 +203,8 @@ export function GeneralTab({
       </label>
       <label className="settings-row settings-row-wide">
         <span>
-          <strong>
-            {t("settings.general.editorBackground.title")}
-          </strong>
-          <small>
-            {t("settings.general.editorBackground.description")}
-          </small>
+          <strong>{t("settings.general.editorBackground.title")}</strong>
+          <small>{t("settings.general.editorBackground.description")}</small>
         </span>
         <div className="editor-background-control">
           <div className="editor-background-input">
@@ -215,9 +212,7 @@ export function GeneralTab({
             <input
               type="text"
               value={editorBackgroundImage}
-              placeholder={t(
-                "settings.general.editorBackground.placeholder",
-              )}
+              placeholder={t("settings.general.editorBackground.placeholder")}
               onChange={(event) =>
                 setEditorBackgroundImage(event.currentTarget.value)
               }
@@ -225,16 +220,12 @@ export function GeneralTab({
           </div>
           <label className="text-button editor-background-file">
             <Upload size={14} />
-            <span>
-              {t("settings.general.editorBackground.choose")}
-            </span>
+            <span>{t("settings.general.editorBackground.choose")}</span>
             <input
               type="file"
               accept="image/*"
               onChange={(event) => {
-                chooseEditorBackgroundImage(
-                  event.currentTarget.files?.[0],
-                );
+                chooseEditorBackgroundImage(event.currentTarget.files?.[0]);
                 event.currentTarget.value = "";
               }}
             />
@@ -254,28 +245,20 @@ export function GeneralTab({
             max={EDITOR_BACKGROUND_OPACITY_MAX}
             step={EDITOR_BACKGROUND_OPACITY_STEP}
             value={editorBackgroundOpacity}
-            aria-label={t(
-              "settings.general.editorBackground.opacity",
-            )}
+            aria-label={t("settings.general.editorBackground.opacity")}
             onChange={(event) =>
               setEditorBackgroundOpacity(
-                normalizeEditorBackgroundOpacity(
-                  event.currentTarget.value,
-                ),
+                normalizeEditorBackgroundOpacity(event.currentTarget.value),
               )
             }
           />
-          <output>
-            {Math.round(editorBackgroundOpacity * 100)}%
-          </output>
+          <output>{Math.round(editorBackgroundOpacity * 100)}%</output>
         </div>
       </label>
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.animations.title")}</strong>
-          <small>
-            {t("settings.general.animations.description")}
-          </small>
+          <small>{t("settings.general.animations.description")}</small>
         </span>
         <div className="segmented-control">
           <button
@@ -361,9 +344,7 @@ export function GeneralTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.resultOffload.title")}</strong>
-          <small>
-            {t("settings.general.resultOffload.description")}
-          </small>
+          <small>{t("settings.general.resultOffload.description")}</small>
         </span>
         <div className="segmented-control">
           <button
@@ -385,9 +366,7 @@ export function GeneralTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.residentRows.title")}</strong>
-          <small>
-            {t("settings.general.residentRows.description")}
-          </small>
+          <small>{t("settings.general.residentRows.description")}</small>
         </span>
         <input
           type="number"
@@ -397,11 +376,7 @@ export function GeneralTab({
           value={resultMemoryBudget}
           onChange={(event) =>
             setResultMemoryBudget(
-              clampNumber(
-                Number(event.currentTarget.value),
-                1_000,
-                100_000,
-              ),
+              clampNumber(Number(event.currentTarget.value), 1_000, 100_000),
             )
           }
         />
@@ -409,9 +384,7 @@ export function GeneralTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.queryHistory.title")}</strong>
-          <small>
-            {t("settings.general.queryHistory.description")}
-          </small>
+          <small>{t("settings.general.queryHistory.description")}</small>
         </span>
         <input
           type="number"
@@ -429,9 +402,7 @@ export function GeneralTab({
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.historyRows.title")}</strong>
-          <small>
-            {t("settings.general.historyRows.description")}
-          </small>
+          <small>{t("settings.general.historyRows.description")}</small>
         </span>
         <input
           type="number"

@@ -43,17 +43,18 @@ export interface SnippetsTabProps {
   setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
 }
 
-export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps) {
+export function SnippetsTab({
+  t,
+  sqlSnippets,
+  setSqlSnippets,
+}: SnippetsTabProps) {
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const [importDraft, setImportDraft] = useState("");
   const [importSourceName, setImportSourceName] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [importNotice, setImportNotice] = useState<string | null>(null);
 
-  function updateSnippet(
-    index: number,
-    patch: Partial<SqlSnippetDefinition>,
-  ) {
+  function updateSnippet(index: number, patch: Partial<SqlSnippetDefinition>) {
     setSqlSnippets((current) =>
       current.map((snippet, snippetIndex) =>
         snippetIndex === index ? { ...snippet, ...patch } : snippet,
@@ -138,11 +139,7 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
           <RotateCcw size={14} />
           <span>{t("settings.snippets.resetDefaults")}</span>
         </button>
-        <button
-          className="primary-button"
-          type="button"
-          onClick={addSnippet}
-        >
+        <button className="primary-button" type="button" onClick={addSnippet}>
           <Plus size={14} />
           <span>{t("settings.snippets.add")}</span>
         </button>
@@ -313,9 +310,7 @@ export function SnippetsTab({ t, sqlSnippets, setSqlSnippets }: SnippetsTabProps
           ))}
         </div>
       ) : (
-        <div className="empty-browser">
-          {t("settings.snippets.empty")}
-        </div>
+        <div className="empty-browser">{t("settings.snippets.empty")}</div>
       )}
     </div>
   );

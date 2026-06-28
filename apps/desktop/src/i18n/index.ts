@@ -1,4 +1,8 @@
-import { en, type TranslationDictionary, type TranslationKey } from "./locales/en";
+import {
+  en,
+  type TranslationDictionary,
+  type TranslationKey,
+} from "./locales/en";
 import { ja } from "./locales/ja";
 
 export { en } from "./locales/en";
@@ -13,7 +17,10 @@ export type Locale = SupportedLocale;
 export type LocaleInput = string | null | undefined;
 export type InterpolationValue = string | number | boolean | null | undefined;
 export type InterpolationValues = Record<string, InterpolationValue>;
-export type TranslationDictionaries = Record<SupportedLocale, TranslationDictionary>;
+export type TranslationDictionaries = Record<
+  SupportedLocale,
+  TranslationDictionary
+>;
 
 export const dictionaries = {
   en,
@@ -29,7 +36,7 @@ const localeAliases: Readonly<Record<string, SupportedLocale>> = {
   english: "en",
   japanese: "ja",
   nihongo: "ja",
-  "日本語": "ja",
+  日本語: "ja",
 };
 
 const supportedLocaleValues: readonly string[] = supportedLocales;

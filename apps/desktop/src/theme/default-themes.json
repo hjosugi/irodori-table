@@ -3,11 +3,7 @@
     "id": "irodori-paper",
     "name": "Irodori Paper",
     "kind": "light",
-    "inspiredBy": [
-      "Atom One Light",
-      "Kanagawa Lotus",
-      "washi paper"
-    ],
+    "inspiredBy": ["Atom One Light", "Kanagawa Lotus", "washi paper"],
     "licenseNote": "Original Irodori palette; a washi-paper light tuned for legibility, inspired by the restraint of Atom One Light and Kanagawa Lotus, not copied from their values.",
     "ui": {
       "border": "#e2ddd0",
@@ -60,10 +56,7 @@
     "id": "irodori-evergreen",
     "name": "Irodori Evergreen",
     "kind": "dark",
-    "inspiredBy": [
-      "Kanagawa",
-      "wabi-sabi evergreen"
-    ],
+    "inspiredBy": ["Kanagawa", "wabi-sabi evergreen"],
     "licenseNote": "Original Irodori palette; a wabi-sabi evergreen dark inspired by Kanagawa's muted restraint, not copied from its values.",
     "ui": {
       "border": "#2a322d",

@@ -93,7 +93,11 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
         </button>
       </div>
       <div className="row-detail-controls">
-        <div className="row-detail-tabs" role="tablist" aria-label="Row detail view">
+        <div
+          className="row-detail-tabs"
+          role="tablist"
+          aria-label="Row detail view"
+        >
           {DETAIL_MODES.map((item) => (
             <button
               key={item.id}
@@ -180,8 +184,16 @@ type ReferencedRow = {
 };
 
 function RowDetailFields(props: RowDetailFieldsProps) {
-  const { columns, values, table, metadata, engine, connectionId, depth, filter } =
-    props;
+  const {
+    columns,
+    values,
+    table,
+    metadata,
+    engine,
+    connectionId,
+    depth,
+    filter,
+  } = props;
 
   const fkColumns = useMemo(
     () => foreignKeyColumns(table, columns),
@@ -274,14 +286,18 @@ function RowDetailFields(props: RowDetailFieldsProps) {
           <div className="detail-row" key={`${column}-${index}`}>
             <dt className="detail-key">
               <span className="detail-col">{column}</span>
-              {dataType ? <span className="detail-type">{dataType}</span> : null}
+              {dataType ? (
+                <span className="detail-type">{dataType}</span>
+              ) : null}
             </dt>
             <dd className="detail-value">
               {navigable ? (
                 <button
                   type="button"
                   className={`fk-link${open ? " is-open" : ""}`}
-                  onClick={() => navigate(index, binding.fk, binding.columnIndexes)}
+                  onClick={() =>
+                    navigate(index, binding.fk, binding.columnIndexes)
+                  }
                   title={`References ${binding.fk.referencesTable}`}
                 >
                   <ArrowRight size={12} aria-hidden="true" />
@@ -290,7 +306,9 @@ function RowDetailFields(props: RowDetailFieldsProps) {
               ) : detail.json ? (
                 <pre className="detail-json">{detail.text}</pre>
               ) : (
-                <span className={values[index] === null ? "detail-null" : undefined}>
+                <span
+                  className={values[index] === null ? "detail-null" : undefined}
+                >
                   {detail.text}
                 </span>
               )}
@@ -301,10 +319,14 @@ function RowDetailFields(props: RowDetailFieldsProps) {
                       Loading {binding.fk.referencesTable}…
                     </span>
                   ) : null}
-                  {error ? <span className="detail-ref-error">{error}</span> : null}
+                  {error ? (
+                    <span className="detail-ref-error">{error}</span>
+                  ) : null}
                   {referenced ? (
                     <>
-                      <div className="detail-ref-head">→ {binding.fk.referencesTable}</div>
+                      <div className="detail-ref-head">
+                        → {binding.fk.referencesTable}
+                      </div>
                       <RowDetailFields
                         columns={referenced.columns}
                         values={referenced.values}
@@ -336,12 +358,16 @@ function matchesDetailFilter(
   if (normalizedFilter.length === 0) {
     return true;
   }
-  return `${column} ${dataType ?? ""} ${value}`.toLowerCase().includes(normalizedFilter);
+  return `${column} ${dataType ?? ""} ${value}`
+    .toLowerCase()
+    .includes(normalizedFilter);
 }
 
 function RowJsonDocument({ text, filter }: { text: string; filter: string }) {
   const normalizedFilter = filter.trim().toLowerCase();
-  const matches = normalizedFilter.length === 0 || text.toLowerCase().includes(normalizedFilter);
+  const matches =
+    normalizedFilter.length === 0 ||
+    text.toLowerCase().includes(normalizedFilter);
   return (
     <div className="row-json-view">
       {normalizedFilter.length > 0 ? (
@@ -349,7 +375,11 @@ function RowJsonDocument({ text, filter }: { text: string; filter: string }) {
           {matches ? "JSON document matches" : "No JSON text match"}
         </div>
       ) : null}
-      <pre className={`detail-json detail-json-full${matches ? "" : " is-dimmed"}`}>{text}</pre>
+      <pre
+        className={`detail-json detail-json-full${matches ? "" : " is-dimmed"}`}
+      >
+        {text}
+      </pre>
     </div>
   );
 }
@@ -377,7 +407,9 @@ function JsonTreeNodeView({
   filter: string;
   root?: boolean;
 }) {
-  const visibleChildren = node.children.filter((child) => nodeMatchesFilter(child, filter));
+  const visibleChildren = node.children.filter((child) =>
+    nodeMatchesFilter(child, filter),
+  );
   const label = root ? "$" : node.key;
 
   if (node.children.length > 0) {
@@ -406,12 +438,18 @@ function JsonTreeNodeView({
   );
 }
 
-function nodeMatchesFilter(node: JsonTreeNode, normalizedFilter: string): boolean {
+function nodeMatchesFilter(
+  node: JsonTreeNode,
+  normalizedFilter: string,
+): boolean {
   if (normalizedFilter.length === 0) {
     return true;
   }
   const selfMatches = `${node.key} ${node.path} ${node.type} ${node.preview}`
     .toLowerCase()
     .includes(normalizedFilter);
-  return selfMatches || node.children.some((child) => nodeMatchesFilter(child, normalizedFilter));
+  return (
+    selfMatches ||
+    node.children.some((child) => nodeMatchesFilter(child, normalizedFilter))
+  );
 }

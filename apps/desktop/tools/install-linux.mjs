@@ -12,7 +12,14 @@
 // version" to "running app" with one command and no CI wait.
 
 import { spawn } from "node:child_process";
-import { chmod, copyFile, mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  mkdir,
+  readdir,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,7 +34,10 @@ const home = homedir();
 const appsDir = join(home, "Applications");
 const appPath = join(appsDir, "Irodori Table.AppImage");
 const iconPath = join(appsDir, "irodori-table.png");
-const desktopEntryPath = join(home, ".local/share/applications/irodori-table.desktop");
+const desktopEntryPath = join(
+  home,
+  ".local/share/applications/irodori-table.desktop",
+);
 const sourceIcon = resolve(desktopRoot, "src-tauri/icons/128x128.png");
 
 if (process.platform !== "linux") {
@@ -44,7 +54,12 @@ await run("npm", npmArgs, { cwd: desktopRoot });
 
 // 2. Locate the freshly built AppImage.
 const profileDir = profileDirName(options.release);
-const bundleDir = resolve(repoRoot, ".irodori-local/target", profileDir, "bundle/appimage");
+const bundleDir = resolve(
+  repoRoot,
+  ".irodori-local/target",
+  profileDir,
+  "bundle/appimage",
+);
 const builtImage = await newestAppImage(bundleDir);
 if (!builtImage) {
   console.error(`No .AppImage found under ${bundleDir}`);

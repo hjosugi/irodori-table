@@ -8,10 +8,7 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import type { JobList } from "../../generated/irodori-api";
-import type {
-  CustomThemeEntry,
-  ThemePreference,
-} from "../preferences";
+import type { CustomThemeEntry, ThemePreference } from "../preferences";
 import type {
   CommandMeta,
   Keymap,
@@ -321,9 +318,7 @@ export function SettingsDialog({
                 runCommand={runCommand}
                 beginRecording={beginRecording}
                 resetKeybinding={resetKeybinding}
-                applyVimKeybindingResolutions={
-                  applyVimKeybindingResolutions
-                }
+                applyVimKeybindingResolutions={applyVimKeybindingResolutions}
               />
             ) : settingsTab === "snippets" ? (
               <SnippetsTab

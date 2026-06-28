@@ -36,10 +36,7 @@ import SqlEditor, {
   type SqlEditorSelection,
   type SqlMetadataToolWindowRequest,
 } from "./SqlEditor";
-import type {
-  DatabaseMetadata,
-  DbEngine,
-} from "../../generated/irodori-api";
+import type { DatabaseMetadata, DbEngine } from "../../generated/irodori-api";
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
 import {
@@ -105,28 +102,29 @@ const editorToolbarCommands: readonly EditorToolbarCommand[] = [
   },
 ];
 
-const editorContextCommandGroups: readonly (readonly EditorContextCommand[])[] = [
+const editorContextCommandGroups: readonly (readonly EditorContextCommand[])[] =
   [
-    { commandId: "query.run", label: "" },
-    { commandId: "editor.quickFix", label: "Show Problems and Quick Fixes" },
-    { commandId: "editor.cleanup", label: "Code Cleanup" },
-    { commandId: "editor.format", label: "Format SQL" },
-    { commandId: "editor.comment.toggle", label: "Toggle Comment" },
-    { commandId: "editor.outdent", label: "Outdent Line or Selection" },
-    { commandId: "editor.indent", label: "Indent Line or Selection" },
-    { commandId: "editor.quickDefinition", label: "Quick Definition" },
-  ],
-  [
-    { commandId: "editor.transform.uppercase", label: "Uppercase selection" },
-    { commandId: "editor.transform.lowercase", label: "Lowercase selection" },
-    { commandId: "editor.transform.unformat", label: "Unformat to one line" },
-    { commandId: "editor.transform.addCommas", label: "Add commas to lines" },
-    {
-      commandId: "editor.transform.doubleToSingleQuotes",
-      label: "Double quotes to single quotes",
-    },
-  ],
-];
+    [
+      { commandId: "query.run", label: "" },
+      { commandId: "editor.quickFix", label: "Show Problems and Quick Fixes" },
+      { commandId: "editor.cleanup", label: "Code Cleanup" },
+      { commandId: "editor.format", label: "Format SQL" },
+      { commandId: "editor.comment.toggle", label: "Toggle Comment" },
+      { commandId: "editor.outdent", label: "Outdent Line or Selection" },
+      { commandId: "editor.indent", label: "Indent Line or Selection" },
+      { commandId: "editor.quickDefinition", label: "Quick Definition" },
+    ],
+    [
+      { commandId: "editor.transform.uppercase", label: "Uppercase selection" },
+      { commandId: "editor.transform.lowercase", label: "Lowercase selection" },
+      { commandId: "editor.transform.unformat", label: "Unformat to one line" },
+      { commandId: "editor.transform.addCommas", label: "Add commas to lines" },
+      {
+        commandId: "editor.transform.doubleToSingleQuotes",
+        label: "Double quotes to single quotes",
+      },
+    ],
+  ];
 
 export interface QueryEditorPaneProps {
   activeTabLabel: string;
@@ -171,12 +169,8 @@ export interface QueryEditorPaneProps {
   runAllQuery: () => Promise<void>;
   cancelQuery: () => Promise<void>;
   setRunMenuOpen: (value: boolean | ((open: boolean) => boolean)) => void;
-  beginEditorSplitResize: (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => void;
-  onEditorSplitResizeKey: (
-    event: ReactKeyboardEvent<HTMLDivElement>,
-  ) => void;
+  beginEditorSplitResize: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onEditorSplitResizeKey: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   onSqlFileDrop?: (file: File) => void;
   onUnsupportedFileDrop?: () => void;
   sqlFileDropLabel?: string;
@@ -391,7 +385,9 @@ export function QueryEditorPane({
     const primary = editorApiRef.current;
     const secondary = secondaryEditorApiRef.current;
     const active =
-      activeEditorGroup === "secondary" ? secondary ?? primary : primary ?? secondary;
+      activeEditorGroup === "secondary"
+        ? (secondary ?? primary)
+        : (primary ?? secondary);
     active?.revealRange(selection);
   };
 
@@ -506,115 +502,115 @@ export function QueryEditorPane({
         onDragLeave={handleSqlFileDragLeave}
         onDrop={handleSqlFileDrop}
       >
-      <div
-        ref={editorSplitRef}
-        className={`editor-split editor-split-${editorSplitMode}`}
-      >
-        <EditorGroupShell
-          group="primary"
-          active={activeEditorGroup === "primary"}
-          query={primaryQuery}
-          apiRef={editorApiRef}
-          formatter={formatter}
-          editorEngine={editorEngine}
-          activeMetadata={activeMetadata}
-          sqlSnippets={sqlSnippets}
-          editorBackgroundStyle={editorBackgroundStyle}
-          theme={theme}
-          vimMode={vimMode}
-          sqlLinter={sqlLinter}
-          renderEditorTabStrip={renderEditorTabStrip}
-          onQueryChange={onPrimaryQueryChange}
-          setActiveEditorGroup={setActiveEditorGroup}
-          setEditorSelection={setEditorSelection}
-          onContextMenu={openEditorContextMenu}
-          onMetadataJump={onMetadataJump}
-          onMetadataToolWindow={setMetadataToolWindow}
-        />
-        {editorSplitOpen ? (
-          <>
-            <div
-              className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
-              role="separator"
-              aria-label="Resize editor split"
-              aria-orientation={
-                editorSplitMode === "down" ? "horizontal" : "vertical"
-              }
-              tabIndex={0}
-              onPointerDown={beginEditorSplitResize}
-              onKeyDown={onEditorSplitResizeKey}
-            />
-            <EditorGroupShell
-              group="secondary"
-              active={activeEditorGroup === "secondary"}
-              query={secondaryQuery}
-              apiRef={secondaryEditorApiRef}
-              formatter={formatter}
-              editorEngine={editorEngine}
-              activeMetadata={activeMetadata}
-              sqlSnippets={sqlSnippets}
-              editorBackgroundStyle={editorBackgroundStyle}
-              theme={theme}
-              vimMode={vimMode}
-              sqlLinter={sqlLinter}
-              renderEditorTabStrip={renderEditorTabStrip}
-              onQueryChange={onSecondaryQueryChange}
-              setActiveEditorGroup={setActiveEditorGroup}
-              setEditorSelection={setEditorSelection}
-              onContextMenu={openEditorContextMenu}
-              onMetadataJump={onMetadataJump}
-              onMetadataToolWindow={setMetadataToolWindow}
-            />
-          </>
-        ) : null}
-      </div>
-      {metadataToolWindow ? (
-        <MetadataToolWindow
-          request={metadataToolWindow}
-          query={activeQuery}
-          onClose={() => setMetadataToolWindow(null)}
-          onEdit={() => {
-            onMetadataJump?.(metadataToolWindow.target);
-            setMetadataToolWindow(null);
-          }}
-          onRevealUsage={revealMetadataUsage}
-        />
-      ) : null}
-      {contextMenu ? (
         <div
-          className="app-menu-popover editor-context-menu"
-          role="menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onContextMenu={(event) => event.preventDefault()}
-          onPointerDown={(event) => event.stopPropagation()}
+          ref={editorSplitRef}
+          className={`editor-split editor-split-${editorSplitMode}`}
         >
-          {editorContextCommandGroups.map((group, index) => (
-            <Fragment key={index}>
-              {index > 0 ? (
-                <span className="menu-separator" aria-hidden="true" />
-              ) : null}
-              {group.map(renderContextCommand)}
-            </Fragment>
-          ))}
-          <span className="menu-separator" aria-hidden="true" />
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!resultActionsAvailable}
-            onClick={() => runContextCommand("result.copySqlInserts")}
-          >
-            <span>Copy result as INSERT SQL</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!resultActionsAvailable}
-            onClick={() => runContextCommand("result.exportSqlInserts")}
-          >
-            <span>Download result as INSERT SQL</span>
-          </button>
+          <EditorGroupShell
+            group="primary"
+            active={activeEditorGroup === "primary"}
+            query={primaryQuery}
+            apiRef={editorApiRef}
+            formatter={formatter}
+            editorEngine={editorEngine}
+            activeMetadata={activeMetadata}
+            sqlSnippets={sqlSnippets}
+            editorBackgroundStyle={editorBackgroundStyle}
+            theme={theme}
+            vimMode={vimMode}
+            sqlLinter={sqlLinter}
+            renderEditorTabStrip={renderEditorTabStrip}
+            onQueryChange={onPrimaryQueryChange}
+            setActiveEditorGroup={setActiveEditorGroup}
+            setEditorSelection={setEditorSelection}
+            onContextMenu={openEditorContextMenu}
+            onMetadataJump={onMetadataJump}
+            onMetadataToolWindow={setMetadataToolWindow}
+          />
+          {editorSplitOpen ? (
+            <>
+              <div
+                className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
+                role="separator"
+                aria-label="Resize editor split"
+                aria-orientation={
+                  editorSplitMode === "down" ? "horizontal" : "vertical"
+                }
+                tabIndex={0}
+                onPointerDown={beginEditorSplitResize}
+                onKeyDown={onEditorSplitResizeKey}
+              />
+              <EditorGroupShell
+                group="secondary"
+                active={activeEditorGroup === "secondary"}
+                query={secondaryQuery}
+                apiRef={secondaryEditorApiRef}
+                formatter={formatter}
+                editorEngine={editorEngine}
+                activeMetadata={activeMetadata}
+                sqlSnippets={sqlSnippets}
+                editorBackgroundStyle={editorBackgroundStyle}
+                theme={theme}
+                vimMode={vimMode}
+                sqlLinter={sqlLinter}
+                renderEditorTabStrip={renderEditorTabStrip}
+                onQueryChange={onSecondaryQueryChange}
+                setActiveEditorGroup={setActiveEditorGroup}
+                setEditorSelection={setEditorSelection}
+                onContextMenu={openEditorContextMenu}
+                onMetadataJump={onMetadataJump}
+                onMetadataToolWindow={setMetadataToolWindow}
+              />
+            </>
+          ) : null}
         </div>
-      ) : null}
+        {metadataToolWindow ? (
+          <MetadataToolWindow
+            request={metadataToolWindow}
+            query={activeQuery}
+            onClose={() => setMetadataToolWindow(null)}
+            onEdit={() => {
+              onMetadataJump?.(metadataToolWindow.target);
+              setMetadataToolWindow(null);
+            }}
+            onRevealUsage={revealMetadataUsage}
+          />
+        ) : null}
+        {contextMenu ? (
+          <div
+            className="app-menu-popover editor-context-menu"
+            role="menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onContextMenu={(event) => event.preventDefault()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            {editorContextCommandGroups.map((group, index) => (
+              <Fragment key={index}>
+                {index > 0 ? (
+                  <span className="menu-separator" aria-hidden="true" />
+                ) : null}
+                {group.map(renderContextCommand)}
+              </Fragment>
+            ))}
+            <span className="menu-separator" aria-hidden="true" />
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!resultActionsAvailable}
+              onClick={() => runContextCommand("result.copySqlInserts")}
+            >
+              <span>Copy result as INSERT SQL</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!resultActionsAvailable}
+              onClick={() => runContextCommand("result.exportSqlInserts")}
+            >
+              <span>Download result as INSERT SQL</span>
+            </button>
+          </div>
+        ) : null}
       </section>
     </>
   );
@@ -817,7 +813,11 @@ function RunOptionsMenu({
   runAllQuery,
 }: Omit<
   RunControlProps,
-  "running" | "runControlRef" | "runMenuOpen" | "setRunMenuOpen" | "saveCurrentQuery"
+  | "running"
+  | "runControlRef"
+  | "runMenuOpen"
+  | "setRunMenuOpen"
+  | "saveCurrentQuery"
 >) {
   return (
     <div className="app-menu-popover run-menu-popover" role="menu">
@@ -983,10 +983,7 @@ function MetadataToolWindow({
   }, [request]);
 
   return (
-    <section
-      className="metadata-tool-window"
-      aria-label="Find tool window"
-    >
+    <section className="metadata-tool-window" aria-label="Find tool window">
       <div className="metadata-tool-window-header">
         <div className="metadata-tool-window-title">
           {request.mode === "usages" ? (
@@ -1059,7 +1056,9 @@ function findMetadataUsages(
       ranges.set(`${usage.from}:${usage.to}`, usage);
     }
   }
-  return Array.from(ranges.values()).sort((left, right) => left.from - right.from);
+  return Array.from(ranges.values()).sort(
+    (left, right) => left.from - right.from,
+  );
 }
 
 function metadataUsageNeedles(target: SqlMetadataTarget): string[] {
@@ -1086,7 +1085,10 @@ function findIdentifierOccurrences(
   let index = lowerQuery.indexOf(needle);
   while (index >= 0) {
     const to = index + needle.length;
-    if (isIdentifierBoundary(query[index - 1]) && isIdentifierBoundary(query[to])) {
+    if (
+      isIdentifierBoundary(query[index - 1]) &&
+      isIdentifierBoundary(query[to])
+    ) {
       const { line, column } = lineColumnAt(query, index);
       usages.push({
         from: index,

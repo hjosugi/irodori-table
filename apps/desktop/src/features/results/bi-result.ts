@@ -64,7 +64,9 @@ function profileFromChartColumn(column: ChartResultColumn): BiColumnProfile {
     role: roleFromChartColumn(column),
     filledLabel: `${toCount(column.filledCount)} filled`,
     distinctLabel:
-      column.kind === "category" ? `${toCount(column.distinctCount)} distinct` : null,
+      column.kind === "category"
+        ? `${toCount(column.distinctCount)} distinct`
+        : null,
     kindLabel: column.kind,
   };
 }

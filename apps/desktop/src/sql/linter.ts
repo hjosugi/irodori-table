@@ -171,7 +171,13 @@ function scanSql(sql: string): SqlScanResult {
     if (char === ")") {
       if (parens.length === 0) {
         diagnostics.push(
-          diagnostic(sql, index, index + 1, "error", "Unmatched closing parenthesis."),
+          diagnostic(
+            sql,
+            index,
+            index + 1,
+            "error",
+            "Unmatched closing parenthesis.",
+          ),
         );
       } else {
         parens.pop();
@@ -209,19 +215,43 @@ function scanSql(sql: string): SqlScanResult {
 
   if (mode === "single") {
     diagnostics.push(
-      diagnostic(sql, modeStart, sql.length, "error", "Unclosed string literal."),
+      diagnostic(
+        sql,
+        modeStart,
+        sql.length,
+        "error",
+        "Unclosed string literal.",
+      ),
     );
   } else if (mode === "double") {
     diagnostics.push(
-      diagnostic(sql, modeStart, sql.length, "error", "Unclosed quoted identifier."),
+      diagnostic(
+        sql,
+        modeStart,
+        sql.length,
+        "error",
+        "Unclosed quoted identifier.",
+      ),
     );
   } else if (mode === "block") {
     diagnostics.push(
-      diagnostic(sql, modeStart, sql.length, "error", "Unclosed block comment."),
+      diagnostic(
+        sql,
+        modeStart,
+        sql.length,
+        "error",
+        "Unclosed block comment.",
+      ),
     );
   } else if (mode === "dollar") {
     diagnostics.push(
-      diagnostic(sql, modeStart, sql.length, "error", `Unclosed dollar quote ${dollarTag}.`),
+      diagnostic(
+        sql,
+        modeStart,
+        sql.length,
+        "error",
+        `Unclosed dollar quote ${dollarTag}.`,
+      ),
     );
   }
 
@@ -239,7 +269,9 @@ function scanSql(sql: string): SqlScanResult {
 }
 
 function tokensInRange(tokens: SqlWordToken[], range: SqlStatementRange) {
-  return tokens.filter((token) => token.from >= range.from && token.to <= range.to);
+  return tokens.filter(
+    (token) => token.from >= range.from && token.to <= range.to,
+  );
 }
 
 function firstActionToken(tokens: SqlWordToken[]) {
@@ -309,7 +341,12 @@ export function lintSqlDocument(sql: string, engine: DbEngine): Diagnostic[] {
       break;
     }
     diagnostics.push(
-      ...lintStatementRisk(sql, engine, range, tokensInRange(scan.tokens, range)),
+      ...lintStatementRisk(
+        sql,
+        engine,
+        range,
+        tokensInRange(scan.tokens, range),
+      ),
     );
   }
 

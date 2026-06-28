@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { DatabaseMetadata, DbObjectMetadata } from "@/generated/irodori-api";
-import { buildErdModel, layoutErdModel, toMermaidErd } from "@/features/erd/erd";
+import type {
+  DatabaseMetadata,
+  DbObjectMetadata,
+} from "@/generated/irodori-api";
+import {
+  buildErdModel,
+  layoutErdModel,
+  toMermaidErd,
+} from "@/features/erd/erd";
 
 function table(
   schema: string,
@@ -32,14 +39,19 @@ describe("ERD model", () => {
           name: "sales",
           objects: [
             table("sales", "users", ["id"]),
-            table("sales", "orders", ["id", "user_id"], [
-              {
-                columns: ["user_id"],
-                referencesSchema: "auth",
-                referencesTable: "users",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "sales",
+              "orders",
+              ["id", "user_id"],
+              [
+                {
+                  columns: ["user_id"],
+                  referencesSchema: "auth",
+                  referencesTable: "users",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
@@ -71,13 +83,18 @@ describe("ERD model", () => {
           name: "sales",
           objects: [
             table("sales", "customers", ["id"]),
-            table("sales", "invoices", ["id", "customer_id"], [
-              {
-                columns: ["customer_id"],
-                referencesTable: "customers",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "sales",
+              "invoices",
+              ["id", "customer_id"],
+              [
+                {
+                  columns: ["customer_id"],
+                  referencesTable: "customers",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
@@ -87,13 +104,18 @@ describe("ERD model", () => {
         {
           name: "support",
           objects: [
-            table("support", "tickets", ["id", "customer_id"], [
-              {
-                columns: ["customer_id"],
-                referencesTable: "customers",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "support",
+              "tickets",
+              ["id", "customer_id"],
+              [
+                {
+                  columns: ["customer_id"],
+                  referencesTable: "customers",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
       ],
@@ -118,12 +140,20 @@ describe("ERD model", () => {
   it("filters by schema and search text", () => {
     const metadata: DatabaseMetadata = {
       schemas: [
-        { name: "public", objects: [table("public", "orders", ["id", "status"])] },
-        { name: "audit", objects: [table("audit", "events", ["id", "payload"])] },
+        {
+          name: "public",
+          objects: [table("public", "orders", ["id", "status"])],
+        },
+        {
+          name: "audit",
+          objects: [table("audit", "events", ["id", "payload"])],
+        },
       ],
     };
 
-    expect(buildErdModel(metadata, { schemaNames: ["audit"] }).tables).toHaveLength(1);
+    expect(
+      buildErdModel(metadata, { schemaNames: ["audit"] }).tables,
+    ).toHaveLength(1);
     const searched = buildErdModel(metadata, { search: "status" });
     expect(searched.tables.map((item) => item.id)).toEqual(["public.orders"]);
     expect(searched.filtered).toBe(true);
@@ -136,26 +166,36 @@ describe("ERD model", () => {
           name: "public",
           objects: [
             table("public", "users", ["id", "email"]),
-            table("public", "orders", ["id", "user_id", "status"], [
-              {
-                columns: ["user_id"],
-                referencesTable: "users",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "public",
+              "orders",
+              ["id", "user_id", "status"],
+              [
+                {
+                  columns: ["user_id"],
+                  referencesTable: "users",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
           name: "audit",
           objects: [
-            table("audit", "events", ["id", "order_id", "payload"], [
-              {
-                columns: ["order_id"],
-                referencesSchema: "public",
-                referencesTable: "orders",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "audit",
+              "events",
+              ["id", "order_id", "payload"],
+              [
+                {
+                  columns: ["order_id"],
+                  referencesSchema: "public",
+                  referencesTable: "orders",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
       ],
@@ -171,11 +211,17 @@ describe("ERD model", () => {
     ]);
 
     const childOnlySearch = buildErdModel(metadata, { search: "status" });
-    expect(childOnlySearch.tables.map((item) => item.id)).toEqual(["public.orders"]);
+    expect(childOnlySearch.tables.map((item) => item.id)).toEqual([
+      "public.orders",
+    ]);
     expect(childOnlySearch.edges).toEqual([]);
 
-    const hiddenTargetSchema = buildErdModel(metadata, { schemaNames: ["audit"] });
-    expect(hiddenTargetSchema.tables.map((item) => item.id)).toEqual(["audit.events"]);
+    const hiddenTargetSchema = buildErdModel(metadata, {
+      schemaNames: ["audit"],
+    });
+    expect(hiddenTargetSchema.tables.map((item) => item.id)).toEqual([
+      "audit.events",
+    ]);
     expect(hiddenTargetSchema.edges).toEqual([]);
   });
 
@@ -186,32 +232,42 @@ describe("ERD model", () => {
           name: "sales",
           objects: [
             table("sales", "customers", ["id", "email"]),
-            table("sales", "orders", ["id", "customer_id", "owner_id"], [
-              {
-                columns: ["customer_id"],
-                referencesTable: "customers",
-                referencesColumns: ["id"],
-              },
-              {
-                columns: ["owner_id"],
-                referencesSchema: "auth",
-                referencesTable: "users",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "sales",
+              "orders",
+              ["id", "customer_id", "owner_id"],
+              [
+                {
+                  columns: ["customer_id"],
+                  referencesTable: "customers",
+                  referencesColumns: ["id"],
+                },
+                {
+                  columns: ["owner_id"],
+                  referencesSchema: "auth",
+                  referencesTable: "users",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
           name: "audit",
           objects: [
-            table("audit", "order_events", ["id", "order_id"], [
-              {
-                columns: ["order_id"],
-                referencesSchema: "sales",
-                referencesTable: "orders",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "audit",
+              "order_events",
+              ["id", "order_id"],
+              [
+                {
+                  columns: ["order_id"],
+                  referencesSchema: "sales",
+                  referencesTable: "orders",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
@@ -222,7 +278,9 @@ describe("ERD model", () => {
     };
 
     const model = buildErdModel(metadata);
-    expect(model.schemas.map((schema) => [schema.name, schema.tables.length])).toEqual([
+    expect(
+      model.schemas.map((schema) => [schema.name, schema.tables.length]),
+    ).toEqual([
       ["sales", 2],
       ["audit", 1],
       ["auth", 1],
@@ -267,19 +325,24 @@ describe("ERD model", () => {
         {
           name: "org",
           objects: [
-            table("org", "employees", ["id", "manager_id", "account_id"], [
-              {
-                columns: ["manager_id"],
-                referencesTable: "employees",
-                referencesColumns: ["id"],
-              },
-              {
-                columns: ["account_id"],
-                referencesSchema: "auth",
-                referencesTable: "accounts",
-                referencesColumns: ["id"],
-              },
-            ]),
+            table(
+              "org",
+              "employees",
+              ["id", "manager_id", "account_id"],
+              [
+                {
+                  columns: ["manager_id"],
+                  referencesTable: "employees",
+                  referencesColumns: ["id"],
+                },
+                {
+                  columns: ["account_id"],
+                  referencesSchema: "auth",
+                  referencesTable: "accounts",
+                  referencesColumns: ["id"],
+                },
+              ],
+            ),
           ],
         },
         {
@@ -340,16 +403,20 @@ describe("ERD model", () => {
 
     for (const edge of layout.edges) {
       expectEdgePathToBeSane(edge, layout);
-      expect(labelRect(edge)).toEqual(expect.objectContaining({
-        width: 84,
-        height: 17,
-      }));
-      expect(rectInside(labelRect(edge), {
-        x: 0,
-        y: 0,
-        width: layout.width,
-        height: layout.height,
-      })).toBe(true);
+      expect(labelRect(edge)).toEqual(
+        expect.objectContaining({
+          width: 84,
+          height: 17,
+        }),
+      );
+      expect(
+        rectInside(labelRect(edge), {
+          x: 0,
+          y: 0,
+          width: layout.width,
+          height: layout.height,
+        }),
+      ).toBe(true);
       expect(
         layout.tables.some((tableLayout) =>
           rectsOverlap(labelRect(edge), tableLayout),
@@ -364,7 +431,9 @@ describe("ERD model", () => {
         ).toBe(false);
       }
     }
-    expect(new Set(layout.edges.map((edge) => edge.path)).size).toBe(layout.edges.length);
+    expect(new Set(layout.edges.map((edge) => edge.path)).size).toBe(
+      layout.edges.length,
+    );
   });
 
   it("keeps small, medium, and wide schema visual signatures stable", () => {
@@ -377,13 +446,18 @@ describe("ERD model", () => {
               name: "public",
               objects: [
                 table("public", "customers", ["id", "name"]),
-                table("public", "orders", ["id", "customer_id"], [
-                  {
-                    columns: ["customer_id"],
-                    referencesTable: "customers",
-                    referencesColumns: ["id"],
-                  },
-                ]),
+                table(
+                  "public",
+                  "orders",
+                  ["id", "customer_id"],
+                  [
+                    {
+                      columns: ["customer_id"],
+                      referencesTable: "customers",
+                      referencesColumns: ["id"],
+                    },
+                  ],
+                ),
               ],
             },
           ],
@@ -721,27 +795,40 @@ describe("ERD model", () => {
         {
           name: "beta",
           objects: Array.from({ length: 5 }, (_, index) =>
-            table("beta", `table_${index + 1}`, ["id", "description", "status"]),
+            table("beta", `table_${index + 1}`, [
+              "id",
+              "description",
+              "status",
+            ]),
           ),
         },
         {
           name: "gamma",
           objects: Array.from({ length: 7 }, (_, index) =>
-            table("gamma", `table_${index + 1}`, ["id", "code", "value", "updated_at"]),
+            table("gamma", `table_${index + 1}`, [
+              "id",
+              "code",
+              "value",
+              "updated_at",
+            ]),
           ),
         },
       ],
     };
 
     const model = buildErdModel(metadata);
-    expect(model.schemas.map((schema) => [schema.name, schema.tables.length])).toEqual([
+    expect(
+      model.schemas.map((schema) => [schema.name, schema.tables.length]),
+    ).toEqual([
       ["alpha", 6],
       ["beta", 5],
       ["gamma", 7],
     ]);
 
     const layout = layoutErdModel(model);
-    expect(layout.schemas.map((schema) => [schema.name, schema.tableCount])).toEqual([
+    expect(
+      layout.schemas.map((schema) => [schema.name, schema.tableCount]),
+    ).toEqual([
       ["alpha", 6],
       ["beta", 5],
       ["gamma", 7],

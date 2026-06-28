@@ -37,7 +37,5 @@ function renderShortcut(shortcut: string) {
 
 function renderChord(chord: string) {
   const parts = chord.includes("+") ? chord.split("+") : [chord];
-  return parts.map((part, index) => (
-    <kbd key={`${part}-${index}`}>{part}</kbd>
-  ));
+  return parts.map((part, index) => <kbd key={`${part}-${index}`}>{part}</kbd>);
 }

@@ -185,7 +185,10 @@ export function calculateResultGridVirtualColumnWindow({
     renderedColumnCount,
     maxRenderedColumnCount,
     leftPadPx: firstColumnIndex * columnWidth,
-    rightPadPx: Math.max(0, (boundedColumnCount - lastColumnIndex) * columnWidth),
+    rightPadPx: Math.max(
+      0,
+      (boundedColumnCount - lastColumnIndex) * columnWidth,
+    ),
   };
 }
 
@@ -230,7 +233,10 @@ function firstVisibleRowIndex(
   rowHeight: number,
   overscan: number,
 ): number {
-  return Math.min(rowCount, Math.max(0, Math.floor(scrollTop / rowHeight) - overscan));
+  return Math.min(
+    rowCount,
+    Math.max(0, Math.floor(scrollTop / rowHeight) - overscan),
+  );
 }
 
 function firstVisibleColumnIndex(
@@ -277,7 +283,9 @@ export function applyResultSort<T extends ResultGridRowLike>(
   if (sortRules.length === 0) {
     return [...rows];
   }
-  return [...rows].sort((left, right) => compareGridRows(left, right, sortRules));
+  return [...rows].sort((left, right) =>
+    compareGridRows(left, right, sortRules),
+  );
 }
 
 function compareGridRows(
@@ -389,7 +397,10 @@ function rowMatchesActiveFilters(
   return join === "and" ? filters.every(matches) : filters.some(matches);
 }
 
-function filterCells(row: ResultGridRowLike, rule: ResultFilterRule): readonly string[] {
+function filterCells(
+  row: ResultGridRowLike,
+  rule: ResultFilterRule,
+): readonly string[] {
   return rule.columnIndex === "any"
     ? row.cells
     : [row.cells[rule.columnIndex] ?? ""];

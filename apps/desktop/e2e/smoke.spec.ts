@@ -54,7 +54,7 @@ async function expectTitlebarConnectionCentered(page: Page) {
   if (menubarBox) {
     expect(overlaps(connectionBox!, menubarBox)).toBe(false);
   }
-  for (let index = 0; index < await layoutButtons.count(); index += 1) {
+  for (let index = 0; index < (await layoutButtons.count()); index += 1) {
     const buttonBox = await layoutButtons.nth(index).boundingBox();
     if (buttonBox) {
       expect(overlaps(connectionBox!, buttonBox)).toBe(false);

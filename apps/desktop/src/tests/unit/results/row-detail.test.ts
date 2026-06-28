@@ -75,7 +75,9 @@ describe("formatDetailValue", () => {
 
 describe("row JSON helpers", () => {
   it("formats a complete row as JSON", () => {
-    expect(formatRowAsJson(["id", "name", "meta"], [1, "Kawase", { tier: "gold" }])).toBe(
+    expect(
+      formatRowAsJson(["id", "name", "meta"], [1, "Kawase", { tier: "gold" }]),
+    ).toBe(
       '{\n  "id": 1,\n  "name": "Kawase",\n  "meta": {\n    "tier": "gold"\n  }\n}',
     );
   });
@@ -92,7 +94,12 @@ describe("row JSON helpers", () => {
   it("normalizes values that JSON.stringify cannot handle directly", () => {
     const circular: Record<string, unknown> = { id: 1 };
     circular.self = circular;
-    expect(rowToJsonObject(["big", "missing", "circular"], [9n, undefined, circular])).toEqual({
+    expect(
+      rowToJsonObject(
+        ["big", "missing", "circular"],
+        [9n, undefined, circular],
+      ),
+    ).toEqual({
       big: "9",
       missing: null,
       circular: { id: 1, self: "[Circular]" },
@@ -100,7 +107,9 @@ describe("row JSON helpers", () => {
   });
 
   it("builds a browsable JSON tree", () => {
-    const tree = buildJsonTree(rowToJsonObject(["id", "payload"], [1, { tags: ["a", "b"] }]));
+    const tree = buildJsonTree(
+      rowToJsonObject(["id", "payload"], [1, { tags: ["a", "b"] }]),
+    );
     expect(tree.type).toBe("object");
     expect(tree.children.map((node) => node.key)).toEqual(["id", "payload"]);
     const payload = tree.children[1];
@@ -112,11 +121,15 @@ describe("row JSON helpers", () => {
 
 describe("parseSourceTable", () => {
   it("parses a bare table", () => {
-    expect(parseSourceTable("select * from customers")).toEqual({ table: "customers" });
+    expect(parseSourceTable("select * from customers")).toEqual({
+      table: "customers",
+    });
   });
 
   it("parses a schema-qualified table and ignores the alias", () => {
-    expect(parseSourceTable("SELECT o.id FROM public.orders o WHERE o.id = 1")).toEqual({
+    expect(
+      parseSourceTable("SELECT o.id FROM public.orders o WHERE o.id = 1"),
+    ).toEqual({
       schema: "public",
       table: "orders",
     });
@@ -127,7 +140,9 @@ describe("parseSourceTable", () => {
       schema: "Sales",
       table: "Orders",
     });
-    expect(parseSourceTable("select * from `orders`")).toEqual({ table: "orders" });
+    expect(parseSourceTable("select * from `orders`")).toEqual({
+      table: "orders",
+    });
     expect(parseSourceTable("select * from [Sales].[Orders]")).toEqual({
       schema: "Sales",
       table: "Orders",
@@ -146,7 +161,11 @@ describe("findTableMetadata", () => {
   );
 
   it("resolves by FROM-clause name", () => {
-    const found = findTableMetadata(meta, { table: "orders" }, ["id", "customer_id", "total"]);
+    const found = findTableMetadata(meta, { table: "orders" }, [
+      "id",
+      "customer_id",
+      "total",
+    ]);
     expect(found?.name).toBe("orders");
   });
 
@@ -155,7 +174,10 @@ describe("findTableMetadata", () => {
       table("orders", ["id", "created_at"], [], "public"),
       table("orders", ["id", "customer_id", "total"], [], "sales"),
     );
-    const found = findTableMetadata(duplicateMeta, { table: "orders" }, ["id", "customer_id"]);
+    const found = findTableMetadata(duplicateMeta, { table: "orders" }, [
+      "id",
+      "customer_id",
+    ]);
     expect(found?.schema).toBe("sales");
   });
 
@@ -165,7 +187,10 @@ describe("findTableMetadata", () => {
   });
 
   it("falls back to column matching when the FROM table is unknown", () => {
-    const found = findTableMetadata(meta, { table: "missing_table" }, ["id", "name"]);
+    const found = findTableMetadata(meta, { table: "missing_table" }, [
+      "id",
+      "name",
+    ]);
     expect(found?.name).toBe("customers");
   });
 
@@ -181,7 +206,10 @@ describe("findTableMetadata", () => {
 });
 
 describe("findTableByName", () => {
-  const meta = metadata(table("orders", ["id"]), table("customers", ["id"], [], "sales"));
+  const meta = metadata(
+    table("orders", ["id"]),
+    table("customers", ["id"], [], "sales"),
+  );
 
   it("matches case-insensitively, optionally by schema", () => {
     expect(findTableByName(meta, undefined, "ORDERS")?.name).toBe("orders");
@@ -260,7 +288,9 @@ describe("buildForeignKeyLookup", () => {
       referencesColumns: ["org_id", "id"],
     };
     const { sql, params } = buildForeignKeyLookup(fk, [7, 9], "mysql");
-    expect(sql).toBe("SELECT * FROM `sales`.`members` WHERE `org_id` = :fk0 AND `id` = :fk1");
+    expect(sql).toBe(
+      "SELECT * FROM `sales`.`members` WHERE `org_id` = :fk0 AND `id` = :fk1",
+    );
     expect(params).toHaveLength(2);
     expect(params[1]).toEqual({ key: { kind: "name", name: "fk1" }, value: 9 });
   });

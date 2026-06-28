@@ -27,7 +27,8 @@ export const ja = {
   "query.parameterMissing": "{name} の値が必要です",
   "editor.dropSqlFile": ".sql ファイルをドロップして読み込み",
   "editor.dropFailed": "ドロップ失敗",
-  "editor.dropUnsupportedFile": "エディタへドロップできるのは .sql ファイルだけです。",
+  "editor.dropUnsupportedFile":
+    "エディタへドロップできるのは .sql ファイルだけです。",
   "settings.title": "設定",
   "settings.subtitle": "エディタ、テーマ、ショートカット",
   "settings.sections": "設定セクション",
@@ -41,52 +42,71 @@ export const ja = {
   "settings.general.language.title": "言語",
   "settings.general.language.description": "デスクトップ UI の表示言語です。",
   "settings.general.uiZoom.title": "UI ズーム",
-  "settings.general.uiZoom.description": "ワークベンチ、エディタ、メニュー、結果グリッドをまとめて拡大縮小します。",
+  "settings.general.uiZoom.description":
+    "ワークベンチ、エディタ、メニュー、結果グリッドをまとめて拡大縮小します。",
   "settings.general.uiZoom.zoomIn": "拡大",
   "settings.general.uiZoom.zoomOut": "縮小",
   "settings.general.uiZoom.reset": "ズームをリセット",
   "settings.general.editorMode.title": "エディタモード",
-  "settings.general.editorMode.description": "通常エディタか Vim キーバインドを選びます。",
+  "settings.general.editorMode.description":
+    "通常エディタか Vim キーバインドを選びます。",
   "settings.general.editorMode.default": "標準",
   "settings.general.editorMode.vim": "Vim",
   "settings.general.editorBackground.title": "エディタ背景画像",
-  "settings.general.editorBackground.description": "SQL エディタの背面へ薄く表示する任意画像です。空なら表示しません。",
+  "settings.general.editorBackground.description":
+    "SQL エディタの背面へ薄く表示する任意画像です。空なら表示しません。",
   "settings.general.editorBackground.placeholder": "画像 URL または data URL",
   "settings.general.editorBackground.choose": "選択",
   "settings.general.editorBackground.opacity": "背景画像の濃さ",
   "settings.general.animations.title": "アニメーション",
-  "settings.general.animations.description": "メニュー、ペイン、操作部品に短い動きを付けます。OS の視差効果を減らす設定は優先します。",
+  "settings.general.animations.description":
+    "メニュー、ペイン、操作部品に短い動きを付けます。OS の視差効果を減らす設定は優先します。",
   "settings.general.autoCommit.title": "Auto Commit",
-  "settings.general.autoCommit.description": "各ステートメントの実行後に自動でコミットします。",
+  "settings.general.autoCommit.description":
+    "各ステートメントの実行後に自動でコミットします。",
   "settings.general.formatter.title": "SQL フォーマッタ",
-  "settings.general.formatter.description": "ツールバーとキーバインドで使うフォーマッタです。",
+  "settings.general.formatter.description":
+    "ツールバーとキーバインドで使うフォーマッタです。",
   "settings.general.linter.title": "SQL リンター",
-  "settings.general.linter.description": "構文と危険なステートメントを軽くチェックします。",
+  "settings.general.linter.description":
+    "構文と危険なステートメントを軽くチェックします。",
   "settings.general.resultOffload.title": "結果のオフロード",
-  "settings.general.resultOffload.description": "大きな結果セットをメモリ上限で切らず、ディスクからページングします。",
+  "settings.general.resultOffload.description":
+    "大きな結果セットをメモリ上限で切らず、ディスクからページングします。",
   "settings.general.residentRows.title": "常駐行数",
-  "settings.general.residentRows.description": "ディスク退避に切り替わる前にメモリへ保持する行数です。",
+  "settings.general.residentRows.description":
+    "ディスク退避に切り替わる前にメモリへ保持する行数です。",
   "settings.general.queryHistory.title": "クエリ履歴",
-  "settings.general.queryHistory.description": "ローカルに保持する実行履歴数です。0 で履歴を無効にします。",
+  "settings.general.queryHistory.description":
+    "ローカルに保持する実行履歴数です。0 で履歴を無効にします。",
   "settings.general.historyRows.title": "履歴の結果行",
-  "settings.general.historyRows.description": "成功したクエリごとに保存する行数です。0 で SQL のみ保存します。",
+  "settings.general.historyRows.description":
+    "成功したクエリごとに保存する行数です。0 で SQL のみ保存します。",
   "settings.general.sidebar.title": "サイドバー",
-  "settings.general.sidebar.description": "オブジェクトブラウザと接続切り替えです。",
+  "settings.general.sidebar.description":
+    "オブジェクトブラウザと接続切り替えです。",
   "settings.general.sidebarSide.title": "サイドバー位置",
-  "settings.general.sidebarSide.description": "主要なデータベースサイドバーを置く側を選びます。",
+  "settings.general.sidebarSide.description":
+    "主要なデータベースサイドバーを置く側を選びます。",
   "settings.general.sidebarSide.left": "左",
   "settings.general.sidebarSide.right": "右",
   "settings.general.completionSide.title": "補完ペイン",
-  "settings.general.completionSide.description": "補完とメタデータ候補を表示する側を選びます。",
+  "settings.general.completionSide.description":
+    "補完とメタデータ候補を表示する側を選びます。",
   "settings.general.historySide.title": "履歴ペイン",
-  "settings.general.historySide.description": "検索できるクエリ履歴を表示する側を選びます。",
+  "settings.general.historySide.description":
+    "検索できるクエリ履歴を表示する側を選びます。",
   "settings.theme.colorMode.title": "カラーモード",
-  "settings.theme.colorMode.customDescription": "カスタムテーマを使用中: {name}",
-  "settings.theme.colorMode.builtinDescription": "固定モードを選ぶまではシステムテーマに追従します。",
+  "settings.theme.colorMode.customDescription":
+    "カスタムテーマを使用中: {name}",
+  "settings.theme.colorMode.builtinDescription":
+    "固定モードを選ぶまではシステムテーマに追従します。",
   "settings.theme.defaultThemes.title": "デフォルトテーマ",
-  "settings.theme.defaultThemes.description": "JSON 定義として保持している組み込みテーマから選びます。",
+  "settings.theme.defaultThemes.description":
+    "JSON 定義として保持している組み込みテーマから選びます。",
   "settings.theme.savedThemes.title": "保存済みテーマ",
-  "settings.theme.savedThemes.description": "Settings JSON からインポートしたカスタムテーマを選びます。",
+  "settings.theme.savedThemes.description":
+    "Settings JSON からインポートしたカスタムテーマを選びます。",
   "settings.theme.savedThemes.builtin": "組み込みテーマ",
   "settings.theme.activeTheme.title": "現在のテーマ",
   "settings.theme.activeTheme.customDescription": "カスタムテーマ: {name}",
@@ -94,34 +114,43 @@ export const ja = {
   "settings.theme.activeTheme.builtinDescription": "組み込み {kind} テーマ",
   "settings.theme.activeTheme.useBuiltin": "組み込みを使用",
   "settings.theme.importThemes.title": "テーマのインポート",
-  "settings.theme.importThemes.description": "Irodori または VS Code テーマを JSON セクションへ貼り付けると保存できます。",
+  "settings.theme.importThemes.description":
+    "Irodori または VS Code テーマを JSON セクションへ貼り付けると保存できます。",
   "settings.theme.importThemes.openJson": "JSON を開く",
   "settings.keymap.runTitle": "実行: {title}",
-  "settings.keymap.recordingTitle": "新しいショートカットを 1 つまたは 2 つ入力",
-  "settings.keymap.conflictTitle": "ショートカットが競合しています - クリックして再割り当て",
+  "settings.keymap.recordingTitle":
+    "新しいショートカットを 1 つまたは 2 つ入力",
+  "settings.keymap.conflictTitle":
+    "ショートカットが競合しています - クリックして再割り当て",
   "settings.keymap.rebindTitle": "クリックして再割り当て",
   "settings.keymap.recordingLabel": "キーを入力...",
   "settings.keymap.unset": "未設定",
   "settings.keymap.resetTitle": "デフォルトに戻す",
   "settings.keymap.vim.title": "Vim ショートカット調整",
-  "settings.keymap.vim.clipboard": "エディタのコピーは {copy}、貼り付けは {paste} を使います。",
+  "settings.keymap.vim.clipboard":
+    "エディタのコピーは {copy}、貼り付けは {paste} を使います。",
   "settings.keymap.vim.applyRecommended": "推奨を適用",
   "settings.keymap.vim.applySelected": "選択を適用",
   "settings.keymap.vim.moveTo": "{shortcut} へ移動",
   "settings.keymap.vim.unset": "アプリ側を未設定",
   "settings.keymap.vim.keep": "現在のまま",
-  "settings.keymap.vim.noConflicts": "Vim mode と競合するアプリショートカットはありません。",
+  "settings.keymap.vim.noConflicts":
+    "Vim mode と競合するアプリショートカットはありません。",
   "settings.snippets.title": "SQL スニペット",
-  "settings.snippets.description": "{first} や {final} のような CodeMirror スニペットプレースホルダを使えます。",
+  "settings.snippets.description":
+    "{first} や {final} のような CodeMirror スニペットプレースホルダを使えます。",
   "settings.snippets.resetDefaults": "デフォルトに戻す",
   "settings.snippets.add": "スニペット追加",
   "settings.snippets.importTitle": "スニペットをインポート",
-  "settings.snippets.importDescription": "JSON または YAML を貼り付けます。配列、snippets、editor.snippets を読み込めます。version 管理する場合は schemaVersion: 1 を使います。",
-  "settings.snippets.importPlaceholder": "schemaVersion: 1\nsnippets:\n  - label: delop_sf\n    detail: Snowflake delete operation\n    scope: statement\n    engines: [snowflake]\n    template: |\n      delete from ${1:table}\n      where ${2:condition};\n      ${0}",
+  "settings.snippets.importDescription":
+    "JSON または YAML を貼り付けます。配列、snippets、editor.snippets を読み込めます。version 管理する場合は schemaVersion: 1 を使います。",
+  "settings.snippets.importPlaceholder":
+    "schemaVersion: 1\nsnippets:\n  - label: delop_sf\n    detail: Snowflake delete operation\n    scope: statement\n    engines: [snowflake]\n    template: |\n      delete from ${1:table}\n      where ${2:condition};\n      ${0}",
   "settings.snippets.importFile": "ファイル取込",
   "settings.snippets.importMerge": "マージ取込",
   "settings.snippets.importReplace": "置き換え",
-  "settings.snippets.importSuccess": "{format} から {count} 件のスニペットを取り込みました",
+  "settings.snippets.importSuccess":
+    "{format} から {count} 件のスニペットを取り込みました",
   "settings.snippets.fileLoaded": "{name} を読み込みました",
   "settings.snippets.trigger": "トリガー",
   "settings.snippets.scope": "スコープ",
@@ -138,10 +167,12 @@ export const ja = {
   "settings.extensions.marketplace": "Marketplace",
   "settings.extensions.recommended": "推奨",
   "settings.extensions.noInstalled": "インストール済み拡張はまだありません",
-  "settings.extensions.noMatches": "検索に一致する Marketplace 拡張はありません",
+  "settings.extensions.noMatches":
+    "検索に一致する Marketplace 拡張はありません",
   "settings.extensions.noRecommended": "推奨拡張はありません",
   "settings.jobs.title": "バックグラウンドジョブ",
-  "settings.jobs.description": "共有ジョブランタイムが追跡する実行中・最近のローカル作業です。",
+  "settings.jobs.description":
+    "共有ジョブランタイムが追跡する実行中・最近のローカル作業です。",
   "settings.jobs.active": "実行中",
   "settings.jobs.history": "履歴",
   "settings.jobs.attempt": "試行 {attempt}",
@@ -150,7 +181,8 @@ export const ja = {
   "settings.jobs.noActive": "実行中のジョブはありません",
   "settings.jobs.noFinished": "完了したジョブはありません",
   "settings.json.title": "Settings JSON",
-  "settings.json.description": "テーマ JSON、エディタ、レイアウト、キーマップ、保存済み接続へ反映します。",
+  "settings.json.description":
+    "テーマ JSON、エディタ、レイアウト、キーマップ、保存済み接続へ反映します。",
   "settings.json.resetFromCurrent": "現在値から戻す",
   "settings.json.apply": "JSON を適用",
   "errors.unknown": "問題が発生しました",

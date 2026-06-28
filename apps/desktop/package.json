@@ -1,7 +1,7 @@
 {
   "name": "irodori-table-desktop",
   "private": true,
-  "version": "0.3.8",
+  "version": "0.3.9",
   "license": "MIT OR 0BSD",
   "type": "module",
   "scripts": {
@@ -11,6 +11,8 @@
     "typegen:desktop": "node tools/typegen.mjs --only desktop",
     "typegen:extension": "node tools/typegen.mjs --only extension",
     "typegen:check": "node tools/typegen.mjs --check",
+    "format": "oxfmt --write \"src/**/*.{js,jsx,ts,tsx,json,jsonc}\" \"tools/**/*.{js,mjs,cjs,ts,tsx,json,jsonc}\" \"e2e/**/*.{js,jsx,ts,tsx}\" \"*.config.ts\"",
+    "format:check": "oxfmt --check \"src/**/*.{js,jsx,ts,tsx,json,jsonc}\" \"tools/**/*.{js,mjs,cjs,ts,tsx,json,jsonc}\" \"e2e/**/*.{js,jsx,ts,tsx}\" \"*.config.ts\"",
     "build": "tsc && vite build",
     "build:verified": "node tools/typegen.mjs --check && tsc && vite build",
     "build:with-typegen": "node tools/typegen.mjs && tsc && vite build",
@@ -66,6 +68,7 @@
     "@vitest/browser-playwright": "^4.1.9",
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^29.1.1",
+    "oxfmt": "0.56.0",
     "typescript": "~6.0.3",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"
