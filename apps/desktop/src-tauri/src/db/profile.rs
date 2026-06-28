@@ -123,7 +123,7 @@ pub(super) fn normalize_profile(
 }
 
 pub(super) fn redact_secret_text(text: &str, profile: &ConnectionProfile) -> String {
-    let mut redacted = redact_password_assignments(text);
+    let mut redacted = redact_sensitive_assignments(text);
     if let Some(url) = &profile.url {
         let redacted_url = redact_url_password(url);
         redacted = redacted.replace(url, &redacted_url);
@@ -193,25 +193,41 @@ fn redact_url_password(input: &str) -> String {
     format!("{}****{}", &input[..password_start], &input[userinfo_end..])
 }
 
-fn redact_password_assignments(input: &str) -> String {
+fn redact_sensitive_assignments(input: &str) -> String {
     let lower = input.to_ascii_lowercase();
+    let keys = [
+        "password=",
+        "pwd=",
+        "pass=",
+        "passphrase=",
+        "token=",
+        "secret=",
+        "api_key=",
+        "apikey=",
+        "access_key=",
+        "accesskey=",
+        "private_key=",
+        "privatekey=",
+    ];
     let mut out = String::with_capacity(input.len());
     let mut cursor = 0;
 
     while cursor < input.len() {
-        let password_at = lower[cursor..].find("password=");
-        let pwd_at = lower[cursor..].find("pwd=");
-        let Some(relative) = [password_at, pwd_at].into_iter().flatten().min() else {
+        let Some((key_start, key_len)) = keys
+            .iter()
+            .filter_map(|key| {
+                lower[cursor..]
+                    .find(key)
+                    .map(|offset| (cursor + offset, key.len()))
+            })
+            .min_by_key(|(start, _)| *start)
+        else {
             out.push_str(&input[cursor..]);
             break;
         };
-        let key_start = cursor + relative;
-        let value_start = input[key_start..]
-            .find('=')
-            .map(|offset| key_start + offset + 1)
-            .unwrap_or(input.len());
+        let value_start = key_start + key_len;
         let value_end = input[value_start..]
-            .find(';')
+            .find([';', '&', ' ', '\t', '\r', '\n'])
             .map(|offset| value_start + offset)
             .unwrap_or(input.len());
 
@@ -269,12 +285,18 @@ mod tests {
 
     #[test]
     fn secret_redaction_handles_urls_and_connection_strings() {
-        let message = "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other;";
+        let message = "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other; token=abc&secret=def api_key=ghi";
         let redacted = redact_secret_text(message, &profile());
-        assert!(!redacted.contains("secret"), "{redacted}");
+        assert!(!redacted.contains("user:secret"), "{redacted}");
+        assert!(!redacted.contains("Password=secret"), "{redacted}");
         assert!(!redacted.contains("other"), "{redacted}");
+        assert!(!redacted.contains("abc"), "{redacted}");
+        assert!(!redacted.contains("def"), "{redacted}");
+        assert!(!redacted.contains("ghi"), "{redacted}");
         assert!(redacted.contains("postgres://user:****@localhost/samples"));
         assert!(redacted.contains("Password=****;"));
         assert!(redacted.contains("PWD=****;"));
+        assert!(redacted.contains("token=****&"));
+        assert!(redacted.contains("api_key=****"));
     }
 }

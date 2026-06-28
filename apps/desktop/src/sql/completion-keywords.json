@@ -16,7 +16,6 @@
     "delete from",
     "with",
     "union all",
-    "returning",
     "on",
     "and",
     "or",
@@ -39,18 +38,18 @@
     "distinct"
   ],
   "engines": {
-    "postgres": ["ilike", "lateral", "explain analyze", "jsonb_build_object"],
+    "postgres": ["ilike", "lateral", "explain analyze", "jsonb_build_object", "returning"],
     "cockroachdb": ["upsert", "returning", "explain analyze"],
     "yugabytedb": ["returning", "explain analyze"],
     "timescaledb": ["time_bucket", "hypertable", "explain analyze"],
     "neon": ["returning", "explain analyze"],
     "mysql": ["straight_join", "explain format=json", "date_format"],
-    "mariadb": ["straight_join", "date_format"],
+    "mariadb": ["straight_join", "date_format", "returning"],
     "tidb": ["explain analyze", "date_format"],
-    "sqlite": ["pragma", "without rowid", "strftime"],
+    "sqlite": ["pragma", "without rowid", "strftime", "returning"],
     "sqlserver": ["top", "cross apply", "outer apply", "with (nolock)"],
     "oracle": ["fetch first", "connect by", "merge into", "nvl"],
-    "duckdb": ["sample", "qualify", "read_csv", "read_parquet"],
+    "duckdb": ["sample", "qualify", "read_csv", "read_parquet", "returning"],
     "motherduck": ["attach 'md:'", "show all tables", "sample", "qualify"],
     "clickhouse": ["prewhere", "array join", "limit by"],
     "snowflake": ["qualify", "try_cast", "flatten"],
@@ -60,7 +59,7 @@
       "msck repair table",
       "create table",
       "external_location",
-      "format = 'iceberg'",
+      "table_type = 'iceberg'",
       "vacuum",
       "optimize"
     ],
@@ -78,10 +77,10 @@
       "create table",
       "table bucket",
       "namespace",
-      "format = 'iceberg'"
+      "table_type = 'iceberg'"
     ],
-    "deltaLake": ["merge into", "optimize", "vacuum", "time travel"],
-    "hudi": ["merge into", "compaction", "incremental query", "recordkey"],
+    "deltaLake": ["merge into", "optimize", "vacuum", "version as of", "timestamp as of"],
+    "hudi": ["merge into"],
     "elasticsearch": ["_search", "query", "aggs", "mappings", "bulk"],
     "openSearch": ["_search", "query", "aggs", "mappings", "bulk"]
   }

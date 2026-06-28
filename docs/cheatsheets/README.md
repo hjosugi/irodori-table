@@ -2,14 +2,17 @@
 
 One page per database that answers, fast: **how do I connect from Irodori, what is
 the query model, and what are the per-engine quirks I will trip on.** These are the
-human-facing, copy-pasteable companion to the deeper `docs/engine-syntax-reference.md`
-(driver/decoding internals) and `docs/data-source-support-status.md` (coverage).
+human-facing, copy-pasteable companion to the deeper
+<https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html>
+(driver/decoding internals) and
+[`docs/data-source-support-status.md`](../data-source-support-status.md)
+(coverage).
 
 Each cheatsheet is meant to be **generated** from the local knowledge base
 (`knowledge/irodori-knowledge.sqlite`) once the generator lands; until then a page
 may be hand-seeded (marked `<!-- seed -->`). The generation contract and the
 automatic data collection that feeds it are specified in
-`docs/cheatsheet-autodoc-plan.md`.
+<https://hjosugi.github.io/irodori-docs/cheatsheet-autodoc-plan.html>.
 
 ## Index
 

@@ -42,6 +42,11 @@ function main() {
   const marketplaceEngineIds = new Set(
     marketplaceExtensions.flatMap((extension) => extension.engines ?? []),
   );
+  const marketplaceExtensionIdByEngine = new Map(
+    marketplaceExtensions.flatMap((extension) =>
+      (extension.engines ?? []).map((engine) => [engine, extension.id]),
+    ),
+  );
   const marketplaceCatalogEngineIds = new Set(
     marketplaceCatalogExtensions.flatMap((extension) => extension.engines ?? []),
   );
@@ -97,6 +102,16 @@ function main() {
     ...setDiff(marketplaceExtensionIds, repositoryExtensionIds).map(
       (id) => `docs/extension-marketplace/connector-repositories.json is missing extension '${id}'`,
     ),
+    ...setDiff(recognizedNoConnectorIds, marketplaceEngineIds).map(
+      (id) => `recognized/no-connector engine '${id}' has no marketplace extension`,
+    ),
+    ...engineRows
+      .filter((engine) => engine.status === "recognized_no_connector")
+      .filter((engine) => engine.extensionId !== marketplaceExtensionIdByEngine.get(engine.id))
+      .map(
+        (engine) =>
+          `recognized/no-connector engine '${engine.id}' extensionId must match marketplace extension '${marketplaceExtensionIdByEngine.get(engine.id)}'`,
+      ),
     ...engineRows
       .filter((engine) => !hasSourceCoverage(engine, sourceProducts))
       .map(

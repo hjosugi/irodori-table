@@ -20,6 +20,10 @@ So the download channel is live today: just push a `v0.3.0` tag.
 | Homebrew cask / Scoop / winget | mac/Windows | ⬜ later | manifests auto-bumped from releases |
 | AUR / Flatpak | Linux | ⬜ later | from releases |
 
+Public registration text, support/privacy/disclaimer URLs, and package manager
+manifest templates are collected in [store-registration.md](store-registration.md)
+and [../packaging/package-managers/](../packaging/package-managers/).
+
 ## On "cargo is fastest"
 
 Half-right: `cargo install` only installs **Rust binaries**, so it's a great, fast

@@ -132,10 +132,18 @@ make run-linux
 
 ## Sample Databases
 
-Sample databases live under `samples/<engine>/compose.yaml`. They are for the
-desktop app, Rust integration tests, and manual connection testing. The harness
-chooses Podman when available, otherwise Docker; override with
-`ENGINE_BIN=docker` or `ENGINE_BIN=podman`.
+Sample database fixtures live in the sibling
+[`hjosugi/irodori-samples`](https://github.com/hjosugi/irodori-samples)
+repository. Clone it next to this repo, or point `IRODORI_SAMPLES` at your local
+checkout:
+
+```sh
+git clone https://github.com/hjosugi/irodori-samples ../irodori-samples
+```
+
+The fixtures are for the desktop app, Rust integration tests, and manual
+connection testing. The harness chooses Podman when available, otherwise Docker;
+override with `ENGINE_BIN=docker` or `ENGINE_BIN=podman`.
 
 Start one database and keep it running:
 
@@ -168,7 +176,7 @@ make db-down DB=postgres
 Common `DB` values are `postgres`, `mysql`, `mariadb`, `timescaledb`,
 `cockroachdb`, `yugabytedb`, `tidb`, `sqlserver`, `mongodb`, and `oracle`.
 SQLite and DuckDB are embedded and do not need containers. Redshift is
-cloud-only. More detail: [samples/README.md](samples/README.md).
+cloud-only. More detail: [irodori-samples](https://github.com/hjosugi/irodori-samples).
 
 ## Local Checks
 
@@ -188,14 +196,14 @@ make check
 | `packages/extension-sdk/` | TypeScript extension SDK package. |
 | `packages/extension-sdk/templates/` | Starter templates for extension authors. |
 | `examples/extensions/` | Example extensions. |
-| `samples/` | Per-engine database compose files and sample schemas. |
 | `scripts/` | Developer scripts for DB verification and local seeded DBs. |
 | `tools/security/` | Local security automation config used by `make security`. |
 | `tools/knowledge/` | Local knowledge-base refresh, analysis, query, and cheatsheet generation tools. |
 | `knowledge/` | Tracked schema/source registry for the generated local knowledge database. |
 | `docs/site/` | Static project site published by GitHub Pages. |
-| `docs/` | Architecture, status, planning, licensing, and runbook documents. |
+| `docs/` | Repo-local docs, generated snapshots, and pointers to the public mdBook. See [docs/repository-boundaries.md](docs/repository-boundaries.md). |
 | `.irodori-local/ref/` | Optional local reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit. |
+| `../irodori-samples/` | Sibling checkout containing per-engine database compose files and sample schemas. |
 
 ## Important Docs
 
@@ -206,10 +214,12 @@ make check
 | Linux setup, WebKit crashes, blank Tauri window | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) |
 | Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
 | Connection syntax and engine quirks | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html) |
-| Sample database containers | [samples/README.md](samples/README.md) |
+| Sample database containers | [irodori-samples](https://github.com/hjosugi/irodori-samples) |
+| Doc/repo/archive ownership | [docs/repository-boundaries.md](docs/repository-boundaries.md) |
 | Product capability matrix | [feature-matrix](https://hjosugi.github.io/irodori-docs/feature-matrix.html) |
 | Current implementation snapshot | [implementation-progress](https://hjosugi.github.io/irodori-docs/implementation-progress.html) |
 | Backlog and task IDs | [implementation-backlog](https://hjosugi.github.io/irodori-docs/implementation-backlog.html) |
+| Store/package registration pack | [docs/store-registration.md](docs/store-registration.md) |
 | UI language switching and translation keys | [i18n](https://hjosugi.github.io/irodori-docs/i18n.html) |
 | Release-readiness checklist | [production-readiness](https://hjosugi.github.io/irodori-docs/production-readiness.html) |
 | Maintainability audit | [maintainability-audit](https://hjosugi.github.io/irodori-docs/maintainability-audit.html) |

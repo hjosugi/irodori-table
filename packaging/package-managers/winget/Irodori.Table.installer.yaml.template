@@ -1,0 +1,16 @@
+PackageIdentifier: Irodori.Table
+PackageVersion: __VERSION__
+InstallerLocale: en-US
+InstallerType: __MSI_OR_NULLSOFT_OR_WIX_OR_ZIP__
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+UpgradeBehavior: install
+ReleaseDate: __YYYY-MM-DD__
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/hjosugi/irodori-table/releases/download/v__VERSION__/__WINDOWS_INSTALLER_ASSET__
+    InstallerSha256: __SHA256_WINDOWS_INSTALLER__
+ManifestType: installer
+ManifestVersion: __WINGET_MANIFEST_VERSION__

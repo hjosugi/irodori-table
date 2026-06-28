@@ -1206,12 +1206,17 @@ fn secret_redaction_handles_urls_and_connection_strings() {
         read_only: false,
         options: Default::default(),
     };
-    let message =
-        "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other;";
+    let message = "connect failed for postgres://user:secret@localhost/samples; Password=secret; PWD=other; token=abc&secret=def api_key=ghi";
     let redacted = redact_secret_text(message, &profile);
-    assert!(!redacted.contains("secret"), "{redacted}");
+    assert!(!redacted.contains("user:secret"), "{redacted}");
+    assert!(!redacted.contains("Password=secret"), "{redacted}");
     assert!(!redacted.contains("other"), "{redacted}");
+    assert!(!redacted.contains("abc"), "{redacted}");
+    assert!(!redacted.contains("def"), "{redacted}");
+    assert!(!redacted.contains("ghi"), "{redacted}");
     assert!(redacted.contains("postgres://user:****@localhost/samples"));
     assert!(redacted.contains("Password=****;"));
     assert!(redacted.contains("PWD=****;"));
+    assert!(redacted.contains("token=****&"));
+    assert!(redacted.contains("api_key=****"));
 }

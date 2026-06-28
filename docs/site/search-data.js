@@ -54,7 +54,7 @@ window.IRODORI_SEARCH_INDEX = [
     summary: "Local DB-specific query projects and the catalog validation command.",
     tags: ["samples", "db", "catalog", "docs-check", "verify-db", "feature"],
     body:
-      "DB Feature Samples. samples/db-feature-samples.json. samples/projects. PostgreSQL JSONB GIN, MySQL JSON, MariaDB CTE, SQLite FTS5, DuckDB summarize, SQL Server JSON, Oracle DBMS_XPLAN, MongoDB collection filter, TimescaleDB hypertable, CockroachDB unique_rowid, YugabyteDB tablets, TiDB explain analyze.",
+      "DB Feature Samples. irodori-samples/db-feature-samples.json. irodori-samples/projects. PostgreSQL JSONB GIN, MySQL JSON, MariaDB CTE, SQLite FTS5, DuckDB summarize, SQL Server JSON, Oracle DBMS_XPLAN, MongoDB collection filter, TimescaleDB hypertable, CockroachDB unique_rowid, YugabyteDB tablets, TiDB explain analyze.",
   },
   {
     title: "Query editor",
@@ -160,6 +160,15 @@ window.IRODORI_SEARCH_INDEX = [
       "Documentation guide: fast paths, source-of-truth rules, public site, generated docs, cleanup rules.",
   },
   {
+    title: "Repository boundaries",
+    category: "Project docs",
+    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/repository-boundaries.md",
+    summary: "Which documents stay in irodori-table, move to irodori-docs, live in irodori-samples, or go to private archive.",
+    tags: ["docs", "repo", "archive", "irodori-docs", "irodori-samples", "generated"],
+    body:
+      "Repository boundaries: irodori-table keeps app-local generated docs and implementation notes, irodori-docs owns public durable docs, irodori-samples owns DB fixtures, irodori-archive keeps private historical planning and research.",
+  },
+  {
     title: "Data verification and diff design",
     category: "Project docs",
     url: "https://github.com/hjosugi/irodori-table/blob/main/docs/data-verification-diff.md",
@@ -203,5 +212,41 @@ window.IRODORI_SEARCH_INDEX = [
     tags: ["completion", "ai", "mcp", "privacy", "offline"],
     body:
       "Completion and AI strategy: deterministic completion first, optional AI, metadata cache, parser context, privacy, MCP.",
+  },
+  {
+    title: "Support",
+    category: "Support",
+    url: "support.html",
+    summary: "Bug reports, support scope, and security-report guidance.",
+    tags: ["support", "issues", "bug", "security", "release"],
+    body:
+      "Support: GitHub Issues, releases, documentation, SECURITY.md. Include version, OS, database engine, reproduction steps, redacted error, screenshot. Do not share passwords, tokens, private keys, database dumps, customer data, or production connection URLs.",
+  },
+  {
+    title: "Privacy notice",
+    category: "Legal",
+    url: "privacy.html",
+    summary: "Local-first privacy notice for store listings and users.",
+    tags: ["privacy", "telemetry", "local", "secrets", "ai", "network"],
+    body:
+      "Privacy notice: local-first desktop app, no product analytics, no advertising SDK, no telemetry reporting in this repository. User-configured databases, local files, proxy SSH endpoints, optional AI providers, OS keychain-backed secrets, redaction helpers.",
+  },
+  {
+    title: "Disclaimer",
+    category: "Legal",
+    url: "disclaimer.html",
+    summary: "Development preview, database operations, AI output, and warranty notice.",
+    tags: ["disclaimer", "preview", "database", "ai", "license", "warranty"],
+    body:
+      "Disclaimer: development preview, pre-1.0, database clients can run destructive SQL, review generated SQL, backups, target connections, AI-assisted output, third-party systems, MIT OR 0BSD, no warranty.",
+  },
+  {
+    title: "Store and package registration",
+    category: "Release",
+    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/store-registration.md",
+    summary: "Listing metadata, public URLs, package IDs, and package manager checklist.",
+    tags: ["store", "package manager", "homebrew", "scoop", "winget", "aur", "flatpak", "snap"],
+    body:
+      "Store and package registration: product name Irodori Table, app identifier dev.irodori.table, support URL, privacy URL, disclaimer URL, package IDs, listing copy, assets, GitHub Releases, Tauri updater, Homebrew, Scoop, winget, Chocolatey, AUR, Flatpak, Snap, crates.io.",
   },
 ];

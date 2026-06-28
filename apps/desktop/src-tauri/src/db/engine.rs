@@ -201,7 +201,7 @@ impl DbEngine {
             DbEngine::Mysql | DbEngine::MariaDb | DbEngine::TiDb => Wire::Mysql,
             DbEngine::Sqlite => Wire::Sqlite,
             DbEngine::SqlServer => Wire::SqlServer,
-            DbEngine::DuckDb | DbEngine::MotherDuck | DbEngine::Iceberg => Wire::DuckDb,
+            DbEngine::DuckDb | DbEngine::MotherDuck => Wire::DuckDb,
             DbEngine::Mongo => Wire::Mongo,
             DbEngine::Oracle => Wire::Oracle,
             DbEngine::ClickHouse => Wire::ClickHouse,
@@ -228,9 +228,11 @@ impl DbEngine {
             DbEngine::DynamoDb => Wire::KeyValue,
             DbEngine::ArangoDb => Wire::Graph,
             DbEngine::IoTDb => Wire::TimeSeries,
-            DbEngine::Athena | DbEngine::S3Tables | DbEngine::DeltaLake | DbEngine::Hudi => {
-                Wire::Lakehouse
-            }
+            DbEngine::Athena
+            | DbEngine::Iceberg
+            | DbEngine::S3Tables
+            | DbEngine::DeltaLake
+            | DbEngine::Hudi => Wire::Lakehouse,
             DbEngine::ObjectStore => Wire::ObjectStore,
         }
     }
@@ -292,14 +294,16 @@ impl DbEngine {
             DbEngine::Couchbase => Some("irodori.couchbase"),
             DbEngine::DynamoDb => Some("irodori.dynamodb"),
             DbEngine::CloudSpanner => Some("irodori.cloud-spanner"),
+            DbEngine::KvStore => Some("irodori.kv-store"),
             DbEngine::ArangoDb => Some("irodori.arangodb"),
             DbEngine::IoTDb => Some("irodori.iotdb"),
             DbEngine::Hive => Some("irodori.hive"),
             DbEngine::Athena => Some("irodori.athena"),
+            DbEngine::Iceberg => Some("irodori.iceberg"),
             DbEngine::S3Tables => Some("irodori.s3-tables"),
+            DbEngine::ObjectStore => Some("irodori.object-store"),
             DbEngine::DeltaLake => Some("irodori.delta-lake"),
             DbEngine::Hudi => Some("irodori.hudi"),
-            DbEngine::KvStore => None,
             _ => None,
         }
     }
@@ -490,7 +494,7 @@ mod tests {
         (DbEngine::IoTDb, Wire::TimeSeries, 6667),
         (DbEngine::Hive, Wire::Jdbc, 10000),
         (DbEngine::Athena, Wire::Lakehouse, 443),
-        (DbEngine::Iceberg, Wire::DuckDb, 443),
+        (DbEngine::Iceberg, Wire::Lakehouse, 443),
         (DbEngine::S3Tables, Wire::Lakehouse, 443),
         (DbEngine::ObjectStore, Wire::ObjectStore, 443),
         (DbEngine::DeltaLake, Wire::Lakehouse, 443),

@@ -318,6 +318,10 @@ fn assignment_value_ranges(input: &str) -> Vec<(usize, usize)> {
         "pwd=",
         "token=",
         "secret=",
+        "api_key=",
+        "apikey=",
+        "access_key=",
+        "accesskey=",
         "passphrase=",
         "private_key=",
         "privatekey=",
@@ -390,15 +394,16 @@ mod tests {
     fn redactor_removes_url_passwords_assignments_and_known_secrets() {
         let redactor = Redactor::default().with_secret("literal-secret");
         let report = redactor.redact(
-            "postgres://user:s3cr3t@localhost/db Password=abc; PWD=def; token=ghi literal-secret",
+            "postgres://user:s3cr3t@localhost/db Password=abc; PWD=def; token=ghi&api_key=jkl literal-secret",
         );
 
         assert!(!report.text.contains("s3cr3t"));
         assert!(!report.text.contains("abc"));
         assert!(!report.text.contains("def"));
         assert!(!report.text.contains("ghi"));
+        assert!(!report.text.contains("jkl"));
         assert!(!report.text.contains("literal-secret"));
-        assert!(report.redactions >= 5, "{report:?}");
+        assert!(report.redactions >= 6, "{report:?}");
     }
 
     #[test]

@@ -13,9 +13,7 @@ use super::{
 pub fn connect(profile: &ConnectionProfile) -> Result<duckdb::Connection, String> {
     let path = profile.database.clone().or_else(|| profile.url.clone());
     let conn = match path.as_deref() {
-        _ if matches!(profile.engine, DbEngine::MotherDuck | DbEngine::Iceberg) => {
-            duckdb::Connection::open_in_memory()
-        }
+        _ if matches!(profile.engine, DbEngine::MotherDuck) => duckdb::Connection::open_in_memory(),
         None | Some("") | Some(":memory:") => duckdb::Connection::open_in_memory(),
         Some(p) => duckdb::Connection::open(p),
     }

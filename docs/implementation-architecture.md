@@ -29,7 +29,7 @@ flowchart LR
   adapters["Engine adapters<br/>postgres mysql sqlite mssql duck etc."]
   crates["Shared Rust crates<br/>crates/irodori-*"]
   sdk["Extension SDK<br/>packages/extension-sdk"]
-  samples["Sample DBs<br/>samples/*"]
+  samples["Sample DBs<br/>../irodori-samples/*"]
   external["External foundations<br/>irodori-sql typeship irodori-knowledge"]
 
   user --> desktop
@@ -61,7 +61,7 @@ flowchart LR
 | `crates/irodori-server/` | Optional local HTTP API/headless surface. |
 | `packages/extension-sdk/` | TypeScript SDK and templates for extension authors. |
 | `tools/` | Code generation, docs checks, extension validation, security checks. |
-| `samples/` | Database fixtures and compose files for manual and integration testing. |
+| `../irodori-samples/` | Sibling checkout with database fixtures and compose files for manual and integration testing. |
 
 ## Frontend Shape
 

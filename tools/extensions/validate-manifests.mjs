@@ -292,6 +292,19 @@ function validateProperty(value, property, label) {
     requireRelativePath(value, label);
     return;
   }
+  if (property.$ref) {
+    const resolved = resolveSchemaRef(property.$ref);
+    if (resolved) {
+      validateProperty(value, resolved, label);
+    } else {
+      error(`${label} references unsupported schema ${property.$ref}`);
+    }
+    return;
+  }
+  if (property.const !== undefined) {
+    requireConst(value, property.const, label);
+    return;
+  }
   if (property.type === "string") {
     requireString(value, label);
     if ((property.minLength ?? 0) > 0 && value.length === 0) {
@@ -318,6 +331,33 @@ function validateProperty(value, property, label) {
     }
     return;
   }
+  if (property.type === "object") {
+    requireObject(value, label);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return;
+    }
+    const properties = property.properties ?? {};
+    if (property.additionalProperties === false) {
+      rejectUnknownKeys(value, new Set(Object.keys(properties)), label);
+    }
+    requireKeys(value, property.required ?? [], label);
+    for (const [key, childProperty] of Object.entries(properties)) {
+      if (value[key] !== undefined) {
+        validateProperty(value[key], childProperty, `${label}.${key}`);
+      }
+    }
+    if (
+      property.additionalProperties &&
+      typeof property.additionalProperties === "object"
+    ) {
+      for (const [key, childValue] of Object.entries(value)) {
+        if (properties[key] === undefined) {
+          validateProperty(childValue, property.additionalProperties, `${label}.${key}`);
+        }
+      }
+    }
+    return;
+  }
   if (property.type === "boolean" && typeof value !== "boolean") {
     error(`${label} must be a boolean`);
   }
@@ -340,6 +380,14 @@ function validateProperty(value, property, label) {
     }
     return;
   }
+}
+
+function resolveSchemaRef(ref) {
+  const prefix = "#/$defs/";
+  if (!ref.startsWith(prefix)) {
+    return null;
+  }
+  return defs[ref.slice(prefix.length)] ?? null;
 }
 
 function requireKeys(value, required, label) {

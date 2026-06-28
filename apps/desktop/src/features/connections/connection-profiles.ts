@@ -100,6 +100,9 @@ const localPostgresSampleUrl = connectionDefaultsConfig.localPostgresSampleUrl;
 
 export const starterProfiles: ConnectionDraft[] =
   connectionDefaultsConfig.starterProfiles.map((profile) => ({ ...profile }));
+const starterProfileById = new Map(
+  starterProfiles.map((profile) => [profile.id, profile]),
+);
 
 export function engineLabel(engine: DbEngine) {
   return engineOptions.find((item) => item.value === engine)?.label ?? engine;
@@ -188,13 +191,15 @@ export function loadProfiles() {
       return starterProfiles;
     }
     return withStarterProfiles(
-      parsed.map((profile) => ({
-        ...newDraft(1),
-        ...profile,
-        color: normalizeConnectionColor(profile.color),
-        password: "",
-        port: profile.port ?? defaultPort(profile.engine),
-      })),
+      parsed.map((profile) =>
+        sanitizedProfile({
+          ...newDraft(1),
+          ...profile,
+          color: normalizeConnectionColor(profile.color),
+          password: "",
+          port: profile.port ?? defaultPort(profile.engine),
+        }),
+      ),
     );
   } catch {
     return starterProfiles;
@@ -205,6 +210,7 @@ export function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
   return {
     ...profile,
     color: normalizeConnectionColor(profile.color),
+    url: redactPasswordFromConnectionUrl(profile.url),
     password: "",
   };
 }
@@ -297,6 +303,36 @@ export function repairBuiltinSampleProfile(
     }
   }
   if (profile.id === "local-mysql") {
+    const sample = starterProfileById.get("local-mysql");
+    const url = profile.url.trim();
+    const looksLikeBundledSample =
+      !url ||
+      /(?:localhost|127\.0\.0\.1):55306(?:\/samples)?(?:[?#].*)?$/.test(
+        url,
+      ) ||
+      profile.host === "localhost" ||
+      profile.host === "127.0.0.1" ||
+      profile.database === "samples" ||
+      profile.name === "Local MySQL";
+    if (sample && looksLikeBundledSample) {
+      return {
+        ...profile,
+        name: profile.name.trim() ? profile.name : sample.name,
+        color: normalizeBuiltinConnectionColor(
+          profile.color,
+          sampleConnectionColors.mysql,
+          [legacyDefaultConnectionColor, "#2563eb"],
+        ),
+        engine: "mysql",
+        mode: "url",
+        url: sample.url,
+        host: sample.host,
+        port: sample.port,
+        user: sample.user,
+        password: "",
+        database: sample.database,
+      };
+    }
     return {
       ...profile,
       color: normalizeBuiltinConnectionColor(
@@ -449,9 +485,6 @@ export function validateDraft(draft: ConnectionDraft): string | null {
     resolvedDraft.engine !== "sqlite" &&
     resolvedDraft.engine !== "duckdb"
   ) {
-    if (resolvedDraft.engine === "pinecone") {
-      return "Pinecone is selectable as a placeholder; a driver is not implemented yet";
-    }
     if (settings.showHost && !resolvedDraft.host.trim()) {
       return `${settings.hostLabel.toLowerCase()} is required`;
     }

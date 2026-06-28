@@ -1,17 +1,18 @@
 # Data Source Support Status
 
 Last generated: 2026-06-26 JST (hand-authored seed; target is auto-generation —
-see `docs/cheatsheet-autodoc-plan.md`).
+see <https://hjosugi.github.io/irodori-docs/cheatsheet-autodoc-plan.html>).
 
 This is the single inventory of **what Irodori connects to today vs. what is
 declared, planned, or not yet started**. The authoritative source of truth is the
 `DbEngine` registry in `apps/desktop/src-tauri/src/db/engine.rs` and the connect
 dispatch in `apps/desktop/src-tauri/src/db.rs`. Roadmap intent lives in
-`docs/data-source-coverage-strategy.md` and `docs/feature-matrix.md`; this file
+<https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html> and
+<https://hjosugi.github.io/irodori-docs/feature-matrix.html>; this file
 reconciles intent against the code.
 
 For contract/provisioning and managed-service verification procedures, see
-`docs/external-db-contract-and-verification.md`.
+<https://hjosugi.github.io/irodori-docs/external-db-contract-and-verification.html>.
 
 Status legend:
 
@@ -75,37 +76,36 @@ not-ready error, list it here instead of mixing it with production connectors.
 
 These appear in `DbEngine` but `is_unimplemented_wire()` rejects them before a
 connection is opened. Most public connector targets ask the user to install
-`irodori.<engine>` from `docs/extension-marketplace/index.json`; `kvStore` and
-`objectStore` are intentionally not published as public extensions.
+the matching installable connector from `docs/extension-marketplace/index.json`.
 
 | Engine | `DbEngine` id | Family | Closest existing wire | Note |
 |---|---|---|---|---|
-| Memgraph | `memgraph` | Graph (Bolt/Cypher) | `Neo4j` | Should largely reuse the Neo4j/Bolt path; just needs wiring + verification. |
-| Qdrant | `qdrant` | Vector | — | Vector family has no adapter yet. |
-| Milvus | `milvus` | Vector | — | Vector family has no adapter yet. |
-| Pinecone | `pinecone` | Vector (HTTP) | — | Vector family has no adapter yet. |
+| Memgraph | `memgraph` | Graph (Bolt/Cypher) | `Neo4j` | Installable connector; can reuse the Neo4j/Bolt path internally. |
+| Qdrant | `qdrant` | Vector | — | Installable vector connector extension. |
+| Milvus | `milvus` | Vector | — | Installable vector connector extension. |
+| Pinecone | `pinecone` | Vector (HTTP) | — | Installable vector connector extension. |
 | Cloud Spanner | `cloudSpanner` | Distributed SQL / Google API | `CloudSpanner` | Installable connector; Spanner SQL/catalog handling is separate from Postgres wire. |
-| Generic KV Store | `kvStore` | Key-value | `KeyValue` | Provider-neutral extension contract for KV systems. |
-| Trino / Presto | `trinoPresto` | Federated SQL | `Jdbc` | JDBC-style connector not implemented yet. |
-| Firebird | `firebird` | Relational | `Jdbc` | JDBC-style connector not implemented yet. |
-| Databricks / Spark SQL | `databricks` | Warehouse | `Jdbc` | JDBC-style connector not implemented yet. |
-| Elasticsearch | `elasticsearch` | Search | `Search` | Search connector and index/data-stream browser are not implemented yet. |
-| OpenSearch | `openSearch` | Search | `Search` | Search connector and index/data-stream browser are modeled as a separate extension. |
-| Couchbase | `couchbase` | Document | `Document` | Document connector not implemented yet. |
-| DynamoDB | `dynamodb` | Key-value | `KeyValue` | Key-value connector not implemented yet. |
-| ArangoDB | `arangodb` | Graph / multi-model | `Graph` | Graph/multi-model connector not implemented yet. |
-| Apache IoTDB | `iotdb` | Time-series | `TimeSeries` | Time-series connector not implemented yet. |
-| Apache Hive | `hive` | Lakehouse / catalog | `Jdbc` | Catalog/metastore model is still pending. |
-| Amazon Athena | `athena` | Lakehouse / query-engine | `Lakehouse` | Athena/Glue/workgroup/output-location behavior is separate from Iceberg and S3 Tables. |
-| Apache Iceberg | `iceberg` | Lakehouse | `Lakehouse` | Priority lakehouse target; catalog-backed model is still pending. |
-| AWS S3 Tables | `s3Tables` | Lakehouse | `Lakehouse` | Managed Iceberg connector not implemented yet. |
-| Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | No public connector extension; object browser/source connector not implemented yet. |
-| Delta Lake | `deltaLake` | Lakehouse | `Lakehouse` | Lakehouse connector not implemented yet. |
-| Apache Hudi | `hudi` | Lakehouse | `Lakehouse` | Lakehouse connector not implemented yet. |
+| Generic KV Store | `kvStore` | Key-value | `KeyValue` | Installable provider-neutral connector extension for KV systems. |
+| Trino / Presto | `trinoPresto` | Federated SQL | `Jdbc` | Installable JDBC-style connector extension. |
+| Firebird | `firebird` | Relational | `Jdbc` | Installable JDBC-style connector extension. |
+| Databricks / Spark SQL | `databricks` | Warehouse | `Jdbc` | Installable SQL Warehouse connector extension. |
+| Elasticsearch | `elasticsearch` | Search | `Search` | Installable search connector extension with index/data-stream workflows. |
+| OpenSearch | `openSearch` | Search | `Search` | Installable search connector extension with index/data-stream workflows. |
+| Couchbase | `couchbase` | Document | `Document` | Installable document connector extension. |
+| DynamoDB | `dynamodb` | Key-value | `KeyValue` | Installable key-value connector extension. |
+| ArangoDB | `arangodb` | Graph / multi-model | `Graph` | Installable graph/multi-model connector extension. |
+| Apache IoTDB | `iotdb` | Time-series | `TimeSeries` | Installable time-series connector extension. |
+| Apache Hive | `hive` | Lakehouse / catalog | `Jdbc` | Installable Hive/Hive Metastore connector extension. |
+| Amazon Athena | `athena` | Lakehouse / query-engine | `Lakehouse` | Installable Athena/Glue/workgroup connector extension. |
+| Apache Iceberg | `iceberg` | Lakehouse | `Lakehouse` | Installable catalog-backed Iceberg connector extension. |
+| AWS S3 Tables | `s3Tables` | Lakehouse | `Lakehouse` | Installable managed Iceberg connector extension. |
+| Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | Installable object-store browser/source connector extension. |
+| Delta Lake | `deltaLake` | Lakehouse | `Lakehouse` | Installable Delta Lake connector extension. |
+| Apache Hudi | `hudi` | Lakehouse | `Lakehouse` | Installable Hudi connector extension. |
 
 ## 4. Not registered (roadmap intent, not in the engine enum yet)
 
-Named in `docs/data-source-coverage-strategy.md` / `docs/feature-matrix.md` but
+Named in the public data-source coverage strategy / feature matrix but
 **not selectable in the app** — adding any of these starts with a new `DbEngine`
 variant + `Wire` + adapter.
 
@@ -127,18 +127,16 @@ surface beyond connection templates. They route through existing adapters:
 
 ## 6. Gaps worth deciding on
 
-- **Vector DBs are half-declared.** Qdrant/Milvus/Pinecone are enum variants with
-  no adapter and no UI requirements in the coverage strategy. Either commit a
-  vector source-type contract (collection/index browser, similarity-search query
-  surface) or drop them from the enum until scoped.
-- **Memgraph is the cheapest win.** It speaks Bolt/Cypher like Neo4j; promoting it
-  from "recognized, no connector" to "Wired" is mostly routing `Wire::Memgraph`
-  through the Neo4j adapter plus a verification container.
+- **Vector DBs are extension-first.** Qdrant/Milvus/Pinecone are registry entries
+  with marketplace extensions; core still needs the shared vector source-type
+  contract for collection/index browsing and similarity-search query surfaces.
+- **Memgraph is extension-first.** It speaks Bolt/Cypher like Neo4j; the extension
+  can reuse the Neo4j path internally before core promotes it to a wired adapter.
 - **ScyllaDB** now rides the existing `cassandra.rs` CQL path; the remaining work is verification against a real ScyllaDB instance and source-specific UX polish.
-- **Iceberg/lakehouse** is the largest unstarted area and the stated P2 priority;
-  it needs a catalog-backed connection model, not just a wire. Apache Iceberg and
-  Amazon S3 Tables should be modeled as table/catalog sources with execution
-  backends, not as normal SQL engines.
+- **Iceberg/lakehouse** is now extension-first: Apache Iceberg, S3 Tables, Delta
+  Lake, Hudi, Hive, and Athena all have marketplace connectors. Core still needs
+  shared table/catalog UX and execution-backend contracts for those extensions.
 
 When section 1–4 membership changes, it should be regenerated from the registry,
-not hand-edited — see `docs/cheatsheet-autodoc-plan.md`.
+not hand-edited — see
+<https://hjosugi.github.io/irodori-docs/cheatsheet-autodoc-plan.html>.

@@ -1,0 +1,32 @@
+{
+  "version": "__VERSION__",
+  "description": "Open-source SQL workbench for querying, inspecting, and editing data across multiple database engines.",
+  "homepage": "https://hjosugi.github.io/irodori-table/",
+  "license": {
+    "identifier": "MIT OR 0BSD",
+    "url": "https://github.com/hjosugi/irodori-table/blob/main/LICENSE"
+  },
+  "notes": "Irodori Table is a development-preview database workbench. Review SQL before running destructive commands.",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/hjosugi/irodori-table/releases/download/v__VERSION__/__WINDOWS_PORTABLE_OR_INSTALLER_ASSET__",
+      "hash": "__SHA256_WINDOWS_ASSET__"
+    }
+  },
+  "shortcuts": [
+    [
+      "Irodori Table.exe",
+      "Irodori Table"
+    ]
+  ],
+  "checkver": {
+    "github": "https://github.com/hjosugi/irodori-table"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/hjosugi/irodori-table/releases/download/v$version/__WINDOWS_PORTABLE_OR_INSTALLER_ASSET_PATTERN__"
+      }
+    }
+  }
+}

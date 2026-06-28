@@ -1,0 +1,17 @@
+$ErrorActionPreference = 'Stop'
+
+$packageName = 'irodori-table'
+$url64 = 'https://github.com/hjosugi/irodori-table/releases/download/v__VERSION__/__WINDOWS_INSTALLER_ASSET__'
+
+$packageArgs = @{
+  packageName    = $packageName
+  fileType       = '__MSI_OR_EXE__'
+  url64bit       = $url64
+  softwareName   = 'Irodori Table*'
+  checksum64     = '__SHA256_WINDOWS_INSTALLER__'
+  checksumType64 = 'sha256'
+  silentArgs     = '__SILENT_INSTALL_ARGS__'
+  validExitCodes = @(0, 3010, 1641)
+}
+
+Install-ChocolateyPackage @packageArgs

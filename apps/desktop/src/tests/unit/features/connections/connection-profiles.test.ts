@@ -1,12 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   connectionCustomColorOptions,
   defaultConnectionColor,
+  loadProfiles,
   normalizeConnectionColor,
   portableProfile,
+  profilesStorageKey,
   profileFromDraft,
   redactPasswordFromConnectionUrl,
   repairBuiltinSampleProfile,
+  sanitizedProfile,
   settingsProfileFromJson,
   validateDraft,
   withUniqueProfileIds,
@@ -30,6 +33,24 @@ function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
     ...patch,
   };
 }
+
+function installLocalStorage() {
+  const values = new Map<string, string>();
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      key: (index: number) => Array.from(values.keys())[index] ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    },
+  });
+}
+
+beforeEach(() => {
+  installLocalStorage();
+});
 
 describe("connection profiles", () => {
   it("normalizes custom color tags", () => {
@@ -110,6 +131,43 @@ describe("connection profiles", () => {
     ).toBe("Server=db;Database=main;User Id=sa;Password=");
   });
 
+  it("redacts URL passwords from persisted connection definitions", () => {
+    const profile = sanitizedProfile(
+      draft({
+        mode: "url",
+        url: "postgres://irodori:secret@127.0.0.1:5432/samples?password=secret",
+      }),
+    );
+
+    expect(profile.password).toBe("");
+    expect(profile.url).toBe(
+      "postgres://irodori@127.0.0.1:5432/samples?password=",
+    );
+  });
+
+  it("migrates old localStorage profiles without keeping URL passwords", () => {
+    window.localStorage.setItem(
+      profilesStorageKey,
+      JSON.stringify([
+        draft({
+          id: "prod",
+          name: "Prod",
+          mode: "url",
+          url: "postgres://analyst:secret@db.example.test:5432/app?password=secret",
+          password: "secret",
+        }),
+      ]),
+    );
+
+    const profile = loadProfiles().find((item) => item.id === "prod");
+
+    expect(profile).toMatchObject({
+      id: "prod",
+      password: "",
+      url: "postgres://analyst@db.example.test:5432/app?password=",
+    });
+  });
+
   it("keeps duplicate imported IDs unique", () => {
     const profiles = withUniqueProfileIds([
       draft({ id: "local" }),
@@ -172,6 +230,26 @@ describe("connection profiles", () => {
       repairBuiltinSampleProfile(draft({ id: "local-mysql", color: "#112233" }))
         .color,
     ).toBe("#112233");
+  });
+
+  it("restores bundled MySQL sample credentials only in runtime defaults", () => {
+    const profile = repairBuiltinSampleProfile(
+      draft({
+        id: "local-mysql",
+        name: "Local MySQL",
+        engine: "mysql",
+        mode: "url",
+        url: "mysql://irodori@localhost:55306/samples",
+        host: "localhost",
+        port: "55306",
+        database: "samples",
+      }),
+    );
+
+    expect(profile.url).toBe("mysql://irodori:irodori@localhost:55306/samples");
+    expect(sanitizedProfile(profile).url).toBe(
+      "mysql://irodori@localhost:55306/samples",
+    );
   });
 
   it("validates and converts field drafts into API profiles", () => {

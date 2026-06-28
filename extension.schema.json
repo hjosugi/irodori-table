@@ -384,8 +384,264 @@
             ]
           },
           "uniqueItems": true
+        },
+        "connection": {
+          "$ref": "#/$defs/connectorConnectionModel"
         }
       }
+    },
+    "connectorConnectionModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "endpoint",
+        "profileFields",
+        "authMethods",
+        "secretPurposes",
+        "tls",
+        "transports",
+        "optionNamespaces",
+        "customDriverOptions"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "endpoint": {
+          "$ref": "#/$defs/connectorEndpointModel"
+        },
+        "profileFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorConnectionField"
+          }
+        },
+        "authMethods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/connectorAuthMethod"
+          }
+        },
+        "secretPurposes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorSecretPurpose"
+          },
+          "uniqueItems": true
+        },
+        "tls": {
+          "$ref": "#/$defs/connectorTlsModel"
+        },
+        "transports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorTransportMode"
+          },
+          "uniqueItems": true
+        },
+        "optionNamespaces": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "customDriverOptions": {
+          "type": "boolean"
+        }
+      }
+    },
+    "connectorEndpointModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modes", "defaultPort", "fields"],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorEndpointMode"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "defaultPort": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorConnectionField"
+          }
+        }
+      }
+    },
+    "connectorAuthMethod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "kind", "secretPurposes", "fields"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "none",
+            "connectionString",
+            "userPassword",
+            "basic",
+            "token",
+            "apiKey",
+            "oauth2",
+            "serviceAccount",
+            "privateKey",
+            "certificate",
+            "kerberos",
+            "ldap",
+            "saml",
+            "iam",
+            "azureAd",
+            "managedIdentity",
+            "browserSso",
+            "custom"
+          ]
+        },
+        "secretPurposes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorSecretPurpose"
+          },
+          "uniqueItems": true
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorConnectionField"
+          }
+        }
+      }
+    },
+    "connectorConnectionField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/contributionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "secret",
+            "path",
+            "json",
+            "pem",
+            "uri",
+            "select",
+            "stringList",
+            "map"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "profileField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "option": {
+          "type": "string",
+          "minLength": 1
+        },
+        "secretPurpose": {
+          "$ref": "#/$defs/connectorSecretPurpose"
+        },
+        "default": {},
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "connectorTlsModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported", "requiredByDefault", "modes", "fields"],
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "requiredByDefault": {
+          "type": "boolean"
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["disable", "prefer", "require", "verifyCa", "verifyFull", "clientCertificate"]
+          },
+          "uniqueItems": true
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connectorConnectionField"
+          }
+        }
+      }
+    },
+    "connectorSecretPurpose": {
+      "type": "string",
+      "enum": [
+        "password",
+        "token",
+        "privateKey",
+        "privateKeyPassphrase",
+        "sshPassword",
+        "proxyPassword"
+      ]
+    },
+    "connectorEndpointMode": {
+      "type": "string",
+      "enum": [
+        "hostPort",
+        "connectionString",
+        "localFile",
+        "inMemory",
+        "motherduckService",
+        "cloudResource",
+        "customEndpoint",
+        "catalog",
+        "objectStorage",
+        "jdbc"
+      ]
+    },
+    "connectorTransportMode": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "localFile",
+        "sshTunnel",
+        "socks5Proxy",
+        "httpConnectProxy",
+        "proxyChain",
+        "customEndpoint"
+      ]
     },
     "capabilities": {
       "type": "object",

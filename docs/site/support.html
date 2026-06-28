@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Irodori Table | Support</title>
+    <meta
+      name="description"
+      content="Irodori Table のサポート窓口、バグ報告方法、セキュリティ報告の扱い。"
+    />
+    <meta property="og:title" content="Irodori Table | Support" />
+    <meta
+      property="og:description"
+      content="Irodori Table のサポート窓口と、公開 Issue に含めてよい情報のガイド。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hjosugi.github.io/irodori-table/support.html" />
+    <link rel="icon" href="assets/irodori-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へ移動</a>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand-link" href="index.html#top" aria-label="Irodori Table ホーム">
+          <img src="assets/irodori-icon.svg" alt="" width="32" height="32" />
+          <span>Irodori Table</span>
+        </a>
+        <nav class="site-nav" aria-label="主要ナビゲーション">
+          <a href="index.html#features">Features</a>
+          <a href="docs.html">ドキュメント</a>
+          <a href="blog.html">Blog</a>
+          <a href="support.html" aria-current="page">Support</a>
+          <a href="https://github.com/hjosugi/irodori-table">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="container page-hero-inner">
+          <div>
+            <p class="eyebrow">Support</p>
+            <h1>サポート</h1>
+            <p class="lead">
+              不具合報告とサポート依頼は GitHub Issues で受け付けます。
+              公開 Issue に認証情報や非公開データを含めないでください。
+            </p>
+          </div>
+          <dl class="hero-facts docs-facts" aria-label="サポート概要">
+            <div>
+              <dt>Status</dt>
+              <dd>Best effort</dd>
+            </div>
+            <div>
+              <dt>Security</dt>
+              <dd>Private report first</dd>
+            </div>
+            <div>
+              <dt>Version</dt>
+              <dd>Preview</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section docs-section legal-page">
+        <div class="container docs-layout">
+          <aside class="docs-sidebar" aria-label="ページ目次">
+            <a href="#channels">窓口</a>
+            <a href="#report">報告に含める情報</a>
+            <a href="#scope">サポート範囲</a>
+            <a href="#security">セキュリティ</a>
+          </aside>
+          <article class="docs-article">
+            <section class="doc-section" id="channels">
+              <p class="eyebrow">Channels</p>
+              <h2>公開サポート窓口</h2>
+              <div class="link-list">
+                <a href="https://github.com/hjosugi/irodori-table/issues">GitHub Issues</a>
+                <a href="https://github.com/hjosugi/irodori-table/releases">Releases</a>
+                <a href="docs.html">Documentation</a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/SECURITY.md">
+                  Security policy
+                </a>
+              </div>
+            </section>
+
+            <section class="doc-section" id="report">
+              <p class="eyebrow">Bug reports</p>
+              <h2>報告に含める情報</h2>
+              <p>
+                Irodori Table のバージョン、OS、データベース種別、再現手順、
+                redacted error、スクリーンショットを含めてください。
+              </p>
+              <div class="callout">
+                <strong>公開しない情報</strong>
+                <p>
+                  パスワード、token、private key、database dump、顧客データ、
+                  production connection URL は公開 Issue に含めないでください。
+                </p>
+              </div>
+            </section>
+
+            <section class="doc-section" id="scope">
+              <p class="eyebrow">Scope</p>
+              <h2>サポート範囲</h2>
+              <p>
+                インストール、起動、接続設定、SQL エディタ、Vim mode、結果グリッド、
+                schema metadata、import/export、extension SDK、release artifact を扱います。
+                本番データ復旧や非公開インフラの調査は対象外です。
+              </p>
+            </section>
+
+            <section class="doc-section" id="security">
+              <p class="eyebrow">Security</p>
+              <h2>脆弱性報告</h2>
+              <p>
+                脆弱性の疑いがある場合、公開 Issue に詳細を書かず、
+                SECURITY.md の private disclosure 手順に従ってください。
+              </p>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand-link" href="index.html#top">
+          <img src="assets/irodori-icon.svg" alt="" width="28" height="28" />
+          <span>Irodori Table</span>
+        </a>
+        <nav class="footer-links" aria-label="フッターリンク">
+          <a href="support.html" aria-current="page">Support</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="disclaimer.html">Disclaimer</a>
+        </nav>
+        <p>MIT OR 0BSD. Built as an open-source database workbench.</p>
+      </div>
+    </footer>
+  </body>
+</html>

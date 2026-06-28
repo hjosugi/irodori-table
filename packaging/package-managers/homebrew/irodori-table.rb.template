@@ -1,0 +1,23 @@
+cask "irodori-table" do
+  version "__VERSION__"
+  sha256 "__SHA256_DMG__"
+
+  url "https://github.com/hjosugi/irodori-table/releases/download/v#{version}/__MACOS_DMG_ASSET__",
+      verified: "github.com/hjosugi/irodori-table/"
+  name "Irodori Table"
+  desc "Open-source SQL workbench for multiple database engines"
+  homepage "https://hjosugi.github.io/irodori-table/"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  app "Irodori Table.app"
+
+  zap trash: [
+    "~/Library/Application Support/dev.irodori.table",
+    "~/Library/Caches/dev.irodori.table",
+    "~/Library/Preferences/dev.irodori.table.plist",
+  ]
+end

@@ -114,7 +114,9 @@ CREATE CONSTRAINT person_name_unique IF NOT EXISTS
   treat the column list as representative, not exhaustive.
 - **Results are tabular today.** Node/relationship records show as JSON property
   cells. A query-result **graph visualization** is a planned shared capability
-  (P1, see `docs/data-source-coverage-strategy.md` → Graph), not yet in the UI.
+  (P1, see
+  `https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html`
+  → Graph), not yet in the UI.
 - **No SQL.** Engines like advanced filters / inline editing that assume relational
   semantics do not apply; use Cypher `SET` / `MERGE` / `DELETE`.
 

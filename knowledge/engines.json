@@ -262,6 +262,7 @@
       "wire": "memgraph",
       "defaultPort": 7687,
       "status": "recognized_no_connector",
+      "extensionId": "irodori.memgraph",
       "notes": "Bolt/Cypher; should reuse the Neo4j path"
     },
     {
@@ -270,7 +271,8 @@
       "family": "vector",
       "wire": "qdrant",
       "defaultPort": 6333,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.qdrant"
     },
     {
       "id": "milvus",
@@ -278,7 +280,8 @@
       "family": "vector",
       "wire": "milvus",
       "defaultPort": 19530,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.milvus"
     },
     {
       "id": "pinecone",
@@ -287,6 +290,7 @@
       "wire": "pinecone",
       "defaultPort": 0,
       "status": "recognized_no_connector",
+      "extensionId": "irodori.pinecone",
       "notes": "HTTP API"
     },
     {
@@ -297,6 +301,7 @@
       "wire": "jdbc",
       "defaultPort": 8080,
       "status": "recognized_no_connector",
+      "extensionId": "irodori.trino-presto",
       "notes": "federated SQL; JDBC-style connector not implemented yet"
     },
     {
@@ -305,7 +310,8 @@
       "family": "relational",
       "wire": "jdbc",
       "defaultPort": 3050,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.firebird"
     },
     {
       "id": "databricks",
@@ -314,7 +320,8 @@
       "family": "warehouse",
       "wire": "jdbc",
       "defaultPort": 443,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.databricks"
     },
     {
       "id": "elasticsearch",
@@ -323,6 +330,7 @@
       "wire": "search",
       "defaultPort": 9200,
       "status": "recognized_no_connector",
+      "extensionId": "irodori.elasticsearch",
       "notes": "Search connector and index/data-stream browser not implemented yet"
     },
     {
@@ -341,7 +349,8 @@
       "family": "document",
       "wire": "document",
       "defaultPort": 8091,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.couchbase"
     },
     {
       "id": "dynamodb",
@@ -349,7 +358,8 @@
       "family": "key-value",
       "wire": "keyValue",
       "defaultPort": 443,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.dynamodb"
     },
     {
       "id": "scylladb",
@@ -367,7 +377,8 @@
       "family": "graph / multi-model",
       "wire": "graph",
       "defaultPort": 8529,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.arangodb"
     },
     {
       "id": "questdb",
@@ -385,7 +396,8 @@
       "family": "time-series",
       "wire": "timeSeries",
       "defaultPort": 6667,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.iotdb"
     },
     {
       "id": "hive",
@@ -394,6 +406,7 @@
       "wire": "jdbc",
       "defaultPort": 10000,
       "status": "recognized_no_connector",
+      "extensionId": "irodori.hive",
       "notes": "catalog/metastore shape still pending"
     },
     {
@@ -413,7 +426,8 @@
       "wire": "lakehouse",
       "defaultPort": 443,
       "status": "recognized_no_connector",
-      "notes": "priority lakehouse target"
+      "extensionId": "irodori.iceberg",
+      "notes": "catalog-backed lakehouse connector is provided as an installable extension"
     },
     {
       "id": "s3Tables",
@@ -422,7 +436,8 @@
       "wire": "lakehouse",
       "defaultPort": 443,
       "status": "recognized_no_connector",
-      "notes": "managed Iceberg"
+      "extensionId": "irodori.s3-tables",
+      "notes": "managed Iceberg connector is provided as an installable extension"
     },
     {
       "id": "objectStore",
@@ -431,7 +446,9 @@
       "family": "object-store",
       "wire": "objectStore",
       "defaultPort": 443,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.object-store",
+      "notes": "object browsing/source connector is provided as an installable extension"
     },
     {
       "id": "deltaLake",
@@ -439,7 +456,8 @@
       "family": "lakehouse",
       "wire": "lakehouse",
       "defaultPort": 443,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.delta-lake"
     },
     {
       "id": "hudi",
@@ -447,7 +465,8 @@
       "family": "lakehouse",
       "wire": "lakehouse",
       "defaultPort": 443,
-      "status": "recognized_no_connector"
+      "status": "recognized_no_connector",
+      "extensionId": "irodori.hudi"
     }
   ],
   "notRegistered": []

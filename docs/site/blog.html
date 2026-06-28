@@ -102,18 +102,21 @@
               <h2>DB固有機能はサンプルプロジェクトで確認する。</h2>
               <p>
                 汎用の疎通確認は <code>make db-verify DB=&lt;engine&gt;</code> で実行します。
-                DB固有の機能確認は <code>samples/projects/&lt;engine&gt;/</code> のクエリ集を
-                Irodori Tableで開いて、1文ずつ実行します。
+                DB固有の機能確認は
+                <a href="https://github.com/hjosugi/irodori-samples/tree/main/projects">
+                  <code>irodori-samples/projects/&lt;engine&gt;/</code>
+                </a>
+                のクエリ集を Irodori Tableで開いて、1文ずつ実行します。
               </p>
               <pre class="code-block"><code>make db-up DB=postgres
-# samples/projects/postgres/queries.sql を開いて実行
+# ../irodori-samples/projects/postgres/queries.sql を開いて実行
 make db-down DB=postgres
 
 node tools/docs/db-feature-samples.mjs</code></pre>
               <p>
                 サンプルと公式リンクの一覧は
-                <a href="https://github.com/hjosugi/irodori-table/blob/main/samples/db-feature-samples.json">
-                  <code>samples/db-feature-samples.json</code>
+                <a href="https://github.com/hjosugi/irodori-samples/blob/main/db-feature-samples.json">
+                  <code>irodori-samples/db-feature-samples.json</code>
                 </a>
                 に集約しています。
               </p>
@@ -127,31 +130,31 @@ node tools/docs/db-feature-samples.mjs</code></pre>
                   <h3>PostgreSQL</h3>
                   <p>JSONB、配列、GIN index、extension、EXPLAIN JSONを試せます。</p>
                   <a href="https://www.postgresql.org/">postgresql.org</a>
-                  <code>samples/projects/postgres/queries.sql</code>
+                  <code>irodori-samples/projects/postgres/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>MySQL</h3>
                   <p>JSON関数、外部キー、window関数、EXPLAIN FORMAT=JSONを確認します。</p>
                   <a href="https://dev.mysql.com/doc/">MySQL Docs</a>
-                  <code>samples/projects/mysql/queries.sql</code>
+                  <code>irodori-samples/projects/mysql/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>MariaDB</h3>
                   <p>MySQL wireで接続し、JSON_VALID、JSON_VALUE、再帰CTEを試します。</p>
                   <a href="https://mariadb.com/kb/en/documentation/">MariaDB Docs</a>
-                  <code>samples/projects/mariadb/queries.sql</code>
+                  <code>irodori-samples/projects/mariadb/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>SQLite</h3>
                   <p>サーバなしで、JSON、FTS5、PRAGMA、外部キー制約を確認できます。</p>
                   <a href="https://www.sqlite.org/docs.html">SQLite Docs</a>
-                  <code>samples/projects/sqlite/queries.sql</code>
+                  <code>irodori-samples/projects/sqlite/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>DuckDB</h3>
                   <p>ローカル分析向けに、struct、summarize、window、EXPLAINを試します。</p>
                   <a href="https://duckdb.org/docs/stable/">DuckDB Docs</a>
-                  <code>samples/projects/duckdb/queries.sql</code>
+                  <code>irodori-samples/projects/duckdb/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>SQL Server</h3>
@@ -159,7 +162,7 @@ node tools/docs/db-feature-samples.mjs</code></pre>
                   <a href="https://learn.microsoft.com/en-us/sql/?view=sql-server-ver17">
                     SQL Server Docs
                   </a>
-                  <code>samples/projects/sqlserver/queries.sql</code>
+                  <code>irodori-samples/projects/sqlserver/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>Oracle Database</h3>
@@ -167,37 +170,37 @@ node tools/docs/db-feature-samples.mjs</code></pre>
                   <a href="https://docs.oracle.com/en/database/oracle/oracle-database/">
                     Oracle Docs
                   </a>
-                  <code>samples/projects/oracle/queries.sql</code>
+                  <code>irodori-samples/projects/oracle/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>MongoDB</h3>
                   <p>collection名やJSON filterをクエリとして受け、documentを表へ投影します。</p>
                   <a href="https://www.mongodb.com/docs/">MongoDB Docs</a>
-                  <code>samples/projects/mongodb/queries.js</code>
+                  <code>irodori-samples/projects/mongodb/queries.js</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>TimescaleDB</h3>
                   <p>hypertable、time_bucket、timescaledb_informationを確認します。</p>
                   <a href="https://docs.timescale.com/">Timescale Docs</a>
-                  <code>samples/projects/timescaledb/queries.sql</code>
+                  <code>irodori-samples/projects/timescaledb/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>CockroachDB</h3>
                   <p>Postgres wireで接続し、unique_rowid、UPSERT、range情報を試します。</p>
                   <a href="https://www.cockroachlabs.com/docs/">CockroachDB Docs</a>
-                  <code>samples/projects/cockroachdb/queries.sql</code>
+                  <code>irodori-samples/projects/cockroachdb/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>YugabyteDB</h3>
                   <p>YSQLで接続し、split tabletsやYBのtable property確認を試します。</p>
                   <a href="https://docs.yugabyte.com/">YugabyteDB Docs</a>
-                  <code>samples/projects/yugabytedb/queries.sql</code>
+                  <code>irodori-samples/projects/yugabytedb/queries.sql</code>
                 </article>
                 <article class="db-guide-card">
                   <h3>TiDB</h3>
                   <p>MySQL wireで接続し、tidb_version、shard_row_id_bits、EXPLAIN ANALYZEを試します。</p>
                   <a href="https://docs.pingcap.com/tidb/stable">TiDB Docs</a>
-                  <code>samples/projects/tidb/queries.sql</code>
+                  <code>irodori-samples/projects/tidb/queries.sql</code>
                 </article>
               </div>
             </section>
@@ -309,6 +312,11 @@ node tools/docs/db-feature-samples.mjs</code></pre>
           <img src="assets/irodori-icon.svg" alt="" width="28" height="28" />
           <span>Irodori Table</span>
         </a>
+        <nav class="footer-links" aria-label="フッターリンク">
+          <a href="support.html">Support</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="disclaimer.html">Disclaimer</a>
+        </nav>
         <p>MIT OR 0BSD. Built as an open-source database workbench.</p>
       </div>
     </footer>

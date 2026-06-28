@@ -1101,11 +1101,41 @@ h3 {
 
 .footer-inner {
   min-height: 92px;
+  flex-wrap: wrap;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #d6e1dc;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.footer-links a {
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.footer-links a:hover,
+.footer-links a:focus-visible {
+  color: #ffffff;
+  background: rgb(255 255 255 / 12%);
+  outline: 0;
 }
 
 .footer-inner p {
   margin: 0;
   color: #d6e1dc;
+}
+
+.legal-page .docs-article {
+  align-content: start;
+}
+
+.legal-page .doc-section {
+  min-height: auto;
 }
 
 @media (max-width: 940px) {
