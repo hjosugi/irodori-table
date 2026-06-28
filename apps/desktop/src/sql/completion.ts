@@ -20,6 +20,7 @@ import completionKeywords from "./completion-keywords.json";
 import {
   DEFAULT_SNIPPET_RANK,
   defaultSqlSnippets,
+  snippetsForEngine,
   type SqlSnippetDefinition,
 } from "./snippets";
 import { statementDelimiters } from "./statements";
@@ -28,7 +29,10 @@ export {
   cloneDefaultSqlSnippets,
   defaultSqlSnippets,
   isSqlSnippetScope,
+  isSqlSnippetEngine,
   mergeDefaultSqlSnippets,
+  snippetsForEngine,
+  sqlSnippetEngines,
   sqlSnippetsFromJson,
   type SqlSnippetDefinition,
   type SqlSnippetScope,
@@ -313,7 +317,7 @@ export function completeSqlLightweight(
     input.index,
     context,
     input.explicit ?? false,
-    input.snippets ?? defaultSqlSnippets,
+    snippetsForEngine(input.snippets ?? defaultSqlSnippets, input.engine),
   );
   const options = rankedCompletionOptions(candidates, input.limit ?? DEFAULT_LIMIT);
   if (options.length === 0) return null;

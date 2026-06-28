@@ -1,0 +1,427 @@
+{
+  "defaultSettings": {
+    "preferredMode": "fields",
+    "urlLabel": "URL / DSN",
+    "urlPlaceholder": "driver://user:password@host:port/database",
+    "fieldsLabel": "Fields",
+    "hostLabel": "Host",
+    "hostPlaceholder": "localhost",
+    "portLabel": "Port",
+    "userLabel": "User",
+    "userPlaceholder": "username",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Session only",
+    "databaseLabel": "Database",
+    "databasePlaceholder": "database name",
+    "showHost": true,
+    "showPort": true,
+    "showUser": true,
+    "showPassword": true,
+    "transportLabel": "Direct TCP"
+  },
+  "engineSettings": [
+    {
+      "engines": [
+        "postgres",
+        "timescaledb",
+        "neon",
+        "cockroachdb",
+        "yugabytedb",
+        "redshift"
+      ],
+      "settings": {
+        "urlPlaceholder": "postgres://user:password@host:5432/database",
+        "databaseLabel": "Database",
+        "databasePlaceholder": "database name"
+      }
+    },
+    {
+      "engines": ["mysql", "mariadb", "tidb"],
+      "settings": {
+        "urlPlaceholder": "mysql://user:password@host:3306/database"
+      }
+    },
+    {
+      "engines": ["sqlite"],
+      "settings": {
+        "preferredMode": "fields",
+        "urlPlaceholder": "sqlite:///absolute/path/to/database.sqlite",
+        "fieldsLabel": "File",
+        "hostLabel": "File",
+        "hostPlaceholder": "",
+        "databaseLabel": "SQLite file / :memory:",
+        "databasePlaceholder": "/path/to/database.sqlite or :memory:",
+        "showHost": false,
+        "showPort": false,
+        "showUser": false,
+        "showPassword": false,
+        "transportLabel": "Local file"
+      }
+    },
+    {
+      "engines": ["duckdb"],
+      "settings": {
+        "preferredMode": "fields",
+        "urlPlaceholder": ":memory: or /absolute/path/to/database.duckdb",
+        "fieldsLabel": "File",
+        "databaseLabel": "DuckDB file / :memory:",
+        "databasePlaceholder": "/path/to/database.duckdb or :memory:",
+        "showHost": false,
+        "showPort": false,
+        "showUser": false,
+        "showPassword": false,
+        "transportLabel": "Local file"
+      }
+    },
+    {
+      "engines": ["motherduck"],
+      "settings": {
+        "preferredMode": "url",
+        "urlLabel": "MotherDuck DSN",
+        "urlPlaceholder": "md: or motherduck://token@md/database",
+        "fieldsLabel": "MotherDuck",
+        "hostLabel": "Account",
+        "hostPlaceholder": "md",
+        "portLabel": "API port",
+        "userLabel": "Token user",
+        "userPlaceholder": "token",
+        "passwordLabel": "MotherDuck token",
+        "databaseLabel": "Database",
+        "databasePlaceholder": "database name",
+        "showPort": false,
+        "transportLabel": "DuckDB extension"
+      }
+    },
+    {
+      "engines": ["oracle"],
+      "settings": {
+        "urlPlaceholder": "oracle://user:password@host:1521/service",
+        "databaseLabel": "Service name / SID",
+        "databasePlaceholder": "ORCLPDB1"
+      }
+    },
+    {
+      "engines": ["sqlserver"],
+      "settings": {
+        "urlPlaceholder": "sqlserver://user:password@host:1433;databaseName=database",
+        "hostLabel": "Server"
+      }
+    },
+    {
+      "engines": ["h2"],
+      "settings": {
+        "urlPlaceholder": "jdbc:h2:tcp://host:5435/~/database or jdbc:h2:file:./database",
+        "databaseLabel": "Database path / name",
+        "databasePlaceholder": "~/database",
+        "transportLabel": "JDBC / TCP"
+      }
+    },
+    {
+      "engines": ["mongodb"],
+      "settings": {
+        "urlPlaceholder": "mongodb://user:password@host:27017/database",
+        "databaseLabel": "Database / auth source"
+      }
+    },
+    {
+      "engines": ["redis"],
+      "settings": {
+        "urlPlaceholder": "redis://:password@host:6379/0",
+        "userLabel": "Username",
+        "userPlaceholder": "default",
+        "databaseLabel": "Database index",
+        "databasePlaceholder": "0"
+      }
+    },
+    {
+      "engines": ["snowflake"],
+      "settings": {
+        "urlLabel": "Base URL",
+        "urlPlaceholder": "https://org-account.snowflakecomputing.com",
+        "hostLabel": "Account / host",
+        "hostPlaceholder": "org-account or org-account.region.snowflakecomputing.com",
+        "userLabel": "Login name",
+        "passwordLabel": "Password",
+        "databaseLabel": "Database / schema",
+        "databasePlaceholder": "DATABASE/SCHEMA",
+        "showPort": false,
+        "transportLabel": "Snowflake HTTPS API"
+      }
+    },
+    {
+      "engines": ["bigquery"],
+      "settings": {
+        "preferredMode": "url",
+        "urlLabel": "Project / credentials JSON / DSN",
+        "urlPlaceholder": "bigquery://project/dataset or credentials JSON path",
+        "hostLabel": "Project",
+        "hostPlaceholder": "project-id",
+        "portLabel": "API port",
+        "userLabel": "Service account",
+        "passwordLabel": "Token / key",
+        "databaseLabel": "Dataset",
+        "showPort": false,
+        "transportLabel": "Google API"
+      }
+    },
+    {
+      "engines": ["athena"],
+      "settings": {
+        "preferredMode": "url",
+        "urlLabel": "Athena DSN / AWS profile",
+        "urlPlaceholder": "athena://profile@us-east-1/AwsDataCatalog/default?workgroup=primary&output=s3://bucket/query-results/",
+        "fieldsLabel": "AWS",
+        "hostLabel": "Region",
+        "hostPlaceholder": "us-east-1",
+        "portLabel": "API port",
+        "userLabel": "AWS profile / access key",
+        "userPlaceholder": "default",
+        "passwordLabel": "Secret / session token",
+        "databaseLabel": "Catalog / database",
+        "databasePlaceholder": "AwsDataCatalog/default",
+        "showPort": false,
+        "transportLabel": "AWS Athena API"
+      }
+    },
+    {
+      "engines": ["bigtable"],
+      "settings": {
+        "preferredMode": "url",
+        "urlLabel": "Project / instance / credentials",
+        "urlPlaceholder": "bigtable://project/instance or credentials JSON path",
+        "hostLabel": "Project / instance",
+        "hostPlaceholder": "project/instance",
+        "userLabel": "Service account",
+        "passwordLabel": "Token / key",
+        "databaseLabel": "Table / app profile",
+        "showPort": false,
+        "transportLabel": "Google API"
+      }
+    },
+    {
+      "engines": ["cloudSpanner"],
+      "settings": {
+        "preferredMode": "url",
+        "urlLabel": "Project / instance / credentials",
+        "urlPlaceholder": "spanner://project/instance/database or credentials JSON path",
+        "hostLabel": "Project / instance",
+        "hostPlaceholder": "project/instance",
+        "userLabel": "Service account",
+        "passwordLabel": "Token / key",
+        "databaseLabel": "Database",
+        "showPort": false,
+        "transportLabel": "Google API"
+      }
+    },
+    {
+      "engines": ["databricks"],
+      "settings": {
+        "urlPlaceholder": "databricks://token@workspace-host/sql/warehouse",
+        "hostLabel": "Workspace host",
+        "userLabel": "Token user",
+        "passwordLabel": "Access token",
+        "databaseLabel": "Catalog / schema",
+        "transportLabel": "HTTPS"
+      }
+    },
+    {
+      "engines": ["clickhouse"],
+      "settings": {
+        "urlPlaceholder": "clickhouse://user:password@host:8123/database",
+        "transportLabel": "HTTP / Native"
+      }
+    },
+    {
+      "engines": ["questdb"],
+      "settings": {
+        "urlPlaceholder": "postgres://user:password@host:8812/qdb",
+        "databaseLabel": "Database",
+        "transportLabel": "PostgreSQL wire / HTTP"
+      }
+    },
+    {
+      "engines": ["iotdb"],
+      "settings": {
+        "urlPlaceholder": "iotdb://user:password@host:6667/root",
+        "databaseLabel": "Storage group / database",
+        "databasePlaceholder": "root",
+        "transportLabel": "IoTDB native"
+      }
+    },
+    {
+      "engines": ["neo4j", "memgraph"],
+      "settings": {
+        "urlPlaceholder": "bolt://user:password@host:7687",
+        "databaseLabel": "Graph database",
+        "databasePlaceholder": "neo4j",
+        "transportLabel": "Bolt"
+      }
+    },
+    {
+      "engines": ["influxdb"],
+      "settings": {
+        "urlPlaceholder": "http://host:8086?org=...&bucket=...",
+        "userLabel": "Org",
+        "passwordLabel": "Token",
+        "databaseLabel": "Bucket / database",
+        "transportLabel": "HTTP API"
+      }
+    },
+    {
+      "engines": ["qdrant"],
+      "settings": {
+        "preferredMode": "url",
+        "urlPlaceholder": "qdrant://host",
+        "userLabel": "Project / user",
+        "passwordLabel": "API key / token",
+        "databaseLabel": "Collection / namespace",
+        "transportLabel": "Vector API"
+      }
+    },
+    {
+      "engines": ["milvus"],
+      "settings": {
+        "preferredMode": "url",
+        "urlPlaceholder": "milvus://host",
+        "userLabel": "Project / user",
+        "passwordLabel": "API key / token",
+        "databaseLabel": "Collection / namespace",
+        "transportLabel": "Vector API"
+      }
+    },
+    {
+      "engines": ["pinecone"],
+      "settings": {
+        "preferredMode": "url",
+        "urlPlaceholder": "pinecone://host",
+        "userLabel": "Project / user",
+        "passwordLabel": "API key / token",
+        "databaseLabel": "Collection / namespace",
+        "transportLabel": "Vector API"
+      }
+    },
+    {
+      "engines": ["elasticsearch", "openSearch", "couchbase", "arangodb"],
+      "settings": {
+        "urlPlaceholder": "https://user:password@host:port",
+        "databaseLabel": "Index / bucket / database",
+        "transportLabel": "HTTP API"
+      }
+    },
+    {
+      "engines": ["dynamodb", "s3Tables", "objectStore"],
+      "settings": {
+        "preferredMode": "url",
+        "urlPlaceholder": "aws://profile/region/resource",
+        "hostLabel": "Region",
+        "hostPlaceholder": "us-east-1",
+        "userLabel": "Access key",
+        "passwordLabel": "Secret / token",
+        "databaseLabel": "Table / bucket",
+        "showPort": false,
+        "transportLabel": "Cloud API"
+      }
+    },
+    {
+      "engines": ["kvStore"],
+      "settings": {
+        "preferredMode": "url",
+        "urlPlaceholder": "kv://provider/profile/namespace",
+        "hostLabel": "Region",
+        "hostPlaceholder": "us-east-1",
+        "userLabel": "Access key",
+        "passwordLabel": "Secret / token",
+        "databaseLabel": "Table / bucket",
+        "showPort": false,
+        "transportLabel": "Cloud API"
+      }
+    },
+    {
+      "engines": ["trinoPresto", "hive"],
+      "settings": {
+        "urlPlaceholder": "trino://user@host:8080/catalog/schema",
+        "databaseLabel": "Catalog / schema"
+      }
+    },
+    {
+      "engines": ["cassandra", "scylladb"],
+      "settings": {
+        "urlPlaceholder": "cassandra://user:password@host:9042/keyspace",
+        "databaseLabel": "Keyspace"
+      }
+    },
+    {
+      "engines": ["firebird"],
+      "settings": {
+        "urlPlaceholder": "firebird://user:password@host:3050/path/to/database.fdb",
+        "databaseLabel": "Database path"
+      }
+    },
+    {
+      "engines": ["deltaLake", "hudi", "iceberg"],
+      "settings": {
+        "preferredMode": "url",
+        "urlLabel": "Catalog URI / table path",
+        "urlPlaceholder": "iceberg+rest://catalog.example.com/warehouse/namespace or s3://bucket/table",
+        "fieldsLabel": "Catalog",
+        "hostLabel": "Catalog endpoint / region",
+        "hostPlaceholder": "catalog.example.com or us-east-1",
+        "userLabel": "Credential / profile",
+        "passwordLabel": "Secret / token",
+        "databaseLabel": "Warehouse / namespace / table path",
+        "databasePlaceholder": "warehouse.namespace.table or s3://bucket/table",
+        "showHost": false,
+        "showPort": false,
+        "showUser": false,
+        "showPassword": false,
+        "transportLabel": "Lakehouse catalog"
+      }
+    }
+  ],
+  "defaultPorts": {
+    "postgres": "5432",
+    "timescaledb": "5432",
+    "neon": "5432",
+    "cockroachdb": "26257",
+    "yugabytedb": "5433",
+    "redshift": "5439",
+    "h2": "5435",
+    "clickhouse": "8123",
+    "snowflake": "443",
+    "bigquery": "443",
+    "cloudSpanner": "443",
+    "athena": "443",
+    "motherduck": "443",
+    "redis": "6379",
+    "cassandra": "9042",
+    "scylladb": "9042",
+    "neo4j": "7687",
+    "memgraph": "7687",
+    "influxdb": "8086",
+    "qdrant": "6333",
+    "milvus": "19530",
+    "mysql": "3306",
+    "mariadb": "3306",
+    "tidb": "4000",
+    "sqlserver": "1433",
+    "mongodb": "27017",
+    "trinoPresto": "8080",
+    "firebird": "3050",
+    "databricks": "443",
+    "dynamodb": "443",
+    "kvStore": "443",
+    "iceberg": "443",
+    "s3Tables": "443",
+    "objectStore": "443",
+    "deltaLake": "443",
+    "hudi": "443",
+    "elasticsearch": "9200",
+    "openSearch": "9200",
+    "couchbase": "8091",
+    "arangodb": "8529",
+    "questdb": "8812",
+    "iotdb": "6667",
+    "hive": "10000",
+    "oracle": "1521"
+  }
+}

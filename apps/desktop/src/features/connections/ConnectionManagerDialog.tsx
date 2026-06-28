@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
+  LockKeyhole,
   MoreHorizontal,
   Plus,
   Power,
@@ -208,6 +209,7 @@ export function ConnectionManagerDialog({
           <small>
             {engineLabel(profile.engine)}
             {profile.database ? " · " + profile.database : ""}
+            {profile.readOnly ? " · read-only" : ""}
           </small>
         </span>
         <i className={connected ? "connected" : ""} />
@@ -552,6 +554,19 @@ export function ConnectionManagerDialog({
               </label>
             </div>
           )}
+          <label className="connection-readonly-toggle full-row">
+            <input
+              type="checkbox"
+              checked={draft.readOnly}
+              onChange={(event) =>
+                onUpdateDraft({ readOnly: event.currentTarget.checked })
+              }
+            />
+            <span>
+              <LockKeyhole size={14} />
+              <strong>Read-only mode</strong>
+            </span>
+          </label>
           <div className="connection-transport full-row">
             <ShieldCheck size={15} />
             <span>Transport</span>

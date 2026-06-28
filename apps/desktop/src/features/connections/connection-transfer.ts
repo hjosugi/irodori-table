@@ -64,6 +64,7 @@ type ConnectionCandidate = {
   user?: string;
   database?: string;
   color?: string;
+  readOnly?: boolean;
 };
 
 type ParsedUrl = {
@@ -567,6 +568,7 @@ function candidateFromRecord(
     user,
     database,
     color: pickString(getAny(value, ["color", "colour"])),
+    readOnly: booleanFrom(getAny(value, ["readOnly", "readonly", "read_only"])),
   };
   return candidateHasTarget(candidate) ? candidate : null;
 }
@@ -756,6 +758,7 @@ function candidateToDraft(candidate: ConnectionCandidate, index: number) {
     user: pickString(candidate.user, parsed.user, defaults.user),
     password: "",
     database,
+    readOnly: candidate.readOnly === true,
   });
 }
 
@@ -1364,6 +1367,22 @@ function pickString(...values: unknown[]): string {
     }
   }
   return "";
+}
+
+function booleanFrom(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "readonly", "read-only"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "0", "no"].includes(normalized)) {
+      return false;
+    }
+  }
+  return undefined;
 }
 
 function slugify(value: string, fallback: string) {

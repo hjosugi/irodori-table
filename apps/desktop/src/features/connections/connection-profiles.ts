@@ -4,6 +4,7 @@ import type {
   DbEngine,
   WorkspaceSnapshot,
 } from "../../generated/irodori-api";
+import connectionDefaults from "./connection-defaults.json";
 import {
   defaultPort,
   engineConnectionSettings,
@@ -32,66 +33,37 @@ export type ConnectionDraft = {
   readOnly: boolean;
 };
 
+type EngineOption = { value: DbEngine; label: string };
+type SampleConnectionColors = Record<
+  "postgres" | "mysql" | "sqlite" | "duckdb",
+  string
+>;
+type ConnectionDefaultsConfig = {
+  colors: {
+    legacyDefault: string;
+    default: string;
+    samples: SampleConnectionColors;
+    palette: string[];
+    customPalette: string[];
+  };
+  engineOptions: EngineOption[];
+  localPostgresSampleUrl: string;
+  starterProfiles: ConnectionDraft[];
+};
+
+const connectionDefaultsConfig =
+  connectionDefaults as unknown as ConnectionDefaultsConfig;
+
 export const profilesStorageKey = "irodori.connectionProfiles.v1";
-const legacyDefaultConnectionColor = "#6b7280";
-const sampleConnectionColors = {
-  postgres: "#bddfbf",
-  mysql: "#b9cceb",
-  sqlite: "#ead79f",
-  duckdb: "#d2c1ea",
-} as const;
-export const defaultConnectionColor = "#a9d8cf";
+const legacyDefaultConnectionColor =
+  connectionDefaultsConfig.colors.legacyDefault;
+const sampleConnectionColors = connectionDefaultsConfig.colors.samples;
+export const defaultConnectionColor = connectionDefaultsConfig.colors.default;
 export const connectionColorOptions = [
-  defaultConnectionColor,
-  sampleConnectionColors.mysql,
-  sampleConnectionColors.postgres,
-  sampleConnectionColors.sqlite,
-  "#efb8b0",
-  sampleConnectionColors.duckdb,
-  "#a8d7dd",
-  "#f3c39f",
+  ...connectionDefaultsConfig.colors.palette,
 ];
 export const connectionCustomColorOptions = [
-  "#f4b8c2",
-  "#f7c7a5",
-  "#f2de9b",
-  "#cfe6a6",
-  "#aee3c5",
-  "#a9d8cf",
-  "#a8d7dd",
-  "#b9cceb",
-  "#d2c1ea",
-  "#e5b7d4",
-  "#e76f8a",
-  "#f08a4b",
-  "#d9a414",
-  "#7fba55",
-  "#2aa876",
-  "#157f85",
-  "#2f9bb3",
-  "#3f6ea8",
-  "#7c5aa0",
-  "#b0568d",
-  "#bd4b4b",
-  "#b56b1d",
-  "#9a6a1e",
-  "#4d8a4a",
-  "#2e7a56",
-  "#1f6f73",
-  "#336f86",
-  "#335f93",
-  "#6c5cae",
-  "#8a4f9e",
-  "#8f3131",
-  "#7a461a",
-  "#6b520f",
-  "#2f5f35",
-  "#225d4b",
-  "#1d5256",
-  "#264e63",
-  "#2f476b",
-  "#50447e",
-  "#653968",
+  ...connectionDefaultsConfig.colors.customPalette,
 ];
 
 export function normalizeConnectionColor(
@@ -121,118 +93,13 @@ function normalizeBuiltinConnectionColor(
   return legacyColors.includes(normalized) ? fallback : normalized;
 }
 
-export const engineOptions: Array<{ value: DbEngine; label: string }> = [
-  { value: "postgres", label: "PostgreSQL" },
-  { value: "mysql", label: "MySQL" },
-  { value: "sqlite", label: "SQLite" },
-  { value: "mariadb", label: "MariaDB" },
-  { value: "cockroachdb", label: "CockroachDB" },
-  { value: "timescaledb", label: "TimescaleDB" },
-  { value: "sqlserver", label: "SQL Server" },
-  { value: "duckdb", label: "DuckDB" },
-  { value: "motherduck", label: "MotherDuck" },
-  { value: "mongodb", label: "MongoDB" },
-  { value: "oracle", label: "Oracle" },
-  { value: "yugabytedb", label: "YugabyteDB" },
-  { value: "tidb", label: "TiDB" },
-  { value: "redshift", label: "Redshift" },
-  { value: "neon", label: "Neon" },
-  { value: "h2", label: "H2" },
-  { value: "clickhouse", label: "ClickHouse" },
-  { value: "neo4j", label: "Neo4j" },
-  { value: "memgraph", label: "Memgraph" },
-  { value: "influxdb", label: "InfluxDB" },
-  { value: "qdrant", label: "Qdrant" },
-  { value: "milvus", label: "Milvus" },
-  { value: "pinecone", label: "Pinecone" },
-  { value: "snowflake", label: "Snowflake" },
-  { value: "bigquery", label: "Google BigQuery" },
-  { value: "athena", label: "Amazon Athena" },
-  { value: "redis", label: "Redis" },
-  { value: "cassandra", label: "Cassandra/ScyllaDB" },
-  { value: "bigtable", label: "Google Cloud Bigtable" },
-  { value: "cloudSpanner", label: "Google Cloud Spanner" },
-  { value: "kvStore", label: "Generic KV Store" },
-  { value: "trinoPresto", label: "Trino / Presto" },
-  { value: "firebird", label: "Firebird" },
-  { value: "databricks", label: "Databricks / Spark SQL" },
-  { value: "elasticsearch", label: "Elasticsearch" },
-  { value: "openSearch", label: "OpenSearch" },
-  { value: "couchbase", label: "Couchbase" },
-  { value: "dynamodb", label: "DynamoDB" },
-  { value: "scylladb", label: "ScyllaDB" },
-  { value: "arangodb", label: "ArangoDB" },
-  { value: "questdb", label: "QuestDB" },
-  { value: "iotdb", label: "Apache IoTDB" },
-  { value: "hive", label: "Apache Hive" },
-  { value: "iceberg", label: "Apache Iceberg" },
-  { value: "s3Tables", label: "AWS S3 Tables" },
-  { value: "objectStore", label: "Object Store (S3/GCS/Azure Blob)" },
-  { value: "deltaLake", label: "Delta Lake" },
-  { value: "hudi", label: "Apache Hudi" },
-];
+export const engineOptions: EngineOption[] =
+  connectionDefaultsConfig.engineOptions;
 
-const localPostgresSampleUrl =
-  "postgres://irodori:irodori@127.0.0.1:55432/samples";
+const localPostgresSampleUrl = connectionDefaultsConfig.localPostgresSampleUrl;
 
-export const starterProfiles: ConnectionDraft[] = [
-  {
-    id: "local-pg",
-    name: "Local Postgres",
-    color: sampleConnectionColors.postgres,
-    engine: "postgres",
-    mode: "url",
-    url: localPostgresSampleUrl,
-    host: "127.0.0.1",
-    port: "55432",
-    user: "irodori",
-    password: "",
-    database: "samples",
-    readOnly: false,
-  },
-  {
-    id: "local-mysql",
-    name: "Local MySQL",
-    color: sampleConnectionColors.mysql,
-    engine: "mysql",
-    mode: "url",
-    url: "mysql://irodori:irodori@localhost:55306/samples",
-    host: "localhost",
-    port: "55306",
-    user: "irodori",
-    password: "",
-    database: "samples",
-    readOnly: false,
-  },
-  {
-    id: "sqlite-memory",
-    name: "SQLite Sample",
-    color: sampleConnectionColors.sqlite,
-    engine: "sqlite",
-    mode: "fields",
-    url: "",
-    host: "",
-    port: "",
-    user: "",
-    password: "",
-    database: ":memory:",
-    readOnly: false,
-  },
-  {
-    id: "duckdb-memory",
-    name: "DuckDB Sample",
-    color: sampleConnectionColors.duckdb,
-    engine: "duckdb",
-    mode: "fields",
-    url: "",
-    host: "",
-    port: "",
-    user: "",
-    password: "",
-    database: ":memory:",
-    readOnly: false,
-  },
-];
+export const starterProfiles: ConnectionDraft[] =
+  connectionDefaultsConfig.starterProfiles.map((profile) => ({ ...profile }));
 
 export function engineLabel(engine: DbEngine) {
   return engineOptions.find((item) => item.value === engine)?.label ?? engine;
