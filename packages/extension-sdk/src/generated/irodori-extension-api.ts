@@ -48,9 +48,13 @@ export type SqlKeywordCase = "upper" | "lower" | "preserve";
 
 export type ConnectorContribution = { id: string, engine: string, label: string, aliases: Array<string>, defaultPort?: number, wire?: string, module?: string, dialect?: string, features: Array<ConnectorFeature>, connection?: ConnectorConnectionModel, };
 
-export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing";
+export type ConnectorFeature = "sql" | "metadata" | "transactions" | "streaming" | "preparedQueries" | "explain" | "resultEditing" | "graph" | "graphVisualization" | "pathFinding" | "graphAlgorithms" | "vectorSearch" | "embeddingSearch" | "hybridSearch" | "fullTextSearch" | "facetedSearch" | "timeSeries" | "timeBuckets" | "latestValue" | "asOfJoin" | "queryTemplates" | "visualization";
 
-export type ConnectorConnectionModel = { schemaVersion: number, endpoint: ConnectorEndpointModel, profileFields: Array<ConnectorConnectionField>, authMethods: Array<ConnectorAuthMethod>, secretPurposes: Array<ConnectorSecretPurpose>, tls: ConnectorTlsModel, transports: Array<ConnectorTransportMode>, optionNamespaces: Array<string>, customDriverOptions: boolean, };
+export type ConnectorConnectionModel = { schemaVersion: number, inferEnvironmentFrom: Array<string>, compatibility: ConnectorConnectionCompatibility, defaults: ConnectorConnectionDefaults, endpoint: ConnectorEndpointModel, profileFields: Array<ConnectorConnectionField>, authMethods: Array<ConnectorAuthMethod>, secretPurposes: Array<ConnectorSecretPurpose>, tls: ConnectorTlsModel, transports: Array<ConnectorTransportMode>, optionNamespaces: Array<string>, customDriverOptions: boolean, };
+
+export type ConnectorConnectionCompatibility = { addsRequiredProfileFields: boolean, acceptsExistingProfiles: boolean, };
+
+export type ConnectorConnectionDefaults = { engine: string, wire: string, port: number, readOnly: boolean, };
 
 export type ConnectorEndpointModel = { modes: Array<ConnectorEndpointMode>, defaultPort: number, fields: Array<ConnectorConnectionField>, };
 

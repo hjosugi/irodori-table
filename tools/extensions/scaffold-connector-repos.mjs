@@ -140,6 +140,7 @@ function writeConnectorRepo(entry) {
     platforms,
   };
   const connection = connectionModel(entry, engineMeta);
+  const experience = connectorExperience(entry, engineMeta);
   const connectorContribution = {
     id: connectorId,
     engine,
@@ -216,6 +217,7 @@ function writeConnectorRepo(entry) {
       snapshots: migrationSources,
     },
     connection,
+    ...(experience ? { experience } : {}),
   };
 
   mkdirSync(resolve(repoDir, "src"), { recursive: true });
@@ -231,7 +233,7 @@ function writeConnectorRepo(entry) {
   writeRustSources(repoDir, engine, label, realDriverLinked);
   writeText(
     resolve(repoDir, "README.md"),
-    readme(entry, engineMeta, visibility, realDriverLinked, connection),
+    readme(entry, engineMeta, visibility, realDriverLinked, connection, experience),
   );
   writeText(
     resolve(repoDir, "native/source/README.md"),
@@ -334,6 +336,7 @@ function isDuckDbBackedConnector(engine) {
 
 function connectorFeatures(entry, engineMeta) {
   const categories = new Set(entry.categories ?? []);
+  const engine = entry.engines[0];
   const features = ["metadata"];
   if (isSqlLikeConnector(entry, engineMeta)) {
     features.push("sql");
@@ -351,7 +354,720 @@ function connectorFeatures(entry, engineMeta) {
   ) {
     features.push("explain");
   }
+  const domains = new Set(connectorExperienceDomains(entry, engineMeta));
+  if (domains.has("graph")) {
+    features.push("graph", "graphVisualization", "pathFinding", "graphAlgorithms", "queryTemplates", "visualization");
+  }
+  if (domains.has("vector")) {
+    features.push("vectorSearch", "embeddingSearch", "hybridSearch", "queryTemplates", "visualization");
+  }
+  if (domains.has("search")) {
+    features.push("fullTextSearch", "facetedSearch", "hybridSearch", "queryTemplates");
+  }
+  if (domains.has("timeSeries")) {
+    features.push("timeSeries", "timeBuckets", "latestValue", "queryTemplates", "visualization");
+    if (engine === "questdb") {
+      features.push("asOfJoin");
+    }
+  }
   return unique(features);
+}
+
+function connectorExperienceDomains(entry, engineMeta) {
+  const categories = new Set(entry.categories ?? []);
+  const engine = entry.engines[0];
+  const family = String(engineMeta.family ?? "");
+  const domains = [];
+  if (categories.has("graph") || ["neo4j", "memgraph", "arangodb"].includes(engine)) {
+    domains.push("graph");
+  }
+  if (categories.has("search") || ["elasticsearch", "openSearch"].includes(engine)) {
+    domains.push("search", "vector");
+  }
+  if (categories.has("vector") || ["qdrant", "milvus", "pinecone"].includes(engine)) {
+    domains.push("vector");
+  }
+  if (
+    categories.has("time-series") ||
+    ["influxdb", "questdb", "iotdb", "clickhouse"].includes(engine) ||
+    family.includes("time")
+  ) {
+    domains.push("timeSeries");
+  }
+  return unique(domains);
+}
+
+function connectorExperience(entry, engineMeta) {
+  const engine = entry.engines[0];
+  const domains = connectorExperienceDomains(entry, engineMeta);
+  if (domains.length === 0) {
+    return null;
+  }
+  const parts = domains
+    .map((domain) => {
+      if (domain === "graph") {
+        return graphExperience(engine);
+      }
+      if (domain === "vector") {
+        return vectorExperience(engine);
+      }
+      if (domain === "search") {
+        return searchExperience(engine);
+      }
+      if (domain === "timeSeries") {
+        return timeSeriesExperience(engine);
+      }
+      return null;
+    })
+    .filter(Boolean);
+  return {
+    schemaVersion: 1,
+    domains,
+    inspiredBy: unique(parts.flatMap((part) => part.inspiredBy ?? [])),
+    resultViews: unique(parts.flatMap((part) => part.resultViews ?? [])),
+    objectTypes: unique(parts.flatMap((part) => part.objectTypes ?? [])),
+    workflows: uniqueBy(parts.flatMap((part) => part.workflows ?? []), (workflow) => workflow.id),
+    queryTemplates: uniqueBy(parts.flatMap((part) => part.queryTemplates ?? []), (template) => template.id),
+    inspectorHints: uniqueBy(parts.flatMap((part) => part.inspectorHints ?? []), (hint) => hint.id),
+  };
+}
+
+function graphExperience(engine) {
+  if (engine === "arangodb") {
+    return {
+      inspiredBy: ["ArangoDB Web Interface Graph Viewer", "AQL graph traversals", "AQL shortest path"],
+      resultViews: ["graph", "path", "table", "json"],
+      objectTypes: ["graphs", "vertexCollections", "edgeCollections", "indexes", "analyzers"],
+      workflows: [
+        workflow("graph-neighborhood", "Explore neighborhood", "Start from one vertex and return the surrounding path objects.", "graph", ["graph-aql-neighborhood"]),
+        workflow("graph-shortest-path", "Shortest path", "Trace the shortest route between two vertices in a named graph.", "path", ["graph-aql-shortest-path"]),
+        workflow("graph-collection-sample", "Collection sample", "Inspect vertex or edge documents before building a traversal.", "table", ["graph-aql-sample"]),
+      ],
+      queryTemplates: [
+        queryTemplate(
+          "graph-aql-neighborhood",
+          "Neighborhood traversal",
+          "aql",
+          "Return paths around a starting vertex.",
+          `FOR v, e, p IN 1..2 ANY @startVertex GRAPH @graphName
+  LIMIT @limit
+  RETURN p`,
+          [
+            parameter("graphName", "Graph name", "string"),
+            parameter("startVertex", "Start vertex id", "string"),
+            parameter("limit", "Limit", "number", 25),
+          ],
+          "graph",
+        ),
+        queryTemplate(
+          "graph-aql-shortest-path",
+          "Shortest path",
+          "aql",
+          "Find the shortest path between source and target vertices.",
+          `FOR v, e, p IN OUTBOUND SHORTEST_PATH @source TO @target GRAPH @graphName
+  RETURN p`,
+          [
+            parameter("graphName", "Graph name", "string"),
+            parameter("source", "Source vertex id", "string"),
+            parameter("target", "Target vertex id", "string"),
+          ],
+          "path",
+        ),
+        queryTemplate(
+          "graph-aql-sample",
+          "Collection sample",
+          "aql",
+          "Preview graph collection documents.",
+          `FOR doc IN @@collection
+  LIMIT @limit
+  RETURN doc`,
+          [
+            parameter("collection", "Collection", "string"),
+            parameter("limit", "Limit", "number", 25),
+          ],
+          "table",
+        ),
+      ],
+      inspectorHints: [
+        inspectorHint("graph-name", "Graph selector", "Expose named graphs alongside vertex and edge collections."),
+        inspectorHint("edge-direction", "Direction toggle", "Let users switch OUTBOUND, INBOUND, and ANY traversal direction."),
+      ],
+    };
+  }
+  return {
+    inspiredBy: engine === "memgraph"
+      ? ["Memgraph Lab", "MAGE graph algorithms", "Cypher shortest path"]
+      : ["Neo4j Browser", "Neo4j Bloom", "Neo4j Graph Data Science", "Cypher shortest path"],
+    resultViews: ["graph", "path", "table"],
+    objectTypes: ["nodeLabels", "relationshipTypes", "properties", "indexes", "constraints"],
+    workflows: [
+      workflow("graph-schema-overview", "Schema overview", "Summarize labels and relationship types before exploration.", "table", ["graph-cypher-label-counts"]),
+      workflow("graph-neighborhood", "Explore neighborhood", "Return connected nodes and relationships around a node.", "graph", ["graph-cypher-neighborhood"]),
+      workflow("graph-shortest-path", "Shortest path", "Find a bounded shortest path between source and target nodes.", "path", ["graph-cypher-shortest-path"]),
+      workflow("graph-algorithm-starter", "Algorithm starter", "Open centrality and community-detection starter queries.", "table", ["graph-cypher-degree-centrality"]),
+    ],
+    queryTemplates: [
+      queryTemplate(
+        "graph-cypher-label-counts",
+        "Label counts",
+        "cypher",
+        "Count nodes by label for a quick schema read.",
+        "MATCH (n)\nRETURN labels(n) AS labels, count(*) AS count\nORDER BY count DESC",
+        [],
+        "table",
+      ),
+      queryTemplate(
+        "graph-cypher-neighborhood",
+        "Neighborhood graph",
+        "cypher",
+        "Render a small relationship neighborhood.",
+        "MATCH (n)-[r]->(m)\nRETURN n, r, m\nLIMIT $limit",
+        [parameter("limit", "Limit", "number", 100)],
+        "graph",
+      ),
+      queryTemplate(
+        "graph-cypher-shortest-path",
+        "Shortest path",
+        "cypher",
+        "Find a bounded shortest path between two nodes.",
+        "MATCH p = shortestPath((source {id: $sourceId})-[*..6]-(target {id: $targetId}))\nRETURN p",
+        [
+          parameter("sourceId", "Source id", "string"),
+          parameter("targetId", "Target id", "string"),
+        ],
+        "path",
+      ),
+      queryTemplate(
+        "graph-cypher-degree-centrality",
+        "Degree centrality starter",
+        "cypher",
+        "Find highly connected nodes without requiring a projected algorithm graph.",
+        "MATCH (n)--()\nRETURN n, count(*) AS degree\nORDER BY degree DESC\nLIMIT $limit",
+        [parameter("limit", "Limit", "number", 25)],
+        "table",
+      ),
+    ],
+    inspectorHints: [
+      inspectorHint("graph-node-labels", "Label browser", "Show labels, relationship types, and sample properties together."),
+      inspectorHint("graph-expand-depth", "Depth control", "Offer one, two, and three hop expansion presets."),
+    ],
+  };
+}
+
+function vectorExperience(engine) {
+  const common = {
+    resultViews: ["vectorNeighbors", "table", "json"],
+    objectTypes: ["collections", "indexes", "vectors", "payloadFields", "partitions", "namespaces"],
+    workflows: [
+      workflow("vector-similarity-search", "Similarity search", "Search nearest neighbors from a pasted vector or embedding variable.", "vectorNeighbors", ["vector-similarity"]),
+      workflow("vector-filtered-search", "Filtered ANN search", "Combine vector similarity with metadata or scalar filters.", "vectorNeighbors", ["vector-filtered"]),
+      workflow("vector-health", "Collection or index health", "Inspect vector count, dimensionality, metric, shard, and index status.", "table", ["vector-health"]),
+    ],
+    inspectorHints: [
+      inspectorHint("vector-dimension", "Dimension badge", "Surface vector dimension and distance metric beside each collection or index."),
+      inspectorHint("vector-payload", "Payload fields", "Show filterable metadata fields before composing a filtered search."),
+    ],
+  };
+  if (engine === "qdrant") {
+    return {
+      ...common,
+      inspiredBy: ["Qdrant Collections", "Qdrant filtering", "Qdrant payload indexes"],
+      queryTemplates: [
+        queryTemplate(
+          "vector-similarity",
+          "Qdrant similarity search",
+          "json",
+          "Search nearest points with payloads but without returning raw vectors.",
+          `{
+  "vector": "$vector",
+  "limit": 10,
+  "with_payload": true,
+  "with_vector": false
+}`,
+          [parameter("vector", "Query vector", "json")],
+          "vectorNeighbors",
+        ),
+        queryTemplate(
+          "vector-filtered",
+          "Qdrant filtered search",
+          "json",
+          "Filter payload fields while searching nearest neighbors.",
+          `{
+  "vector": "$vector",
+  "filter": {
+    "must": [
+      { "key": "$field", "match": { "value": "$value" } }
+    ]
+  },
+  "limit": 10,
+  "with_payload": true,
+  "with_vector": false
+}`,
+          [
+            parameter("vector", "Query vector", "json"),
+            parameter("field", "Payload field", "string"),
+            parameter("value", "Payload value", "string"),
+          ],
+          "vectorNeighbors",
+        ),
+        queryTemplate("vector-health", "Qdrant collection info", "text", "Inspect collection status and vector config.", "GET /collections/$collection", [parameter("collection", "Collection", "string")], "json"),
+      ],
+    };
+  }
+  if (engine === "milvus") {
+    return {
+      ...common,
+      inspiredBy: ["Milvus collections", "Milvus indexes", "Milvus scalar filtering"],
+      queryTemplates: [
+        queryTemplate(
+          "vector-similarity",
+          "Milvus vector search",
+          "python",
+          "Search a collection with a COSINE ANN parameter block.",
+          `collection.search(
+    data=[$vector],
+    anns_field="embedding",
+    param={"metric_type": "COSINE", "params": {"ef": 64}},
+    limit=10,
+    output_fields=["*"]
+)`,
+          [parameter("vector", "Query vector", "json")],
+          "vectorNeighbors",
+        ),
+        queryTemplate(
+          "vector-filtered",
+          "Milvus filtered search",
+          "python",
+          "Add a scalar filter expression to vector search.",
+          `collection.search(
+    data=[$vector],
+    anns_field="embedding",
+    param={"metric_type": "COSINE", "params": {"ef": 64}},
+    limit=10,
+    expr='$field == "$value"',
+    output_fields=["*"]
+)`,
+          [
+            parameter("vector", "Query vector", "json"),
+            parameter("field", "Scalar field", "string"),
+            parameter("value", "Scalar value", "string"),
+          ],
+          "vectorNeighbors",
+        ),
+        queryTemplate("vector-health", "Milvus collection stats", "text", "Inspect collection schema, indexes, and load state.", "describe_collection($collection)", [parameter("collection", "Collection", "string")], "table"),
+      ],
+    };
+  }
+  if (engine === "pinecone") {
+    return {
+      ...common,
+      inspiredBy: ["Pinecone indexes", "Pinecone namespaces", "Pinecone metadata filters"],
+      queryTemplates: [
+        queryTemplate(
+          "vector-similarity",
+          "Pinecone query",
+          "json",
+          "Search topK nearest records in a namespace.",
+          `{
+  "namespace": "$namespace",
+  "vector": $vector,
+  "topK": 10,
+  "includeMetadata": true
+}`,
+          [
+            parameter("namespace", "Namespace", "string", "default"),
+            parameter("vector", "Query vector", "json"),
+          ],
+          "vectorNeighbors",
+        ),
+        queryTemplate(
+          "vector-filtered",
+          "Pinecone filtered query",
+          "json",
+          "Search vectors with a metadata filter.",
+          `{
+  "namespace": "$namespace",
+  "vector": $vector,
+  "topK": 10,
+  "includeMetadata": true,
+  "filter": {
+    "$field": { "$eq": "$value" }
+  }
+}`,
+          [
+            parameter("namespace", "Namespace", "string", "default"),
+            parameter("vector", "Query vector", "json"),
+            parameter("field", "Metadata field", "string"),
+            parameter("value", "Metadata value", "string"),
+          ],
+          "vectorNeighbors",
+        ),
+        queryTemplate("vector-health", "Pinecone index stats", "text", "Inspect namespaces, dimensions, and vector counts.", "describe_index_stats(namespace=$namespace)", [parameter("namespace", "Namespace", "string", "default")], "table"),
+      ],
+    };
+  }
+  return {
+    ...common,
+    inspiredBy: engine === "openSearch" ? ["OpenSearch k-NN search", "OpenSearch hybrid search", "OpenSearch aggregations"] : ["Elasticsearch kNN search", "Elasticsearch hybrid search", "Elasticsearch aggregations"],
+    queryTemplates: [
+      queryTemplate(
+        "vector-similarity",
+        "kNN vector search",
+        "json",
+        "Search nearest vectors using a dense-vector field.",
+        `{
+  "knn": {
+    "field": "embedding",
+    "query_vector": $vector,
+    "k": 10,
+    "num_candidates": 100
+  }
+}`,
+        [parameter("vector", "Query vector", "json")],
+        "vectorNeighbors",
+      ),
+      queryTemplate(
+        "vector-filtered",
+        "Filtered kNN search",
+        "json",
+        "Combine kNN search with a metadata filter.",
+        `{
+  "knn": {
+    "field": "embedding",
+    "query_vector": $vector,
+    "k": 10,
+    "num_candidates": 100,
+    "filter": { "term": { "$field": "$value" } }
+  }
+}`,
+        [
+          parameter("vector", "Query vector", "json"),
+          parameter("field", "Filter field", "string"),
+          parameter("value", "Filter value", "string"),
+        ],
+        "vectorNeighbors",
+      ),
+      queryTemplate("vector-health", "Index mapping", "text", "Inspect vector mapping and index settings.", "GET /$index/_mapping", [parameter("index", "Index", "string")], "json"),
+    ],
+  };
+}
+
+function searchExperience(engine) {
+  return {
+    inspiredBy: engine === "openSearch" ? ["OpenSearch Dashboards Discover", "OpenSearch aggregations", "OpenSearch hybrid search"] : ["Kibana Discover", "Elasticsearch aggregations", "Elasticsearch hybrid search"],
+    resultViews: ["searchHits", "facets", "json", "table"],
+    objectTypes: ["indexes", "mappings", "aliases", "templates", "analyzers"],
+    workflows: [
+      workflow("search-discover", "Discover documents", "Search documents with query text, field filters, and highlights.", "searchHits", ["search-query-string"]),
+      workflow("search-facets", "Facet breakdown", "Build terms and date facets for a filtered result set.", "facets", ["search-facets"]),
+      workflow("search-hybrid", "Hybrid search", "Blend text relevance with vector nearest-neighbor search.", "searchHits", ["search-hybrid"]),
+    ],
+    queryTemplates: [
+      queryTemplate(
+        "search-query-string",
+        "Query string search",
+        "json",
+        "Search all mapped fields and highlight matched text.",
+        `{
+  "query": {
+    "query_string": {
+      "query": "$query"
+    }
+  },
+  "highlight": {
+    "fields": { "*": {} }
+  },
+  "size": 25
+}`,
+        [parameter("query", "Search query", "string")],
+        "searchHits",
+      ),
+      queryTemplate(
+        "search-facets",
+        "Terms facet",
+        "json",
+        "Return a terms aggregation for a field.",
+        `{
+  "size": 0,
+  "aggs": {
+    "by_field": {
+      "terms": { "field": "$field", "size": 20 }
+    }
+  }
+}`,
+        [parameter("field", "Facet field", "string")],
+        "facets",
+      ),
+      queryTemplate(
+        "search-hybrid",
+        "Hybrid text and vector search",
+        "json",
+        "Keep a starter shape for combining text relevance with vector search.",
+        `{
+  "query": {
+    "bool": {
+      "must": [
+        { "match": { "$textField": "$query" } }
+      ]
+    }
+  },
+  "knn": {
+    "field": "embedding",
+    "query_vector": $vector,
+    "k": 10,
+    "num_candidates": 100
+  }
+}`,
+        [
+          parameter("textField", "Text field", "string"),
+          parameter("query", "Search query", "string"),
+          parameter("vector", "Query vector", "json"),
+        ],
+        "searchHits",
+      ),
+    ],
+    inspectorHints: [
+      inspectorHint("search-mapping", "Mapping inspector", "Show analyzer, type, and fielddata/doc_values availability per field."),
+      inspectorHint("search-facetable", "Facet suggestions", "Suggest keyword, numeric, boolean, and date fields for facets."),
+    ],
+  };
+}
+
+function timeSeriesExperience(engine) {
+  if (engine === "influxdb") {
+    return {
+      inspiredBy: ["InfluxDB Data Explorer", "Flux aggregateWindow", "InfluxDB tasks"],
+      resultViews: ["timeChart", "table", "heatmap"],
+      objectTypes: ["buckets", "measurements", "fields", "tags", "retentionPolicies", "tasks"],
+      workflows: [
+        workflow("time-range-query", "Time range query", "Start every query from a clear time range.", "timeChart", ["time-influx-aggregate-window"]),
+        workflow("time-downsample", "Downsample window", "Aggregate points into a chart-friendly window.", "timeChart", ["time-influx-aggregate-window"]),
+        workflow("time-latest", "Latest values", "Read latest values per series key.", "table", ["time-influx-latest"]),
+      ],
+      queryTemplates: [
+        queryTemplate(
+          "time-influx-aggregate-window",
+          "Aggregate window",
+          "flux",
+          "Downsample a measurement over the last hour.",
+          `from(bucket: "$bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "$measurement")
+  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+  |> yield(name: "mean")`,
+          [
+            parameter("bucket", "Bucket", "string"),
+            parameter("measurement", "Measurement", "string"),
+          ],
+          "timeChart",
+        ),
+        queryTemplate(
+          "time-influx-latest",
+          "Latest values",
+          "flux",
+          "Return latest values for a measurement.",
+          `from(bucket: "$bucket")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "$measurement")
+  |> last()`,
+          [
+            parameter("bucket", "Bucket", "string"),
+            parameter("measurement", "Measurement", "string"),
+          ],
+          "table",
+        ),
+      ],
+      inspectorHints: [
+        inspectorHint("time-field-tag", "Field and tag picker", "Group fields and tags so chart builders can choose dimensions quickly."),
+        inspectorHint("time-range", "Pinned time range", "Carry a reusable time range across Flux templates."),
+      ],
+    };
+  }
+  if (engine === "questdb") {
+    return {
+      inspiredBy: ["QuestDB Web Console", "SAMPLE BY", "LATEST ON", "ASOF JOIN"],
+      resultViews: ["timeChart", "table", "heatmap"],
+      objectTypes: ["tables", "designatedTimestamps", "symbols", "partitions", "walTables"],
+      workflows: [
+        workflow("time-sample-by", "Sample by window", "Aggregate timestamped rows into fixed windows.", "timeChart", ["time-questdb-sample-by"]),
+        workflow("time-latest", "Latest per key", "Read the newest row per symbol or device.", "table", ["time-questdb-latest"]),
+        workflow("time-asof-join", "As-of join", "Join event streams by nearest preceding timestamp.", "table", ["time-questdb-asof-join"]),
+      ],
+      queryTemplates: [
+        queryTemplate(
+          "time-questdb-sample-by",
+          "SAMPLE BY aggregate",
+          "sql",
+          "Downsample recent readings into one-minute buckets.",
+          `SELECT timestamp, avg(value)
+FROM readings
+WHERE timestamp >= dateadd('h', -1, now())
+SAMPLE BY 1m ALIGN TO CALENDAR;`,
+          [],
+          "timeChart",
+        ),
+        queryTemplate(
+          "time-questdb-latest",
+          "LATEST ON per key",
+          "sql",
+          "Return the latest row for each sensor.",
+          "SELECT *\nFROM readings\nLATEST ON timestamp PARTITION BY sensor_id;",
+          [],
+          "table",
+        ),
+        queryTemplate(
+          "time-questdb-asof-join",
+          "ASOF JOIN",
+          "sql",
+          "Join two time-aligned event streams.",
+          `SELECT *
+FROM trades t ASOF JOIN quotes q ON (symbol)
+WHERE t.timestamp >= dateadd('d', -1, now());`,
+          [],
+          "table",
+        ),
+      ],
+      inspectorHints: [
+        inspectorHint("time-designated", "Designated timestamp", "Highlight the designated timestamp column and partitioning choice."),
+        inspectorHint("time-symbol", "Symbol columns", "Show symbol columns as preferred group and partition keys."),
+      ],
+    };
+  }
+  if (engine === "iotdb") {
+    return {
+      inspiredBy: ["Apache IoTDB time-series hierarchy", "GROUP BY time", "ALIGN BY DEVICE", "FILL"],
+      resultViews: ["timeChart", "table", "heatmap"],
+      objectTypes: ["storageGroups", "devices", "measurements", "templates", "ttl"],
+      workflows: [
+        workflow("time-device-query", "Device aligned query", "Compare measurements across devices.", "timeChart", ["time-iotdb-group-by-device"]),
+        workflow("time-gap-fill", "Gap fill", "Fill sparse telemetry windows for charting.", "timeChart", ["time-iotdb-fill"]),
+        workflow("time-latest", "Latest telemetry", "Inspect the newest values in a device subtree.", "table", ["time-iotdb-latest"]),
+      ],
+      queryTemplates: [
+        queryTemplate(
+          "time-iotdb-group-by-device",
+          "GROUP BY time aligned by device",
+          "sql",
+          "Aggregate measurements per device over the last hour.",
+          `SELECT avg(temperature)
+FROM root.factory.**
+WHERE time >= now() - 1h
+GROUP BY ([now() - 1h, now()), 1m)
+ALIGN BY DEVICE;`,
+          [],
+          "timeChart",
+        ),
+        queryTemplate(
+          "time-iotdb-fill",
+          "Fill missing windows",
+          "sql",
+          "Fill sparse time windows for a device path.",
+          `SELECT last_value(temperature)
+FROM root.factory.line1.device1
+WHERE time >= now() - 1h
+FILL(previous);`,
+          [],
+          "timeChart",
+        ),
+        queryTemplate(
+          "time-iotdb-latest",
+          "Latest values",
+          "sql",
+          "Read recent measurements from a hierarchy.",
+          "SELECT last_value(*)\nFROM root.factory.**;",
+          [],
+          "table",
+        ),
+      ],
+      inspectorHints: [
+        inspectorHint("time-device-tree", "Device tree", "Keep storage group, device, and measurement hierarchy navigable."),
+        inspectorHint("time-align-device", "Align by device", "Offer ALIGN BY DEVICE as a visible query option."),
+      ],
+    };
+  }
+  return {
+    inspiredBy: ["ClickHouse SQL console", "time bucketing", "latest-point analytics"],
+    resultViews: ["timeChart", "table", "heatmap"],
+    objectTypes: ["tables", "columns", "partitions", "projections", "materializedViews"],
+    workflows: [
+      workflow("time-bucket", "Bucketed aggregate", "Group high-volume events into chart windows.", "timeChart", ["time-clickhouse-bucket"]),
+      workflow("time-latest", "Latest event per key", "Use argMax-style aggregates for latest values.", "table", ["time-clickhouse-latest"]),
+    ],
+    queryTemplates: [
+      queryTemplate(
+        "time-clickhouse-bucket",
+        "Bucketed aggregate",
+        "sql",
+        "Aggregate events into one-minute windows.",
+        `SELECT
+  toStartOfInterval(timestamp, INTERVAL 1 minute) AS bucket,
+  count() AS events
+FROM events
+WHERE timestamp >= now() - INTERVAL 1 HOUR
+GROUP BY bucket
+ORDER BY bucket;`,
+        [],
+        "timeChart",
+      ),
+      queryTemplate(
+        "time-clickhouse-latest",
+        "Latest per key",
+        "sql",
+        "Return latest values per series key.",
+        `SELECT
+  series_id,
+  argMax(value, timestamp) AS latest_value,
+  max(timestamp) AS latest_timestamp
+FROM readings
+GROUP BY series_id;`,
+        [],
+        "table",
+      ),
+    ],
+    inspectorHints: [
+      inspectorHint("time-partition", "Partition key", "Show partition expressions and TTL settings near each table."),
+      inspectorHint("time-projection", "Projection hint", "Surface projections and materialized views useful for time buckets."),
+    ],
+  };
+}
+
+function queryTemplate(id, label, language, description, insertText, parameters = [], resultView = "table") {
+  return {
+    id,
+    label,
+    language,
+    description,
+    insertText,
+    parameters,
+    resultView,
+  };
+}
+
+function workflow(id, label, description, resultView, templateIds = []) {
+  return {
+    id,
+    label,
+    description,
+    resultView,
+    templateIds,
+  };
+}
+
+function parameter(id, label, type, defaultValue = undefined) {
+  return {
+    id,
+    label,
+    type,
+    ...(defaultValue !== undefined ? { default: defaultValue } : {}),
+  };
+}
+
+function inspectorHint(id, label, description) {
+  return {
+    id,
+    label,
+    description,
+  };
 }
 
 function isSqlLikeConnector(entry, engineMeta) {
@@ -1837,7 +2553,7 @@ mod tests {
 `;
 }
 
-function readme(entry, engineMeta, visibility, realDriverLinked, connection) {
+function readme(entry, engineMeta, visibility, realDriverLinked, connection, experience) {
   const publicNote =
     visibility === "public"
       ? "This connector is listed in the public Irodori extension marketplace."
@@ -1906,7 +2622,7 @@ ${driverNote}
 |---|---|---|
 ${authRows}
 
-## ABI Calls
+${experienceReadme(experience)}## ABI Calls
 
 The scaffold handles these JSON requests today:
 
@@ -1931,6 +2647,46 @@ make build
 
 Release packages place platform-specific native artifacts under \`dist/native\`.
 `;
+}
+
+function experienceReadme(experience) {
+  if (!experience) {
+    return "";
+  }
+  const domains = experience.domains.map((domain) => `\`${domain}\``).join(", ");
+  const resultViews = experience.resultViews.map((view) => `\`${view}\``).join(", ");
+  const inspiredBy = experience.inspiredBy.map((item) => `\`${item}\``).join(", ");
+  const workflows = experience.workflows
+    .map(
+      (workflowItem) =>
+        `| ${escapeMarkdownTable(workflowItem.label)} | ${escapeMarkdownTable(workflowItem.resultView)} | ${escapeMarkdownTable(workflowItem.templateIds.join(", "))} |`,
+    )
+    .join("\n");
+  const templates = experience.queryTemplates
+    .map(
+      (template) =>
+        `| \`${template.id}\` | ${escapeMarkdownTable(template.label)} | \`${template.language}\` | \`${template.resultView}\` |`,
+    )
+    .join("\n");
+  return `## Experience Metadata
+
+- Domains: ${domains}
+- Result views: ${resultViews}
+- Inspired by: ${inspiredBy}
+
+| Workflow | Result view | Templates |
+|---|---|---|
+${workflows}
+
+| Template | Label | Language | Result view |
+|---|---|---|---|
+${templates}
+
+`;
+}
+
+function escapeMarkdownTable(value) {
+  return String(value).replace(/\|/g, "\\|");
 }
 
 function sourceReadme(entry, engineMeta, adapter, adapterSha256, migrationSources) {

@@ -380,7 +380,22 @@
               "streaming",
               "preparedQueries",
               "explain",
-              "resultEditing"
+              "resultEditing",
+              "graph",
+              "graphVisualization",
+              "pathFinding",
+              "graphAlgorithms",
+              "vectorSearch",
+              "embeddingSearch",
+              "hybridSearch",
+              "fullTextSearch",
+              "facetedSearch",
+              "timeSeries",
+              "timeBuckets",
+              "latestValue",
+              "asOfJoin",
+              "queryTemplates",
+              "visualization"
             ]
           },
           "uniqueItems": true

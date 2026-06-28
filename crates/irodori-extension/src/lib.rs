@@ -342,6 +342,21 @@ pub enum ConnectorFeature {
     PreparedQueries,
     Explain,
     ResultEditing,
+    Graph,
+    GraphVisualization,
+    PathFinding,
+    GraphAlgorithms,
+    VectorSearch,
+    EmbeddingSearch,
+    HybridSearch,
+    FullTextSearch,
+    FacetedSearch,
+    TimeSeries,
+    TimeBuckets,
+    LatestValue,
+    AsOfJoin,
+    QueryTemplates,
+    Visualization,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -349,6 +364,10 @@ pub enum ConnectorFeature {
 #[ts(rename_all = "camelCase")]
 pub struct ConnectorConnectionModel {
     pub schema_version: u16,
+    #[serde(default)]
+    pub infer_environment_from: Vec<String>,
+    pub compatibility: ConnectorConnectionCompatibility,
+    pub defaults: ConnectorConnectionDefaults,
     pub endpoint: ConnectorEndpointModel,
     #[serde(default)]
     pub profile_fields: Vec<ConnectorConnectionField>,
@@ -363,6 +382,24 @@ pub struct ConnectorConnectionModel {
     pub option_namespaces: Vec<String>,
     #[serde(default)]
     pub custom_driver_options: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorConnectionCompatibility {
+    pub adds_required_profile_fields: bool,
+    pub accepts_existing_profiles: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(rename_all = "camelCase")]
+pub struct ConnectorConnectionDefaults {
+    pub engine: String,
+    pub wire: String,
+    pub port: u16,
+    pub read_only: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -887,6 +924,8 @@ mod typegen {
             .decl(&decl::<ConnectorContribution>())
             .decl(&decl::<ConnectorFeature>())
             .decl(&decl::<ConnectorConnectionModel>())
+            .decl(&decl::<ConnectorConnectionCompatibility>())
+            .decl(&decl::<ConnectorConnectionDefaults>())
             .decl(&decl::<ConnectorEndpointModel>())
             .decl(&decl::<ConnectorAuthMethod>())
             .decl(&decl::<ConnectorConnectionField>())
