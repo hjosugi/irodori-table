@@ -61,7 +61,7 @@
             </div>
             <div>
               <dt>Updated</dt>
-              <dd>2026-06-27</dd>
+              <dd>2026-06-28</dd>
             </div>
           </dl>
         </div>
@@ -113,6 +113,7 @@
             <a href="#query-editor">クエリエディタ</a>
             <a href="#completion">補完</a>
             <a href="#results">結果グリッド</a>
+            <a href="#migration-diff">Migration / diff</a>
             <a href="#bi-sidebar">BI / Sidebar</a>
             <a href="#git">Git graph</a>
             <a href="#security">セキュリティ</a>
@@ -184,6 +185,8 @@ npm run build</code></pre>
               <p>
                 CodeMirror 6 ベースです。SQL dialect、Vim mode、format、comment toggle、
                 Run Current / selection 実行、接続別履歴を扱います。
+                <code>Ctrl</code>/<code>Cmd</code>+<code>F</code> で検索パネルを開き、
+                同じパネルから replace も使えます。
               </p>
               <pre class="code-block"><code>select c.id, c.name, sum(o.total) as lifetime_value
 from customers c
@@ -218,6 +221,48 @@ group by c.id, c.name;</code></pre>
                 export は CSV、TSV、JSON、JSONL、SQL INSERT、Excel互換HTML、Markdown を提供します。
                 大きい結果はディスク offload と windowed paging で保持できます。
               </p>
+              <div class="callout">
+                <strong>Editable result safety</strong>
+                <p>
+                  直接単一テーブルを選ぶ結果で、primary key または unique key が見えている場合は
+                  grid 上の変更を <strong>Save Changes</strong> で保存します。
+                  未保存変更がある状態で refresh しようとすると、保存または破棄の確認を挟みます。
+                </p>
+              </div>
+              <div class="callout">
+                <strong>Row SQL</strong>
+                <p>
+                  選択行に対して <code>BEGIN</code>/<code>COMMIT</code> で囲んだ
+                  review 用 <code>UPDATE</code> を SQL editor に挿入できます。
+                  実行前に値や <code>WHERE</code> を確認してから通常の query として実行します。
+                </p>
+              </div>
+            </section>
+
+            <section class="doc-section" id="migration-diff">
+              <p class="eyebrow">Migration / diff</p>
+              <h2>移行計画、hash 検証、diff SQL。</h2>
+              <p>
+                Migration Studio は Hive から Snowflake への移行を既定にしつつ、
+                PostgreSQL、Oracle、MySQL/MariaDB、Redshift、Databricks/Spark SQL、
+                Trino/Presto、DuckDB/DuckDB-Wasm、Apache Iceberg REST、AWS S3 Tables の
+                plan / source SQL / target SQL / diff SQL / runbook を生成します。
+              </p>
+              <p>
+                現行実装は SQL 生成と runbook が中心です。大規模 data diff の live 実行、
+                bucket heatmap、headless <code>/v1/diff</code> は設計中です。
+                1000億行級は count、key count、row hash fingerprint、partition/hash bucket、
+                failed bucket row diff の順に絞り込む方針です。
+              </p>
+              <div class="callout">
+                <strong>Iceberg / S3 Tables</strong>
+                <p>
+                  DuckDB を client-is-the-server compute layer として使い、
+                  Iceberg REST Catalog や S3 Tables を attach する SQL を生成します。
+                  Browser / DuckDB-Wasm 経路では credentials を URL や共有 runbook に残さず、
+                  catalog endpoint と object store の CORS 到達性を確認してください。
+                </p>
+              </div>
             </section>
 
             <section class="doc-section" id="bi-sidebar">
@@ -293,6 +338,9 @@ group by c.id, c.name;</code></pre>
                 </a>
                 <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/data-source-support-status.md">
                   Data source support status
+                </a>
+                <a href="https://github.com/hjosugi/irodori-table/blob/main/docs/data-verification-diff.md">
+                  Data verification & diff
                 </a>
                 <a href="https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html">
                   Engine syntax reference

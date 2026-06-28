@@ -22,6 +22,9 @@ mdBook:
 
 - [ai-local-sql-generation.md](ai-local-sql-generation.md) — local,
   grammar-constrained NL→SQL generation + pluggable model providers.
+- [data-verification-diff.md](data-verification-diff.md) — current migration
+  planner, row-hash/diff SQL, selected-row repair SQL, and the target
+  high-scale data-diff architecture.
 - [integrated-terminal.md](integrated-terminal.md) — the PTY-backed xterm.js
   terminal panel.
 - [headless-data-api.md](headless-data-api.md) — the optional local HTTP data API

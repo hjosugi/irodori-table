@@ -1,20 +1,51 @@
 # Data verification & super-fast diff
 
-Design for a cross-engine **data verification** and **fast data-diff** capability:
-prove two tables (possibly on different engines/versions) hold the same data,
-and when they don't, show *where* — fast, and legibly.
+Specification for cross-engine **data verification**, migration planning, and
+fast data-diff work: prove two tables, possibly on different engines or versions,
+hold the same data, and when they do not, show *where* fast and legibly.
 
-Status: **design** (greenfield). Nothing here is built yet. The goal is to land
-the boundaries before code so it can grow into its own crate (and, per the
-"repo分けてもいい" call, eventually its own repo) without churning the desktop app.
+Status: **partial implementation + target architecture**.
+
+Built today:
+
+- Desktop **Migration Studio** generates a plan, source extraction SQL, target
+  load SQL, diff SQL, and a runbook. The default path is Hive -> Snowflake, with
+  PostgreSQL, Oracle, MySQL/MariaDB, Redshift, Databricks/Spark SQL, Trino/Presto,
+  DuckDB/DuckDB-Wasm, Apache Iceberg REST, and AWS S3 Tables in the planner.
+- The generated validation flow uses row-hash manifests, row count, key count,
+  min/max hash fingerprints, manifest tables, and row-level diff SQL. Hive
+  extraction supports Parquet/CSV in the desktop planner; the shared
+  `irodori-sql` migration helpers also cover TSV-oriented snippets.
+- DuckDB/Iceberg flows generate `INSTALL/LOAD iceberg`, `CREATE SECRET`, and
+  `ATTACH ... TYPE ICEBERG` shapes, with warnings for browser credentials, URL
+  sharing, endpoint reachability, and CORS.
+- Result-grid editing exposes **Save Changes** and a **Row SQL** action. Row SQL
+  turns the selected row from a direct single-table result with a visible primary
+  or unique key into a reviewable `BEGIN`/`COMMIT` wrapped `UPDATE` inserted into
+  the SQL editor.
+- The SQL editor has CodeMirror search/replace keybindings (`Ctrl`/`Cmd+F` and
+  the search panel) and Vim clipboard conflict handling.
+
+Not built yet:
+
+- A live cross-connection executor that runs source and target checks, reconciles
+  row manifests, and streams a `DiffReport`.
+- The billion-row/100B-row tiered orchestrator, recursive bucket localization,
+  bucket heatmap UI, and headless `/v1/diff` endpoint.
+- Automatic reconciliation SQL export beyond the selected-row `UPDATE` helper.
+
+The goal remains to land the stable execution/reconciliation boundary before it
+grows into its own crate or repo. The current desktop implementation is the
+workflow prototype; the later crate should keep the same plan/runbook/diff
+language but own the heavy execution model.
 
 ## Why this is its own thing
 
-This is not "schema diff" (that already exists — `irodori-sql/src/schema.rs`
-`diff_schemas()`), and it's more than "generate migration SQL" (that also exists
-— `irodori-sql/src/migration.rs`). Those two stop at *generating SQL*. Nothing in
-the codebase **executes** a comparison and **reconciles** results. That execution
-+ reconciliation + presentation layer is the new capability.
+This is not "schema diff" (that already exists in `irodori-sql/src/schema.rs`
+`diff_schemas()`), and it is more than "generate migration SQL" (desktop
+Migration Studio and `irodori-sql/src/migration.rs` cover that). Those pieces
+stop at *generating SQL*. The missing capability is a runtime that **executes**
+the comparison, **reconciles** manifests, and presents the result interactively.
 
 Driving use cases (from the field): migrating PG↔Oracle↔Snowflake↔Hive↔MySQL,
 verifying a version upgrade didn't drift data, and the daily "did my `DELETE`
@@ -26,15 +57,16 @@ sources** and **large tables** first.
 
 | Capability | Where | Reuse as |
 | --- | --- | --- |
-| Cross-engine row-hash SQL (Oracle `STANDARD_HASH`, MySQL/Snowflake `SHA2`, Trino `MD5(TO_UTF8)`, PG/Hive/Duck `MD5`) | `irodori-sql/src/migration.rs` `row_hash_expression()` (≈308–333) | the **fingerprint primitive** — make it `pub` |
-| Cross-engine value normalization (CAST→text, NULL token, whitespace/case) | `migration.rs` `normalized_column_value()` (≈696–720) | the **canonicalization primitive** — make it `pub`, extend for the gaps below |
-| Keyed FULL OUTER JOIN diff SQL (+ MySQL anti-join emulation) | `migration.rs` `keyed_diff_sql()` (≈415–525) | the **same-engine fast path** |
+| Cross-engine row-hash SQL (Oracle `STANDARD_HASH`, MySQL/Snowflake `SHA2`, Trino `MD5(TO_UTF8)`, PG/Hive/DuckDB `MD5`) | `irodori-sql/src/migration.rs` and desktop `features/migration/migration-studio.ts` | the **fingerprint primitive** |
+| Cross-engine value normalization (CAST -> text, NULL token, whitespace/case) | migration helper normalization functions | the **canonicalization primitive**; extend for the gaps below |
+| Keyed FULL OUTER JOIN diff SQL (+ MySQL/MariaDB anti-join emulation) | migration helper diff SQL | the **same-engine fast path** |
 | Dialect quoting/placeholders | `irodori-sql/src/dialect.rs` `trait SqlDialect` | identifier/literal rendering |
 | Info-schema metamodel (keys, columns) | `irodori-sql/src/metamodel.rs` | auto-pick key/compare columns |
 | Bounded streaming + cancellation | `src-tauri/src/db/stream.rs` `StreamCtx` | pull manifests without OOM |
 | Disk spill to temp SQLite + windowed paging | `src-tauri/src/db/spill.rs` `ResultStore` | hold million-row manifests off-heap |
 | Headless read-only API + audit + guard | `crates/irodori-server/src/server.rs` `ApiServer::dispatch` | expose `/v1/diff` |
 | Cell value type | `src-tauri/src/db/query.rs` `Cells = Vec<serde_json::Value>` | the comparison unit |
+| Selected-row SQL helper | `apps/desktop/src/features/results/row-change-sql.ts` | reviewable per-row repair/update SQL |
 
 The first two rows are the crux: the **hard cross-engine SQL already works** and
 is tested in `migration.rs`. We lift those into reusable primitives instead of

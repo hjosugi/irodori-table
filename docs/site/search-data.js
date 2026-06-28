@@ -60,10 +60,10 @@ window.IRODORI_SEARCH_INDEX = [
     title: "Query editor",
     category: "Editor",
     url: "docs.html#query-editor",
-    summary: "Dialect editor, Vim mode, formatting, Run Current, and history.",
-    tags: ["editor", "codemirror", "vim", "format", "run current", "history"],
+    summary: "Dialect editor, Vim mode, search/replace, formatting, Run Current, and history.",
+    tags: ["editor", "codemirror", "vim", "search", "replace", "find", "format", "run current", "history"],
     body:
-      "CodeMirror 6 editor. SQL dialect, Vim mode, format, comment toggle, Run Current, selection execution, query history.",
+      "CodeMirror 6 editor. SQL dialect, Vim mode, Ctrl F, Cmd F, search panel, replace, format, comment toggle, Run Current, selection execution, query history.",
   },
   {
     title: "Lightweight schema-aware completion",
@@ -78,10 +78,32 @@ window.IRODORI_SEARCH_INDEX = [
     title: "Result grid and export",
     category: "Results",
     url: "docs.html#results",
-    summary: "Streaming, capped pages, virtualization, disk offload, and multi-format export.",
-    tags: ["results", "grid", "streaming", "virtualization", "csv", "json", "markdown", "export", "offload"],
+    summary: "Streaming, virtualization, editable results, Row SQL, Save Changes, and export.",
+    tags: ["results", "grid", "streaming", "virtualization", "edit", "save changes", "row sql", "begin", "commit", "csv", "json", "markdown", "export", "offload"],
     body:
-      "Results use streaming, capped pages, truncated flag, row virtualization, disk offload, windowed paging, CSV, TSV, JSON, JSONL, SQL INSERT, Excel HTML, Markdown export.",
+      "Results use streaming, capped pages, truncated flag, row virtualization, disk offload, windowed paging, CSV, TSV, JSON, JSONL, SQL INSERT, Excel HTML, Markdown export. Editable direct single-table results save via Save Changes. Row SQL generates BEGIN COMMIT wrapped UPDATE for the selected row when a primary key or unique key is visible. Refresh with unsaved result changes asks to save or discard.",
+  },
+  {
+    title: "Migration Studio and data diff",
+    category: "Migration",
+    url: "docs.html#migration-diff",
+    summary: "Migration plans, row-hash validation, DuckDB/Iceberg, and staged high-scale diff.",
+    tags: [
+      "migration",
+      "diff",
+      "hash",
+      "row hash",
+      "hive",
+      "snowflake",
+      "duckdb",
+      "iceberg",
+      "s3 tables",
+      "oracle",
+      "mysql",
+      "postgres",
+    ],
+    body:
+      "Migration Studio generates plan, source SQL, target SQL, diff SQL, and runbook. Default Hive to Snowflake. Supports PostgreSQL, Oracle, MySQL, MariaDB, Redshift, Databricks Spark SQL, Trino Presto, DuckDB DuckDB-Wasm, Apache Iceberg REST, AWS S3 Tables. Uses row hash manifests, count, key count, fingerprint, partition or hash bucket, failed bucket row diff. Live /v1/diff and bucket heatmap are design-stage.",
   },
   {
     title: "BI and movable sidebar",
@@ -136,6 +158,15 @@ window.IRODORI_SEARCH_INDEX = [
     tags: ["docs", "index", "source of truth", "site", "generated"],
     body:
       "Documentation guide: fast paths, source-of-truth rules, public site, generated docs, cleanup rules.",
+  },
+  {
+    title: "Data verification and diff design",
+    category: "Project docs",
+    url: "https://github.com/hjosugi/irodori-table/blob/main/docs/data-verification-diff.md",
+    summary: "Current migration planner scope plus the target live data-diff architecture.",
+    tags: ["data verification", "diff", "migration", "hash", "runbook", "row sql"],
+    body:
+      "Data verification and diff design documents current Migration Studio SQL generation, row hash manifests, Row SQL selected-row repair helper, Save Changes, and future live cross-connection DiffReport execution.",
   },
   {
     title: "Implementation progress",

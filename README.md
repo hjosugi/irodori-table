@@ -202,6 +202,7 @@ make check
 | Need | Read |
 | --- | --- |
 | Implementation architecture and module boundaries | [docs/implementation-architecture.md](docs/implementation-architecture.md) |
+| Migration planning, row-hash validation, and data diff design | [docs/data-verification-diff.md](docs/data-verification-diff.md) |
 | Linux setup, WebKit crashes, blank Tauri window | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) |
 | Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
 | Connection syntax and engine quirks | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html) |

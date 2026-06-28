@@ -451,6 +451,10 @@ export function aiGenerateSql(connectionId: string, prompt: string, engine: DbEn
   return invoke<AiGenerateResult>("ai_generate_sql", { connectionId, prompt, engine });
 }
 
+export function aiExplainPlan(plan: QueryPlanAnalysis): Promise<string> {
+  return invoke<string>("ai_explain_plan", { plan });
+}
+
 export function aiEngineStatus(): Promise<AiEngineStatus> {
   return invoke<AiEngineStatus>("ai_engine_status");
 }
