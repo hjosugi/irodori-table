@@ -9,7 +9,7 @@ These instructions apply to the whole repository. More specific `AGENTS.md` or
 
 - Start by checking `git status --short` and preserve unrelated user changes.
 - Read the smallest useful context before editing. Prefer `README.md`,
-  `CONTRIBUTING.md`, `SECURITY.md`, `docs/repository-boundaries.md`, and the
+  `CONTRIBUTING.md`, `SECURITY.md`, `https://hjosugi.github.io/irodori-docs/repository-boundaries.html`, and the
   files near the requested change.
 - Use `rg` or `rg --files` for searches.
 - Keep changes scoped to the requested behavior and the owning module.
@@ -108,7 +108,7 @@ lockfiles as the reproducible path.
   `make desktop-typegen` or check drift with `make desktop-typegen-check`.
 - Do not hand-edit generated docs snapshots without changing their source data
   or generator.
-- Use `docs/repository-boundaries.md` to decide whether new durable docs belong
+- Use `https://hjosugi.github.io/irodori-docs/repository-boundaries.html` to decide whether new durable docs belong
   here, in `irodori-docs`, in `irodori-samples`, or in the private archive.
 - Connector implementation agents write in one assigned sibling
   `../irodori-extensions/{repository}/` tree. Coordinator work owns registry and

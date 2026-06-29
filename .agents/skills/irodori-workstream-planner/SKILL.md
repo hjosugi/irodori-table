@@ -14,7 +14,7 @@ Read these files before proposing or changing a plan:
 
 1. `AGENTS.md`
 2. `registry/agent-workstreams.json`
-3. `docs/repository-boundaries.md`
+3. `https://hjosugi.github.io/irodori-docs/repository-boundaries.html`
 4. `README.md` sections relevant to setup, repo map, and commands
 5. `CONTRIBUTING.md` when the work involves external references, licensing, or
    clean-room risk

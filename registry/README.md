@@ -10,7 +10,7 @@ as an mdBook:
 This repo keeps only documents that are generated from this repo, consumed by
 the desktop app/CI, or needed as a short local pointer. Public site pages and
 durable feature docs live in `irodori-docs`. The detailed placement/archive rules
-are in [repository-boundaries.md](repository-boundaries.md).
+are in [repository boundaries](https://hjosugi.github.io/irodori-docs/repository-boundaries.html).
 
 ## Public Docs Moved To `irodori-docs`
 
