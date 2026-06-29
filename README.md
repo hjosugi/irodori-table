@@ -12,10 +12,11 @@ Some reusable foundations are intentionally split out like standalone products:
 - `irodori-sql` lives in [`hjosugi/irodori-sql`](https://github.com/hjosugi/irodori-sql)
   and is consumed from the `v0.2.24` Git tag for SQL dialect, parameter,
   metamodel, and schema-diff helpers.
-- `irodori-extension-sdk` lives in
-  [`hjosugi/irodori-extension-sdk`](https://github.com/hjosugi/irodori-extension-sdk)
-  and owns the TypeScript extension SDK, manifest schema, extension-dev helper,
-  and extension templates.
+- The TypeScript extension SDK, manifest schema, extension-dev helper, and
+  extension templates live in
+  [`hjosugi/irodori-kit`](https://github.com/hjosugi/irodori-kit) under
+  `packages/extension-sdk`, next to the Rust `irodori-extension` source
+  contract.
 
 Application UX stays here unless it has a stable standalone contract. BI panels,
 ERD layout, query editor behavior, movable sidebars, connection UI, and result
@@ -249,8 +250,7 @@ make check
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/desktop/`              | Main Tauri + React desktop application.                                                                                                                                                                        |
 | `apps/desktop/src-tauri/`    | Rust backend for the desktop app, including DB adapters and Tauri commands.                                                                                                                                    |
-| `irodori-kit` (sibling repo) | Shared Rust foundation crates (core models, completion, proxy/secret handling, extension APIs, IO, server) — extracted to [hjosugi/irodori-kit](https://github.com/hjosugi/irodori-kit), consumed via git tag. |
-| `../irodori-extension-sdk/`  | Sibling checkout for the TypeScript extension SDK, manifest schema, extension-dev helper, and templates.                                                                                                       |
+| `irodori-kit` (sibling repo) | Shared Rust foundation crates (core models, completion, proxy/secret handling, extension APIs, IO, server) plus `packages/extension-sdk` for the TypeScript extension SDK, manifest schema, extension-dev helper, and templates — extracted to [hjosugi/irodori-kit](https://github.com/hjosugi/irodori-kit), consumed via git tag. |
 | `scripts/`                   | Developer scripts for DB verification and local seeded DBs.                                                                                                                                                    |
 | `tools/lib/`                 | Shared Node.js utility helpers used by root tools and `apps/desktop/tools`.                                                                                                                                    |
 | `tools/security/`            | Local security automation config used by `make security`.                                                                                                                                                      |
@@ -278,7 +278,7 @@ make check
 | UI language switching and translation keys                    | [i18n](https://hjosugi.github.io/irodori-docs/i18n.html)                                                                                                                 |
 | Release and distribution status                               | [distribution](https://hjosugi.github.io/irodori-docs/distribution.html)                                                                                                 |
 | Data-source content audit                                     | [data-source-content-audit](https://hjosugi.github.io/irodori-docs/data-source-content-audit.html)                                                                       |
-| Extension development                                         | [extension-development](https://hjosugi.github.io/irodori-docs/extension-development.html) and [irodori-extension-sdk](https://github.com/hjosugi/irodori-extension-sdk) |
+| Extension development                                         | [extension-development](https://hjosugi.github.io/irodori-docs/extension-development.html) and [`irodori-kit/packages/extension-sdk`](https://github.com/hjosugi/irodori-kit/tree/main/packages/extension-sdk) |
 | Clean-room rules                                              | [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html)                                                                                                     |
 | License policy                                                | [licensing](https://hjosugi.github.io/irodori-docs/licensing.html)                                                                                                       |
 | Local knowledge base                                          | [knowledge-base](https://hjosugi.github.io/irodori-docs/knowledge-base.html)                                                                                             |

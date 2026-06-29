@@ -27,8 +27,9 @@ These instructions apply to the whole repository. More specific `AGENTS.md` or
   repo `irodori-kit` (https://github.com/hjosugi/irodori-kit) and are consumed
   via git tag; the app depends on them through `[workspace.dependencies]`.
 - The TypeScript extension SDK, manifest schema, extension-dev helper, and
-  extension templates live in the sibling repo `irodori-extension-sdk`
-  (https://github.com/hjosugi/irodori-extension-sdk).
+  extension templates live in the sibling `irodori-kit` repo under
+  `packages/extension-sdk`, next to the Rust `irodori-extension` source
+  contract.
 - `registry/agent-workstreams.json` is the machine-readable split for parallel
   agent work.
 - `registry/catalog/`, `registry/cheatsheets/`, and
@@ -67,8 +68,8 @@ against `apps/desktop`.
 - Verified desktop build: `make desktop-build-verified`
 - Browser/e2e tests: `make desktop-e2e`
 - Generated docs/catalog checks: `make docs-check`
-- Extension manifest validation: `make extension-manifests` delegates to the
-  sibling `../irodori-extension-sdk` checkout when present.
+- Extension manifest validation: `make extension-manifests` delegates to
+  `../irodori-kit/packages/extension-sdk` when present.
 - Security/license checks: `make security`
 - Broad local validation: `make check`
 

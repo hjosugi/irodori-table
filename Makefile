@@ -59,7 +59,7 @@ help:
 	@printf "  make check             cargo test + desktop test/build\n"
 	@printf "  make security          license, lockfile, npm audit/signature, RustSec checks\n"
 	@printf "  make security-strict   same as security, but requires cargo-audit locally\n"
-	@printf "  make extension-manifests validate sibling extension SDK templates when present\n"
+	@printf "  make extension-manifests validate kit extension SDK templates when present\n"
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
 
@@ -133,10 +133,10 @@ security-strict:
 	REQUIRE_CARGO_AUDIT=1 scripts/security-check.sh
 
 extension-manifests:
-	@if [ -d ../irodori-extension-sdk ]; then \
-		npm --prefix ../irodori-extension-sdk run validate; \
+	@if [ -d ../irodori-kit/packages/extension-sdk ]; then \
+		npm --prefix ../irodori-kit/packages/extension-sdk run validate; \
 	else \
-		printf "irodori-extension-sdk sibling checkout not found; skipping SDK manifest validation\n"; \
+		printf "irodori-kit/packages/extension-sdk not found; skipping SDK manifest validation\n"; \
 	fi
 
 db: db-verify

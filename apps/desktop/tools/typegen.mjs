@@ -130,7 +130,7 @@ function printHelp() {
       "Usage: node tools/typegen.mjs [--check] [--only desktop]",
       "",
       "Regenerates the desktop TypeScript bindings.",
-      "Extension SDK bindings now live in the sibling irodori-extension-sdk repo.",
+      "Extension SDK bindings live in ../irodori-kit/packages/extension-sdk.",
       "",
       "Options:",
       "  --check, -c   Regenerate, then fail if generated files differ from git.",

@@ -29,10 +29,13 @@
     {
       "id": "native-connector-abi",
       "owner": "extension-host",
-      "paths": ["../irodori-kit/irodori-extension/**", "../irodori-extension-sdk/**"],
+      "paths": [
+        "../irodori-kit/irodori-extension/**",
+        "../irodori-kit/packages/extension-sdk/**"
+      ],
       "checks": [
-        "npm --prefix ../irodori-extension-sdk run validate",
-        "npm --prefix ../irodori-extension-sdk run typegen:check"
+        "npm --prefix ../irodori-kit/packages/extension-sdk run validate",
+        "npm --prefix ../irodori-kit/packages/extension-sdk run typegen:check"
       ]
     },
     {
@@ -91,7 +94,7 @@
         "apps/desktop/src-tauri/src/db/**",
         "../irodori-kit/irodori-connection/**",
         "../irodori-kit/irodori-extension/**",
-        "../irodori-extension-sdk/**"
+        "../irodori-kit/packages/extension-sdk/**"
       ],
       "coordinatorWriteGlobs": [
         "registry/catalog/index.json",
@@ -114,15 +117,15 @@
       "exclusiveWriteGlobs": [
         "apps/desktop/src/features/extensions/**",
         "../irodori-kit/irodori-extension/**",
-        "../irodori-extension-sdk/**",
+        "../irodori-kit/packages/extension-sdk/**",
         "tools/extensions/**"
       ],
       "coordinatorWriteGlobs": ["registry/catalog/*.json"],
       "sharedContracts": ["native-connector-abi", "desktop-command-api"],
       "checks": [
-        "npm --prefix ../irodori-extension-sdk run validate",
-        "npm --prefix ../irodori-extension-sdk run typegen:check",
-        "npm --prefix ../irodori-extension-sdk run build",
+        "npm --prefix ../irodori-kit/packages/extension-sdk run validate",
+        "npm --prefix ../irodori-kit/packages/extension-sdk run typegen:check",
+        "npm --prefix ../irodori-kit/packages/extension-sdk run build",
         "make desktop-typegen-check",
         "npm --prefix apps/desktop run build"
       ],
