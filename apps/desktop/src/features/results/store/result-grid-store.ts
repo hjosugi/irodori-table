@@ -35,6 +35,7 @@ type ResultGridState = {
   gridViewportWidth: number;
   spillInfo: SpillInfo | null;
   gridWindowVersion: number;
+  pendingPageRequests: Map<number, string>;
   activeResultIndex: number;
   resultMode: ResultMode;
   tableViewObject: DbObjectMetadata | null;
@@ -61,6 +62,9 @@ type ResultGridState = {
   setSpillInfo: (value: ValueUpdater<SpillInfo | null>) => void;
   setGridWindowVersion: (value: ValueUpdater<number>) => void;
   bumpGridWindowVersion: () => void;
+  beginPendingPage: (pageIndex: number, requestId: string) => boolean;
+  endPendingPage: (pageIndex: number, requestId: string) => void;
+  clearPendingPages: () => void;
   setActiveResultIndex: (value: ValueUpdater<number>) => void;
   setResultMode: (value: ValueUpdater<ResultMode>) => void;
   setTableViewObject: (value: ValueUpdater<DbObjectMetadata | null>) => void;
@@ -147,6 +151,7 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
   gridViewportWidth: 900,
   spillInfo: null,
   gridWindowVersion: 0,
+  pendingPageRequests: new Map(),
   activeResultIndex: 0,
   resultMode: "data",
   tableViewObject: null,
@@ -190,6 +195,29 @@ export const useResultGridStore = create<ResultGridState>((set, get) => ({
     })),
   bumpGridWindowVersion: () =>
     set((state) => ({ gridWindowVersion: state.gridWindowVersion + 1 })),
+  beginPendingPage: (pageIndex, requestId) => {
+    const pending = get().pendingPageRequests;
+    if (pending.has(pageIndex)) {
+      return false;
+    }
+    set({ pendingPageRequests: new Map(pending).set(pageIndex, requestId) });
+    return true;
+  },
+  endPendingPage: (pageIndex, requestId) =>
+    set((state) => {
+      if (state.pendingPageRequests.get(pageIndex) !== requestId) {
+        return {};
+      }
+      const pendingPageRequests = new Map(state.pendingPageRequests);
+      pendingPageRequests.delete(pageIndex);
+      return { pendingPageRequests };
+    }),
+  clearPendingPages: () =>
+    set((state) =>
+      state.pendingPageRequests.size === 0
+        ? {}
+        : { pendingPageRequests: new Map() },
+    ),
   setActiveResultIndex: (value) =>
     set((state) => ({
       activeResultIndex: resolveValue(state.activeResultIndex, value),

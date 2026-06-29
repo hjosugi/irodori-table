@@ -17,79 +17,11 @@ pub async fn db_autocomplete(
     object: Option<String>,
     limit: Option<usize>,
 ) -> IrodoriResult<Vec<DbCompletionItem>> {
-    let state_inner = state.inner();
-    let now = std::time::SystemTime::now();
-
-    let needs_immediate_fetch = {
-        let mut cache = state_inner.metadata_cache.lock().await;
-        !cache.ensure_fresh(&connection_id, now)
-    };
-
-    if needs_immediate_fetch {
-        let conn = {
-            let guard = state_inner.conns.lock().await;
-            guard.get(&connection_id).cloned()
-        };
-        if let Some(conn) = conn {
-            let generation = metadata_generation(state_inner);
-            if let Ok(db_meta) = conn.metadata().await {
-                let _ = upsert_metadata_snapshot_if_current(
-                    state_inner,
-                    &connection_id,
-                    &db_meta,
-                    generation,
-                )
-                .await;
-            }
-        }
-    } else {
-        let is_stale = {
-            let cache = state_inner.metadata_cache.lock().await;
-            cache
-                .snapshot(&connection_id)
-                .map(|s| s.is_stale(now))
-                .unwrap_or(false)
-        };
-        if is_stale {
-            trigger_background_refresh(state_inner.clone(), connection_id.clone());
-        }
-    }
-
-    let cache = state_inner.metadata_cache.lock().await;
-    let engine = irodori_completion::CompletionEngine::new();
-    let mut req = irodori_completion::CompletionRequest::new(&connection_id).with_prefix(prefix);
-    if let Some(s) = schema {
-        req = req.in_schema(s);
-    }
-    if let Some(o) = object {
-        req = req.for_object(o);
-    }
-    if let Some(l) = limit {
-        req.limit = l;
-    }
-
-    let items = engine.complete(&cache, &req);
-    let mapped = items
-        .into_iter()
-        .map(|item| DbCompletionItem {
-            label: item.label,
-            insert_text: item.insert_text,
-            kind: match item.kind {
-                irodori_completion::CompletionItemKind::Schema => DbCompletionItemKind::Schema,
-                irodori_completion::CompletionItemKind::Table => DbCompletionItemKind::Table,
-                irodori_completion::CompletionItemKind::View => DbCompletionItemKind::View,
-                irodori_completion::CompletionItemKind::Column => DbCompletionItemKind::Column,
-                irodori_completion::CompletionItemKind::Function => DbCompletionItemKind::Function,
-                irodori_completion::CompletionItemKind::Procedure => {
-                    DbCompletionItemKind::Procedure
-                }
-                irodori_completion::CompletionItemKind::Keyword => DbCompletionItemKind::Keyword,
-            },
-            detail: item.detail,
-        })
-        .collect();
-
-    Ok(mapped)
+    Ok(state
+        .inner()
+        .metadata_manager()
+        .autocomplete(connection_id, prefix, schema, object, limit)
+        .await)
 }
 
 #[tauri::command]
@@ -99,11 +31,11 @@ pub async fn db_inspect_object(
     schema: String,
     object: String,
 ) -> IrodoriResult<Option<DbInspectionCard>> {
-    let state_inner = state.inner();
-    let cache = state_inner.metadata_cache.lock().await;
-    let card =
-        irodori_completion::inspection::inspect_object(&cache, &connection_id, &schema, &object);
-    Ok(card.map(convert_inspection_card))
+    Ok(state
+        .inner()
+        .metadata_manager()
+        .inspect_object(connection_id, schema, object)
+        .await)
 }
 
 #[tauri::command]
@@ -114,16 +46,11 @@ pub async fn db_inspect_column(
     object: String,
     column: String,
 ) -> IrodoriResult<Option<DbInspectionCard>> {
-    let state_inner = state.inner();
-    let cache = state_inner.metadata_cache.lock().await;
-    let card = irodori_completion::inspection::inspect_column(
-        &cache,
-        &connection_id,
-        &schema,
-        &object,
-        &column,
-    );
-    Ok(card.map(convert_inspection_card))
+    Ok(state
+        .inner()
+        .metadata_manager()
+        .inspect_column(connection_id, schema, object, column)
+        .await)
 }
 
 #[tauri::command]
@@ -133,25 +60,11 @@ pub async fn db_invalidate_cache(
     schema: Option<String>,
     object: Option<String>,
 ) -> IrodoriResult<bool> {
-    let state_inner = state.inner();
-    let mut cache = state_inner.metadata_cache.lock().await;
-    let invalidated = if let Some(obj) = object {
-        if let Some(sch) = schema {
-            cache.invalidate_object(&connection_id, &sch, &obj)
-        } else {
-            false
-        }
-    } else if let Some(sch) = schema {
-        cache.invalidate_schema(&connection_id, &sch)
-    } else {
-        cache.invalidate_connection(&connection_id)
-    };
-
-    if invalidated {
-        trigger_background_refresh(state_inner.clone(), connection_id);
-    }
-
-    Ok(invalidated)
+    Ok(state
+        .inner()
+        .metadata_manager()
+        .invalidate_cache(connection_id, schema, object)
+        .await)
 }
 
 // ---- Tauri commands -----------------------------------------------------------
@@ -212,7 +125,12 @@ pub async fn db_explain_query(
 ) -> IrodoriResult<QueryPlanAnalysis> {
     let audit_connection_id = connection_id.clone();
     let audit_sql = sql.clone();
-    match explain_query_impl(state.inner(), connection_id, sql, mode).await {
+    match state
+        .inner()
+        .query_executor()
+        .explain(connection_id, sql, mode)
+        .await
+    {
         Ok(plan) => {
             security
                 .record(
@@ -257,16 +175,11 @@ pub async fn db_run_query(
     // optional `query_id` so `db_cancel` can stop this specific statement.
     let audit_connection_id = connection_id.clone();
     let audit_sql = sql.clone();
-    match run_query_managed_with_params_impl(
-        state.inner(),
-        connection_id,
-        sql,
-        max_rows,
-        timeout_ms,
-        query_id,
-        params,
-    )
-    .await
+    match state
+        .inner()
+        .query_executor()
+        .run_managed_with_params(connection_id, sql, max_rows, timeout_ms, query_id, params)
+        .await
     {
         Ok(result) => {
             security
@@ -305,7 +218,11 @@ pub async fn db_cancel(
     security: tauri::State<'_, SecurityState>,
     query_id: String,
 ) -> IrodoriResult<bool> {
-    let cancelled = cancel_query_impl(state.inner(), query_id.clone()).await;
+    let cancelled = state
+        .inner()
+        .query_executor()
+        .cancel(query_id.clone())
+        .await;
     if cancelled {
         security
             .record(
@@ -341,8 +258,7 @@ pub async fn db_run_query_stream(
     let audit_connection_id = connection_id.clone();
     let audit_sql = sql.clone();
 
-    let fetch = run_query_stream_with_params_impl(
-        state.inner(),
+    let fetch = state.inner().query_executor().stream_with_params(
         connection_id,
         sql,
         max_rows,
@@ -451,8 +367,7 @@ pub async fn db_run_query_spill(
     let audit_connection_id = connection_id.clone();
     let audit_sql = sql.clone();
 
-    let fetch = run_query_spill_impl(
-        state.inner(),
+    let fetch = state.inner().result_spill_manager().run_query_spill(
         connection_id,
         sql,
         config,
@@ -531,7 +446,10 @@ pub async fn db_result_window(
     offset: u64,
     limit: usize,
 ) -> IrodoriResult<ResultWindow> {
-    result_window_impl(state.inner(), handle, offset, limit)
+    state
+        .inner()
+        .result_spill_manager()
+        .result_window(handle, offset, limit)
         .await
         .map_err(IrodoriError::from)
 }
@@ -542,7 +460,11 @@ pub async fn db_release_result(
     state: tauri::State<'_, DbState>,
     handle: String,
 ) -> IrodoriResult<bool> {
-    Ok(release_result_impl(state.inner(), handle).await)
+    Ok(state
+        .inner()
+        .result_spill_manager()
+        .release_result(handle)
+        .await)
 }
 
 /// Commit staged result-grid edits (updates/inserts/deletes) for one table in a
@@ -563,7 +485,10 @@ pub async fn db_list_objects(
     state: tauri::State<'_, DbState>,
     connection_id: String,
 ) -> IrodoriResult<DatabaseMetadata> {
-    list_objects_impl(state.inner(), connection_id)
+    state
+        .inner()
+        .metadata_manager()
+        .list_objects(connection_id)
         .await
         .map_err(IrodoriError::from)
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-28",
+  "updatedAt": "2026-06-29",
   "purpose": "Partition Irodori development so multiple coding agents can work in parallel without editing the same files by default.",
   "rules": [
     "Use one git worktree or one connector repository checkout per active agent.",
@@ -29,15 +29,10 @@
     {
       "id": "native-connector-abi",
       "owner": "extension-host",
-      "paths": [
-        "../irodori-kit/irodori-extension/**",
-        "packages/extension-sdk/**",
-        "extension.schema.json",
-        "tools/extensions/validate-manifests.mjs"
-      ],
+      "paths": ["../irodori-kit/irodori-extension/**", "../irodori-extension-sdk/**"],
       "checks": [
-        "make extension-manifests",
-        "make desktop-typegen-check"
+        "npm --prefix ../irodori-extension-sdk run validate",
+        "npm --prefix ../irodori-extension-sdk run typegen:check"
       ]
     },
     {
@@ -51,9 +46,7 @@
         "apps/desktop/src-tauri/src/db/profile.rs",
         "apps/desktop/src-tauri/src/db/transport.rs"
       ],
-      "checks": [
-        "cargo test --workspace"
-      ]
+      "checks": ["cargo test --workspace"]
     },
     {
       "id": "desktop-command-api",
@@ -90,9 +83,7 @@
       "repeatable": true,
       "source": "docs/extension-marketplace/connector-repositories.json",
       "unit": "one repository entry from docs/extension-marketplace/connector-repositories.json",
-      "exclusiveWriteGlobs": [
-        "../irodori-extensions/{repository}/**"
-      ],
+      "exclusiveWriteGlobs": ["../irodori-extensions/{repository}/**"],
       "readOnlyGlobs": [
         "docs/extension-marketplace/index.json",
         "docs/extension-marketplace/connector-repositories.json",
@@ -100,7 +91,7 @@
         "apps/desktop/src-tauri/src/db/**",
         "../irodori-kit/irodori-connection/**",
         "../irodori-kit/irodori-extension/**",
-        "packages/extension-sdk/**"
+        "../irodori-extension-sdk/**"
       ],
       "coordinatorWriteGlobs": [
         "docs/extension-marketplace/index.json",
@@ -108,11 +99,7 @@
         "docs/extension-marketplace/connector-repositories.json",
         "knowledge/engines.json"
       ],
-      "sharedContracts": [
-        "connector-registry",
-        "native-connector-abi",
-        "portable-connection"
-      ],
+      "sharedContracts": ["connector-registry", "native-connector-abi", "portable-connection"],
       "checks": [
         "make -C ../irodori-extensions/{repository} check",
         "node tools/docs/support-status.mjs"
@@ -127,19 +114,15 @@
       "exclusiveWriteGlobs": [
         "apps/desktop/src/features/extensions/**",
         "../irodori-kit/irodori-extension/**",
-        "packages/extension-sdk/**",
-        "extension.schema.json",
+        "../irodori-extension-sdk/**",
         "tools/extensions/**"
       ],
-      "coordinatorWriteGlobs": [
-        "docs/extension-marketplace/*.json"
-      ],
-      "sharedContracts": [
-        "native-connector-abi",
-        "desktop-command-api"
-      ],
+      "coordinatorWriteGlobs": ["docs/extension-marketplace/*.json"],
+      "sharedContracts": ["native-connector-abi", "desktop-command-api"],
       "checks": [
-        "make extension-manifests",
+        "npm --prefix ../irodori-extension-sdk run validate",
+        "npm --prefix ../irodori-extension-sdk run typegen:check",
+        "npm --prefix ../irodori-extension-sdk run build",
         "make desktop-typegen-check",
         "npm --prefix apps/desktop run build"
       ],
@@ -160,11 +143,7 @@
         "apps/desktop/src-tauri/src/db/engine.rs",
         "knowledge/engines.json"
       ],
-      "sharedContracts": [
-        "portable-connection",
-        "desktop-command-api",
-        "connector-registry"
-      ],
+      "sharedContracts": ["portable-connection", "desktop-command-api", "connector-registry"],
       "checks": [
         "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml db",
         "make desktop-typegen-check"
@@ -186,11 +165,7 @@
         "apps/desktop/src-tauri/src/db/engine.rs",
         "docs/extension-marketplace/*.json"
       ],
-      "sharedContracts": [
-        "data-diff-contract",
-        "desktop-command-api",
-        "connector-registry"
-      ],
+      "sharedContracts": ["data-diff-contract", "desktop-command-api", "connector-registry"],
       "checks": [
         "npm --prefix apps/desktop run test -- --run src/tests/unit/features/migration/migration-studio.test.ts",
         "npm --prefix apps/desktop run build"
@@ -209,12 +184,8 @@
         "apps/desktop/src/features/results/**",
         "apps/desktop/src/styles/**"
       ],
-      "coordinatorWriteGlobs": [
-        "apps/desktop/src/generated/**"
-      ],
-      "sharedContracts": [
-        "desktop-command-api"
-      ],
+      "coordinatorWriteGlobs": ["apps/desktop/src/generated/**"],
+      "sharedContracts": ["desktop-command-api"],
       "checks": [
         "npm --prefix apps/desktop run test -- --run src/tests/unit/features/workbench/command-handlers.test.ts",
         "npm --prefix apps/desktop run build"
@@ -226,22 +197,10 @@
       "title": "Source-of-truth docs, generated docs, and marketplace catalog",
       "owner": "docs-agent",
       "repeatable": false,
-      "exclusiveWriteGlobs": [
-        "docs/**",
-        "knowledge/**",
-        "tools/docs/**",
-        "tools/knowledge/**"
-      ],
-      "coordinatorWriteGlobs": [
-        "docs/extension-marketplace/*.json",
-        "knowledge/engines.json"
-      ],
-      "sharedContracts": [
-        "connector-registry"
-      ],
-      "checks": [
-        "make docs-check"
-      ],
+      "exclusiveWriteGlobs": ["docs/**", "knowledge/**", "tools/docs/**", "tools/knowledge/**"],
+      "coordinatorWriteGlobs": ["docs/extension-marketplace/*.json", "knowledge/engines.json"],
+      "sharedContracts": ["connector-registry"],
+      "checks": ["make docs-check"],
       "mergeRule": "Generated docs change with their source data or generator; do not hand-edit generated snapshots alone."
     }
   ]

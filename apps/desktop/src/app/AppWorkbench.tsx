@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import { Plus } from "lucide-react";
-import { runQuerySpill, runQueryStream } from "@/lib/tauri/db-stream";
 import {
   createQueryHistoryResultSnapshot,
   queryHistoryMaxItemsHardLimit,
@@ -50,6 +49,11 @@ import { AboutDialog } from "@/app/AboutDialog";
 import { useResultGridScroll } from "@/app/hooks/useResultGridScroll";
 import { useResultGridFiltering } from "@/app/hooks/useResultGridFiltering";
 import { useResultGridSelection } from "@/app/hooks/useResultGridSelection";
+import type {
+  ConnectionController,
+  QueryEditorController,
+  ResultGridController,
+} from "@/app/controllers/workbench-controllers";
 import { ActionToast, type ActionNotice } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
 import { GitPanel, useGitStore } from "@/features/git";
@@ -193,9 +197,11 @@ import {
   createPanelResizeController,
   objectKindLabel,
   qualifiedObjectName,
+  queryService,
   quoteSqlIdentifier,
   tablePreviewSql,
   useWorkbenchStore,
+  workbenchRuntimeService,
   workbenchViewsForSide,
   workbenchViewIds,
   type CompletionHint,
@@ -219,35 +225,23 @@ import {
   resolveKeybinding,
   saveOverrides,
 } from "@/core";
-import {
-  dbApplyEdits,
-  dbCancel,
-  dbConnect,
-  dbDisconnect,
-  dbExplainQuery,
-  dbListObjects,
-  dbQueryParameters,
-  dbReleaseResult,
-  dbResultWindow,
-  jobsList,
-  openDeveloperTools,
-  type CellValue,
-  type DbEngine,
-  type DbObjectMetadata,
-  type JobList,
-  type QueryParameterInput,
-  type QueryPlanAnalysis,
-  type QueryPlanCopyFormat,
-  type QueryPlanMode,
-  type QueryResult,
-  type QueryResultSet,
-  type RowDelete,
-  type RowInsert,
-  type RowUpdate,
-  type SpillRunResult,
-  type TableEdits,
-  workspaceSnapshot,
-  type WorkspaceSnapshot,
+import type {
+  CellValue,
+  DbEngine,
+  DbObjectMetadata,
+  JobList,
+  QueryParameterInput,
+  QueryPlanAnalysis,
+  QueryPlanCopyFormat,
+  QueryPlanMode,
+  QueryResult,
+  QueryResultSet,
+  RowDelete,
+  RowInsert,
+  RowUpdate,
+  SpillRunResult,
+  TableEdits,
+  WorkspaceSnapshot,
 } from "@/generated/irodori-api";
 import { sqlSnippetsFromJson } from "@/sql/completion";
 import { isSqlFormatterId } from "@/sql/formatter";
@@ -807,7 +801,13 @@ export function AppWorkbench() {
   const spillRef = useRef<{ handle: string; source: WindowedRows } | null>(
     null,
   );
-  const pendingPagesRef = useRef<Set<number>>(new Set());
+  const beginPendingPage = useResultGridStore(
+    (state) => state.beginPendingPage,
+  );
+  const endPendingPage = useResultGridStore((state) => state.endPendingPage);
+  const clearPendingPages = useResultGridStore(
+    (state) => state.clearPendingPages,
+  );
   const activeResultIndex = useResultGridStore(
     (state) => state.activeResultIndex,
   );
@@ -990,7 +990,8 @@ export function AppWorkbench() {
   >({});
 
   useEffect(() => {
-    workspaceSnapshot()
+    workbenchRuntimeService
+      .snapshot()
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
         setActiveConnectionId(nextSnapshot.activeConnectionId);
@@ -1224,11 +1225,14 @@ export function AppWorkbench() {
       },
     ];
   }, [result]);
-  const activeResultIndexView = Math.min(
-    activeResultIndex,
-    Math.max(0, resultSets.length - 1),
+  const activeResultIndexView = useMemo(
+    () => Math.min(activeResultIndex, Math.max(0, resultSets.length - 1)),
+    [activeResultIndex, resultSets.length],
   );
-  const activeResult = resultSets[activeResultIndexView] ?? null;
+  const activeResult = useMemo(
+    () => resultSets[activeResultIndexView] ?? null,
+    [activeResultIndexView, resultSets],
+  );
 
   useEffect(() => {
     if (gridRef.current) {
@@ -1242,7 +1246,10 @@ export function AppWorkbench() {
     setSelectedRange(null);
   }, [activeResultIndexView, result]);
 
-  const resultColumns = activeResult?.columns ?? [];
+  const resultColumns = useMemo(
+    () => activeResult?.columns ?? [],
+    [activeResult],
+  );
   const graphResultModel = useMemo(() => {
     if (
       (editorEngine !== "neo4j" && editorEngine !== "memgraph") ||
@@ -1265,50 +1272,81 @@ export function AppWorkbench() {
   // Resolve which table the active result came from so foreign-key cells become
   // navigable in the row-detail drawer. Falls back to column matching; a null table
   // simply disables FK links while the rest of the detail view still works.
-  const rowDetailTable = findTableMetadata(
-    activeMetadata,
-    parseSourceTable(query),
-    resultColumns,
+  const rowDetailTable = useMemo(
+    () =>
+      findTableMetadata(activeMetadata, parseSourceTable(query), resultColumns),
+    [activeMetadata, query, resultColumns],
   );
   // The raw (unformatted) values of the selected original row. Staged "new" rows
   // (keys starting with "n") have no backing result row, so they have no detail view.
-  const selectedRowValues =
-    activeResult && selectedRowKey && selectedRowKey.startsWith("o")
-      ? (activeResult.rows[Number(selectedRowKey.slice(1))] ?? null)
-      : null;
-  const gridTotalWidth = Math.max(
-    1,
-    gridGutterWidth + resultColumns.length * gridColumnWidth,
+  const selectedRowValues = useMemo(
+    () =>
+      activeResult && selectedRowKey && selectedRowKey.startsWith("o")
+        ? (activeResult.rows[Number(selectedRowKey.slice(1))] ?? null)
+        : null,
+    [activeResult, selectedRowKey],
   );
-  const columnWindow = calculateResultGridVirtualColumnWindow({
-    columnCount: resultColumns.length,
-    scrollLeft: Math.max(0, gridScrollLeft - gridGutterWidth),
-    viewportWidth: Math.max(0, gridViewportWidth - gridGutterWidth),
-    columnWidth: gridColumnWidth,
-    overscan: GRID_COLUMN_OVERSCAN,
-  });
+  const gridTotalWidth = useMemo(
+    () => Math.max(1, gridGutterWidth + resultColumns.length * gridColumnWidth),
+    [gridColumnWidth, gridGutterWidth, resultColumns.length],
+  );
+  const columnWindow = useMemo(
+    () =>
+      calculateResultGridVirtualColumnWindow({
+        columnCount: resultColumns.length,
+        scrollLeft: Math.max(0, gridScrollLeft - gridGutterWidth),
+        viewportWidth: Math.max(0, gridViewportWidth - gridGutterWidth),
+        columnWidth: gridColumnWidth,
+        overscan: GRID_COLUMN_OVERSCAN,
+      }),
+    [
+      gridColumnWidth,
+      gridGutterWidth,
+      gridScrollLeft,
+      gridViewportWidth,
+      resultColumns.length,
+    ],
+  );
   const firstVisibleColumn = columnWindow.firstColumnIndex;
   const lastVisibleColumn = columnWindow.lastColumnIndex;
-  const visibleColumnIndexes = Array.from(
-    { length: Math.max(0, lastVisibleColumn - firstVisibleColumn) },
-    (_, index) => firstVisibleColumn + index,
+  const visibleColumnIndexes = useMemo(
+    () =>
+      Array.from(
+        { length: Math.max(0, lastVisibleColumn - firstVisibleColumn) },
+        (_, index) => firstVisibleColumn + index,
+      ),
+    [firstVisibleColumn, lastVisibleColumn],
   );
   const leftColumnPad = columnWindow.leftPadPx;
   const rightColumnPad = columnWindow.rightPadPx;
   // In Edit Data mode a leading gutter column holds the per-row delete control.
-  const gridTemplateColumns = [
-    editMode ? `${gridGutterColumnWidth}px` : null,
-    leftColumnPad > 0 ? `${leftColumnPad}px` : null,
-    ...visibleColumnIndexes.map(() => `${gridColumnWidth}px`),
-    rightColumnPad > 0 ? `${rightColumnPad}px` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const gridRowStyle: CSSProperties = {
-    gridTemplateColumns,
-    minWidth: gridTotalWidth,
-    width: gridTotalWidth,
-  };
+  const gridTemplateColumns = useMemo(
+    () =>
+      [
+        editMode ? `${gridGutterColumnWidth}px` : null,
+        leftColumnPad > 0 ? `${leftColumnPad}px` : null,
+        ...visibleColumnIndexes.map(() => `${gridColumnWidth}px`),
+        rightColumnPad > 0 ? `${rightColumnPad}px` : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    [
+      editMode,
+      gridColumnWidth,
+      gridGutterColumnWidth,
+      leftColumnPad,
+      rightColumnPad,
+      visibleColumnIndexes,
+    ],
+  );
+  const gridRowStyle = useMemo<CSSProperties>(
+    () => ({
+      gridTemplateColumns,
+      minWidth: gridTotalWidth,
+      width: gridTotalWidth,
+    }),
+    [gridTemplateColumns, gridTotalWidth],
+  );
 
   // Build the display rows from raw results plus staged edits, filters, and sort.
   // A disk-offloaded result (EXEC-010) forces the windowed path with empty
@@ -1455,44 +1493,45 @@ export function AppWorkbench() {
   const chartAvailable = resultGridView.windowed
     ? chartCandidateAvailable
     : Boolean(chartResultModel);
+  const effectiveResultMode = useMemo(() => {
+    if (resultMode === "chart" && (!chartResultModel || editMode)) {
+      return "data";
+    }
+    if (resultMode === "graph" && !graphAvailable) {
+      return "data";
+    }
+    if (resultMode === "webgl" && (!webGlAvailable || editMode)) {
+      return "data";
+    }
+    return resultMode;
+  }, [chartResultModel, editMode, graphAvailable, resultMode, webGlAvailable]);
 
   // Virtualize the result grid: render only the rows in (and just around) the
   // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
   // ~30 DOM rows instead of 10k, so streaming stays smooth.
   const totalRows = totalRowCount;
-  const rowWindow = calculateResultGridVirtualRowWindow({
-    rowCount: totalRows,
-    scrollTop: gridScrollTop,
-    viewportHeight: gridViewportHeight,
-    rowHeight: gridRowHeight,
-    overscan: GRID_OVERSCAN,
-  });
+  const rowWindow = useMemo(
+    () =>
+      calculateResultGridVirtualRowWindow({
+        rowCount: totalRows,
+        scrollTop: gridScrollTop,
+        viewportHeight: gridViewportHeight,
+        rowHeight: gridRowHeight,
+        overscan: GRID_OVERSCAN,
+      }),
+    [gridRowHeight, gridScrollTop, gridViewportHeight, totalRows],
+  );
   const firstVisible = rowWindow.firstRowIndex;
   const lastVisible = rowWindow.lastRowIndex;
   const topPad = rowWindow.topPadPx;
   const bottomPad = rowWindow.bottomPadPx;
-  const visibleRows = resultGridView.rowsInRange(firstVisible, lastVisible);
-  const structureObject = resultMode === "structure" ? tableViewObject : null;
+  const visibleRows = useMemo(
+    () => resultGridView.rowsInRange(firstVisible, lastVisible),
+    [firstVisible, lastVisible, resultGridView],
+  );
+  const structureObject =
+    effectiveResultMode === "structure" ? tableViewObject : null;
   const showingStructure = Boolean(structureObject);
-
-  useEffect(() => {
-    if (resultMode === "chart" && (!chartResultModel || editMode)) {
-      setResultMode("data");
-    }
-    if (resultMode === "graph" && !graphAvailable) {
-      setResultMode("data");
-    }
-    if (resultMode === "webgl" && (!webGlAvailable || editMode)) {
-      setResultMode("data");
-    }
-  }, [
-    chartResultModel,
-    editMode,
-    graphAvailable,
-    resultMode,
-    setResultMode,
-    webGlAvailable,
-  ]);
 
   // EXEC-010: fetch the disk pages the visible range needs, ingest them into the
   // LRU source, and bump the version so the grid repaints with real cells. The LRU
@@ -1506,20 +1545,25 @@ export function AppWorkbench() {
     if (requests.length === 0) {
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
+    const requestId =
+      window.crypto?.randomUUID?.() ??
+      `${spill.handle}:${firstVisible}:${lastVisible}:${performance.now()}`;
     void (async () => {
       for (const request of requests) {
-        if (cancelled || pendingPagesRef.current.has(request.pageIndex)) {
+        if (
+          controller.signal.aborted ||
+          !beginPendingPage(request.pageIndex, requestId)
+        ) {
           continue;
         }
-        pendingPagesRef.current.add(request.pageIndex);
         try {
-          const page = await dbResultWindow(
+          const page = await queryService.resultWindow(
             spill.handle,
             request.offset,
             request.limit,
           );
-          if (cancelled) {
+          if (controller.signal.aborted) {
             return;
           }
           spill.source.ingest(Number(page.offset), page.rows);
@@ -1527,14 +1571,24 @@ export function AppWorkbench() {
         } catch {
           // Leave the rows as placeholders; a later scroll retries the page.
         } finally {
-          pendingPagesRef.current.delete(request.pageIndex);
+          endPendingPage(request.pageIndex, requestId);
         }
       }
     })();
     return () => {
-      cancelled = true;
+      controller.abort();
+      clearPendingPages();
     };
-  }, [spillInfo, firstVisible, lastVisible, gridWindowVersion]);
+  }, [
+    beginPendingPage,
+    bumpGridWindowVersion,
+    clearPendingPages,
+    endPendingPage,
+    spillInfo,
+    firstVisible,
+    lastVisible,
+    gridWindowVersion,
+  ]);
 
   function selectResultSet(index: number) {
     setActiveResultIndex(index);
@@ -1557,9 +1611,9 @@ export function AppWorkbench() {
   function releaseActiveSpill() {
     const previous = spillRef.current;
     spillRef.current = null;
-    pendingPagesRef.current.clear();
+    clearPendingPages();
     if (previous) {
-      void dbReleaseResult(previous.handle).catch(() => {});
+      void queryService.releaseResult(previous.handle).catch(() => {});
     }
     setSpillInfo(null);
     setGridWindowVersion(0);
@@ -1985,7 +2039,7 @@ export function AppWorkbench() {
     setCommitting(true);
     setCommitError(null);
     try {
-      await dbApplyEdits(activeConnectionId, edits);
+      await queryService.applyEdits(activeConnectionId, edits);
       resetEdits();
       setEditMode(false);
       // Re-run the last query so the grid shows the committed state.
@@ -2282,7 +2336,7 @@ export function AppWorkbench() {
     setJobsLoading(true);
     setJobsError(null);
     try {
-      const next = await jobsList();
+      const next = await workbenchRuntimeService.jobsList();
       setJobs(next);
     } catch (error) {
       const message = errorMessage(error);
@@ -2603,7 +2657,7 @@ export function AppWorkbench() {
 
   async function openAppDeveloperTools() {
     try {
-      await openDeveloperTools();
+      await workbenchRuntimeService.openDeveloperTools();
     } catch (error) {
       showActionNotice(
         "error",
@@ -3031,7 +3085,7 @@ export function AppWorkbench() {
   async function deleteProfile() {
     const id = draft.id;
     if (connectedIds.has(id)) {
-      await dbDisconnect(id).catch(() => undefined);
+      await queryService.disconnect(id).catch(() => undefined);
     }
     setConnectedIds((current) => {
       const next = new Set(current);
@@ -3065,11 +3119,11 @@ export function AppWorkbench() {
     setConnectionError(null);
     const testId = `__test_${draft.id}_${Date.now()}`;
     try {
-      await dbConnect({
+      await queryService.connect({
         ...profileFromDraft(draft),
         id: testId,
       });
-      await dbDisconnect(testId);
+      await queryService.disconnect(testId);
       setConnectionError(null);
       showActionNotice(
         "success",
@@ -3100,7 +3154,7 @@ export function AppWorkbench() {
     setConnectionError(null);
     try {
       const started = performance.now();
-      const info = await dbConnect(profileFromDraft(draft));
+      const info = await queryService.connect(profileFromDraft(draft));
       const elapsedMs = Math.max(1, Math.round(performance.now() - started));
       const nextConnection = describeConnection(
         info,
@@ -3134,7 +3188,7 @@ export function AppWorkbench() {
     if (!connectedIds.has(id)) {
       return;
     }
-    await dbDisconnect(id).catch(() => undefined);
+    await queryService.disconnect(id).catch(() => undefined);
     setConnectedIds((current) => {
       const next = new Set(current);
       next.delete(id);
@@ -3176,7 +3230,7 @@ export function AppWorkbench() {
       return next;
     });
     try {
-      const metadata = await dbListObjects(connectionId);
+      const metadata = await queryService.listObjects(connectionId);
       setMetadataByConnection((current) => ({
         ...current,
         [connectionId]: metadata,
@@ -3852,7 +3906,11 @@ export function AppWorkbench() {
     setPlanLoading(true);
     setPlanError(null);
     try {
-      const plan = await dbExplainQuery(activeConnectionId, sqlToExplain, mode);
+      const plan = await queryService.explain(
+        activeConnectionId,
+        sqlToExplain,
+        mode,
+      );
       setPlanAnalysis(plan);
       showActionNotice(
         "success",
@@ -3981,7 +4039,7 @@ export function AppWorkbench() {
       return true;
     }
     try {
-      const promptSet = await dbQueryParameters(sqlToRun);
+      const promptSet = await queryService.queryParameters(sqlToRun);
       if (promptSet.prompts.length > 0) {
         const remembered = queryParameterMemory[promptSet.signature] ?? {};
         setParameterDraftValues(
@@ -4142,7 +4200,7 @@ export function AppWorkbench() {
         });
         source.ingest(0, first.rows);
         spillRef.current = { handle: spill.handle, source };
-        pendingPagesRef.current.clear();
+        clearPendingPages();
         setSpillInfo({ handle: spill.handle, total: totalRows });
         bumpGridWindowVersion();
         setResult({
@@ -4182,7 +4240,7 @@ export function AppWorkbench() {
       if (resultOffloadEnabled) {
         // EXEC-010 disk offload: stream the resident first page for an immediate
         // paint, then hand the grid a windowed source that pages the rest from disk.
-        const spill = await runQuerySpill(
+        const spill = await queryService.spill(
           {
             connectionId: activeConnectionId,
             sql: sqlToRun,
@@ -4210,7 +4268,7 @@ export function AppWorkbench() {
         );
         finalizeSpillRun(spill);
       } else {
-        await runQueryStream(
+        await queryService.stream(
           {
             connectionId: activeConnectionId,
             sql: sqlToRun,
@@ -4391,7 +4449,7 @@ export function AppWorkbench() {
     }
     try {
       cancelRequestedQueryIdRef.current = id;
-      const cancelled = await dbCancel(id);
+      const cancelled = await queryService.cancel(id);
       if (cancelled) {
         showActionNotice("info", "Cancel requested");
       } else {
@@ -4707,6 +4765,212 @@ export function AppWorkbench() {
     );
   }
 
+  const queryEditorController = {
+    activeTabLabel,
+    running,
+    formatter,
+    primaryQuery: queryForEditorGroup(editorGroupStates.primary),
+    secondaryQuery: queryForEditorGroup(editorGroupStates.secondary),
+    onPrimaryQueryChange: (next) => setEditorGroupQuery("primary", next),
+    onSecondaryQueryChange: (next) => setEditorGroupQuery("secondary", next),
+    renderEditorTabStrip,
+    editorEngine,
+    activeMetadata,
+    sqlSnippets,
+    editorBackgroundImage,
+    editorBackgroundOpacity,
+    theme,
+    vimMode,
+    sqlLinter,
+    editorApiRef,
+    secondaryEditorApiRef,
+    editorSplitRef,
+    editorSplitOpen,
+    editorSplitMode,
+    setEditorSplitMode,
+    activeEditorGroup,
+    setActiveEditorGroup,
+    setEditorSelection: setEditorGroupSelection,
+    runPrimaryLabel,
+    runShortcutLabel,
+    runCurrentShortcutLabel,
+    runFromStartShortcutLabel,
+    runAllShortcutLabel,
+    runMenuOpen,
+    hasSelectedEditorSql,
+    resultActionsAvailable: Boolean(activeResult),
+    runCommand,
+    saveCurrentQuery,
+    runQuery,
+    runSelectionQuery,
+    runCurrentQuery,
+    runFromStartQuery,
+    runAllQuery,
+    cancelQuery,
+    setRunMenuOpen,
+    beginEditorSplitResize: (event) => beginPanelResize("editorSplit", event),
+    onEditorSplitResizeKey: (event) => onPanelResizeKey("editorSplit", event),
+    onSqlFileDrop: (file) => void handleImportFile(file),
+    onUnsupportedFileDrop: () =>
+      showActionNotice(
+        "error",
+        t("editor.dropFailed"),
+        t("editor.dropUnsupportedFile"),
+      ),
+    sqlFileDropLabel: t("editor.dropSqlFile"),
+    onMetadataJump: jumpToSqlMetadata,
+  } satisfies QueryEditorController;
+
+  const resultGridController = {
+    running,
+    readOnly: activeConnectionReadOnly,
+    tableViewObject,
+    resultMode: effectiveResultMode,
+    chartModel: chartResultModel,
+    graphModel: graphResultModel,
+    chartAvailable,
+    graphAvailable,
+    webGlAvailable,
+    resultSets,
+    activeResult,
+    hasResult: Boolean(activeResult),
+    activeResultIndex: activeResultIndexView,
+    queryError,
+    commitError,
+    pendingCount,
+    displayedResultSummary,
+    resultColumns,
+    exportMenuOpen,
+    shortcutTips: resultShortcutTips,
+    showingStructure,
+    structureObject,
+    editorEngine,
+    unfilteredRowCount,
+    totalRows,
+    gridRef,
+    importFileRef,
+    activeMetadata,
+    activeConnectionId,
+    formatObjectName: (object) => qualifiedObjectName(editorEngine, object),
+    formatCount: toCount,
+    onResultModeChange: setResultMode,
+    onSelectResultSet: selectResultSet,
+    onExportActiveResult: exportActiveResult,
+    onToggleExportMenu: () => setExportMenuOpen((open) => !open),
+    onCloseExportMenu: () => setExportMenuOpen(false),
+    onCopyVisibleResult: () => void copyVisibleResult(),
+    onImportFile: (file) => void handleImportFile(file),
+    filtering: {
+      quickFilter,
+      filtersOpen,
+      filtersActive,
+      activeFilters,
+      filteredOutCount,
+      filterJoin,
+      filterRules,
+      sortRuleByColumn,
+      sortRules,
+      onQuickFilterChange: updateQuickFilter,
+      onClearQuickFilter: clearQuickFilter,
+      onToggleFilters: () => setFiltersOpen((open) => !open),
+      onSetFilterJoin: setFilterJoin,
+      onAddFilterRule: addFilterRule,
+      onUpdateFilterRule: updateFilterRule,
+      onRemoveFilterRule: removeFilterRule,
+      onClearResultFilters: clearResultFilters,
+      onToggleSort: toggleSort,
+      onCloseFilters: () => setFiltersOpen(false),
+    },
+    editing: {
+      editMode,
+      editUndoDepth,
+      committing,
+      cellEdits,
+      editingCell,
+      canEditActiveResult,
+      onAddNewRow: addNewRow,
+      onUndoEdit: undoLastEdit,
+      onCommitEdits: () => void commitEdits(),
+      onDiscardEdits: () => {
+        resetEdits();
+        setEditMode(false);
+      },
+      onGenerateRowChangeSql: generateSelectedRowChangeSql,
+      onEnableEditMode: () => {
+        if (activeConnectionReadOnly) {
+          const message = "read-only connection: data edits are blocked";
+          setCommitError(message);
+          showActionNotice("error", "Edit blocked", message);
+          return;
+        }
+        setCommitError(null);
+        setEditMode(true);
+      },
+      onBeginCellEdit: beginCellEdit,
+      onSetCellValue: setCellValue,
+      onDeleteRow: deleteRow,
+      onPasteTableAt: pasteTableAt,
+      onEndCellEdit: () => setEditingCell(null),
+    },
+    selection: {
+      selectedRowKey,
+      selectedCell,
+      selectedRangeBounds,
+      selectedRowValues,
+      rowDetailTable,
+      onSelectGridRow: selectGridRow,
+      onSelectGridCell: selectGridCell,
+      onCloseRowDetail: () => {
+        setSelectedRowKey(null);
+        setSelectedCell(null);
+        setSelectedRange(null);
+      },
+    },
+    gridGeometry: {
+      gridRowStyle,
+      gridTotalWidth,
+      gridRowHeight,
+      gridColumnWidth,
+      leftColumnPad,
+      rightColumnPad,
+      topPad,
+      bottomPad,
+      firstVisible,
+      visibleColumnIndexes,
+      visibleRows,
+      onGridScroll,
+      onGridKeyDown,
+      onGridPaste,
+      onGridCopy,
+    },
+  } satisfies ResultGridController;
+
+  const connectionController = connectionManagerOpen
+    ? ({
+        profiles: filteredProfiles,
+        connectedIds,
+        selectedProfileId,
+        draft,
+        search: connectionSearch,
+        error: connectionError,
+        activeConnectionOpen,
+        testing: testingConnection,
+        connecting,
+        onClose: () => setConnectionManagerOpen(false),
+        onSearchChange: setConnectionSearch,
+        onAddProfile: addProfile,
+        onImportProfiles: (file) => void importConnectionFile(file),
+        onExportProfiles: exportConnectionFile,
+        onSelectProfile: selectProfile,
+        onUpdateDraft: updateDraft,
+        onDeleteProfile: () => void deleteProfile(),
+        onDisconnect: () => void disconnectActiveProfile(),
+        onSave: () => saveDraft(),
+        onTest: () => void testActiveProfile(),
+        onConnect: connectActiveProfile,
+      } satisfies ConnectionController)
+    : null;
+
   return (
     <div
       className="app-root"
@@ -4762,70 +5026,7 @@ export function AppWorkbench() {
       >
         <section className="main-pane">
           <div className="editor-and-inspector">
-            <QueryEditorPane
-              activeTabLabel={activeTabLabel}
-              running={running}
-              formatter={formatter}
-              primaryQuery={queryForEditorGroup(editorGroupStates.primary)}
-              secondaryQuery={queryForEditorGroup(editorGroupStates.secondary)}
-              onPrimaryQueryChange={(next) =>
-                setEditorGroupQuery("primary", next)
-              }
-              onSecondaryQueryChange={(next) =>
-                setEditorGroupQuery("secondary", next)
-              }
-              renderEditorTabStrip={renderEditorTabStrip}
-              editorEngine={editorEngine}
-              activeMetadata={activeMetadata}
-              sqlSnippets={sqlSnippets}
-              editorBackgroundImage={editorBackgroundImage}
-              editorBackgroundOpacity={editorBackgroundOpacity}
-              theme={theme}
-              vimMode={vimMode}
-              sqlLinter={sqlLinter}
-              editorApiRef={editorApiRef}
-              secondaryEditorApiRef={secondaryEditorApiRef}
-              editorSplitRef={editorSplitRef}
-              editorSplitOpen={editorSplitOpen}
-              editorSplitMode={editorSplitMode}
-              setEditorSplitMode={setEditorSplitMode}
-              activeEditorGroup={activeEditorGroup}
-              setActiveEditorGroup={setActiveEditorGroup}
-              setEditorSelection={setEditorGroupSelection}
-              runPrimaryLabel={runPrimaryLabel}
-              runShortcutLabel={runShortcutLabel}
-              runCurrentShortcutLabel={runCurrentShortcutLabel}
-              runFromStartShortcutLabel={runFromStartShortcutLabel}
-              runAllShortcutLabel={runAllShortcutLabel}
-              runMenuOpen={runMenuOpen}
-              hasSelectedEditorSql={hasSelectedEditorSql}
-              resultActionsAvailable={Boolean(activeResult)}
-              runCommand={runCommand}
-              saveCurrentQuery={saveCurrentQuery}
-              runQuery={runQuery}
-              runSelectionQuery={runSelectionQuery}
-              runCurrentQuery={runCurrentQuery}
-              runFromStartQuery={runFromStartQuery}
-              runAllQuery={runAllQuery}
-              cancelQuery={cancelQuery}
-              setRunMenuOpen={setRunMenuOpen}
-              beginEditorSplitResize={(event) =>
-                beginPanelResize("editorSplit", event)
-              }
-              onEditorSplitResizeKey={(event) =>
-                onPanelResizeKey("editorSplit", event)
-              }
-              onSqlFileDrop={(file) => void handleImportFile(file)}
-              onUnsupportedFileDrop={() =>
-                showActionNotice(
-                  "error",
-                  t("editor.dropFailed"),
-                  t("editor.dropUnsupportedFile"),
-                )
-              }
-              sqlFileDropLabel={t("editor.dropSqlFile")}
-              onMetadataJump={jumpToSqlMetadata}
-            />
+            <QueryEditorPane {...queryEditorController} />
           </div>
 
           <div
@@ -4837,159 +5038,12 @@ export function AppWorkbench() {
             onPointerDown={(event) => beginPanelResize("results", event)}
             onKeyDown={(event) => onPanelResizeKey("results", event)}
           />
-          <ResultsPane
-            running={running}
-            readOnly={activeConnectionReadOnly}
-            tableViewObject={tableViewObject}
-            resultMode={resultMode}
-            chartModel={chartResultModel}
-            graphModel={graphResultModel}
-            chartAvailable={chartAvailable}
-            graphAvailable={graphAvailable}
-            webGlAvailable={webGlAvailable}
-            resultSets={resultSets}
-            activeResult={activeResult}
-            hasResult={Boolean(activeResult)}
-            activeResultIndex={activeResultIndexView}
-            queryError={queryError}
-            commitError={commitError}
-            pendingCount={pendingCount}
-            displayedResultSummary={displayedResultSummary}
-            resultColumns={resultColumns}
-            exportMenuOpen={exportMenuOpen}
-            shortcutTips={resultShortcutTips}
-            showingStructure={showingStructure}
-            structureObject={structureObject}
-            editorEngine={editorEngine}
-            unfilteredRowCount={unfilteredRowCount}
-            totalRows={totalRows}
-            gridRef={gridRef}
-            importFileRef={importFileRef}
-            activeMetadata={activeMetadata}
-            activeConnectionId={activeConnectionId}
-            formatObjectName={(object) =>
-              qualifiedObjectName(editorEngine, object)
-            }
-            formatCount={toCount}
-            onResultModeChange={setResultMode}
-            onSelectResultSet={selectResultSet}
-            onExportActiveResult={exportActiveResult}
-            onToggleExportMenu={() => setExportMenuOpen((open) => !open)}
-            onCloseExportMenu={() => setExportMenuOpen(false)}
-            onCopyVisibleResult={() => void copyVisibleResult()}
-            onImportFile={(file) => void handleImportFile(file)}
-            filtering={{
-              quickFilter,
-              filtersOpen,
-              filtersActive,
-              activeFilters,
-              filteredOutCount,
-              filterJoin,
-              filterRules,
-              sortRuleByColumn,
-              sortRules,
-              onQuickFilterChange: updateQuickFilter,
-              onClearQuickFilter: clearQuickFilter,
-              onToggleFilters: () => setFiltersOpen((open) => !open),
-              onSetFilterJoin: setFilterJoin,
-              onAddFilterRule: addFilterRule,
-              onUpdateFilterRule: updateFilterRule,
-              onRemoveFilterRule: removeFilterRule,
-              onClearResultFilters: clearResultFilters,
-              onToggleSort: toggleSort,
-              onCloseFilters: () => setFiltersOpen(false),
-            }}
-            editing={{
-              editMode,
-              editUndoDepth,
-              committing,
-              cellEdits,
-              editingCell,
-              canEditActiveResult,
-              onAddNewRow: addNewRow,
-              onUndoEdit: undoLastEdit,
-              onCommitEdits: () => void commitEdits(),
-              onDiscardEdits: () => {
-                resetEdits();
-                setEditMode(false);
-              },
-              onGenerateRowChangeSql: generateSelectedRowChangeSql,
-              onEnableEditMode: () => {
-                if (activeConnectionReadOnly) {
-                  const message =
-                    "read-only connection: data edits are blocked";
-                  setCommitError(message);
-                  showActionNotice("error", "Edit blocked", message);
-                  return;
-                }
-                setCommitError(null);
-                setEditMode(true);
-              },
-              onBeginCellEdit: beginCellEdit,
-              onSetCellValue: setCellValue,
-              onDeleteRow: deleteRow,
-              onPasteTableAt: pasteTableAt,
-              onEndCellEdit: () => setEditingCell(null),
-            }}
-            selection={{
-              selectedRowKey,
-              selectedCell,
-              selectedRangeBounds,
-              selectedRowValues,
-              rowDetailTable,
-              onSelectGridRow: selectGridRow,
-              onSelectGridCell: selectGridCell,
-              onCloseRowDetail: () => {
-                setSelectedRowKey(null);
-                setSelectedCell(null);
-                setSelectedRange(null);
-              },
-            }}
-            gridGeometry={{
-              gridRowStyle,
-              gridTotalWidth,
-              gridRowHeight,
-              gridColumnWidth,
-              leftColumnPad,
-              rightColumnPad,
-              topPad,
-              bottomPad,
-              firstVisible,
-              visibleColumnIndexes,
-              visibleRows,
-              onGridScroll,
-              onGridKeyDown,
-              onGridPaste,
-              onGridCopy,
-            }}
-          />
+          <ResultsPane {...resultGridController} />
         </section>
       </WorkbenchShell>
 
-      {connectionManagerOpen ? (
-        <ConnectionManagerDialog
-          profiles={filteredProfiles}
-          connectedIds={connectedIds}
-          selectedProfileId={selectedProfileId}
-          draft={draft}
-          search={connectionSearch}
-          error={connectionError}
-          activeConnectionOpen={activeConnectionOpen}
-          testing={testingConnection}
-          connecting={connecting}
-          onClose={() => setConnectionManagerOpen(false)}
-          onSearchChange={setConnectionSearch}
-          onAddProfile={addProfile}
-          onImportProfiles={(file) => void importConnectionFile(file)}
-          onExportProfiles={exportConnectionFile}
-          onSelectProfile={selectProfile}
-          onUpdateDraft={updateDraft}
-          onDeleteProfile={() => void deleteProfile()}
-          onDisconnect={() => void disconnectActiveProfile()}
-          onSave={() => saveDraft()}
-          onTest={() => void testActiveProfile()}
-          onConnect={connectActiveProfile}
-        />
+      {connectionController ? (
+        <ConnectionManagerDialog {...connectionController} />
       ) : null}
 
       {migrationStudioOpen ? (

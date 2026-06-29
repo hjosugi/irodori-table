@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const desktopRoot = resolve(scriptDir, "..");
-const repoRoot = resolve(desktopRoot, "../..");
+import {
+  fromRepoRoot,
+  desktopRoot,
+  repoRoot,
+} from "../../../tools/lib/paths.mjs";
+import { executable, prefixStream } from "../../../tools/lib/process.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 const jsRunner = resolveJsRunner();
@@ -88,23 +89,6 @@ function runTask(task) {
   });
 }
 
-function prefixStream(stream, id, target) {
-  let pending = "";
-  stream.on("data", (chunk) => {
-    pending += chunk.toString();
-    const lines = pending.split(/\r?\n/);
-    pending = lines.pop() ?? "";
-    for (const line of lines) {
-      target.write(`[${id}] ${line}\n`);
-    }
-  });
-  stream.on("end", () => {
-    if (pending) {
-      target.write(`[${id}] ${pending}\n`);
-    }
-  });
-}
-
 function resolveJsRunner() {
   const agent = process.env.npm_config_user_agent ?? "";
   if (agent.startsWith("bun/")) {
@@ -147,19 +131,9 @@ function cargoEnv() {
     ...process.env,
     CARGO_BUILD_JOBS: process.env.CARGO_BUILD_JOBS ?? "2",
     CARGO_HOME:
-      process.env.CARGO_HOME ?? resolve(repoRoot, ".irodori-local/cargo-home"),
+      process.env.CARGO_HOME ?? fromRepoRoot(".irodori-local/cargo-home"),
     CARGO_TARGET_DIR:
       process.env.CARGO_TARGET_DIR ??
-      resolve(repoRoot, ".irodori-local/test-target"),
+      fromRepoRoot(".irodori-local/test-target"),
   };
-}
-
-function executable(name) {
-  if (process.platform !== "win32") {
-    return name;
-  }
-  if (name === "cargo") {
-    return "cargo.exe";
-  }
-  return `${name}.cmd`;
 }

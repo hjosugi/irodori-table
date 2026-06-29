@@ -273,10 +273,11 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
   a stable shared API, independent test boundary, or multi-host release boundary
   is already visible.
 - Continue repository slimming in dependency order: `irodori-core` only after the
-  job/API contracts settle, `packages/extension-sdk` after generated extension
-  API cadence stabilizes, and samples/docs-site only if their release cadence
-  diverges. Keep DB adapter modules inside the desktop app until connector
-  contracts are stable enough to publish independently.
+  job/API contracts settle, keep the extracted `irodori-extension-sdk` release
+  cadence aligned with generated extension API changes, and split samples/docs
+  only if their release cadence diverges. Keep DB adapter modules inside the
+  desktop app until connector contracts are stable enough to publish
+  independently.
 - Keep CI/release discipline tight: typegen drift, frontend unit tests, browser
   smoke, Rust tests, security checks, and release notes should be green before
   each cut.

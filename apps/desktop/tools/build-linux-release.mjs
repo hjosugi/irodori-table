@@ -1,14 +1,13 @@
 import { createWriteStream } from "node:fs";
 import { chmod, mkdir, rename, stat, unlink } from "node:fs/promises";
 import { get } from "node:https";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { resolve } from "node:path";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(scriptDir, "../../..");
-const cacheRoot = resolve(repoRoot, ".cache");
-const configRoot = resolve(repoRoot, ".config");
+import { fromDesktopRoot, fromRepoRoot } from "../../../tools/lib/paths.mjs";
+import { run } from "../../../tools/lib/process.mjs";
+
+const cacheRoot = fromRepoRoot(".cache");
+const configRoot = fromRepoRoot(".config");
 const tauriCache = resolve(cacheRoot, "tauri");
 
 const options = buildLinuxReleaseOptions(process.argv.slice(2), process.arch);
@@ -23,18 +22,9 @@ if (process.platform !== "linux") {
 await mkdir(tauriCache, { recursive: true });
 await ensureRuntime(runtimeUrl, runtimeFile);
 
-const child = spawn("tauri", buildTauriArgs(options), {
-  cwd: resolve(repoRoot, "apps/desktop"),
-  stdio: "inherit",
+await run("tauri", buildTauriArgs(options), {
+  cwd: fromDesktopRoot(),
   env: buildTauriEnv(process.env, { cacheRoot, configRoot, runtimeFile }),
-});
-
-child.on("exit", (code, signal) => {
-  if (signal) {
-    console.error(`tauri build terminated by ${signal}`);
-    process.exit(1);
-  }
-  process.exit(code ?? 1);
 });
 
 function buildLinuxReleaseOptions(argv, nodeArch) {

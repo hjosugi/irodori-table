@@ -47,6 +47,7 @@ mod engine;
 mod explain;
 mod influx;
 mod meta;
+mod metadata_manager;
 #[cfg(feature = "mongo")]
 mod mongo;
 #[cfg(feature = "sqlserver")]
@@ -59,8 +60,10 @@ mod oracle;
 mod postgres;
 mod profile;
 mod query;
+mod query_executor;
 #[cfg(feature = "redis-connector")]
 mod redis;
+mod result_spill_manager;
 mod snowflake;
 mod spill;
 mod sqlite;
@@ -81,6 +84,7 @@ pub use meta::{
     DbColumnInspection, DbColumnReference, DbCompletionItem, DbCompletionItemKind,
     DbInspectionCard, DbObjectInspection,
 };
+use metadata_manager::MetadataManager;
 pub use profile::ConnectionProfile;
 use profile::{normalize_profile, redact_secret_text};
 pub(crate) use query::{
@@ -93,6 +97,8 @@ pub use query::{
     QueryParameterPromptSet, QueryResult, QueryResultSet, QueryStreamEvent,
     QueryStreamResultSetSummary, ResultWindow, SpillRunResult,
 };
+use query_executor::QueryExecutor;
+use result_spill_manager::{ResultEntry, ResultSpillManager};
 use spill::ResultStore;
 pub use spill::SpillConfig;
 
@@ -258,14 +264,6 @@ pub struct DbState {
     result_seq: Arc<std::sync::atomic::AtomicU64>,
 }
 
-/// A retained result store plus the bookkeeping eviction and disconnect-cleanup
-/// need.
-struct ResultEntry {
-    seq: u64,
-    connection_id: String,
-    store: Arc<Mutex<ResultStore>>,
-}
-
 impl Default for DbState {
     fn default() -> Self {
         Self {
@@ -278,6 +276,20 @@ impl Default for DbState {
             results: Arc::new(Mutex::new(HashMap::new())),
             result_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
+    }
+}
+
+impl DbState {
+    pub(crate) fn query_executor(&self) -> QueryExecutor<'_> {
+        QueryExecutor::new(self)
+    }
+
+    pub(crate) fn metadata_manager(&self) -> MetadataManager<'_> {
+        MetadataManager::new(self)
+    }
+
+    pub(crate) fn result_spill_manager(&self) -> ResultSpillManager<'_> {
+        ResultSpillManager::new(self)
     }
 }
 
@@ -527,7 +539,10 @@ pub async fn run_query_with_params_impl(
         .into_iter()
         .map(|set| query_result_set(set, cap))
         .collect();
-    refresh_metadata_after_query_if_needed(state, &connection_id, &metadata_sql).await;
+    state
+        .metadata_manager()
+        .refresh_after_query_if_needed(&connection_id, &metadata_sql)
+        .await;
     Ok(query_result_from_sets(result_sets, elapsed_ms))
 }
 
@@ -766,7 +781,10 @@ pub(crate) async fn run_query_stream_capped_impl(
         state.cancels.lock().await.remove(qid);
     }
     if result.is_ok() {
-        refresh_metadata_after_query_if_needed(state, &connection_id, &metadata_sql).await;
+        state
+            .metadata_manager()
+            .refresh_after_query_if_needed(&connection_id, &metadata_sql)
+            .await;
     }
     result
 }
@@ -1072,7 +1090,10 @@ pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(
         .lock()
         .await
         .remove(&connection_id);
-    release_results_for_connection(state, &connection_id).await;
+    state
+        .result_spill_manager()
+        .release_for_connection(&connection_id)
+        .await;
     {
         let mut cache = state.metadata_cache.lock().await;
         cache.invalidate_connection(&connection_id);

@@ -1,12 +1,12 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const iconDir = join(root, "src-tauri", "icons");
+import { desktopRoot } from "../../../tools/lib/paths.mjs";
+
+const iconDir = join(desktopRoot, "src-tauri", "icons");
 const source = join(iconDir, "irodori-icon.svg");
-const tempDir = join(root, ".icon-build");
+const tempDir = join(desktopRoot, ".icon-build");
 
 const pngTargets = new Map([
   ["32x32.png", 32],

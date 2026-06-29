@@ -26,12 +26,15 @@ These instructions apply to the whole repository. More specific `AGENTS.md` or
   generation, extensions, IO, security, and server work) live in the sibling
   repo `irodori-kit` (https://github.com/hjosugi/irodori-kit) and are consumed
   via git tag; the app depends on them through `[workspace.dependencies]`.
-- `packages/extension-sdk/` contains the TypeScript extension SDK and templates.
-- `examples/extensions/` contains example extensions.
+- The TypeScript extension SDK, manifest schema, extension-dev helper, and
+  extension templates live in the sibling repo `irodori-extension-sdk`
+  (https://github.com/hjosugi/irodori-extension-sdk).
 - `docs/agent-workstreams.json` is the machine-readable split for parallel
   agent work.
 - `docs/extension-marketplace/`, `docs/cheatsheets/`, and
   `docs/data-source-support-status.md` are generated or app-consumed snapshots.
+- `tools/lib/` contains shared Node.js utility helpers used by root tools and
+  `apps/desktop/tools`.
 - `.irodori-local/` and `ref/` are local/reference areas. Treat them as
   read-only research material unless the user explicitly asks otherwise.
 
@@ -64,7 +67,8 @@ against `apps/desktop`.
 - Verified desktop build: `make desktop-build-verified`
 - Browser/e2e tests: `make desktop-e2e`
 - Generated docs/catalog checks: `make docs-check`
-- Extension manifest validation: `make extension-manifests`
+- Extension manifest validation: `make extension-manifests` delegates to the
+  sibling `../irodori-extension-sdk` checkout when present.
 - Security/license checks: `make security`
 - Broad local validation: `make check`
 

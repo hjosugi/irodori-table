@@ -1,9 +1,7 @@
 import {
-  Fragment,
-  useEffect,
+  useCallback,
   useRef,
   useState,
-  type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -21,18 +19,13 @@ import type { SqlMetadataTarget } from "../../sql/metadata-inspection";
 import type { SqlLinterId } from "../../sql/linter";
 import type { IrodoriTheme } from "@/theme";
 import type { EditorSplitMode } from "../workbench";
-import { findSqlFile, hasDraggedFiles } from "./drag-drop";
 import { EditorCommandBar } from "./EditorCommandBar";
-import {
-  EditorGroupShell,
-  editorShellBackgroundStyle,
-} from "./EditorGroupShell";
-import {
-  editorContextCommandGroups,
-  type EditorContextCommand,
-} from "./editor-commands";
+import { EditorContextMenu } from "./EditorContextMenu";
+import { editorShellBackgroundStyle } from "./EditorGroupShell";
+import { EditorSplitLayout } from "./EditorSplitLayout";
 import { MetadataToolWindow } from "./MetadataToolWindow";
 import { RunControl } from "./RunControl";
+import { useSqlFileDrop } from "./sql-file-drop";
 import type {
   EditorGroup,
   EditorSelection,
@@ -149,99 +142,39 @@ export function QueryEditorPane({
   } | null>(null);
   const [metadataToolWindow, setMetadataToolWindow] =
     useState<SqlMetadataToolWindowRequest | null>(null);
-  const [sqlFileDragOver, setSqlFileDragOver] = useState(false);
   const runControlRef = useRef<HTMLDivElement | null>(null);
-  const sqlFileDragDepthRef = useRef(0);
   const editorBackgroundStyle = editorShellBackgroundStyle(
     editorBackgroundImage,
     editorBackgroundOpacity,
   );
   const activeQuery =
     activeEditorGroup === "secondary" ? secondaryQuery : primaryQuery;
+  const { sqlFileDragOver, sqlFileDropHandlers } = useSqlFileDrop({
+    onSqlFileDrop,
+    onUnsupportedFileDrop,
+  });
 
-  useEffect(() => {
-    if (!contextMenu) {
-      return;
-    }
-    const close = () => setContextMenu(null);
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
+  const openEditorContextMenu = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>, group: EditorGroup) => {
       event.preventDefault();
-      setContextMenu(null);
-    };
-    window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("blur", close);
-    return () => {
-      window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("blur", close);
-    };
-  }, [contextMenu]);
+      event.stopPropagation();
+      setActiveEditorGroup(group);
+      setContextMenu({ x: event.clientX, y: event.clientY });
+    },
+    [setActiveEditorGroup],
+  );
 
-  useEffect(() => {
-    if (!runMenuOpen) {
-      return;
-    }
-    const closeOnPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Node && runControlRef.current?.contains(target)) {
-        return;
-      }
-      setRunMenuOpen(false);
-    };
-    const closeOnBlur = () => setRunMenuOpen(false);
-    window.addEventListener("pointerdown", closeOnPointerDown);
-    window.addEventListener("blur", closeOnBlur);
-    return () => {
-      window.removeEventListener("pointerdown", closeOnPointerDown);
-      window.removeEventListener("blur", closeOnBlur);
-    };
-  }, [runMenuOpen, setRunMenuOpen]);
-
-  useEffect(() => {
-    if (onSqlFileDrop) {
-      return;
-    }
-
-    sqlFileDragDepthRef.current = 0;
-    setSqlFileDragOver(false);
-  }, [onSqlFileDrop]);
-
-  const openEditorContextMenu = (
-    event: ReactMouseEvent<HTMLDivElement>,
-    group: EditorGroup,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setActiveEditorGroup(group);
-    setContextMenu({ x: event.clientX, y: event.clientY });
-  };
-
-  const runContextCommand = (commandId: string) => {
+  const closeEditorContextMenu = useCallback(() => {
     setContextMenu(null);
-    runCommand(commandId);
-  };
+  }, []);
 
-  const renderContextCommand = (command: EditorContextCommand) => {
-    const label =
-      command.commandId === "query.run" ? runPrimaryLabel : command.label;
-    const shortcut =
-      command.commandId === "query.run" ? runShortcutLabel : null;
-    return (
-      <button
-        type="button"
-        role="menuitem"
-        key={command.commandId}
-        onClick={() => runContextCommand(command.commandId)}
-      >
-        <span>{label}</span>
-        {shortcut ? <kbd>{shortcut}</kbd> : null}
-      </button>
-    );
-  };
+  const runContextCommand = useCallback(
+    (commandId: string) => {
+      setContextMenu(null);
+      runCommand(commandId);
+    },
+    [runCommand],
+  );
 
   const revealMetadataUsage = (selection: EditorSelection) => {
     const primary = editorApiRef.current;
@@ -251,70 +184,6 @@ export function QueryEditorPane({
         ? (secondary ?? primary)
         : (primary ?? secondary);
     active?.revealRange(selection);
-  };
-
-  const resetSqlFileDragState = () => {
-    sqlFileDragDepthRef.current = 0;
-    setSqlFileDragOver(false);
-  };
-
-  const prepareSqlFileDrop = (event: ReactDragEvent<HTMLElement>) => {
-    if (!onSqlFileDrop || !hasDraggedFiles(event.dataTransfer)) {
-      return false;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = "copy";
-    return true;
-  };
-
-  const handleSqlFileDragEnter = (event: ReactDragEvent<HTMLElement>) => {
-    if (!prepareSqlFileDrop(event)) {
-      return;
-    }
-
-    sqlFileDragDepthRef.current += 1;
-    setSqlFileDragOver(true);
-  };
-
-  const handleSqlFileDragOver = (event: ReactDragEvent<HTMLElement>) => {
-    if (!prepareSqlFileDrop(event)) {
-      return;
-    }
-
-    setSqlFileDragOver(true);
-  };
-
-  const handleSqlFileDragLeave = (event: ReactDragEvent<HTMLElement>) => {
-    if (!onSqlFileDrop || !hasDraggedFiles(event.dataTransfer)) {
-      return;
-    }
-
-    event.stopPropagation();
-    sqlFileDragDepthRef.current = Math.max(0, sqlFileDragDepthRef.current - 1);
-
-    if (sqlFileDragDepthRef.current === 0) {
-      setSqlFileDragOver(false);
-    }
-  };
-
-  const handleSqlFileDrop = (event: ReactDragEvent<HTMLElement>) => {
-    const dropSqlFile = onSqlFileDrop;
-
-    if (!dropSqlFile || !prepareSqlFileDrop(event)) {
-      return;
-    }
-
-    resetSqlFileDragState();
-
-    const sqlFile = findSqlFile(event.dataTransfer.files);
-    if (!sqlFile) {
-      onUnsupportedFileDrop?.();
-      return;
-    }
-
-    dropSqlFile(sqlFile);
   };
 
   return (
@@ -359,73 +228,40 @@ export function QueryEditorPane({
         className={`editor-pane${sqlFileDragOver ? " sql-file-drag-over" : ""}`}
         data-drop-label={sqlFileDropLabel}
         aria-label={activeTabLabel}
-        onDragEnter={handleSqlFileDragEnter}
-        onDragOver={handleSqlFileDragOver}
-        onDragLeave={handleSqlFileDragLeave}
-        onDrop={handleSqlFileDrop}
+        {...sqlFileDropHandlers}
       >
-        <div
-          ref={editorSplitRef}
-          className={`editor-split editor-split-${editorSplitMode}`}
-        >
-          <EditorGroupShell
-            group="primary"
-            active={activeEditorGroup === "primary"}
-            query={primaryQuery}
-            apiRef={editorApiRef}
-            formatter={formatter}
-            editorEngine={editorEngine}
-            activeMetadata={activeMetadata}
-            sqlSnippets={sqlSnippets}
-            editorBackgroundStyle={editorBackgroundStyle}
-            theme={theme}
-            vimMode={vimMode}
-            sqlLinter={sqlLinter}
-            renderEditorTabStrip={renderEditorTabStrip}
-            onQueryChange={onPrimaryQueryChange}
-            setActiveEditorGroup={setActiveEditorGroup}
-            setEditorSelection={setEditorSelection}
-            onContextMenu={openEditorContextMenu}
-            onMetadataJump={onMetadataJump}
-            onMetadataToolWindow={setMetadataToolWindow}
-          />
-          {editorSplitOpen ? (
-            <>
-              <div
-                className={`panel-resizer editor-split-resizer ${editorSplitMode}`}
-                role="separator"
-                aria-label="Resize editor split"
-                aria-orientation={
-                  editorSplitMode === "down" ? "horizontal" : "vertical"
-                }
-                tabIndex={0}
-                onPointerDown={beginEditorSplitResize}
-                onKeyDown={onEditorSplitResizeKey}
-              />
-              <EditorGroupShell
-                group="secondary"
-                active={activeEditorGroup === "secondary"}
-                query={secondaryQuery}
-                apiRef={secondaryEditorApiRef}
-                formatter={formatter}
-                editorEngine={editorEngine}
-                activeMetadata={activeMetadata}
-                sqlSnippets={sqlSnippets}
-                editorBackgroundStyle={editorBackgroundStyle}
-                theme={theme}
-                vimMode={vimMode}
-                sqlLinter={sqlLinter}
-                renderEditorTabStrip={renderEditorTabStrip}
-                onQueryChange={onSecondaryQueryChange}
-                setActiveEditorGroup={setActiveEditorGroup}
-                setEditorSelection={setEditorSelection}
-                onContextMenu={openEditorContextMenu}
-                onMetadataJump={onMetadataJump}
-                onMetadataToolWindow={setMetadataToolWindow}
-              />
-            </>
-          ) : null}
-        </div>
+        <EditorSplitLayout
+          editorSplitRef={editorSplitRef}
+          editorSplitOpen={editorSplitOpen}
+          editorSplitMode={editorSplitMode}
+          activeEditorGroup={activeEditorGroup}
+          primary={{
+            query: primaryQuery,
+            apiRef: editorApiRef,
+            onQueryChange: onPrimaryQueryChange,
+          }}
+          secondary={{
+            query: secondaryQuery,
+            apiRef: secondaryEditorApiRef,
+            onQueryChange: onSecondaryQueryChange,
+          }}
+          formatter={formatter}
+          editorEngine={editorEngine}
+          activeMetadata={activeMetadata}
+          sqlSnippets={sqlSnippets}
+          editorBackgroundStyle={editorBackgroundStyle}
+          theme={theme}
+          vimMode={vimMode}
+          sqlLinter={sqlLinter}
+          renderEditorTabStrip={renderEditorTabStrip}
+          setActiveEditorGroup={setActiveEditorGroup}
+          setEditorSelection={setEditorSelection}
+          onEditorContextMenu={openEditorContextMenu}
+          onMetadataJump={onMetadataJump}
+          onMetadataToolWindow={setMetadataToolWindow}
+          beginEditorSplitResize={beginEditorSplitResize}
+          onEditorSplitResizeKey={onEditorSplitResizeKey}
+        />
         {metadataToolWindow ? (
           <MetadataToolWindow
             request={metadataToolWindow}
@@ -439,39 +275,14 @@ export function QueryEditorPane({
           />
         ) : null}
         {contextMenu ? (
-          <div
-            className="app-menu-popover editor-context-menu"
-            role="menu"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onContextMenu={(event) => event.preventDefault()}
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            {editorContextCommandGroups.map((group, index) => (
-              <Fragment key={index}>
-                {index > 0 ? (
-                  <span className="menu-separator" aria-hidden="true" />
-                ) : null}
-                {group.map(renderContextCommand)}
-              </Fragment>
-            ))}
-            <span className="menu-separator" aria-hidden="true" />
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!resultActionsAvailable}
-              onClick={() => runContextCommand("result.copySqlInserts")}
-            >
-              <span>Copy result as INSERT SQL</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!resultActionsAvailable}
-              onClick={() => runContextCommand("result.exportSqlInserts")}
-            >
-              <span>Download result as INSERT SQL</span>
-            </button>
-          </div>
+          <EditorContextMenu
+            position={contextMenu}
+            runPrimaryLabel={runPrimaryLabel}
+            runShortcutLabel={runShortcutLabel}
+            resultActionsAvailable={resultActionsAvailable}
+            onCommand={runContextCommand}
+            onClose={closeEditorContextMenu}
+          />
         ) : null}
       </section>
     </>

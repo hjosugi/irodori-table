@@ -6,15 +6,16 @@ mdBook, a samples repo, or the private archive.
 
 ## Repositories
 
-| Repository | Visibility | Owns |
-| --- | --- | --- |
-| `irodori-table` | Public | Desktop app, app-local crates, extension SDK, local knowledge tools, packaging templates, and generated docs consumed by the app/CI. |
-| `irodori-docs` | Public | Public mdBook/site, durable user/contributor docs, policy pages, reference pages, feature matrix, backlog/progress views, ADR-style docs, and public long-form explanations. |
-| `irodori-samples` | Public | Database compose files, seed data, and DB-specific sample query projects. |
-| `irodori-sql` | Public | Reusable SQL dialect, placeholder, metamodel, and schema-diff helpers. |
-| `irodori-knowledge` | Public | Shared error/job/knowledge crates used by this workspace. |
-| `irodori-extension-*` | Public per connector | One installable connector implementation per repository, usually generated under the local sibling parent `../irodori-extensions/`. |
-| `irodori-archive` | Private | Historical internal planning/status snapshots, audits, private research notes, bulky discarded docs, and material that should not be public. |
+| Repository              | Visibility           | Owns                                                                                                                                                                         |
+| ----------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `irodori-table`         | Public               | Desktop app, app-local crates, local knowledge tools, packaging templates, and generated docs consumed by the app/CI.                                                        |
+| `irodori-docs`          | Public               | Public mdBook/site, durable user/contributor docs, policy pages, reference pages, feature matrix, backlog/progress views, ADR-style docs, and public long-form explanations. |
+| `irodori-samples`       | Public               | Database compose files, seed data, and DB-specific sample query projects.                                                                                                    |
+| `irodori-sql`           | Public               | Reusable SQL dialect, placeholder, metamodel, and schema-diff helpers.                                                                                                       |
+| `irodori-knowledge`     | Public               | Shared error/job/knowledge crates used by this workspace.                                                                                                                    |
+| `irodori-extension-sdk` | Public               | TypeScript extension SDK, manifest schema, extension-dev helper, generated SDK API, and starter templates.                                                                   |
+| `irodori-extension-*`   | Public per connector | One installable connector implementation per repository, usually generated under the local sibling parent `../irodori-extensions/`.                                          |
+| `irodori-archive`       | Private              | Historical internal planning/status snapshots, audits, private research notes, bulky discarded docs, and material that should not be public.                                 |
 
 ## What Stays In `irodori-table`
 
@@ -75,11 +76,11 @@ write a short replacement summary in `irodori-docs` or this repo.
 
 Generated docs are edited at their inputs:
 
-| Output | Edit Instead |
-| --- | --- |
-| `docs/data-source-support-status.md` | `knowledge/engines.json`, `docs/extension-marketplace/*.json`, `tools/docs/support-status.mjs` |
-| `docs/cheatsheets/*.md` | `knowledge/cheatsheets/*.json`, the knowledge DB, `tools/knowledge/cheatsheet.mjs` |
-| `docs/extension-marketplace/catalog.json` | `docs/extension-marketplace/index.json`, `tools/docs/build-extension-catalog.mjs` |
+| Output                                    | Edit Instead                                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `docs/data-source-support-status.md`      | `knowledge/engines.json`, `docs/extension-marketplace/*.json`, `tools/docs/support-status.mjs` |
+| `docs/cheatsheets/*.md`                   | `knowledge/cheatsheets/*.json`, the knowledge DB, `tools/knowledge/cheatsheet.mjs`             |
+| `docs/extension-marketplace/catalog.json` | `docs/extension-marketplace/index.json`, `tools/docs/build-extension-catalog.mjs`              |
 
 Generated snapshots should be mirrored into `irodori-docs` for public reading.
 Keep a Markdown snapshot in `irodori-table` only when a local generator, CI guard,
@@ -93,6 +94,8 @@ and [agent-workstreams.json](agent-workstreams.json) when assigning work to
 multiple coding agents. The default split is:
 
 - app/runtime/registry contract changes stay in `irodori-table`;
+- extension SDK, manifest schema, and template changes stay in
+  `irodori-extension-sdk`;
 - one connector implementation agent writes one `irodori-extension-*` repository;
 - generated docs/catalog files are updated by the agent that owns the source
   data or generator;

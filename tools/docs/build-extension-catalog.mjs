@@ -1,17 +1,11 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-import {
-  buildExtensionCatalog,
-  serializeExtensionCatalog,
-} from "./extension-catalog.mjs";
+import { buildExtensionCatalog, serializeExtensionCatalog } from "./extension-catalog.mjs";
+import { fromRepoRoot } from "../lib/paths.mjs";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const root = resolve(scriptDir, "../..");
-const indexPath = resolve(root, "docs/extension-marketplace/index.json");
-const catalogPath = resolve(root, "docs/extension-marketplace/catalog.json");
+const indexPath = fromRepoRoot("docs/extension-marketplace/index.json");
+const catalogPath = fromRepoRoot("docs/extension-marketplace/catalog.json");
 const check = process.argv.includes("--check");
 
 for (const arg of process.argv.slice(2)) {

@@ -1,20 +1,20 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const desktopRoot = resolve(scriptDir, "..");
-const repoRoot = resolve(desktopRoot, "../..");
+import {
+  fromDesktopRoot,
+  fromRepoRoot,
+  repoRoot,
+} from "../../../tools/lib/paths.mjs";
 
 // Paths
-const pkgJsonPath = resolve(desktopRoot, "package.json");
-const tauriConfPath = resolve(desktopRoot, "src-tauri/tauri.conf.json");
-const tauriCargoPath = resolve(desktopRoot, "src-tauri/Cargo.toml");
-const rootCargoPath = resolve(repoRoot, "Cargo.toml");
-const rootCargoLockPath = resolve(repoRoot, "Cargo.lock");
-const pkgLockPath = resolve(desktopRoot, "package-lock.json");
-const appConfigPath = resolve(desktopRoot, "src/app/app-config.ts");
+const pkgJsonPath = fromDesktopRoot("package.json");
+const tauriConfPath = fromDesktopRoot("src-tauri/tauri.conf.json");
+const tauriCargoPath = fromDesktopRoot("src-tauri/Cargo.toml");
+const rootCargoPath = fromRepoRoot("Cargo.toml");
+const rootCargoLockPath = fromRepoRoot("Cargo.lock");
+const pkgLockPath = fromDesktopRoot("package-lock.json");
+const appConfigPath = fromDesktopRoot("src/app/app-config.ts");
 
 // 1. Parse bump type
 const bumpType = process.argv[2] || "patch"; // patch, minor, major

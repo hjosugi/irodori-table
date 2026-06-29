@@ -2,8 +2,8 @@
 
 Irodori Table is a permissively licensed database client project. The main app is
 a Tauri desktop client built with Rust, React, TypeScript, and Vite. The repo
-also contains shared Rust crates, extension SDK work, database sample
-containers, and planning docs.
+also contains app-local crates, local knowledge tools, generated app-consumed
+docs, packaging templates, and planning docs.
 
 Some reusable foundations are intentionally split out like standalone products:
 
@@ -12,6 +12,10 @@ Some reusable foundations are intentionally split out like standalone products:
 - `irodori-sql` lives in [`hjosugi/irodori-sql`](https://github.com/hjosugi/irodori-sql)
   and is consumed from the `v0.2.24` Git tag for SQL dialect, parameter,
   metamodel, and schema-diff helpers.
+- `irodori-extension-sdk` lives in
+  [`hjosugi/irodori-extension-sdk`](https://github.com/hjosugi/irodori-extension-sdk)
+  and owns the TypeScript extension SDK, manifest schema, extension-dev helper,
+  and extension templates.
 
 Application UX stays here unless it has a stable standalone contract. BI panels,
 ERD layout, query editor behavior, movable sidebars, connection UI, and result
@@ -241,44 +245,43 @@ make check
 
 ## Repo Map
 
-| Path | Purpose |
-| --- | --- |
-| `apps/desktop/` | Main Tauri + React desktop application. |
-| `apps/desktop/src-tauri/` | Rust backend for the desktop app, including DB adapters and Tauri commands. |
+| Path                         | Purpose                                                                                                                                                                                                        |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/desktop/`              | Main Tauri + React desktop application.                                                                                                                                                                        |
+| `apps/desktop/src-tauri/`    | Rust backend for the desktop app, including DB adapters and Tauri commands.                                                                                                                                    |
 | `irodori-kit` (sibling repo) | Shared Rust foundation crates (core models, completion, proxy/secret handling, extension APIs, IO, server) — extracted to [hjosugi/irodori-kit](https://github.com/hjosugi/irodori-kit), consumed via git tag. |
-| `packages/extension-sdk/` | TypeScript extension SDK package. |
-| `packages/extension-sdk/templates/` | Starter templates for extension authors. |
-| `examples/extensions/` | Example extensions. |
-| `scripts/` | Developer scripts for DB verification and local seeded DBs. |
-| `tools/security/` | Local security automation config used by `make security`. |
-| `tools/knowledge/` | Local knowledge-base refresh, analysis, query, and cheatsheet generation tools. |
-| `knowledge/` | Tracked schema/source registry for the generated local knowledge database. |
-| `docs/` | Generated/app-consumed docs and pointers to the public mdBook. See [docs/repository-boundaries.md](docs/repository-boundaries.md). |
-| `.irodori-local/ref/` | Optional local reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit. |
-| `../irodori-samples/` | Sibling checkout containing per-engine database compose files and sample schemas. |
+| `../irodori-extension-sdk/`  | Sibling checkout for the TypeScript extension SDK, manifest schema, extension-dev helper, and templates.                                                                                                       |
+| `scripts/`                   | Developer scripts for DB verification and local seeded DBs.                                                                                                                                                    |
+| `tools/lib/`                 | Shared Node.js utility helpers used by root tools and `apps/desktop/tools`.                                                                                                                                    |
+| `tools/security/`            | Local security automation config used by `make security`.                                                                                                                                                      |
+| `tools/knowledge/`           | Local knowledge-base refresh, analysis, query, and cheatsheet generation tools.                                                                                                                                |
+| `knowledge/`                 | Tracked schema/source registry for the generated local knowledge database.                                                                                                                                     |
+| `docs/`                      | Generated/app-consumed docs and pointers to the public mdBook. See [docs/repository-boundaries.md](docs/repository-boundaries.md).                                                                             |
+| `.irodori-local/ref/`        | Optional local reference projects for clean-room research. Do not copy code from here unless license compatibility and attribution are explicit.                                                               |
+| `../irodori-samples/`        | Sibling checkout containing per-engine database compose files and sample schemas.                                                                                                                              |
 
 ## Important Docs
 
-| Need | Read |
-| --- | --- |
-| Implementation architecture and module boundaries | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html) |
-| Migration planning, row-hash validation, and data diff design | [data-verification-diff](https://hjosugi.github.io/irodori-docs/data-verification-diff.html) |
-| Linux setup, WebKit crashes, blank Tauri window | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html) |
-| Supported vs planned database engines | [docs/data-source-support-status.md](docs/data-source-support-status.md) |
-| Connection syntax and engine quirks | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html) |
-| Sample database containers | [irodori-samples](https://github.com/hjosugi/irodori-samples) |
-| Doc/repo/archive ownership | [docs/repository-boundaries.md](docs/repository-boundaries.md) |
-| Product capability strategy | [data-source-coverage-strategy](https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html) |
-| Current implementation snapshot | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html) |
-| Roadmap and task direction | [roadmap-1.0](https://hjosugi.github.io/irodori-docs/roadmap-1.0.html) |
-| Store/package registration pack | [store-registration](https://hjosugi.github.io/irodori-docs/store-registration.html) |
-| UI language switching and translation keys | [i18n](https://hjosugi.github.io/irodori-docs/i18n.html) |
-| Release and distribution status | [distribution](https://hjosugi.github.io/irodori-docs/distribution.html) |
-| Data-source content audit | [data-source-content-audit](https://hjosugi.github.io/irodori-docs/data-source-content-audit.html) |
-| Extension development | [extension-development](https://hjosugi.github.io/irodori-docs/extension-development.html) and [packages/extension-sdk/README.md](packages/extension-sdk/README.md) |
-| Clean-room rules | [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html) |
-| License policy | [licensing](https://hjosugi.github.io/irodori-docs/licensing.html) |
-| Local knowledge base | [knowledge-base](https://hjosugi.github.io/irodori-docs/knowledge-base.html) |
+| Need                                                          | Read                                                                                                                                                                     |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Implementation architecture and module boundaries             | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html)                                                                   |
+| Migration planning, row-hash validation, and data diff design | [data-verification-diff](https://hjosugi.github.io/irodori-docs/data-verification-diff.html)                                                                             |
+| Linux setup, WebKit crashes, blank Tauri window               | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html)                                                                                       |
+| Supported vs planned database engines                         | [docs/data-source-support-status.md](docs/data-source-support-status.md)                                                                                                 |
+| Connection syntax and engine quirks                           | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html)                                                                           |
+| Sample database containers                                    | [irodori-samples](https://github.com/hjosugi/irodori-samples)                                                                                                            |
+| Doc/repo/archive ownership                                    | [docs/repository-boundaries.md](docs/repository-boundaries.md)                                                                                                           |
+| Product capability strategy                                   | [data-source-coverage-strategy](https://hjosugi.github.io/irodori-docs/data-source-coverage-strategy.html)                                                               |
+| Current implementation snapshot                               | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html)                                                                   |
+| Roadmap and task direction                                    | [roadmap-1.0](https://hjosugi.github.io/irodori-docs/roadmap-1.0.html)                                                                                                   |
+| Store/package registration pack                               | [store-registration](https://hjosugi.github.io/irodori-docs/store-registration.html)                                                                                     |
+| UI language switching and translation keys                    | [i18n](https://hjosugi.github.io/irodori-docs/i18n.html)                                                                                                                 |
+| Release and distribution status                               | [distribution](https://hjosugi.github.io/irodori-docs/distribution.html)                                                                                                 |
+| Data-source content audit                                     | [data-source-content-audit](https://hjosugi.github.io/irodori-docs/data-source-content-audit.html)                                                                       |
+| Extension development                                         | [extension-development](https://hjosugi.github.io/irodori-docs/extension-development.html) and [irodori-extension-sdk](https://github.com/hjosugi/irodori-extension-sdk) |
+| Clean-room rules                                              | [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html)                                                                                                     |
+| License policy                                                | [licensing](https://hjosugi.github.io/irodori-docs/licensing.html)                                                                                                       |
+| Local knowledge base                                          | [knowledge-base](https://hjosugi.github.io/irodori-docs/knowledge-base.html)                                                                                             |
 
 ## Common Gotchas
 

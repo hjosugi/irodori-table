@@ -1,11 +1,8 @@
-import { spawn } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const desktopRoot = resolve(scriptDir, "..");
-const repoRoot = resolve(desktopRoot, "../..");
+import { normalizeGeneratedFiles } from "../../../tools/lib/generated.mjs";
+import { repoRoot } from "../../../tools/lib/paths.mjs";
+import { run, runCapture } from "../../../tools/lib/process.mjs";
 
 const generators = [
   {
@@ -20,15 +17,6 @@ const generators = [
       "--no-default-features",
       "export_typescript_bindings",
     ],
-  },
-  {
-    id: "extension",
-    label: "extension SDK bindings",
-    generatedFiles: [
-      "packages/extension-sdk/src/generated/irodori-extension-api.ts",
-    ],
-    command: "cargo",
-    args: ["test", "-p", "irodori-extension", "export_typescript_bindings"],
   },
 ];
 
@@ -60,7 +48,7 @@ async function main() {
   const generatedFiles = selectedGenerators.flatMap(
     (generator) => generator.generatedFiles,
   );
-  await normalizeGeneratedFiles(generatedFiles);
+  await normalizeGeneratedFiles(generatedFiles, { root: repoRoot });
 
   if (options.check) {
     const diff = await runCapture(
@@ -94,23 +82,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("Generated desktop and extension TypeScript bindings.");
-}
-
-async function normalizeGeneratedFiles(files) {
-  await Promise.all(
-    files.map(async (file) => {
-      const path = resolve(repoRoot, file);
-      const source = await readFile(path, "utf8");
-      let normalized = source.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "");
-      if (!normalized.endsWith("\n")) {
-        normalized += "\n";
-      }
-      if (normalized !== source) {
-        await writeFile(path, normalized);
-      }
-    }),
-  );
+  console.log("Generated desktop TypeScript bindings.");
 }
 
 function parseArgs(argv) {
@@ -129,8 +101,8 @@ function parseArgs(argv) {
 
     if (arg === "--only") {
       const value = argv[i + 1];
-      if (!["desktop", "extension"].includes(value)) {
-        console.error("--only must be one of: desktop, extension");
+      if (value !== "desktop") {
+        console.error("--only must be: desktop");
         printHelp();
         process.exit(1);
       }
@@ -155,13 +127,14 @@ function parseArgs(argv) {
 function printHelp() {
   console.log(
     [
-      "Usage: node tools/typegen.mjs [--check] [--only desktop|extension]",
+      "Usage: node tools/typegen.mjs [--check] [--only desktop]",
       "",
-      "Regenerates the desktop and extension SDK TypeScript bindings.",
+      "Regenerates the desktop TypeScript bindings.",
+      "Extension SDK bindings now live in the sibling irodori-extension-sdk repo.",
       "",
       "Options:",
       "  --check, -c   Regenerate, then fail if generated files differ from git.",
-      "  --only <id>   Generate only one binding set: desktop or extension.",
+      "  --only <id>   Generate only one binding set: desktop.",
       "  --help, -h    Show this help.",
     ].join("\n"),
   );
@@ -172,57 +145,4 @@ function generatorEnv(env) {
   delete next.CI;
   next.CARGO_TARGET_DIR = resolve(repoRoot, ".irodori-local/target");
   return next;
-}
-
-function run(command, args, options) {
-  return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
-      ...options,
-      stdio: "inherit",
-    });
-
-    child.on("error", reject);
-    child.on("exit", (code, signal) => {
-      if (signal) {
-        reject(new Error(`${command} terminated by ${signal}`));
-        return;
-      }
-
-      if (code === 0) {
-        resolvePromise();
-        return;
-      }
-
-      reject(
-        new Error(`${command} ${args.join(" ")} failed with exit code ${code}`),
-      );
-    });
-  });
-}
-
-function runCapture(command, args, options) {
-  return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
-      ...options,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const stdout = [];
-    const stderr = [];
-
-    child.stdout.on("data", (chunk) => stdout.push(chunk));
-    child.stderr.on("data", (chunk) => stderr.push(chunk));
-    child.on("error", reject);
-    child.on("exit", (code, signal) => {
-      if (signal) {
-        reject(new Error(`${command} terminated by ${signal}`));
-        return;
-      }
-
-      resolvePromise({
-        code,
-        stdout: Buffer.concat(stdout).toString("utf8"),
-        stderr: Buffer.concat(stderr).toString("utf8"),
-      });
-    });
-  });
 }

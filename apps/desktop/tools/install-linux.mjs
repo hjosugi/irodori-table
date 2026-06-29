@@ -12,21 +12,17 @@
 // version" to "running app" with one command and no CI wait.
 
 import { spawn } from "node:child_process";
-import {
-  chmod,
-  copyFile,
-  mkdir,
-  readdir,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { chmod, copyFile, mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const desktopRoot = resolve(scriptDir, "..");
-const repoRoot = resolve(desktopRoot, "../..");
+import { newestFileByExtension } from "../../../tools/lib/files.mjs";
+import {
+  fromDesktopRoot,
+  fromRepoRoot,
+  desktopRoot,
+} from "../../../tools/lib/paths.mjs";
+import { run } from "../../../tools/lib/process.mjs";
 
 const options = parseInstallOptions(process.argv.slice(2), process.env);
 
@@ -38,7 +34,7 @@ const desktopEntryPath = join(
   home,
   ".local/share/applications/irodori-table.desktop",
 );
-const sourceIcon = resolve(desktopRoot, "src-tauri/icons/128x128.png");
+const sourceIcon = fromDesktopRoot("src-tauri/icons/128x128.png");
 
 if (process.platform !== "linux") {
   console.error("install-linux.mjs only runs on Linux.");
@@ -54,13 +50,12 @@ await run("npm", npmArgs, { cwd: desktopRoot });
 
 // 2. Locate the freshly built AppImage.
 const profileDir = profileDirName(options.release);
-const bundleDir = resolve(
-  repoRoot,
+const bundleDir = fromRepoRoot(
   ".irodori-local/target",
   profileDir,
   "bundle/appimage",
 );
-const builtImage = await newestAppImage(bundleDir);
+const builtImage = await newestFileByExtension(bundleDir, ".AppImage");
 if (!builtImage) {
   console.error(`No .AppImage found under ${bundleDir}`);
   process.exit(1);
@@ -121,37 +116,4 @@ function buildNpmArgs(release) {
 
 function profileDirName(release) {
   return release ? "release" : "debug";
-}
-
-function run(cmd, cmdArgs, opts) {
-  return new Promise((res, rej) => {
-    const child = spawn(cmd, cmdArgs, { stdio: "inherit", ...opts });
-    child.on("exit", (code, signal) => {
-      if (signal) return rej(new Error(`${cmd} terminated by ${signal}`));
-      if (code !== 0) return rej(new Error(`${cmd} exited with code ${code}`));
-      res();
-    });
-    child.on("error", rej);
-  });
-}
-
-async function newestAppImage(dir) {
-  let entries;
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return null;
-  }
-  const images = entries.filter((name) => name.endsWith(".AppImage"));
-  let newest = null;
-  let newestMtime = -Infinity;
-  for (const name of images) {
-    const full = join(dir, name);
-    const info = await stat(full);
-    if (info.mtimeMs > newestMtime) {
-      newestMtime = info.mtimeMs;
-      newest = full;
-    }
-  }
-  return newest;
 }

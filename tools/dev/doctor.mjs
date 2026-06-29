@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+import { fromRepoRoot, repoRoot } from "../lib/paths.mjs";
+
 const issues = [];
 
 console.log("Irodori development doctor\n");
@@ -55,7 +54,7 @@ function section(label) {
 
 function checkCommand(command, args, options) {
   const result = spawnSync(command, args, {
-    cwd: root,
+    cwd: repoRoot,
     encoding: "utf8",
     shell: false,
   });
@@ -91,7 +90,7 @@ function checkContainerEngine() {
 
 function checkPkgConfig(packageName, options) {
   const result = spawnSync("pkg-config", ["--exists", packageName], {
-    cwd: root,
+    cwd: repoRoot,
     encoding: "utf8",
     shell: false,
   });
@@ -110,12 +109,12 @@ function checkPkgConfig(packageName, options) {
 }
 
 function checkPath(path, options) {
-  report(path, existsSync(resolve(root, path)), options);
+  report(path, existsSync(fromRepoRoot(path)), options);
 }
 
 function commandVersion(command, args) {
   const result = spawnSync(command, args, {
-    cwd: root,
+    cwd: repoRoot,
     encoding: "utf8",
     shell: false,
   });

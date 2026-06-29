@@ -1,7 +1,7 @@
 {
   "name": "irodori-table-desktop",
-  "private": true,
   "version": "0.3.10",
+  "private": true,
   "license": "MIT OR 0BSD",
   "type": "module",
   "scripts": {
@@ -9,7 +9,6 @@
     "icons": "node tools/generate-icons.mjs",
     "typegen": "node tools/typegen.mjs",
     "typegen:desktop": "node tools/typegen.mjs --only desktop",
-    "typegen:extension": "node tools/typegen.mjs --only extension",
     "typegen:check": "node tools/typegen.mjs --check",
     "format": "oxfmt --write \"src/**/*.{js,jsx,ts,tsx,json,jsonc}\" \"tools/**/*.{js,mjs,cjs,ts,tsx,json,jsonc}\" \"e2e/**/*.{js,jsx,ts,tsx}\" \"*.config.ts\"",
     "format:check": "oxfmt --check \"src/**/*.{js,jsx,ts,tsx,json,jsonc}\" \"tools/**/*.{js,mjs,cjs,ts,tsx,json,jsonc}\" \"e2e/**/*.{js,jsx,ts,tsx}\" \"*.config.ts\"",

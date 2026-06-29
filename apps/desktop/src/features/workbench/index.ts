@@ -9,6 +9,19 @@ export { Inspector, InspectorContent } from "./components/Inspector";
 export { completionHintsFromMetadata } from "./completion-hints";
 export { createWorkbenchCommandHandler } from "./command-handlers";
 export {
+  queryService,
+  tauriQueryService,
+  type QueryExecuteArgs,
+  type QueryService,
+  type QuerySpillArgs,
+  type QueryStreamArgs,
+} from "./query-service";
+export {
+  workbenchRuntimeService,
+  tauriWorkbenchRuntimeService,
+  type WorkbenchRuntimeService,
+} from "./workbench-runtime-service";
+export {
   createPanelResizeController,
   INSPECTOR_WIDTH_MAX,
   INSPECTOR_WIDTH_MIN,

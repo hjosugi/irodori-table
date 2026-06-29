@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import { ChevronDown, Play, Save } from "lucide-react";
 
 export type RunControlProps = {
@@ -38,6 +38,28 @@ export function RunControl({
   runFromStartQuery,
   runAllQuery,
 }: RunControlProps) {
+  useEffect(() => {
+    if (!runMenuOpen) {
+      return;
+    }
+
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && runControlRef.current?.contains(target)) {
+        return;
+      }
+      setRunMenuOpen(false);
+    };
+    const closeOnBlur = () => setRunMenuOpen(false);
+
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("blur", closeOnBlur);
+    };
+  }, [runControlRef, runMenuOpen, setRunMenuOpen]);
+
   return (
     <div className="editor-primary-actions">
       <button

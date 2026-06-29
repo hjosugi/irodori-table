@@ -1,30 +1,24 @@
 import { constants } from "node:fs";
-import { access, open, readdir, readFile, stat } from "node:fs/promises";
-import { spawn } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { access, open, readFile, stat } from "node:fs/promises";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const desktopRoot = resolve(scriptDir, "..");
-const repoRoot = resolve(desktopRoot, "../..");
+import { newestFileByExtension } from "../../../tools/lib/files.mjs";
+import { fromDesktopRoot, fromRepoRoot } from "../../../tools/lib/paths.mjs";
+import { runWithTimeout } from "../../../tools/lib/process.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 const profile = options.debug ? "debug" : "release";
-const bundleDir = resolve(
-  repoRoot,
+const bundleDir = fromRepoRoot(
   ".irodori-local/target",
   profile,
   "bundle/appimage",
 );
-const appImage = await newestAppImage(bundleDir);
+const appImage = await newestFileByExtension(bundleDir, ".AppImage");
 
 if (!appImage) {
   fail(`No AppImage found under ${bundleDir}`);
 }
 
-const pkg = JSON.parse(
-  await readFile(resolve(desktopRoot, "package.json"), "utf8"),
-);
+const pkg = JSON.parse(await readFile(fromDesktopRoot("package.json"), "utf8"));
 await verifyAppImage(appImage, pkg.version);
 console.log(`linux-release: ok (${appImage})`);
 
@@ -85,55 +79,6 @@ async function runAppImageHelp(file) {
   if (!/AppImage/i.test(output)) {
     fail(`AppImage --appimage-help did not print AppImage help text`);
   }
-}
-
-function runWithTimeout(cmd, args, timeoutMs) {
-  return new Promise((resolvePromise) => {
-    const child = spawn(cmd, args, {
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let output = "";
-    const timer = setTimeout(() => {
-      output += `\nTimed out after ${timeoutMs}ms`;
-      child.kill("SIGKILL");
-    }, timeoutMs);
-    child.stdout.on("data", (chunk) => {
-      output += chunk;
-    });
-    child.stderr.on("data", (chunk) => {
-      output += chunk;
-    });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      resolvePromise({ code: 1, output: error.message });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolvePromise({ code: code ?? 1, output });
-    });
-  });
-}
-
-async function newestAppImage(dir) {
-  let entries;
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return null;
-  }
-  const images = entries.filter((name) => name.endsWith(".AppImage"));
-  let newest = null;
-  let newestMtime = -Infinity;
-  for (const name of images) {
-    const full = join(dir, name);
-    const info = await stat(full);
-    if (info.mtimeMs > newestMtime) {
-      newestMtime = info.mtimeMs;
-      newest = full;
-    }
-  }
-  return newest;
 }
 
 function fail(message) {
