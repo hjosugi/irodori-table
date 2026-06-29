@@ -21,8 +21,8 @@ use irodori_completion::{MetadataObjectKind, MetadataSnapshot};
 use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use irodori_generate::{
     generate, ChatModel, CommandConfig, CommandModel, DecodeOptions, GenColumn, GenForeignKey,
-    GenSchema, GenTable, GenerateRequest, GrammarChatAdapter, GrammarModel, HttpConfig, OllamaModel,
-    OpenAiCompatModel, RelationKind,
+    GenSchema, GenTable, GenerateRequest, GrammarChatAdapter, GrammarModel, HttpConfig,
+    OllamaModel, OpenAiCompatModel, RelationKind,
 };
 use irodori_secure_store::{connection_secret_ref, SecretPurpose, SecretValue, SecureStore};
 
@@ -398,26 +398,34 @@ fn persist_provider(
     let path = provider_config_path(app)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| {
-            IrodoriError::new(IrodoriErrorKind::Internal, format!("create config dir: {e}"))
+            IrodoriError::new(
+                IrodoriErrorKind::Internal,
+                format!("create config dir: {e}"),
+            )
         })?;
     }
     let mut sanitized = config.clone();
     sanitized.api_key = None;
     let json = serde_json::to_string_pretty(&sanitized).map_err(|e| {
-        IrodoriError::new(IrodoriErrorKind::Internal, format!("serialize provider: {e}"))
+        IrodoriError::new(
+            IrodoriErrorKind::Internal,
+            format!("serialize provider: {e}"),
+        )
     })?;
     std::fs::write(&path, json).map_err(|e| {
-        IrodoriError::new(IrodoriErrorKind::Internal, format!("write provider config: {e}"))
+        IrodoriError::new(
+            IrodoriErrorKind::Internal,
+            format!("write provider config: {e}"),
+        )
     })?;
 
     if let Some(key) = config.api_key.as_deref().filter(|k| !k.trim().is_empty()) {
         let secret = ai_secret_ref()?;
         let value = SecretValue::new(key)
             .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("secret: {e}")))?;
-        security
-            .store()
-            .put(&secret, value)
-            .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("store key: {e}")))?;
+        security.store().put(&secret, value).map_err(|e| {
+            IrodoriError::new(IrodoriErrorKind::Internal, format!("store key: {e}"))
+        })?;
     }
     Ok(())
 }

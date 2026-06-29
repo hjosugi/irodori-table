@@ -55,7 +55,7 @@ jobs:
         run: node tools/docs/support-status.mjs --check
 
       - name: Validate extension manifests
-        run: node tools/extensions/validate-manifests.mjs
+        run: make extension-manifests
 
       - name: Check generated TypeScript bindings
         run: node apps/desktop/tools/typegen.mjs --check

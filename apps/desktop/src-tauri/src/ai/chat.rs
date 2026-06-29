@@ -348,7 +348,10 @@ fn render_schema(schema: &irodori_generate::GenSchema) -> String {
         out.push_str(")\n");
     }
     if schema.tables.len() > MAX_TABLES {
-        out.push_str(&format!("… and {} more tables\n", schema.tables.len() - MAX_TABLES));
+        out.push_str(&format!(
+            "… and {} more tables\n",
+            schema.tables.len() - MAX_TABLES
+        ));
     }
     out
 }
@@ -398,7 +401,9 @@ fn extract_sql_block(text: &str) -> Option<String> {
         // Drop an optional language tag on the opening fence line.
         if let Some(nl) = body.find('\n') {
             let tag = body[..nl].trim();
-            if tag.is_empty() || tag.eq_ignore_ascii_case("sql") || !tag.contains(char::is_whitespace)
+            if tag.is_empty()
+                || tag.eq_ignore_ascii_case("sql")
+                || !tag.contains(char::is_whitespace)
             {
                 body = &body[nl + 1..];
             }
