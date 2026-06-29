@@ -13,13 +13,13 @@ const engineRegistryPath = resolve(root, "apps/desktop/src-tauri/src/db/engine.r
 const dbProfilePath = resolve(root, "apps/desktop/src-tauri/src/db/profile.rs");
 const enginesJsonPath = resolve(root, "knowledge/engines.json");
 const sourcesJsonPath = resolve(root, "knowledge/sources.json");
-const marketplaceIndexPath = resolve(root, "docs/extension-marketplace/index.json");
-const marketplaceCatalogPath = resolve(root, "docs/extension-marketplace/catalog.json");
+const marketplaceIndexPath = resolve(root, "registry/catalog/index.json");
+const marketplaceCatalogPath = resolve(root, "registry/catalog/catalog.json");
 const connectorRepositoriesPath = resolve(
   root,
-  "docs/extension-marketplace/connector-repositories.json",
+  "registry/catalog/connector-repositories.json",
 );
-const supportStatusPath = resolve(root, "docs/data-source-support-status.md");
+const supportStatusPath = resolve(root, "registry/data-source-support-status.md");
 
 function main() {
   const engineSource = read(engineRegistryPath);
@@ -82,30 +82,30 @@ function main() {
       (id) => `knowledge/engines.json lists unknown engine '${id}'`,
     ),
     ...setDiff(marketplaceEngineIds, jsonIds).map(
-      (id) => `docs/extension-marketplace/index.json lists engine '${id}' missing from knowledge/engines.json`,
+      (id) => `registry/catalog/index.json lists engine '${id}' missing from knowledge/engines.json`,
     ),
     ...(marketplaceCatalogSource === serializeExtensionCatalog(expectedMarketplaceCatalog)
       ? []
       : [
-          "docs/extension-marketplace/catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
+          "registry/catalog/catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
         ]),
     ...setDiff(marketplaceCatalogEngineIds, jsonIds).map(
-      (id) => `docs/extension-marketplace/catalog.json lists engine '${id}' missing from knowledge/engines.json`,
+      (id) => `registry/catalog/catalog.json lists engine '${id}' missing from knowledge/engines.json`,
     ),
     ...setDiff(marketplaceExtensionIds, marketplaceCatalogExtensionIds).map(
-      (id) => `docs/extension-marketplace/catalog.json is missing extension '${id}' from index.json`,
+      (id) => `registry/catalog/catalog.json is missing extension '${id}' from index.json`,
     ),
     ...setDiff(marketplaceCatalogExtensionIds, marketplaceExtensionIds).map(
-      (id) => `docs/extension-marketplace/catalog.json lists unknown extension '${id}'`,
+      (id) => `registry/catalog/catalog.json lists unknown extension '${id}'`,
     ),
     ...marketplaceCatalogExtensions
       .filter(hasHeavyExtensionCatalogFields)
       .map(
         (extension) =>
-          `docs/extension-marketplace/catalog.json includes heavy detail fields for extension '${extension.id}'`,
+          `registry/catalog/catalog.json includes heavy detail fields for extension '${extension.id}'`,
       ),
     ...setDiff(marketplaceExtensionIds, repositoryExtensionIds).map(
-      (id) => `docs/extension-marketplace/connector-repositories.json is missing extension '${id}'`,
+      (id) => `registry/catalog/connector-repositories.json is missing extension '${id}'`,
     ),
     ...setDiff(recognizedNoConnectorMarketplaceIds, marketplaceEngineIds).map(
       (id) => `recognized/no-connector engine '${id}' has no marketplace extension`,
@@ -132,7 +132,7 @@ function main() {
     ),
     ...[...jsonIds]
       .filter((id) => !supportStatus.includes(`\`${id}\``))
-      .map((id) => `docs/data-source-support-status.md does not mention engine id '${id}'`),
+      .map((id) => `registry/data-source-support-status.md does not mention engine id '${id}'`),
   ];
 
   if (errors.length > 0) {

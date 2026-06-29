@@ -10,7 +10,7 @@
 | Adapter | `apps/desktop/src-tauri/src/db/neo4j.rs` |
 | Default port | 7687 (Bolt) |
 | Query language | **Cypher** (not SQL) |
-| Irodori status | Wired (graph) — see `docs/data-source-support-status.md` |
+| Irodori status | Wired (graph) — see `registry/data-source-support-status.md` |
 | What's different | Data is **nodes and relationships**, not rows. You query patterns with Cypher and get back records of nodes/relationships/scalars. |
 
 ## Connect

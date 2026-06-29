@@ -12,7 +12,7 @@ const extensionsRoot =
   process.env.IRODORI_EXTENSIONS_ROOT ?? defaultExtensionsRoot;
 
 const index = JSON.parse(
-  readFileSync(resolve(root, "docs/extension-marketplace/index.json"), "utf8"),
+  readFileSync(resolve(root, "registry/catalog/index.json"), "utf8"),
 );
 const engines = JSON.parse(readFileSync(resolve(root, "knowledge/engines.json"), "utf8"))
   .engines;

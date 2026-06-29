@@ -31,7 +31,7 @@ read first.
 2. For Linux desktop setup and WebKit/Tauri troubleshooting, read
    [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html).
 3. For what databases work today, read
-   [docs/data-source-support-status.md](docs/data-source-support-status.md).
+   [registry/data-source-support-status.md](registry/data-source-support-status.md).
 4. For product direction, read [ROADMAP.md](ROADMAP.md).
 5. For implementation architecture, read
    [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html).
@@ -267,7 +267,7 @@ make check
 | Implementation architecture and module boundaries             | [implementation-architecture](https://hjosugi.github.io/irodori-docs/implementation-architecture.html)                                                                   |
 | Migration planning, row-hash validation, and data diff design | [data-verification-diff](https://hjosugi.github.io/irodori-docs/data-verification-diff.html)                                                                             |
 | Linux setup, WebKit crashes, blank Tauri window               | [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html)                                                                                       |
-| Supported vs planned database engines                         | [docs/data-source-support-status.md](docs/data-source-support-status.md)                                                                                                 |
+| Supported vs planned database engines                         | [registry/data-source-support-status.md](registry/data-source-support-status.md)                                                                                                 |
 | Connection syntax and engine quirks                           | [engine-syntax-reference](https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html)                                                                           |
 | Sample database containers                                    | [irodori-samples](https://github.com/hjosugi/irodori-samples)                                                                                                            |
 | Doc/repo/archive ownership                                    | [docs/repository-boundaries.md](docs/repository-boundaries.md)                                                                                                           |

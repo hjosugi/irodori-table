@@ -4,8 +4,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { buildExtensionCatalog, serializeExtensionCatalog } from "./extension-catalog.mjs";
 import { fromRepoRoot } from "../lib/paths.mjs";
 
-const indexPath = fromRepoRoot("docs/extension-marketplace/index.json");
-const catalogPath = fromRepoRoot("docs/extension-marketplace/catalog.json");
+const indexPath = fromRepoRoot("registry/catalog/index.json");
+const catalogPath = fromRepoRoot("registry/catalog/catalog.json");
 const check = process.argv.includes("--check");
 
 for (const arg of process.argv.slice(2)) {
@@ -23,7 +23,7 @@ if (check) {
   const current = readFileSync(catalogPath, "utf8");
   if (current !== next) {
     console.error(
-      "extension-catalog: docs/extension-marketplace/catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
+      "extension-catalog: registry/catalog/catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
     );
     process.exit(1);
   }

@@ -29,10 +29,10 @@ These instructions apply to the whole repository. More specific `AGENTS.md` or
 - The TypeScript extension SDK, manifest schema, extension-dev helper, and
   extension templates live in the sibling repo `irodori-extension-sdk`
   (https://github.com/hjosugi/irodori-extension-sdk).
-- `docs/agent-workstreams.json` is the machine-readable split for parallel
+- `registry/agent-workstreams.json` is the machine-readable split for parallel
   agent work.
-- `docs/extension-marketplace/`, `docs/cheatsheets/`, and
-  `docs/data-source-support-status.md` are generated or app-consumed snapshots.
+- `registry/catalog/`, `registry/cheatsheets/`, and
+  `registry/data-source-support-status.md` are generated or app-consumed snapshots.
 - `tools/lib/` contains shared Node.js utility helpers used by root tools and
   `apps/desktop/tools`.
 - `.irodori-local/` and `ref/` are local/reference areas. Treat them as
@@ -118,7 +118,7 @@ lockfiles as the reproducible path.
 
 - Use one git worktree or connector checkout per active implementation agent.
 - Avoid two agents editing the same file set at the same time.
-- Use `docs/agent-workstreams.json` to identify writable paths, read-only paths,
+- Use `registry/agent-workstreams.json` to identify writable paths, read-only paths,
   shared contracts, and verification commands.
 - For explicit subagent work, prefer read-only exploration/review agents first:
   `irodori-explorer`, `irodori-reviewer`, and

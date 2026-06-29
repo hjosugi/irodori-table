@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
-const workstreamsPath = resolve(root, "docs/agent-workstreams.json");
+const workstreamsPath = resolve(root, "registry/agent-workstreams.json");
 const connectorRepositoriesPath = resolve(
   root,
-  "docs/extension-marketplace/connector-repositories.json",
+  "registry/catalog/connector-repositories.json",
 );
 
 function main() {
@@ -19,10 +19,10 @@ function main() {
   const errors = [];
 
   if (spec.schemaVersion !== 1) {
-    errors.push("docs/agent-workstreams.json schemaVersion must be 1");
+    errors.push("registry/agent-workstreams.json schemaVersion must be 1");
   }
   if (!Array.isArray(spec.rules) || spec.rules.length === 0) {
-    errors.push("docs/agent-workstreams.json must declare coordination rules");
+    errors.push("registry/agent-workstreams.json must declare coordination rules");
   }
   errors.push(...validateUniqueIds("shared contract", contracts));
   errors.push(...validateUniqueIds("workstream", workstreams));
@@ -51,9 +51,9 @@ function main() {
 
   const connectorWorkstream = workstreams.find((workstream) => workstream.id === "connector-extension");
   if (!connectorWorkstream) {
-    errors.push("docs/agent-workstreams.json must define connector-extension workstream");
+    errors.push("registry/agent-workstreams.json must define connector-extension workstream");
   } else {
-    if (connectorWorkstream.source !== "docs/extension-marketplace/connector-repositories.json") {
+    if (connectorWorkstream.source !== "registry/catalog/connector-repositories.json") {
       errors.push("connector-extension workstream must source connector-repositories.json");
     }
     if (!connectorWorkstream.repeatable) {

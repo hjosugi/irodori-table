@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Generates and validates the per-engine cheatsheets under docs/cheatsheets/.
+// Generates and validates the per-engine cheatsheets under registry/cheatsheets/.
 //
 // Two kinds of pages:
 //   - Seed pages (hand-authored, contain "<!-- seed"): NOT overwritten. The tool
 //     validates their structure and that their Sources footer ids exist in
-//     knowledge/sources.json. docs/cheatsheets/neo4j.md is the flagship seed.
+//     knowledge/sources.json. registry/cheatsheets/neo4j.md is the flagship seed.
 //   - Generated pages: rendered from area='cheatsheet' facts in the knowledge DB
 //     when present, otherwise from a curated fixture in knowledge/cheatsheets/<id>.json.
 //
@@ -23,13 +23,13 @@ import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const ROOT = resolve(new URL("../..", import.meta.url).pathname);
-const PAGES_DIR = resolve(ROOT, "docs/cheatsheets");
+const PAGES_DIR = resolve(ROOT, "registry/cheatsheets");
 const FIXTURES_DIR = resolve(ROOT, "knowledge/cheatsheets");
 const ENGINES = resolve(ROOT, "knowledge/engines.json");
 const SOURCES = resolve(ROOT, "knowledge/sources.json");
 const DB = resolve(ROOT, "knowledge/irodori-knowledge.sqlite");
 
-// The 8 sections every cheatsheet must have, in template order (docs/cheatsheets/README.md).
+// The 8 sections every cheatsheet must have, in template order (registry/cheatsheets/README.md).
 const SECTIONS = [
   { key: "atGlance", heading: "At a glance" },
   { key: "connect", heading: "Connect" },

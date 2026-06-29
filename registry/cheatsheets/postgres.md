@@ -10,7 +10,7 @@
 | Adapter | `apps/desktop/src-tauri/src/db/postgres.rs` |
 | Default port | 5432 |
 | Query language | SQL (PostgreSQL dialect) |
-| Irodori status | Verified — see `docs/data-source-support-status.md` |
+| Irodori status | Verified — see `registry/data-source-support-status.md` |
 | What's different | The wire-compatible engines (CockroachDB, YugabyteDB, Redshift, TimescaleDB, Neon) reuse this exact path; only the default port and a few catalog quirks differ. |
 
 ## Connect

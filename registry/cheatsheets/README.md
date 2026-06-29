@@ -5,7 +5,7 @@ the query model, and what are the per-engine quirks I will trip on.** These are 
 human-facing, copy-pasteable companion to the deeper
 <https://hjosugi.github.io/irodori-docs/engine-syntax-reference.html>
 (driver/decoding internals) and
-[`docs/data-source-support-status.md`](../data-source-support-status.md)
+[`registry/data-source-support-status.md`](../data-source-support-status.md)
 (coverage).
 
 Each cheatsheet is meant to be **generated** from the local knowledge base
@@ -27,7 +27,7 @@ automatic data collection that feeds it are specified in
 | _mongodb.md_ | MongoDB | Planned |
 
 New cheatsheets are added only for engines that are at least **Wired** in
-`docs/data-source-support-status.md`. An engine that is "Recognized, no connector"
+`registry/data-source-support-status.md`. An engine that is "Recognized, no connector"
 or "Not registered" gets a row in the support-status doc, not a cheatsheet, until
 it can actually connect.
 

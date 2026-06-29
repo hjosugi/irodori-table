@@ -1,5 +1,5 @@
 export const defaultPluginStoreCatalogUrl =
-  "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/catalog.json";
+  "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json";
 
 export type PluginStoreInstallKind = "githubRelease" | "git";
 

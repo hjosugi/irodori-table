@@ -13,14 +13,14 @@ verifiable tasks.
 Read these files before proposing or changing a plan:
 
 1. `AGENTS.md`
-2. `docs/agent-workstreams.json`
+2. `registry/agent-workstreams.json`
 3. `docs/repository-boundaries.md`
 4. `README.md` sections relevant to setup, repo map, and commands
 5. `CONTRIBUTING.md` when the work involves external references, licensing, or
    clean-room risk
 
 If the user already named a workstream, read that workstream and its referenced
-shared contracts from `docs/agent-workstreams.json` first.
+shared contracts from `registry/agent-workstreams.json` first.
 
 ## Planning Steps
 

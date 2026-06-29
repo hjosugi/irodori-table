@@ -11,7 +11,7 @@
 .cache/
 .config/
 ref/
-docs/private/
+registry/private/
 knowledge/*.sqlite
 knowledge/*.sqlite-*
 

@@ -12,8 +12,8 @@ on:
       - knowledge/engines.json
       - knowledge/sources.json
       - knowledge/cheatsheets/**
-      - docs/data-source-support-status.md
-      - docs/cheatsheets/**
+      - registry/data-source-support-status.md
+      - registry/cheatsheets/**
       - tools/docs/**
       - tools/knowledge/cheatsheet.mjs
       - .github/workflows/docs-check.yml

@@ -15,9 +15,9 @@
       "owner": "coordinator",
       "paths": [
         "knowledge/engines.json",
-        "docs/extension-marketplace/index.json",
-        "docs/extension-marketplace/catalog.json",
-        "docs/extension-marketplace/connector-repositories.json",
+        "registry/catalog/index.json",
+        "registry/catalog/catalog.json",
+        "registry/catalog/connector-repositories.json",
         "apps/desktop/src-tauri/src/db/engine.rs",
         "apps/desktop/src-tauri/src/db/profile.rs"
       ],
@@ -81,12 +81,12 @@
       "title": "One installable connector extension",
       "owner": "connector-agent",
       "repeatable": true,
-      "source": "docs/extension-marketplace/connector-repositories.json",
-      "unit": "one repository entry from docs/extension-marketplace/connector-repositories.json",
+      "source": "registry/catalog/connector-repositories.json",
+      "unit": "one repository entry from registry/catalog/connector-repositories.json",
       "exclusiveWriteGlobs": ["../irodori-extensions/{repository}/**"],
       "readOnlyGlobs": [
-        "docs/extension-marketplace/index.json",
-        "docs/extension-marketplace/connector-repositories.json",
+        "registry/catalog/index.json",
+        "registry/catalog/connector-repositories.json",
         "knowledge/engines.json",
         "apps/desktop/src-tauri/src/db/**",
         "../irodori-kit/irodori-connection/**",
@@ -94,9 +94,9 @@
         "../irodori-extension-sdk/**"
       ],
       "coordinatorWriteGlobs": [
-        "docs/extension-marketplace/index.json",
-        "docs/extension-marketplace/catalog.json",
-        "docs/extension-marketplace/connector-repositories.json",
+        "registry/catalog/index.json",
+        "registry/catalog/catalog.json",
+        "registry/catalog/connector-repositories.json",
         "knowledge/engines.json"
       ],
       "sharedContracts": ["connector-registry", "native-connector-abi", "portable-connection"],
@@ -117,7 +117,7 @@
         "../irodori-extension-sdk/**",
         "tools/extensions/**"
       ],
-      "coordinatorWriteGlobs": ["docs/extension-marketplace/*.json"],
+      "coordinatorWriteGlobs": ["registry/catalog/*.json"],
       "sharedContracts": ["native-connector-abi", "desktop-command-api"],
       "checks": [
         "npm --prefix ../irodori-extension-sdk run validate",
@@ -163,7 +163,7 @@
       ],
       "coordinatorWriteGlobs": [
         "apps/desktop/src-tauri/src/db/engine.rs",
-        "docs/extension-marketplace/*.json"
+        "registry/catalog/*.json"
       ],
       "sharedContracts": ["data-diff-contract", "desktop-command-api", "connector-registry"],
       "checks": [
@@ -197,8 +197,8 @@
       "title": "Source-of-truth docs, generated docs, and marketplace catalog",
       "owner": "docs-agent",
       "repeatable": false,
-      "exclusiveWriteGlobs": ["docs/**", "knowledge/**", "tools/docs/**", "tools/knowledge/**"],
-      "coordinatorWriteGlobs": ["docs/extension-marketplace/*.json", "knowledge/engines.json"],
+      "exclusiveWriteGlobs": ["registry/**", "knowledge/**", "tools/docs/**", "tools/knowledge/**"],
+      "coordinatorWriteGlobs": ["registry/catalog/*.json", "knowledge/engines.json"],
       "sharedContracts": ["connector-registry"],
       "checks": ["make docs-check"],
       "mergeRule": "Generated docs change with their source data or generator; do not hand-edit generated snapshots alone."

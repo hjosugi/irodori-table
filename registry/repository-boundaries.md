@@ -22,10 +22,10 @@ mdBook, a samples repo, or the private archive.
 - Root project entry points: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
   `ROADMAP.md`.
 - Generated snapshots that are consumed by tooling or the desktop app:
-  `docs/data-source-support-status.md`, selected `docs/cheatsheets/`, and
-  `docs/extension-marketplace/*.json`.
+  `registry/data-source-support-status.md`, selected `registry/cheatsheets/`, and
+  `registry/catalog/*.json`.
 - Machine-readable coordination files that local tools validate, such as
-  `docs/agent-workstreams.json`.
+  `registry/agent-workstreams.json`.
 - Short repo-local pointers, such as `docs/README.md` and this boundary policy.
 
 ## What Moves To `irodori-docs`
@@ -78,9 +78,9 @@ Generated docs are edited at their inputs:
 
 | Output                                    | Edit Instead                                                                                   |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `docs/data-source-support-status.md`      | `knowledge/engines.json`, `docs/extension-marketplace/*.json`, `tools/docs/support-status.mjs` |
-| `docs/cheatsheets/*.md`                   | `knowledge/cheatsheets/*.json`, the knowledge DB, `tools/knowledge/cheatsheet.mjs`             |
-| `docs/extension-marketplace/catalog.json` | `docs/extension-marketplace/index.json`, `tools/docs/build-extension-catalog.mjs`              |
+| `registry/data-source-support-status.md`      | `knowledge/engines.json`, `registry/catalog/*.json`, `tools/docs/support-status.mjs` |
+| `registry/cheatsheets/*.md`                   | `knowledge/cheatsheets/*.json`, the knowledge DB, `tools/knowledge/cheatsheet.mjs`             |
+| `registry/catalog/catalog.json` | `registry/catalog/index.json`, `tools/docs/build-extension-catalog.mjs`              |
 
 Generated snapshots should be mirrored into `irodori-docs` for public reading.
 Keep a Markdown snapshot in `irodori-table` only when a local generator, CI guard,

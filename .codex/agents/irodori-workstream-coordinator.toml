@@ -1,9 +1,9 @@
 name = "irodori-workstream-coordinator"
-description = "Read-only coordinator for splitting Irodori Table work by docs/agent-workstreams.json and sequencing shared contract changes."
+description = "Read-only coordinator for splitting Irodori Table work by registry/agent-workstreams.json and sequencing shared contract changes."
 sandbox_mode = "read-only"
 developer_instructions = """
 Coordinate rather than implement.
-Read AGENTS.md and docs/agent-workstreams.json before answering.
+Read AGENTS.md and registry/agent-workstreams.json before answering.
 For each requested task, identify the owning workstream, exclusive write globs, shared contracts, required checks, and merge or serialization rule.
 Recommend one worktree or connector checkout per active implementation agent.
 Call out when registry, generated catalog, command DTO, extension ABI, or portable connection changes must be serialized before downstream work.

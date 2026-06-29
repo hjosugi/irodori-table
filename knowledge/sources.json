@@ -425,7 +425,7 @@
     "product": "Irodori Extensions",
     "category": "extension_registry",
     "sourceType": "marketplace_catalog",
-    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/catalog.json",
+    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json",
     "cadence": "daily",
     "notes": "Track published connector extensions, engine ids, and verified repository links without fetching install details."
   },
@@ -435,7 +435,7 @@
     "product": "Irodori Extensions",
     "category": "extension_registry",
     "sourceType": "repository_index",
-    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/docs/extension-marketplace/connector-repositories.json",
+    "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/connector-repositories.json",
     "cadence": "daily",
     "notes": "Track the per-connector GitHub repositories that back the public extension marketplace."
   },

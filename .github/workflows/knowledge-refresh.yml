@@ -70,5 +70,5 @@ jobs:
             Review the cheatsheet diffs before merging. The knowledge SQLite DB is
             gitignored, so only generated docs appear here.
           add-paths: |
-            docs/cheatsheets/**
+            registry/cheatsheets/**
             knowledge/sources.json

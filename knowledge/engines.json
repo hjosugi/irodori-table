@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "description": "Machine-readable mirror of the DbEngine registry in apps/desktop/src-tauri/src/db/engine.rs, plus a curated 'not registered' roadmap list. Checked by tools/docs/support-status.mjs; future cheatsheet/doc generators should consume this same file. The engine.rs enum is the source of truth; tools/docs/support-status.mjs --check parses engine.rs and fails if this file's id set or the recognized-no-connector set drifts, or if the curated docs/data-source-support-status.md fails to mention an engine. The prose/order of that doc is human-curated; the check guards membership, not wording.",
+    "description": "Machine-readable mirror of the DbEngine registry in apps/desktop/src-tauri/src/db/engine.rs, plus a curated 'not registered' roadmap list. Checked by tools/docs/support-status.mjs; future cheatsheet/doc generators should consume this same file. The engine.rs enum is the source of truth; tools/docs/support-status.mjs --check parses engine.rs and fails if this file's id set or the recognized-no-connector set drifts, or if the curated registry/data-source-support-status.md fails to mention an engine. The prose/order of that doc is human-curated; the check guards membership, not wording.",
     "registrySource": "apps/desktop/src-tauri/src/db/engine.rs",
-    "generatedDoc": "docs/data-source-support-status.md"
+    "generatedDoc": "registry/data-source-support-status.md"
   },
   "engines": [
     {
@@ -155,7 +155,7 @@
       "defaultPort": 7687,
       "adapter": "db/neo4j.rs",
       "status": "wired",
-      "cheatsheet": "docs/cheatsheets/neo4j.md"
+      "cheatsheet": "registry/cheatsheets/neo4j.md"
     },
     {
       "id": "redis",

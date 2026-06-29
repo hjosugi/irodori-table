@@ -22,8 +22,8 @@ Status legend:
 - **Pending** — recognized by the engine enum, adapter scaffolding exists, but the
   connector intentionally returns a "not ready" result.
 - **Extension** — recognized by the engine enum and published through the
-  extension marketplace; the app browses `docs/extension-marketplace/catalog.json`
-  and install/details stay in `docs/extension-marketplace/index.json` instead of
+  extension marketplace; the app browses `registry/catalog/catalog.json`
+  and install/details stay in `registry/catalog/index.json` instead of
   being compiled into the core desktop build.
 - **Recognized, extension required** — present in `DbEngine` but rejected at
   connect by `is_unimplemented_wire()` until an installable connector extension
@@ -75,7 +75,7 @@ not-ready error, list it here instead of mixing it with production connectors.
 
 These appear in `DbEngine` but `is_unimplemented_wire()` rejects them before a
 connection is opened. Most public connector targets ask the user to install
-the matching installable connector from `docs/extension-marketplace/index.json`.
+the matching installable connector from `registry/catalog/index.json`.
 
 | Engine | `DbEngine` id | Family | Closest existing wire | Note |
 |---|---|---|---|---|
