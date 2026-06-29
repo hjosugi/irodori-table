@@ -10,6 +10,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { useMachine } from "@xstate/react";
+import {
+  isQueryBusy,
+  queryLifecycleMachine,
+} from "@/lib/query/query-lifecycle-machine";
 import { Plus } from "lucide-react";
 import {
   createQueryHistoryResultSnapshot,
@@ -531,7 +536,10 @@ export function AppWorkbench() {
   const query = queryForEditorGroup(activeEditorGroupState);
   const editorSelections = selectionsForEditorGroup(activeEditorGroupState);
   const activeTabLabel = activeTabLabelForEditorGroup(activeEditorGroupState);
-  const [running, setRunning] = useState(false);
+  const [queryRun, sendQueryRun] = useMachine(queryLifecycleMachine);
+  // `running` is derived from the explicit query lifecycle machine (idle ->
+  // running -> streaming -> done/error/cancelled) instead of a hand-managed flag.
+  const running = isQueryBusy(String(queryRun.value));
   const [editorTabMenu, setEditorTabMenu] = useState<{
     x: number;
     y: number;
@@ -4093,7 +4101,7 @@ export function AppWorkbench() {
     if (blockReadOnlySql(sqlToRun)) {
       return;
     }
-    setRunning(true);
+    sendQueryRun({ type: "SUBMIT", sql: sqlToRun });
     setQueryError(null);
     setLastRunSql(sqlToRun);
     setResultMode("data");
@@ -4253,6 +4261,7 @@ export function AppWorkbench() {
             switch (event.type) {
               case "columns":
                 ensureResultSet(event.resultSetIndex).columns = event.columns;
+                sendQueryRun({ type: "COLUMNS" });
                 publishStreamResultNow();
                 break;
               case "rows": {
@@ -4267,6 +4276,11 @@ export function AppWorkbench() {
           },
         );
         finalizeSpillRun(spill);
+        sendQueryRun({
+          type: "DONE",
+          rowCount: Number(spill.totalRows),
+          elapsedMs: Number(spill.elapsedMs),
+        });
       } else {
         await queryService.stream(
           {
@@ -4280,6 +4294,7 @@ export function AppWorkbench() {
             switch (event.type) {
               case "columns":
                 ensureResultSet(event.resultSetIndex).columns = event.columns;
+                sendQueryRun({ type: "COLUMNS" });
                 publishStreamResultNow();
                 break;
               case "rows":
@@ -4354,6 +4369,11 @@ export function AppWorkbench() {
                   "Query finished",
                   `${toCount(event.rowCount)} rows in ${toCount(event.elapsedMs)} ms`,
                 );
+                sendQueryRun({
+                  type: "DONE",
+                  rowCount: Number(event.rowCount),
+                  elapsedMs: Number(event.elapsedMs),
+                });
                 break;
               case "error":
                 if (
@@ -4361,8 +4381,10 @@ export function AppWorkbench() {
                   isQueryCancelledMessage(event.message)
                 ) {
                   showCancelledRun();
+                  sendQueryRun({ type: "CANCEL" });
                   break;
                 }
+                sendQueryRun({ type: "ERROR", message: event.message });
                 setQueryError(event.message);
                 showActionNotice("error", "Query failed", event.message);
                 appendHistory({
@@ -4390,7 +4412,9 @@ export function AppWorkbench() {
       const message = errorMessage(error);
       if (cancelRequestedForRun() && isQueryCancelledMessage(message)) {
         showCancelledRun();
+        sendQueryRun({ type: "CANCEL" });
       } else {
+        sendQueryRun({ type: "ERROR", message });
         setQueryError(message);
         showActionNotice("error", "Query failed", message);
         appendHistory({
@@ -4415,7 +4439,6 @@ export function AppWorkbench() {
         cancelRequestedQueryIdRef.current = null;
       }
       runningQueryIdRef.current = null;
-      setRunning(false);
     }
   }
 
