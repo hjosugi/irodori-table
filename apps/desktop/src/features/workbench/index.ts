@@ -3,6 +3,10 @@ export {
   type WorkbenchStatusBarItem,
 } from "./components/WorkbenchShell";
 export { Sidebar } from "./components/Sidebar";
+export {
+  WorkbenchDockLayout,
+  type WorkbenchDockLayoutProps,
+} from "./components/WorkbenchDockLayout";
 export { LakehousePanel } from "./components/LakehousePanel";
 export { PlanPanel } from "./components/PlanPanel";
 export { Inspector, InspectorContent } from "./components/Inspector";

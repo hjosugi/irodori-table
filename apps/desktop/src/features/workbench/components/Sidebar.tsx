@@ -88,6 +88,7 @@ type SidebarProps = {
   ) => void;
   onSelectView: (viewId: SidebarViewId) => void;
   onCloseSidebar: () => void;
+  dockResize?: boolean;
   onBeginResize: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onResizeKey: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
 };
@@ -132,6 +133,7 @@ export function Sidebar({
   onSetObjectActionMenu,
   onSelectView,
   onCloseSidebar,
+  dockResize = false,
   onBeginResize,
   onResizeKey,
 }: SidebarProps) {
@@ -826,15 +828,17 @@ export function Sidebar({
           ) : (
             <div className="sidebar-panel">{renderActivePanel()}</div>
           )}
-          <div
-            className="panel-resizer sidebar-resizer"
-            role="separator"
-            aria-label="Resize sidebar"
-            aria-orientation="vertical"
-            tabIndex={0}
-            onPointerDown={onBeginResize}
-            onKeyDown={onResizeKey}
-          />
+          {!dockResize ? (
+            <div
+              className="panel-resizer sidebar-resizer"
+              role="separator"
+              aria-label="Resize sidebar"
+              aria-orientation="vertical"
+              tabIndex={0}
+              onPointerDown={onBeginResize}
+              onKeyDown={onResizeKey}
+            />
+          ) : null}
         </aside>
       ) : null}
     </>

@@ -57,6 +57,7 @@ type WorkbenchShellProps = {
   selectionStatus: string | null;
   statusBarItems?: readonly WorkbenchStatusBarItem[];
   shellStyle: CSSProperties;
+  dockLayout?: boolean;
   leftSidebar: ReactNode;
   rightSidebar?: ReactNode;
   children: ReactNode;
@@ -111,6 +112,7 @@ export function WorkbenchShell({
   selectionStatus,
   statusBarItems = [],
   shellStyle,
+  dockLayout = false,
   leftSidebar,
   rightSidebar,
   children,
@@ -461,15 +463,22 @@ export function WorkbenchShell({
       <div
         className={[
           "workspace",
-          leftSidebarOpen ? null : "left-sidebar-collapsed",
-          rightSidebarOpen ? null : "right-sidebar-collapsed",
+          dockLayout ? "workspace-dock" : null,
+          dockLayout || leftSidebarOpen ? null : "left-sidebar-collapsed",
+          dockLayout || rightSidebarOpen ? null : "right-sidebar-collapsed",
         ]
           .filter(Boolean)
           .join(" ")}
       >
-        {leftSidebar}
-        {children}
-        {rightSidebar}
+        {dockLayout ? (
+          children
+        ) : (
+          <>
+            {leftSidebar}
+            {children}
+            {rightSidebar}
+          </>
+        )}
       </div>
 
       <footer className="statusbar">

@@ -33,21 +33,7 @@ import {
   resultCopyDefaultKeymap,
   savedQueryStorageKey,
 } from "@/app/app-config";
-import {
-  activeTabLabelForEditorGroup,
-  addSqlTabToEditorGroup,
-  closeOtherSqlTabsInEditorGroup,
-  closeSqlTabInEditorGroup,
-  createEditorGroupState,
-  duplicateSqlTabInEditorGroup,
-  openTabsForEditorGroup,
-  queryForEditorGroup,
-  renameSqlTabInEditorGroup,
-  reopenSqlTabInEditorGroup,
-  selectEditorTabInGroup,
-  selectionsForEditorGroup,
-  type EditorGroupState,
-} from "@/app/editor-tabs";
+import { openTabsForEditorGroup } from "@/app/editor-tabs";
 import { AboutDialog } from "@/app/AboutDialog";
 import { useResultGridScroll } from "@/app/hooks/useResultGridScroll";
 import { useResultGridFiltering } from "@/app/hooks/useResultGridFiltering";
@@ -58,7 +44,13 @@ import type {
   ResultGridController,
 } from "@/app/controllers/workbench-controllers";
 import { useConnectionActions } from "@/app/controllers/use-connection-actions";
+import { useEditorGroups } from "@/app/controllers/use-editor-groups";
 import { useResultGridEditing } from "@/app/controllers/use-result-grid-editing";
+import { useResultGridModel } from "@/app/controllers/use-result-grid-model";
+import {
+  usePendingResultChangesGuard,
+  useResultGridSpillPaging,
+} from "@/app/controllers/use-result-grid-runtime";
 import { ActionToast, type ActionNotice } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
 import { GitPanel, useGitStore } from "@/features/git";
@@ -66,24 +58,16 @@ import {
   BiPanel,
   ResultsPane,
   WindowedRows,
-  buildChartResultModel,
-  buildGraphResultModel,
   buildResultExport,
-  buildResultGridViewModel,
-  calculateResultGridVirtualColumnWindow,
-  calculateResultGridVirtualRowWindow,
   createWindowedRowsProxy,
-  findTableMetadata,
   formatResultSelectionStatus,
   formatResultGridCell as formatCell,
   historySnapshotToQueryResult,
-  parseSourceTable,
   resultExportFileName,
   toCount,
   useResultGridStore,
   useResultsStore,
   type ResultExportFormat,
-  type ResultGridRowLike,
 } from "@/features/results";
 import {
   ConnectionManagerDialog,
@@ -106,7 +90,6 @@ import {
   type PendingQueryParameters,
   type EditorGroup,
   type EditorSelection,
-  type EditorSelections,
   type QueryParameterMemory,
   type QueryMagicAction,
   type SqlEditorHandle,
@@ -148,12 +131,8 @@ import {
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
-import {
-  SearchReplacePanel,
-  type SearchTab,
-} from "@/features/search/SearchReplacePanel";
+import { SearchReplacePanel } from "@/features/search/SearchReplacePanel";
 import { useSearchStore } from "@/features/search/search-store";
-import type { TextMatch } from "@/sql/text-search";
 import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import {
   UI_ZOOM_DEFAULT,
@@ -177,6 +156,7 @@ import {
   Sidebar,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
+  WorkbenchDockLayout,
   WorkbenchShell,
   completionHintsFromMetadata,
   createPanelResizeController,
@@ -240,18 +220,9 @@ import {
   type ThemeKind,
 } from "@/theme";
 import {
-  EMPTY_CELL_EDITS,
-  EMPTY_DELETED_ROWS,
-  EMPTY_FILTER_RULES,
-  EMPTY_NEW_ROWS,
-  EMPTY_SORT_RULES,
-  GRID_COLUMN_OVERSCAN,
   GRID_COLUMN_WIDTH,
   GRID_GUTTER_WIDTH,
-  GRID_OVERSCAN,
   GRID_ROW_HEIGHT,
-  GRID_WINDOWED_CELL_THRESHOLD,
-  GRID_WINDOWED_ROW_THRESHOLD,
   RESULT_WINDOW_MAX_RESIDENT_PAGES,
   RESULT_WINDOW_PAGE_SIZE,
   builtInTheme,
@@ -300,19 +271,6 @@ function isQueryCancelledMessage(message: string) {
   return normalized === "cancelled" || normalized.includes("query cancelled");
 }
 
-function isPrimaryRefreshShortcut(event: KeyboardEvent) {
-  const isRKey = event.key.toLowerCase() === "r" || event.code === "KeyR";
-  if (!isRKey || event.altKey || event.shiftKey) {
-    return false;
-  }
-  const mac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-  return mac
-    ? event.metaKey && !event.ctrlKey
-    : event.ctrlKey && !event.metaKey;
-}
-
 function sqlDownloadFileName(label: string) {
   const base = label
     .replace(/\.sql$/i, "")
@@ -322,8 +280,6 @@ function sqlDownloadFileName(label: string) {
     .slice(0, 80);
   return `${base || "query"}.sql`;
 }
-
-type EditorGroupStates = Record<EditorGroup, EditorGroupState>;
 
 const MigrationStudioDialog = lazy(() =>
   import("@/features/migration").then((module) => ({
@@ -367,12 +323,6 @@ export function AppWorkbench() {
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
-  const [editorGroupStates, setEditorGroupStates] = useState<EditorGroupStates>(
-    () => ({
-      primary: createEditorGroupState(loadSavedQuery()),
-      secondary: createEditorGroupState(""),
-    }),
-  );
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const activeConnectionId = useConnectionStore(
     (state) => state.activeConnectionId,
@@ -489,6 +439,38 @@ export function AppWorkbench() {
   const setEditorSplitPercent = useWorkbenchStore(
     (state) => state.setEditorSplitPercent,
   );
+  const {
+    activeEditorGroup,
+    activeTabLabel,
+    closeActiveSqlTab,
+    closeOtherSqlTabs,
+    closeSqlTab,
+    duplicateSqlTab,
+    editorGroupStates,
+    editorSelections,
+    editorTabMenu,
+    newSqlTab,
+    primaryQuery,
+    query,
+    renameSqlTab,
+    reopenSqlTab,
+    replaceSearchTab,
+    revealSearchMatch,
+    searchTabs,
+    secondaryQuery,
+    selectEditorTab,
+    setActiveEditorGroup,
+    setEditorGroupQuery,
+    setEditorGroupSelection,
+    setEditorTabMenu,
+    setQuery,
+  } = useEditorGroups({
+    loadInitialQuery: loadSavedQuery,
+    editorSplitMode,
+    editorApiRef,
+    secondaryEditorApiRef,
+    showActionNotice,
+  });
   const { beginPanelResize, onPanelResizeKey } = createPanelResizeController({
     sidebarWidth,
     inspectorWidth,
@@ -500,91 +482,10 @@ export function AppWorkbench() {
     setResultsHeight,
     setEditorSplitPercent,
   });
-  const [preferredEditorGroup, setActiveEditorGroup] =
-    useState<EditorGroup>("primary");
-  const activeEditorGroup: EditorGroup =
-    editorSplitMode === "single" ? "primary" : preferredEditorGroup;
-  const activeEditorGroupState = editorGroupStates[activeEditorGroup];
-  const query = queryForEditorGroup(activeEditorGroupState);
-  const editorSelections = selectionsForEditorGroup(activeEditorGroupState);
-  const activeTabLabel = activeTabLabelForEditorGroup(activeEditorGroupState);
   const [queryRun, sendQueryRun] = useMachine(queryLifecycleMachine);
   // `running` is derived from the explicit query lifecycle machine (idle ->
   // running -> streaming -> done/error/cancelled) instead of a hand-managed flag.
   const running = isQueryBusy(String(queryRun.value));
-  const [editorTabMenu, setEditorTabMenu] = useState<{
-    x: number;
-    y: number;
-    group: EditorGroup;
-    tabId: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!editorTabMenu) {
-      return;
-    }
-    const close = () => setEditorTabMenu(null);
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      event.preventDefault();
-      setEditorTabMenu(null);
-    };
-    window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("blur", close);
-    return () => {
-      window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("blur", close);
-    };
-  }, [editorTabMenu]);
-
-  function updateEditorGroupState(
-    group: EditorGroup,
-    updater: (state: EditorGroupState) => EditorGroupState,
-  ) {
-    setEditorGroupStates((current) => ({
-      ...current,
-      [group]: updater(current[group]),
-    }));
-  }
-
-  function setEditorGroupQuery(group: EditorGroup, nextQuery: string) {
-    updateEditorGroupState(group, (state) => ({
-      ...state,
-      queryByTabId: {
-        ...state.queryByTabId,
-        [state.activeTabId]: nextQuery,
-      },
-    }));
-  }
-
-  function setQuery(nextQuery: string) {
-    setEditorGroupQuery(activeEditorGroup, nextQuery);
-  }
-
-  function setEditorGroupSelection(
-    group: EditorGroup,
-    selection: EditorSelections,
-  ) {
-    updateEditorGroupState(group, (state) => ({
-      ...state,
-      selectionsByTabId: {
-        ...state.selectionsByTabId,
-        [state.activeTabId]: selection,
-      },
-    }));
-  }
-
-  function selectEditorTab(group: EditorGroup, tabId: string) {
-    setActiveEditorGroup(group);
-    updateEditorGroupState(group, (state) =>
-      selectEditorTabInGroup(state, tabId),
-    );
-  }
-
   function setActiveSidebarView(viewId: WorkbenchViewId) {
     const side = viewPlacements[viewId] ?? "left";
     if (side === "right") {
@@ -648,44 +549,6 @@ export function AppWorkbench() {
     void useGitStore.getState().refresh();
   }
 
-  // Every open editor tab (per group, since split groups hold independent text),
-  // surfaced to the cross-tab Search & Replace panel.
-  const searchTabs = useMemo<SearchTab[]>(() => {
-    const groups: EditorGroup[] =
-      editorSplitMode === "single" ? ["primary"] : ["primary", "secondary"];
-    return groups.flatMap((group) => {
-      const state = editorGroupStates[group];
-      return openTabsForEditorGroup(state).map((tab) => ({
-        key: `${group}:${tab.id}`,
-        group,
-        tabId: tab.id,
-        label:
-          editorSplitMode === "single" ? tab.label : `${tab.label} · ${group}`,
-        text: state.queryByTabId[tab.id] ?? "",
-      }));
-    });
-  }, [editorGroupStates, editorSplitMode]);
-
-  function replaceSearchTab(tab: SearchTab, nextText: string) {
-    updateEditorGroupState(tab.group as EditorGroup, (state) => ({
-      ...state,
-      queryByTabId: { ...state.queryByTabId, [tab.tabId]: nextText },
-    }));
-  }
-
-  function revealSearchMatch(tab: SearchTab, match: TextMatch) {
-    const group = tab.group as EditorGroup;
-    selectEditorTab(group, tab.tabId);
-    // Let the editor re-render the selected tab before selecting the range.
-    window.setTimeout(() => {
-      const api =
-        group === "secondary"
-          ? secondaryEditorApiRef.current
-          : editorApiRef.current;
-      api?.revealRange({ from: match.start, to: match.end });
-      api?.focus();
-    }, 0);
-  }
   // Id of the in-flight query so the Cancel button can stop that specific run.
   const runningQueryIdRef = useRef<string | null>(null);
   const cancelRequestedQueryIdRef = useRef<string | null>(null);
@@ -1185,34 +1048,73 @@ export function AppWorkbench() {
     shortcutTip("Commit Edits", "edit.commit"),
   ];
 
-  const resultSets = useMemo<QueryResultSet[]>(() => {
-    if (!result) {
-      return [];
-    }
-    if (result.resultSets && result.resultSets.length > 0) {
-      return result.resultSets;
-    }
-    return [
-      {
-        statementIndex: 0,
-        statement: "statement 1",
-        columns: result.columns,
-        rows: result.rows,
-        rowCount: result.rowCount,
-        elapsedMs: result.elapsedMs,
-        truncated: result.truncated,
-        message: result.message,
-      },
-    ];
-  }, [result]);
-  const activeResultIndexView = useMemo(
-    () => Math.min(activeResultIndex, Math.max(0, resultSets.length - 1)),
-    [activeResultIndex, resultSets.length],
-  );
-  const activeResult = useMemo(
-    () => resultSets[activeResultIndexView] ?? null,
-    [activeResultIndexView, resultSets],
-  );
+  const biOpen =
+    viewVisibility.bi &&
+    (viewPlacements.bi === "right" ? rightSidebarOpen : sidebarOpen);
+  const {
+    activeFilters,
+    activeResult,
+    activeResultIndexView,
+    chartAvailable,
+    chartResultModel,
+    copyCellsForRow,
+    displayedResultSummary,
+    effectiveResultMode,
+    filteredOutCount,
+    filtersActive,
+    firstVisible,
+    graphAvailable,
+    graphResultModel,
+    gridRowStyle,
+    gridTotalWidth,
+    lastVisible,
+    leftColumnPad,
+    pendingCount,
+    resultColumns,
+    resultGridView,
+    resultSets,
+    rightColumnPad,
+    rowDetailTable,
+    selectedRowValues,
+    showingStructure,
+    sortRuleByColumn,
+    structureObject,
+    totalRows,
+    topPad,
+    bottomPad,
+    unfilteredRowCount,
+    visibleColumnIndexes,
+    visibleRows,
+    webGlAvailable,
+  } = useResultGridModel({
+    result,
+    activeResultIndex,
+    resultMode,
+    tableViewObject,
+    query,
+    editorEngine,
+    activeMetadata,
+    biOpen,
+    spillInfo,
+    gridWindowVersion,
+    editMode,
+    cellEdits,
+    newRows,
+    deletedRows,
+    filterRules,
+    quickFilter,
+    filterJoin,
+    sortRules,
+    selectedRowKey,
+    gridGutterWidth,
+    gridGutterColumnWidth,
+    gridColumnWidth,
+    gridScrollLeft,
+    gridViewportWidth,
+    gridScrollTop,
+    gridViewportHeight,
+    gridRowHeight,
+  });
 
   useEffect(() => {
     if (gridRef.current) {
@@ -1225,160 +1127,6 @@ export function AppWorkbench() {
     setSelectedCell(null);
     setSelectedRange(null);
   }, [activeResultIndexView, result]);
-
-  const resultColumns = useMemo(
-    () => activeResult?.columns ?? [],
-    [activeResult],
-  );
-  const graphResultModel = useMemo(() => {
-    if (
-      (editorEngine !== "neo4j" && editorEngine !== "memgraph") ||
-      !activeResult ||
-      spillInfo
-    ) {
-      return null;
-    }
-    const rows = activeResult.rows
-      .slice(0, 500)
-      .filter((row): row is unknown[] => Array.isArray(row));
-    if (rows.length === 0) {
-      return null;
-    }
-    const model = buildGraphResultModel(activeResult.columns, rows);
-    return model.nodes.length > 0 || model.edges.length > 0 ? model : null;
-  }, [activeResult, editorEngine, spillInfo]);
-  const graphAvailable = Boolean(graphResultModel);
-  const webGlAvailable = Boolean(activeResult && resultColumns.length > 0);
-  // Resolve which table the active result came from so foreign-key cells become
-  // navigable in the row-detail drawer. Falls back to column matching; a null table
-  // simply disables FK links while the rest of the detail view still works.
-  const rowDetailTable = useMemo(
-    () =>
-      findTableMetadata(activeMetadata, parseSourceTable(query), resultColumns),
-    [activeMetadata, query, resultColumns],
-  );
-  // The raw (unformatted) values of the selected original row. Staged "new" rows
-  // (keys starting with "n") have no backing result row, so they have no detail view.
-  const selectedRowValues = useMemo(
-    () =>
-      activeResult && selectedRowKey && selectedRowKey.startsWith("o")
-        ? (activeResult.rows[Number(selectedRowKey.slice(1))] ?? null)
-        : null,
-    [activeResult, selectedRowKey],
-  );
-  const gridTotalWidth = useMemo(
-    () => Math.max(1, gridGutterWidth + resultColumns.length * gridColumnWidth),
-    [gridColumnWidth, gridGutterWidth, resultColumns.length],
-  );
-  const columnWindow = useMemo(
-    () =>
-      calculateResultGridVirtualColumnWindow({
-        columnCount: resultColumns.length,
-        scrollLeft: Math.max(0, gridScrollLeft - gridGutterWidth),
-        viewportWidth: Math.max(0, gridViewportWidth - gridGutterWidth),
-        columnWidth: gridColumnWidth,
-        overscan: GRID_COLUMN_OVERSCAN,
-      }),
-    [
-      gridColumnWidth,
-      gridGutterWidth,
-      gridScrollLeft,
-      gridViewportWidth,
-      resultColumns.length,
-    ],
-  );
-  const firstVisibleColumn = columnWindow.firstColumnIndex;
-  const lastVisibleColumn = columnWindow.lastColumnIndex;
-  const visibleColumnIndexes = useMemo(
-    () =>
-      Array.from(
-        { length: Math.max(0, lastVisibleColumn - firstVisibleColumn) },
-        (_, index) => firstVisibleColumn + index,
-      ),
-    [firstVisibleColumn, lastVisibleColumn],
-  );
-  const leftColumnPad = columnWindow.leftPadPx;
-  const rightColumnPad = columnWindow.rightPadPx;
-  // In Edit Data mode a leading gutter column holds the per-row delete control.
-  const gridTemplateColumns = useMemo(
-    () =>
-      [
-        editMode ? `${gridGutterColumnWidth}px` : null,
-        leftColumnPad > 0 ? `${leftColumnPad}px` : null,
-        ...visibleColumnIndexes.map(() => `${gridColumnWidth}px`),
-        rightColumnPad > 0 ? `${rightColumnPad}px` : null,
-      ]
-        .filter(Boolean)
-        .join(" "),
-    [
-      editMode,
-      gridColumnWidth,
-      gridGutterColumnWidth,
-      leftColumnPad,
-      rightColumnPad,
-      visibleColumnIndexes,
-    ],
-  );
-  const gridRowStyle = useMemo<CSSProperties>(
-    () => ({
-      gridTemplateColumns,
-      minWidth: gridTotalWidth,
-      width: gridTotalWidth,
-    }),
-    [gridTemplateColumns, gridTotalWidth],
-  );
-
-  // Build the display rows from raw results plus staged edits, filters, and sort.
-  // A disk-offloaded result (EXEC-010) forces the windowed path with empty
-  // edits/filters/sort: its rows live on disk, so it is browse-only here and reads
-  // through the `db_result_window` proxy. `gridWindowVersion` re-runs this as pages
-  // arrive. Client-side sort/filter/edit over a spilled result need server-side
-  // EXEC-005A / run-to-file EXEC-008 and are intentionally disabled.
-  const spilled = spillInfo !== null;
-  const resultGridView = useMemo(
-    () =>
-      buildResultGridViewModel(
-        {
-          rows: activeResult?.rows ?? [],
-          cellEdits: spilled ? EMPTY_CELL_EDITS : cellEdits,
-          newRows: spilled ? EMPTY_NEW_ROWS : newRows,
-          deletedRows: spilled ? EMPTY_DELETED_ROWS : deletedRows,
-          filterRules: spilled ? EMPTY_FILTER_RULES : filterRules,
-          quickFilter: spilled ? "" : quickFilter,
-          filterJoin,
-          sortRules: spilled ? EMPTY_SORT_RULES : sortRules,
-        },
-        {
-          windowedRowThreshold: spilled ? 0 : GRID_WINDOWED_ROW_THRESHOLD,
-          windowedCellThreshold: spilled ? 0 : GRID_WINDOWED_CELL_THRESHOLD,
-        },
-      ),
-    [
-      activeResult?.rows,
-      cellEdits,
-      newRows,
-      deletedRows,
-      filterRules,
-      quickFilter,
-      filterJoin,
-      sortRules,
-      spilled,
-      gridWindowVersion,
-    ],
-  );
-  const {
-    activeFilters,
-    filteredOutCount,
-    filtersActive,
-    pendingCount,
-    sortRuleByColumn,
-    totalRowCount,
-    unfilteredRowCount,
-  } = resultGridView;
-
-  function copyCellsForRow(row: ResultGridRowLike): string[] {
-    return resultColumns.map((_, index) => row.cells[index] ?? "");
-  }
 
   const {
     selectedRangeBounds,
@@ -1393,7 +1141,7 @@ export function AppWorkbench() {
     resultGridView,
     resultColumns,
     gridRef,
-    totalRows: totalRowCount,
+    totalRows,
     selectedCell,
     selectedRange,
     selectedRowKey,
@@ -1406,79 +1154,6 @@ export function AppWorkbench() {
   const selectionStatus = selectionSummary
     ? formatResultSelectionStatus(selectionSummary)
     : null;
-  const biOpen =
-    viewVisibility.bi &&
-    (viewPlacements.bi === "right" ? rightSidebarOpen : sidebarOpen);
-
-  const chartCandidateAvailable =
-    Boolean(activeResult) && !spillInfo && resultColumns.length > 0;
-  const chartResultModel = useMemo(() => {
-    if (!chartCandidateAvailable || !activeResult || spillInfo) {
-      return null;
-    }
-    if (resultGridView.windowed && resultMode !== "chart" && !biOpen) {
-      return null;
-    }
-    const rows = resultGridView
-      .rowsInRange(0, Math.min(resultGridView.totalRowCount, 5_000))
-      .map((row) => row.cells);
-    if (rows.length === 0) {
-      return null;
-    }
-    const model = buildChartResultModel(resultColumns, rows);
-    return model.defaultSelection ? model : null;
-  }, [
-    activeResult,
-    biOpen,
-    chartCandidateAvailable,
-    resultColumns,
-    resultGridView,
-    resultMode,
-    spillInfo,
-  ]);
-  const chartAvailable = resultGridView.windowed
-    ? chartCandidateAvailable
-    : Boolean(chartResultModel);
-  const effectiveResultMode = useMemo(() => {
-    if (resultMode === "chart" && (!chartResultModel || editMode)) {
-      return "data";
-    }
-    if (resultMode === "graph" && !graphAvailable) {
-      return "data";
-    }
-    if (resultMode === "webgl" && (!webGlAvailable || editMode)) {
-      return "data";
-    }
-    return resultMode;
-  }, [chartResultModel, editMode, graphAvailable, resultMode, webGlAvailable]);
-
-  // Virtualize the result grid: render only the rows in (and just around) the
-  // viewport, with top/bottom spacers preserving the scrollbar. A 10k-row page is
-  // ~30 DOM rows instead of 10k, so streaming stays smooth.
-  const totalRows = totalRowCount;
-  const rowWindow = useMemo(
-    () =>
-      calculateResultGridVirtualRowWindow({
-        rowCount: totalRows,
-        scrollTop: gridScrollTop,
-        viewportHeight: gridViewportHeight,
-        rowHeight: gridRowHeight,
-        overscan: GRID_OVERSCAN,
-      }),
-    [gridRowHeight, gridScrollTop, gridViewportHeight, totalRows],
-  );
-  const firstVisible = rowWindow.firstRowIndex;
-  const lastVisible = rowWindow.lastRowIndex;
-  const topPad = rowWindow.topPadPx;
-  const bottomPad = rowWindow.bottomPadPx;
-  const visibleRows = useMemo(
-    () => resultGridView.rowsInRange(firstVisible, lastVisible),
-    [firstVisible, lastVisible, resultGridView],
-  );
-  const structureObject =
-    effectiveResultMode === "structure" ? tableViewObject : null;
-  const showingStructure = Boolean(structureObject);
-
   const {
     selectResultSet,
     resetEdits,
@@ -1487,6 +1162,8 @@ export function AppWorkbench() {
     beginCellEdit,
     setCellValue,
     addNewRow,
+    enableEditMode,
+    discardEdits,
     deleteRow,
     pasteTableAt,
     undoLastEdit,
@@ -1549,175 +1226,22 @@ export function AppWorkbench() {
     showActionNotice,
   });
 
-  useEffect(() => {
-    if (pendingCount === 0) {
-      return;
-    }
-    const preventUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const interceptRefresh = (event: KeyboardEvent) => {
-      if (!isPrimaryRefreshShortcut(event)) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      const discard = window.confirm(
-        `Discard ${pendingCount} unsaved result change${pendingCount === 1 ? "" : "s"} and reload?`,
-      );
-      if (!discard) {
-        showActionNotice(
-          "info",
-          "Reload cancelled",
-          "Use Save Changes or Discard before refreshing.",
-        );
-        return;
-      }
-      resetEdits();
-      window.location.reload();
-    };
-    window.addEventListener("beforeunload", preventUnload);
-    window.addEventListener("keydown", interceptRefresh, { capture: true });
-    return () => {
-      window.removeEventListener("beforeunload", preventUnload);
-      window.removeEventListener("keydown", interceptRefresh, {
-        capture: true,
-      });
-    };
-  }, [pendingCount]);
-
-  // EXEC-010: fetch the disk pages the visible range needs, ingest them into the
-  // LRU source, and bump the version so the grid repaints with real cells. The LRU
-  // budget keeps resident rows flat no matter how far the user scrolls.
-  useEffect(() => {
-    const spill = spillRef.current;
-    if (!spill || !spillInfo || spillInfo.handle !== spill.handle) {
-      return;
-    }
-    const requests = spill.source.missingPages(firstVisible, lastVisible);
-    if (requests.length === 0) {
-      return;
-    }
-    const controller = new AbortController();
-    const requestId =
-      window.crypto?.randomUUID?.() ??
-      `${spill.handle}:${firstVisible}:${lastVisible}:${performance.now()}`;
-    void (async () => {
-      for (const request of requests) {
-        if (
-          controller.signal.aborted ||
-          !beginPendingPage(request.pageIndex, requestId)
-        ) {
-          continue;
-        }
-        try {
-          const page = await queryService.resultWindow(
-            spill.handle,
-            request.offset,
-            request.limit,
-          );
-          if (controller.signal.aborted) {
-            return;
-          }
-          spill.source.ingest(Number(page.offset), page.rows);
-          bumpGridWindowVersion();
-        } catch {
-          // Leave the rows as placeholders; a later scroll retries the page.
-        } finally {
-          endPendingPage(request.pageIndex, requestId);
-        }
-      }
-    })();
-    return () => {
-      controller.abort();
-      clearPendingPages();
-    };
-  }, [
-    beginPendingPage,
-    bumpGridWindowVersion,
-    clearPendingPages,
-    endPendingPage,
+  usePendingResultChangesGuard({
+    pendingCount,
+    resetEdits,
+    showActionNotice,
+  });
+  useResultGridSpillPaging({
     spillInfo,
+    spillRef,
     firstVisible,
     lastVisible,
     gridWindowVersion,
-  ]);
-
-  // Run a command by id (the keybinding handler and the Commands list share this).
-  function newSqlTab(group: EditorGroup = activeEditorGroup) {
-    updateEditorGroupState(group, addSqlTabToEditorGroup);
-    setActiveEditorGroup(group);
-  }
-
-  function renameSqlTab(group: EditorGroup, tabId: string) {
-    const state = editorGroupStates[group];
-    const tab = state.tabs.find((item) => item.id === tabId);
-    if (!tab) return;
-    const next = window.prompt("Rename SQL tab", tab.label)?.trim();
-    if (!next || next === tab.label) {
-      return;
-    }
-    updateEditorGroupState(group, (current) =>
-      renameSqlTabInEditorGroup(current, tabId, next),
-    );
-    setActiveEditorGroup(group);
-    showActionNotice("success", "Tab renamed", next);
-  }
-
-  function duplicateSqlTab(group: EditorGroup, tabId: string) {
-    const state = editorGroupStates[group];
-    const source = state.tabs.find((item) => item.id === tabId);
-    if (!source) return;
-    updateEditorGroupState(group, (current) =>
-      duplicateSqlTabInEditorGroup(current, tabId),
-    );
-    setActiveEditorGroup(group);
-    showActionNotice("success", "Tab duplicated", source.label);
-  }
-
-  function closeActiveSqlTab(group: EditorGroup = activeEditorGroup) {
-    const state = editorGroupStates[group];
-    closeSqlTab(group, state.activeTabId);
-  }
-
-  function closeSqlTab(group: EditorGroup, tabId: string) {
-    const state = editorGroupStates[group];
-    const result = closeSqlTabInEditorGroup(state, tabId);
-    if (result.keptLast || !result.closedTab) {
-      showActionNotice(
-        "info",
-        "Tab kept open",
-        "The last SQL tab stays open so Ctrl+W never closes the browser tab.",
-      );
-      return;
-    }
-    updateEditorGroupState(group, () => result.state);
-    showActionNotice("info", "Tab closed", result.closedTab.label);
-  }
-
-  function closeOtherSqlTabs(group: EditorGroup, tabId: string) {
-    const state = editorGroupStates[group];
-    const tab = state.tabs.find((item) => item.id === tabId);
-    if (!tab) return;
-    updateEditorGroupState(group, (current) =>
-      closeOtherSqlTabsInEditorGroup(current, tabId),
-    );
-    setActiveEditorGroup(group);
-    showActionNotice("info", "Other tabs closed", tab.label);
-  }
-
-  function reopenSqlTab(group: EditorGroup = activeEditorGroup) {
-    const state = editorGroupStates[group];
-    const result = reopenSqlTabInEditorGroup(state);
-    if (!result.restoredTab) {
-      showActionNotice("info", "Tabs already open");
-      return;
-    }
-    setActiveEditorGroup(group);
-    updateEditorGroupState(group, () => result.state);
-    showActionNotice("success", "Tab restored", result.restoredTab.label);
-  }
+    beginPendingPage,
+    endPendingPage,
+    clearPendingPages,
+    bumpGridWindowVersion,
+  });
 
   function updateUiZoom(nextZoom: number) {
     const normalized = normalizeUiZoom(nextZoom);
@@ -2528,15 +2052,6 @@ export function AppWorkbench() {
     );
   }
 
-  const resultSummary = activeResult
-    ? `${toCount(activeResult.rowCount)} rows${activeResult.truncated ? " capped" : ""} in ${toCount(
-        activeResult.elapsedMs,
-      )} ms`
-    : "no result";
-  const displayedResultSummary =
-    activeResult && filtersActive
-      ? `${toCount(totalRows)} / ${toCount(unfilteredRowCount)} shown · ${resultSummary}`
-      : resultSummary;
   const importSqlPreview = importPreview
     ? generateImportSql(
         importPreview.tableName,
@@ -4087,6 +3602,7 @@ export function AppWorkbench() {
         onCloseSidebar={() =>
           right ? setRightSidebarOpen(false) : setSidebarOpen(false)
         }
+        dockResize
         onBeginResize={(event) =>
           beginPanelResize(right ? "rightSidebar" : "sidebar", event)
         }
@@ -4101,8 +3617,8 @@ export function AppWorkbench() {
     activeTabLabel,
     running,
     formatter,
-    primaryQuery: queryForEditorGroup(editorGroupStates.primary),
-    secondaryQuery: queryForEditorGroup(editorGroupStates.secondary),
+    primaryQuery,
+    secondaryQuery,
     onPrimaryQueryChange: (next) => setEditorGroupQuery("primary", next),
     onSecondaryQueryChange: (next) => setEditorGroupQuery("secondary", next),
     renderEditorTabStrip,
@@ -4223,21 +3739,9 @@ export function AppWorkbench() {
       onAddNewRow: addNewRow,
       onUndoEdit: undoLastEdit,
       onCommitEdits: () => void commitEdits(),
-      onDiscardEdits: () => {
-        resetEdits();
-        setEditMode(false);
-      },
+      onDiscardEdits: discardEdits,
       onGenerateRowChangeSql: generateSelectedRowChangeSql,
-      onEnableEditMode: () => {
-        if (activeConnectionReadOnly) {
-          const message = "read-only connection: data edits are blocked";
-          setCommitError(message);
-          showActionNotice("error", "Edit blocked", message);
-          return;
-        }
-        setCommitError(null);
-        setEditMode(true);
-      },
+      onEnableEditMode: enableEditMode,
       onBeginCellEdit: beginCellEdit,
       onSetCellValue: setCellValue,
       onDeleteRow: deleteRow,
@@ -4353,25 +3857,25 @@ export function AppWorkbench() {
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
         onRunCommand={runCommand}
         onCloseWorkspaceMenu={() => setWorkspaceMenuOpen(false)}
-        leftSidebar={renderSidebar("left")}
-        rightSidebar={renderSidebar("right")}
+        dockLayout
+        leftSidebar={null}
+        rightSidebar={null}
       >
-        <section className="main-pane">
-          <div className="editor-and-inspector">
-            <QueryEditorPane {...queryEditorController} />
-          </div>
-
-          <div
-            className="panel-resizer results-resizer"
-            role="separator"
-            aria-label="Resize results"
-            aria-orientation="horizontal"
-            tabIndex={0}
-            onPointerDown={(event) => beginPanelResize("results", event)}
-            onKeyDown={(event) => onPanelResizeKey("results", event)}
-          />
-          <ResultsPane {...resultGridController} />
-        </section>
+        <WorkbenchDockLayout
+          leftSidebarOpen={sidebarOpen}
+          rightSidebarOpen={rightSidebarOpen}
+          sidebarWidth={sidebarWidth}
+          inspectorWidth={inspectorWidth}
+          resultsHeight={resultsHeight}
+          leftSidebar={renderSidebar("left")}
+          rightSidebar={renderSidebar("right")}
+          editor={
+            <div className="editor-and-inspector">
+              <QueryEditorPane {...queryEditorController} />
+            </div>
+          }
+          results={<ResultsPane {...resultGridController} />}
+        />
       </WorkbenchShell>
 
       {connectionController ? (

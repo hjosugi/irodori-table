@@ -18,7 +18,8 @@ describe("migration studio plan generation", () => {
     expect(plan.title).toContain("Snowflake");
     expect(plan.sourceSql).toContain("INSERT OVERWRITE DIRECTORY");
     expect(plan.sourceSql).toContain("STORED AS PARQUET");
-    expect(plan.sourceSql).toContain("LOWER(MD5(CONCAT_WS");
+    expect(plan.hashAlgorithm).toBe("blake3");
+    expect(plan.sourceSql).toContain("LOWER(irodori_blake3_hex(CONCAT_WS");
     expect(plan.targetSql).toContain("CREATE OR REPLACE FILE FORMAT");
     expect(plan.targetSql).toContain("COPY INTO analytics.orders");
     expect(plan.diffSql).toContain("FULL OUTER JOIN");
@@ -26,7 +27,7 @@ describe("migration studio plan generation", () => {
     expect(plan.diffSql).toContain("target_only");
   });
 
-  it("quotes unsafe identifiers and uses Oracle SHA256 row hashes", () => {
+  it("quotes unsafe identifiers and uses the BLAKE3 row hash contract", () => {
     const plan = buildMigrationPlan(
       draft({
         sourceEngine: "oracle",
@@ -40,7 +41,7 @@ describe("migration studio plan generation", () => {
 
     expect(plan.sourceSql).toContain('"Pay Detail"');
     expect(plan.sourceSql).toContain('"EMP ID"');
-    expect(plan.sourceSql).toContain("STANDARD_HASH");
+    expect(plan.sourceSql).toContain("irodori_blake3_hex");
     expect(plan.targetSql).toContain('"EMP ID" TEXT');
     expect(plan.diffSql).toContain("FULL OUTER JOIN");
   });

@@ -324,6 +324,10 @@ function MigrationOverview({
           <strong>{plan.hashColumns.length}</strong>
         </div>
         <div>
+          <small>Hash</small>
+          <strong>{plan.hashAlgorithmLabel}</strong>
+        </div>
+        <div>
           <small>Warnings</small>
           <strong>{plan.warnings.length}</strong>
         </div>

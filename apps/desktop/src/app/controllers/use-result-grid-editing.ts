@@ -273,6 +273,22 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     setEditMode(true);
   }
 
+  function enableEditMode() {
+    if (activeConnectionReadOnly) {
+      const message = "read-only connection: data edits are blocked";
+      setCommitError(message);
+      showActionNotice("error", "Edit blocked", message);
+      return;
+    }
+    setCommitError(null);
+    setEditMode(true);
+  }
+
+  function discardEdits() {
+    resetEdits();
+    setEditMode(false);
+  }
+
   // Stage a row delete (original rows) or drop a staged new row.
   function deleteRow(origin: ResultGridRowOrigin) {
     const rowKey = resultGridRowKey(origin);
@@ -644,6 +660,8 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     applyCellValueToDraft,
     setCellValue,
     addNewRow,
+    enableEditMode,
+    discardEdits,
     deleteRow,
     pasteTableAt,
     undoLastEdit,

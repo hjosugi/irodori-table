@@ -23,6 +23,10 @@
     grid-template-columns: 52px clamp(220px, 27vw, 240px) minmax(0, 1fr);
   }
 
+  .workspace.workspace-dock {
+    display: block;
+  }
+
   .workspace.sidebar-collapsed {
     grid-template-columns: 52px minmax(0, 1fr);
   }
@@ -136,6 +140,10 @@
 
   .workspace {
     grid-template-columns: 44px 1fr;
+  }
+
+  .workspace.workspace-dock {
+    display: block;
   }
 
   .workspace.sidebar-collapsed {

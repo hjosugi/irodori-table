@@ -50,10 +50,14 @@ export type MigrationTask = {
   level: "ready" | "manual" | "risk";
 };
 
+export type MigrationHashAlgorithm = "blake3";
+
 export type MigrationPlan = {
   title: string;
   sourceLabel: string;
   targetLabel: string;
+  hashAlgorithm: MigrationHashAlgorithm;
+  hashAlgorithmLabel: string;
   keys: string[];
   compareColumns: string[];
   hashColumns: string[];
@@ -121,6 +125,10 @@ export const defaultMigrationDraft: MigrationDraft = {
   normalizeWhitespace: true,
   normalizeCase: false,
 };
+
+const migrationHashAlgorithm: MigrationHashAlgorithm = "blake3";
+const migrationHashAlgorithmLabel = "BLAKE3";
+const migrationHashFunctionName = "irodori_blake3_hex";
 
 const migrationEngineLabels: Record<MigrationEngine, string> =
   migrationEngineOptions.reduce(
@@ -241,6 +249,8 @@ export function buildMigrationPlan(draft: MigrationDraft): MigrationPlan {
     title,
     sourceLabel,
     targetLabel,
+    hashAlgorithm: migrationHashAlgorithm,
+    hashAlgorithmLabel: migrationHashAlgorithmLabel,
     keys,
     compareColumns,
     hashColumns,
@@ -353,7 +363,8 @@ function buildHiveExportSql(
       : "ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE";
 
   return [
-    "-- Hive extraction: partitioned files plus deterministic row hashes.",
+    "-- Hive extraction: partitioned files plus deterministic BLAKE3 row hashes.",
+    `-- Register ${migrationHashFunctionName}(text) as a UDF, or materialize the manifest through Irodori.`,
     "SET hive.execution.engine=tez;",
     "SET hive.vectorized.execution.enabled=true;",
     "SET hive.exec.compress.output=true;",
@@ -412,7 +423,8 @@ function buildRowHashSelectSql(
   const where = whereClause(predicate);
 
   return [
-    "-- Row hash manifest query.",
+    `-- Row hash manifest query using ${migrationHashAlgorithmLabel}.`,
+    `-- Register ${migrationHashFunctionName}(text) as a UDF, or materialize the manifest through Irodori.`,
     "SELECT",
     [...selectColumns, `  ${hash} AS irodori_row_hash`].join(",\n"),
     `FROM ${tableRef(engine, table)}`,
@@ -441,7 +453,7 @@ function buildFingerprintSql(
       : "0 AS key_count,";
 
   return [
-    "-- Fast validation fingerprint. Use this before running row-level diff.",
+    `-- Fast ${migrationHashAlgorithmLabel} validation fingerprint. Use this before running row-level diff.`,
     "WITH row_hashes AS (",
     indent(rowHashSql),
     ")",
@@ -467,7 +479,7 @@ function buildManifestTableSql(
   ].filter(Boolean);
 
   return [
-    "-- Manifest tables hold source and target row hashes for fast diff.",
+    `-- Manifest tables hold source and target ${migrationHashAlgorithmLabel} row hashes for fast diff.`,
     `CREATE OR REPLACE TEMP TABLE ${tableRef(engine, "irodori_source_manifest")} (`,
     columns.join(",\n"),
     ");",
@@ -505,7 +517,7 @@ function buildDiffSql(
   const orderBy = keys.map((_, index) => String(index + 1)).join(", ");
 
   return [
-    "-- High-signal diff: missing rows first, changed rows with both hashes.",
+    `-- High-signal diff: missing rows first, changed rows with both ${migrationHashAlgorithmLabel} hashes.`,
     "WITH source_rows AS (",
     `  SELECT * FROM ${tableRef(engine, "irodori_source_manifest")}`,
     "),",
@@ -551,15 +563,7 @@ function buildRowHashExpression(
   );
   const concatenated = buildConcatExpression(engine, values, draft.delimiter);
 
-  switch (engine) {
-    case "oracle":
-      return `LOWER(RAWTOHEX(STANDARD_HASH(${concatenated}, 'SHA256')))`;
-    case "mysql":
-    case "mariadb":
-      return `LOWER(SHA2(${concatenated}, 256))`;
-    default:
-      return `LOWER(MD5(${concatenated}))`;
-  }
+  return `LOWER(${migrationHashFunctionName}(${concatenated}))`;
 }
 
 function isDuckDbLakehouseEngine(engine: MigrationEngine) {
@@ -673,6 +677,9 @@ function buildWarnings(
       "Snowflake quoted identifiers are case-sensitive. Keep generated identifiers aligned with table DDL.",
     );
   }
+  warnings.push(
+    `${migrationHashAlgorithmLabel} row hashes require the same ${migrationHashFunctionName}(text) implementation on both manifests, or Irodori-side manifest materialization.`,
+  );
   if (
     isDuckDbLakehouseEngine(draft.sourceEngine) ||
     isDuckDbLakehouseEngine(draft.targetEngine)
@@ -691,7 +698,7 @@ function buildPairNotes(draft: MigrationDraft) {
   const pair = `${draft.sourceEngine}->${draft.targetEngine}`;
   const notes = [
     "Use an inventory scan before moving data: schema, row counts, partitions, primary keys, nullability, and incompatible types.",
-    "Use recipe-style transforms for DDL and SQL rewrites, then gate every batch with count, hash, and sampled row checks.",
+    `Use recipe-style transforms for DDL and SQL rewrites, then gate every batch with count, ${migrationHashAlgorithmLabel} hash, and sampled row checks.`,
   ];
 
   if (pair === "hive->snowflake") {
@@ -742,7 +749,7 @@ function buildTasks(
       title: "Extract",
       detail:
         draft.sourceEngine === "hive"
-          ? `${draft.exportFormat.toUpperCase()} export with pushed-down row hash and partition predicate.`
+          ? `${draft.exportFormat.toUpperCase()} export with pushed-down ${migrationHashAlgorithmLabel} row hash and partition predicate.`
           : isDuckDbLakehouseEngine(draft.sourceEngine)
             ? "Attach the Iceberg REST Catalog in DuckDB and materialize a source hash manifest locally."
             : "Run the source row hash query and persist the result as a manifest.",
@@ -750,7 +757,7 @@ function buildTasks(
     },
     {
       title: "Validate",
-      detail: `${hashColumns.length} compare column(s), row count, key count, and min/max hash fingerprint before row diff.`,
+      detail: `${hashColumns.length} compare column(s), row count, key count, and min/max ${migrationHashAlgorithmLabel} hash fingerprint before row diff.`,
       level: hashColumns.length > 0 ? "ready" : "risk",
     },
     {
@@ -776,6 +783,7 @@ function buildRunbook(
     `- Source: ${migrationEngineLabel(draft.sourceEngine)} ${draft.sourceVersion || ""} / ${draft.sourceTable || "(missing)"}`,
     `- Target: ${migrationEngineLabel(draft.targetEngine)} ${draft.targetVersion || ""} / ${draft.targetTable || "(missing)"}`,
     `- Keys: ${keys.length > 0 ? keys.join(", ") : "(missing)"}`,
+    `- Hash algorithm: ${migrationHashAlgorithmLabel}`,
     `- Hash columns: ${hashColumns.length > 0 ? hashColumns.join(", ") : "(missing)"}`,
     "",
     "## 2. Recipe Plan",
@@ -786,12 +794,12 @@ function buildRunbook(
     "## 3. Extract And Load",
     `- Batch size target: ${draft.batchSize.toLocaleString()} rows per partition or bucket.`,
     `- Partition predicate: ${draft.partitionPredicate || "(none)"}`,
-    "- Persist a source hash manifest before loading target data.",
+    `- Persist a source ${migrationHashAlgorithmLabel} hash manifest before loading target data.`,
     "- Load data first, then create the target hash manifest from the loaded table.",
     "",
     "## 4. Compare Gates",
     "- Gate 1: row count and key count match.",
-    "- Gate 2: min/max hash fingerprint matches for each partition or hash bucket.",
+    `- Gate 2: min/max ${migrationHashAlgorithmLabel} hash fingerprint matches for each partition or hash bucket.`,
     "- Gate 3: row-level FULL OUTER JOIN diff returns zero rows.",
     "- Gate 4: sampled value-level checks for failed hashes and high-risk data types.",
     "",

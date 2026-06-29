@@ -20,6 +20,121 @@
   grid-template-columns: 44px minmax(0, 1fr);
 }
 
+.workspace.workspace-dock {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workbench-dock {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.dockview-theme-irodori {
+  --dv-paneview-active-outline-color: var(--focus);
+  --dv-tabs-and-actions-container-font-size: var(--font-ui-sm);
+  --dv-tabs-and-actions-container-height: var(--bar-md);
+  --dv-drag-over-background-color: color-mix(
+    in srgb,
+    var(--focus) 18%,
+    transparent
+  );
+  --dv-drag-over-border-color: var(--focus);
+  --dv-tabs-container-scrollbar-color: var(--muted);
+  --dv-icon-hover-background-color: var(--hover);
+  --dv-floating-box-shadow: var(--elevation-3);
+  --dv-floating-border: 1px solid var(--border);
+  --dv-overlay-z-index: 30;
+  --dv-tab-font-size: var(--font-ui-sm);
+  --dv-border-radius: 0;
+  --dv-tab-margin: 0;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--focus);
+  --dv-active-sash-transition-duration: 120ms;
+  --dv-active-sash-transition-delay: 0s;
+  --dv-spacing-padding: 0;
+  --dv-tab-border-radius: 0;
+  --dv-sash-border-radius: 0;
+  --dv-dropdown-border-radius: var(--radius-sm);
+  --dv-tab-close-icon-size: 0;
+  --dv-floating-group-border: 1px solid var(--border);
+  --dv-drag-over-border: 1px solid var(--focus);
+  --dv-floating-group-dragging-opacity: 0.68;
+  --dv-floating-titlebar-height: 22px;
+  --dv-floating-titlebar-background-color: var(--surface-muted);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--border);
+  --dv-group-view-background-color: var(--surface);
+  --dv-tabs-and-actions-container-background-color: var(--surface-muted);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--surface);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--surface-muted);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--surface);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--surface-muted);
+  --dv-tab-divider-color: var(--border);
+  --dv-activegroup-visiblepanel-tab-color: var(--text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-scrollbar-background-color: color-mix(
+    in srgb,
+    var(--muted) 38%,
+    transparent
+  );
+}
+
+.workbench-dock .dv-react-part,
+.workbench-dock-panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.workbench-dock-panel {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.workbench-dock-panel.editor,
+.workbench-dock-panel.results {
+  background: var(--editor-bg);
+}
+
+.workbench-dock-panel.editor .editor-and-inspector,
+.workbench-dock-panel.results .results-pane {
+  height: 100%;
+}
+
+.workbench-dock-panel.leftSidebar .sidebar,
+.workbench-dock-panel.rightSidebar .sidebar {
+  width: 100%;
+  height: 100%;
+  border-right: 0;
+  border-left: 0;
+}
+
+.workbench-dock-tab {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  overflow: hidden;
+  color: inherit;
+  font-size: var(--font-ui-sm);
+  font-weight: 650;
+  line-height: var(--line-compact);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .connection-rail {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
