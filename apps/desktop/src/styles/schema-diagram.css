@@ -1,0 +1,196 @@
+/* Interactive schema-diagram designer canvas. Reuses the read-only ERD's
+   .diagram / .diagram-canvas / .diagram-stage / .diagram-scale chrome and adds
+   draggable, editable table cards plus relationship edges on top. */
+
+.diagram-designer-error {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--danger, #d9534f) 14%, var(--surface));
+  color: var(--text);
+  font-size: 12px;
+}
+
+.diagram-designer-scale {
+  position: relative;
+}
+
+.diagram-designer-edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  color: var(--border-strong);
+  pointer-events: none;
+}
+
+.diagram-designer-edges path {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.4;
+}
+
+.diagram-designer-table {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  overflow: hidden;
+}
+
+.diagram-designer-table.is-selected {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+}
+
+.diagram-designer-table-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px 4px 8px;
+  background: var(--grid-header);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+}
+
+.diagram-designer-table-header:active {
+  cursor: grabbing;
+}
+
+.diagram-designer-table-name {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.diagram-designer-table-name:focus {
+  border-color: var(--border);
+  outline: none;
+  background: var(--input-bg);
+}
+
+.diagram-designer-columns {
+  display: flex;
+  flex-direction: column;
+}
+
+.diagram-designer-column {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.diagram-designer-column-name {
+  flex: 1 1 40%;
+  min-width: 0;
+}
+
+.diagram-designer-column-type {
+  flex: 1 1 34%;
+  min-width: 0;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.diagram-designer-column input[type="text"],
+.diagram-designer-column-name,
+.diagram-designer-column-type {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+}
+
+.diagram-designer-column-name:focus,
+.diagram-designer-column-type:focus {
+  border-color: var(--border);
+  outline: none;
+  background: var(--input-bg);
+}
+
+.diagram-designer-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.diagram-designer-key.is-on {
+  color: var(--focus);
+  background: var(--selected);
+}
+
+.diagram-designer-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.diagram-designer-flag input {
+  margin: 0;
+}
+
+.diagram-designer-relations {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 5px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.diagram-designer-relation {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+}
+
+.diagram-designer-relation select {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 10px;
+}
+
+.diagram-designer-relation-arrow {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.diagram-designer-table-actions {
+  display: flex;
+  gap: 6px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--border);
+}
+
+.diagram-designer-table-actions .text-button {
+  font-size: 11px;
+}

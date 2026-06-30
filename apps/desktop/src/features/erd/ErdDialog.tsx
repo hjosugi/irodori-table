@@ -7,6 +7,7 @@ import {
   Download,
   ImageDown,
   Maximize2,
+  PencilRuler,
   Search,
   ZoomIn,
   ZoomOut,
@@ -44,6 +45,7 @@ export function ErdDialog({
   onDownloadSpecJson,
   onLoadSpecDdl,
   onCreateDatabaseSql,
+  onEditInDesigner,
   onSelectTable,
   onCopyMermaid,
 }: {
@@ -72,6 +74,7 @@ export function ErdDialog({
   onDownloadSpecJson: () => void;
   onLoadSpecDdl: () => void;
   onCreateDatabaseSql: () => void;
+  onEditInDesigner: () => void;
   onSelectTable: (tableId: string) => void;
   onCopyMermaid: () => void;
 }) {
@@ -163,6 +166,16 @@ export function ErdDialog({
         >
           <ImageDown size={13} />
           <span>PNG</span>
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          title="Open the current diagram in the interactive designer"
+          onClick={onEditInDesigner}
+          disabled={!metadataLoaded}
+        >
+          <PencilRuler size={13} />
+          <span>Designer</span>
         </button>
         <button
           className="text-button"

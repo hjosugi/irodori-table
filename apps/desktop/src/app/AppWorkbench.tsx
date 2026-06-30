@@ -129,6 +129,11 @@ import {
   tableSpecFileName,
   useSchemaDesignerStore,
 } from "@/features/schema-designer";
+import {
+  SchemaDiagramDialog,
+  diagramFromMetadata,
+  useSchemaDiagramStore,
+} from "@/features/schema-diagram";
 import { SettingsDialog, type SettingsTab } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
@@ -806,6 +811,17 @@ export function AppWorkbench() {
   const openObjectSchemaDesigner = useSchemaDesignerStore(
     (state) => state.openForObject,
   );
+  const schemaDiagramOpen = useSchemaDiagramStore((state) => state.open);
+  const openBlankSchemaDiagram = useSchemaDiagramStore(
+    (state) => state.openBlank,
+  );
+  const openSchemaDiagramFromDocument = useSchemaDiagramStore(
+    (state) => state.openFromDocument,
+  );
+  const setSchemaDiagramDocument = useSchemaDiagramStore(
+    (state) => state.setDocument,
+  );
+  const closeSchemaDiagram = useSchemaDiagramStore((state) => state.close);
   const diagramInitializedFor = useRef<string | null>(null);
   const appendHistory = useQueryHistoryStore((state) => state.append);
   const queryHistoryMaxItems = useQueryHistoryStore((state) => state.maxItems);
@@ -2393,6 +2409,49 @@ export function AppWorkbench() {
     openObjectSchemaDesigner(object);
   }
 
+  function openSchemaDiagramDesigner() {
+    if (activeMetadata && hasDiagram(activeMetadata)) {
+      openSchemaDiagramFromDocument(diagramFromMetadata(activeMetadata));
+    } else {
+      openBlankSchemaDiagram();
+    }
+  }
+
+  function editDiagramInDesigner() {
+    if (!activeMetadata) {
+      return;
+    }
+    openSchemaDiagramFromDocument(
+      diagramFromMetadata(activeMetadata, {
+        schemaNames: diagramSchemaNames,
+        search: diagramSearch,
+      }),
+    );
+    setDiagramOpen(false);
+  }
+
+  function seedSchemaDiagramFromDb() {
+    if (activeMetadata) {
+      setSchemaDiagramDocument(diagramFromMetadata(activeMetadata));
+    }
+  }
+
+  function putDiagramDesignerSqlInEditor(sql: string) {
+    setQuery(sql);
+    closeSchemaDiagram();
+    showActionNotice("success", "Create DB SQL generated");
+    window.setTimeout(() => activeEditorApi()?.focus(), 0);
+  }
+
+  async function copyDiagramDesignerSql(sql: string) {
+    try {
+      await writeTextToClipboard(sql);
+      showActionNotice("success", "Schema SQL copied");
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
+  }
+
   function fitDiagramToViewport() {
     if (!diagramLayout || !diagramCanvasRef.current) {
       return;
@@ -3623,6 +3682,7 @@ export function AppWorkbench() {
         onNewTableFromFile={() => importFileRef.current?.click()}
         onOpenObjectSchemaDesigner={openObjectSchemaDesigner}
         onOpenDiagram={() => setDiagramOpen(true)}
+        onOpenSchemaDiagram={openSchemaDiagramDesigner}
         onRefreshObjects={() => refreshObjects(activeConnectionId, true, true)}
         onOpenTableData={(object) => void openTableData(object)}
         onOpenSnapshotObject={openSnapshotObject}
@@ -4113,12 +4173,23 @@ export function AppWorkbench() {
           onDownloadSpecJson={downloadTableSpecJson}
           onLoadSpecDdl={() => schemaSpecFileRef.current?.click()}
           onCreateDatabaseSql={createDatabaseSqlFromDiagram}
+          onEditInDesigner={editDiagramInDesigner}
           onSelectTable={editDiagramTableColumns}
           onCopyMermaid={() => {
             if (activeMetadata) {
               void navigator.clipboard?.writeText(diagramMermaid);
             }
           }}
+        />
+      ) : null}
+
+      {schemaDiagramOpen ? (
+        <SchemaDiagramDialog
+          onClose={closeSchemaDiagram}
+          onPutSqlInEditor={putDiagramDesignerSqlInEditor}
+          onCopySql={(sql) => void copyDiagramDesignerSql(sql)}
+          onSeedFromDb={seedSchemaDiagramFromDb}
+          canSeedFromDb={Boolean(activeMetadata && hasDiagram(activeMetadata))}
         />
       ) : null}
 

@@ -251,6 +251,13 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - `EXEC-004B` is closed: lazy 1M-row virtualization coverage exists alongside
   wide-column virtualization. Future work moves to renderer-path benchmarks and
   very-large scrollbar scaling only if larger fixtures require it.
+- The ERD is now a two-way design surface (Phase 6): a forward engineer emits an
+  FK-dependency-ordered `CREATE`/`ALTER` script from a diagram, and an
+  interactive canvas designer (drag tables, edit columns/keys, draw
+  relationships, import/export diagram JSON, seed from a live connection) builds
+  on it. Studied clean-room against drawDB (AGPL-3.0) behavior only. Remaining
+  designer work: drag-to-connect relationships, multi-column keys, and diagram
+  persistence inside the workspace.
 
 ## Immediate Next Steps
 

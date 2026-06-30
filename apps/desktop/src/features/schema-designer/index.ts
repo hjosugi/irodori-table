@@ -20,5 +20,7 @@ export {
   parseTableSpecDocument,
   tableSpecFileName,
   tableSpecFormat,
+  type TableSpecBuildOptions,
   type TableSpecDocument,
+  type TableSpecTable,
 } from "./schema-spec";

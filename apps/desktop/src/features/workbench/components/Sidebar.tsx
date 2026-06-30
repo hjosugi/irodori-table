@@ -79,6 +79,7 @@ type SidebarProps = {
   onNewTableFromFile: () => void;
   onOpenObjectSchemaDesigner: (object: DbObjectMetadata) => void;
   onOpenDiagram: () => void;
+  onOpenSchemaDiagram: () => void;
   onRefreshObjects: () => void;
   onOpenTableData: (object: DbObjectMetadata) => void;
   onOpenSnapshotObject: (object: SnapshotObject) => void;
@@ -126,6 +127,7 @@ export function Sidebar({
   onNewTableFromFile,
   onOpenObjectSchemaDesigner,
   onOpenDiagram,
+  onOpenSchemaDiagram,
   onRefreshObjects,
   onOpenTableData,
   onOpenSnapshotObject,
@@ -593,6 +595,16 @@ export function Sidebar({
                           }}
                         >
                           New Table from File
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setCreateMenuOpen(false);
+                            onOpenSchemaDiagram();
+                          }}
+                        >
+                          Design on Canvas
                         </button>
                       </div>
                     ) : null}
