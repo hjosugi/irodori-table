@@ -6,20 +6,20 @@ members = ["apps/desktop/src-tauri"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.10"
+version = "0.4.0"
 edition = "2021"
 license = "MIT OR 0BSD"
 authors = ["Irodori Table contributors"]
 
 [workspace.dependencies]
-irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", tag = "v0.2.24" }
-irodori-error = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
-irodori-jobs = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
-irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.2.23" }
+irodori-sql = { git = "https://github.com/hjosugi/irodori-sql", tag = "v0.3.0" }
+irodori-error = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.3.0" }
+irodori-jobs = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.3.0" }
+irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag = "v0.3.0" }
 # Foundation crates, extracted to the irodori-kit sibling repo. For local
 # co-development, override with a `[patch]` pointing at a `../irodori-kit` checkout.
-irodori-core = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
-irodori-proxy = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
-irodori-secure-store = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
-irodori-completion = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
-irodori-generate = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.1.0" }
+irodori-core = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.4.0" }
+irodori-proxy = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.4.0" }
+irodori-secure-store = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.4.0" }
+irodori-completion = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.4.0" }
+irodori-generate = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.4.0" }
