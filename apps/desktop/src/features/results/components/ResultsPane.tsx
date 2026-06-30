@@ -128,6 +128,7 @@ export type ResultsPaneGridGeometry = {
   firstVisible: number;
   visibleColumnIndexes: number[];
   visibleRows: readonly ResultGridDisplayRow[];
+  visibleRowsRevision: number;
   onGridScroll: (event: UIEvent<HTMLDivElement>) => void;
   onGridKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   onGridPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void;
@@ -285,6 +286,7 @@ export function ResultsPane({
     firstVisible,
     visibleColumnIndexes,
     visibleRows,
+    visibleRowsRevision,
     onGridScroll,
     onGridKeyDown,
     onGridPaste,
@@ -686,6 +688,7 @@ export function ResultsPane({
         firstVisible={firstVisible}
         visibleColumnIndexes={visibleColumnIndexes}
         visibleRows={visibleRows}
+        visibleRowsRevision={visibleRowsRevision}
         sortRuleByColumn={sortRuleByColumn}
         sortRules={sortRules}
         selectedRowKey={selectedRowKey}

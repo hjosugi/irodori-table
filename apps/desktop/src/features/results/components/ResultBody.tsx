@@ -70,6 +70,7 @@ export function ResultBody({
   firstVisible,
   visibleColumnIndexes,
   visibleRows,
+  visibleRowsRevision,
   sortRuleByColumn,
   sortRules,
   selectedRowKey,
@@ -122,6 +123,7 @@ export function ResultBody({
   firstVisible: number;
   visibleColumnIndexes: number[];
   visibleRows: readonly ResultGridDisplayRow[];
+  visibleRowsRevision: number;
   sortRuleByColumn: ReadonlyMap<number, ResultGridSortRuleView>;
   sortRules: readonly ResultSortRule[];
   selectedRowKey: string | null;
@@ -231,6 +233,7 @@ export function ResultBody({
         aria-label="Query result"
         aria-rowcount={totalRows + 1}
         aria-colcount={resultColumns.length + (editMode ? 1 : 0)}
+        data-visible-rows-revision={visibleRowsRevision}
         ref={gridRef}
         tabIndex={0}
         onScroll={onGridScroll}

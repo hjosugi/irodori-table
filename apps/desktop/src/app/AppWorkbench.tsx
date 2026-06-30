@@ -1091,6 +1091,7 @@ export function AppWorkbench() {
     unfilteredRowCount,
     visibleColumnIndexes,
     visibleRows,
+    visibleRowsRevision,
     webGlAvailable,
   } = useResultGridModel({
     result,
@@ -3332,6 +3333,7 @@ export function AppWorkbench() {
       firstVisible,
       visibleColumnIndexes,
       visibleRows,
+      visibleRowsRevision,
       onGridScroll,
       onGridKeyDown,
       onGridPaste,

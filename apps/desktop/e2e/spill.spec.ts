@@ -329,6 +329,16 @@ async function readMetrics(page: Page): Promise<SpillMetrics> {
   return page.evaluate(() => window.__IRODORI_SPILL_METRICS__ as SpillMetrics);
 }
 
+async function waitForWindowOffset(page: Page, min: number, max: number) {
+  await page.waitForFunction(
+    ([lower, upper]) =>
+      window.__IRODORI_SPILL_METRICS__?.windowOffsets.some(
+        (offset) => offset >= lower && offset <= upper,
+      ) ?? false,
+    [min, max],
+  );
+}
+
 test.describe("EXEC-010 disk offload paging", () => {
   test.describe.configure({ mode: "serial" });
 
@@ -361,6 +371,7 @@ test.describe("EXEC-010 disk offload paging", () => {
     await scrollGridTo(grid, deepTop);
     const deepActualTop = await grid.evaluate((element) => element.scrollTop);
     const deepIndex = expectedFirstRowIndex(deepActualTop);
+    await waitForWindowOffset(page, 59_000, 61_000);
     await expect(renderedRows.first()).toContainText(`row_${deepIndex}`);
     expect(await renderedRows.count()).toBeLessThanOrEqual(
       rowBudget(viewportHeight),
@@ -369,6 +380,7 @@ test.describe("EXEC-010 disk offload paging", () => {
     // Jump to the very bottom: the last row pages in from disk.
     const bottomTop = (fixture.total - 12) * GRID_ROW_HEIGHT_PX;
     await scrollGridTo(grid, bottomTop);
+    await waitForWindowOffset(page, 119_000, 119_000);
     await expect(renderedRows.last()).toContainText(`row_${fixture.total - 1}`);
 
     // The grid paged on demand — it fetched only a handful of pages, never the

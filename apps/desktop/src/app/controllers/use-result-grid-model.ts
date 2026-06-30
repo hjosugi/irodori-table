@@ -305,9 +305,14 @@ export function useResultGridModel({
   );
   const firstVisible = rowWindow.firstRowIndex;
   const lastVisible = rowWindow.lastRowIndex;
-  const visibleRows = useMemo(
-    () => resultGridView.rowsInRange(firstVisible, lastVisible),
-    [firstVisible, lastVisible, resultGridView],
+  // WindowedRows mutates in place as pages arrive. Re-read the small visible
+  // range on each render so a gridWindowVersion update paints fetched pages.
+  const visibleRows = resultGridView.rowsInRange(firstVisible, lastVisible);
+  const visibleRowsRevision = visibleRows.reduce(
+    (rowTotal, row) =>
+      rowTotal +
+      row.cells.reduce((cellTotal, cell) => cellTotal + cell.length, 0),
+    gridWindowVersion,
   );
   const structureObject =
     effectiveResultMode === "structure" ? tableViewObject : null;
@@ -353,6 +358,7 @@ export function useResultGridModel({
     bottomPad: rowWindow.bottomPadPx,
     visibleColumnIndexes,
     visibleRows,
+    visibleRowsRevision,
     webGlAvailable,
     copyCellsForRow,
     activeFilters: resultGridView.activeFilters,
