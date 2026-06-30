@@ -119,6 +119,7 @@ import {
 } from "@/features/erd";
 import {
   SchemaDesignerDialog,
+  buildCreateDatabaseSql,
   buildSchemaSql,
   buildTableSpecDocument,
   ddlFromTableSpecDocument,
@@ -2363,6 +2364,35 @@ export function AppWorkbench() {
     }
   }
 
+  function createDatabaseSqlFromDiagram() {
+    try {
+      const sql = buildCreateDatabaseSql(currentTableSpecDocument());
+      setQuery(sql);
+      setDiagramOpen(false);
+      setDiagramError(null);
+      showActionNotice("success", "Create DB SQL generated");
+      window.setTimeout(() => activeEditorApi()?.focus(), 0);
+    } catch (error) {
+      const message = errorMessage(error);
+      setDiagramError(message);
+      showActionNotice("error", "Create DB SQL failed", message);
+    }
+  }
+
+  function editDiagramTableColumns(tableId: string) {
+    const object = activeMetadata?.schemas
+      .flatMap((schema) => schema.objects)
+      .find(
+        (item) =>
+          item.kind === "table" && `${item.schema}.${item.name}` === tableId,
+      );
+    if (!object) {
+      return;
+    }
+    setDiagramOpen(false);
+    openObjectSchemaDesigner(object);
+  }
+
   function fitDiagramToViewport() {
     if (!diagramLayout || !diagramCanvasRef.current) {
       return;
@@ -4082,6 +4112,8 @@ export function AppWorkbench() {
           onDownloadSpecMarkdown={downloadTableSpecMarkdown}
           onDownloadSpecJson={downloadTableSpecJson}
           onLoadSpecDdl={() => schemaSpecFileRef.current?.click()}
+          onCreateDatabaseSql={createDatabaseSqlFromDiagram}
+          onSelectTable={editDiagramTableColumns}
           onCopyMermaid={() => {
             if (activeMetadata) {
               void navigator.clipboard?.writeText(diagramMermaid);

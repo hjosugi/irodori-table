@@ -3,6 +3,7 @@ import { DialogShell } from "@/components/DialogShell";
 import {
   AlertTriangle,
   Copy,
+  Database,
   Download,
   ImageDown,
   Maximize2,
@@ -42,6 +43,8 @@ export function ErdDialog({
   onDownloadSpecMarkdown,
   onDownloadSpecJson,
   onLoadSpecDdl,
+  onCreateDatabaseSql,
+  onSelectTable,
   onCopyMermaid,
 }: {
   activeConnectionName: string;
@@ -68,6 +71,8 @@ export function ErdDialog({
   onDownloadSpecMarkdown: () => void;
   onDownloadSpecJson: () => void;
   onLoadSpecDdl: () => void;
+  onCreateDatabaseSql: () => void;
+  onSelectTable: (tableId: string) => void;
   onCopyMermaid: () => void;
 }) {
   return (
@@ -158,6 +163,16 @@ export function ErdDialog({
         >
           <ImageDown size={13} />
           <span>PNG</span>
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          title="Generate a runnable CREATE script for the current diagram"
+          onClick={onCreateDatabaseSql}
+          disabled={!metadataLoaded}
+        >
+          <Database size={13} />
+          <span>Create DB</span>
         </button>
         <button
           className="text-button"
@@ -266,7 +281,12 @@ export function ErdDialog({
                 height: layout.height,
               }}
             >
-              <ErdSvg layout={layout} svgRef={svgRef} svgStyle={svgStyle} />
+              <ErdSvg
+                layout={layout}
+                svgRef={svgRef}
+                svgStyle={svgStyle}
+                onSelectTable={onSelectTable}
+              />
             </div>
           </div>
         ) : null}

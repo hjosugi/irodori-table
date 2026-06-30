@@ -12,6 +12,7 @@ export {
   type SchemaIndexDraft,
 } from "./schema-designer";
 export {
+  buildCreateDatabaseSql,
   buildTableSpecDocument,
   ddlFromTableSpecDocument,
   exportTableSpecJson,

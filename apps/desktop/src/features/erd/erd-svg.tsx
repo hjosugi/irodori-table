@@ -9,6 +9,10 @@ export function erdSvgStyle(theme: IrodoriTheme) {
     .erd-schema { fill: ${ui.surfaceMuted}; stroke: ${ui.border}; stroke-width: 1; }
     .erd-schema-title { fill: ${ui.muted}; font: 700 13px Inter, ui-sans-serif, system-ui; }
     .erd-table { fill: ${ui.surfaceRaised}; stroke: ${ui.borderStrong}; stroke-width: 1; }
+    .erd-table-node.selectable { cursor: pointer; }
+    .erd-table-node.selectable:hover .erd-table { stroke: ${ui.focus}; stroke-width: 1.6; }
+    .erd-table-node.selectable:focus { outline: none; }
+    .erd-table-node.selectable:focus .erd-table { stroke: ${ui.focus}; stroke-width: 1.6; }
     .erd-table-header { fill: ${ui.gridHeader}; stroke: ${ui.border}; stroke-width: 1; }
     .erd-table-title { fill: ${ui.text}; font: 700 12px SFMono-Regular, Consolas, monospace; }
     .erd-column { fill: ${ui.text}; font: 11px SFMono-Regular, Consolas, monospace; }
@@ -34,10 +38,12 @@ export function ErdSvg({
   layout,
   svgRef,
   svgStyle,
+  onSelectTable,
 }: {
   layout: ErdLayout;
   svgRef: RefObject<SVGSVGElement | null>;
   svgStyle: string;
+  onSelectTable?: (tableId: string) => void;
 }) {
   return (
     <svg
@@ -123,16 +129,49 @@ export function ErdSvg({
         </g>
       ))}
       {layout.tables.map((node) => (
-        <ErdTableNode key={node.table.id} node={node} />
+        <ErdTableNode
+          key={node.table.id}
+          node={node}
+          onSelect={onSelectTable}
+        />
       ))}
     </svg>
   );
 }
 
-function ErdTableNode({ node }: { node: ErdLayoutTable }) {
+function ErdTableNode({
+  node,
+  onSelect,
+}: {
+  node: ErdLayoutTable;
+  onSelect?: (tableId: string) => void;
+}) {
+  const selectable = Boolean(onSelect);
   return (
-    <g transform={`translate(${node.x} ${node.y})`}>
-      <title>{node.table.id}</title>
+    <g
+      transform={`translate(${node.x} ${node.y})`}
+      className={selectable ? "erd-table-node selectable" : "erd-table-node"}
+      role={selectable ? "button" : undefined}
+      tabIndex={selectable ? 0 : undefined}
+      aria-label={selectable ? `Edit ${node.table.id}` : undefined}
+      style={selectable ? { cursor: "pointer" } : undefined}
+      onClick={selectable ? () => onSelect?.(node.table.id) : undefined}
+      onKeyDown={
+        selectable
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect?.(node.table.id);
+              }
+            }
+          : undefined
+      }
+    >
+      <title>
+        {selectable
+          ? `${node.table.id} — click to edit columns`
+          : node.table.id}
+      </title>
       <rect
         className="erd-table"
         x="0"

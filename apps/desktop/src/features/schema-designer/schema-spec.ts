@@ -164,13 +164,160 @@ export function parseTableSpecDocument(text: string): TableSpecDocument {
   };
 }
 
+/**
+ * Forward-engineer a runnable "create database" script from a table spec.
+ *
+ * `CREATE TABLE` statements are ordered so that referenced tables are created
+ * before the tables that reference them. Foreign keys that cannot be satisfied
+ * in declaration order — self-references, dependency cycles, or targets created
+ * later — are emitted as trailing `ALTER TABLE ... ADD CONSTRAINT` statements so
+ * the whole script applies cleanly instead of failing on a forward reference.
+ */
+export function buildCreateDatabaseSql(document: TableSpecDocument): string {
+  const tables = flattenSpecTables(document);
+  const present = new Set(tables.map((entry) => entry.id));
+  const ordered = orderTablesByDependencies(tables, present);
+  const rankById = new Map(ordered.map((entry, index) => [entry.id, index]));
+
+  const createStatements: string[] = [];
+  const alterStatements: string[] = [];
+
+  for (const entry of ordered) {
+    const inlineForeignKeys: SchemaForeignKeyDraft[] = [];
+    entry.table.foreignKeys.forEach((foreignKey, index) => {
+      const draft = specForeignKeyDraft(entry.table.name, foreignKey, index);
+      if (canInlineForeignKey(entry, foreignKey, present, rankById)) {
+        inlineForeignKeys.push(draft);
+      } else {
+        alterStatements.push(
+          buildSchemaSql({
+            mode: "alter",
+            schema: entry.schema,
+            table: entry.table.name,
+            columns: [],
+            indexes: [],
+            foreignKeys: [draft],
+          }).trim(),
+        );
+      }
+    });
+    const baseDraft = draftFromSpecTable(entry.schema, entry.table);
+    createStatements.push(
+      buildSchemaSql({ ...baseDraft, foreignKeys: inlineForeignKeys }).trim(),
+    );
+  }
+
+  const statements = [...createStatements, ...alterStatements].filter(Boolean);
+  return `${statements.join("\n\n")}\n`;
+}
+
+/** Backwards-compatible alias for {@link buildCreateDatabaseSql}. */
 export function ddlFromTableSpecDocument(document: TableSpecDocument): string {
-  const statements = document.schemas.flatMap((schema) =>
-    schema.tables.map((table) =>
-      buildSchemaSql(draftFromSpecTable(schema.name, table)).trim(),
-    ),
+  return buildCreateDatabaseSql(document);
+}
+
+type FlatSpecTable = {
+  schema: string;
+  table: TableSpecTable;
+  id: string;
+};
+
+function flattenSpecTables(document: TableSpecDocument): FlatSpecTable[] {
+  return document.schemas.flatMap((schema) =>
+    schema.tables.map((table) => ({
+      schema: schema.name,
+      table,
+      id: tableId(schema.name, table.name),
+    })),
   );
-  return `${statements.filter(Boolean).join("\n\n")}\n`;
+}
+
+function foreignKeyTargetId(
+  entry: FlatSpecTable,
+  foreignKey: TableSpecForeignKey,
+) {
+  return tableId(
+    foreignKey.referencesSchema ?? entry.schema,
+    foreignKey.referencesTable,
+  );
+}
+
+function canInlineForeignKey(
+  entry: FlatSpecTable,
+  foreignKey: TableSpecForeignKey,
+  present: Set<string>,
+  rankById: Map<string, number>,
+): boolean {
+  const targetId = foreignKeyTargetId(entry, foreignKey);
+  if (!present.has(targetId) || targetId === entry.id) {
+    return false;
+  }
+  const targetRank = rankById.get(targetId) ?? Number.POSITIVE_INFINITY;
+  const selfRank = rankById.get(entry.id) ?? 0;
+  return targetRank < selfRank;
+}
+
+/**
+ * Order tables so dependencies come first (Kahn's algorithm). Ties keep the
+ * original document order for deterministic output, and any tables left in a
+ * cycle are appended in document order with their back-edges deferred to ALTER.
+ */
+function orderTablesByDependencies(
+  tables: FlatSpecTable[],
+  present: Set<string>,
+): FlatSpecTable[] {
+  const byId = new Map(tables.map((entry) => [entry.id, entry]));
+  const dependents = new Map<string, string[]>();
+  const indegree = new Map<string, number>();
+
+  for (const entry of tables) {
+    const deps = new Set<string>();
+    for (const foreignKey of entry.table.foreignKeys) {
+      const targetId = foreignKeyTargetId(entry, foreignKey);
+      if (present.has(targetId) && targetId !== entry.id) {
+        deps.add(targetId);
+      }
+    }
+    indegree.set(entry.id, deps.size);
+    for (const targetId of deps) {
+      const list = dependents.get(targetId) ?? [];
+      list.push(entry.id);
+      dependents.set(targetId, list);
+    }
+  }
+
+  const order: FlatSpecTable[] = [];
+  const emitted = new Set<string>();
+  const queue = tables
+    .filter((entry) => indegree.get(entry.id) === 0)
+    .map((entry) => entry.id);
+
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (id === undefined || emitted.has(id)) {
+      continue;
+    }
+    emitted.add(id);
+    const entry = byId.get(id);
+    if (entry) {
+      order.push(entry);
+    }
+    for (const dependentId of dependents.get(id) ?? []) {
+      indegree.set(dependentId, (indegree.get(dependentId) ?? 0) - 1);
+      if (indegree.get(dependentId) === 0) {
+        queue.push(dependentId);
+      }
+    }
+  }
+
+  for (const entry of tables) {
+    if (!emitted.has(entry.id)) {
+      emitted.add(entry.id);
+      order.push(entry);
+    }
+  }
+
+  return order;
 }
 
 function visibleMetadataTables(
@@ -363,18 +510,26 @@ function draftFromSpecTable(
       unique: index.unique,
     })),
     foreignKeys: table.foreignKeys.map<SchemaForeignKeyDraft>(
-      (foreignKey, index) => ({
-        id: `spec-fk-${index}`,
-        name:
-          foreignKey.name ??
-          defaultForeignKeyName(table.name, foreignKey.columns, index),
-        columns: foreignKey.columns.join(", "),
-        referencesSchema: foreignKey.referencesSchema ?? "",
-        referencesTable: foreignKey.referencesTable,
-        referencesColumns: foreignKey.referencesColumns.join(", "),
-        onDelete: "",
-      }),
+      (foreignKey, index) => specForeignKeyDraft(table.name, foreignKey, index),
     ),
+  };
+}
+
+function specForeignKeyDraft(
+  tableName: string,
+  foreignKey: TableSpecForeignKey,
+  index: number,
+): SchemaForeignKeyDraft {
+  return {
+    id: `spec-fk-${index}`,
+    name:
+      foreignKey.name ??
+      defaultForeignKeyName(tableName, foreignKey.columns, index),
+    columns: foreignKey.columns.join(", "),
+    referencesSchema: foreignKey.referencesSchema ?? "",
+    referencesTable: foreignKey.referencesTable,
+    referencesColumns: foreignKey.referencesColumns.join(", "),
+    onDelete: "",
   };
 }
 
