@@ -1,6 +1,5 @@
 import {
   type CSSProperties,
-  type FormEvent,
   lazy,
   Suspense,
   useEffect,
@@ -8,14 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMachine } from "@xstate/react";
-import {
-  isQueryBusy,
-  queryLifecycleMachine,
-} from "@/lib/query/query-lifecycle-machine";
 import { Plus } from "lucide-react";
 import {
-  createQueryHistoryResultSnapshot,
   queryHistoryMaxItemsHardLimit,
   queryHistoryResultRowsHardLimit,
   useQueryHistoryStore,
@@ -45,6 +38,7 @@ import type {
 } from "@/app/controllers/workbench-controllers";
 import { useConnectionActions } from "@/app/controllers/use-connection-actions";
 import { useEditorGroups } from "@/app/controllers/use-editor-groups";
+import { useQueryRunner } from "@/app/controllers/use-query-runner";
 import { useResultGridEditing } from "@/app/controllers/use-result-grid-editing";
 import { useResultGridModel } from "@/app/controllers/use-result-grid-model";
 import {
@@ -59,7 +53,6 @@ import {
   ResultsPane,
   WindowedRows,
   buildResultExport,
-  createWindowedRowsProxy,
   formatResultSelectionStatus,
   formatResultGridCell as formatCell,
   historySnapshotToQueryResult,
@@ -83,14 +76,8 @@ import {
 import {
   QueryEditorPane,
   QueryParameterDialog,
-  parseQueryMagic,
-  buildParameterInputs,
-  loadQueryParameterMemory,
-  queryParameterMemoryStorageKey,
-  type PendingQueryParameters,
   type EditorGroup,
   type EditorSelection,
-  type QueryParameterMemory,
   type QueryMagicAction,
   type SqlEditorHandle,
 } from "@/features/query-editor";
@@ -168,7 +155,6 @@ import {
   createPanelResizeController,
   objectKindLabel,
   qualifiedObjectName,
-  queryService,
   quoteSqlIdentifier,
   tablePreviewSql,
   useWorkbenchStore,
@@ -200,13 +186,11 @@ import type {
   DbEngine,
   DbObjectMetadata,
   JobList,
-  QueryParameterInput,
   QueryPlanAnalysis,
   QueryPlanCopyFormat,
   QueryPlanMode,
   QueryResult,
   QueryResultSet,
-  SpillRunResult,
   WorkspaceSnapshot,
 } from "@/generated/irodori-api";
 import { sqlSnippetsFromJson } from "@/sql/completion";
@@ -215,7 +199,6 @@ import { isSqlLinterId } from "@/sql/linter";
 import type { SqlEditorTransformAction } from "@/sql/editor-transforms";
 import type { SqlMetadataTarget } from "@/sql/metadata-inspection";
 import { selectedOrCurrentStatement } from "@/sql/statements";
-import { sqlMayWrite } from "@/sql/read-only";
 import {
   cssVariables,
   customThemeEntryFromJson,
@@ -229,8 +212,6 @@ import {
   GRID_COLUMN_WIDTH,
   GRID_GUTTER_WIDTH,
   GRID_ROW_HEIGHT,
-  RESULT_WINDOW_MAX_RESIDENT_PAGES,
-  RESULT_WINDOW_PAGE_SIZE,
   builtInTheme,
   clampNumber,
   emptyJobList,
@@ -270,11 +251,6 @@ function uiZoomStyleVariables(zoom: number): Record<string, string> {
 
 function formatUiZoom(zoom: number) {
   return `${Math.round(normalizeUiZoom(zoom) * 100)}%`;
-}
-
-function isQueryCancelledMessage(message: string) {
-  const normalized = message.trim().toLowerCase();
-  return normalized === "cancelled" || normalized.includes("query cancelled");
 }
 
 function sqlDownloadFileName(label: string) {
@@ -488,10 +464,6 @@ export function AppWorkbench() {
     setResultsHeight,
     setEditorSplitPercent,
   });
-  const [queryRun, sendQueryRun] = useMachine(queryLifecycleMachine);
-  // `running` is derived from the explicit query lifecycle machine (idle ->
-  // running -> streaming -> done/error/cancelled) instead of a hand-managed flag.
-  const running = isQueryBusy(String(queryRun.value));
   function setActiveSidebarView(viewId: WorkbenchViewId) {
     const side = viewPlacements[viewId] ?? "left";
     if (side === "right") {
@@ -555,9 +527,6 @@ export function AppWorkbench() {
     void useGitStore.getState().refresh();
   }
 
-  // Id of the in-flight query so the Cancel button can stop that specific run.
-  const runningQueryIdRef = useRef<string | null>(null);
-  const cancelRequestedQueryIdRef = useRef<string | null>(null);
   const profiles = useConnectionStore((state) => state.profiles);
   const setProfiles = useConnectionStore((state) => state.setProfiles);
   const selectedProfileId = useConnectionStore(
@@ -841,14 +810,6 @@ export function AppWorkbench() {
     (state) => state.closeDialog,
   );
   const queryHistoryDialogOpen = useQueryHistoryStore((state) => state.open);
-  const [queryParameterMemory, setQueryParameterMemory] =
-    useState<QueryParameterMemory>(loadQueryParameterMemory);
-  const [pendingQueryParameters, setPendingQueryParameters] =
-    useState<PendingQueryParameters | null>(null);
-  const [parameterDraftValues, setParameterDraftValues] = useState<
-    Record<string, string>
-  >({});
-
   useEffect(() => {
     workbenchRuntimeService
       .snapshot()
@@ -866,13 +827,6 @@ export function AppWorkbench() {
       void refreshJobs();
     }
   }, [settingsOpen, settingsTab]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      queryParameterMemoryStorageKey,
-      JSON.stringify(queryParameterMemory),
-    );
-  }, [queryParameterMemory]);
 
   useEffect(() => {
     return () => {
@@ -1012,6 +966,41 @@ export function AppWorkbench() {
     () => (activeMetadata ? toMermaidErd(activeMetadata) : ""),
     [activeMetadata],
   );
+
+  const {
+    updateDraft,
+    selectProfile,
+    selectSidebarConnection,
+    saveDraft,
+    addProfile,
+    importConnectionFile,
+    exportConnectionFile,
+    deleteProfile,
+    testActiveProfile,
+    connectActiveProfile,
+    disconnectActiveProfile,
+    refreshObjects,
+  } = useConnectionActions({
+    draft,
+    profiles,
+    connectedIds,
+    activeConnectionId,
+    setDraft,
+    setConnectionError,
+    setSelectedProfileId,
+    setActiveConnectionId,
+    setProfiles,
+    setConnectionSearch,
+    setConnectedIds,
+    setLiveConnections,
+    setMetadataByConnection,
+    setMetadataErrors,
+    setMetadataLoading,
+    setTestingConnection,
+    setConnecting,
+    setConnectionManagerOpen,
+    showActionNotice,
+  });
 
   useEffect(() => {
     if (
@@ -1240,6 +1229,57 @@ export function AppWorkbench() {
     activeEditorApi,
     errorResultSetForExport,
     runQuery,
+    showActionNotice,
+  });
+
+  const {
+    running,
+    pendingQueryParameters,
+    parameterDraftValues,
+    setParameterDraftValues,
+    setPendingQueryParameters,
+    runEditorSql: runEditorSqlWithRunner,
+    runSqlWithParameterPrompt,
+    openQueryParameterPrompt,
+    executeQuery,
+    submitQueryParameters,
+    cancelQuery,
+    explainSql,
+  } = useQueryRunner({
+    activeConnectionId,
+    activeConnectionOpen,
+    activeConnectionReadOnly,
+    activeConnectionName: activeConnection.name,
+    activeConnectionEngine: activeEngine,
+    activeEngine,
+    resultOffloadEnabled,
+    resultMemoryBudget,
+    queryHistoryResultRows,
+    appendHistory,
+    setResult,
+    setQueryError,
+    setLastRunSql,
+    setPlanAnalysis,
+    setPlanLoading,
+    setPlanError,
+    setResultMode,
+    setTableViewObject,
+    setActiveResultIndex,
+    resetEdits,
+    resetGridView,
+    releaseActiveSpill,
+    gridRef,
+    setGridScrollTop,
+    setGridScrollLeft,
+    setSelectedRowKey,
+    setSelectedCell,
+    setSelectedRange,
+    spillRef,
+    clearPendingPages,
+    setSpillInfo,
+    bumpGridWindowVersion,
+    refreshObjects,
+    openPlanPanel: () => setActiveSidebarView("plan"),
     showActionNotice,
   });
 
@@ -2078,41 +2118,6 @@ export function AppWorkbench() {
     : "";
   const schemaSqlPreview = buildSchemaSql(schemaDraft);
 
-  const {
-    updateDraft,
-    selectProfile,
-    selectSidebarConnection,
-    saveDraft,
-    addProfile,
-    importConnectionFile,
-    exportConnectionFile,
-    deleteProfile,
-    testActiveProfile,
-    connectActiveProfile,
-    disconnectActiveProfile,
-    refreshObjects,
-  } = useConnectionActions({
-    draft,
-    profiles,
-    connectedIds,
-    activeConnectionId,
-    setDraft,
-    setConnectionError,
-    setSelectedProfileId,
-    setActiveConnectionId,
-    setProfiles,
-    setConnectionSearch,
-    setConnectedIds,
-    setLiveConnections,
-    setMetadataByConnection,
-    setMetadataErrors,
-    setMetadataLoading,
-    setTestingConnection,
-    setConnecting,
-    setConnectionManagerOpen,
-    showActionNotice,
-  });
-
   function loadHistoryItem(item: QueryHistoryItem) {
     if (item.connectionId !== activeConnectionId) {
       setActiveConnectionId(item.connectionId);
@@ -2802,49 +2807,7 @@ export function AppWorkbench() {
 
   async function explainCurrentQuery(mode: QueryPlanMode) {
     setRunMenuOpen(false);
-    const sqlToExplain = explainTargetSql().trim();
-    if (!activeConnectionOpen) {
-      const message = `not connected: ${activeConnectionId}`;
-      setPlanError(message);
-      showActionNotice("error", "Explain failed", message);
-      setActiveSidebarView("plan");
-      return;
-    }
-    const runtimeError = tauriRuntimeError();
-    if (runtimeError) {
-      setPlanError(runtimeError);
-      showActionNotice("error", "Explain failed", runtimeError);
-      setActiveSidebarView("plan");
-      return;
-    }
-    if (!sqlToExplain) {
-      setPlanError("query is empty");
-      showActionNotice("info", "Nothing to explain");
-      setActiveSidebarView("plan");
-      return;
-    }
-    setActiveSidebarView("plan");
-    setPlanLoading(true);
-    setPlanError(null);
-    try {
-      const plan = await queryService.explain(
-        activeConnectionId,
-        sqlToExplain,
-        mode,
-      );
-      setPlanAnalysis(plan);
-      showActionNotice(
-        "success",
-        mode === "analyze" ? "Analyse complete" : "Plan ready",
-        `${plan.nodes.length} nodes · ${plan.findings.length} findings`,
-      );
-    } catch (error) {
-      const message = errorMessage(error);
-      setPlanError(message);
-      showActionNotice("error", "Explain failed", message);
-    } finally {
-      setPlanLoading(false);
-    }
+    await explainSql(explainTargetSql().trim(), mode);
   }
 
   async function runFromStartQuery() {
@@ -2864,31 +2827,10 @@ export function AppWorkbench() {
     sqlToRun: string,
     options: { allowMagic: boolean },
   ) {
-    if (!activeConnectionOpen) {
-      const message = `not connected: ${activeConnectionId}`;
-      setQueryError(message);
-      showActionNotice("error", "Run failed", message);
-      return;
-    }
-    const runtimeError = tauriRuntimeError();
-    if (runtimeError) {
-      setQueryError(runtimeError);
-      showActionNotice("error", "Run failed", runtimeError);
-      return;
-    }
-    if (!sqlToRun) {
-      setQueryError("query is empty");
-      showActionNotice("info", "Nothing to run");
-      return;
-    }
-    const magic = options.allowMagic
-      ? parseQueryMagic(sqlToRun, activeEngine)
-      : null;
-    if (magic) {
-      await runQueryMagic(magic);
-      return;
-    }
-    await runSqlWithParameterPrompt(sqlToRun);
+    await runEditorSqlWithRunner(sqlToRun, {
+      ...options,
+      onMagic: runQueryMagic,
+    });
   }
 
   async function runQueryMagic(magic: QueryMagicAction) {
@@ -2925,480 +2867,6 @@ export function AppWorkbench() {
         setQuery(magic.sql);
         await openQueryParameterPrompt(magic.sql, true);
         return;
-    }
-  }
-
-  function blockReadOnlySql(sqlToRun: string) {
-    if (!activeConnectionReadOnly || !sqlMayWrite(sqlToRun)) {
-      return false;
-    }
-    const message = "read-only connection: write statements are blocked";
-    setQueryError(message);
-    showActionNotice("error", "Read-only mode", message);
-    return true;
-  }
-
-  async function runSqlWithParameterPrompt(sqlToRun: string) {
-    if (blockReadOnlySql(sqlToRun)) {
-      return;
-    }
-    const openedPrompt = await openQueryParameterPrompt(sqlToRun, false);
-    if (openedPrompt) {
-      return;
-    }
-    await executeQuery(sqlToRun);
-  }
-
-  async function openQueryParameterPrompt(
-    sqlToRun: string,
-    requirePrompt: boolean,
-  ) {
-    const runtimeError = tauriRuntimeError();
-    if (runtimeError) {
-      setQueryError(runtimeError);
-      showActionNotice("error", "Parameter scan failed", runtimeError);
-      return true;
-    }
-    try {
-      const promptSet = await queryService.queryParameters(sqlToRun);
-      if (promptSet.prompts.length > 0) {
-        const remembered = queryParameterMemory[promptSet.signature] ?? {};
-        setParameterDraftValues(
-          Object.fromEntries(
-            promptSet.prompts.map((prompt) => [
-              prompt.id,
-              remembered[prompt.id] ?? "",
-            ]),
-          ),
-        );
-        setPendingQueryParameters({ sql: sqlToRun, promptSet });
-        setQueryError(null);
-        return true;
-      }
-      if (requirePrompt) {
-        setQueryError("No query parameters found in this SQL.");
-        showActionNotice("info", "No parameters found");
-        return true;
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      setQueryError(message);
-      showActionNotice("error", "Parameter scan failed", message);
-      return true;
-    }
-    return false;
-  }
-
-  async function executeQuery(
-    sqlToRun: string,
-    params?: QueryParameterInput[],
-    options: { sourceObject?: DbObjectMetadata } = {},
-  ) {
-    if (!activeConnectionOpen) {
-      const message = `not connected: ${activeConnectionId}`;
-      setQueryError(message);
-      showActionNotice("error", "Run failed", message);
-      return;
-    }
-    const runtimeError = tauriRuntimeError();
-    if (runtimeError) {
-      setQueryError(runtimeError);
-      showActionNotice("error", "Run failed", runtimeError);
-      return;
-    }
-    if (!sqlToRun.trim()) {
-      setQueryError("query is empty");
-      showActionNotice("info", "Nothing to run");
-      return;
-    }
-    if (blockReadOnlySql(sqlToRun)) {
-      return;
-    }
-    sendQueryRun({ type: "SUBMIT", sql: sqlToRun });
-    setQueryError(null);
-    setLastRunSql(sqlToRun);
-    setResultMode("data");
-    setTableViewObject(options.sourceObject ?? null);
-    setActiveResultIndex(0);
-    // A new run invalidates any staged edits and resets the scroll/filter/sort view.
-    resetEdits();
-    resetGridView();
-    // Release the previous disk-offloaded result (EXEC-010) so its temp file is
-    // freed before this run replaces it.
-    releaseActiveSpill();
-    if (gridRef.current) {
-      gridRef.current.scrollTop = 0;
-      gridRef.current.scrollLeft = 0;
-    }
-    setGridScrollTop(0);
-    setGridScrollLeft(0);
-    setSelectedRowKey(null);
-    setSelectedCell(null);
-    setSelectedRange(null);
-    const started = performance.now();
-    const ranAt = new Date().toISOString();
-    const queryId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    runningQueryIdRef.current = queryId;
-    const cancelRequestedForRun = () =>
-      cancelRequestedQueryIdRef.current === queryId;
-    const showCancelledRun = () => {
-      setQueryError(null);
-      showActionNotice("info", "Query cancelled");
-    };
-    let publishRaf: number | null = null;
-    try {
-      // Stream the run so the grid fills as batches arrive instead of waiting for
-      // the whole result. Query errors surface as an "error" event (the command
-      // itself resolves); the catch below only handles invoke-level failures.
-      const streamResultSets: QueryResultSet[] = [];
-      const ensureResultSet = (index: number) => {
-        while (streamResultSets.length <= index) {
-          const statementIndex = streamResultSets.length;
-          streamResultSets.push({
-            statementIndex,
-            statement: `statement ${statementIndex + 1}`,
-            columns: [],
-            rows: [],
-            rowCount: 0n,
-            elapsedMs: 0n,
-            truncated: false,
-          });
-        }
-        return streamResultSets[index];
-      };
-      const publishStreamResultNow = () => {
-        if (publishRaf !== null) {
-          window.cancelAnimationFrame(publishRaf);
-          publishRaf = null;
-        }
-        const first = ensureResultSet(0);
-        setResult({
-          columns: first.columns,
-          rows: [...first.rows],
-          rowCount: first.rowCount,
-          elapsedMs: first.elapsedMs,
-          truncated: first.truncated,
-          message: first.message,
-          resultSets:
-            streamResultSets.length > 1
-              ? streamResultSets.map((set) => ({
-                  ...set,
-                  rows: [...set.rows],
-                }))
-              : undefined,
-        });
-      };
-      const scheduleStreamResultPublish = () => {
-        if (publishRaf !== null) {
-          return;
-        }
-        publishRaf = window.requestAnimationFrame(() => {
-          publishRaf = null;
-          publishStreamResultNow();
-        });
-      };
-      const finalizeSpillRun = (spill: SpillRunResult) => {
-        const first = ensureResultSet(0);
-        const totalRows = Number(spill.totalRows);
-        const historyResult = createQueryHistoryResultSnapshot(
-          {
-            columns: spill.columns,
-            rows: first.rows,
-            rowCount: spill.totalRows,
-            elapsedMs: spill.elapsedMs,
-            truncated: spill.truncated,
-            message: spill.spilled
-              ? "result retained on disk; history kept a preview"
-              : undefined,
-          },
-          queryHistoryResultRows,
-        );
-        const source = new WindowedRows({
-          total: totalRows,
-          columnCount: spill.columns.length,
-          pageSize: RESULT_WINDOW_PAGE_SIZE,
-          maxResidentPages: RESULT_WINDOW_MAX_RESIDENT_PAGES,
-        });
-        source.ingest(0, first.rows);
-        spillRef.current = { handle: spill.handle, source };
-        clearPendingPages();
-        setSpillInfo({ handle: spill.handle, total: totalRows });
-        bumpGridWindowVersion();
-        setResult({
-          columns: spill.columns,
-          rows: createWindowedRowsProxy(source) as QueryResult["rows"],
-          rowCount: spill.totalRows,
-          elapsedMs: spill.elapsedMs,
-          truncated: spill.truncated,
-          message: spill.spilled
-            ? "result retained on disk; scrolling pages rows on demand"
-            : spill.truncated
-              ? "result capped at memory budget"
-              : undefined,
-        });
-        appendHistory({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          connectionId: activeConnectionId,
-          connectionName: activeConnection.name,
-          engine: activeConnection.engine,
-          sql: sqlToRun,
-          status: "ok",
-          rowCount: totalRows,
-          elapsedMs: Number(spill.elapsedMs),
-          truncated: spill.truncated,
-          result: historyResult,
-          ranAt,
-        });
-        if (/^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)) {
-          void refreshObjects(activeConnectionId, true);
-        }
-        showActionNotice(
-          "success",
-          "Query finished",
-          `${toCount(totalRows)} rows in ${toCount(spill.elapsedMs)} ms`,
-        );
-      };
-      if (resultOffloadEnabled) {
-        // EXEC-010 disk offload: stream the resident first page for an immediate
-        // paint, then hand the grid a windowed source that pages the rest from disk.
-        const spill = await queryService.spill(
-          {
-            connectionId: activeConnectionId,
-            sql: sqlToRun,
-            memoryBudget: resultMemoryBudget,
-            offloadEnabled: true,
-            queryId,
-            params,
-          },
-          (event) => {
-            switch (event.type) {
-              case "columns":
-                ensureResultSet(event.resultSetIndex).columns = event.columns;
-                sendQueryRun({ type: "COLUMNS" });
-                publishStreamResultNow();
-                break;
-              case "rows": {
-                const set = ensureResultSet(event.resultSetIndex);
-                set.rows.push(...event.rows);
-                set.rowCount = BigInt(set.rows.length);
-                set.elapsedMs = BigInt(Math.round(performance.now() - started));
-                scheduleStreamResultPublish();
-                break;
-              }
-            }
-          },
-        );
-        finalizeSpillRun(spill);
-        sendQueryRun({
-          type: "DONE",
-          rowCount: Number(spill.totalRows),
-          elapsedMs: Number(spill.elapsedMs),
-        });
-      } else {
-        await queryService.stream(
-          {
-            connectionId: activeConnectionId,
-            sql: sqlToRun,
-            maxRows: 10_000,
-            queryId,
-            params,
-          },
-          (event) => {
-            switch (event.type) {
-              case "columns":
-                ensureResultSet(event.resultSetIndex).columns = event.columns;
-                sendQueryRun({ type: "COLUMNS" });
-                publishStreamResultNow();
-                break;
-              case "rows":
-                {
-                  const set = ensureResultSet(event.resultSetIndex);
-                  set.rows.push(...event.rows);
-                  set.rowCount = BigInt(set.rows.length);
-                  set.elapsedMs = BigInt(
-                    Math.round(performance.now() - started),
-                  );
-                }
-                scheduleStreamResultPublish();
-                break;
-              case "done":
-                for (const summary of event.resultSets) {
-                  const set = ensureResultSet(summary.resultSetIndex);
-                  set.rowCount = BigInt(summary.rowCount);
-                  set.elapsedMs = BigInt(summary.elapsedMs || event.elapsedMs);
-                  set.truncated = summary.truncated;
-                  set.message = summary.truncated
-                    ? "result capped at 10000 rows"
-                    : undefined;
-                }
-                publishStreamResultNow();
-                {
-                  const first = ensureResultSet(0);
-                  const historyResult = createQueryHistoryResultSnapshot(
-                    {
-                      columns: first.columns,
-                      rows: first.rows,
-                      rowCount: BigInt(event.rowCount),
-                      elapsedMs: BigInt(event.elapsedMs),
-                      truncated: event.truncated,
-                      message: first.message,
-                      resultSets:
-                        streamResultSets.length > 1
-                          ? streamResultSets.map((set) => ({
-                              statementIndex: set.statementIndex,
-                              statement: set.statement,
-                              columns: set.columns,
-                              rows: set.rows,
-                              rowCount: set.rowCount,
-                              elapsedMs: set.elapsedMs,
-                              truncated: set.truncated,
-                              message: set.message,
-                            }))
-                          : undefined,
-                    },
-                    queryHistoryResultRows,
-                  );
-                  appendHistory({
-                    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                    connectionId: activeConnectionId,
-                    connectionName: activeConnection.name,
-                    engine: activeConnection.engine,
-                    sql: sqlToRun,
-                    status: "ok",
-                    rowCount: event.rowCount,
-                    elapsedMs: event.elapsedMs,
-                    truncated: event.truncated,
-                    result: historyResult,
-                    ranAt,
-                  });
-                }
-                if (
-                  /^\s*(alter|create|drop|rename|truncate)\b/i.test(sqlToRun)
-                ) {
-                  void refreshObjects(activeConnectionId, true);
-                }
-                showActionNotice(
-                  "success",
-                  "Query finished",
-                  `${toCount(event.rowCount)} rows in ${toCount(event.elapsedMs)} ms`,
-                );
-                sendQueryRun({
-                  type: "DONE",
-                  rowCount: Number(event.rowCount),
-                  elapsedMs: Number(event.elapsedMs),
-                });
-                break;
-              case "error":
-                if (
-                  cancelRequestedForRun() &&
-                  isQueryCancelledMessage(event.message)
-                ) {
-                  showCancelledRun();
-                  sendQueryRun({ type: "CANCEL" });
-                  break;
-                }
-                sendQueryRun({ type: "ERROR", message: event.message });
-                setQueryError(event.message);
-                showActionNotice("error", "Query failed", event.message);
-                appendHistory({
-                  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                  connectionId: activeConnectionId,
-                  connectionName: activeConnection.name,
-                  engine: activeConnection.engine,
-                  sql: sqlToRun,
-                  status: "error",
-                  rowCount: 0,
-                  elapsedMs: Math.max(
-                    1,
-                    Math.round(performance.now() - started),
-                  ),
-                  truncated: false,
-                  error: event.message,
-                  ranAt,
-                });
-                break;
-            }
-          },
-        );
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      if (cancelRequestedForRun() && isQueryCancelledMessage(message)) {
-        showCancelledRun();
-        sendQueryRun({ type: "CANCEL" });
-      } else {
-        sendQueryRun({ type: "ERROR", message });
-        setQueryError(message);
-        showActionNotice("error", "Query failed", message);
-        appendHistory({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          connectionId: activeConnectionId,
-          connectionName: activeConnection.name,
-          engine: activeConnection.engine,
-          sql: sqlToRun,
-          status: "error",
-          rowCount: 0,
-          elapsedMs: Math.max(1, Math.round(performance.now() - started)),
-          truncated: false,
-          error: message,
-          ranAt,
-        });
-      }
-    } finally {
-      if (publishRaf !== null) {
-        window.cancelAnimationFrame(publishRaf);
-      }
-      if (cancelRequestedQueryIdRef.current === queryId) {
-        cancelRequestedQueryIdRef.current = null;
-      }
-      runningQueryIdRef.current = null;
-    }
-  }
-
-  async function submitQueryParameters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const pending = pendingQueryParameters;
-    if (!pending) {
-      return;
-    }
-    const values = { ...parameterDraftValues };
-    const params = buildParameterInputs(pending.promptSet, values);
-    setQueryParameterMemory((current) => ({
-      ...current,
-      [pending.promptSet.signature]: values,
-    }));
-    setPendingQueryParameters(null);
-    setParameterDraftValues({});
-    await executeQuery(pending.sql, params);
-  }
-
-  // Ask the backend to stop the in-flight query; the pending run then rejects with
-  // "query cancelled" and the runQuery catch/finally resets the UI.
-  async function cancelQuery() {
-    const id = runningQueryIdRef.current;
-    if (!id) {
-      return;
-    }
-    if (cancelRequestedQueryIdRef.current === id) {
-      showActionNotice("info", "Cancel already requested");
-      return;
-    }
-    try {
-      cancelRequestedQueryIdRef.current = id;
-      const cancelled = await queryService.cancel(id);
-      if (cancelled) {
-        showActionNotice("info", "Cancel requested");
-      } else {
-        if (cancelRequestedQueryIdRef.current === id) {
-          cancelRequestedQueryIdRef.current = null;
-        }
-        showActionNotice("info", "Query already finished");
-      }
-    } catch (error) {
-      if (cancelRequestedQueryIdRef.current === id) {
-        cancelRequestedQueryIdRef.current = null;
-      }
-      showActionNotice("error", "Cancel failed", errorMessage(error));
     }
   }
 
