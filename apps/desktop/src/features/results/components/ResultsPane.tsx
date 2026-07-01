@@ -5,7 +5,7 @@ import type {
   RefObject,
   UIEvent,
 } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -173,12 +173,35 @@ type ResultsPaneProps = {
   onToggleExportMenu: () => void;
   onCloseExportMenu: () => void;
   onCopyVisibleResult: () => void;
+  onCopyResultAs: (format: ResultExportFormat) => void;
   onImportFile: (file: File) => void;
   filtering: ResultsPaneFiltering;
   editing: ResultsPaneEditing;
   selection: ResultsPaneSelection;
   gridGeometry: ResultsPaneGridGeometry;
 };
+
+function usePersistedResultFormat(
+  storageKey: string,
+  fallback: ResultExportFormat,
+): [ResultExportFormat, (next: ResultExportFormat) => void] {
+  const [value, setValue] = useState<ResultExportFormat>(() => {
+    if (typeof window === "undefined") {
+      return fallback;
+    }
+    const stored = window.localStorage.getItem(storageKey);
+    return stored && resultExportFormats.some((format) => format.id === stored)
+      ? (stored as ResultExportFormat)
+      : fallback;
+  });
+  const update = (next: ResultExportFormat) => {
+    setValue(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(storageKey, next);
+    }
+  };
+  return [value, update];
+}
 
 export function ResultsPane({
   running,
@@ -218,6 +241,7 @@ export function ResultsPane({
   onToggleExportMenu,
   onCloseExportMenu,
   onCopyVisibleResult,
+  onCopyResultAs,
   onImportFile,
   filtering,
   editing,
@@ -293,9 +317,58 @@ export function ResultsPane({
     onGridCopy,
   } = gridGeometry;
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
+  const copyMenuRef = useRef<HTMLDivElement | null>(null);
   const filterToggleRef = useRef<HTMLButtonElement | null>(null);
   const filterPanelRef = useRef<HTMLDivElement | null>(null);
   const copyExportAvailable = !showingStructure && Boolean(activeResult);
+  // Remember the last-picked export/copy format so the primary buttons aren't
+  // hard-wired to CSV/TSV. Copy targets text formats only (no binary workbook).
+  const [exportFormat, setExportFormat] = usePersistedResultFormat(
+    "irodori.result.exportFormat.v1",
+    "csv",
+  );
+  const [copyFormat, setCopyFormat] = usePersistedResultFormat(
+    "irodori.result.copyFormat.v1",
+    "tsv",
+  );
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false);
+  const copyFormats = resultExportFormats.filter(
+    (format) => format.id !== "excel",
+  );
+  const exportFormatLabel =
+    resultExportFormats.find((format) => format.id === exportFormat)?.label ??
+    exportFormat.toUpperCase();
+  const copyFormatLabel = copyFormat.toUpperCase();
+
+  useEffect(() => {
+    if (!copyMenuOpen) {
+      return;
+    }
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && copyMenuRef.current?.contains(target)) {
+        return;
+      }
+      setCopyMenuOpen(false);
+    };
+    const closeOnBlur = () => setCopyMenuOpen(false);
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("blur", closeOnBlur);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("blur", closeOnBlur);
+    };
+  }, [copyMenuOpen]);
+
+  // TSV keeps copying the on-screen (filtered) rows; other formats copy the
+  // full result set through the shared exporter.
+  const copyInFormat = (format: ResultExportFormat) => {
+    if (format === "tsv") {
+      onCopyVisibleResult();
+    } else {
+      onCopyResultAs(format);
+    }
+  };
 
   useEffect(() => {
     if (!exportMenuOpen) {
@@ -469,11 +542,12 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
+              title={`Export as ${exportFormatLabel}`}
               disabled={!copyExportAvailable}
-              onClick={() => onExportActiveResult("csv")}
+              onClick={() => onExportActiveResult(exportFormat)}
             >
               <Download size={13} />
-              <span>CSV</span>
+              <span>{exportFormatLabel}</span>
             </button>
             <button
               className="mini-button"
@@ -493,7 +567,11 @@ export function ResultsPane({
                     type="button"
                     role="menuitem"
                     title={format.title}
-                    onClick={() => onExportActiveResult(format.id)}
+                    aria-checked={format.id === exportFormat}
+                    onClick={() => {
+                      setExportFormat(format.id);
+                      onExportActiveResult(format.id);
+                    }}
                   >
                     <span>{format.label}</span>
                     <small>
@@ -508,15 +586,48 @@ export function ResultsPane({
               </div>
             ) : null}
           </div>
-          <button
-            className="text-button"
-            type="button"
-            disabled={!copyExportAvailable}
-            onClick={onCopyVisibleResult}
-          >
-            <Copy size={13} />
-            <span>Copy TSV</span>
-          </button>
+          <div className="action-split" ref={copyMenuRef}>
+            <button
+              className="text-button"
+              type="button"
+              title={`Copy as ${copyFormatLabel}`}
+              disabled={!copyExportAvailable}
+              onClick={() => copyInFormat(copyFormat)}
+            >
+              <Copy size={13} />
+              <span>Copy {copyFormatLabel}</span>
+            </button>
+            <button
+              className="mini-button"
+              type="button"
+              title="Copy formats"
+              aria-label="Copy formats"
+              disabled={!copyExportAvailable}
+              onClick={() => setCopyMenuOpen((open) => !open)}
+            >
+              <ChevronDown size={13} />
+            </button>
+            {copyMenuOpen ? (
+              <div className="action-menu" role="menu">
+                {copyFormats.map((format) => (
+                  <button
+                    key={format.id}
+                    type="button"
+                    role="menuitem"
+                    title={format.title}
+                    aria-checked={format.id === copyFormat}
+                    onClick={() => {
+                      setCopyFormat(format.id);
+                      copyInFormat(format.id);
+                      setCopyMenuOpen(false);
+                    }}
+                  >
+                    <span>Copy {format.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <button
             className="text-button"
             type="button"

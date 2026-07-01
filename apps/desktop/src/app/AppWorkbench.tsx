@@ -2236,6 +2236,34 @@ export function AppWorkbench() {
     }
   }
 
+  async function copyActiveResultAs(format: ResultExportFormat) {
+    if (format === "sql") {
+      await copyActiveResultSqlInserts();
+      return;
+    }
+    const exportResult = activeResult;
+    if (!exportResult) {
+      showActionNotice("info", "No result to copy");
+      return;
+    }
+    const target = inferEditTarget();
+    const exported = buildResultExport(
+      exportResult,
+      format,
+      target?.table ?? "query_result",
+    );
+    try {
+      await writeTextToClipboard(exported.content);
+      showActionNotice(
+        "success",
+        `Copied as ${format.toUpperCase()}`,
+        `${toCount(exportResult.rows.length)} rows`,
+      );
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
+  }
+
   function currentDiagramSvgMarkup() {
     const svg = diagramSvgRef.current;
     if (!svg || !diagramLayout) {
@@ -3256,6 +3284,8 @@ export function AppWorkbench() {
     onToggleExportMenu: () => setExportMenuOpen((open) => !open),
     onCloseExportMenu: () => setExportMenuOpen(false),
     onCopyVisibleResult: () => void copyVisibleResult(),
+    onCopyResultAs: (format: ResultExportFormat) =>
+      void copyActiveResultAs(format),
     onImportFile: (file) => void handleImportFile(file),
     filtering: {
       quickFilter,
