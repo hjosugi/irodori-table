@@ -112,7 +112,6 @@ export type ResultGridEditingDeps = {
   selectedGridCopyText: () => string | null;
   copyCellsForRow: (row: ResultGridRowLike) => string[];
   activeEditorApi: () => SqlEditorHandle | null | undefined;
-  errorResultSetForExport: () => QueryResultSet | null;
   runQuery: () => Promise<void>;
   showActionNotice: (
     kind: ActionNotice["kind"],
@@ -166,7 +165,6 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     selectedGridCopyText,
     copyCellsForRow,
     activeEditorApi,
-    errorResultSetForExport,
     runQuery,
     showActionNotice,
   } = deps;
@@ -404,18 +402,7 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
   }
 
   async function copyVisibleResult() {
-    const errorResult = activeResult ? null : errorResultSetForExport();
-    if (errorResult) {
-      await copyGridText(
-        formatResultGridTsv(errorResult.columns, [
-          {
-            cells: errorResult.rows[0]?.map((cell) => String(cell ?? "")) ?? [],
-          },
-        ]),
-      );
-      return;
-    }
-    if (editingCell || resultColumns.length === 0) {
+    if (!activeResult || editingCell || resultColumns.length === 0) {
       return;
     }
     if (totalRows > GRID_COPY_ROW_LIMIT) {

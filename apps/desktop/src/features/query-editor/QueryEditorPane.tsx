@@ -30,7 +30,6 @@ import type {
   EditorGroup,
   EditorSelection,
   EditorSelections,
-  EditorSplitModeUpdater,
 } from "./query-editor-pane-types";
 
 export type { EditorGroup, EditorSelection, EditorSelections };
@@ -57,7 +56,6 @@ export interface QueryEditorPaneProps {
   editorSplitRef: RefObject<HTMLDivElement | null>;
   editorSplitOpen: boolean;
   editorSplitMode: EditorSplitMode;
-  setEditorSplitMode: (value: EditorSplitModeUpdater) => void;
   activeEditorGroup: EditorGroup;
   setActiveEditorGroup: (group: EditorGroup) => void;
   setEditorSelection: (group: EditorGroup, selection: EditorSelections) => void;
@@ -108,7 +106,6 @@ export function QueryEditorPane({
   editorSplitRef,
   editorSplitOpen,
   editorSplitMode,
-  setEditorSplitMode,
   activeEditorGroup,
   setActiveEditorGroup,
   setEditorSelection,
@@ -197,9 +194,6 @@ export function QueryEditorPane({
         >
           <EditorCommandBar
             formatter={formatter}
-            editorSplitOpen={editorSplitOpen}
-            editorSplitMode={editorSplitMode}
-            setEditorSplitMode={setEditorSplitMode}
             running={running}
             runCommand={runCommand}
             cancelQuery={cancelQuery}

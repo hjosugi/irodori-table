@@ -61,85 +61,11 @@ struct WorkspaceSnapshot {
 
 #[tauri::command]
 fn workspace_snapshot() -> WorkspaceSnapshot {
+    // Ship an empty workspace: the app starts with no sample connections or
+    // objects. Users add their own connection through the Connection Manager.
     WorkspaceSnapshot {
-        active_connection_id: "local-pg".into(),
-        connections: vec![
-            Connection {
-                id: "local-pg".into(),
-                name: "Local Postgres".into(),
-                engine: "PostgreSQL 16".into(),
-                status: ConnectionStatus::Idle,
-                latency_ms: 0,
-                proxy: "direct".into(),
-                objects: vec![
-                    DbObject {
-                        name: "cheeses".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("5".into()),
-                    },
-                    DbObject {
-                        name: "countries".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("5".into()),
-                    },
-                    DbObject {
-                        name: "orders".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("1.2M".into()),
-                    },
-                    DbObject {
-                        name: "customers".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("83K".into()),
-                    },
-                    DbObject {
-                        name: "invoice_lines".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("4.8M".into()),
-                    },
-                    DbObject {
-                        name: "cheese_summary".into(),
-                        kind: DbObjectKind::View,
-                        rows: None,
-                    },
-                    DbObject {
-                        name: "recent_revenue".into(),
-                        kind: DbObjectKind::View,
-                        rows: None,
-                    },
-                    DbObject {
-                        name: "refresh_rollups".into(),
-                        kind: DbObjectKind::Procedure,
-                        rows: None,
-                    },
-                ],
-            },
-            Connection {
-                id: "oracle-dev".into(),
-                name: "Oracle Dev".into(),
-                engine: "Oracle 23ai".into(),
-                status: ConnectionStatus::Idle,
-                latency_ms: 18,
-                proxy: "ssh > socks5".into(),
-                objects: vec![
-                    DbObject {
-                        name: "APP_USERS".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("42K".into()),
-                    },
-                    DbObject {
-                        name: "LEDGER_ENTRY".into(),
-                        kind: DbObjectKind::Table,
-                        rows: Some("9.1M".into()),
-                    },
-                    DbObject {
-                        name: "PKG_BILLING".into(),
-                        kind: DbObjectKind::Procedure,
-                        rows: None,
-                    },
-                ],
-            },
-        ],
+        active_connection_id: String::new(),
+        connections: Vec::new(),
     }
 }
 

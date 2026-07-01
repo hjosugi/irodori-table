@@ -88,6 +88,13 @@
   );
 }
 
+/* Each dock group holds a single fixed panel (Explorer, SQL Editor, Results,
+   Inspector), so the group's tab/header bar is redundant chrome. Hide it and let
+   the panel content fill the group. */
+.dockview-theme-irodori .dv-tabs-and-actions-container {
+  display: none;
+}
+
 .workbench-dock .dv-react-part,
 .workbench-dock-panel {
   min-width: 0;
@@ -1837,18 +1844,6 @@
   max-width: 128px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.editor-split-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.editor-split-controls .icon-button.active {
-  border-color: color-mix(in srgb, var(--blue) 55%, var(--border));
-  background: color-mix(in srgb, var(--blue) 11%, var(--surface-raised));
-  color: var(--blue);
 }
 
 .editor-action-dock {

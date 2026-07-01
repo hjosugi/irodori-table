@@ -190,7 +190,6 @@ import type {
   QueryPlanCopyFormat,
   QueryPlanMode,
   QueryResult,
-  QueryResultSet,
   WorkspaceSnapshot,
 } from "@/generated/irodori-api";
 import { sqlSnippetsFromJson } from "@/sql/completion";
@@ -220,6 +219,19 @@ import {
   keyScopeFromTarget,
   tauriRuntimeError,
 } from "./app-workbench-utils";
+
+// Rendered when no connection is configured yet (fresh install, no samples).
+// Keeps `activeConnection` defined so the shell never crashes on an empty
+// workspace; querying stays disabled until the user adds a real connection.
+const NO_ACTIVE_CONNECTION: WorkspaceConnection = {
+  id: "",
+  name: "No connection",
+  engine: "",
+  status: "idle",
+  latencyMs: 0,
+  proxy: "direct",
+  objects: [],
+};
 
 function scaledUiPixels(value: number, zoom: number) {
   return Math.max(1, Math.round(value * zoom));
@@ -412,9 +424,6 @@ export function AppWorkbench() {
   const resultsHeight = useWorkbenchStore((state) => state.resultsHeight);
   const setResultsHeight = useWorkbenchStore((state) => state.setResultsHeight);
   const editorSplitMode = useWorkbenchStore((state) => state.editorSplitMode);
-  const setEditorSplitMode = useWorkbenchStore(
-    (state) => state.setEditorSplitMode,
-  );
   const editorSplitPercent = useWorkbenchStore(
     (state) => state.editorSplitPercent,
   );
@@ -767,7 +776,6 @@ export function AppWorkbench() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(
     null,
   );
-  const [importError, setImportError] = useState<string | null>(null);
   const schemaDesignerOpen = useSchemaDesignerStore((state) => state.open);
   const setSchemaDesignerOpen = useSchemaDesignerStore(
     (state) => state.setOpen,
@@ -872,7 +880,8 @@ export function AppWorkbench() {
   const activeConnection = useMemo(
     () =>
       connections.find((item) => item.id === activeConnectionId) ??
-      connections[0],
+      connections[0] ??
+      NO_ACTIVE_CONNECTION,
     [activeConnectionId, connections],
   );
   const activeProfile = profiles.find(
@@ -1228,7 +1237,6 @@ export function AppWorkbench() {
     selectedGridCopyText,
     copyCellsForRow,
     activeEditorApi,
-    errorResultSetForExport,
     runQuery,
     showActionNotice,
   });
@@ -2173,25 +2181,8 @@ export function AppWorkbench() {
     );
   }
 
-  function errorResultSetForExport(): QueryResultSet | null {
-    const message = queryError ?? commitError;
-    if (!message) {
-      return null;
-    }
-    const kind = queryError ? "query" : "edit";
-    return {
-      statementIndex: 0,
-      statement: lastRunSql || "query",
-      columns: ["type", "message", "sql"],
-      rows: [[kind, message, lastRunSql || query]],
-      rowCount: 1n,
-      elapsedMs: 0n,
-      truncated: false,
-    };
-  }
-
   function exportActiveResult(format: ResultExportFormat) {
-    const exportResult = activeResult ?? errorResultSetForExport();
+    const exportResult = activeResult;
     if (!exportResult) {
       showActionNotice("info", "No result to export");
       return;
@@ -2200,7 +2191,7 @@ export function AppWorkbench() {
     const exported = buildResultExport(
       exportResult,
       format,
-      target?.table ?? (activeResult ? "query_result" : "query_error"),
+      target?.table ?? "query_result",
     );
     const blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
       type: exported.mime,
@@ -2222,7 +2213,7 @@ export function AppWorkbench() {
   }
 
   async function copyActiveResultSqlInserts() {
-    const exportResult = activeResult ?? errorResultSetForExport();
+    const exportResult = activeResult;
     if (!exportResult) {
       showActionNotice("info", "No result to copy");
       return;
@@ -2231,13 +2222,41 @@ export function AppWorkbench() {
     const exported = buildResultExport(
       exportResult,
       "sql",
-      target?.table ?? (activeResult ? "query_result" : "query_error"),
+      target?.table ?? "query_result",
     );
     try {
       await writeTextToClipboard(exported.content);
       showActionNotice(
         "success",
         "INSERT SQL copied",
+        `${toCount(exportResult.rows.length)} rows`,
+      );
+    } catch (error) {
+      showActionNotice("error", "Copy failed", errorMessage(error));
+    }
+  }
+
+  async function copyActiveResultAs(format: ResultExportFormat) {
+    if (format === "sql") {
+      await copyActiveResultSqlInserts();
+      return;
+    }
+    const exportResult = activeResult;
+    if (!exportResult) {
+      showActionNotice("info", "No result to copy");
+      return;
+    }
+    const target = inferEditTarget();
+    const exported = buildResultExport(
+      exportResult,
+      format,
+      target?.table ?? "query_result",
+    );
+    try {
+      await writeTextToClipboard(exported.content);
+      showActionNotice(
+        "success",
+        `Copied as ${format.toUpperCase()}`,
         `${toCount(exportResult.rows.length)} rows`,
       );
     } catch (error) {
@@ -2483,11 +2502,12 @@ export function AppWorkbench() {
   async function handleImportFile(file: File) {
     const kind = detectImportFileKind(file.name);
     setImportPreview(null);
-    setImportError(null);
     if (!kind) {
-      const message = "Unsupported import file type";
-      setImportError(message);
-      showActionNotice("error", "Import failed", message);
+      showActionNotice(
+        "error",
+        "Import failed",
+        "Unsupported import file type",
+      );
       return;
     }
     const text = await file.text();
@@ -2497,9 +2517,11 @@ export function AppWorkbench() {
       return;
     }
     if (kind === "excel") {
-      const message = "Excel import is not available in the desktop UI yet";
-      setImportError(message);
-      showActionNotice("error", "Import failed", message);
+      showActionNotice(
+        "error",
+        "Import failed",
+        "Excel import is not available in the desktop UI yet",
+      );
       return;
     }
     try {
@@ -2516,9 +2538,7 @@ export function AppWorkbench() {
         `${file.name} · ${toCount(parsed.totalRows)} rows`,
       );
     } catch (error) {
-      const message = errorMessage(error);
-      setImportError(message);
-      showActionNotice("error", "Import failed", message);
+      showActionNotice("error", "Import failed", errorMessage(error));
     }
   }
 
@@ -2534,7 +2554,6 @@ export function AppWorkbench() {
       ),
     );
     setImportPreview(null);
-    setImportError(null);
     showActionNotice(
       "success",
       "Import SQL generated",
@@ -3194,7 +3213,6 @@ export function AppWorkbench() {
     editorSplitRef,
     editorSplitOpen,
     editorSplitMode,
-    setEditorSplitMode,
     activeEditorGroup,
     setActiveEditorGroup,
     setEditorSelection: setEditorGroupSelection,
@@ -3266,6 +3284,8 @@ export function AppWorkbench() {
     onToggleExportMenu: () => setExportMenuOpen((open) => !open),
     onCloseExportMenu: () => setExportMenuOpen(false),
     onCopyVisibleResult: () => void copyVisibleResult(),
+    onCopyResultAs: (format: ResultExportFormat) =>
+      void copyActiveResultAs(format),
     onImportFile: (file) => void handleImportFile(file),
     filtering: {
       quickFilter,
@@ -3589,15 +3609,13 @@ export function AppWorkbench() {
         />
       ) : null}
 
-      {importPreview || importError ? (
+      {importPreview ? (
         <ImportDialog
           preview={importPreview}
-          error={importError}
           sqlPreview={importSqlPreview}
           onPreviewChange={setImportPreview}
           onClose={() => {
             setImportPreview(null);
-            setImportError(null);
           }}
           onPutSqlInEditor={putImportSqlInEditor}
           formatCell={formatCell}

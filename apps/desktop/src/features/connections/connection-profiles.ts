@@ -194,11 +194,11 @@ export function loadProfiles() {
   try {
     const raw = window.localStorage.getItem(profilesStorageKey);
     if (!raw) {
-      return starterProfiles;
+      return [];
     }
     const parsed = JSON.parse(raw) as ConnectionDraft[];
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      return starterProfiles;
+      return [];
     }
     return withStarterProfiles(
       parsed.map((profile) =>
@@ -214,7 +214,7 @@ export function loadProfiles() {
       ),
     );
   } catch {
-    return starterProfiles;
+    return [];
   }
 }
 
