@@ -50,9 +50,9 @@ describe("theme model", () => {
   });
 
   it("loads curated default themes from JSON", () => {
-    expect(defaultThemeEntries).toHaveLength(42);
-    expect(defaultThemeEntriesByKind.dark).toHaveLength(21);
-    expect(defaultThemeEntriesByKind.light).toHaveLength(21);
+    expect(defaultThemeEntries).toHaveLength(44);
+    expect(defaultThemeEntriesByKind.dark).toHaveLength(22);
+    expect(defaultThemeEntriesByKind.light).toHaveLength(22);
     expect(new Set(defaultThemeEntries.map((theme) => theme.id)).size).toBe(
       defaultThemeEntries.length,
     );
