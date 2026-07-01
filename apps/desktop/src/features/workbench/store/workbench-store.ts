@@ -172,10 +172,9 @@ function loadViewVisibility(): WorkbenchViewVisibility {
   }
 }
 
-function loadEditorSplitMode(): EditorSplitMode {
-  const stored = window.localStorage.getItem(editorSplitModeStorageKey);
-  return stored === "right" || stored === "down" ? stored : "single";
-}
+// Editor pane splitting has been removed; the editor is always a single pane
+// (open a second window to compare queries). We keep the state field so callers
+// still compile, but it is pinned to "single".
 
 export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   sidebarOpen: loadSidebarOpen(),
@@ -201,7 +200,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
     resultsHeightMin,
     resultsHeightMax,
   ),
-  editorSplitMode: loadEditorSplitMode(),
+  editorSplitMode: "single",
   editorSplitPercent: loadStoredNumber(
     editorSplitSizeStorageKey,
     editorSplitPercentDefault,
@@ -269,10 +268,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
         resultsHeightMax,
       ),
     })),
-  setEditorSplitMode: (value) =>
-    set((state) => ({
-      editorSplitMode: resolveValue(state.editorSplitMode, value),
-    })),
+  // Splitting is disabled; keep the setter as a no-op so existing callers
+  // continue to type-check while the editor stays a single pane.
+  setEditorSplitMode: () => set(() => ({ editorSplitMode: "single" })),
   setEditorSplitPercent: (value) =>
     set((state) => ({
       editorSplitPercent: clampNumber(

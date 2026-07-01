@@ -1846,18 +1846,6 @@
   text-overflow: ellipsis;
 }
 
-.editor-split-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.editor-split-controls .icon-button.active {
-  border-color: color-mix(in srgb, var(--blue) 55%, var(--border));
-  background: color-mix(in srgb, var(--blue) 11%, var(--surface-raised));
-  color: var(--blue);
-}
-
 .editor-action-dock {
   display: flex;
   align-items: center;

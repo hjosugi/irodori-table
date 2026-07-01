@@ -411,9 +411,6 @@ export function AppWorkbench() {
   const resultsHeight = useWorkbenchStore((state) => state.resultsHeight);
   const setResultsHeight = useWorkbenchStore((state) => state.setResultsHeight);
   const editorSplitMode = useWorkbenchStore((state) => state.editorSplitMode);
-  const setEditorSplitMode = useWorkbenchStore(
-    (state) => state.setEditorSplitMode,
-  );
   const editorSplitPercent = useWorkbenchStore(
     (state) => state.editorSplitPercent,
   );
@@ -3174,7 +3171,6 @@ export function AppWorkbench() {
     editorSplitRef,
     editorSplitOpen,
     editorSplitMode,
-    setEditorSplitMode,
     activeEditorGroup,
     setActiveEditorGroup,
     setEditorSelection: setEditorGroupSelection,
