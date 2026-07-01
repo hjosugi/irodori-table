@@ -1,3 +1,5 @@
+# `snap refresh` activates the new revision and disables the previous one, so an
+# upgrade replaces the old version instead of running two side by side.
 name: irodori-table
 base: core24
 version: "__VERSION__"

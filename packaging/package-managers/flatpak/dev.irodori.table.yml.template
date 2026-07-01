@@ -1,3 +1,5 @@
+# `flatpak update` deploys the new commit and drops the previous one, so an
+# upgrade always replaces the old version rather than stacking alongside it.
 app-id: dev.irodori.table
 runtime: org.gnome.Platform
 runtime-version: "__RUNTIME_VERSION__"

@@ -7,6 +7,11 @@ arch=('x86_64')
 url="https://hjosugi.github.io/irodori-docs/"
 license=('MIT' '0BSD')
 depends=('webkit2gtk-4.1' 'libsoup3' 'openssl')
+# Replace any earlier Irodori Table package so pacman removes the old install
+# before laying down this build instead of leaving both in place.
+provides=('irodori-table')
+conflicts=('irodori-table')
+replaces=('irodori-table')
 options=('!strip')
 source=(
   "https://github.com/hjosugi/irodori-table/releases/download/v${pkgver}/__LINUX_APPIMAGE_ASSET__"

@@ -6,7 +6,9 @@ Scope: user
 InstallModes:
   - interactive
   - silent
-UpgradeBehavior: install
+# Remove the previously installed version before applying an update so upgrades
+# never leave two Irodori Table entries behind.
+UpgradeBehavior: uninstallPrevious
 ReleaseDate: __YYYY-MM-DD__
 Installers:
   - Architecture: x64

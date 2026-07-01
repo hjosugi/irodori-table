@@ -15,6 +15,10 @@ cask "irodori-table" do
 
   app "Irodori Table.app"
 
+  # Quit the running app before an upgrade replaces it so the previous version
+  # is fully torn down first.
+  uninstall quit: "dev.irodori.table"
+
   zap trash: [
     "~/Library/Application Support/dev.irodori.table",
     "~/Library/Caches/dev.irodori.table",
