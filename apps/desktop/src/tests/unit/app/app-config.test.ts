@@ -76,10 +76,9 @@ describe("app command config", () => {
 });
 
 describe("debug startup defaults", () => {
-  it("uses a clean fallback snapshot without demo objects", () => {
-    expect(fallbackSnapshot.activeConnectionId).toBe("local-pg");
-    expect(fallbackSnapshot.connections).toHaveLength(1);
-    expect(fallbackSnapshot.connections[0]?.objects).toEqual([]);
+  it("uses an empty fallback snapshot without sample connections", () => {
+    expect(fallbackSnapshot.activeConnectionId).toBe("");
+    expect(fallbackSnapshot.connections).toHaveLength(0);
   });
 
   it("starts with an empty editor when no query was saved", () => {

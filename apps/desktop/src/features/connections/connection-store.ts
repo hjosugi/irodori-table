@@ -5,7 +5,6 @@ import {
   newDraft,
   profilesStorageKey,
   sanitizedProfile,
-  starterProfiles,
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "./connection-profiles";
@@ -56,12 +55,14 @@ function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
 }
 
 const initialProfiles = loadProfiles();
-const initialDraft = initialProfiles[0] ?? starterProfiles[0] ?? newDraft(1);
+const initialDraft = initialProfiles[0] ?? newDraft(1);
 
 export const useConnectionStore = create<ConnectionState>((set) => ({
-  activeConnectionId: initialDraft.id,
+  // Empty when no connection is configured yet; the app renders a safe
+  // "no connection" placeholder until the user adds one.
+  activeConnectionId: initialProfiles[0]?.id ?? "",
   profiles: initialProfiles,
-  selectedProfileId: initialDraft.id,
+  selectedProfileId: initialProfiles[0]?.id ?? initialDraft.id,
   draft: initialDraft,
   connectionManagerOpen: false,
   connectionSearch: "",

@@ -220,6 +220,19 @@ import {
   tauriRuntimeError,
 } from "./app-workbench-utils";
 
+// Rendered when no connection is configured yet (fresh install, no samples).
+// Keeps `activeConnection` defined so the shell never crashes on an empty
+// workspace; querying stays disabled until the user adds a real connection.
+const NO_ACTIVE_CONNECTION: WorkspaceConnection = {
+  id: "",
+  name: "No connection",
+  engine: "",
+  status: "idle",
+  latencyMs: 0,
+  proxy: "direct",
+  objects: [],
+};
+
 function scaledUiPixels(value: number, zoom: number) {
   return Math.max(1, Math.round(value * zoom));
 }
@@ -867,7 +880,8 @@ export function AppWorkbench() {
   const activeConnection = useMemo(
     () =>
       connections.find((item) => item.id === activeConnectionId) ??
-      connections[0],
+      connections[0] ??
+      NO_ACTIVE_CONNECTION,
     [activeConnectionId, connections],
   );
   const activeProfile = profiles.find(

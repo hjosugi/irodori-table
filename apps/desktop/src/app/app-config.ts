@@ -318,18 +318,8 @@ export const resultCopyDefaultKeymap: Keymap = {
 };
 
 export const fallbackSnapshot: WorkspaceSnapshot = {
-  activeConnectionId: "local-pg",
-  connections: [
-    {
-      id: "local-pg",
-      name: "Local Postgres",
-      engine: "PostgreSQL",
-      status: "idle",
-      latencyMs: 0,
-      proxy: "direct",
-      objects: [],
-    },
-  ],
+  activeConnectionId: "",
+  connections: [],
 };
 
 export const tabs = [

@@ -234,7 +234,7 @@ describe("connection profiles", () => {
     ).toBe("#112233");
   });
 
-  it("restores bundled MySQL sample credentials only in runtime defaults", () => {
+  it("no longer injects bundled MySQL sample credentials now that samples are removed", () => {
     const profile = repairBuiltinSampleProfile(
       draft({
         id: "local-mysql",
@@ -248,10 +248,7 @@ describe("connection profiles", () => {
       }),
     );
 
-    expect(profile.url).toBe("mysql://irodori:irodori@localhost:55306/samples");
-    expect(sanitizedProfile(profile).url).toBe(
-      "mysql://irodori@localhost:55306/samples",
-    );
+    expect(profile.url).toBe("mysql://irodori@localhost:55306/samples");
   });
 
   it("validates and converts field drafts into API profiles", () => {
