@@ -1,4 +1,5 @@
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   editorContextCommandGroups,
   type EditorContextCommand,
@@ -26,8 +27,19 @@ export function EditorContextMenu({
   onCommand,
   onClose,
 }: EditorContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    const close = () => onClose();
+    // The menu is portaled outside the React root, so a pointerdown inside it no
+    // longer stops propagation to this window listener; guard with the ref
+    // instead so clicking a menu item does not close before its click fires.
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && menuRef.current?.contains(target)) {
+        return;
+      }
+      onClose();
+    };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") {
         return;
@@ -35,12 +47,13 @@ export function EditorContextMenu({
       event.preventDefault();
       onClose();
     };
+    const close = () => onClose();
 
-    window.addEventListener("pointerdown", close);
+    window.addEventListener("pointerdown", closeOnOutsidePointerDown);
     window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("blur", close);
     return () => {
-      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("pointerdown", closeOnOutsidePointerDown);
       window.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("blur", close);
     };
@@ -64,8 +77,13 @@ export function EditorContextMenu({
     );
   };
 
-  return (
+  // Rendered through a portal to document.body: the editor lives inside a
+  // dockview panel whose ancestors set `transform`/`contain`, which would
+  // otherwise become the containing block for this `position: fixed` menu and
+  // offset it from the pointer.
+  return createPortal(
     <div
+      ref={menuRef}
       className="app-menu-popover editor-context-menu"
       role="menu"
       style={{ left: position.x, top: position.y }}
@@ -97,6 +115,7 @@ export function EditorContextMenu({
       >
         <span>Download result as INSERT SQL</span>
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }
