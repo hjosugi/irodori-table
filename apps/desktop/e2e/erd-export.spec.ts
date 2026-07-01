@@ -227,6 +227,14 @@ async function downloadedBytes(page: Page, buttonName: string) {
   };
 }
 
+function expectErdDownloadName(fileName: string, extension: "png" | "svg") {
+  expect(fileName).toMatch(
+    new RegExp(
+      `^irodori-erd-[A-Za-z0-9._-]+-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.${extension}$`,
+    ),
+  );
+}
+
 test("ERD downloads SVG and PNG from the rendered diagram", async ({
   page,
 }) => {
@@ -236,7 +244,7 @@ test("ERD downloads SVG and PNG from the rendered diagram", async ({
   await openErd(page);
 
   const svg = await downloadedBytes(page, "Download ERD SVG");
-  expect(svg.fileName).toMatch(/^irodori-erd-local-pg-.*\.svg$/);
+  expectErdDownloadName(svg.fileName, "svg");
   const svgMarkup = svg.bytes.toString("utf8");
   expect(svgMarkup).toContain("<svg");
   expect(svgMarkup).toContain("Entity relationship diagram");
@@ -245,7 +253,7 @@ test("ERD downloads SVG and PNG from the rendered diagram", async ({
   expect(svgMarkup.match(/<path[^>]+class="erd-edge/g)).toHaveLength(4);
 
   const png = await downloadedBytes(page, "Download ERD PNG");
-  expect(png.fileName).toMatch(/^irodori-erd-local-pg-.*\.png$/);
+  expectErdDownloadName(png.fileName, "png");
   expect(png.bytes.subarray(0, 8)).toEqual(
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
   );
