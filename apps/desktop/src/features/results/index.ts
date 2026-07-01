@@ -7,6 +7,7 @@ export {
   resultExportFormats,
   type ResultExportFormat,
 } from "./result-export";
+export { buildXlsxBlob } from "./result-xlsx";
 export { buildChartResultModel } from "./chart-result";
 export {
   biColumnRoles,

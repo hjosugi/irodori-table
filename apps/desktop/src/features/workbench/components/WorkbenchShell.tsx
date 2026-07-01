@@ -7,6 +7,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, PanelLeft, PanelRight } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
 import {
@@ -125,10 +126,29 @@ export function WorkbenchShell({
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
   const [activeMenuLabel, setActiveMenuLabel] = useState<string | null>(null);
+  // The menu bar dropdown is portaled to <body> and positioned from the
+  // anchor button's rect: the titlebar/menubar set `overflow: hidden` to clip
+  // horizontal label overflow, which would otherwise also clip the dropdown
+  // that hangs below the titlebar (so the menu appeared to never open).
+  const [menuAnchor, setMenuAnchor] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState<WorkbenchContextMenu | null>(
     null,
   );
   const menubarRef = useRef<HTMLElement | null>(null);
+  const menuPopoverRef = useRef<HTMLDivElement | null>(null);
+
+  const openMenuFromButton = (label: string, button: HTMLElement) => {
+    const rect = button.getBoundingClientRect();
+    setMenuAnchor({ left: rect.left, top: rect.bottom + 1 });
+    setActiveMenuLabel(label);
+  };
+  const closeMenuBarMenu = () => {
+    setActiveMenuLabel(null);
+    setMenuAnchor(null);
+  };
   const commandById = new Map(
     commandCatalog.map((command) => [command.id, command]),
   );
@@ -168,18 +188,24 @@ export function WorkbenchShell({
         return;
       }
       event.preventDefault();
-      setActiveMenuLabel(null);
+      closeMenuBarMenu();
       onCloseWorkspaceMenu();
     };
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) {
-        setActiveMenuLabel(null);
+        closeMenuBarMenu();
         return;
       }
-      if (activeMenuLabel && !menubarRef.current?.contains(target)) {
-        setActiveMenuLabel(null);
+      // The dropdown is portaled outside the menubar, so also ignore clicks
+      // landing inside it.
+      if (
+        menubarRef.current?.contains(target) ||
+        menuPopoverRef.current?.contains(target)
+      ) {
+        return;
       }
+      closeMenuBarMenu();
     };
     window.addEventListener("pointerdown", closeOnOutsidePointerDown);
     window.addEventListener("keydown", closeOnEscape);
@@ -214,7 +240,7 @@ export function WorkbenchShell({
   };
 
   const runMenuCommand = (commandId: string) => {
-    setActiveMenuLabel(null);
+    closeMenuBarMenu();
     setContextMenu(null);
     onCloseWorkspaceMenu();
     onRunCommand(commandId);
@@ -380,24 +406,21 @@ export function WorkbenchShell({
                   type="button"
                   aria-haspopup="menu"
                   aria-expanded={activeMenuLabel === section.label}
-                  onClick={() =>
-                    setActiveMenuLabel((current) =>
-                      current === section.label ? null : section.label,
-                    )
-                  }
-                  onMouseEnter={() => {
+                  onClick={(event) => {
+                    if (activeMenuLabel === section.label) {
+                      closeMenuBarMenu();
+                    } else {
+                      openMenuFromButton(section.label, event.currentTarget);
+                    }
+                  }}
+                  onMouseEnter={(event) => {
                     if (activeMenuLabel) {
-                      setActiveMenuLabel(section.label);
+                      openMenuFromButton(section.label, event.currentTarget);
                     }
                   }}
                 >
                   {section.label}
                 </button>
-                {activeMenuLabel === section.label ? (
-                  <div className="app-menu-popover menubar-popover" role="menu">
-                    {renderMenuSection(section)}
-                  </div>
-                ) : null}
               </div>
             ))}
           </nav>
@@ -459,6 +482,28 @@ export function WorkbenchShell({
           </button>
         </div>
       </header>
+
+      {activeMenuLabel && menuAnchor
+        ? createPortal(
+            <div
+              ref={menuPopoverRef}
+              className="app-menu-popover menubar-popover"
+              role="menu"
+              style={{
+                position: "fixed",
+                left: menuAnchor.left,
+                top: menuAnchor.top,
+              }}
+            >
+              {menuBarSections
+                .filter((section) => section.label === activeMenuLabel)
+                .map((section) => (
+                  <div key={section.label}>{renderMenuSection(section)}</div>
+                ))}
+            </div>,
+            document.body,
+          )
+        : null}
 
       <div
         className={[
