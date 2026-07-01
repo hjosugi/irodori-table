@@ -1,0 +1,262 @@
+/* Reusable solid color picker (ColorPicker.tsx). */
+
+.color-picker-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.color-swatch-button {
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.color-swatch-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.color-picker-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 232px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 14px 34px var(--shadow-color);
+}
+
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-picker-sv {
+  position: relative;
+  width: 100%;
+  height: 128px;
+  border-radius: 5px;
+  cursor: crosshair;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.color-picker-sv-white,
+.color-picker-sv-black {
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+}
+
+.color-picker-sv-white {
+  background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+}
+
+.color-picker-sv-black {
+  background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
+}
+
+.color-picker-thumb {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.color-picker-hue {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  cursor: ew-resize;
+  touch-action: none;
+  background: linear-gradient(
+    to right,
+    #f00 0%,
+    #ff0 17%,
+    #0f0 33%,
+    #0ff 50%,
+    #00f 67%,
+    #f0f 83%,
+    #f00 100%
+  );
+}
+
+.color-picker-hue-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.color-picker-hex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--input-bg);
+}
+
+.color-picker-hex-preview {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+}
+
+.color-picker-hex-hash {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.color-picker-hex-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+.color-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.color-picker-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.color-picker-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.color-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.color-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.color-swatch:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.color-swatch.is-active {
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 3px var(--focus);
+}
+
+.color-swatch-slot {
+  position: relative;
+  display: inline-flex;
+}
+
+.color-swatch-remove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.color-swatch-slot:hover .color-swatch-remove,
+.color-swatch-remove:focus-visible {
+  display: inline-flex;
+}
+
+.color-swatch-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.color-swatch-add:hover {
+  color: var(--text);
+  border-color: var(--focus);
+}
+
+.color-swatch-add:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Chart toolbar series-color control (ChartResultView). */
+.chart-result-toolbar > span.chart-color-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 0;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+}
+
+.chart-color-reset {
+  height: var(--control-sm);
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--input-bg);
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+  cursor: pointer;
+}
+
+.chart-color-reset:hover {
+  color: var(--text);
+}

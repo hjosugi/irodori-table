@@ -33,6 +33,8 @@ export type ChartResultSelection = {
   aggregation: ChartAggregation;
   sort: ChartSort;
   limit: number;
+  /** User-picked series color (`#rrggbb`), or null to use the theme default. */
+  color?: string | null;
 };
 
 export type ChartResultModel = {

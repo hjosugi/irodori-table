@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Maximize2 } from "lucide-react";
+import { ColorPickerButton } from "@/components/ColorPicker";
 import {
   buildChartResultSeries,
   chartSelectionIsValid,
@@ -13,12 +14,41 @@ import {
   type ChartResultSeries,
   type ChartSort,
 } from "../chart-result";
+import { normalizeHexColor } from "@/lib/color";
 
 const svgWidth = 920;
 const svgHeight = 380;
 const margin = { top: 24, right: 28, bottom: 62, left: 64 };
 const plotWidth = svgWidth - margin.left - margin.right;
 const plotHeight = svgHeight - margin.top - margin.bottom;
+
+const kindDefaultColorVar: Record<ChartKind, string> = {
+  bar: "--blue",
+  line: "--green",
+  scatter: "--amber",
+};
+
+const kindFallbackColor: Record<ChartKind, string> = {
+  bar: "#3b82f6",
+  line: "#22c55e",
+  scatter: "#f59e0b",
+};
+
+/** Effective default series color for a chart kind, read from the live theme. */
+function defaultSeriesColor(kind: ChartKind): string {
+  const fallback = kindFallbackColor[kind];
+  if (
+    typeof document === "undefined" ||
+    typeof getComputedStyle !== "function"
+  ) {
+    return fallback;
+  }
+  const host = document.querySelector(".app-shell") ?? document.documentElement;
+  const value = getComputedStyle(host as Element)
+    .getPropertyValue(kindDefaultColorVar[kind])
+    .trim();
+  return normalizeHexColor(value) ?? fallback;
+}
 
 export function ChartResultView({ model }: { model: ChartResultModel }) {
   const [selection, setSelection] = useState<ChartResultSelection | null>(
@@ -78,7 +108,7 @@ export function ChartResultView({ model }: { model: ChartResultModel }) {
         onUpdateSelection={updateSelection}
         onOpenWindow={() => setWindowOpen(true)}
       />
-      <ChartCanvas series={series} />
+      <ChartCanvas series={series} color={effectiveSelection.color ?? null} />
       {windowOpen ? (
         <div
           className="palette-overlay chart-window-overlay"
@@ -101,7 +131,11 @@ export function ChartResultView({ model }: { model: ChartResultModel }) {
               onCloseWindow={() => setWindowOpen(false)}
               windowed
             />
-            <ChartCanvas series={series} windowed />
+            <ChartCanvas
+              series={series}
+              color={effectiveSelection.color ?? null}
+              windowed
+            />
           </div>
         </div>
       ) : null}
@@ -155,6 +189,27 @@ function ChartToolbar({
           </button>
         ))}
       </div>
+      <span className="chart-color-control">
+        <span>Color</span>
+        <ColorPickerButton
+          value={selection.color ?? null}
+          fallbackColor={defaultSeriesColor(selection.kind)}
+          ariaLabel="Series color"
+          title="Series color"
+          onChange={(color) => onUpdateSelection({ color })}
+        />
+        {selection.color ? (
+          <button
+            type="button"
+            className="chart-color-reset"
+            title="Reset to theme color"
+            aria-label="Reset series color"
+            onClick={() => onUpdateSelection({ color: null })}
+          >
+            Reset
+          </button>
+        ) : null}
+      </span>
       <label>
         <span>X</span>
         <select
@@ -284,9 +339,11 @@ function ChartToolbar({
 
 function ChartCanvas({
   series,
+  color = null,
   windowed = false,
 }: {
   series: ChartResultSeries;
+  color?: string | null;
   windowed?: boolean;
 }) {
   return (
@@ -304,9 +361,15 @@ function ChartCanvas({
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
       >
         <ChartAxes series={series} />
-        {series.kind === "bar" ? <BarSeries series={series} /> : null}
-        {series.kind === "line" ? <LineSeries series={series} /> : null}
-        {series.kind === "scatter" ? <ScatterSeries series={series} /> : null}
+        {series.kind === "bar" ? (
+          <BarSeries series={series} color={color} />
+        ) : null}
+        {series.kind === "line" ? (
+          <LineSeries series={series} color={color} />
+        ) : null}
+        {series.kind === "scatter" ? (
+          <ScatterSeries series={series} color={color} />
+        ) : null}
       </svg>
     </div>
   );
@@ -436,7 +499,13 @@ function ChartAxes({ series }: { series: ChartResultSeries }) {
   );
 }
 
-function BarSeries({ series }: { series: ChartResultSeries }) {
+function BarSeries({
+  series,
+  color = null,
+}: {
+  series: ChartResultSeries;
+  color?: string | null;
+}) {
   const baseline = scale(
     0,
     series.yDomain,
@@ -464,6 +533,7 @@ function BarSeries({ series }: { series: ChartResultSeries }) {
             y={round(top)}
             width={round(barWidth)}
             height={round(height)}
+            fill={color ?? undefined}
           >
             <title>{`${point.label}: ${formatCompact(point.y)}`}</title>
           </rect>
@@ -473,7 +543,13 @@ function BarSeries({ series }: { series: ChartResultSeries }) {
   );
 }
 
-function LineSeries({ series }: { series: ChartResultSeries }) {
+function LineSeries({
+  series,
+  color = null,
+}: {
+  series: ChartResultSeries;
+  color?: string | null;
+}) {
   const path = series.points
     .map((point, index) => {
       const x = xPosition(series, point, index);
@@ -488,7 +564,7 @@ function LineSeries({ series }: { series: ChartResultSeries }) {
     .join(" ");
   return (
     <g className="chart-result-line-series">
-      <path d={path} />
+      <path d={path} stroke={color ?? undefined} />
       {series.points.map((point, index) => (
         <circle
           key={point.key}
@@ -497,6 +573,7 @@ function LineSeries({ series }: { series: ChartResultSeries }) {
             scale(point.y, series.yDomain, margin.top + plotHeight, margin.top),
           )}
           r="3.5"
+          stroke={color ?? undefined}
         >
           <title>{`${point.label}: ${formatCompact(point.y)}`}</title>
         </circle>
@@ -505,7 +582,13 @@ function LineSeries({ series }: { series: ChartResultSeries }) {
   );
 }
 
-function ScatterSeries({ series }: { series: ChartResultSeries }) {
+function ScatterSeries({
+  series,
+  color = null,
+}: {
+  series: ChartResultSeries;
+  color?: string | null;
+}) {
   return (
     <g className="chart-result-scatter-series">
       {series.points.map((point, index) => (
@@ -516,6 +599,8 @@ function ScatterSeries({ series }: { series: ChartResultSeries }) {
             scale(point.y, series.yDomain, margin.top + plotHeight, margin.top),
           )}
           r="4"
+          fill={color ?? undefined}
+          stroke={color ?? undefined}
         >
           <title>{`${series.xLabel}: ${formatCompact(point.x)}, ${series.yLabel}: ${formatCompact(point.y)}`}</title>
         </circle>

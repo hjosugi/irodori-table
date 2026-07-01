@@ -6,6 +6,7 @@ let UI_ZOOM_MIN = 0.75;
 let normalizeUiZoom: (value: unknown) => number;
 
 const themeStorageKey = "irodori.theme.v1";
+const customPaletteStorageKey = "irodori.ui.customPalette.v1";
 
 function installLocalStorage(initialValues = new Map<string, string>()) {
   const values = new Map(initialValues);
@@ -160,5 +161,45 @@ describe("theme preferences", () => {
 
     expect(store.getState().themePreference).toBe("light");
     expect(store.getState().themeKind).toBe("light");
+  });
+});
+
+describe("custom palette", () => {
+  it("starts empty and persists added colors", async () => {
+    const values = installLocalStorage();
+    const store = await loadPreferencesStore();
+
+    expect(store.getState().customPalette).toEqual([]);
+
+    store.getState().addCustomPaletteColor("#AABBCC");
+
+    expect(store.getState().customPalette).toEqual(["#aabbcc"]);
+    expect(values.get(customPaletteStorageKey)).toBe(
+      JSON.stringify(["#aabbcc"]),
+    );
+  });
+
+  it("de-duplicates and removes colors", async () => {
+    installLocalStorage();
+    const store = await loadPreferencesStore();
+
+    store.getState().addCustomPaletteColor("#111111");
+    store.getState().addCustomPaletteColor("#222222");
+    store.getState().addCustomPaletteColor("#111111");
+    expect(store.getState().customPalette).toEqual(["#222222", "#111111"]);
+
+    store.getState().removeCustomPaletteColor("#222222");
+    expect(store.getState().customPalette).toEqual(["#111111"]);
+  });
+
+  it("normalizes an invalid stored palette on load", async () => {
+    installLocalStorage(
+      new Map([
+        [customPaletteStorageKey, JSON.stringify(["#ABC", "nope", "#abc"])],
+      ]),
+    );
+    const store = await loadPreferencesStore();
+
+    expect(store.getState().customPalette).toEqual(["#aabbcc"]);
   });
 });

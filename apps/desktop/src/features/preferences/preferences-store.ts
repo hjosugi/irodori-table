@@ -8,12 +8,15 @@ import {
 import { isSqlFormatterId, type SqlFormatterId } from "../../sql/formatter";
 import { detectBrowserLocale, normalizeLocale, type Locale } from "../../i18n";
 import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
+import { addCustomPaletteColor, normalizeCustomPalette } from "../../lib/color";
 import {
   defaultThemeEntryForKind,
   type CustomThemeEntry,
   type IrodoriTheme,
   type ThemeKind,
 } from "@/theme";
+
+export { CUSTOM_PALETTE_MAX } from "../../lib/color";
 
 export type { CustomThemeEntry } from "@/theme";
 export type ThemePreference = "system" | ThemeKind;
@@ -31,6 +34,7 @@ const snippetsStorageKey = "irodori.editor.snippets.v1";
 const editorBackgroundImageStorageKey = "irodori.editor.backgroundImage.v1";
 const editorBackgroundOpacityStorageKey = "irodori.editor.backgroundOpacity.v1";
 const animationsEnabledStorageKey = "irodori.ui.animationsEnabled.v1";
+const customPaletteStorageKey = "irodori.ui.customPalette.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const localeStorageKey = "irodori.locale.v1";
 const uiZoomStorageKey = "irodori.ui.zoom.v1";
@@ -58,6 +62,7 @@ type PreferencesState = {
   editorBackgroundImage: string;
   editorBackgroundOpacity: number;
   animationsEnabled: boolean;
+  customPalette: string[];
   autoCommit: boolean;
   uiZoom: number;
   setLocale: (value: ValueUpdater<Locale>) => void;
@@ -73,6 +78,9 @@ type PreferencesState = {
   setEditorBackgroundImage: (value: ValueUpdater<string>) => void;
   setEditorBackgroundOpacity: (value: ValueUpdater<number>) => void;
   setAnimationsEnabled: (value: ValueUpdater<boolean>) => void;
+  setCustomPalette: (value: ValueUpdater<string[]>) => void;
+  addCustomPaletteColor: (color: string) => void;
+  removeCustomPaletteColor: (color: string) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
   setUiZoom: (value: ValueUpdater<number>) => void;
 };
@@ -241,6 +249,18 @@ function loadAnimationsEnabled() {
   return readStorage(animationsEnabledStorageKey) !== "false";
 }
 
+function loadCustomPalette(): string[] {
+  const stored = readStorage(customPaletteStorageKey);
+  if (!stored) {
+    return [];
+  }
+  try {
+    return normalizeCustomPalette(JSON.parse(stored) as unknown);
+  } catch {
+    return [];
+  }
+}
+
 function normalizeEditorBackgroundImage(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -306,6 +326,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   editorBackgroundImage: loadEditorBackgroundImage(),
   editorBackgroundOpacity: loadEditorBackgroundOpacity(),
   animationsEnabled: loadAnimationsEnabled(),
+  customPalette: loadCustomPalette(),
   autoCommit: loadAutoCommit(),
   uiZoom: loadUiZoom(),
   setLocale: (value) =>
@@ -384,6 +405,22 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({
       animationsEnabled: resolveValue(state.animationsEnabled, value),
     })),
+  setCustomPalette: (value) =>
+    set((state) => ({
+      customPalette: normalizeCustomPalette(
+        resolveValue(state.customPalette, value),
+      ),
+    })),
+  addCustomPaletteColor: (color) =>
+    set((state) => ({
+      customPalette: addCustomPaletteColor(state.customPalette, color),
+    })),
+  removeCustomPaletteColor: (color) =>
+    set((state) => ({
+      customPalette: state.customPalette.filter(
+        (entry) => entry.toLowerCase() !== color.trim().toLowerCase(),
+      ),
+    })),
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
   setUiZoom: (value) =>
@@ -421,6 +458,11 @@ usePreferencesStore.subscribe((state) => {
     String(state.editorBackgroundOpacity),
   );
   writeStorage(animationsEnabledStorageKey, String(state.animationsEnabled));
+  if (state.customPalette.length > 0) {
+    writeStorage(customPaletteStorageKey, JSON.stringify(state.customPalette));
+  } else {
+    removeStorage(customPaletteStorageKey);
+  }
   writeStorage(autoCommitStorageKey, String(state.autoCommit));
   writeStorage(uiZoomStorageKey, String(state.uiZoom));
 });
