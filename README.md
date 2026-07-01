@@ -9,8 +9,8 @@ Download builds from GitHub Releases:
 
 <https://github.com/hjosugi/irodori-table/releases>
 
-Current focus: Linux desktop builds. macOS and Windows release packaging is in
-progress.
+Current focus: Linux desktop builds. Release packaging templates live in
+`hjosugi/irodori-kit` under `packaging/irodori-table/`.
 
 ## Develop
 

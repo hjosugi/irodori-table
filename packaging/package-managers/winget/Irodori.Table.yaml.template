@@ -1,5 +1,0 @@
-PackageIdentifier: Irodori.Table
-PackageVersion: __VERSION__
-DefaultLocale: en-US
-ManifestType: version
-ManifestVersion: __WINGET_MANIFEST_VERSION__
