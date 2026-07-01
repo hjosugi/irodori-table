@@ -76,7 +76,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 
 - Desktop shell: Tauri v2, with Rust commands for privileged/local work and a web UI for editor and layout.
 - Extracted reusable packages:
-  - `typeship` (`hjosugi/typebridge`): Rust-to-TypeScript command/API generation
+  - `typeship` (`hjosugi/typeship`): Rust-to-TypeScript command/API generation
     consumed from crates.io so Serde `camelCase` JSON and frontend types never
     drift.
   - `irodori-sql` (`hjosugi/irodori-sql`): SQL dialect metadata, parameter
@@ -151,7 +151,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 
 - [x] Draft and stabilize `irodori.extension.json`.
 - [x] Ship a TypeScript extension SDK with typed command, keybinding, result-grid, theme, and SQL dialect APIs.
-- [x] Generate extension SDK types from Rust/schema definitions through the same type bridge used by the desktop UI.
+- [x] Generate extension SDK types from Rust/schema definitions through the same `typeship` path used by the desktop UI.
 - [x] Provide `MIT OR 0BSD` extension templates and examples.
 - [x] Add local extension development mode with watch reload, logs, fake database fixtures, and permission inspection.
 - [x] Keep Rust/Wasm extension paths available for high-performance drivers, renderers, and parsers.
@@ -203,7 +203,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - [ ] Optional local HTTP API to list sources, run parameterized queries, read tables with pagination/filter/sort, and perform safe, permissioned writes.
 - [ ] Headless mode for scripts, CI, and external tools: same adapter, proxy, and security model, no UI required.
 - [ ] Read-only by default with explicit opt-in for writes, token-scoped access, per-source permission scopes, and an audit log on by default.
-- [ ] Generated client types through the type bridge so external tools get typed access. Study PostgREST and DuckDB httpserver patterns; implement independently.
+- [ ] Generated client types through `typeship` so external tools get typed access. Study PostgREST and DuckDB httpserver patterns; implement independently.
 
 ## Research Watchlist
 
