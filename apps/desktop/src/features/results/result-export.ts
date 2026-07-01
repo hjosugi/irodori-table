@@ -4,6 +4,7 @@ export type ResultExportFormat =
   | "json"
   | "jsonl"
   | "sql"
+  | "xlsx"
   | "excel"
   | "markdown";
 
@@ -29,6 +30,7 @@ export const resultExportFormats: Array<{
   { id: "json", label: "JSON", title: "JSON array" },
   { id: "jsonl", label: "JSONL", title: "One JSON object per line" },
   { id: "sql", label: "SQL", title: "INSERT statements" },
+  { id: "xlsx", label: "Excel", title: "Native .xlsx workbook" },
   {
     id: "excel",
     label: "Excel-compatible",
@@ -36,6 +38,14 @@ export const resultExportFormats: Array<{
   },
   { id: "markdown", label: "Markdown", title: "Markdown table" },
 ];
+
+// xlsx is a binary workbook produced by buildXlsxBlob (write-excel-file), not by
+// the string serializers below; this entry only carries its mime/extension so the
+// format menu and file naming work.
+export const xlsxExportMeta = {
+  mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  extension: "xlsx",
+} as const;
 
 type ResultSerializer = (result: ResultLike, tableName: string) => string;
 
@@ -71,6 +81,13 @@ const resultExportDefinitions: Record<
     serialize: sqlInsertsFromResult,
     mime: "application/sql;charset=utf-8",
     extension: "sql",
+    bom: false,
+  },
+  xlsx: {
+    // Binary workbook: bytes come from buildXlsxBlob, not this serializer.
+    serialize: () => "",
+    mime: xlsxExportMeta.mime,
+    extension: xlsxExportMeta.extension,
     bom: false,
   },
   excel: {
@@ -116,10 +133,8 @@ const supportedResultExportFormats = new Set<string>(
 export function unsupportedResultExportFormatMessage(format: string): string {
   const normalized = format.trim().toLowerCase().replace(/^\./, "");
   const supported =
-    "CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown";
+    "CSV, TSV, JSON, JSONL, SQL, Excel (.xlsx), Excel-compatible HTML, Markdown";
   switch (normalized) {
-    case "xlsx":
-      return `Native XLSX export is not supported. Use the Excel-compatible HTML export, or export ${supported}.`;
     case "parquet":
       return `Parquet export is not supported. Export ${supported}.`;
     case "avro":

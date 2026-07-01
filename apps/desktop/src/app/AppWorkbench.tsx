@@ -53,6 +53,7 @@ import {
   ResultsPane,
   WindowedRows,
   buildResultExport,
+  buildXlsxBlob,
   formatResultSelectionStatus,
   formatResultGridCell as formatCell,
   historySnapshotToQueryResult,
@@ -2181,35 +2182,59 @@ export function AppWorkbench() {
     );
   }
 
-  function exportActiveResult(format: ResultExportFormat) {
+  async function saveExportBlob(blob: Blob, fileName: string) {
+    // Desktop: offer a native "Save As" dialog so the user chooses the location
+    // (the file name is pre-filled). Falls back to a browser download in the web
+    // preview, or if the native fs path is unavailable/denied — so export always
+    // works even before the desktop fs capability is wired up.
+    if (!tauriRuntimeError()) {
+      try {
+        const [{ save }, { writeFile }] = await Promise.all([
+          import("@tauri-apps/plugin-dialog"),
+          import("@tauri-apps/plugin-fs"),
+        ]);
+        const path = await save({ defaultPath: fileName });
+        if (path === null) {
+          return; // user cancelled the dialog
+        }
+        await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
+        showActionNotice("success", "Export saved", path);
+        return;
+      } catch {
+        // Native save not available yet — fall through to the browser download.
+      }
+    }
+    downloadBlob(blob, fileName);
+    showActionNotice("success", "Export started", fileName);
+  }
+
+  async function exportActiveResult(format: ResultExportFormat) {
     const exportResult = activeResult;
     if (!exportResult) {
       showActionNotice("info", "No result to export");
       return;
     }
     const target = inferEditTarget();
-    const exported = buildResultExport(
-      exportResult,
-      format,
-      target?.table ?? "query_result",
-    );
-    const blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
-      type: exported.mime,
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = resultExportFileName(activeConnectionId, format);
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setExportMenuOpen(false);
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    showActionNotice(
-      "success",
-      "Export started",
-      resultExportFileName(activeConnectionId, format),
-    );
+    const fileName = resultExportFileName(activeConnectionId, format);
+    try {
+      let blob: Blob;
+      if (format === "xlsx") {
+        blob = await buildXlsxBlob(exportResult, target?.table ?? "Result");
+      } else {
+        const exported = buildResultExport(
+          exportResult,
+          format,
+          target?.table ?? "query_result",
+        );
+        blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
+          type: exported.mime,
+        });
+      }
+      setExportMenuOpen(false);
+      await saveExportBlob(blob, fileName);
+    } catch (error) {
+      showActionNotice("error", "Export failed", errorMessage(error));
+    }
   }
 
   async function copyActiveResultSqlInserts() {

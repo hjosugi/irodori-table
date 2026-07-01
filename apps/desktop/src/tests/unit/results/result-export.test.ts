@@ -24,6 +24,7 @@ describe("result exports", () => {
       ["json", "JSON"],
       ["jsonl", "JSONL"],
       ["sql", "SQL"],
+      ["xlsx", "Excel"],
       ["excel", "Excel-compatible"],
       ["markdown", "Markdown"],
     ]);
@@ -33,9 +34,6 @@ describe("result exports", () => {
   });
 
   it("reports unsupported export formats with clear errors", () => {
-    expect(() => buildResultExport(result, "xlsx")).toThrow(
-      "Native XLSX export is not supported.",
-    );
     expect(() => buildResultExport(result, "parquet")).toThrow(
       "Parquet export is not supported.",
     );
@@ -47,7 +45,7 @@ describe("result exports", () => {
       ),
     ).toThrow("Avro export is not supported.");
     expect(unsupportedResultExportFormatMessage("xml")).toBe(
-      'Unsupported export format "xml". Supported export formats: CSV, TSV, JSON, JSONL, SQL, Excel-compatible HTML, Markdown.',
+      'Unsupported export format "xml". Supported export formats: CSV, TSV, JSON, JSONL, SQL, Excel (.xlsx), Excel-compatible HTML, Markdown.',
     );
   });
 
