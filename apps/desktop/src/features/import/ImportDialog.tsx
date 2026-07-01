@@ -1,4 +1,3 @@
-import { AlertTriangle } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { DialogShell } from "@/components/DialogShell";
 import type { ImportTextFormat, ParsedImport } from "./importers";
@@ -11,7 +10,6 @@ export type ImportPreview = ParsedImport & {
 
 export function ImportDialog({
   preview,
-  error,
   sqlPreview,
   onPreviewChange,
   onClose,
@@ -20,7 +18,6 @@ export function ImportDialog({
   formatCount,
 }: {
   preview: ImportPreview | null;
-  error: string | null;
   sqlPreview: string;
   onPreviewChange: Dispatch<SetStateAction<ImportPreview | null>>;
   onClose: () => void;
@@ -45,14 +42,6 @@ export function ImportDialog({
           Close
         </button>
       </div>
-      {error ? (
-        <div className="dialog-body">
-          <div className="result-error" role="alert">
-            <AlertTriangle size={16} />
-            <span>{error}</span>
-          </div>
-        </div>
-      ) : null}
       {preview ? (
         <>
           <div className="dialog-body">

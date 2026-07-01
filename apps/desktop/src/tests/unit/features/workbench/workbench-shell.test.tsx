@@ -99,14 +99,15 @@ describe("WorkbenchShell", () => {
     const menu = container.querySelector<HTMLElement>(
       ".workbench-context-menu",
     );
-    expect(menu?.textContent).toContain("Command Palette");
+    expect(menu?.textContent).toContain("Connection Manager");
+    expect(menu?.textContent).not.toContain("Command Palette");
 
     const commandButton = Array.from(
       menu?.querySelectorAll<HTMLButtonElement>("button") ?? [],
-    ).find((button) => button.textContent?.includes("Command Palette"));
+    ).find((button) => button.textContent?.includes("Connection Manager"));
     flushSync(() => commandButton?.click());
 
-    expect(props.onRunCommand).toHaveBeenCalledWith("palette.open");
+    expect(props.onRunCommand).toHaveBeenCalledWith("connection.manager");
   });
 
   it("can activate an icon-only control from the context menu", () => {

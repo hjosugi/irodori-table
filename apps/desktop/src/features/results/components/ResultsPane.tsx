@@ -295,8 +295,7 @@ export function ResultsPane({
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const filterToggleRef = useRef<HTMLButtonElement | null>(null);
   const filterPanelRef = useRef<HTMLDivElement | null>(null);
-  const copyExportAvailable =
-    !showingStructure && Boolean(activeResult || queryError || commitError);
+  const copyExportAvailable = !showingStructure && Boolean(activeResult);
 
   useEffect(() => {
     if (!exportMenuOpen) {

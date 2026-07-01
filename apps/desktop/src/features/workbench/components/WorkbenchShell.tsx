@@ -562,16 +562,6 @@ export function WorkbenchShell({
           <button
             type="button"
             role="menuitem"
-            onClick={() => runMenuCommand("palette.open")}
-          >
-            <span>Command Palette</span>
-            {shortcutFor("palette.open") ? (
-              <kbd>{shortcutFor("palette.open")}</kbd>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
             onClick={() => runMenuCommand("connection.manager")}
           >
             <span>Connection Manager</span>

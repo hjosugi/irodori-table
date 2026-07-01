@@ -821,6 +821,8 @@ export function Sidebar({
                       className="object-row"
                       key={object.name}
                       type="button"
+                      aria-label={object.name}
+                      title={object.name}
                       onClick={() => onOpenSnapshotObject(object)}
                     >
                       {object.kind === "procedure" ? (

@@ -88,6 +88,13 @@
   );
 }
 
+/* Each dock group holds a single fixed panel (Explorer, SQL Editor, Results,
+   Inspector), so the group's tab/header bar is redundant chrome. Hide it and let
+   the panel content fill the group. */
+.dockview-theme-irodori .dv-tabs-and-actions-container {
+  display: none;
+}
+
 .workbench-dock .dv-react-part,
 .workbench-dock-panel {
   min-width: 0;
