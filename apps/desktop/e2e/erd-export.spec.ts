@@ -163,6 +163,10 @@ async function installErdMock(page: Page) {
             return metadata;
           case "db_query_parameters":
             return parameterPromptSet;
+          case "plugin:dialog|save":
+            // Simulate "native save unavailable" so downloadBlob falls back
+            // to the browser download the harness can intercept.
+            throw new Error("native save dialog is not available in e2e");
           default:
             return null;
         }
