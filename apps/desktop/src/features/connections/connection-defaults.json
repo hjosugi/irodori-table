@@ -107,7 +107,6 @@
     { "value": "hive", "label": "Apache Hive" },
     { "value": "iceberg", "label": "Apache Iceberg" },
     { "value": "s3Tables", "label": "AWS S3 Tables" },
-    { "value": "objectStore", "label": "Object Store (S3/GCS/Azure Blob)" },
     { "value": "deltaLake", "label": "Delta Lake" },
     { "value": "hudi", "label": "Apache Hudi" }
   ],

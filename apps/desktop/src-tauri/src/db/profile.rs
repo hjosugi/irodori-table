@@ -120,8 +120,7 @@ pub(super) fn normalize_profile(
         | Wire::CloudSpanner
         | Wire::Graph
         | Wire::TimeSeries
-        | Wire::Lakehouse
-        | Wire::ObjectStore => {
+        | Wire::Lakehouse => {
             unreachable!("unimplemented wires are rejected above")
         }
     }
@@ -165,7 +164,6 @@ fn is_unimplemented_wire(wire: Wire) -> bool {
             | Wire::Graph
             | Wire::TimeSeries
             | Wire::Lakehouse
-            | Wire::ObjectStore
     )
 }
 

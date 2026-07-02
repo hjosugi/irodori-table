@@ -2040,7 +2040,6 @@ fn wire_label(wire: Wire) -> &'static str {
         Wire::Graph => "Graph",
         Wire::TimeSeries => "Time-series",
         Wire::Lakehouse => "Lakehouse",
-        Wire::ObjectStore => "Object store",
     }
 }
 

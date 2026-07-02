@@ -309,7 +309,7 @@
       }
     },
     {
-      "engines": ["dynamodb", "s3Tables", "objectStore"],
+      "engines": ["dynamodb", "s3Tables"],
       "settings": {
         "preferredMode": "url",
         "urlPlaceholder": "aws://profile/region/resource",
@@ -412,7 +412,6 @@
     "kvStore": "443",
     "iceberg": "443",
     "s3Tables": "443",
-    "objectStore": "443",
     "deltaLake": "443",
     "hudi": "443",
     "elasticsearch": "9200",

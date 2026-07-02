@@ -173,8 +173,9 @@
       "family": "key-value",
       "wire": "keyValue",
       "defaultPort": 0,
+      "extensionId": "irodori.kv-store",
       "status": "recognized_no_connector",
-      "notes": "provider-neutral key-value connector contract; not published as a public extension"
+      "notes": "provider-neutral key-value connector contract; published as a local JSON-backed installable extension"
     },
     {
       "id": "cassandra",
@@ -437,16 +438,6 @@
       "status": "recognized_no_connector",
       "extensionId": "irodori.s3-tables",
       "notes": "managed Iceberg connector is provided as an installable extension"
-    },
-    {
-      "id": "objectStore",
-      "label": "Object stores: S3 / GCS / Azure Blob",
-      "sourceProducts": ["Amazon S3", "Google Cloud Storage", "Azure Blob Storage"],
-      "family": "object-store",
-      "wire": "objectStore",
-      "defaultPort": 443,
-      "status": "recognized_no_connector",
-      "notes": "object browsing/source connector contract; not published as a public extension"
     },
     {
       "id": "deltaLake",

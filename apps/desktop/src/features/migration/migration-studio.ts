@@ -688,7 +688,7 @@ function buildWarnings(
       "Browser DuckDB/Iceberg flows must keep credentials out of shareable URLs and exported runbooks.",
     );
     warnings.push(
-      "Iceberg REST Catalog and object-store endpoints must be reachable from the browser/runtime, including CORS where applicable.",
+      "Iceberg REST Catalog endpoints must be reachable from the browser/runtime, including CORS where applicable.",
     );
   }
   return warnings;

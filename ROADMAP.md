@@ -28,7 +28,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - A local SQLite knowledge base stores official DB specs, release notes, product research, AI integration notes, and implementation facts for future features and bug fixes.
 - World-class SQL editing is a north star: the editor surface aims to beat current clients on writing speed, navigation, refactoring, and feedback, not merely match them.
 - Export and import are first-class and format-rich: CSV/TSV with header on/off and delimiter control, SQL INSERT/UPSERT scripts, JSON/NDJSON, and Avro/Parquet, with easy dump/restore per dialect.
-- Lakehouse and table formats are in scope: Apache Iceberg is the priority target, reachable through standard catalogs (Hive Metastore, AWS Glue, REST) and AWS S3 Tables, with object stores treated as first-class.
+- Lakehouse and table formats are in scope: Apache Iceberg is the priority target, reachable through standard catalogs (Hive Metastore, AWS Glue, REST) and AWS S3 Tables.
 - A headless local data API is supported: Irodori can run a local server to read and safely edit table data over HTTP for scripting, tests, and external tools.
 - Bilingual from early: ja/en localization (i18n) is built in, not bolted on.
 - Automated testing is first-class: unit, ephemeral-database integration, generated-binding golden checks, and headless UI smoke tests run in CI.
@@ -176,7 +176,7 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - [ ] Treat YugabyteDB first through PostgreSQL-compatible YSQL, then add distributed-database affordances such as regions, tablets, follower reads, diagnostics, and topology awareness.
 - [ ] Treat InfluxDB as a time-series source with SQL/native-query helpers, time range ergonomics, retention/bucket metadata, and downsampling.
 - [ ] Treat Neo4j as the first graph source with Cypher completion, label/relationship/property introspection, tabular results, and query-result graph rendering.
-- [ ] Lakehouse and table formats, with Apache Iceberg prioritized: query Iceberg tables through Hive Metastore, AWS Glue, REST, and JDBC catalogs and via AWS S3 Tables; treat object stores (S3/GCS/Azure) as first-class; add Delta Lake and Apache Hudi later. Use embeddable engines (DuckDB, Apache DataFusion) or Trino/Presto as execution options.
+- [ ] Lakehouse and table formats, with Apache Iceberg prioritized: query Iceberg tables through Hive Metastore, AWS Glue, REST, and JDBC catalogs and via AWS S3 Tables; add Delta Lake and Apache Hudi later. Use embeddable engines (DuckDB, Apache DataFusion) or Trino/Presto as execution options.
 - [ ] Snowflake with full authentication coverage: password, key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens, plus warehouse/role/database context switching.
 - [x] Format-rich export/import: CSV/TSV (header on/off, delimiter/quote control), SQL INSERT/UPSERT scripts (with or without schema/DDL), JSON/NDJSON, Avro, and Parquet; clipboard-friendly subsets; dialect-aware dump/restore.
 - [ ] Editable results, table designer, indexes/constraints UI, and backup/restore hooks where each dialect permits.

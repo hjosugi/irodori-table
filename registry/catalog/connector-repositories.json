@@ -12,6 +12,7 @@
     { "name": "irodori-extension-hudi", "extensionId": "irodori.hudi", "engines": ["hudi"] },
     { "name": "irodori-extension-cloud-spanner", "extensionId": "irodori.cloud-spanner", "engines": ["cloudSpanner"] },
     { "name": "irodori-extension-redis", "extensionId": "irodori.redis", "engines": ["redis"] },
+    { "name": "irodori-extension-kv-store", "extensionId": "irodori.kv-store", "engines": ["kvStore"] },
     { "name": "irodori-extension-dynamodb", "extensionId": "irodori.dynamodb", "engines": ["dynamodb"] },
     { "name": "irodori-extension-snowflake", "extensionId": "irodori.snowflake", "engines": ["snowflake"] },
     { "name": "irodori-extension-bigquery", "extensionId": "irodori.bigquery", "engines": ["bigquery"] },

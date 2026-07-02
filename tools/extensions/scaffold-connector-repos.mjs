@@ -99,7 +99,7 @@ const sharedMigrationSources = [
   },
 ];
 
-const excludedExtensionIds = new Set(["irodori.kv-store", "irodori.object-store"]);
+const excludedExtensionIds = new Set();
 const entries = index.extensions.filter((entry) => !excludedExtensionIds.has(entry.id));
 
 for (const entry of entries) {
@@ -366,10 +366,7 @@ function connectorFeatures(entry, engineMeta) {
   if (isSqlLikeConnector(entry, engineMeta)) {
     features.push("sql");
   }
-  if (
-    ["verified", "wired", "extension"].includes(engineMeta.status) &&
-    !categories.has("object-store")
-  ) {
+  if (["verified", "wired", "extension"].includes(engineMeta.status)) {
     features.push("streaming");
   }
   if (
@@ -1551,7 +1548,7 @@ function inspectorHint(id, label, description) {
 function isSqlLikeConnector(entry, engineMeta) {
   const categories = new Set(entry.categories ?? []);
   if (
-    ["document", "search", "vector", "key-value", "graph", "object-store"].some((category) =>
+    ["document", "search", "vector", "key-value", "graph"].some((category) =>
       categories.has(category),
     )
   ) {

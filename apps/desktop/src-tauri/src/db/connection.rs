@@ -703,8 +703,7 @@ pub(crate) async fn connect_engine(
         | Wire::CloudSpanner
         | Wire::Graph
         | Wire::TimeSeries
-        | Wire::Lakehouse
-        | Wire::ObjectStore => {
+        | Wire::Lakehouse => {
             return Err(match profile.engine.connector_extension_id() {
                 Some(extension_id) => format!(
                     "{:?} requires connector extension `{extension_id}`; the core app has no built-in driver for this engine",

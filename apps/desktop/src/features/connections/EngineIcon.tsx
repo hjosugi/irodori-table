@@ -33,7 +33,6 @@ import {
   Boxes,
   Database,
   FileJson,
-  HardDrive,
   KeySquare,
   Layers,
   Warehouse,
@@ -107,12 +106,11 @@ const FALLBACK: Record<string, LucideIcon> = {
   // key-value / wide-column
   bigtable: KeySquare,
   kvStore: KeySquare,
-  // lakehouse / object store
+  // lakehouse
   iceberg: Layers,
   s3Tables: Layers,
   deltaLake: Layers,
   hudi: Layers,
-  objectStore: HardDrive,
 };
 
 type EngineIconProps = {

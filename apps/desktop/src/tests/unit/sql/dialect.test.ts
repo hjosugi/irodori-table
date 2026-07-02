@@ -69,7 +69,6 @@ describe("cmDialect", () => {
     hive: { dialect: StandardSQL, formatter: "sql" },
     iceberg: { dialect: PostgreSQL, formatter: "duckdb" },
     s3Tables: { dialect: StandardSQL, formatter: "sql" },
-    objectStore: { dialect: StandardSQL, formatter: "sql" },
     deltaLake: { dialect: StandardSQL, formatter: "sql" },
     hudi: { dialect: StandardSQL, formatter: "sql" },
     cloudSpanner: { dialect: StandardSQL, formatter: "sql" },

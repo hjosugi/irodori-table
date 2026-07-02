@@ -146,9 +146,6 @@ pub enum DbEngine {
     #[serde(rename = "s3Tables")]
     #[ts(rename = "s3Tables")]
     S3Tables,
-    #[serde(rename = "objectStore")]
-    #[ts(rename = "objectStore")]
-    ObjectStore,
     #[serde(rename = "deltaLake")]
     #[ts(rename = "deltaLake")]
     DeltaLake,
@@ -185,7 +182,6 @@ pub(crate) enum Wire {
     Graph,
     TimeSeries,
     Lakehouse,
-    ObjectStore,
 }
 
 impl DbEngine {
@@ -233,7 +229,6 @@ impl DbEngine {
             | DbEngine::S3Tables
             | DbEngine::DeltaLake
             | DbEngine::Hudi => Wire::Lakehouse,
-            DbEngine::ObjectStore => Wire::ObjectStore,
         }
     }
 
@@ -273,7 +268,6 @@ impl DbEngine {
             | DbEngine::Iceberg
             | DbEngine::MotherDuck
             | DbEngine::S3Tables
-            | DbEngine::ObjectStore
             | DbEngine::DeltaLake
             | DbEngine::Hudi => 443,
             DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone | DbEngine::KvStore => 0,
@@ -301,7 +295,6 @@ impl DbEngine {
             DbEngine::Athena => Some("irodori.athena"),
             DbEngine::Iceberg => Some("irodori.iceberg"),
             DbEngine::S3Tables => Some("irodori.s3-tables"),
-            DbEngine::ObjectStore => Some("irodori.object-store"),
             DbEngine::DeltaLake => Some("irodori.delta-lake"),
             DbEngine::Hudi => Some("irodori.hudi"),
             _ => None,
@@ -335,8 +328,7 @@ impl DbEngine {
             | Wire::KeyValue
             | Wire::Graph
             | Wire::TimeSeries
-            | Wire::Lakehouse
-            | Wire::ObjectStore => Box::new(PostgresDialect),
+            | Wire::Lakehouse => Box::new(PostgresDialect),
             Wire::Snowflake => Box::new(SnowflakeDialect),
         }
     }
@@ -369,8 +361,7 @@ impl DbEngine {
             | Wire::KeyValue
             | Wire::Graph
             | Wire::TimeSeries
-            | Wire::Lakehouse
-            | Wire::ObjectStore => Box::new(StandardInformationSchema),
+            | Wire::Lakehouse => Box::new(StandardInformationSchema),
         }
     }
 }
@@ -439,8 +430,7 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         | Wire::KeyValue
         | Wire::Graph
         | Wire::TimeSeries
-        | Wire::Lakehouse
-        | Wire::ObjectStore => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
+        | Wire::Lakehouse => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
     }
 }
 
@@ -511,7 +501,6 @@ mod tests {
         (DbEngine::Athena, Wire::Lakehouse, 443),
         (DbEngine::Iceberg, Wire::Lakehouse, 443),
         (DbEngine::S3Tables, Wire::Lakehouse, 443),
-        (DbEngine::ObjectStore, Wire::ObjectStore, 443),
         (DbEngine::DeltaLake, Wire::Lakehouse, 443),
         (DbEngine::Hudi, Wire::Lakehouse, 443),
     ];

@@ -120,7 +120,6 @@ const engineAliasRules: Array<[DbEngine, RegExp]> = [
   ["hive", /hive|metastore/i],
   ["iceberg", /iceberg|glue\s*catalog|rest\s*catalog|nessie/i],
   ["s3Tables", /s3\s*tables/i],
-  ["objectStore", /s3|gcs|azure\s*blob|object\s*store/i],
   ["deltaLake", /delta\s*lake/i],
   ["hudi", /hudi/i],
   ["h2", /\bh2\b/i],

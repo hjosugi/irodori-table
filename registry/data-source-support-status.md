@@ -98,7 +98,6 @@ the matching installable connector from `registry/catalog/index.json`.
 | Amazon Athena | `athena` | Lakehouse / query-engine | `Lakehouse` | Installable Athena/Glue/workgroup connector extension. |
 | Apache Iceberg | `iceberg` | Lakehouse | `Lakehouse` | Installable catalog-backed Iceberg connector extension. |
 | AWS S3 Tables | `s3Tables` | Lakehouse | `Lakehouse` | Installable managed Iceberg connector extension. |
-| Object stores: S3 / GCS / Azure Blob | `objectStore` | Object-store | `ObjectStore` | Installable object-store browser/source connector extension. |
 | Delta Lake | `deltaLake` | Lakehouse | `Lakehouse` | Installable Delta Lake connector extension. |
 | Apache Hudi | `hudi` | Lakehouse | `Lakehouse` | Installable Hudi connector extension. |
 

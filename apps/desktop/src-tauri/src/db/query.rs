@@ -595,8 +595,7 @@ fn bind_placeholder(wire: Wire, index: usize) -> String {
         | Wire::CloudSpanner
         | Wire::Graph
         | Wire::TimeSeries
-        | Wire::Lakehouse
-        | Wire::ObjectStore => "?".to_string(),
+        | Wire::Lakehouse => "?".to_string(),
     }
 }
 
