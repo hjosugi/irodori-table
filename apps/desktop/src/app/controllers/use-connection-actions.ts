@@ -190,15 +190,18 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     }
   }
 
-  function exportConnectionFile(format: ConnectionTransferFormat) {
+  async function exportConnectionFile(format: ConnectionTransferFormat) {
     try {
       const exported = exportConnectionProfiles(profiles, format);
-      downloadBlob(
+      const outcome = await downloadBlob(
         new Blob([exported.content], {
           type: `${exported.mime};charset=utf-8`,
         }),
         exported.fileName,
       );
+      if (outcome.kind === "cancelled") {
+        return;
+      }
       const skipped =
         exported.skippedCount > 0
           ? t("notice.connection.exportedSkippedSuffix", {

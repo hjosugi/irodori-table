@@ -11,6 +11,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
+import { usePreferencesStore } from "@/features/preferences";
 import {
   Compartment,
   EditorSelection,
@@ -38,6 +39,7 @@ import {
   indentMore,
   indentWithTab,
   selectAll,
+  selectLine,
   toggleComment,
 } from "@codemirror/commands";
 import { vim } from "@replit/codemirror-vim";
@@ -204,7 +206,13 @@ function createSqlEditorState({
       search({ top: true }),
       highlightSelectionMatches(),
       Prec.highest(keymap.of(searchKeymap)),
-      keymap.of([{ key: "Tab", run: acceptCompletionWithTab }, indentWithTab]),
+      gutterLineSelection(),
+      keymap.of([
+        { key: "Tab", run: acceptCompletionWithTab },
+        indentWithTab,
+        // VS Code-style line selection; repeated presses extend by a line.
+        { key: "Mod-l", run: selectLine, preventDefault: true },
+      ]),
       compartments.sql.of(
         buildEditorSqlExtensions(
           engine,
@@ -230,6 +238,32 @@ function createSqlEditorState({
         }
       }),
     ],
+  });
+}
+
+// Click a line number to select that whole line (Shift+click extends the
+// selection to the clicked line), matching other editors.
+function gutterLineSelection(): Extension {
+  return EditorView.domEventHandlers({
+    mousedown(event, view) {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest(".cm-lineNumbers")) {
+        return false;
+      }
+      const block = view.lineBlockAtHeight(event.clientY - view.documentTop);
+      const line = view.state.doc.lineAt(block.from);
+      const to = Math.min(view.state.doc.length, line.to + 1);
+      const anchor = event.shiftKey
+        ? view.state.selection.main.anchor
+        : line.from;
+      view.dispatch({
+        selection: EditorSelection.range(anchor, to),
+        userEvent: "select",
+      });
+      view.focus();
+      event.preventDefault();
+      return true;
+    },
   });
 }
 
@@ -652,6 +686,26 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
       };
       // Mount-once: deliberately excludes value/engine/metadata (handled by effects below).
       // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Re-measure whenever host font metrics change (UI zoom slider, async
+    // font loading). CodeMirror caches character metrics; without this the
+    // caret and click targets are drawn from stale widths/heights and land
+    // on the wrong character, especially in the WebKitGTK webview.
+    const uiZoom = usePreferencesStore((state) => state.uiZoom);
+    useEffect(() => {
+      viewRef.current?.requestMeasure();
+    }, [uiZoom, theme]);
+    useEffect(() => {
+      let cancelled = false;
+      void document.fonts?.ready.then(() => {
+        if (!cancelled) {
+          viewRef.current?.requestMeasure();
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
     }, []);
 
     // Toggle Vim emulation without recreating the editor or losing undo history.

@@ -251,7 +251,10 @@ function uiZoomStyleVariables(zoom: number): Record<string, string> {
     "--font-ui-sm": scaledUiFont(12, normalized),
     "--font-ui-md": scaledUiFont(13, normalized),
     "--font-ui-lg": scaledUiFont(14, normalized),
-    "--font-code": scaledUiFont(13, normalized),
+    // The code font stays integer-px: fractional sizes make glyph advances
+    // round differently between CodeMirror's measurements and the renderer,
+    // drifting the caret off the character it edits.
+    "--font-code": `${scaledUiPixels(13, normalized)}px`,
     "--editor-line-height": `${scaledUiPixels(20, normalized)}px`,
     "--control-xxs": `${scaledUiPixels(22, normalized)}px`,
     "--control-xs": `${scaledUiPixels(24, normalized)}px`,
@@ -2207,29 +2210,12 @@ export function AppWorkbench() {
   }
 
   async function saveExportBlob(blob: Blob, fileName: string) {
-    // Desktop: offer a native "Save As" dialog so the user chooses the location
-    // (the file name is pre-filled). Falls back to a browser download in the web
-    // preview, or if the native fs path is unavailable/denied — so export always
-    // works even before the desktop fs capability is wired up.
-    if (!tauriRuntimeError()) {
-      try {
-        const [{ save }, { writeFile }] = await Promise.all([
-          import("@tauri-apps/plugin-dialog"),
-          import("@tauri-apps/plugin-fs"),
-        ]);
-        const path = await save({ defaultPath: fileName });
-        if (path === null) {
-          return; // user cancelled the dialog
-        }
-        await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
-        showActionNotice("success", t("notice.grid.exportSaved"), path);
-        return;
-      } catch {
-        // Native save not available yet — fall through to the browser download.
-      }
+    const outcome = await downloadBlob(blob, fileName);
+    if (outcome.kind === "native") {
+      showActionNotice("success", t("notice.grid.exportSaved"), outcome.path);
+    } else if (outcome.kind === "browser") {
+      showActionNotice("success", t("notice.grid.exportStarted"), fileName);
     }
-    downloadBlob(blob, fileName);
-    showActionNotice("success", t("notice.grid.exportStarted"), fileName);
   }
 
   async function exportActiveResult(format: ResultExportFormat) {
@@ -2341,19 +2327,23 @@ export function AppWorkbench() {
     };
   }
 
-  function downloadDiagramSvg() {
+  async function downloadDiagramSvg() {
     try {
       const { markup } = currentDiagramSvgMarkup();
-      downloadBlob(
+      const outcome = await downloadBlob(
         new Blob([markup], { type: "image/svg+xml;charset=utf-8" }),
         erdFileName(activeConnectionId, "svg"),
       );
       setDiagramError(null);
-      showActionNotice(
-        "success",
-        t("notice.workbench.erdSvgExported"),
-        erdFileName(activeConnectionId, "svg"),
-      );
+      if (outcome.kind !== "cancelled") {
+        showActionNotice(
+          "success",
+          t("notice.workbench.erdSvgExported"),
+          outcome.kind === "native"
+            ? outcome.path
+            : erdFileName(activeConnectionId, "svg"),
+        );
+      }
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
@@ -2365,13 +2355,20 @@ export function AppWorkbench() {
     try {
       const { markup, width, height } = currentDiagramSvgMarkup();
       const blob = await svgMarkupToPngBlob(markup, width, height);
-      downloadBlob(blob, erdFileName(activeConnectionId, "png"));
-      setDiagramError(null);
-      showActionNotice(
-        "success",
-        t("notice.workbench.erdPngExported"),
+      const outcome = await downloadBlob(
+        blob,
         erdFileName(activeConnectionId, "png"),
       );
+      setDiagramError(null);
+      if (outcome.kind !== "cancelled") {
+        showActionNotice(
+          "success",
+          t("notice.workbench.erdPngExported"),
+          outcome.kind === "native"
+            ? outcome.path
+            : erdFileName(activeConnectionId, "png"),
+        );
+      }
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
@@ -2418,19 +2415,21 @@ export function AppWorkbench() {
     });
   }
 
-  function downloadTableSpecMarkdown() {
+  async function downloadTableSpecMarkdown() {
     try {
       const exported = exportTableSpecMarkdown(currentTableSpecDocument());
-      downloadBlob(
+      const outcome = await downloadBlob(
         new Blob([exported.content], { type: exported.mime }),
         tableSpecFileName(activeConnectionId, exported.extension),
       );
       setDiagramError(null);
-      showActionNotice(
-        "success",
-        t("notice.workbench.tableSpecExported"),
-        "Markdown",
-      );
+      if (outcome.kind !== "cancelled") {
+        showActionNotice(
+          "success",
+          t("notice.workbench.tableSpecExported"),
+          "Markdown",
+        );
+      }
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
@@ -2442,19 +2441,21 @@ export function AppWorkbench() {
     }
   }
 
-  function downloadTableSpecJson() {
+  async function downloadTableSpecJson() {
     try {
       const exported = exportTableSpecJson(currentTableSpecDocument());
-      downloadBlob(
+      const outcome = await downloadBlob(
         new Blob([exported.content], { type: exported.mime }),
         tableSpecFileName(activeConnectionId, exported.extension),
       );
       setDiagramError(null);
-      showActionNotice(
-        "success",
-        t("notice.workbench.tableSpecExported"),
-        "JSON",
-      );
+      if (outcome.kind !== "cancelled") {
+        showActionNotice(
+          "success",
+          t("notice.workbench.tableSpecExported"),
+          "JSON",
+        );
+      }
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
@@ -2765,17 +2766,19 @@ export function AppWorkbench() {
     }
   }
 
-  function saveCurrentQueryAsFile() {
+  async function saveCurrentQueryAsFile() {
     const fileName = sqlDownloadFileName(activeTabLabel ?? "query.sql");
-    downloadBlob(
+    const outcome = await downloadBlob(
       new Blob([query], { type: "application/sql;charset=utf-8" }),
       fileName,
     );
-    showActionNotice(
-      "success",
-      t("notice.workbench.sqlExportStarted"),
-      fileName,
-    );
+    if (outcome.kind !== "cancelled") {
+      showActionNotice(
+        "success",
+        t("notice.workbench.sqlExportStarted"),
+        outcome.kind === "native" ? outcome.path : fileName,
+      );
+    }
   }
 
   async function exitApplication() {

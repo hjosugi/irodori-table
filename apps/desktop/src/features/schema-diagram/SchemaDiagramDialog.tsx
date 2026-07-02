@@ -161,7 +161,7 @@ export function SchemaDiagramDialog({
   }
 
   function exportJson() {
-    downloadBlob(
+    void downloadBlob(
       new Blob([serializeDiagramDocument(document)], {
         type: "application/json;charset=utf-8",
       }),

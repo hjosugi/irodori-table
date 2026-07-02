@@ -1,7 +1,19 @@
 const ERD_EXPORT_MAX_CANVAS_SIDE = 16_384;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export function downloadBlob(blob: Blob, fileName: string) {
+export type SaveBlobOutcome =
+  | { kind: "native"; path: string }
+  | { kind: "cancelled" }
+  | { kind: "browser"; fileName: string };
+
+function hasTauriRuntime() {
+  const internals = (
+    window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }
+  ).__TAURI_INTERNALS__;
+  return typeof internals?.invoke === "function";
+}
+
+function browserDownloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -10,6 +22,41 @@ export function downloadBlob(blob: Blob, fileName: string) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Save a blob to disk. On the desktop this goes through the native "Save As"
+ * dialog — the anchor-download path makes the WebKitGTK webview show a
+ * browser download banner with the app origin (e.g. 127.0.0.1 in dev),
+ * which is unacceptable for a desktop app. The anchor path remains only for
+ * the plain-browser preview or when the fs capability is unavailable.
+ */
+export async function downloadBlob(
+  blob: Blob,
+  fileName: string,
+): Promise<SaveBlobOutcome> {
+  if (hasTauriRuntime()) {
+    try {
+      const [{ save }, { writeFile }] = await Promise.all([
+        import("@tauri-apps/plugin-dialog"),
+        import("@tauri-apps/plugin-fs"),
+      ]);
+      const path = await save({ defaultPath: fileName });
+      if (path === null) {
+        return { kind: "cancelled" };
+      }
+      // A real runtime returns string | null; anything else means the dialog
+      // plugin is absent (e.g. a mocked runtime) — use the browser fallback.
+      if (typeof path === "string" && path) {
+        await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
+        return { kind: "native", path };
+      }
+    } catch {
+      // Native save unavailable (capability not granted); fall through.
+    }
+  }
+  browserDownloadBlob(blob, fileName);
+  return { kind: "browser", fileName };
 }
 
 export function erdFileName(connectionId: string, extension: string) {
