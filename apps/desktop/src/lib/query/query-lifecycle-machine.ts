@@ -46,7 +46,7 @@ export const queryLifecycleMachine = setup({
     })),
     finish: assign(({ event }) => ({
       rowCount: event.type === "DONE" ? event.rowCount : 0,
-      elapsedMs: event.type === "DONE" ? event.elapsedMs ?? null : null,
+      elapsedMs: event.type === "DONE" ? (event.elapsedMs ?? null) : null,
     })),
     fail: assign(({ event }) => ({
       error: event.type === "ERROR" ? event.message : "query failed",

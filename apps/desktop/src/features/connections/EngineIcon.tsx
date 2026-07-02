@@ -105,7 +105,6 @@ const FALLBACK: Record<string, LucideIcon> = {
   iotdb: Activity,
   // key-value / wide-column
   bigtable: KeySquare,
-  kvStore: KeySquare,
   // lakehouse
   iceberg: Layers,
   s3Tables: Layers,

@@ -1,5 +1,19 @@
 import type { IrodoriError } from "@/generated/irodori-api";
 
+const errorTitles: Record<IrodoriError["kind"], string> = {
+  validation: "Check the input",
+  unsupported: "Not supported in this build",
+  notFound: "Not found",
+  connection: "Connection failed",
+  query: "Query failed",
+  metadata: "Could not load metadata",
+  edit: "Could not apply the edit",
+  timeout: "Timed out",
+  cancelled: "Cancelled",
+  transport: "Connection transport failed",
+  internal: "Internal error",
+};
+
 export function isIrodoriError(value: unknown): value is IrodoriError {
   if (!value || typeof value !== "object") {
     return false;
@@ -25,4 +39,14 @@ export function errorMessage(error: unknown): string {
     return error;
   }
   return String(error);
+}
+
+export function errorDisplay(error: unknown): {
+  title: string;
+  detail?: string;
+} {
+  if (isIrodoriError(error)) {
+    return { title: errorTitles[error.kind], detail: error.message };
+  }
+  return { title: errorMessage(error) };
 }

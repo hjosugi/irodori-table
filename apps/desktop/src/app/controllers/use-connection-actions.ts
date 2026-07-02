@@ -22,7 +22,7 @@ import {
 import { toCount } from "@/features/results";
 import { downloadBlob } from "@/features/erd";
 import { queryService } from "@/features/workbench";
-import { errorMessage, isRetryableError } from "@/core";
+import { errorDisplay, errorMessage, isRetryableError } from "@/core";
 import type { Translator } from "@/i18n";
 import type { DatabaseMetadata } from "@/generated/irodori-api";
 import { tauriRuntimeError } from "../app-workbench-utils";
@@ -280,9 +280,13 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
         `${draft.name.trim()} (${engineLabel(draft.engine)})`,
       );
     } catch (error) {
-      const message = errorMessage(error);
-      setConnectionError(message);
-      showActionNotice("error", t("notice.connection.testFailed"), message);
+      const display = errorDisplay(error);
+      setConnectionError(display.title);
+      showActionNotice(
+        "error",
+        t("notice.connection.testFailed"),
+        display.detail ?? display.title,
+      );
     } finally {
       setTestingConnection(false);
     }
@@ -331,12 +335,12 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
         }),
       );
     } catch (error) {
-      const message = errorMessage(error);
-      setConnectionError(message);
+      const display = errorDisplay(error);
+      setConnectionError(display.title);
       showActionNotice(
         "error",
         t("notice.connection.connectFailed"),
-        message,
+        display.detail ?? display.title,
         isRetryableError(error)
           ? {
               action: {
@@ -460,10 +464,11 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
         );
       }
     } catch (error) {
-      const message = errorMessage(error);
+      const display = errorDisplay(error);
+      const message = display.detail ?? display.title;
       setMetadataErrors((current) => ({
         ...current,
-        [connectionId]: message,
+        [connectionId]: display.title,
       }));
       if (notify) {
         showActionNotice(

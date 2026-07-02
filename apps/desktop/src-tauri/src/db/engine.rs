@@ -111,9 +111,6 @@ pub enum DbEngine {
     #[serde(rename = "cloudSpanner")]
     #[ts(rename = "cloudSpanner")]
     CloudSpanner,
-    #[serde(rename = "kvStore")]
-    #[ts(rename = "kvStore")]
-    KvStore,
     #[serde(rename = "trinoPresto")]
     #[ts(rename = "trinoPresto")]
     TrinoPresto,
@@ -214,7 +211,6 @@ impl DbEngine {
             DbEngine::ScyllaDb => Wire::Cassandra,
             DbEngine::Bigtable => Wire::Bigtable,
             DbEngine::CloudSpanner => Wire::CloudSpanner,
-            DbEngine::KvStore => Wire::KeyValue,
             DbEngine::QuestDb => Wire::Postgres,
             DbEngine::TrinoPresto | DbEngine::Firebird | DbEngine::Databricks | DbEngine::Hive => {
                 Wire::Jdbc
@@ -270,7 +266,7 @@ impl DbEngine {
             | DbEngine::S3Tables
             | DbEngine::DeltaLake
             | DbEngine::Hudi => 443,
-            DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone | DbEngine::KvStore => 0,
+            DbEngine::Sqlite | DbEngine::DuckDb | DbEngine::Pinecone => 0,
         }
     }
 
@@ -288,7 +284,6 @@ impl DbEngine {
             DbEngine::Couchbase => Some("irodori.couchbase"),
             DbEngine::DynamoDb => Some("irodori.dynamodb"),
             DbEngine::CloudSpanner => Some("irodori.cloud-spanner"),
-            DbEngine::KvStore => Some("irodori.kv-store"),
             DbEngine::ArangoDb => Some("irodori.arangodb"),
             DbEngine::IoTDb => Some("irodori.iotdb"),
             DbEngine::Hive => Some("irodori.hive"),
@@ -492,7 +487,6 @@ mod tests {
         (DbEngine::Couchbase, Wire::Document, 8091),
         (DbEngine::DynamoDb, Wire::KeyValue, 443),
         (DbEngine::CloudSpanner, Wire::CloudSpanner, 443),
-        (DbEngine::KvStore, Wire::KeyValue, 0),
         (DbEngine::ScyllaDb, Wire::Cassandra, 9042),
         (DbEngine::ArangoDb, Wire::Graph, 8529),
         (DbEngine::QuestDb, Wire::Postgres, 8812),

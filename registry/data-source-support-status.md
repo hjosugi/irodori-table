@@ -84,7 +84,6 @@ the matching installable connector from `registry/catalog/index.json`.
 | Milvus | `milvus` | Vector | — | Installable vector connector extension. |
 | Pinecone | `pinecone` | Vector (HTTP) | — | Installable vector connector extension. |
 | Cloud Spanner | `cloudSpanner` | Distributed SQL / Google API | `CloudSpanner` | Installable connector; Spanner SQL/catalog handling is separate from Postgres wire. |
-| Generic KV Store | `kvStore` | Key-value | `KeyValue` | Installable provider-neutral connector extension for KV systems. |
 | Trino / Presto | `trinoPresto` | Federated SQL | `Jdbc` | Installable JDBC-style connector extension. |
 | Firebird | `firebird` | Relational | `Jdbc` | Installable JDBC-style connector extension. |
 | Databricks / Spark SQL | `databricks` | Warehouse | `Jdbc` | Installable SQL Warehouse connector extension. |

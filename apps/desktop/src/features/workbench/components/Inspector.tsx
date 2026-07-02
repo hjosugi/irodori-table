@@ -93,7 +93,15 @@ export function InspectorContent({
           </div>
           <div className="completion-list">
             {activeMetadataLoading ? (
-              <div className="empty-browser loading">Loading metadata</div>
+              <div
+                className="metadata-skeleton compact"
+                role="status"
+                aria-label="Loading metadata"
+              >
+                {Array.from({ length: 5 }, (_, index) => (
+                  <span key={index} />
+                ))}
+              </div>
             ) : activeMetadataError ? (
               <div className="empty-browser">
                 <AlertTriangle size={14} />

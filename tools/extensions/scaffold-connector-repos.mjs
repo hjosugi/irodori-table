@@ -268,7 +268,7 @@ function writeConnectorRepo(entry) {
   copyMigrationSources(repoDir, migrationSources);
   writeText(resolve(repoDir, "LICENSE-MIT"), licenseMit());
   writeText(resolve(repoDir, "LICENSE-0BSD"), licenseZeroBsd());
-  writeText(resolve(repoDir, "Makefile"), makefile(realDriverLinked));
+  writeText(resolve(repoDir, "Makefile"), makefile(repoName, crateName, realDriverLinked));
   writeText(resolve(repoDir, ".gitignore"), gitignore());
   writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(realDriverLinked));
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
@@ -3216,7 +3216,7 @@ Engine status from \`knowledge/engines.json\`: \`${engineMeta.status}\`.
 `;
 }
 
-function makefile(realDriverLinked) {
+function makefile(repoName, crateName, realDriverLinked) {
   const lintCommand = realDriverLinked
     ? "DUCKDB_DOWNLOAD_LIB=1 $(CARGO) clippy --all-targets --no-default-features -- -D warnings"
     : "$(CARGO) clippy --all-targets -- -D warnings";
@@ -3239,6 +3239,8 @@ check-duckdb-bundled: fmt
   return `CARGO ?= cargo
 CARGO_TARGET_DIR ?= ../target
 CARGO_BUILD_JOBS ?= 2
+EXTENSION_PACKAGE := ${repoName}.tar.gz
+LIB_NAME := ${crateName}
 export CARGO_TARGET_DIR
 export CARGO_BUILD_JOBS
 
@@ -3261,9 +3263,11 @@ test:
 
 package: build
 \tmkdir -p dist/native
-\tcp $(CARGO_TARGET_DIR)/release/libirodori_extension_* dist/native/ 2>/dev/null || true
-\tcp $(CARGO_TARGET_DIR)/release/irodori_extension_*.dll dist/native/ 2>/dev/null || true
-\tcp $(CARGO_TARGET_DIR)/release/libirodori_extension_*.dylib dist/native/ 2>/dev/null || true
+\trm -f dist/native/libirodori_extension_*.so dist/native/irodori_extension_*.dll dist/native/libirodori_extension_*.dylib
+\tcp $(CARGO_TARGET_DIR)/release/lib$(LIB_NAME).so dist/native/ 2>/dev/null || true
+\tcp $(CARGO_TARGET_DIR)/release/$(LIB_NAME).dll dist/native/ 2>/dev/null || true
+\tcp $(CARGO_TARGET_DIR)/release/lib$(LIB_NAME).dylib dist/native/ 2>/dev/null || true
+\ttar -czf dist/$(EXTENSION_PACKAGE) README.md LICENSE-MIT LICENSE-0BSD connector.config.json connector.source.json irodori.extension.json dist/native
 
 clean:
 \t$(CARGO) clean
@@ -3273,6 +3277,7 @@ clean:
 function gitignore() {
   return `/target
 /.irodori-dev
+dist/*.tar.gz
 dist/native/*
 !dist/native/.gitkeep
 `;

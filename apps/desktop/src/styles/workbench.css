@@ -1283,6 +1283,37 @@
   animation: irodori-spin 0.8s linear infinite;
 }
 
+.metadata-skeleton {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+
+.metadata-skeleton.compact {
+  padding: 4px 0;
+}
+
+.metadata-skeleton span {
+  height: 22px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted),
+    var(--hover),
+    var(--surface-muted)
+  );
+  background-size: 200% 100%;
+  animation: irodori-skeleton 1.2s ease-in-out infinite;
+}
+
+.metadata-skeleton span:nth-child(2n) {
+  width: 76%;
+}
+
+.metadata-skeleton span:nth-child(3n) {
+  width: 88%;
+}
+
 .lakehouse-panel {
   display: grid;
   align-content: start;
@@ -1533,6 +1564,12 @@
 @keyframes irodori-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes irodori-skeleton {
+  to {
+    background-position: -200% 0;
   }
 }
 

@@ -55,7 +55,7 @@ describe("queryLifecycleMachine", () => {
   it("captures the error message on failure", () => {
     const actor = startedActor();
     actor.send({ type: "SUBMIT", sql: "select boom" });
-    actor.send({ type: "ERROR", message: "column \"boom\" does not exist" });
+    actor.send({ type: "ERROR", message: 'column "boom" does not exist' });
     const snapshot = actor.getSnapshot();
     expect(snapshot.value).toBe("error");
     expect(snapshot.context.error).toBe('column "boom" does not exist');

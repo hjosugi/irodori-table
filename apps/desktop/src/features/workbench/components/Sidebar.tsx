@@ -733,8 +733,14 @@ export function Sidebar({
                 onKeyDown={handleTreeKeyDown}
               >
                 {activeMetadataLoading ? (
-                  <div className="empty-browser loading" role="status">
-                    Loading objects...
+                  <div
+                    className="metadata-skeleton"
+                    role="status"
+                    aria-label="Loading objects"
+                  >
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <span key={index} />
+                    ))}
                   </div>
                 ) : activeMetadataError ? (
                   <div className="inline-error browser-error">

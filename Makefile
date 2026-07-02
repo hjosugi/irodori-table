@@ -10,6 +10,7 @@ ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo d
         dev test build typegen e2e doctor \
         desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-format desktop-format-check desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
         check security security-strict extension-manifests db db-verify db-all db-up db-down \
+        extension-scenarios \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
 
@@ -60,6 +61,7 @@ help:
 	@printf "  make security          license, lockfile, npm audit/signature, RustSec checks\n"
 	@printf "  make security-strict   same as security, but requires cargo-audit locally\n"
 	@printf "  make extension-manifests validate kit extension SDK templates when present\n"
+	@printf "  make extension-scenarios run connector extension scenario tests\n"
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
 
@@ -138,6 +140,9 @@ extension-manifests:
 	else \
 		printf "irodori-kit/packages/extension-sdk not found; skipping SDK manifest validation\n"; \
 	fi
+
+extension-scenarios:
+	node tools/extensions/scenario-test.mjs --all --strict-package --require-archive
 
 db: db-verify
 

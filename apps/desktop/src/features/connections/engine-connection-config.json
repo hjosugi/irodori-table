@@ -323,20 +323,6 @@
       }
     },
     {
-      "engines": ["kvStore"],
-      "settings": {
-        "preferredMode": "url",
-        "urlPlaceholder": "kv://provider/profile/namespace",
-        "hostLabel": "Region",
-        "hostPlaceholder": "us-east-1",
-        "userLabel": "Access key",
-        "passwordLabel": "Secret / token",
-        "databaseLabel": "Table / bucket",
-        "showPort": false,
-        "transportLabel": "Cloud API"
-      }
-    },
-    {
       "engines": ["trinoPresto", "hive"],
       "settings": {
         "urlPlaceholder": "trino://user@host:8080/catalog/schema",
@@ -409,7 +395,6 @@
     "firebird": "3050",
     "databricks": "443",
     "dynamodb": "443",
-    "kvStore": "443",
     "iceberg": "443",
     "s3Tables": "443",
     "deltaLake": "443",

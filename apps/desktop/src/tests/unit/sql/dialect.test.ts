@@ -72,7 +72,6 @@ describe("cmDialect", () => {
     deltaLake: { dialect: StandardSQL, formatter: "sql" },
     hudi: { dialect: StandardSQL, formatter: "sql" },
     cloudSpanner: { dialect: StandardSQL, formatter: "sql" },
-    kvStore: { dialect: StandardSQL, formatter: "sql" },
   };
 
   it("maps every engine to the expected CodeMirror SQL dialect", () => {

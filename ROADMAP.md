@@ -75,34 +75,32 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 ## Architecture Direction
 
 - Desktop shell: Tauri v2, with Rust commands for privileged/local work and a web UI for editor and layout.
-- Extracted reusable packages:
+- This repository is the app only. Shared Rust foundations live in sibling
+  repos consumed as version-tagged Git dependencies (crates.io for `typeship`):
   - `typeship` (`hjosugi/typeship`): Rust-to-TypeScript command/API generation
     consumed from crates.io so Serde `camelCase` JSON and frontend types never
     drift.
-  - `irodori-sql` (`hjosugi/irodori-sql`): SQL dialect metadata, parameter
-    detection, information-schema/metamodel helpers, and schema-diff primitives.
-    Irodori Table consumes it as a version-tagged Git dependency (`v0.2.24`).
-- Core crates:
-  - `irodori-core`: connection model, workspace model, command registry, keybinding resolver.
-  - `irodori-proxy`: direct, SSH, SOCKS/HTTP, and multi-hop transport composition.
-  - `irodori-secure-store`: OS keychain integration and encrypted local config.
-- Supporting crates:
-  - `irodori-graph`: Cypher/graph metadata, result graph model, and graph-completion hooks.
-  - `irodori-timeseries`: time range model, frame/downsampling model, and time-series query helper hooks.
-  - `irodori-completion`: parser-aware deterministic completion, ranking, snippets, signature help, and optional provider hooks.
-  - `irodori-ai`: opt-in AI provider abstraction, local model support, audit log, redaction, and MCP bridge.
-  - `irodori-knowledge`: local SQLite-backed source snapshots, extracted facts, implementation notes, and search over DB/client specs.
-  - `irodori-ml`: local-first ML dataset preparation, evaluation, ranking experiments, and provider/model benchmarking; user data never leaves the machine unless an explicit workspace policy allows that class of data.
-  - `irodori-io`: shared export/import encoders — CSV/TSV (header toggle, delimiter/quote control), SQL INSERT/UPSERT, JSON/NDJSON, Avro, Parquet — plus dump/restore orchestration.
-  - `irodori-server`: optional headless/local HTTP API exposing read and safe-write data operations over the same adapter, proxy, and security model (study PostgREST and DuckDB httpserver patterns, implement independently).
-- Job runtime currently belongs in `irodori-core::jobs`. Do not split an
-  `irodori-jobs` crate until at least two real workflows and the local API prove
-  that an independent package boundary pays for itself.
-- Areas that do not yet have a real shared API, such as datasource contracts and
-  i18n catalogs, should remain modules or app-local code until the split pays for
-  itself.
+  - `irodori-sql` (`hjosugi/irodori-sql`, `v0.3.0`): SQL dialect metadata,
+    parameter detection, information-schema/metamodel helpers, and schema-diff
+    primitives.
+  - `irodori-kit` (`hjosugi/irodori-kit`, `v0.5.0`): the foundation workspace —
+    `irodori-core` (connection/workspace model, command registry, keybinding
+    resolver), `irodori-connection`, `irodori-proxy` (direct/SSH/SOCKS/HTTP and
+    multi-hop transports), `irodori-secure-store` (OS keychain + encrypted
+    config), `irodori-security`, `irodori-completion` (parser-aware
+    deterministic completion), `irodori-generate` (local/provider SQL
+    generation), `irodori-extension` (extension host contract), `irodori-io`
+    (export/import encoders + dump/restore), and `irodori-server` (optional
+    headless HTTP data API) — plus `packages/extension-sdk` (TypeScript SDK,
+    manifest schema, templates) and the packaging templates.
+  - `irodori-knowledge` (`hjosugi/irodori-knowledge`, `v0.3.0`):
+    `irodori-knowledge` (local SQLite knowledge base), `irodori-jobs`
+    (cancellable/checkpointed job runtime), and `irodori-error`.
+- Areas without a stable shared API stay app-local until a split pays for
+  itself: DB adapters/datasource contracts (`src-tauri/src/db`), AI chat
+  providers, graph/time-series helpers, ML experiments, and i18n catalogs.
 - UI: compact operational interface, no landing-page feel. Object browser, editor, results, inspector, and command palette are first-screen citizens.
-- Editor engine: evaluate Monaco, CodeMirror 6, and a native/Tree-sitter-backed path before committing. Vim quality and completion architecture decide.
+- Editor engine: CodeMirror 6 is the shipped path — Vim mode, completion, lint, highlighting, and custom gutter/caret work build on it. Native/GPU alternatives for hot surfaces are tracked under `PERF-001`.
 - Parsing: Tree-sitter for incremental structure where grammars are strong; dialect-specific fallbacks where they are not.
 - GUI/rendering: keep Tauri as the default shell candidate, but run a serious spike against native Rust GUI/GPU paths for hot surfaces. Study WezTerm-style GPU acceleration and Zed's GPUI architecture as performance references, but keep the implementation independent — Zed is copyleft, so learn from it without copying code into the permissive core. Evaluate WebGPU/wgpu or platform GPU paths only where they clearly improve large text/grid workloads.
 - Engineering quality: design for automated testing from day one — pure Rust unit tests, integration tests against ephemeral databases (containerized or embedded), golden tests for generated TypeScript bindings, and headless UI smoke tests for the Tauri shell.
@@ -164,22 +162,22 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - [x] Dialect-aware ranking and insert behavior, including optional keyword casing.
 - [x] Signature help, join suggestions, generated column lists, overload-aware function/procedure completion, and explain/analyze command helpers.
 - [x] Hover inspection: schema/object/column hovers show type, nullability, keys, indexes, DDL, comments, and a row-count estimate plus quick sample, driven by the metadata cache.
-- [ ] AI provider API remains optional: local model, OpenAI-compatible, Anthropic/Gemini/Azure/Bedrock-style providers, and Copilot-compatible MCP bridge.
+- [/] AI provider API remains optional: local model (llama), Ollama/OpenAI-compatible, Azure, Claude, Gemini, and DeepSeek providers ship behind one abstraction shared by SQL generation and chat; a Copilot-compatible MCP bridge remains.
 - [x] Explain-plan entry points and plan-aware hints.
-- [ ] Optional local/remote AI assistance only after privacy, auditability, and opt-in controls are solid.
+- [/] Optional local/remote AI assistance: the streaming schema-aware chat sidebar with a cancellable read-only agent mode is live and opt-in (keys stay in the OS keychain); audit-log and redaction hardening remain.
 
 ### Phase 4: Database Coverage
 
 - [x] MySQL/MariaDB and SQL Server reach parity with PostgreSQL/SQLite basics.
 - [x] Oracle Database becomes first-class: connection profiles, service/SID handling, wallets where feasible, explain plans, packages/procedures, PL/SQL execution ergonomics.
-- [/] Add YugabyteDB, CockroachDB, DuckDB, BigQuery, ClickHouse, Redshift, Firebird, Trino/Presto, Redis, MongoDB, Snowflake, InfluxDB, Neo4j, Cassandra/ScyllaDB, Couchbase, DynamoDB, Elasticsearch/OpenSearch, TiDB, Databricks/Spark SQL, Apache IoTDB, QuestDB, TimescaleDB, ArangoDB, and Memgraph by adapter maturity.
-- [ ] Treat YugabyteDB first through PostgreSQL-compatible YSQL, then add distributed-database affordances such as regions, tablets, follower reads, diagnostics, and topology awareness.
-- [ ] Treat InfluxDB as a time-series source with SQL/native-query helpers, time range ergonomics, retention/bucket metadata, and downsampling.
-- [ ] Treat Neo4j as the first graph source with Cypher completion, label/relationship/property introspection, tabular results, and query-result graph rendering.
-- [ ] Lakehouse and table formats, with Apache Iceberg prioritized: query Iceberg tables through Hive Metastore, AWS Glue, REST, and JDBC catalogs and via AWS S3 Tables; add Delta Lake and Apache Hudi later. Use embeddable engines (DuckDB, Apache DataFusion) or Trino/Presto as execution options.
-- [ ] Snowflake with full authentication coverage: password, key-pair (JWT), OAuth, external-browser/SSO, MFA/passcode, and programmatic access tokens, plus warehouse/role/database context switching.
+- [/] Broad engine coverage by adapter maturity: 25+ engines have production connect paths today (DuckDB, CockroachDB, YugabyteDB, Redshift, TimescaleDB, Neon, TiDB, QuestDB, MongoDB, Neo4j, Redis, Cassandra/ScyllaDB, ClickHouse, Snowflake, BigQuery, Bigtable, InfluxDB, and more); the remaining families (vector, lakehouse, search, document, KV, federated) ship as installable connector extensions. `registry/data-source-support-status.md` is the wired/extension/planned inventory.
+- [/] YugabyteDB YSQL rides the PostgreSQL wire today; distributed-database affordances such as regions, tablets, follower reads, diagnostics, and topology awareness remain.
+- [/] InfluxDB: the HTTP (SQL/v3) adapter is wired; time range ergonomics, retention/bucket metadata, and downsampling remain.
+- [/] Neo4j: the Bolt adapter is wired, with GDS and Memgraph notes in the knowledge base; Cypher completion depth, introspection polish, and query-result graph rendering remain.
+- [/] Lakehouse and table formats are extension-first: Apache Iceberg, AWS S3 Tables, Delta Lake, Hudi, Hive, and Athena have marketplace connectors; shared catalog/table UX and execution-backend contracts (DuckDB, Apache DataFusion, Trino/Presto) remain.
+- [/] Snowflake: password and key-pair (JWT) are wired; OAuth, external-browser/SSO, MFA/passcode, programmatic access tokens, and warehouse/role/database context switching remain.
 - [x] Format-rich export/import: CSV/TSV (header on/off, delimiter/quote control), SQL INSERT/UPSERT scripts (with or without schema/DDL), JSON/NDJSON, Avro, and Parquet; clipboard-friendly subsets; dialect-aware dump/restore.
-- [ ] Editable results, table designer, indexes/constraints UI, and backup/restore hooks where each dialect permits.
+- [/] Editable results and the schema/ERD designer exist; table designer depth, indexes/constraints UI, and backup/restore hooks per dialect remain.
 
 ### Phase 5: Network And Security
 
@@ -191,18 +189,18 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 
 ### Phase 6: Advanced Workflows
 
-- [ ] Schema compare and migration preview.
+- [/] Schema compare and migration preview: `irodori-sql` schema-diff primitives and the Migration Studio (source/target/diff/runbook outputs) are the first pass; live connection-to-connection compare UX remains.
 - [ ] Data compare and safe bulk edit workflow.
 - [/] ERD and graph views after core editor/query/browser workflows are excellent.
-- [ ] Plugin API for drivers, themes, formatters, and result visualizers.
-- [ ] Extension registry support after the local SDK is solid.
+- [/] Plugin API for drivers: the native connector extension framework (dynamic-library host with integrity checks) is in; theme, formatter, and result-visualizer plugin surfaces remain.
+- [/] Extension registry: the marketplace catalog (`registry/catalog/`) with installable connector extensions is live; publishing and update flows remain.
 - [ ] Team/workspace sync only after local-first UX is strong.
 
 ### Phase 6A: Local Data API And Headless Mode
 
-- [ ] Optional local HTTP API to list sources, run parameterized queries, read tables with pagination/filter/sort, and perform safe, permissioned writes.
-- [ ] Headless mode for scripts, CI, and external tools: same adapter, proxy, and security model, no UI required.
-- [ ] Read-only by default with explicit opt-in for writes, token-scoped access, per-source permission scopes, and an audit log on by default.
+- [/] Optional local HTTP API: `irodori-server` ships a transport-agnostic, unit-tested API with a hyper adapter and a built-in SQLite source; wiring the full desktop adapter registry behind it remains.
+- [/] Headless mode for scripts, CI, and external tools: standalone SQLite runs work today; the same adapter, proxy, and security model across every engine remains.
+- [/] Read-only by default with token-scoped access, a write-opt-in SQL guard, and an audit trail is implemented in `irodori-server`; per-source permission scopes remain.
 - [ ] Generated client types through `typeship` so external tools get typed access. Study PostgREST and DuckDB httpserver patterns; implement independently.
 
 ## Research Watchlist
@@ -219,7 +217,6 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Product market scans for DataGrip, DBeaver, DbVisualizer, TablePlus, VS Code MSSQL, and AI-assisted database workflows.
 - Source-specific GUI scans for Neo4j Browser/Workspace, InfluxDB UI/Data Explorer, MongoDB Compass, RedisInsight, Studio 3T, DbGate, ArangoDB Web UI, and Grafana data-source workflows.
 - Automated source monitoring for official database release notes and specs, stored in local SQLite for implementation and debugging.
-- Rust/TypeScript type generation ecosystems such as `ts-rs`, `specta`, `typeshare`, and `schemars`.
 - Apache Iceberg table spec, the Iceberg REST catalog, AWS S3 Tables, and catalog options (Hive Metastore, AWS Glue, JDBC); later Delta Lake and Apache Hudi.
 - Object-store query engines and embeddable analytics: DuckDB, Apache DataFusion/Arrow, and Trino/Presto for lakehouse execution.
 - Columnar and row interchange formats for export/import: Apache Avro, Apache Parquet, and Apache Arrow.
@@ -228,36 +225,6 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Fast Rust desktop app architecture: Zed/GPUI rendering and input latency, plus Lapce and Helix, as performance references.
 - Internationalization for Rust/TypeScript desktop apps: ICU MessageFormat and Project Fluent for ja/en catalogs.
 - Test automation: ephemeral-database harnesses (containers/embedded), golden-snapshot testing for generated bindings, and headless UI testing for Tauri.
-
-## Recently Burned Down
-
-- Desktop workbench structure is no longer centered on a huge `App.tsx`: dialogs,
-  results, workbench shell, command handlers, and UI state now have dedicated
-  feature modules/stores.
-- Theme UX has moved into Settings, with saved custom themes, VS Code-theme
-  import normalization, and active-theme switching tracked by `THEME-001/002`.
-- Editor controls were tightened: Run Current sits at the editor corner, split
-  controls are icon-only, and the user-facing pane split is capped to the simple
-  two-pane workflow.
-- Git graph hardening has moved past the baseline: commit search, branch/remote/tag
-  ref filters, selection details, keyboard navigation, provider badges, and repo
-  accent colors are wired as a workbench view.
-- SQL hover-to-inspect is live in the editor: object/column hovers expose
-  definitions, keys, indexes, comments, row counts, samples, and metadata jump.
-- `JOB-001` is no longer a blank crate-sized task: the shared runtime foundation
-  lives in `irodori-core::jobs` with progress, cancellation, logs, artifacts,
-  retry/concurrency fields, budgets, checkpoints, desktop commands, and server
-  DTO reuse.
-- `EXEC-004B` is closed: lazy 1M-row virtualization coverage exists alongside
-  wide-column virtualization. Future work moves to renderer-path benchmarks and
-  very-large scrollbar scaling only if larger fixtures require it.
-- The ERD is now a two-way design surface (Phase 6): a forward engineer emits an
-  FK-dependency-ordered `CREATE`/`ALTER` script from a diagram, and an
-  interactive canvas designer (drag tables, edit columns/keys, draw
-  relationships, import/export diagram JSON, seed from a live connection) builds
-  on it. Studied clean-room against drawDB (AGPL-3.0) behavior only. Remaining
-  designer work: drag-to-connect relationships, multi-column keys, and diagram
-  persistence inside the workspace.
 
 ## Immediate Next Steps
 
@@ -272,24 +239,25 @@ Irodori Table aims to be a fast, open-source, cross-platform SQL GUI for people 
 - Continue Git graph hardening with commit-specific actions: copy hash/subject,
   open remote commit URLs, show per-commit file summaries/diffs, and expose branch
   checkout/create/delete affordances from the selected ref context.
-- Close the workspace basics before adding more pane complexity: query tab CRUD,
-  per-tab connection binding, saved queries, history search, and a drawer/modal
-  detail view with full SQL, rerun, delete, and save actions.
-- Advance `JOB-004` by migrating one real workflow, preferably run-to-file export
-  or knowledge refresh, onto `irodori-core::jobs` to prove the runtime contract.
+- Prove the installable-connector path end-to-end: install one marketplace
+  connector through the new native extension host (Memgraph over the existing
+  Bolt path is the natural first) and verify the manifest, integrity, and
+  permission flow.
+- Settle the shared source-type contracts the extension-first families need:
+  vector (collection/index browsing, similarity search) and lakehouse
+  (catalog/table UX plus execution backends).
+- Finish `JOB-004`: schema indexing proved the dashboard wiring; migrate
+  run-to-file export or knowledge refresh onto `irodori-jobs` next.
 - Start `PERF-001` now that row, wide-column, and 1M-row virtualization gates are
   in place: compare WebView DOM, canvas/WebGPU-in-WebView, and native Rust GPU
   paths for editor and result-grid hot surfaces. Include RSQL's canvas grid,
   server-side cursor pagination, packed IPC, and dual-pool design as behavior
   benchmarks for the PostgreSQL path.
-- Keep the crate layout conservative: add modules first, extract crates only when
-  a stable shared API, independent test boundary, or multi-host release boundary
-  is already visible.
-- Continue repository slimming in dependency order: `irodori-core` only after the
-  job/API contracts settle, keep `irodori-kit/packages/extension-sdk` aligned
-  with generated extension API changes, and split samples/docs only if their
-  release cadence diverges. Keep DB adapter modules inside the desktop app until
-  connector contracts are stable enough to publish independently.
+- Keep the sibling repos aligned after the split: bump `irodori-kit`,
+  `irodori-sql`, and `irodori-knowledge` tags together, keep
+  `irodori-kit/packages/extension-sdk` in sync with generated extension API
+  changes, and regenerate `registry/data-source-support-status.md` from the
+  registry instead of hand-editing it.
 - Keep CI/release discipline tight: typegen drift, frontend unit tests, browser
   smoke, Rust tests, security checks, and release notes should be green before
   each cut.

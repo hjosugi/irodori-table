@@ -7,13 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Plus } from "lucide-react";
-import {
-  queryHistoryMaxItemsHardLimit,
-  queryHistoryResultRowsHardLimit,
-  useQueryHistoryStore,
-  type QueryHistoryItem,
-} from "@/features/query-history/query-history-store";
+import { useQueryHistoryStore } from "@/features/query-history/query-history-store";
 import {
   APP_IDENTIFIER,
   APP_NAME,
@@ -24,10 +18,9 @@ import {
   loadSavedQuery,
   menuBarSections,
   resultCopyDefaultKeymap,
-  savedQueryStorageKey,
 } from "@/app/app-config";
-import { openTabsForEditorGroup } from "@/app/editor-tabs";
 import { AboutDialog } from "@/app/AboutDialog";
+import { EditorTabStrip } from "@/app/EditorTabStrip";
 import { useResultGridScroll } from "@/app/hooks/useResultGridScroll";
 import { useResultGridFiltering } from "@/app/hooks/useResultGridFiltering";
 import { useResultGridSelection } from "@/app/hooks/useResultGridSelection";
@@ -37,28 +30,32 @@ import type {
   ResultGridController,
 } from "@/app/controllers/workbench-controllers";
 import { useConnectionActions } from "@/app/controllers/use-connection-actions";
+import { useEditorCommands } from "@/app/controllers/use-editor-commands";
 import { useEditorGroups } from "@/app/controllers/use-editor-groups";
+import { useErdDiagram } from "@/app/controllers/use-erd-diagram";
+import { useHistoryActions } from "@/app/controllers/use-history-actions";
 import { useQueryRunner } from "@/app/controllers/use-query-runner";
+import { useResultExport } from "@/app/controllers/use-result-export";
 import { useResultGridEditing } from "@/app/controllers/use-result-grid-editing";
 import { useResultGridModel } from "@/app/controllers/use-result-grid-model";
 import {
   usePendingResultChangesGuard,
   useResultGridSpillPaging,
 } from "@/app/controllers/use-result-grid-runtime";
+import { useSettingsController } from "@/app/controllers/use-settings-controller";
+import { useSidebarViews } from "@/app/controllers/use-sidebar-views";
+import { useThemeManager } from "@/app/controllers/use-theme-manager";
+import { useWorkspaceActions } from "@/app/controllers/use-workspace-actions";
 import { ActionToastStack, useActionNotices } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { GitPanel, useGitStore } from "@/features/git";
+import { GitPanel } from "@/features/git";
 import {
   BiPanel,
   ResultsPane,
   WindowedRows,
-  buildResultExport,
-  buildXlsxBlob,
   formatResultSelectionStatus,
   formatResultGridCell as formatCell,
-  historySnapshotToQueryResult,
-  resultExportFileName,
   toCount,
   useResultGridStore,
   useResultsStore,
@@ -68,11 +65,7 @@ import {
   ConnectionManagerDialog,
   defaultConnectionColor,
   engineLabel,
-  portableProfile,
-  settingsProfileFromJson,
   useConnectionStore,
-  withStarterProfiles,
-  withUniqueProfileIds,
   type WorkspaceConnection,
 } from "@/features/connections";
 import {
@@ -80,50 +73,16 @@ import {
   QueryParameterDialog,
   type EditorGroup,
   type EditorSelection,
-  type QueryMagicAction,
   type SqlEditorHandle,
 } from "@/features/query-editor";
-import {
-  ImportDialog,
-  detectImportFileKind,
-  generateImportSql,
-  inferImportTableName,
-  parseImportText,
-  type ImportPreview,
-} from "@/features/import";
-import {
-  ErdDialog,
-  buildErdModel,
-  downloadBlob,
-  erdFileName,
-  erdSvgStyle,
-  hasDiagram,
-  layoutErdModel,
-  serializeSvgElement,
-  svgMarkupToPngBlob,
-  toMermaidErd,
-  writePngBlobToClipboard,
-  writeTextToClipboard,
-  type ErdLayout,
-} from "@/features/erd";
+import { ImportDialog } from "@/features/import";
+import { ErdDialog, hasDiagram } from "@/features/erd";
 import {
   SchemaDesignerDialog,
-  buildCreateDatabaseSql,
-  buildSchemaSql,
-  buildTableSpecDocument,
-  ddlFromTableSpecDocument,
-  exportTableSpecJson,
-  exportTableSpecMarkdown,
-  parseTableSpecDocument,
-  tableSpecFileName,
   useSchemaDesignerStore,
 } from "@/features/schema-designer";
-import {
-  SchemaDiagramDialog,
-  diagramFromMetadata,
-  useSchemaDiagramStore,
-} from "@/features/schema-diagram";
-import { SettingsDialog, type SettingsTab } from "@/features/settings";
+import { SchemaDiagramDialog } from "@/features/schema-diagram";
+import { SettingsDialog } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
 import { SearchReplacePanel } from "@/features/search/SearchReplacePanel";
@@ -132,46 +91,28 @@ import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import {
   UI_ZOOM_DEFAULT,
   UI_ZOOM_STEP,
-  normalizeEditorBackgroundOpacity,
   normalizeUiZoom,
   usePreferencesStore,
-  type ThemePreference,
 } from "@/features/preferences";
-import { createTranslator, normalizeLocale } from "@/i18n";
+import { createTranslator } from "@/i18n";
 import {
-  activeWorkbenchViewForSide,
   createWorkbenchCommandHandler,
   InspectorContent,
-  INSPECTOR_WIDTH_MAX,
-  INSPECTOR_WIDTH_MIN,
   LakehousePanel,
   PlanPanel,
-  RESULTS_HEIGHT_MAX,
-  RESULTS_HEIGHT_MIN,
   Sidebar,
-  SIDEBAR_WIDTH_MAX,
-  SIDEBAR_WIDTH_MIN,
   WorkbenchDockLayout,
   WorkbenchShell,
   completionHintsFromMetadata,
   createPanelResizeController,
   objectKindLabel,
   qualifiedObjectName,
-  quoteSqlIdentifier,
-  tablePreviewSql,
   useWorkbenchStore,
   workbenchRuntimeService,
-  workbenchViewsForSide,
-  workbenchViewIds,
-  type CompletionHint,
-  type WorkbenchViewId,
-  type WorkbenchViewPlacements,
-  type WorkbenchViewVisibility,
 } from "@/features/workbench";
 import {
   KEY_SEQUENCE_TIMEOUT_MS,
   applyVimKeybindingResolutions as applyVimKeybindingResolutionOverrides,
-  errorMessage,
   effectiveKeymap,
   eventToChord,
   findConflicts,
@@ -186,99 +127,24 @@ import {
 } from "@/core";
 import type {
   DbEngine,
-  DbObjectMetadata,
-  JobList,
   QueryPlanAnalysis,
-  QueryPlanCopyFormat,
-  QueryPlanMode,
   QueryResult,
   WorkspaceSnapshot,
 } from "@/generated/irodori-api";
-import { sqlSnippetsFromJson } from "@/sql/completion";
-import { isSqlFormatterId } from "@/sql/formatter";
-import { isSqlLinterId } from "@/sql/linter";
-import type { SqlEditorTransformAction } from "@/sql/editor-transforms";
-import type { SqlMetadataTarget } from "@/sql/metadata-inspection";
-import { selectedOrCurrentStatement } from "@/sql/statements";
-import {
-  cssVariables,
-  customThemeEntryFromJson,
-  defaultThemeById,
-  defaultThemeEntryForKind,
-  importThemeJson,
-  upsertCustomThemeEntry,
-  type ThemeKind,
-} from "@/theme";
+import { cssVariables } from "@/theme";
 import {
   GRID_COLUMN_WIDTH,
   GRID_GUTTER_WIDTH,
   GRID_ROW_HEIGHT,
-  builtInTheme,
-  clampNumber,
-  emptyJobList,
+  NO_ACTIVE_CONNECTION,
+  formatUiZoom,
   isCellEditorClipboardShortcut,
-  isRecord,
   keyScopeFromTarget,
+  scaledUiPixels,
+  selectedSqlFromSelections,
   tauriRuntimeError,
+  uiZoomStyleVariables,
 } from "./app-workbench-utils";
-
-// Rendered when no connection is configured yet (fresh install, no samples).
-// Keeps `activeConnection` defined so the shell never crashes on an empty
-// workspace; querying stays disabled until the user adds a real connection.
-const NO_ACTIVE_CONNECTION: WorkspaceConnection = {
-  id: "",
-  name: "No connection",
-  engine: "",
-  status: "idle",
-  latencyMs: 0,
-  proxy: "direct",
-  objects: [],
-};
-
-function scaledUiPixels(value: number, zoom: number) {
-  return Math.max(1, Math.round(value * zoom));
-}
-
-function scaledUiFont(value: number, zoom: number) {
-  return `${Math.round(value * zoom * 100) / 100}px`;
-}
-
-function uiZoomStyleVariables(zoom: number): Record<string, string> {
-  const normalized = normalizeUiZoom(zoom);
-  return {
-    "--ui-zoom": normalized.toFixed(2),
-    "--font-ui-xs": scaledUiFont(11, normalized),
-    "--font-ui-sm": scaledUiFont(12, normalized),
-    "--font-ui-md": scaledUiFont(13, normalized),
-    "--font-ui-lg": scaledUiFont(14, normalized),
-    // The code font stays integer-px: fractional sizes make glyph advances
-    // round differently between CodeMirror's measurements and the renderer,
-    // drifting the caret off the character it edits.
-    "--font-code": `${scaledUiPixels(13, normalized)}px`,
-    "--editor-line-height": `${scaledUiPixels(20, normalized)}px`,
-    "--control-xxs": `${scaledUiPixels(22, normalized)}px`,
-    "--control-xs": `${scaledUiPixels(24, normalized)}px`,
-    "--control-sm": `${scaledUiPixels(25, normalized)}px`,
-    "--control-md": `${scaledUiPixels(27, normalized)}px`,
-    "--bar-sm": `${scaledUiPixels(31, normalized)}px`,
-    "--bar-md": `${scaledUiPixels(33, normalized)}px`,
-    "--status-height": `${scaledUiPixels(22, normalized)}px`,
-  };
-}
-
-function formatUiZoom(zoom: number) {
-  return `${Math.round(normalizeUiZoom(zoom) * 100)}%`;
-}
-
-function sqlDownloadFileName(label: string) {
-  const base = label
-    .replace(/\.sql$/i, "")
-    .trim()
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-  return `${base || "query"}.sql`;
-}
 
 const MigrationStudioDialog = lazy(() =>
   import("@/features/migration").then((module) => ({
@@ -314,13 +180,12 @@ export function AppWorkbench() {
   }, []);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
-  const schemaSpecFileRef = useRef<HTMLInputElement | null>(null);
-  const diagramSvgRef = useRef<SVGSVGElement | null>(null);
-  const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
-  const pendingDiagramSearchRef = useRef<string | null>(null);
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
+  const editorCommandsRef = useRef<{ runQuery: () => Promise<void> } | null>(
+    null,
+  );
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
   const {
     notices: actionNotices,
@@ -340,39 +205,23 @@ export function AppWorkbench() {
   const locale = usePreferencesStore((state) => state.locale);
   const setLocale = usePreferencesStore((state) => state.setLocale);
   const { t } = useMemo(() => createTranslator(locale), [locale]);
-  const themePreference = usePreferencesStore((state) => state.themePreference);
-  const setThemePreference = usePreferencesStore(
-    (state) => state.setThemePreference,
-  );
-  const themeKind = usePreferencesStore((state) => state.themeKind);
-  const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
-  const activeDefaultThemeId = usePreferencesStore(
-    (state) => state.activeDefaultThemeId,
-  );
-  const setActiveDefaultThemeId = usePreferencesStore(
-    (state) => state.setActiveDefaultThemeId,
-  );
-  const activeCustomThemeId = usePreferencesStore(
-    (state) => state.activeCustomThemeId,
-  );
-  const setActiveCustomThemeId = usePreferencesStore(
-    (state) => state.setActiveCustomThemeId,
-  );
-  const customThemes = usePreferencesStore((state) => state.customThemes);
-  const setCustomThemes = usePreferencesStore((state) => state.setCustomThemes);
-  const activeCustomTheme = useMemo(
-    () =>
-      customThemes.find((entry) => entry.id === activeCustomThemeId) ?? null,
-    [activeCustomThemeId, customThemes],
-  );
-  const activeDefaultTheme = useMemo(
-    () => defaultThemeEntryForKind(themeKind, activeDefaultThemeId),
-    [activeDefaultThemeId, themeKind],
-  );
-  const theme =
-    activeCustomTheme?.theme ?? builtInTheme(themeKind, activeDefaultThemeId);
+  const themes = useThemeManager();
+  const {
+    theme,
+    themeKind,
+    themePreference,
+    activeDefaultTheme,
+    activeDefaultThemeId,
+    activeCustomTheme,
+    activeCustomThemeId,
+    customThemes,
+    themeSwitching,
+    activateBuiltInTheme,
+    activateThemePreference,
+    activateDefaultTheme,
+    activateCustomTheme,
+  } = themes;
   const vimMode = usePreferencesStore((state) => state.vimMode);
-  const setStoredVimMode = usePreferencesStore((state) => state.setVimMode);
   const formatter = usePreferencesStore((state) => state.formatter);
   const setFormatter = usePreferencesStore((state) => state.setFormatter);
   const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
@@ -401,33 +250,26 @@ export function AppWorkbench() {
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const uiZoom = usePreferencesStore((state) => state.uiZoom);
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
-  const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
-  const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
-  const rightSidebarOpen = useWorkbenchStore((state) => state.rightSidebarOpen);
-  const setRightSidebarOpen = useWorkbenchStore(
-    (state) => state.setRightSidebarOpen,
-  );
-  const viewPlacements = useWorkbenchStore((state) => state.viewPlacements);
-  const setViewPlacements = useWorkbenchStore(
-    (state) => state.setViewPlacements,
-  );
-  const setViewOpen = useWorkbenchStore((state) => state.setViewOpen);
-  const viewVisibility = useWorkbenchStore((state) => state.viewVisibility);
-  const setViewVisibility = useWorkbenchStore(
-    (state) => state.setViewVisibility,
-  );
-  const leftSidebarViews = workbenchViewsForSide(viewPlacements, "left");
-  const rightSidebarViews = workbenchViewsForSide(viewPlacements, "right");
-  const activeLeftSidebarView = activeWorkbenchViewForSide(
-    viewVisibility,
-    viewPlacements,
-    "left",
-  );
-  const activeRightSidebarView = activeWorkbenchViewForSide(
-    viewVisibility,
-    viewPlacements,
-    "right",
-  );
+  const sidebars = useSidebarViews();
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    rightSidebarOpen,
+    setRightSidebarOpen,
+    leftSidebarViews,
+    rightSidebarViews,
+    activeLeftSidebarView,
+    activeRightSidebarView,
+    completionOpen,
+    historyOpen,
+    planOpen,
+    biOpen,
+    setActiveSidebarView,
+    closeSidebarView,
+    toggleSidebarView,
+    toggleRightSidebar,
+    openGitPanel,
+  } = sidebars;
   const sidebarWidth = useWorkbenchStore((state) => state.sidebarWidth);
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
   const inspectorWidth = useWorkbenchStore((state) => state.inspectorWidth);
@@ -487,69 +329,6 @@ export function AppWorkbench() {
     setResultsHeight,
     setEditorSplitPercent,
   });
-  function setActiveSidebarView(viewId: WorkbenchViewId) {
-    const side = viewPlacements[viewId] ?? "left";
-    if (side === "right") {
-      setRightSidebarOpen(true);
-    } else {
-      setSidebarOpen(true);
-    }
-    // The chat panel needs more room than a tree view; open it comfortably wide
-    // (without shrinking a side the user already widened).
-    if (viewId === "aiChat") {
-      const comfortable = 420;
-      if (side === "right") {
-        setInspectorWidth((current) => Math.max(current, comfortable));
-      } else {
-        setSidebarWidth((current) => Math.max(current, comfortable));
-      }
-    }
-    setViewVisibility((current) => {
-      const next = { ...current };
-      workbenchViewIds.forEach((id) => {
-        if (viewPlacements[id] === side) {
-          next[id] = id === viewId;
-        }
-      });
-      return next;
-    });
-  }
-
-  function closeSidebarView(viewId: WorkbenchViewId) {
-    const side = viewPlacements[viewId] ?? "left";
-    setViewOpen(viewId, false);
-    if (side === "right") {
-      setRightSidebarOpen(false);
-      return;
-    }
-    setActiveSidebarView("objectBrowser");
-  }
-
-  function toggleSidebarView(
-    viewId: Exclude<WorkbenchViewId, "objectBrowser">,
-  ) {
-    const side = viewPlacements[viewId] ?? "left";
-    const sideOpen = side === "right" ? rightSidebarOpen : sidebarOpen;
-    if (sideOpen && viewVisibility[viewId]) {
-      closeSidebarView(viewId);
-      return;
-    }
-    setActiveSidebarView(viewId);
-  }
-
-  function toggleRightSidebar() {
-    if (rightSidebarOpen) {
-      setRightSidebarOpen(false);
-      return;
-    }
-    setActiveSidebarView(activeRightSidebarView);
-  }
-
-  function openGitPanel() {
-    setActiveSidebarView("git");
-    void useGitStore.getState().refresh();
-  }
-
   const profiles = useConnectionStore((state) => state.profiles);
   const setProfiles = useConnectionStore((state) => state.setProfiles);
   const selectedProfileId = useConnectionStore(
@@ -743,6 +522,10 @@ export function AppWorkbench() {
     ...resultCopyDefaultKeymap,
     ...effectiveKeymap(keymapOverrides),
   };
+  function replaceKeymapOverrides(next: Keymap) {
+    setKeymapOverrides(next);
+    saveOverrides(next);
+  }
   const [activeKeyScope, setActiveKeyScope] =
     useState<KeybindingScope>("global");
   const [recordingCommand, setRecordingCommand] = useState<string | null>(null);
@@ -752,26 +535,38 @@ export function AppWorkbench() {
   const [paletteQuery, setPaletteQuery] = useState("");
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [runMenuOpen, setRunMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [migrationStudioOpen, setMigrationStudioOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
-  const [settingsJsonDraft, setSettingsJsonDraft] = useState("");
-  const [settingsJsonError, setSettingsJsonError] = useState<string | null>(
-    null,
-  );
-  const [jobs, setJobs] = useState<JobList>(emptyJobList);
-  const [jobsLoading, setJobsLoading] = useState(false);
-  const [jobsError, setJobsError] = useState<string | null>(null);
-  // ER diagram modal (rendered from metadata through our SVG layout).
-  const [diagramOpen, setDiagramOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
-  const [diagramError, setDiagramError] = useState<string | null>(null);
-  const [diagramSearch, setDiagramSearch] = useState("");
-  const [diagramSchemaNames, setDiagramSchemaNames] = useState<string[]>([]);
-  const [diagramZoom, setDiagramZoom] = useState(1);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const settings = useSettingsController({
+    themes,
+    keybindings: { keymapOverrides, replaceKeymapOverrides },
+    showActionNotice,
+    t,
+  });
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    settingsTab,
+    openSettingsSection,
+    setVimMode,
+    settingsJsonDraft,
+    setSettingsJsonDraft,
+    settingsJsonError,
+    setSettingsJsonError,
+    resetSettingsJsonDraft,
+    applySettingsJson,
+    jobs,
+    jobsLoading,
+    jobsError,
+    refreshJobs,
+    queryHistoryMaxItems,
+    setQueryHistoryMaxItems,
+    queryHistoryResultRows,
+    setQueryHistoryResultRows,
+  } = settings;
   const transientOverlayStateRef = useRef({
     workspaceMenuOpen: false,
     runMenuOpen: false,
@@ -786,9 +581,6 @@ export function AppWorkbench() {
     filtersOpen,
     objectActionMenu,
   };
-  const [importPreview, setImportPreview] = useState<ImportPreview | null>(
-    null,
-  );
   const schemaDesignerOpen = useSchemaDesignerStore((state) => state.open);
   const setSchemaDesignerOpen = useSchemaDesignerStore(
     (state) => state.setOpen,
@@ -801,29 +593,7 @@ export function AppWorkbench() {
   const openObjectSchemaDesigner = useSchemaDesignerStore(
     (state) => state.openForObject,
   );
-  const schemaDiagramOpen = useSchemaDiagramStore((state) => state.open);
-  const openBlankSchemaDiagram = useSchemaDiagramStore(
-    (state) => state.openBlank,
-  );
-  const openSchemaDiagramFromDocument = useSchemaDiagramStore(
-    (state) => state.openFromDocument,
-  );
-  const setSchemaDiagramDocument = useSchemaDiagramStore(
-    (state) => state.setDocument,
-  );
-  const closeSchemaDiagram = useSchemaDiagramStore((state) => state.close);
-  const diagramInitializedFor = useRef<string | null>(null);
   const appendHistory = useQueryHistoryStore((state) => state.append);
-  const queryHistoryMaxItems = useQueryHistoryStore((state) => state.maxItems);
-  const setQueryHistoryMaxItems = useQueryHistoryStore(
-    (state) => state.setMaxItems,
-  );
-  const queryHistoryResultRows = useQueryHistoryStore(
-    (state) => state.resultRowLimit,
-  );
-  const setQueryHistoryResultRows = useQueryHistoryStore(
-    (state) => state.setResultRowLimit,
-  );
   const openQueryHistoryDialog = useQueryHistoryStore(
     (state) => state.openDialog,
   );
@@ -842,12 +612,6 @@ export function AppWorkbench() {
         setSnapshot(fallbackSnapshot);
       });
   }, []);
-
-  useEffect(() => {
-    if (settingsOpen && settingsTab === "jobs") {
-      void refreshJobs();
-    }
-  }, [settingsOpen, settingsTab]);
 
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
@@ -934,52 +698,54 @@ export function AppWorkbench() {
     );
   }
 
-  function selectedSqlFromSelections(
-    sql: string,
-    selections: readonly EditorSelection[],
-  ) {
-    return selections
-      .filter((selection) => selection.from !== selection.to)
-      .map((selection) =>
-        sql
-          .slice(
-            Math.min(selection.from, selection.to),
-            Math.max(selection.from, selection.to),
-          )
-          .trim(),
-      )
-      .filter(Boolean)
-      .join("\n\n");
-  }
-
-  const availableDiagramSchemas = useMemo(
-    () =>
-      activeMetadata?.schemas
-        .filter((schema) =>
-          schema.objects.some((object) => object.kind === "table"),
-        )
-        .map((schema) => schema.name) ?? [],
-    [activeMetadata],
-  );
-  const diagramModel = useMemo(
-    () =>
-      activeMetadata
-        ? buildErdModel(activeMetadata, {
-            schemaNames: diagramSchemaNames,
-            search: diagramSearch,
-          })
-        : null,
-    [activeMetadata, diagramSchemaNames, diagramSearch],
-  );
-  const diagramLayout = useMemo<ErdLayout | null>(
-    () => (diagramModel ? layoutErdModel(diagramModel) : null),
-    [diagramModel],
-  );
-  const diagramSvgStyle = useMemo(() => erdSvgStyle(theme), [theme]);
-  const diagramMermaid = useMemo(
-    () => (activeMetadata ? toMermaidErd(activeMetadata) : ""),
-    [activeMetadata],
-  );
+  const erdDiagram = useErdDiagram({
+    activeConnectionId,
+    activeConnectionName: activeConnection.name,
+    activeMetadata,
+    theme,
+    setQuery,
+    activeEditorApi,
+    openObjectSchemaDesigner,
+    showActionNotice,
+    t,
+  });
+  const {
+    schemaSpecFileRef,
+    diagramSvgRef,
+    diagramCanvasRef,
+    diagramOpen,
+    setDiagramOpen,
+    diagramError,
+    diagramSearch,
+    setDiagramSearch,
+    diagramSchemaNames,
+    setDiagramSchemaNames,
+    diagramZoom,
+    setDiagramZoom,
+    schemaDiagramOpen,
+    closeSchemaDiagram,
+    availableDiagramSchemas,
+    diagramModel,
+    diagramLayout,
+    diagramSvgStyle,
+    openDiagramForSearch,
+    downloadDiagramSvg,
+    downloadDiagramPng,
+    copyDiagramSvg,
+    copyDiagramPng,
+    downloadTableSpecMarkdown,
+    downloadTableSpecJson,
+    handleSchemaSpecFile,
+    createDatabaseSqlFromDiagram,
+    editDiagramTableColumns,
+    openSchemaDiagramDesigner,
+    editDiagramInDesigner,
+    seedSchemaDiagramFromDb,
+    putDiagramDesignerSqlInEditor,
+    copyDiagramDesignerSql,
+    fitDiagramToViewport,
+    copyDiagramMermaid,
+  } = erdDiagram;
 
   const {
     updateDraft,
@@ -1070,9 +836,6 @@ export function AppWorkbench() {
     shortcutTip("Commit Edits", "edit.commit"),
   ];
 
-  const biOpen =
-    viewVisibility.bi &&
-    (viewPlacements.bi === "right" ? rightSidebarOpen : sidebarOpen);
   const {
     activeFilters,
     activeResult,
@@ -1244,11 +1007,23 @@ export function AppWorkbench() {
     selectedGridCopyText,
     copyCellsForRow,
     activeEditorApi,
-    runQuery,
+    runQuery: async () => {
+      await editorCommandsRef.current?.runQuery();
+    },
     showActionNotice,
     confirm: confirmAction,
     t,
   });
+
+  const { exportActiveResult, copyActiveResultSqlInserts, copyActiveResultAs } =
+    useResultExport({
+      activeResult,
+      activeConnectionId,
+      inferEditTarget,
+      setExportMenuOpen,
+      showActionNotice,
+      t,
+    });
 
   const {
     running,
@@ -1301,6 +1076,117 @@ export function AppWorkbench() {
     showActionNotice,
     t,
   });
+
+  const editorCommands = useEditorCommands({
+    query,
+    activeResult,
+    activeConnectionId,
+    activeConnectionOpen,
+    activeMetadata,
+    activeMetadataLoading,
+    formatter,
+    activeEditorApi,
+    activeEditorSelections,
+    activeMainEditorSelection,
+    setQuery,
+    setQueryError,
+    setRunMenuOpen,
+    runEditorSqlWithRunner,
+    runSqlWithParameterPrompt,
+    openQueryParameterPrompt,
+    explainSql,
+    refreshObjects,
+    openDiagramForSearch,
+    exportActiveResult,
+    showActionNotice,
+    t,
+  });
+  editorCommandsRef.current = { runQuery: editorCommands.runQuery };
+  const {
+    formatQuery,
+    showEditorQuickFix,
+    cleanupQuery,
+    transformEditorSelection,
+    indentEditorSelection,
+    outdentEditorSelection,
+    runQuery,
+    copyPlanFormat,
+    runSelectionQuery,
+    runCurrentQuery,
+    explainCurrentQuery,
+    runFromStartQuery,
+    runAllQuery,
+    runEditorSql,
+  } = editorCommands;
+
+  const { loadHistoryItem, runHistoryItem, restoreHistoryResult } =
+    useHistoryActions({
+      activeConnectionId,
+      setActiveConnectionId,
+      setQuery,
+      closeQueryHistoryDialog,
+      activeEditorApi,
+      runEditorSql,
+      releaseActiveSpill,
+      setResult,
+      setLastRunSql,
+      setQueryError,
+      setResultMode,
+      setTableViewObject,
+      setActiveResultIndex,
+      resetEdits,
+      resetGridView,
+      setSelectedRowKey,
+      setSelectedCell,
+      setSelectedRange,
+      showActionNotice,
+      t,
+    });
+
+  const workspaceActions = useWorkspaceActions({
+    query,
+    activeTabLabel,
+    activeConnectionId,
+    activeConnectionOpen,
+    activeEngine,
+    editorEngine,
+    themeKind: theme.kind,
+    schemaDraft,
+    setQuery,
+    setMigrationStudioOpen,
+    setSchemaDesignerOpen,
+    setObjectActionMenu,
+    setTableViewObject,
+    setResultMode,
+    activeEditorApi,
+    executeQuery,
+    openObjectSchemaDesigner,
+    openDiagramForSearch,
+    showActionNotice,
+    t,
+  });
+  const {
+    importPreview,
+    setImportPreview,
+    importSqlPreview,
+    schemaSqlPreview,
+    handleImportFile,
+    putImportSqlInEditor,
+    putMigrationTextInEditor,
+    copyMigrationText,
+    openTableData,
+    openSnapshotObject,
+    showObjectInDiagram,
+    jumpToSqlMetadata,
+    putSchemaSqlInEditor,
+    copySchemaSql,
+    insertCompletionHint,
+    saveCurrentQuery,
+    saveCurrentQueryAsFile,
+    exitApplication,
+    copyAppDiagnostics,
+    openAppDeveloperTools,
+  } = workspaceActions;
 
   usePendingResultChangesGuard({
     pendingCount,
@@ -1414,479 +1300,6 @@ export function AppWorkbench() {
       .toLowerCase()
       .includes(paletteQuery.trim().toLowerCase()),
   );
-
-  function activateBuiltInTheme(
-    value: ThemeKind | ((kind: ThemeKind) => ThemeKind),
-  ) {
-    const nextThemeKind =
-      typeof value === "function" ? value(themeKind) : value;
-    setThemeKind(nextThemeKind);
-    setActiveDefaultThemeId(
-      defaultThemeEntryForKind(nextThemeKind, activeDefaultThemeId)?.id ?? null,
-    );
-    setActiveCustomThemeId(null);
-  }
-
-  function activateThemePreference(value: ThemePreference) {
-    setThemePreference(value);
-    setActiveCustomThemeId(null);
-  }
-
-  function activateDefaultTheme(themeId: string | null) {
-    const entry = defaultThemeById(themeId);
-    if (!entry) {
-      setActiveDefaultThemeId(
-        defaultThemeEntryForKind(themeKind, activeDefaultThemeId)?.id ?? null,
-      );
-      setActiveCustomThemeId(null);
-      return;
-    }
-    setThemeKind(entry.kind);
-    setActiveDefaultThemeId(entry.id);
-    setActiveCustomThemeId(null);
-  }
-
-  function activateCustomTheme(themeId: string | null) {
-    if (!themeId) {
-      setActiveCustomThemeId(null);
-      return;
-    }
-    const entry = customThemes.find(
-      (customTheme) => customTheme.id === themeId,
-    );
-    if (!entry) {
-      setActiveCustomThemeId(null);
-      return;
-    }
-    setThemeKind(entry.theme.kind);
-    setActiveCustomThemeId(entry.id);
-  }
-
-  function buildSettingsJson() {
-    return JSON.stringify(
-      {
-        version: 1,
-        locale,
-        theme: activeCustomTheme?.theme ?? themePreference,
-        defaultThemeId: activeDefaultTheme?.id ?? activeDefaultThemeId,
-        activeCustomThemeId,
-        customThemes,
-        editor: {
-          animationsEnabled,
-          vimMode,
-          autoCommit,
-          formatter,
-          linter: sqlLinter,
-          snippets: sqlSnippets,
-          backgroundImage: editorBackgroundImage,
-          backgroundOpacity: editorBackgroundOpacity,
-        },
-        queryHistory: {
-          maxItems: queryHistoryMaxItems,
-          resultRows: queryHistoryResultRows,
-        },
-        results: {
-          offloadEnabled: resultOffloadEnabled,
-          memoryBudget: resultMemoryBudget,
-        },
-        layout: {
-          uiZoom,
-          sidebarOpen,
-          rightSidebarOpen,
-          viewPlacements,
-          viewVisibility,
-          sidebarWidth,
-          inspectorWidth,
-          resultsHeight,
-        },
-        activeConnectionId,
-        keymapOverrides,
-        connections: profiles.map(portableProfile),
-      },
-      null,
-      2,
-    );
-  }
-
-  function openSettingsSection(tab: SettingsTab) {
-    setSettingsTab(tab);
-    setSettingsOpen(true);
-    if (tab === "json") {
-      setSettingsJsonDraft(buildSettingsJson());
-      setSettingsJsonError(null);
-    }
-  }
-
-  function setVimMode(value: boolean) {
-    setStoredVimMode(value);
-    if (value) {
-      openSettingsSection("keymap");
-    }
-  }
-
-  async function refreshJobs() {
-    setJobsLoading(true);
-    setJobsError(null);
-    try {
-      const next = await workbenchRuntimeService.jobsList();
-      setJobs(next);
-    } catch (error) {
-      const message = errorMessage(error);
-      setJobsError(message);
-      setJobs(emptyJobList);
-    } finally {
-      setJobsLoading(false);
-    }
-  }
-
-  function resetSettingsJsonDraft() {
-    setSettingsJsonDraft(buildSettingsJson());
-    setSettingsJsonError(null);
-    showActionNotice(
-      "info",
-      t("notice.workbench.settingsJsonReset"),
-      t("notice.workbench.settingsJsonResetDetail"),
-    );
-  }
-
-  function applySettingsJson() {
-    try {
-      const parsed = JSON.parse(settingsJsonDraft) as unknown;
-      if (!isRecord(parsed)) {
-        throw new Error("settings JSON root must be an object");
-      }
-      if (typeof parsed.locale === "string") {
-        const nextLocale = normalizeLocale(parsed.locale);
-        setLocale(nextLocale);
-        parsed.locale = nextLocale;
-      }
-      let themeNotice: string | null = null;
-      let nextCustomThemes = customThemes;
-      let nextActiveCustomThemeId: string | null | undefined;
-      if (Array.isArray(parsed.customThemes)) {
-        nextCustomThemes = [];
-        for (const [index, value] of parsed.customThemes.entries()) {
-          nextCustomThemes.push(
-            customThemeEntryFromJson(value, index, nextCustomThemes),
-          );
-        }
-        setCustomThemes(nextCustomThemes);
-      }
-      if (typeof parsed.theme === "string" && defaultThemeById(parsed.theme)) {
-        const entry = defaultThemeById(parsed.theme);
-        if (entry) {
-          setThemeKind(entry.kind);
-          setActiveDefaultThemeId(entry.id);
-          setActiveCustomThemeId(null);
-          parsed.theme = entry.kind;
-          parsed.defaultThemeId = entry.id;
-          nextActiveCustomThemeId = null;
-          themeNotice = t("settings.theme.activeTheme.builtinNameDescription", {
-            name: entry.name,
-          });
-        }
-      } else if (
-        parsed.theme === "system" ||
-        parsed.theme === "dark" ||
-        parsed.theme === "light"
-      ) {
-        activateThemePreference(parsed.theme);
-        nextActiveCustomThemeId = null;
-      } else if (isRecord(parsed.theme)) {
-        const themeSource = parsed.theme;
-        const importResult = importThemeJson(themeSource, themeKind);
-        const nextTheme = importResult.theme;
-        parsed.theme = nextTheme;
-        themeNotice =
-          importResult.source === "vscode"
-            ? importResult.warnings.length > 0
-              ? t("notice.workbench.vscodeThemeConvertedWarnings", {
-                  name: nextTheme.name,
-                  count: importResult.warnings.length,
-                })
-              : t("notice.workbench.vscodeThemeConverted", {
-                  name: nextTheme.name,
-                })
-            : t("settings.theme.activeTheme.customDescription", {
-                name: nextTheme.name,
-              });
-        const savedTheme = upsertCustomThemeEntry(nextCustomThemes, nextTheme);
-        nextCustomThemes = savedTheme.entries;
-        setCustomThemes(nextCustomThemes);
-        setThemeKind(nextTheme.kind);
-        setActiveCustomThemeId(savedTheme.id);
-        nextActiveCustomThemeId = savedTheme.id;
-        parsed.activeCustomThemeId = savedTheme.id;
-        parsed.customThemes = nextCustomThemes;
-      } else if (isRecord(parsed.vscodeTheme)) {
-        const fallbackKind =
-          parsed.theme === "light" || parsed.theme === "dark"
-            ? parsed.theme
-            : themeKind;
-        const importResult = importThemeJson(parsed.vscodeTheme, fallbackKind);
-        const savedTheme = upsertCustomThemeEntry(
-          nextCustomThemes,
-          importResult.theme,
-        );
-        nextCustomThemes = savedTheme.entries;
-        setCustomThemes(nextCustomThemes);
-        setThemeKind(importResult.theme.kind);
-        setActiveCustomThemeId(savedTheme.id);
-        parsed.theme = importResult.theme;
-        parsed.activeCustomThemeId = savedTheme.id;
-        parsed.customThemes = nextCustomThemes;
-        delete parsed.vscodeTheme;
-        nextActiveCustomThemeId = savedTheme.id;
-        themeNotice =
-          importResult.warnings.length > 0
-            ? t("notice.workbench.vscodeThemeConvertedWarnings", {
-                name: importResult.theme.name,
-                count: importResult.warnings.length,
-              })
-            : t("notice.workbench.vscodeThemeConverted", {
-                name: importResult.theme.name,
-              });
-      } else if (
-        typeof parsed.activeCustomThemeId === "string" &&
-        nextCustomThemes.some(
-          (entry) => entry.id === parsed.activeCustomThemeId,
-        )
-      ) {
-        const entry = nextCustomThemes.find(
-          (themeEntry) => themeEntry.id === parsed.activeCustomThemeId,
-        );
-        if (entry) {
-          setThemeKind(entry.theme.kind);
-          setActiveCustomThemeId(entry.id);
-          nextActiveCustomThemeId = entry.id;
-          themeNotice = t("settings.theme.activeTheme.customDescription", {
-            name: entry.name,
-          });
-        }
-      }
-      if (typeof parsed.defaultThemeId === "string") {
-        const entry = defaultThemeById(parsed.defaultThemeId);
-        if (entry) {
-          setActiveDefaultThemeId(entry.id);
-          parsed.defaultThemeId = entry.id;
-          if (!themeNotice) {
-            themeNotice = t(
-              "settings.theme.activeTheme.builtinNameDescription",
-              {
-                name: entry.name,
-              },
-            );
-          }
-        }
-      }
-      if (
-        nextActiveCustomThemeId === undefined &&
-        Array.isArray(parsed.customThemes)
-      ) {
-        setActiveCustomThemeId(null);
-      }
-      if (isRecord(parsed.editor)) {
-        if (typeof parsed.editor.animationsEnabled === "boolean") {
-          setAnimationsEnabled(parsed.editor.animationsEnabled);
-        }
-        if (typeof parsed.editor.vimMode === "boolean") {
-          setStoredVimMode(parsed.editor.vimMode);
-        }
-        if (typeof parsed.editor.autoCommit === "boolean") {
-          setAutoCommit(parsed.editor.autoCommit);
-        }
-        if (
-          typeof parsed.editor.formatter === "string" &&
-          isSqlFormatterId(parsed.editor.formatter)
-        ) {
-          setFormatter(parsed.editor.formatter);
-        }
-        if (
-          typeof parsed.editor.linter === "string" &&
-          isSqlLinterId(parsed.editor.linter)
-        ) {
-          setSqlLinter(parsed.editor.linter);
-        }
-        if ("snippets" in parsed.editor) {
-          const nextSnippets = sqlSnippetsFromJson(parsed.editor.snippets);
-          setSqlSnippets(nextSnippets);
-        }
-        if (typeof parsed.editor.backgroundImage === "string") {
-          setEditorBackgroundImage(parsed.editor.backgroundImage);
-        }
-        if ("backgroundOpacity" in parsed.editor) {
-          const nextOpacity = Number(parsed.editor.backgroundOpacity);
-          if (Number.isFinite(nextOpacity)) {
-            setEditorBackgroundOpacity(nextOpacity);
-            parsed.editor.backgroundOpacity =
-              normalizeEditorBackgroundOpacity(nextOpacity);
-          }
-        }
-      }
-      if ("snippets" in parsed) {
-        const nextSnippets = sqlSnippetsFromJson(parsed.snippets);
-        setSqlSnippets(nextSnippets);
-      }
-      if (isRecord(parsed.queryHistory)) {
-        const nextMaxItems = Number(parsed.queryHistory.maxItems);
-        if (Number.isFinite(nextMaxItems)) {
-          setQueryHistoryMaxItems(
-            clampNumber(nextMaxItems, 0, queryHistoryMaxItemsHardLimit),
-          );
-        }
-        const nextResultRows = Number(parsed.queryHistory.resultRows);
-        if (Number.isFinite(nextResultRows)) {
-          setQueryHistoryResultRows(
-            clampNumber(nextResultRows, 0, queryHistoryResultRowsHardLimit),
-          );
-        }
-      }
-      if (isRecord(parsed.results)) {
-        if (typeof parsed.results.offloadEnabled === "boolean") {
-          setResultOffloadEnabled(parsed.results.offloadEnabled);
-        }
-        const nextMemoryBudget = Number(parsed.results.memoryBudget);
-        if (Number.isFinite(nextMemoryBudget)) {
-          setResultMemoryBudget(clampNumber(nextMemoryBudget, 1_000, 100_000));
-        }
-      }
-      if (isRecord(parsed.layout)) {
-        const nextUiZoom = Number(parsed.layout.uiZoom);
-        if (Number.isFinite(nextUiZoom)) {
-          setUiZoom(nextUiZoom);
-          parsed.layout.uiZoom = normalizeUiZoom(nextUiZoom);
-        }
-        if (typeof parsed.layout.sidebarOpen === "boolean") {
-          setSidebarOpen(parsed.layout.sidebarOpen);
-        }
-        if (typeof parsed.layout.rightSidebarOpen === "boolean") {
-          setRightSidebarOpen(parsed.layout.rightSidebarOpen);
-        }
-        if (
-          parsed.layout.sidebarSide === "left" ||
-          parsed.layout.sidebarSide === "right"
-        ) {
-          setRightSidebarOpen(parsed.layout.sidebarSide === "right");
-        }
-        const viewPlacements = parsed.layout.viewPlacements;
-        if (isRecord(viewPlacements)) {
-          const importedPlacements: Partial<WorkbenchViewPlacements> = {};
-          for (const viewId of workbenchViewIds) {
-            const side = viewPlacements[viewId];
-            if (side === "left" || side === "right") {
-              importedPlacements[viewId] = side;
-            }
-          }
-          setViewPlacements((current) => {
-            return { ...current, ...importedPlacements };
-          });
-        }
-        const viewVisibility = parsed.layout.viewVisibility;
-        if (isRecord(viewVisibility)) {
-          const importedVisibility: Partial<WorkbenchViewVisibility> = {};
-          for (const viewId of workbenchViewIds) {
-            const open = viewVisibility[viewId];
-            if (typeof open === "boolean") {
-              importedVisibility[viewId] = open;
-            }
-          }
-          setViewVisibility((current) => {
-            return { ...current, ...importedVisibility };
-          });
-        }
-        const nextSidebarWidth = Number(parsed.layout.sidebarWidth);
-        if (Number.isFinite(nextSidebarWidth)) {
-          setSidebarWidth(
-            clampNumber(nextSidebarWidth, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX),
-          );
-        }
-        const nextInspectorWidth = Number(parsed.layout.inspectorWidth);
-        if (Number.isFinite(nextInspectorWidth)) {
-          setInspectorWidth(
-            clampNumber(
-              nextInspectorWidth,
-              INSPECTOR_WIDTH_MIN,
-              INSPECTOR_WIDTH_MAX,
-            ),
-          );
-        }
-        const nextResultsHeight = Number(parsed.layout.resultsHeight);
-        if (Number.isFinite(nextResultsHeight)) {
-          setResultsHeight(
-            clampNumber(
-              nextResultsHeight,
-              RESULTS_HEIGHT_MIN,
-              RESULTS_HEIGHT_MAX,
-            ),
-          );
-        }
-      }
-      if (isRecord(parsed.keymapOverrides)) {
-        const nextKeymap: Keymap = {};
-        for (const [commandId, chord] of Object.entries(
-          parsed.keymapOverrides,
-        )) {
-          if (typeof chord === "string") {
-            nextKeymap[commandId] = chord;
-          }
-        }
-        setKeymapOverrides(nextKeymap);
-        saveOverrides(nextKeymap);
-      }
-      if (Array.isArray(parsed.connections)) {
-        const nextProfiles = withStarterProfiles(
-          withUniqueProfileIds(
-            parsed.connections.map((profile, index) =>
-              settingsProfileFromJson(profile, index),
-            ),
-          ),
-        );
-        if (nextProfiles.length > 0) {
-          const selectedId =
-            typeof parsed.activeConnectionId === "string" &&
-            nextProfiles.some(
-              (profile) => profile.id === parsed.activeConnectionId,
-            )
-              ? parsed.activeConnectionId
-              : nextProfiles[0].id;
-          const selectedProfile =
-            nextProfiles.find((profile) => profile.id === selectedId) ??
-            nextProfiles[0];
-          setProfiles(nextProfiles);
-          setSelectedProfileId(selectedProfile.id);
-          setActiveConnectionId(selectedProfile.id);
-          setDraft(selectedProfile);
-        }
-      }
-      setSettingsJsonDraft(JSON.stringify(parsed, null, 2));
-      setSettingsJsonError(null);
-      showActionNotice(
-        "success",
-        t("notice.workbench.settingsApplied"),
-        themeNotice ?? t("notice.workbench.settingsAppliedDetail"),
-      );
-    } catch (error) {
-      const message = errorMessage(error);
-      setSettingsJsonError(message);
-      showActionNotice(
-        "error",
-        t("notice.workbench.settingsJsonFailed"),
-        message,
-      );
-    }
-  }
-
-  async function openAppDeveloperTools() {
-    try {
-      await workbenchRuntimeService.openDeveloperTools();
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.devToolsUnavailable"),
-        errorMessage(error),
-      );
-    }
-  }
 
   // Keep the keydown listener stable while reading the latest state via refs.
   const keymapRef = useRef(keymap);
@@ -2069,37 +1482,6 @@ export function AppWorkbench() {
     };
   }, []);
 
-  // Initialize diagram filters per connection when the ERD modal opens.
-  useEffect(() => {
-    if (!diagramOpen) {
-      diagramInitializedFor.current = null;
-      return;
-    }
-    if (!activeMetadata || !hasDiagram(activeMetadata)) {
-      setDiagramError(
-        "No tables to diagram yet — connect and load metadata first.",
-      );
-      return;
-    }
-    setDiagramError(null);
-    const initKey = `${activeConnectionId}:${activeMetadata.schemas
-      .map((schema) => schema.name)
-      .join("|")}`;
-    if (diagramInitializedFor.current !== initKey) {
-      setDiagramSchemaNames(
-        activeMetadata.schemas
-          .filter((schema) =>
-            schema.objects.some((object) => object.kind === "table"),
-          )
-          .map((schema) => schema.name),
-      );
-      setDiagramSearch(pendingDiagramSearchRef.current ?? "");
-      pendingDiagramSearchRef.current = null;
-      setDiagramZoom(1);
-      diagramInitializedFor.current = initKey;
-    }
-  }, [activeConnectionId, activeMetadata, diagramOpen]);
-
   function resetKeybinding(commandId: string) {
     if (recordingCommand === commandId) {
       cancelRecording();
@@ -2140,910 +1522,6 @@ export function AppWorkbench() {
     );
   }
 
-  const importSqlPreview = importPreview
-    ? generateImportSql(
-        importPreview.tableName,
-        importPreview.columns,
-        importPreview.rows,
-      )
-    : "";
-  const schemaSqlPreview = buildSchemaSql(schemaDraft);
-
-  function loadHistoryItem(item: QueryHistoryItem) {
-    if (item.connectionId !== activeConnectionId) {
-      setActiveConnectionId(item.connectionId);
-    }
-    setQuery(item.sql);
-    closeQueryHistoryDialog();
-    window.setTimeout(() => activeEditorApi()?.focus(), 0);
-    showActionNotice(
-      "success",
-      t("notice.workbench.sqlLoaded"),
-      item.connectionName,
-    );
-  }
-
-  async function runHistoryItem(item: QueryHistoryItem) {
-    if (item.connectionId !== activeConnectionId) {
-      loadHistoryItem(item);
-      showActionNotice(
-        "info",
-        t("notice.workbench.sqlLoaded"),
-        t("notice.workbench.sqlLoadedSwitchedDetail"),
-      );
-      return;
-    }
-    setQuery(item.sql);
-    closeQueryHistoryDialog();
-    await runEditorSql(item.sql, { allowMagic: false });
-  }
-
-  function restoreHistoryResult(item: QueryHistoryItem) {
-    if (!item.result) {
-      showActionNotice(
-        "info",
-        t("notice.workbench.noResultRetained"),
-        t("notice.workbench.noResultRetainedDetail"),
-      );
-      return;
-    }
-    releaseActiveSpill();
-    setResult(historySnapshotToQueryResult(item.result));
-    setLastRunSql(item.sql);
-    setQueryError(null);
-    setResultMode("data");
-    setTableViewObject(null);
-    setActiveResultIndex(0);
-    resetEdits();
-    resetGridView();
-    setSelectedRowKey(null);
-    setSelectedCell(null);
-    setSelectedRange(null);
-    closeQueryHistoryDialog();
-    showActionNotice(
-      "success",
-      t("notice.workbench.resultRestored"),
-      t("notice.workbench.resultRestoredDetail", {
-        count: toCount(item.result.retainedRows),
-      }),
-    );
-  }
-
-  async function saveExportBlob(blob: Blob, fileName: string) {
-    const outcome = await downloadBlob(blob, fileName);
-    if (outcome.kind === "native") {
-      showActionNotice("success", t("notice.grid.exportSaved"), outcome.path);
-    } else if (outcome.kind === "browser") {
-      showActionNotice("success", t("notice.grid.exportStarted"), fileName);
-    }
-  }
-
-  async function exportActiveResult(format: ResultExportFormat) {
-    const exportResult = activeResult;
-    if (!exportResult) {
-      showActionNotice("info", t("notice.grid.noResultToExport"));
-      return;
-    }
-    const target = inferEditTarget();
-    const fileName = resultExportFileName(activeConnectionId, format);
-    try {
-      let blob: Blob;
-      if (format === "xlsx") {
-        blob = await buildXlsxBlob(exportResult, target?.table ?? "Result");
-      } else {
-        const exported = buildResultExport(
-          exportResult,
-          format,
-          target?.table ?? "query_result",
-        );
-        blob = new Blob([exported.bom ? "\uFEFF" : "", exported.content], {
-          type: exported.mime,
-        });
-      }
-      setExportMenuOpen(false);
-      await saveExportBlob(blob, fileName);
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.grid.exportFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function copyActiveResultSqlInserts() {
-    const exportResult = activeResult;
-    if (!exportResult) {
-      showActionNotice("info", t("notice.grid.noResultToCopy"));
-      return;
-    }
-    const target = inferEditTarget();
-    const exported = buildResultExport(
-      exportResult,
-      "sql",
-      target?.table ?? "query_result",
-    );
-    try {
-      await writeTextToClipboard(exported.content);
-      showActionNotice(
-        "success",
-        t("notice.grid.insertSqlCopied"),
-        t("notice.grid.rowCountDetail", {
-          count: toCount(exportResult.rows.length),
-        }),
-      );
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function copyActiveResultAs(format: ResultExportFormat) {
-    if (format === "sql") {
-      await copyActiveResultSqlInserts();
-      return;
-    }
-    const exportResult = activeResult;
-    if (!exportResult) {
-      showActionNotice("info", t("notice.grid.noResultToCopy"));
-      return;
-    }
-    const target = inferEditTarget();
-    const exported = buildResultExport(
-      exportResult,
-      format,
-      target?.table ?? "query_result",
-    );
-    try {
-      await writeTextToClipboard(exported.content);
-      showActionNotice(
-        "success",
-        t("notice.grid.copiedAs", { format: format.toUpperCase() }),
-        t("notice.grid.rowCountDetail", {
-          count: toCount(exportResult.rows.length),
-        }),
-      );
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  function currentDiagramSvgMarkup() {
-    const svg = diagramSvgRef.current;
-    if (!svg || !diagramLayout) {
-      throw new Error("No ERD is rendered");
-    }
-    return {
-      markup: serializeSvgElement(svg),
-      width: diagramLayout.width,
-      height: diagramLayout.height,
-    };
-  }
-
-  async function downloadDiagramSvg() {
-    try {
-      const { markup } = currentDiagramSvgMarkup();
-      const outcome = await downloadBlob(
-        new Blob([markup], { type: "image/svg+xml;charset=utf-8" }),
-        erdFileName(activeConnectionId, "svg"),
-      );
-      setDiagramError(null);
-      if (outcome.kind !== "cancelled") {
-        showActionNotice(
-          "success",
-          t("notice.workbench.erdSvgExported"),
-          outcome.kind === "native"
-            ? outcome.path
-            : erdFileName(activeConnectionId, "svg"),
-        );
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice("error", t("notice.workbench.erdExportFailed"), message);
-    }
-  }
-
-  async function downloadDiagramPng() {
-    try {
-      const { markup, width, height } = currentDiagramSvgMarkup();
-      const blob = await svgMarkupToPngBlob(markup, width, height);
-      const outcome = await downloadBlob(
-        blob,
-        erdFileName(activeConnectionId, "png"),
-      );
-      setDiagramError(null);
-      if (outcome.kind !== "cancelled") {
-        showActionNotice(
-          "success",
-          t("notice.workbench.erdPngExported"),
-          outcome.kind === "native"
-            ? outcome.path
-            : erdFileName(activeConnectionId, "png"),
-        );
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice("error", t("notice.workbench.erdExportFailed"), message);
-    }
-  }
-
-  async function copyDiagramSvg() {
-    try {
-      const { markup } = currentDiagramSvgMarkup();
-      await writeTextToClipboard(markup);
-      setDiagramError(null);
-      showActionNotice("success", t("notice.workbench.erdSvgCopied"));
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice("error", t("notice.workbench.copyFailed"), message);
-    }
-  }
-
-  async function copyDiagramPng() {
-    try {
-      const { markup, width, height } = currentDiagramSvgMarkup();
-      const blob = await svgMarkupToPngBlob(markup, width, height);
-      await writePngBlobToClipboard(blob);
-      setDiagramError(null);
-      showActionNotice("success", t("notice.workbench.erdPngCopied"));
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice("error", t("notice.workbench.copyFailed"), message);
-    }
-  }
-
-  function currentTableSpecDocument() {
-    if (!activeMetadata) {
-      throw new Error("No schema metadata is loaded");
-    }
-    return buildTableSpecDocument(activeMetadata, {
-      connectionId: activeConnectionId,
-      connectionName: activeConnection.name,
-      schemaNames: diagramSchemaNames,
-      search: diagramSearch,
-    });
-  }
-
-  async function downloadTableSpecMarkdown() {
-    try {
-      const exported = exportTableSpecMarkdown(currentTableSpecDocument());
-      const outcome = await downloadBlob(
-        new Blob([exported.content], { type: exported.mime }),
-        tableSpecFileName(activeConnectionId, exported.extension),
-      );
-      setDiagramError(null);
-      if (outcome.kind !== "cancelled") {
-        showActionNotice(
-          "success",
-          t("notice.workbench.tableSpecExported"),
-          "Markdown",
-        );
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice(
-        "error",
-        t("notice.workbench.tableSpecExportFailed"),
-        message,
-      );
-    }
-  }
-
-  async function downloadTableSpecJson() {
-    try {
-      const exported = exportTableSpecJson(currentTableSpecDocument());
-      const outcome = await downloadBlob(
-        new Blob([exported.content], { type: exported.mime }),
-        tableSpecFileName(activeConnectionId, exported.extension),
-      );
-      setDiagramError(null);
-      if (outcome.kind !== "cancelled") {
-        showActionNotice(
-          "success",
-          t("notice.workbench.tableSpecExported"),
-          "JSON",
-        );
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice(
-        "error",
-        t("notice.workbench.tableSpecExportFailed"),
-        message,
-      );
-    }
-  }
-
-  async function handleSchemaSpecFile(file: File) {
-    try {
-      const spec = parseTableSpecDocument(await file.text());
-      const sql = ddlFromTableSpecDocument(spec);
-      setQuery(sql);
-      setDiagramOpen(false);
-      setDiagramError(null);
-      showActionNotice("success", t("notice.workbench.ddlFromSpec"), file.name);
-      window.setTimeout(() => activeEditorApi()?.focus(), 0);
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice(
-        "error",
-        t("notice.workbench.specImportFailed"),
-        message,
-      );
-    } finally {
-      if (schemaSpecFileRef.current) {
-        schemaSpecFileRef.current.value = "";
-      }
-    }
-  }
-
-  function createDatabaseSqlFromDiagram() {
-    try {
-      const sql = buildCreateDatabaseSql(currentTableSpecDocument());
-      setQuery(sql);
-      setDiagramOpen(false);
-      setDiagramError(null);
-      showActionNotice("success", t("notice.workbench.createDbSqlGenerated"));
-      window.setTimeout(() => activeEditorApi()?.focus(), 0);
-    } catch (error) {
-      const message = errorMessage(error);
-      setDiagramError(message);
-      showActionNotice(
-        "error",
-        t("notice.workbench.createDbSqlFailed"),
-        message,
-      );
-    }
-  }
-
-  function editDiagramTableColumns(tableId: string) {
-    const object = activeMetadata?.schemas
-      .flatMap((schema) => schema.objects)
-      .find(
-        (item) =>
-          item.kind === "table" && `${item.schema}.${item.name}` === tableId,
-      );
-    if (!object) {
-      return;
-    }
-    setDiagramOpen(false);
-    openObjectSchemaDesigner(object);
-  }
-
-  function openSchemaDiagramDesigner() {
-    if (activeMetadata && hasDiagram(activeMetadata)) {
-      openSchemaDiagramFromDocument(diagramFromMetadata(activeMetadata));
-    } else {
-      openBlankSchemaDiagram();
-    }
-  }
-
-  function editDiagramInDesigner() {
-    if (!activeMetadata) {
-      return;
-    }
-    openSchemaDiagramFromDocument(
-      diagramFromMetadata(activeMetadata, {
-        schemaNames: diagramSchemaNames,
-        search: diagramSearch,
-      }),
-    );
-    setDiagramOpen(false);
-  }
-
-  function seedSchemaDiagramFromDb() {
-    if (activeMetadata) {
-      setSchemaDiagramDocument(diagramFromMetadata(activeMetadata));
-    }
-  }
-
-  function putDiagramDesignerSqlInEditor(sql: string) {
-    setQuery(sql);
-    closeSchemaDiagram();
-    showActionNotice("success", t("notice.workbench.createDbSqlGenerated"));
-    window.setTimeout(() => activeEditorApi()?.focus(), 0);
-  }
-
-  async function copyDiagramDesignerSql(sql: string) {
-    try {
-      await writeTextToClipboard(sql);
-      showActionNotice("success", t("notice.workbench.schemaSqlCopied"));
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  function fitDiagramToViewport() {
-    if (!diagramLayout || !diagramCanvasRef.current) {
-      return;
-    }
-    const bounds = diagramCanvasRef.current.getBoundingClientRect();
-    const nextZoom = clampNumber(
-      Math.min(
-        bounds.width / diagramLayout.width,
-        bounds.height / diagramLayout.height,
-      ),
-      0.25,
-      1.25,
-    );
-    setDiagramZoom(nextZoom);
-    window.requestAnimationFrame(() => {
-      if (diagramCanvasRef.current) {
-        diagramCanvasRef.current.scrollTop = 0;
-        diagramCanvasRef.current.scrollLeft = 0;
-      }
-    });
-  }
-
-  async function handleImportFile(file: File) {
-    const kind = detectImportFileKind(file.name);
-    setImportPreview(null);
-    if (!kind) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.importFailed"),
-        t("notice.workbench.importUnsupportedDetail"),
-      );
-      return;
-    }
-    const text = await file.text();
-    if (kind === "sql") {
-      setQuery(text);
-      showActionNotice("success", t("notice.workbench.sqlLoaded"), file.name);
-      return;
-    }
-    if (kind === "excel") {
-      showActionNotice(
-        "error",
-        t("notice.workbench.importFailed"),
-        t("notice.workbench.importExcelDetail"),
-      );
-      return;
-    }
-    try {
-      const parsed = parseImportText(text, kind);
-      setImportPreview({
-        ...parsed,
-        fileName: file.name,
-        format: kind,
-        tableName: inferImportTableName(file.name),
-      });
-      showActionNotice(
-        "success",
-        t("notice.workbench.importPreviewReady"),
-        t("notice.workbench.importPreviewReadyDetail", {
-          name: file.name,
-          count: toCount(parsed.totalRows),
-        }),
-      );
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.importFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  function putImportSqlInEditor() {
-    if (!importPreview) {
-      return;
-    }
-    setQuery(
-      generateImportSql(
-        importPreview.tableName,
-        importPreview.columns,
-        importPreview.rows,
-      ),
-    );
-    setImportPreview(null);
-    showActionNotice(
-      "success",
-      t("notice.workbench.importSqlGenerated"),
-      importPreview.tableName,
-    );
-  }
-
-  function putMigrationTextInEditor(text: string) {
-    setQuery(text);
-    setMigrationStudioOpen(false);
-    showActionNotice("success", t("notice.workbench.migrationOutputLoaded"));
-  }
-
-  async function copyMigrationText(text: string, label: string) {
-    try {
-      await writeTextToClipboard(text);
-      showActionNotice("success", t("notice.workbench.labelCopied", { label }));
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function openTableData(object: DbObjectMetadata) {
-    if (object.kind !== "table" && object.kind !== "view") {
-      return;
-    }
-    const sql = tablePreviewSql(editorEngine, object);
-    setQuery(sql);
-    setObjectActionMenu(null);
-    setTableViewObject(object);
-    setResultMode("data");
-    if (activeConnectionOpen) {
-      await executeQuery(sql, undefined, { sourceObject: object });
-    }
-  }
-
-  function openSnapshotObject(object: WorkspaceConnection["objects"][number]) {
-    if (object.kind === "procedure") {
-      return;
-    }
-    const sql =
-      editorEngine === "sqlserver"
-        ? `select top (200) * from ${quoteSqlIdentifier(editorEngine, object.name)};`
-        : `select * from ${quoteSqlIdentifier(editorEngine, object.name)} limit 200;`;
-    setQuery(sql);
-    if (activeConnectionOpen) {
-      void executeQuery(sql);
-    }
-  }
-
-  function showObjectInDiagram(object: DbObjectMetadata) {
-    pendingDiagramSearchRef.current = object.name;
-    setDiagramSearch(object.name);
-    setDiagramOpen(true);
-    setObjectActionMenu(null);
-  }
-
-  function jumpToSqlMetadata(target: SqlMetadataTarget) {
-    openObjectSchemaDesigner(target.object);
-    setObjectActionMenu(null);
-  }
-
-  function putSchemaSqlInEditor() {
-    setQuery(buildSchemaSql(schemaDraft));
-    setSchemaDesignerOpen(false);
-    showActionNotice(
-      "success",
-      t("notice.workbench.schemaSqlGenerated"),
-      schemaDraft.table,
-    );
-  }
-
-  async function copySchemaSql() {
-    try {
-      await writeTextToClipboard(schemaSqlPreview);
-      showActionNotice("success", t("notice.workbench.schemaSqlCopied"));
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  function insertCompletionHint(hint: CompletionHint) {
-    activeEditorApi()?.insertText(hint.insertText);
-    activeEditorApi()?.focus();
-  }
-
-  function saveCurrentQuery() {
-    try {
-      window.localStorage.setItem(savedQueryStorageKey, query);
-      showActionNotice(
-        "success",
-        t("notice.workbench.querySaved"),
-        activeTabLabel ?? "scratch",
-      );
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.querySaveFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function saveCurrentQueryAsFile() {
-    const fileName = sqlDownloadFileName(activeTabLabel ?? "query.sql");
-    const outcome = await downloadBlob(
-      new Blob([query], { type: "application/sql;charset=utf-8" }),
-      fileName,
-    );
-    if (outcome.kind !== "cancelled") {
-      showActionNotice(
-        "success",
-        t("notice.workbench.sqlExportStarted"),
-        outcome.kind === "native" ? outcome.path : fileName,
-      );
-    }
-  }
-
-  async function exitApplication() {
-    const runtimeError = tauriRuntimeError();
-    if (runtimeError) {
-      showActionNotice(
-        "info",
-        t("notice.workbench.exitUnavailable"),
-        t("notice.workbench.exitUnavailableDetail"),
-      );
-      return;
-    }
-    try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().close();
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.exitFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function copyAppDiagnostics() {
-    const diagnostics = [
-      `${APP_NAME} ${APP_VERSION}`,
-      `Identifier: ${APP_IDENTIFIER}`,
-      `Runtime: ${tauriRuntimeError() ? "browser preview" : "Tauri desktop"}`,
-      `Theme: ${theme.kind}`,
-      `Active connection: ${activeConnectionId}`,
-      `Connection status: ${activeConnectionOpen ? "connected" : "closed"}`,
-      `Engine: ${activeEngine}`,
-      `User agent: ${navigator.userAgent}`,
-    ].join("\n");
-    try {
-      await navigator.clipboard?.writeText(diagnostics);
-      showActionNotice("success", t("notice.workbench.diagnosticsCopied"));
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function formatQuery() {
-    const result = await activeEditorApi()?.format();
-    const error = result?.error ?? null;
-    setQueryError(error);
-    if (error) {
-      showActionNotice("error", t("notice.editor.formatFailed"), error);
-    } else if (!result?.changed) {
-      showActionNotice(
-        "info",
-        result?.skipped === "empty"
-          ? t("notice.editor.nothingToFormat")
-          : t("notice.editor.alreadyFormatted"),
-      );
-    } else {
-      showActionNotice("success", t("notice.editor.formatted"), formatter);
-    }
-  }
-
-  function showEditorQuickFix() {
-    const opened = activeEditorApi()?.showQuickFix() ?? false;
-    if (!opened) {
-      showActionNotice("info", t("notice.editor.noProblems"));
-    }
-  }
-
-  async function cleanupQuery() {
-    const result = await activeEditorApi()?.cleanup();
-    const error = result?.error ?? null;
-    setQueryError(error);
-    if (error) {
-      showActionNotice("error", t("notice.editor.cleanupFailed"), error);
-    } else if (!result?.changed) {
-      showActionNotice(
-        "info",
-        result?.skipped === "empty"
-          ? t("notice.editor.nothingToCleanup")
-          : t("notice.editor.alreadyClean"),
-      );
-    } else {
-      showActionNotice("success", t("notice.editor.cleanupComplete"));
-    }
-  }
-
-  function transformEditorSelection(action: SqlEditorTransformAction) {
-    const changed = activeEditorApi()?.transformSelection(action) ?? false;
-    if (!changed) {
-      showActionNotice("info", t("notice.editor.nothingChanged"));
-      return;
-    }
-    const label: Record<SqlEditorTransformAction, string> = {
-      uppercase: t("notice.editor.uppercased"),
-      lowercase: t("notice.editor.lowercased"),
-      unformat: t("notice.editor.unformatted"),
-      appendCommas: t("notice.editor.commasAdded"),
-      doubleToSingleQuotes: t("notice.editor.quotesConverted"),
-    };
-    showActionNotice("success", label[action]);
-  }
-
-  function indentEditorSelection() {
-    const changed = activeEditorApi()?.indentSelection() ?? false;
-    showActionNotice(
-      changed ? "success" : "info",
-      changed ? t("notice.editor.indented") : t("notice.editor.nothingChanged"),
-    );
-  }
-
-  function outdentEditorSelection() {
-    const changed = activeEditorApi()?.outdentSelection() ?? false;
-    showActionNotice(
-      changed ? "success" : "info",
-      changed
-        ? t("notice.editor.outdented")
-        : t("notice.editor.nothingChanged"),
-    );
-  }
-
-  async function runQuery() {
-    setRunMenuOpen(false);
-    const selectedSql = selectedSqlFromSelections(
-      query,
-      activeEditorSelections(),
-    );
-    if (selectedSql) {
-      await runEditorSql(selectedSql, { allowMagic: true });
-      return;
-    }
-    const selection = activeMainEditorSelection();
-    const sqlToRun = selectedOrCurrentStatement(
-      selection.from,
-      selection.to,
-      query,
-    );
-    await runEditorSql(sqlToRun, { allowMagic: true });
-  }
-
-  async function copyPlanFormat(format: QueryPlanCopyFormat) {
-    try {
-      await writeTextToClipboard(format.content);
-      showActionNotice(
-        "success",
-        t("notice.workbench.planCopied"),
-        format.label,
-      );
-    } catch (error) {
-      showActionNotice(
-        "error",
-        t("notice.workbench.copyFailed"),
-        errorMessage(error),
-      );
-    }
-  }
-
-  async function runSelectionQuery() {
-    setRunMenuOpen(false);
-    const sqlToRun = selectedSqlFromSelections(query, activeEditorSelections());
-    if (!sqlToRun) {
-      showActionNotice("info", t("notice.query.noSelectionToRun"));
-      return;
-    }
-    await runEditorSql(sqlToRun, { allowMagic: true });
-  }
-
-  async function runCurrentQuery() {
-    setRunMenuOpen(false);
-    const selection = activeMainEditorSelection();
-    const cursor = selection.to;
-    const sqlToRun = selectedOrCurrentStatement(cursor, cursor, query);
-    await runEditorSql(sqlToRun, { allowMagic: true });
-  }
-
-  function explainTargetSql() {
-    const selectedSql = selectedSqlFromSelections(
-      query,
-      activeEditorSelections(),
-    );
-    if (selectedSql) {
-      return selectedSql;
-    }
-    const selection = activeMainEditorSelection();
-    const cursor = selection.to;
-    return selectedOrCurrentStatement(cursor, cursor, query);
-  }
-
-  async function explainCurrentQuery(mode: QueryPlanMode) {
-    setRunMenuOpen(false);
-    await explainSql(explainTargetSql().trim(), mode);
-  }
-
-  async function runFromStartQuery() {
-    setRunMenuOpen(false);
-    const selection = activeMainEditorSelection();
-    const cursor = Math.max(selection.from, selection.to);
-    const sqlToRun = query.slice(0, cursor).trim();
-    await runEditorSql(sqlToRun, { allowMagic: false });
-  }
-
-  async function runAllQuery() {
-    setRunMenuOpen(false);
-    await runEditorSql(query.trim(), { allowMagic: false });
-  }
-
-  async function runEditorSql(
-    sqlToRun: string,
-    options: { allowMagic: boolean },
-  ) {
-    await runEditorSqlWithRunner(sqlToRun, {
-      ...options,
-      onMagic: runQueryMagic,
-    });
-  }
-
-  async function runQueryMagic(magic: QueryMagicAction) {
-    switch (magic.kind) {
-      case "error":
-        setQueryError(magic.message);
-        return;
-      case "sql":
-        setQuery(magic.sql);
-        await runSqlWithParameterPrompt(magic.sql);
-        return;
-      case "erd":
-        if (!activeConnectionOpen) {
-          setQueryError(`not connected: ${activeConnectionId}`);
-          return;
-        }
-        if (!activeMetadata && !activeMetadataLoading) {
-          await refreshObjects(activeConnectionId, true);
-        }
-        pendingDiagramSearchRef.current = magic.search;
-        setDiagramSearch(magic.search);
-        setDiagramOpen(true);
-        setQueryError(null);
-        return;
-      case "export":
-        if (!activeResult) {
-          setQueryError("No result to export yet.");
-          return;
-        }
-        exportActiveResult(magic.format);
-        setQueryError(null);
-        return;
-      case "params":
-        setQuery(magic.sql);
-        await openQueryParameterPrompt(magic.sql, true);
-        return;
-    }
-  }
-
-  const completionOpen =
-    viewVisibility.completion &&
-    (viewPlacements.completion === "right" ? rightSidebarOpen : sidebarOpen);
-  const historyOpen =
-    viewVisibility.queryHistory &&
-    (viewPlacements.queryHistory === "right" ? rightSidebarOpen : sidebarOpen);
-  const planOpen =
-    viewVisibility.plan &&
-    (viewPlacements.plan === "right" ? rightSidebarOpen : sidebarOpen);
   const appStyle = useMemo(
     () =>
       ({
@@ -3053,147 +1531,22 @@ export function AppWorkbench() {
     [theme, uiZoom],
   );
 
-  // Briefly enable color transitions only while the theme is actually changing,
-  // so light/dark switches fade instead of snapping — without leaving a
-  // permanent transition on every surface (which would make hover feel laggy).
-  const [themeSwitching, setThemeSwitching] = useState(false);
-  const themeKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const key = `${themeKind}|${activeDefaultThemeId ?? ""}|${activeCustomThemeId ?? ""}`;
-    if (themeKeyRef.current === null) {
-      themeKeyRef.current = key;
-      return;
-    }
-    if (themeKeyRef.current === key) return;
-    themeKeyRef.current = key;
-    setThemeSwitching(true);
-    const timer = window.setTimeout(() => setThemeSwitching(false), 280);
-    return () => window.clearTimeout(timer);
-  }, [themeKind, activeDefaultThemeId, activeCustomThemeId]);
-
   function renderEditorTabStrip(group: EditorGroup) {
-    const state = editorGroupStates[group];
-    const groupOpenTabs = openTabsForEditorGroup(state);
-    const closedTabsAvailable = state.tabs.some(
-      (tab) => !state.openTabIds.includes(tab.id),
-    );
-    const menuOpenForGroup = editorTabMenu?.group === group;
     return (
-      <div
-        className="tab-strip editor-tab-strip"
-        onContextMenu={(event) => event.stopPropagation()}
-      >
-        {groupOpenTabs.map((tab) => (
-          <button
-            className={tab.id === state.activeTabId ? "tab active" : "tab"}
-            key={tab.id}
-            type="button"
-            title={tab.label}
-            onClick={() => selectEditorTab(group, tab.id)}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              selectEditorTab(group, tab.id);
-              setEditorTabMenu({
-                x: event.clientX,
-                y: event.clientY,
-                group,
-                tabId: tab.id,
-              });
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-        <button
-          className="mini-button"
-          type="button"
-          title="New SQL tab"
-          aria-label="New SQL tab"
-          onClick={() => newSqlTab(group)}
-        >
-          <Plus size={14} />
-        </button>
-        {menuOpenForGroup && editorTabMenu ? (
-          <div
-            className="app-menu-popover editor-tab-menu"
-            role="menu"
-            style={{ left: editorTabMenu.x, top: editorTabMenu.y }}
-            onContextMenu={(event) => event.preventDefault()}
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                const { group } = editorTabMenu;
-                setEditorTabMenu(null);
-                newSqlTab(group);
-              }}
-            >
-              <span>New SQL Tab</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                const { group, tabId } = editorTabMenu;
-                setEditorTabMenu(null);
-                renameSqlTab(group, tabId);
-              }}
-            >
-              <span>Rename Tab</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                const { group, tabId } = editorTabMenu;
-                setEditorTabMenu(null);
-                duplicateSqlTab(group, tabId);
-              }}
-            >
-              <span>Duplicate Tab</span>
-            </button>
-            <span className="menu-separator" aria-hidden="true" />
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                const { group, tabId } = editorTabMenu;
-                setEditorTabMenu(null);
-                closeSqlTab(group, tabId);
-              }}
-            >
-              <span>Close Tab</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={groupOpenTabs.length <= 1}
-              onClick={() => {
-                const { group, tabId } = editorTabMenu;
-                setEditorTabMenu(null);
-                closeOtherSqlTabs(group, tabId);
-              }}
-            >
-              <span>Close Other Tabs</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!closedTabsAvailable}
-              onClick={() => {
-                const { group } = editorTabMenu;
-                setEditorTabMenu(null);
-                reopenSqlTab(group);
-              }}
-            >
-              <span>Reopen Closed Tab</span>
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <EditorTabStrip
+        group={group}
+        state={editorGroupStates[group]}
+        menu={editorTabMenu}
+        onSelectTab={selectEditorTab}
+        onOpenMenu={setEditorTabMenu}
+        onCloseMenu={() => setEditorTabMenu(null)}
+        onNewTab={newSqlTab}
+        onRenameTab={renameSqlTab}
+        onDuplicateTab={duplicateSqlTab}
+        onCloseTab={closeSqlTab}
+        onCloseOtherTabs={closeOtherSqlTabs}
+        onReopenClosedTab={reopenSqlTab}
+      />
     );
   }
 
@@ -3809,11 +2162,7 @@ export function AppWorkbench() {
           onCreateDatabaseSql={createDatabaseSqlFromDiagram}
           onEditInDesigner={editDiagramInDesigner}
           onSelectTable={editDiagramTableColumns}
-          onCopyMermaid={() => {
-            if (activeMetadata) {
-              void navigator.clipboard?.writeText(diagramMermaid);
-            }
-          }}
+          onCopyMermaid={() => void copyDiagramMermaid()}
         />
       ) : null}
 

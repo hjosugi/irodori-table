@@ -167,17 +167,6 @@
       "status": "wired"
     },
     {
-      "id": "kvStore",
-      "label": "Generic KV Store",
-      "sourceProducts": ["Irodori Extensions"],
-      "family": "key-value",
-      "wire": "keyValue",
-      "defaultPort": 0,
-      "extensionId": "irodori.kv-store",
-      "status": "recognized_no_connector",
-      "notes": "provider-neutral key-value connector contract; published as a local JSON-backed installable extension"
-    },
-    {
       "id": "cassandra",
       "label": "Cassandra",
       "sourceProducts": ["Apache Cassandra"],

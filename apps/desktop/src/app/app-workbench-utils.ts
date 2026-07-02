@@ -1,11 +1,90 @@
 import type { JobList } from "@/generated/irodori-api";
 import type { KeybindingScope } from "@/core";
+import type { WorkspaceConnection } from "@/features/connections";
+import { normalizeUiZoom } from "@/features/preferences";
+import type { EditorSelection } from "@/features/query-editor";
 import type {
   ResultFilterRule,
   ResultGridDraftCell as GridCellDraft,
   ResultSortRule,
 } from "@/features/results";
 import { defaultThemeForKind, type ThemeKind } from "@/theme";
+
+// Rendered when no connection is configured yet (fresh install, no samples).
+// Keeps `activeConnection` defined so the shell never crashes on an empty
+// workspace; querying stays disabled until the user adds a real connection.
+export const NO_ACTIVE_CONNECTION: WorkspaceConnection = {
+  id: "",
+  name: "No connection",
+  engine: "",
+  status: "idle",
+  latencyMs: 0,
+  proxy: "direct",
+  objects: [],
+};
+
+export function scaledUiPixels(value: number, zoom: number) {
+  return Math.max(1, Math.round(value * zoom));
+}
+
+function scaledUiFont(value: number, zoom: number) {
+  return `${Math.round(value * zoom * 100) / 100}px`;
+}
+
+export function uiZoomStyleVariables(zoom: number): Record<string, string> {
+  const normalized = normalizeUiZoom(zoom);
+  return {
+    "--ui-zoom": normalized.toFixed(2),
+    "--font-ui-xs": scaledUiFont(11, normalized),
+    "--font-ui-sm": scaledUiFont(12, normalized),
+    "--font-ui-md": scaledUiFont(13, normalized),
+    "--font-ui-lg": scaledUiFont(14, normalized),
+    // The code font stays integer-px: fractional sizes make glyph advances
+    // round differently between CodeMirror's measurements and the renderer,
+    // drifting the caret off the character it edits.
+    "--font-code": `${scaledUiPixels(13, normalized)}px`,
+    "--editor-line-height": `${scaledUiPixels(20, normalized)}px`,
+    "--control-xxs": `${scaledUiPixels(22, normalized)}px`,
+    "--control-xs": `${scaledUiPixels(24, normalized)}px`,
+    "--control-sm": `${scaledUiPixels(25, normalized)}px`,
+    "--control-md": `${scaledUiPixels(27, normalized)}px`,
+    "--bar-sm": `${scaledUiPixels(31, normalized)}px`,
+    "--bar-md": `${scaledUiPixels(33, normalized)}px`,
+    "--status-height": `${scaledUiPixels(22, normalized)}px`,
+  };
+}
+
+export function formatUiZoom(zoom: number) {
+  return `${Math.round(normalizeUiZoom(zoom) * 100)}%`;
+}
+
+export function sqlDownloadFileName(label: string) {
+  const base = label
+    .replace(/\.sql$/i, "")
+    .trim()
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return `${base || "query"}.sql`;
+}
+
+export function selectedSqlFromSelections(
+  sql: string,
+  selections: readonly EditorSelection[],
+) {
+  return selections
+    .filter((selection) => selection.from !== selection.to)
+    .map((selection) =>
+      sql
+        .slice(
+          Math.min(selection.from, selection.to),
+          Math.max(selection.from, selection.to),
+        )
+        .trim(),
+    )
+    .filter(Boolean)
+    .join("\n\n");
+}
 
 export function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
