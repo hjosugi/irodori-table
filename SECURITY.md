@@ -4,15 +4,18 @@
 
 Do not open a public issue for a suspected vulnerability.
 
-Send a private report to the maintainers with:
+Report privately via GitHub private vulnerability reporting:
+<https://github.com/hjosugi/irodori-table/security/advisories/new>.
+
+Include in the report:
 
 - affected version, commit, or release artifact;
 - a minimal reproduction or exploit sketch;
 - impact and data exposure assumptions;
 - whether the report includes third-party dependency or build-system behavior.
 
-If no private disclosure channel is available yet, open a public issue with only
-a high-level statement that a private security report is needed. Do not include
+If GitHub advisories are unavailable to you, open a public issue with only a
+high-level statement that a private security report is needed. Do not include
 proof-of-concept payloads, credentials, customer data, or exploit details in the
 issue.
 
