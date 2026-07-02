@@ -94,6 +94,7 @@ tauri-plugin-fs = "2"
 redis = { version = "1.2.4", optional = true, default-features = false, features = ["tokio-comp"] }
 scylla = { version = "1.7", optional = true }
 openssl = { version = "0.10", optional = true, features = ["vendored"] }
+tauri-plugin-updater = "^2"
 
 [features]
 default = []

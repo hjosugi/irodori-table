@@ -15,6 +15,7 @@ registry/private/
 knowledge/*.sqlite
 knowledge/*.sqlite-*
 apps/desktop/src-tauri/tauri.windows.conf.json
+apps/desktop/src-tauri/tauri.updater.conf.json
 
 # Build and package outputs
 target/

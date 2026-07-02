@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 (pre-1.0: minor versions may include breaking changes).
 
+## Release Policy
+
+- Patch releases contain compatible fixes only. Security fixes should ship on the
+  lowest active patch line that can receive them safely.
+- Until 1.0, minor releases may include breaking changes, but each breaking
+  change must be called out in this changelog with impact and migration notes.
+- Major releases are reserved for intentional compatibility resets after 1.0.
+- The stable auto-update channel follows published, non-prerelease GitHub
+  Releases for `v*` tags.
+
 ## [0.6.0] - 2026-07-02
 
 ### Added

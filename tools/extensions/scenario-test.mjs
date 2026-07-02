@@ -1,16 +1,18 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(scriptDir, "../..");
-const defaultExtensionsRoot = firstExistingPath([
-  resolve(repoRoot, "../irodori-extensions"),
-  resolve(repoRoot, "../../irodori-extensions"),
-]);
-const extensionsRoot = process.env.IRODORI_EXTENSIONS_ROOT ?? defaultExtensionsRoot;
+import {
+  assert,
+  extensionsRoot,
+  parsePositiveInteger,
+  readConnectorRepositories,
+  readExtensionCatalog,
+  readJson,
+  readText,
+  selectRepositories,
+} from "./lib/tooling.mjs";
 
 const REQUIRED_ENTRYPOINTS = [
   "irodori_extension_abi_version",
@@ -21,7 +23,6 @@ const REQUIRED_ENTRYPOINTS = [
   "irodori_connector_free_buffer",
 ];
 const REQUIRED_CALLS = ["health", "describe", "manifest", "config", "connect", "query", "metadata", "close"];
-const DYNAMIC_LIBRARY_EXTENSIONS = new Set([".dll", ".dylib", ".so"]);
 
 const options = parseArgs(process.argv.slice(2));
 if (options.help) {
@@ -29,10 +30,10 @@ if (options.help) {
   process.exit(0);
 }
 
-const connectorRepositories = readJson(resolve(repoRoot, "registry/catalog/connector-repositories.json"));
-const catalog = readJson(resolve(repoRoot, "registry/catalog/index.json"));
+const connectorRepositories = readConnectorRepositories();
+const catalog = readExtensionCatalog();
 const catalogById = new Map((catalog.extensions ?? []).map((entry) => [entry.id, entry]));
-const selectedRepositories = selectRepositories(connectorRepositories.repositories ?? [], options);
+const selectedRepositories = selectRepositories(connectorRepositories, options);
 
 if (selectedRepositories.length === 0) {
   throw new Error("No extension repositories matched the requested filters.");
@@ -99,7 +100,7 @@ async function runScenario(repo, warnings) {
   try {
     const manifest = readJson(resolve(repoDir, "irodori.extension.json"));
     const config = readJson(resolve(repoDir, "connector.config.json"));
-    const cargoToml = readFileSync(resolve(repoDir, "Cargo.toml"), "utf8");
+    const cargoToml = readText(resolve(repoDir, "Cargo.toml"));
     const cargoLibName = parseCargoLibName(cargoToml);
     const catalogEntry = catalogById.get(repo.extensionId);
 
@@ -251,34 +252,7 @@ function assignArg(parsed, name, value) {
   } else if (name === "--engine") {
     parsed.engines.add(value);
   } else if (name === "--limit") {
-    const limit = Number.parseInt(value, 10);
-    assert(Number.isInteger(limit) && limit > 0, "--limit must be a positive integer");
-    parsed.limit = limit;
-  }
-}
-
-function selectRepositories(repositories, parsed) {
-  let selected = repositories;
-  if (parsed.repos.size > 0) {
-    selected = selected.filter(
-      (repo) => parsed.repos.has(repo.name) || parsed.repos.has(repo.extensionId),
-    );
-  }
-  if (parsed.engines.size > 0) {
-    selected = selected.filter((repo) => (repo.engines ?? []).some((engine) => parsed.engines.has(engine)));
-  }
-  if (parsed.limit !== null) {
-    selected = selected.slice(0, parsed.limit);
-  }
-  return selected;
-}
-
-function readJson(path) {
-  try {
-    return JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to read JSON ${path}: ${message}`);
+    parsed.limit = parsePositiveInteger(value, "--limit");
   }
 }
 
@@ -381,16 +355,6 @@ function walk(root) {
 
 function isDirectoryEmpty(path) {
   return existsSync(path) && statSync(path).isDirectory() && readdirSync(path).length === 0;
-}
-
-function firstExistingPath(paths) {
-  return paths.find((path) => existsSync(path)) ?? paths[0];
-}
-
-function assert(value, message) {
-  if (!value) {
-    throw new Error(message);
-  }
 }
 
 function assertEqual(actual, expected, label) {
