@@ -1,7 +1,7 @@
 import bundledCatalogJson from "./bundled-catalog.json";
 
 export const defaultPluginStoreCatalogUrl =
-  "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json";
+  "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/index.json";
 
 export type PluginStoreInstallKind = "githubRelease" | "git";
 

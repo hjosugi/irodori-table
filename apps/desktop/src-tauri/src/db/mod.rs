@@ -17,9 +17,7 @@
 //! engine, with exact numerics/temporals rendered as strings to avoid precision
 //! and timezone loss. Oracle awaits a pure-Rust thin TNS driver.
 
-use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -29,7 +27,6 @@ use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
 use crate::security::SecurityState;
-use irodori_completion::metadata::MetadataCache;
 
 #[cfg(feature = "bigquery")]
 mod bigquery;
@@ -67,11 +64,12 @@ mod result_spill_manager;
 mod snowflake;
 mod spill;
 mod sqlite;
+mod state;
 mod stream;
 mod transport;
 
 pub use commands::*;
-use connection::{connect_engine, Connection};
+use connection::connect_engine;
 pub use edit::{AppliedEdits, CellValue, RowDelete, RowInsert, RowUpdate, TableEdits};
 pub use engine::DbEngine;
 pub use explain::{
@@ -79,28 +77,33 @@ pub use explain::{
     QueryPlanMetric, QueryPlanMetricGuide, QueryPlanMode, QueryPlanNode, QueryPlanProperty,
     QueryPlanSeverity, QueryPlanSource,
 };
-use meta::{convert_inspection_card, convert_metadata_to_snapshot, convert_snapshot_to_metadata};
+use meta::{convert_inspection_card, convert_snapshot_to_metadata};
 pub use meta::{
     DbColumnInspection, DbColumnReference, DbCompletionItem, DbCompletionItemKind,
     DbInspectionCard, DbObjectInspection,
 };
-use metadata_manager::MetadataManager;
 pub use profile::ConnectionProfile;
 use profile::{normalize_profile, redact_secret_text};
 pub(crate) use query::{
     bounded_query_cap, prepare_query, query_result_from_sets, query_result_set,
-    split_sql_statements, sql_may_change_metadata, sql_may_write, PreparedQuery, RawResultSet,
-    RowSet,
+    split_sql_statements, sql_may_write, PreparedQuery, RawResultSet, RowSet,
 };
 pub use query::{
     query_parameter_prompt_set, QueryParameterInput, QueryParameterKey, QueryParameterPrompt,
     QueryParameterPromptSet, QueryResult, QueryResultSet, QueryStreamEvent,
     QueryStreamResultSetSummary, ResultWindow, SpillRunResult,
 };
-use query_executor::QueryExecutor;
-use result_spill_manager::{ResultEntry, ResultSpillManager};
+#[cfg(test)]
+pub(crate) use query::sql_may_change_metadata;
+use result_spill_manager::ResultEntry;
 use spill::ResultStore;
 pub use spill::SpillConfig;
+pub use state::DbState;
+use state::{
+    ensure_connection_can_run_sql, ensure_connection_writable, metadata_generation,
+    refresh_metadata_after_query_if_needed, trigger_background_refresh,
+    upsert_metadata_snapshot_if_current, MAX_RETAINED_RESULTS,
+};
 
 /// Default page size when the caller does not pass `max_rows`. Keeps memory
 /// bounded so a `select *` over a 10M-row table cannot exhaust RAM (the
@@ -113,10 +116,6 @@ pub(crate) const MAX_RESULT_ROWS: usize = 100_000;
 /// temp-file size and server work even when offload lets a result exceed the
 /// interactive in-memory page.
 pub(crate) const MAX_SPILL_ROWS: usize = 20_000_000;
-/// Finished result stores kept for windowed paging before the oldest is evicted
-/// (closing its temp file). One per recent run/tab is plenty.
-const MAX_RETAINED_RESULTS: usize = 16;
-
 const MAX_SQL_BYTES: usize = 4 * 1024 * 1024;
 
 /// Rows per streamed batch. Small enough that the grid paints the first rows
@@ -246,135 +245,6 @@ pub struct IndexMetadata {
     pub unique: bool,
 }
 
-/// Open connections keyed by connection id. Lives in Tauri managed state.
-#[derive(Clone)]
-pub struct DbState {
-    conns: Arc<Mutex<HashMap<String, Arc<dyn Connection>>>>,
-    read_only_connections: Arc<Mutex<HashSet<String>>>,
-    /// In-flight cancellable queries keyed by a caller-supplied `query_id`, so
-    /// `db_cancel` can stop a specific run. Entries are removed when the run ends.
-    cancels: Arc<Mutex<HashMap<String, CancellationToken>>>,
-    pub metadata_cache: Arc<Mutex<MetadataCache>>,
-    metadata_generation: Arc<std::sync::atomic::AtomicU64>,
-    tunnels: Arc<Mutex<HashMap<String, tokio_util::sync::CancellationToken>>>,
-    /// Retained disk-offloaded results (EXEC-010), keyed by handle, for windowed
-    /// paging. Bounded by `MAX_RETAINED_RESULTS`; evicting an entry closes its file.
-    results: Arc<Mutex<HashMap<String, ResultEntry>>>,
-    /// Monotonic counter for handle generation and oldest-first eviction.
-    result_seq: Arc<std::sync::atomic::AtomicU64>,
-}
-
-impl Default for DbState {
-    fn default() -> Self {
-        Self {
-            conns: Arc::new(Mutex::new(HashMap::new())),
-            read_only_connections: Arc::new(Mutex::new(HashSet::new())),
-            cancels: Arc::new(Mutex::new(HashMap::new())),
-            metadata_cache: Arc::new(Mutex::new(MetadataCache::new())),
-            metadata_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            tunnels: Arc::new(Mutex::new(HashMap::new())),
-            results: Arc::new(Mutex::new(HashMap::new())),
-            result_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-        }
-    }
-}
-
-impl DbState {
-    pub(crate) fn query_executor(&self) -> QueryExecutor<'_> {
-        QueryExecutor::new(self)
-    }
-
-    pub(crate) fn metadata_manager(&self) -> MetadataManager<'_> {
-        MetadataManager::new(self)
-    }
-
-    pub(crate) fn result_spill_manager(&self) -> ResultSpillManager<'_> {
-        ResultSpillManager::new(self)
-    }
-}
-
-async fn is_connection_read_only(state: &DbState, connection_id: &str) -> bool {
-    state
-        .read_only_connections
-        .lock()
-        .await
-        .contains(connection_id)
-}
-
-async fn ensure_connection_can_run_sql(
-    state: &DbState,
-    connection_id: &str,
-    sql: &str,
-) -> Result<(), String> {
-    if !sql_may_write(sql) || !is_connection_read_only(state, connection_id).await {
-        return Ok(());
-    }
-    Err("read-only connection: write statements are blocked".into())
-}
-
-async fn ensure_connection_writable(state: &DbState, connection_id: &str) -> Result<(), String> {
-    if is_connection_read_only(state, connection_id).await {
-        return Err("read-only connection: write operations are blocked".into());
-    }
-    Ok(())
-}
-
-fn trigger_background_refresh(state: DbState, connection_id: String) {
-    let generation = metadata_generation(&state);
-    tokio::spawn(async move {
-        let conn = {
-            let guard = state.conns.lock().await;
-            guard.get(&connection_id).cloned()
-        };
-        if let Some(conn) = conn {
-            match conn.metadata().await {
-                Ok(db_meta) => {
-                    let _ = upsert_metadata_snapshot_if_current(
-                        &state,
-                        &connection_id,
-                        &db_meta,
-                        generation,
-                    )
-                    .await;
-                }
-                Err(e) => {
-                    eprintln!(
-                        "background metadata refresh failed for connection {connection_id}: {e}"
-                    );
-                }
-            }
-        }
-    });
-}
-
-fn metadata_generation(state: &DbState) -> u64 {
-    state.metadata_generation.load(Ordering::SeqCst)
-}
-
-fn bump_metadata_generation(state: &DbState) {
-    state.metadata_generation.fetch_add(1, Ordering::SeqCst);
-}
-
-async fn upsert_metadata_snapshot_if_current(
-    state: &DbState,
-    connection_id: &str,
-    db_meta: &DatabaseMetadata,
-    generation: u64,
-) -> bool {
-    if metadata_generation(state) != generation {
-        return false;
-    }
-
-    let mut cache = state.metadata_cache.lock().await;
-    if metadata_generation(state) != generation {
-        return false;
-    }
-    let snapshot = convert_metadata_to_snapshot(connection_id, db_meta);
-    cache.upsert_snapshot(snapshot);
-    let _ = cache.drain_refresh_requests();
-    true
-}
-
 use irodori_proxy::start_forwarder;
 use transport::resolve_transport;
 
@@ -464,20 +334,6 @@ async fn with_timeout<T>(
             .map_err(|_| format!("query timed out after {ms}ms"))?,
         None => fut.await,
     }
-}
-
-async fn refresh_metadata_after_query_if_needed(state: &DbState, connection_id: &str, sql: &str) {
-    if !sql_may_change_metadata(sql) {
-        return;
-    }
-
-    bump_metadata_generation(state);
-    state
-        .metadata_cache
-        .lock()
-        .await
-        .invalidate_connection(connection_id);
-    trigger_background_refresh(state.clone(), connection_id.to_string());
 }
 
 pub async fn run_query_impl(

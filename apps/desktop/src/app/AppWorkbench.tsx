@@ -17,31 +17,21 @@ import {
   fallbackSnapshot,
   loadSavedQuery,
   menuBarSections,
-  resultCopyDefaultKeymap,
 } from "@/app/app-config";
 import { AboutDialog } from "@/app/AboutDialog";
 import { EditorTabStrip } from "@/app/EditorTabStrip";
-import { useResultGridScroll } from "@/app/hooks/useResultGridScroll";
-import { useResultGridFiltering } from "@/app/hooks/useResultGridFiltering";
-import { useResultGridSelection } from "@/app/hooks/useResultGridSelection";
 import type {
   ConnectionController,
   QueryEditorController,
-  ResultGridController,
 } from "@/app/controllers/workbench-controllers";
 import { useConnectionActions } from "@/app/controllers/use-connection-actions";
 import { useEditorCommands } from "@/app/controllers/use-editor-commands";
 import { useEditorGroups } from "@/app/controllers/use-editor-groups";
 import { useErdDiagram } from "@/app/controllers/use-erd-diagram";
 import { useHistoryActions } from "@/app/controllers/use-history-actions";
+import { useKeybindingManager } from "@/app/controllers/use-keybinding-manager";
+import { useResultGridWorkspace } from "@/app/controllers/use-result-grid-workspace";
 import { useQueryRunner } from "@/app/controllers/use-query-runner";
-import { useResultExport } from "@/app/controllers/use-result-export";
-import { useResultGridEditing } from "@/app/controllers/use-result-grid-editing";
-import { useResultGridModel } from "@/app/controllers/use-result-grid-model";
-import {
-  usePendingResultChangesGuard,
-  useResultGridSpillPaging,
-} from "@/app/controllers/use-result-grid-runtime";
 import { useSettingsController } from "@/app/controllers/use-settings-controller";
 import { useSidebarViews } from "@/app/controllers/use-sidebar-views";
 import { useThemeManager } from "@/app/controllers/use-theme-manager";
@@ -53,13 +43,8 @@ import { GitPanel } from "@/features/git";
 import {
   BiPanel,
   ResultsPane,
-  WindowedRows,
-  formatResultSelectionStatus,
   formatResultGridCell as formatCell,
   toCount,
-  useResultGridStore,
-  useResultsStore,
-  type ResultExportFormat,
 } from "@/features/results";
 import {
   ConnectionManagerDialog,
@@ -110,37 +95,16 @@ import {
   useWorkbenchStore,
   workbenchRuntimeService,
 } from "@/features/workbench";
-import {
-  KEY_SEQUENCE_TIMEOUT_MS,
-  applyVimKeybindingResolutions as applyVimKeybindingResolutionOverrides,
-  effectiveKeymap,
-  eventToChord,
-  findConflicts,
-  findVimKeybindingConflicts,
-  formatKeySequence,
-  type KeybindingScope,
-  type Keymap,
-  type VimKeybindingConflictResolutions,
-  loadOverrides,
-  resolveKeybinding,
-  saveOverrides,
-} from "@/core";
+import { formatKeySequence } from "@/core";
 import type {
   DbEngine,
   QueryPlanAnalysis,
-  QueryResult,
   WorkspaceSnapshot,
 } from "@/generated/irodori-api";
 import { cssVariables } from "@/theme";
 import {
-  GRID_COLUMN_WIDTH,
-  GRID_GUTTER_WIDTH,
-  GRID_ROW_HEIGHT,
   NO_ACTIVE_CONNECTION,
   formatUiZoom,
-  isCellEditorClipboardShortcut,
-  keyScopeFromTarget,
-  scaledUiPixels,
   selectedSqlFromSelections,
   tauriRuntimeError,
   uiZoomStyleVariables,
@@ -178,7 +142,6 @@ export function AppWorkbench() {
       );
     };
   }, []);
-  const gridRef = useRef<HTMLDivElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
@@ -389,147 +352,35 @@ export function AppWorkbench() {
   const setObjectActionMenu = useConnectionStore(
     (state) => state.setObjectActionMenu,
   );
-  const [result, setResult] = useState<QueryResult | null>(null);
-  // EXEC-010: when a run spills past the in-memory budget, the grid pages rows from
-  // disk through this handle instead of holding them all in JS. `spillInfo` drives
-  // the windowed grid path; `spillRef` holds the live LRU page source; the version
-  // counter forces the grid view model to recompute as pages arrive.
-  const resultOffloadEnabled = useResultsStore(
-    (state) => state.resultOffloadEnabled,
-  );
-  const setResultOffloadEnabled = useResultsStore(
-    (state) => state.setResultOffloadEnabled,
-  );
-  const resultMemoryBudget = useResultsStore(
-    (state) => state.resultMemoryBudget,
-  );
-  const setResultMemoryBudget = useResultsStore(
-    (state) => state.setResultMemoryBudget,
-  );
-  const spillInfo = useResultGridStore((state) => state.spillInfo);
-  const setSpillInfo = useResultGridStore((state) => state.setSpillInfo);
-  const gridWindowVersion = useResultGridStore(
-    (state) => state.gridWindowVersion,
-  );
-  const setGridWindowVersion = useResultGridStore(
-    (state) => state.setGridWindowVersion,
-  );
-  const bumpGridWindowVersion = useResultGridStore(
-    (state) => state.bumpGridWindowVersion,
-  );
-  const spillRef = useRef<{ handle: string; source: WindowedRows } | null>(
-    null,
-  );
-  const beginPendingPage = useResultGridStore(
-    (state) => state.beginPendingPage,
-  );
-  const endPendingPage = useResultGridStore((state) => state.endPendingPage);
-  const clearPendingPages = useResultGridStore(
-    (state) => state.clearPendingPages,
-  );
-  const activeResultIndex = useResultGridStore(
-    (state) => state.activeResultIndex,
-  );
-  const setActiveResultIndex = useResultGridStore(
-    (state) => state.setActiveResultIndex,
-  );
-  const resultMode = useResultGridStore((state) => state.resultMode);
-  const setResultMode = useResultGridStore((state) => state.setResultMode);
-  const tableViewObject = useResultGridStore((state) => state.tableViewObject);
-  const setTableViewObject = useResultGridStore(
-    (state) => state.setTableViewObject,
-  );
   const [queryError, setQueryError] = useState<string | null>(null);
   const [planAnalysis, setPlanAnalysis] = useState<QueryPlanAnalysis | null>(
     null,
   );
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
-  // SQL of the last run, used to infer the editable target table.
-  const [lastRunSql, setLastRunSql] = useState<string>("");
-  // Staged (non-immediate) result editing: changes accumulate until Commit.
-  const editMode = useResultGridStore((state) => state.editMode);
-  const setEditMode = useResultGridStore((state) => state.setEditMode);
-  const cellEdits = useResultGridStore((state) => state.cellEdits);
-  const newRows = useResultGridStore((state) => state.newRows);
-  const deletedRows = useResultGridStore((state) => state.deletedRows);
-  const editUndoDepth = useResultGridStore(
-    (state) => state.editUndoStack.length,
-  );
-  const updateEditDraft = useResultGridStore((state) => state.updateEditDraft);
-  const undoEdit = useResultGridStore((state) => state.undoEdit);
-  const editingCell = useResultGridStore((state) => state.editingCell);
-  const setEditingCell = useResultGridStore((state) => state.setEditingCell);
-  const selectedCell = useResultGridStore((state) => state.selectedCell);
-  const setSelectedCell = useResultGridStore((state) => state.setSelectedCell);
-  const selectedRange = useResultGridStore((state) => state.selectedRange);
-  const setSelectedRange = useResultGridStore(
-    (state) => state.setSelectedRange,
-  );
-  const selectedRowKey = useResultGridStore((state) => state.selectedRowKey);
-  const setSelectedRowKey = useResultGridStore(
-    (state) => state.setSelectedRowKey,
-  );
-  const committing = useResultGridStore((state) => state.committing);
-  const setCommitting = useResultGridStore((state) => state.setCommitting);
-  const commitError = useResultGridStore((state) => state.commitError);
-  const setCommitError = useResultGridStore((state) => state.setCommitError);
-  const resetGridStoreEdits = useResultGridStore((state) => state.resetEdits);
-  const resetGridStoreView = useResultGridStore((state) => state.resetGridView);
-  const gridRowHeight = scaledUiPixels(GRID_ROW_HEIGHT, uiZoom);
-  const gridColumnWidth = scaledUiPixels(GRID_COLUMN_WIDTH, uiZoom);
-  const gridGutterColumnWidth = scaledUiPixels(GRID_GUTTER_WIDTH, uiZoom);
-  const gridGutterWidth = editMode ? gridGutterColumnWidth : 0;
+  // Remappable keybindings: overrides, chord resolution on a stable
+  // window-level listener, and rebind recording live in the keybinding
+  // manager. `runCommand` and the overlay closer are declared further down but
+  // only invoked from event handlers, so the lazy closures are safe.
   const {
-    gridScrollTop,
-    gridScrollLeft,
-    gridViewportHeight,
-    gridViewportWidth,
-    setGridScrollTop,
-    setGridScrollLeft,
-    onGridScroll,
-    resetGridScrollPosition,
-    scrollGridCellIntoView,
-  } = useResultGridScroll({
-    gridRef,
-    result,
-    gridRowHeight,
-    gridGutterWidth,
-    gridColumnWidth,
-    setSelectedRowKey,
-    setSelectedCell,
-    setSelectedRange,
+    keymap,
+    keymapOverrides,
+    replaceKeymapOverrides,
+    activeKeyScope,
+    syncScopeFromTarget,
+    recordingCommand,
+    recordingSequence,
+    beginRecording,
+    resetKeybinding,
+    applyVimKeybindingPlan,
+    keymapConflicts,
+    vimKeymapConflicts,
+  } = useKeybindingManager({
+    runCommand: (commandId) => runCommand(commandId),
+    closeTransientOverlays: () => closeTransientOverlaysFromEscape(),
+    showActionNotice,
+    t,
   });
-  const {
-    sortRules,
-    filtersOpen,
-    setFiltersOpen,
-    quickFilter,
-    filterJoin,
-    setFilterJoin,
-    filterRules,
-    updateQuickFilter,
-    clearQuickFilter,
-    toggleSort,
-    addFilterRule,
-    updateFilterRule,
-    removeFilterRule,
-    clearResultFilters,
-  } = useResultGridFiltering({ resetGridScrollPosition });
-  // Remappable keybindings: defaults merged with user overrides (localStorage).
-  const [keymapOverrides, setKeymapOverrides] = useState<Keymap>(loadOverrides);
-  const keymap = {
-    ...resultCopyDefaultKeymap,
-    ...effectiveKeymap(keymapOverrides),
-  };
-  function replaceKeymapOverrides(next: Keymap) {
-    setKeymapOverrides(next);
-    saveOverrides(next);
-  }
-  const [activeKeyScope, setActiveKeyScope] =
-    useState<KeybindingScope>("global");
-  const [recordingCommand, setRecordingCommand] = useState<string | null>(null);
-  const [recordingSequence, setRecordingSequence] = useState<string[]>([]);
   // Command palette (Ctrl/Cmd+Shift+P).
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
@@ -539,7 +390,6 @@ export function AppWorkbench() {
   const [migrationStudioOpen, setMigrationStudioOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const settings = useSettingsController({
     themes,
     keybindings: { keymapOverrides, replaceKeymapOverrides },
@@ -567,20 +417,6 @@ export function AppWorkbench() {
     queryHistoryResultRows,
     setQueryHistoryResultRows,
   } = settings;
-  const transientOverlayStateRef = useRef({
-    workspaceMenuOpen: false,
-    runMenuOpen: false,
-    exportMenuOpen: false,
-    filtersOpen: false,
-    objectActionMenu: null as string | null,
-  });
-  transientOverlayStateRef.current = {
-    workspaceMenuOpen,
-    runMenuOpen,
-    exportMenuOpen,
-    filtersOpen,
-    objectActionMenu,
-  };
   const schemaDesignerOpen = useSchemaDesignerStore((state) => state.open);
   const setSchemaDesignerOpen = useSchemaDesignerStore(
     (state) => state.setOpen,
@@ -836,194 +672,83 @@ export function AppWorkbench() {
     shortcutTip("Commit Edits", "edit.commit"),
   ];
 
-  const {
-    activeFilters,
-    activeResult,
-    activeResultIndexView,
-    chartAvailable,
-    chartResultModel,
-    copyCellsForRow,
-    displayedResultSummary,
-    effectiveResultMode,
-    filteredOutCount,
-    filtersActive,
-    firstVisible,
-    graphAvailable,
-    graphResultModel,
-    gridRowStyle,
-    gridTotalWidth,
-    lastVisible,
-    leftColumnPad,
-    pendingCount,
-    resultColumns,
-    resultGridView,
-    resultSets,
-    rightColumnPad,
-    rowDetailTable,
-    selectedRowValues,
-    showingStructure,
-    sortRuleByColumn,
-    structureObject,
-    totalRows,
-    topPad,
-    bottomPad,
-    unfilteredRowCount,
-    visibleColumnIndexes,
-    visibleRows,
-    visibleRowsRevision,
-    webGlAvailable,
-  } = useResultGridModel({
-    result,
-    activeResultIndex,
-    resultMode,
-    tableViewObject,
+  const grid = useResultGridWorkspace({
+    uiZoom,
     query,
     editorEngine,
+    activeEngine,
     activeMetadata,
-    biOpen,
-    spillInfo,
-    gridWindowVersion,
-    editMode,
-    cellEdits,
-    newRows,
-    deletedRows,
-    filterRules,
-    quickFilter,
-    filterJoin,
-    sortRules,
-    selectedRowKey,
-    gridGutterWidth,
-    gridGutterColumnWidth,
-    gridColumnWidth,
-    gridScrollLeft,
-    gridViewportWidth,
-    gridScrollTop,
-    gridViewportHeight,
-    gridRowHeight,
-  });
-
-  useEffect(() => {
-    if (gridRef.current) {
-      gridRef.current.scrollTop = 0;
-      gridRef.current.scrollLeft = 0;
-    }
-    setGridScrollTop(0);
-    setGridScrollLeft(0);
-    setSelectedRowKey(null);
-    setSelectedCell(null);
-    setSelectedRange(null);
-  }, [activeResultIndexView, result]);
-
-  const {
-    selectedRangeBounds,
-    selectionSummary,
-    selectGridCell,
-    selectGridRow,
-    moveSelectedCell,
-    selectedDisplayRow,
-    selectedRowForCopy,
-    selectedGridCopyText,
-  } = useResultGridSelection({
-    resultGridView,
-    resultColumns,
-    gridRef,
-    totalRows,
-    selectedCell,
-    selectedRange,
-    selectedRowKey,
-    setSelectedCell,
-    setSelectedRange,
-    setSelectedRowKey,
-    scrollGridCellIntoView,
-    copyCellsForRow,
-  });
-  const selectionStatus = selectionSummary
-    ? formatResultSelectionStatus(selectionSummary)
-    : null;
-  const {
-    selectResultSet,
-    resetEdits,
-    resetGridView,
-    releaseActiveSpill,
-    beginCellEdit,
-    setCellValue,
-    addNewRow,
-    enableEditMode,
-    discardEdits,
-    deleteRow,
-    pasteTableAt,
-    undoLastEdit,
-    copySelectedGridCellOrRow,
-    copySelectedGridRow,
-    copyVisibleResult,
-    onGridKeyDown,
-    onGridPaste,
-    onGridCopy,
-    inferEditTarget,
-    canEditActiveResult,
-    generateSelectedRowChangeSql,
-    commitEdits,
-  } = useResultGridEditing({
-    result,
-    activeResult,
-    resultColumns,
-    resultGridView,
-    totalRows,
-    showingStructure,
-    selectedRowValues,
+    metadataByConnection,
     activeConnectionId,
     activeConnectionReadOnly,
-    activeEngine,
-    lastRunSql,
-    metadataByConnection,
-    editMode,
-    editUndoDepth,
-    cellEdits,
-    newRows,
-    deletedRows,
-    editingCell,
-    selectedCell,
-    setActiveResultIndex,
-    setEditMode,
-    setEditingCell,
-    setSelectedRowKey,
-    setSelectedRange,
-    setCommitting,
-    setCommitError,
-    setSpillInfo,
-    setGridWindowVersion,
-    updateEditDraft,
-    undoEdit,
-    resetGridStoreEdits,
-    resetGridStoreView,
-    clearPendingPages,
-    setQueryError,
-    spillRef,
-    resetGridScrollPosition,
-    selectGridCell,
-    moveSelectedCell,
-    selectedDisplayRow,
-    selectedRowForCopy,
-    selectedGridCopyText,
-    copyCellsForRow,
+    biOpen,
     activeEditorApi,
     runQuery: async () => {
       await editorCommandsRef.current?.runQuery();
     },
-    showActionNotice,
+    setQueryError,
     confirm: confirmAction,
+    showActionNotice,
     t,
   });
-
-  const { exportActiveResult, copyActiveResultSqlInserts, copyActiveResultAs } =
-    useResultExport({
-      activeResult,
-      activeConnectionId,
-      inferEditTarget,
-      setExportMenuOpen,
-      showActionNotice,
-      t,
-    });
+  const {
+    setResult,
+    setLastRunSql,
+    resultOffloadEnabled,
+    setResultOffloadEnabled,
+    resultMemoryBudget,
+    setResultMemoryBudget,
+    gridRef,
+    spillRef,
+    setSpillInfo,
+    clearPendingPages,
+    bumpGridWindowVersion,
+    setGridScrollTop,
+    setGridScrollLeft,
+    setSelectedRowKey,
+    setSelectedCell,
+    setSelectedRange,
+    setResultMode,
+    setTableViewObject,
+    setActiveResultIndex,
+    editMode,
+    setEditMode,
+    setCommitError,
+    filtersOpen,
+    setFiltersOpen,
+    exportMenuOpen,
+    setExportMenuOpen,
+    activeResult,
+    chartResultModel,
+    chartAvailable,
+    selectionStatus,
+    resetEdits,
+    resetGridView,
+    releaseActiveSpill,
+    addNewRow,
+    undoLastEdit,
+    commitEdits,
+    canEditActiveResult,
+    copySelectedGridCellOrRow,
+    copySelectedGridRow,
+    copyVisibleResult,
+    exportActiveResult,
+    copyActiveResultSqlInserts,
+  } = grid;
+  const transientOverlayStateRef = useRef({
+    workspaceMenuOpen: false,
+    runMenuOpen: false,
+    exportMenuOpen: false,
+    filtersOpen: false,
+    objectActionMenu: null as string | null,
+  });
+  transientOverlayStateRef.current = {
+    workspaceMenuOpen,
+    runMenuOpen,
+    exportMenuOpen,
+    filtersOpen,
+    objectActionMenu,
+  };
 
   const {
     running,
@@ -1188,25 +913,6 @@ export function AppWorkbench() {
     openAppDeveloperTools,
   } = workspaceActions;
 
-  usePendingResultChangesGuard({
-    pendingCount,
-    resetEdits,
-    showActionNotice,
-    confirm: confirmAction,
-    t,
-  });
-  useResultGridSpillPaging({
-    spillInfo,
-    spillRef,
-    firstVisible,
-    lastVisible,
-    gridWindowVersion,
-    beginPendingPage,
-    endPendingPage,
-    clearPendingPages,
-    bumpGridWindowVersion,
-  });
-
   function updateUiZoom(nextZoom: number) {
     const normalized = normalizeUiZoom(nextZoom);
     setUiZoom(normalized);
@@ -1290,53 +996,11 @@ export function AppWorkbench() {
     },
   });
 
-  const keymapConflicts = findConflicts(keymap, appCommandCatalog);
-  const vimKeymapConflicts = findVimKeybindingConflicts(
-    keymap,
-    appCommandCatalog,
-  );
   const paletteResults = appCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
       .includes(paletteQuery.trim().toLowerCase()),
   );
-
-  // Keep the keydown listener stable while reading the latest state via refs.
-  const keymapRef = useRef(keymap);
-  keymapRef.current = keymap;
-  const runCommandRef = useRef(runCommand);
-  runCommandRef.current = runCommand;
-  const activeKeyScopeRef = useRef(activeKeyScope);
-  activeKeyScopeRef.current = activeKeyScope;
-  const recordingRef = useRef(recordingCommand);
-  recordingRef.current = recordingCommand;
-  const pendingKeySequenceRef = useRef<string[]>([]);
-  const pendingKeyTimerRef = useRef<number | null>(null);
-  const recordingSequenceRef = useRef<string[]>([]);
-  const recordingTimerRef = useRef<number | null>(null);
-
-  function clearPendingKeySequence() {
-    pendingKeySequenceRef.current = [];
-    if (pendingKeyTimerRef.current !== null) {
-      window.clearTimeout(pendingKeyTimerRef.current);
-      pendingKeyTimerRef.current = null;
-    }
-  }
-
-  function clearRecordingTimer() {
-    if (recordingTimerRef.current !== null) {
-      window.clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-  }
-
-  function cancelRecording() {
-    clearRecordingTimer();
-    recordingRef.current = null;
-    recordingSequenceRef.current = [];
-    setRecordingCommand(null);
-    setRecordingSequence([]);
-  }
 
   function closeTransientOverlaysFromEscape() {
     const open = transientOverlayStateRef.current;
@@ -1355,171 +1019,6 @@ export function AppWorkbench() {
     setFiltersOpen(false);
     setObjectActionMenu(null);
     return true;
-  }
-
-  function commitRecordedKeybinding(
-    commandId: string,
-    sequence: readonly string[],
-  ) {
-    const chord = sequence.join(" ");
-    if (!chord) {
-      cancelRecording();
-      return;
-    }
-    clearRecordingTimer();
-    setKeymapOverrides((prev) => {
-      const next = { ...prev, [commandId]: chord };
-      saveOverrides(next);
-      return next;
-    });
-    recordingRef.current = null;
-    recordingSequenceRef.current = [];
-    setRecordingCommand(null);
-    setRecordingSequence([]);
-  }
-
-  function beginRecording(commandId: string) {
-    if (recordingRef.current === commandId) {
-      cancelRecording();
-      return;
-    }
-    clearRecordingTimer();
-    recordingRef.current = commandId;
-    recordingSequenceRef.current = [];
-    setRecordingCommand(commandId);
-    setRecordingSequence([]);
-  }
-
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      // Recording a rebind: one or two non-modifier chords become the new sequence.
-      const recording = recordingRef.current;
-      if (recording) {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          cancelRecording();
-          return;
-        }
-        const chord = eventToChord(event);
-        if (!chord) {
-          return;
-        }
-        event.preventDefault();
-        clearRecordingTimer();
-        const next = [...recordingSequenceRef.current, chord];
-        recordingSequenceRef.current = next;
-        setRecordingSequence(next);
-        if (next.length >= 2) {
-          commitRecordedKeybinding(recording, next);
-        } else {
-          recordingTimerRef.current = window.setTimeout(() => {
-            commitRecordedKeybinding(recording, recordingSequenceRef.current);
-          }, KEY_SEQUENCE_TIMEOUT_MS);
-        }
-        return;
-      }
-      if (event.key === "Escape" && closeTransientOverlaysFromEscape()) {
-        event.preventDefault();
-        event.stopPropagation();
-        clearPendingKeySequence();
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      const typing =
-        !!target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable);
-      if (typing && isCellEditorClipboardShortcut(event, target)) {
-        return;
-      }
-      const scope = keyScopeFromTarget(target, activeKeyScopeRef.current);
-      if (scope !== activeKeyScopeRef.current) {
-        activeKeyScopeRef.current = scope;
-        setActiveKeyScope(scope);
-      }
-      const chord = eventToChord(event);
-      if (!chord) {
-        return;
-      }
-      const map = keymapRef.current;
-      const hadPending = pendingKeySequenceRef.current.length > 0;
-      const resolution = resolveKeybinding({
-        keymap: map,
-        scope,
-        chord,
-        pending: pendingKeySequenceRef.current,
-        commands: appCommandCatalog,
-        allowBare: !typing,
-      });
-      if (resolution.kind === "pending") {
-        event.preventDefault();
-        pendingKeySequenceRef.current = resolution.pending;
-        if (pendingKeyTimerRef.current !== null) {
-          window.clearTimeout(pendingKeyTimerRef.current);
-        }
-        pendingKeyTimerRef.current = window.setTimeout(
-          clearPendingKeySequence,
-          KEY_SEQUENCE_TIMEOUT_MS,
-        );
-        return;
-      }
-      clearPendingKeySequence();
-      if (resolution.kind === "command") {
-        event.preventDefault();
-        runCommandRef.current(resolution.commandId);
-        return;
-      }
-      if (hadPending) {
-        event.preventDefault();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      clearPendingKeySequence();
-      clearRecordingTimer();
-    };
-  }, []);
-
-  function resetKeybinding(commandId: string) {
-    if (recordingCommand === commandId) {
-      cancelRecording();
-    }
-    setKeymapOverrides((prev) => {
-      const next = { ...prev };
-      delete next[commandId];
-      saveOverrides(next);
-      return next;
-    });
-  }
-
-  function applyVimKeybindingPlan(
-    resolutions: VimKeybindingConflictResolutions,
-  ) {
-    cancelRecording();
-    setKeymapOverrides((prev) => {
-      const currentKeymap = {
-        ...resultCopyDefaultKeymap,
-        ...effectiveKeymap(prev),
-      };
-      const conflicts = findVimKeybindingConflicts(
-        currentKeymap,
-        appCommandCatalog,
-      );
-      const next = applyVimKeybindingResolutionOverrides(
-        prev,
-        conflicts,
-        resolutions,
-      );
-      saveOverrides(next);
-      return next;
-    });
-    showActionNotice(
-      "success",
-      t("notice.workbench.vimShortcutsUpdated"),
-      t("notice.workbench.vimShortcutsUpdatedDetail"),
-    );
   }
 
   const appStyle = useMemo(
@@ -1745,120 +1244,15 @@ export function AppWorkbench() {
     onMetadataJump: jumpToSqlMetadata,
   } satisfies QueryEditorController;
 
-  const resultGridController = {
+
+  const resultGridController = grid.buildResultGridController({
     running,
-    readOnly: activeConnectionReadOnly,
-    tableViewObject,
-    resultMode: effectiveResultMode,
-    chartModel: chartResultModel,
-    graphModel: graphResultModel,
-    chartAvailable,
-    graphAvailable,
-    webGlAvailable,
-    resultSets,
-    activeResult,
-    hasResult: Boolean(activeResult),
-    activeResultIndex: activeResultIndexView,
     queryError,
-    commitError,
-    pendingCount,
-    displayedResultSummary,
-    resultColumns,
-    exportMenuOpen,
-    shortcutTips: resultShortcutTips,
-    showingStructure,
-    structureObject,
-    editorEngine,
-    unfilteredRowCount,
-    totalRows,
-    gridRef,
     importFileRef,
-    activeMetadata,
-    activeConnectionId,
+    shortcutTips: resultShortcutTips,
     formatObjectName: (object) => qualifiedObjectName(editorEngine, object),
-    formatCount: toCount,
-    onResultModeChange: setResultMode,
-    onSelectResultSet: selectResultSet,
-    onExportActiveResult: exportActiveResult,
-    onToggleExportMenu: () => setExportMenuOpen((open) => !open),
-    onCloseExportMenu: () => setExportMenuOpen(false),
-    onCopyVisibleResult: () => void copyVisibleResult(),
-    onCopyResultAs: (format: ResultExportFormat) =>
-      void copyActiveResultAs(format),
     onImportFile: (file) => void handleImportFile(file),
-    filtering: {
-      quickFilter,
-      filtersOpen,
-      filtersActive,
-      activeFilters,
-      filteredOutCount,
-      filterJoin,
-      filterRules,
-      sortRuleByColumn,
-      sortRules,
-      onQuickFilterChange: updateQuickFilter,
-      onClearQuickFilter: clearQuickFilter,
-      onToggleFilters: () => setFiltersOpen((open) => !open),
-      onSetFilterJoin: setFilterJoin,
-      onAddFilterRule: addFilterRule,
-      onUpdateFilterRule: updateFilterRule,
-      onRemoveFilterRule: removeFilterRule,
-      onClearResultFilters: clearResultFilters,
-      onToggleSort: toggleSort,
-      onCloseFilters: () => setFiltersOpen(false),
-    },
-    editing: {
-      editMode,
-      editUndoDepth,
-      committing,
-      cellEdits,
-      editingCell,
-      canEditActiveResult,
-      onAddNewRow: addNewRow,
-      onUndoEdit: undoLastEdit,
-      onCommitEdits: () => void commitEdits(),
-      onDiscardEdits: discardEdits,
-      onGenerateRowChangeSql: generateSelectedRowChangeSql,
-      onEnableEditMode: enableEditMode,
-      onBeginCellEdit: beginCellEdit,
-      onSetCellValue: setCellValue,
-      onDeleteRow: deleteRow,
-      onPasteTableAt: pasteTableAt,
-      onEndCellEdit: () => setEditingCell(null),
-    },
-    selection: {
-      selectedRowKey,
-      selectedCell,
-      selectedRangeBounds,
-      selectedRowValues,
-      rowDetailTable,
-      onSelectGridRow: selectGridRow,
-      onSelectGridCell: selectGridCell,
-      onCloseRowDetail: () => {
-        setSelectedRowKey(null);
-        setSelectedCell(null);
-        setSelectedRange(null);
-      },
-    },
-    gridGeometry: {
-      gridRowStyle,
-      gridTotalWidth,
-      gridRowHeight,
-      gridColumnWidth,
-      leftColumnPad,
-      rightColumnPad,
-      topPad,
-      bottomPad,
-      firstVisible,
-      visibleColumnIndexes,
-      visibleRows,
-      visibleRowsRevision,
-      onGridScroll,
-      onGridKeyDown,
-      onGridPaste,
-      onGridCopy,
-    },
-  } satisfies ResultGridController;
+  });
 
   const connectionController = connectionManagerOpen
     ? ({
@@ -1921,16 +1315,10 @@ export function AppWorkbench() {
         running={running}
         selectionStatus={selectionStatus}
         shellStyle={appStyle}
-        onScopeFocus={(event) => {
-          const scope = keyScopeFromTarget(event.target, "global");
-          activeKeyScopeRef.current = scope;
-          setActiveKeyScope(scope);
-        }}
-        onScopeMouseDown={(event) => {
-          const scope = keyScopeFromTarget(event.target, activeKeyScope);
-          activeKeyScopeRef.current = scope;
-          setActiveKeyScope(scope);
-        }}
+        onScopeFocus={(event) => syncScopeFromTarget(event.target, "global")}
+        onScopeMouseDown={(event) =>
+          syncScopeFromTarget(event.target, activeKeyScope)
+        }
         onToggleLeftSidebar={() => setSidebarOpen((open) => !open)}
         onToggleRightSidebar={toggleRightSidebar}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}

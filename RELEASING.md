@@ -54,6 +54,25 @@ make release-major
 Before running a release target, update any sibling git tags in `Cargo.toml`
 explicitly and verify the lockfile diff is intentional.
 
+## Cross-Repo Tag Order
+
+Cut dependency repos before `irodori-table`, then repoint this repo to those
+immutable tags:
+
+1. `irodori-sql` - SQL dialect, parameter, schema, and migration SQL helpers.
+2. `irodori-knowledge` - shared error, job, and knowledge-store primitives.
+3. `irodori-kit` - app foundation crates, completion/generation, extension SDK,
+   and packaging templates. If kit consumes new SQL or knowledge behavior, bump
+   those tags in kit before tagging kit.
+4. `irodori-table` - update `[workspace.dependencies]` in `Cargo.toml`, run
+   `cargo update`, verify generated bindings and docs, then run the appropriate
+   `make release-*` target.
+
+For each sibling repo, update its changelog or release notes before tagging.
+For `irodori-table`, mention the consumed sibling tags in the release notes when
+they affect runtime behavior, extension SDK compatibility, or generated
+bindings.
+
 ## GitHub Release
 
 1. Push the release commit and tag created by the release target.
