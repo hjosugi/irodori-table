@@ -45,8 +45,9 @@ import {
   usePendingResultChangesGuard,
   useResultGridSpillPaging,
 } from "@/app/controllers/use-result-grid-runtime";
-import { ActionToast, type ActionNotice } from "@/app/ActionToast";
+import { ActionToastStack, useActionNotices } from "@/app/ActionToast";
 import { CommandPalette } from "@/app/CommandPalette";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { GitPanel, useGitStore } from "@/features/git";
 import {
   BiPanel,
@@ -314,11 +315,19 @@ export function AppWorkbench() {
   const diagramSvgRef = useRef<SVGSVGElement | null>(null);
   const diagramCanvasRef = useRef<HTMLDivElement | null>(null);
   const pendingDiagramSearchRef = useRef<string | null>(null);
-  const actionNoticeTimerRef = useRef<number | null>(null);
   const editorApiRef = useRef<SqlEditorHandle>(null);
   const secondaryEditorApiRef = useRef<SqlEditorHandle>(null);
   const editorSplitRef = useRef<HTMLDivElement | null>(null);
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(fallbackSnapshot);
+  const {
+    notices: actionNotices,
+    showActionNotice,
+    dismissNotice,
+  } = useActionNotices();
+  // Workbench-level confirmation dialog, shared by controllers that gate
+  // destructive actions (delete commits, discard-and-reload).
+  const { confirm: confirmAction, confirmElement: workbenchConfirmElement } =
+    useConfirm();
   const activeConnectionId = useConnectionStore(
     (state) => state.activeConnectionId,
   );
@@ -462,6 +471,7 @@ export function AppWorkbench() {
     editorApiRef,
     secondaryEditorApiRef,
     showActionNotice,
+    t,
   });
   const { beginPanelResize, onPanelResizeKey } = createPanelResizeController({
     sidebarWidth,
@@ -597,7 +607,6 @@ export function AppWorkbench() {
   const setObjectActionMenu = useConnectionStore(
     (state) => state.setObjectActionMenu,
   );
-  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   // EXEC-010: when a run spills past the in-memory budget, the grid pages rows from
   // disk through this handle instead of holding them all in JS. `spillInfo` drives
@@ -837,14 +846,6 @@ export function AppWorkbench() {
     }
   }, [settingsOpen, settingsTab]);
 
-  useEffect(() => {
-    return () => {
-      if (actionNoticeTimerRef.current !== null) {
-        window.clearTimeout(actionNoticeTimerRef.current);
-      }
-    };
-  }, []);
-
   const connections = useMemo(() => {
     const byId = new Map<string, WorkspaceConnection>();
     snapshot.connections.forEach((connection) => {
@@ -988,6 +989,7 @@ export function AppWorkbench() {
     deleteProfile,
     testActiveProfile,
     connectActiveProfile,
+    openSqliteSample,
     disconnectActiveProfile,
     refreshObjects,
   } = useConnectionActions({
@@ -1010,6 +1012,7 @@ export function AppWorkbench() {
     setConnecting,
     setConnectionManagerOpen,
     showActionNotice,
+    t,
   });
 
   useEffect(() => {
@@ -1240,6 +1243,8 @@ export function AppWorkbench() {
     activeEditorApi,
     runQuery,
     showActionNotice,
+    confirm: confirmAction,
+    t,
   });
 
   const {
@@ -1291,12 +1296,15 @@ export function AppWorkbench() {
     refreshObjects,
     openPlanPanel: () => setActiveSidebarView("plan"),
     showActionNotice,
+    t,
   });
 
   usePendingResultChangesGuard({
     pendingCount,
     resetEdits,
     showActionNotice,
+    confirm: confirmAction,
+    t,
   });
   useResultGridSpillPaging({
     spillInfo,
@@ -1313,7 +1321,11 @@ export function AppWorkbench() {
   function updateUiZoom(nextZoom: number) {
     const normalized = normalizeUiZoom(nextZoom);
     setUiZoom(normalized);
-    showActionNotice("info", "UI zoom", formatUiZoom(normalized));
+    showActionNotice(
+      "info",
+      t("settings.general.uiZoom.title"),
+      formatUiZoom(normalized),
+    );
   }
 
   const runCommand = createWorkbenchCommandHandler({
@@ -1527,7 +1539,11 @@ export function AppWorkbench() {
   function resetSettingsJsonDraft() {
     setSettingsJsonDraft(buildSettingsJson());
     setSettingsJsonError(null);
-    showActionNotice("info", "Settings JSON reset", "Loaded current settings");
+    showActionNotice(
+      "info",
+      t("notice.workbench.settingsJsonReset"),
+      t("notice.workbench.settingsJsonResetDetail"),
+    );
   }
 
   function applySettingsJson() {
@@ -1562,7 +1578,9 @@ export function AppWorkbench() {
           parsed.theme = entry.kind;
           parsed.defaultThemeId = entry.id;
           nextActiveCustomThemeId = null;
-          themeNotice = `Built-in theme: ${entry.name}`;
+          themeNotice = t("settings.theme.activeTheme.builtinNameDescription", {
+            name: entry.name,
+          });
         }
       } else if (
         parsed.theme === "system" ||
@@ -1579,9 +1597,16 @@ export function AppWorkbench() {
         themeNotice =
           importResult.source === "vscode"
             ? importResult.warnings.length > 0
-              ? `Converted VS Code theme: ${nextTheme.name} (${importResult.warnings.length} warning(s))`
-              : `Converted VS Code theme: ${nextTheme.name}`
-            : `Custom theme: ${nextTheme.name}`;
+              ? t("notice.workbench.vscodeThemeConvertedWarnings", {
+                  name: nextTheme.name,
+                  count: importResult.warnings.length,
+                })
+              : t("notice.workbench.vscodeThemeConverted", {
+                  name: nextTheme.name,
+                })
+            : t("settings.theme.activeTheme.customDescription", {
+                name: nextTheme.name,
+              });
         const savedTheme = upsertCustomThemeEntry(nextCustomThemes, nextTheme);
         nextCustomThemes = savedTheme.entries;
         setCustomThemes(nextCustomThemes);
@@ -1611,8 +1636,13 @@ export function AppWorkbench() {
         nextActiveCustomThemeId = savedTheme.id;
         themeNotice =
           importResult.warnings.length > 0
-            ? `Converted VS Code theme: ${importResult.theme.name} (${importResult.warnings.length} warning(s))`
-            : `Converted VS Code theme: ${importResult.theme.name}`;
+            ? t("notice.workbench.vscodeThemeConvertedWarnings", {
+                name: importResult.theme.name,
+                count: importResult.warnings.length,
+              })
+            : t("notice.workbench.vscodeThemeConverted", {
+                name: importResult.theme.name,
+              });
       } else if (
         typeof parsed.activeCustomThemeId === "string" &&
         nextCustomThemes.some(
@@ -1626,7 +1656,9 @@ export function AppWorkbench() {
           setThemeKind(entry.theme.kind);
           setActiveCustomThemeId(entry.id);
           nextActiveCustomThemeId = entry.id;
-          themeNotice = `Custom theme: ${entry.name}`;
+          themeNotice = t("settings.theme.activeTheme.customDescription", {
+            name: entry.name,
+          });
         }
       }
       if (typeof parsed.defaultThemeId === "string") {
@@ -1635,7 +1667,12 @@ export function AppWorkbench() {
           setActiveDefaultThemeId(entry.id);
           parsed.defaultThemeId = entry.id;
           if (!themeNotice) {
-            themeNotice = `Built-in theme: ${entry.name}`;
+            themeNotice = t(
+              "settings.theme.activeTheme.builtinNameDescription",
+              {
+                name: entry.name,
+              },
+            );
           }
         }
       }
@@ -1822,13 +1859,17 @@ export function AppWorkbench() {
       setSettingsJsonError(null);
       showActionNotice(
         "success",
-        "Settings applied",
-        themeNotice ?? "JSON settings were loaded",
+        t("notice.workbench.settingsApplied"),
+        themeNotice ?? t("notice.workbench.settingsAppliedDetail"),
       );
     } catch (error) {
       const message = errorMessage(error);
       setSettingsJsonError(message);
-      showActionNotice("error", "Settings JSON failed", message);
+      showActionNotice(
+        "error",
+        t("notice.workbench.settingsJsonFailed"),
+        message,
+      );
     }
   }
 
@@ -1838,33 +1879,10 @@ export function AppWorkbench() {
     } catch (error) {
       showActionNotice(
         "error",
-        "Developer Tools unavailable",
+        t("notice.workbench.devToolsUnavailable"),
         errorMessage(error),
       );
     }
-  }
-
-  function showActionNotice(
-    kind: ActionNotice["kind"],
-    title: string,
-    detail?: string,
-  ) {
-    if (actionNoticeTimerRef.current !== null) {
-      window.clearTimeout(actionNoticeTimerRef.current);
-    }
-    setActionNotice({
-      id: Date.now(),
-      kind,
-      title,
-      detail,
-    });
-    actionNoticeTimerRef.current = window.setTimeout(
-      () => {
-        setActionNotice(null);
-        actionNoticeTimerRef.current = null;
-      },
-      kind === "error" ? 5200 : 3200,
-    );
   }
 
   // Keep the keydown listener stable while reading the latest state via refs.
@@ -2114,8 +2132,8 @@ export function AppWorkbench() {
     });
     showActionNotice(
       "success",
-      "Vim shortcuts updated",
-      "Conflicting app shortcuts were adjusted for Vim mode.",
+      t("notice.workbench.vimShortcutsUpdated"),
+      t("notice.workbench.vimShortcutsUpdatedDetail"),
     );
   }
 
@@ -2135,7 +2153,11 @@ export function AppWorkbench() {
     setQuery(item.sql);
     closeQueryHistoryDialog();
     window.setTimeout(() => activeEditorApi()?.focus(), 0);
-    showActionNotice("success", "SQL loaded", item.connectionName);
+    showActionNotice(
+      "success",
+      t("notice.workbench.sqlLoaded"),
+      item.connectionName,
+    );
   }
 
   async function runHistoryItem(item: QueryHistoryItem) {
@@ -2143,8 +2165,8 @@ export function AppWorkbench() {
       loadHistoryItem(item);
       showActionNotice(
         "info",
-        "SQL loaded",
-        "Switched connection; run after it is connected",
+        t("notice.workbench.sqlLoaded"),
+        t("notice.workbench.sqlLoadedSwitchedDetail"),
       );
       return;
     }
@@ -2157,8 +2179,8 @@ export function AppWorkbench() {
     if (!item.result) {
       showActionNotice(
         "info",
-        "No result retained",
-        "This history entry has SQL only",
+        t("notice.workbench.noResultRetained"),
+        t("notice.workbench.noResultRetainedDetail"),
       );
       return;
     }
@@ -2177,8 +2199,10 @@ export function AppWorkbench() {
     closeQueryHistoryDialog();
     showActionNotice(
       "success",
-      "Result restored",
-      `${toCount(item.result.retainedRows)} retained rows`,
+      t("notice.workbench.resultRestored"),
+      t("notice.workbench.resultRestoredDetail", {
+        count: toCount(item.result.retainedRows),
+      }),
     );
   }
 
@@ -2198,20 +2222,20 @@ export function AppWorkbench() {
           return; // user cancelled the dialog
         }
         await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
-        showActionNotice("success", "Export saved", path);
+        showActionNotice("success", t("notice.grid.exportSaved"), path);
         return;
       } catch {
         // Native save not available yet — fall through to the browser download.
       }
     }
     downloadBlob(blob, fileName);
-    showActionNotice("success", "Export started", fileName);
+    showActionNotice("success", t("notice.grid.exportStarted"), fileName);
   }
 
   async function exportActiveResult(format: ResultExportFormat) {
     const exportResult = activeResult;
     if (!exportResult) {
-      showActionNotice("info", "No result to export");
+      showActionNotice("info", t("notice.grid.noResultToExport"));
       return;
     }
     const target = inferEditTarget();
@@ -2233,14 +2257,18 @@ export function AppWorkbench() {
       setExportMenuOpen(false);
       await saveExportBlob(blob, fileName);
     } catch (error) {
-      showActionNotice("error", "Export failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.grid.exportFailed"),
+        errorMessage(error),
+      );
     }
   }
 
   async function copyActiveResultSqlInserts() {
     const exportResult = activeResult;
     if (!exportResult) {
-      showActionNotice("info", "No result to copy");
+      showActionNotice("info", t("notice.grid.noResultToCopy"));
       return;
     }
     const target = inferEditTarget();
@@ -2253,11 +2281,17 @@ export function AppWorkbench() {
       await writeTextToClipboard(exported.content);
       showActionNotice(
         "success",
-        "INSERT SQL copied",
-        `${toCount(exportResult.rows.length)} rows`,
+        t("notice.grid.insertSqlCopied"),
+        t("notice.grid.rowCountDetail", {
+          count: toCount(exportResult.rows.length),
+        }),
       );
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2268,7 +2302,7 @@ export function AppWorkbench() {
     }
     const exportResult = activeResult;
     if (!exportResult) {
-      showActionNotice("info", "No result to copy");
+      showActionNotice("info", t("notice.grid.noResultToCopy"));
       return;
     }
     const target = inferEditTarget();
@@ -2281,11 +2315,17 @@ export function AppWorkbench() {
       await writeTextToClipboard(exported.content);
       showActionNotice(
         "success",
-        `Copied as ${format.toUpperCase()}`,
-        `${toCount(exportResult.rows.length)} rows`,
+        t("notice.grid.copiedAs", { format: format.toUpperCase() }),
+        t("notice.grid.rowCountDetail", {
+          count: toCount(exportResult.rows.length),
+        }),
       );
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2311,13 +2351,13 @@ export function AppWorkbench() {
       setDiagramError(null);
       showActionNotice(
         "success",
-        "ERD SVG exported",
+        t("notice.workbench.erdSvgExported"),
         erdFileName(activeConnectionId, "svg"),
       );
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "ERD export failed", message);
+      showActionNotice("error", t("notice.workbench.erdExportFailed"), message);
     }
   }
 
@@ -2329,13 +2369,13 @@ export function AppWorkbench() {
       setDiagramError(null);
       showActionNotice(
         "success",
-        "ERD PNG exported",
+        t("notice.workbench.erdPngExported"),
         erdFileName(activeConnectionId, "png"),
       );
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "ERD export failed", message);
+      showActionNotice("error", t("notice.workbench.erdExportFailed"), message);
     }
   }
 
@@ -2344,11 +2384,11 @@ export function AppWorkbench() {
       const { markup } = currentDiagramSvgMarkup();
       await writeTextToClipboard(markup);
       setDiagramError(null);
-      showActionNotice("success", "ERD SVG copied");
+      showActionNotice("success", t("notice.workbench.erdSvgCopied"));
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "Copy failed", message);
+      showActionNotice("error", t("notice.workbench.copyFailed"), message);
     }
   }
 
@@ -2358,11 +2398,11 @@ export function AppWorkbench() {
       const blob = await svgMarkupToPngBlob(markup, width, height);
       await writePngBlobToClipboard(blob);
       setDiagramError(null);
-      showActionNotice("success", "ERD PNG copied");
+      showActionNotice("success", t("notice.workbench.erdPngCopied"));
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "Copy failed", message);
+      showActionNotice("error", t("notice.workbench.copyFailed"), message);
     }
   }
 
@@ -2386,11 +2426,19 @@ export function AppWorkbench() {
         tableSpecFileName(activeConnectionId, exported.extension),
       );
       setDiagramError(null);
-      showActionNotice("success", "Table spec exported", "Markdown");
+      showActionNotice(
+        "success",
+        t("notice.workbench.tableSpecExported"),
+        "Markdown",
+      );
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "Table spec export failed", message);
+      showActionNotice(
+        "error",
+        t("notice.workbench.tableSpecExportFailed"),
+        message,
+      );
     }
   }
 
@@ -2402,11 +2450,19 @@ export function AppWorkbench() {
         tableSpecFileName(activeConnectionId, exported.extension),
       );
       setDiagramError(null);
-      showActionNotice("success", "Table spec exported", "JSON");
+      showActionNotice(
+        "success",
+        t("notice.workbench.tableSpecExported"),
+        "JSON",
+      );
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "Table spec export failed", message);
+      showActionNotice(
+        "error",
+        t("notice.workbench.tableSpecExportFailed"),
+        message,
+      );
     }
   }
 
@@ -2417,12 +2473,16 @@ export function AppWorkbench() {
       setQuery(sql);
       setDiagramOpen(false);
       setDiagramError(null);
-      showActionNotice("success", "DDL generated from table spec", file.name);
+      showActionNotice("success", t("notice.workbench.ddlFromSpec"), file.name);
       window.setTimeout(() => activeEditorApi()?.focus(), 0);
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "Spec import failed", message);
+      showActionNotice(
+        "error",
+        t("notice.workbench.specImportFailed"),
+        message,
+      );
     } finally {
       if (schemaSpecFileRef.current) {
         schemaSpecFileRef.current.value = "";
@@ -2436,12 +2496,16 @@ export function AppWorkbench() {
       setQuery(sql);
       setDiagramOpen(false);
       setDiagramError(null);
-      showActionNotice("success", "Create DB SQL generated");
+      showActionNotice("success", t("notice.workbench.createDbSqlGenerated"));
       window.setTimeout(() => activeEditorApi()?.focus(), 0);
     } catch (error) {
       const message = errorMessage(error);
       setDiagramError(message);
-      showActionNotice("error", "Create DB SQL failed", message);
+      showActionNotice(
+        "error",
+        t("notice.workbench.createDbSqlFailed"),
+        message,
+      );
     }
   }
 
@@ -2489,16 +2553,20 @@ export function AppWorkbench() {
   function putDiagramDesignerSqlInEditor(sql: string) {
     setQuery(sql);
     closeSchemaDiagram();
-    showActionNotice("success", "Create DB SQL generated");
+    showActionNotice("success", t("notice.workbench.createDbSqlGenerated"));
     window.setTimeout(() => activeEditorApi()?.focus(), 0);
   }
 
   async function copyDiagramDesignerSql(sql: string) {
     try {
       await writeTextToClipboard(sql);
-      showActionNotice("success", "Schema SQL copied");
+      showActionNotice("success", t("notice.workbench.schemaSqlCopied"));
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2530,22 +2598,22 @@ export function AppWorkbench() {
     if (!kind) {
       showActionNotice(
         "error",
-        "Import failed",
-        "Unsupported import file type",
+        t("notice.workbench.importFailed"),
+        t("notice.workbench.importUnsupportedDetail"),
       );
       return;
     }
     const text = await file.text();
     if (kind === "sql") {
       setQuery(text);
-      showActionNotice("success", "SQL loaded", file.name);
+      showActionNotice("success", t("notice.workbench.sqlLoaded"), file.name);
       return;
     }
     if (kind === "excel") {
       showActionNotice(
         "error",
-        "Import failed",
-        "Excel import is not available in the desktop UI yet",
+        t("notice.workbench.importFailed"),
+        t("notice.workbench.importExcelDetail"),
       );
       return;
     }
@@ -2559,11 +2627,18 @@ export function AppWorkbench() {
       });
       showActionNotice(
         "success",
-        "Import preview ready",
-        `${file.name} · ${toCount(parsed.totalRows)} rows`,
+        t("notice.workbench.importPreviewReady"),
+        t("notice.workbench.importPreviewReadyDetail", {
+          name: file.name,
+          count: toCount(parsed.totalRows),
+        }),
       );
     } catch (error) {
-      showActionNotice("error", "Import failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.importFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2581,7 +2656,7 @@ export function AppWorkbench() {
     setImportPreview(null);
     showActionNotice(
       "success",
-      "Import SQL generated",
+      t("notice.workbench.importSqlGenerated"),
       importPreview.tableName,
     );
   }
@@ -2589,15 +2664,19 @@ export function AppWorkbench() {
   function putMigrationTextInEditor(text: string) {
     setQuery(text);
     setMigrationStudioOpen(false);
-    showActionNotice("success", "Migration output loaded");
+    showActionNotice("success", t("notice.workbench.migrationOutputLoaded"));
   }
 
   async function copyMigrationText(text: string, label: string) {
     try {
       await writeTextToClipboard(text);
-      showActionNotice("success", `${label} copied`);
+      showActionNotice("success", t("notice.workbench.labelCopied", { label }));
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2644,15 +2723,23 @@ export function AppWorkbench() {
   function putSchemaSqlInEditor() {
     setQuery(buildSchemaSql(schemaDraft));
     setSchemaDesignerOpen(false);
-    showActionNotice("success", "Schema SQL generated", schemaDraft.table);
+    showActionNotice(
+      "success",
+      t("notice.workbench.schemaSqlGenerated"),
+      schemaDraft.table,
+    );
   }
 
   async function copySchemaSql() {
     try {
       await writeTextToClipboard(schemaSqlPreview);
-      showActionNotice("success", "Schema SQL copied");
+      showActionNotice("success", t("notice.workbench.schemaSqlCopied"));
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2664,9 +2751,17 @@ export function AppWorkbench() {
   function saveCurrentQuery() {
     try {
       window.localStorage.setItem(savedQueryStorageKey, query);
-      showActionNotice("success", "Query saved", activeTabLabel ?? "scratch");
+      showActionNotice(
+        "success",
+        t("notice.workbench.querySaved"),
+        activeTabLabel ?? "scratch",
+      );
     } catch (error) {
-      showActionNotice("error", "Query save failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.querySaveFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2676,7 +2771,11 @@ export function AppWorkbench() {
       new Blob([query], { type: "application/sql;charset=utf-8" }),
       fileName,
     );
-    showActionNotice("success", "SQL export started", fileName);
+    showActionNotice(
+      "success",
+      t("notice.workbench.sqlExportStarted"),
+      fileName,
+    );
   }
 
   async function exitApplication() {
@@ -2684,8 +2783,8 @@ export function AppWorkbench() {
     if (runtimeError) {
       showActionNotice(
         "info",
-        "Exit unavailable",
-        "Close the browser preview tab or open the Tauri desktop window.",
+        t("notice.workbench.exitUnavailable"),
+        t("notice.workbench.exitUnavailableDetail"),
       );
       return;
     }
@@ -2693,7 +2792,11 @@ export function AppWorkbench() {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().close();
     } catch (error) {
-      showActionNotice("error", "Exit failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.exitFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2710,9 +2813,13 @@ export function AppWorkbench() {
     ].join("\n");
     try {
       await navigator.clipboard?.writeText(diagnostics);
-      showActionNotice("success", "Diagnostics copied");
+      showActionNotice("success", t("notice.workbench.diagnosticsCopied"));
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2721,23 +2828,23 @@ export function AppWorkbench() {
     const error = result?.error ?? null;
     setQueryError(error);
     if (error) {
-      showActionNotice("error", "Format failed", error);
+      showActionNotice("error", t("notice.editor.formatFailed"), error);
     } else if (!result?.changed) {
       showActionNotice(
         "info",
         result?.skipped === "empty"
-          ? "Nothing to format"
-          : "SQL already formatted",
+          ? t("notice.editor.nothingToFormat")
+          : t("notice.editor.alreadyFormatted"),
       );
     } else {
-      showActionNotice("success", "SQL formatted", formatter);
+      showActionNotice("success", t("notice.editor.formatted"), formatter);
     }
   }
 
   function showEditorQuickFix() {
     const opened = activeEditorApi()?.showQuickFix() ?? false;
     if (!opened) {
-      showActionNotice("info", "No problems to show");
+      showActionNotice("info", t("notice.editor.noProblems"));
     }
   }
 
@@ -2746,31 +2853,31 @@ export function AppWorkbench() {
     const error = result?.error ?? null;
     setQueryError(error);
     if (error) {
-      showActionNotice("error", "Cleanup failed", error);
+      showActionNotice("error", t("notice.editor.cleanupFailed"), error);
     } else if (!result?.changed) {
       showActionNotice(
         "info",
         result?.skipped === "empty"
-          ? "Nothing to clean up"
-          : "Code already clean",
+          ? t("notice.editor.nothingToCleanup")
+          : t("notice.editor.alreadyClean"),
       );
     } else {
-      showActionNotice("success", "Code cleanup complete");
+      showActionNotice("success", t("notice.editor.cleanupComplete"));
     }
   }
 
   function transformEditorSelection(action: SqlEditorTransformAction) {
     const changed = activeEditorApi()?.transformSelection(action) ?? false;
     if (!changed) {
-      showActionNotice("info", "Nothing changed");
+      showActionNotice("info", t("notice.editor.nothingChanged"));
       return;
     }
     const label: Record<SqlEditorTransformAction, string> = {
-      uppercase: "Uppercase",
-      lowercase: "Lowercase",
-      unformat: "Unformatted to one line",
-      appendCommas: "Commas added",
-      doubleToSingleQuotes: "Quotes converted",
+      uppercase: t("notice.editor.uppercased"),
+      lowercase: t("notice.editor.lowercased"),
+      unformat: t("notice.editor.unformatted"),
+      appendCommas: t("notice.editor.commasAdded"),
+      doubleToSingleQuotes: t("notice.editor.quotesConverted"),
     };
     showActionNotice("success", label[action]);
   }
@@ -2779,7 +2886,7 @@ export function AppWorkbench() {
     const changed = activeEditorApi()?.indentSelection() ?? false;
     showActionNotice(
       changed ? "success" : "info",
-      changed ? "Indented" : "Nothing changed",
+      changed ? t("notice.editor.indented") : t("notice.editor.nothingChanged"),
     );
   }
 
@@ -2787,7 +2894,9 @@ export function AppWorkbench() {
     const changed = activeEditorApi()?.outdentSelection() ?? false;
     showActionNotice(
       changed ? "success" : "info",
-      changed ? "Outdented" : "Nothing changed",
+      changed
+        ? t("notice.editor.outdented")
+        : t("notice.editor.nothingChanged"),
     );
   }
 
@@ -2813,9 +2922,17 @@ export function AppWorkbench() {
   async function copyPlanFormat(format: QueryPlanCopyFormat) {
     try {
       await writeTextToClipboard(format.content);
-      showActionNotice("success", "Plan copied", format.label);
+      showActionNotice(
+        "success",
+        t("notice.workbench.planCopied"),
+        format.label,
+      );
     } catch (error) {
-      showActionNotice("error", "Copy failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.workbench.copyFailed"),
+        errorMessage(error),
+      );
     }
   }
 
@@ -2823,7 +2940,7 @@ export function AppWorkbench() {
     setRunMenuOpen(false);
     const sqlToRun = selectedSqlFromSelections(query, activeEditorSelections());
     if (!sqlToRun) {
-      showActionNotice("info", "No selection to run");
+      showActionNotice("info", t("notice.query.noSelectionToRun"));
       return;
     }
     await runEditorSql(sqlToRun, { allowMagic: true });
@@ -3190,6 +3307,7 @@ export function AppWorkbench() {
           setConnectionManagerOpen(true);
         }}
         onOpenConnectionManager={() => setConnectionManagerOpen(true)}
+        onOpenSqliteSample={() => void openSqliteSample()}
         onSelectConnection={selectSidebarConnection}
         onOpenBlankSchemaDesigner={openBlankSchemaDesigner}
         onNewTableFromFile={() => importFileRef.current?.click()}
@@ -3719,12 +3837,9 @@ export function AppWorkbench() {
         }}
       />
 
-      {actionNotice ? (
-        <ActionToast
-          notice={actionNotice}
-          onDismiss={() => setActionNotice(null)}
-        />
-      ) : null}
+      {workbenchConfirmElement}
+
+      <ActionToastStack notices={actionNotices} onDismiss={dismissNotice} />
     </div>
   );
 }

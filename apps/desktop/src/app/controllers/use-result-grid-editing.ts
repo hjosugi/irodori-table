@@ -3,6 +3,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import type { ActionNotice } from "@/app/ActionToast";
+import type { ConfirmOptions } from "@/components/ConfirmDialog";
 import {
   buildResultGridViewModel,
   buildSelectedRowChangeSql,
@@ -21,6 +22,7 @@ import {
 import { writeTextToClipboard } from "@/features/erd";
 import { queryService } from "@/features/workbench";
 import { errorMessage } from "@/core";
+import type { Translator } from "@/i18n";
 import type {
   CellValue,
   DatabaseMetadata,
@@ -118,6 +120,8 @@ export type ResultGridEditingDeps = {
     title: string,
     detail?: string,
   ) => void;
+  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  t: Translator["t"];
 };
 
 export function useResultGridEditing(deps: ResultGridEditingDeps) {
@@ -167,6 +171,8 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     activeEditorApi,
     runQuery,
     showActionNotice,
+    confirm,
+    t,
   } = deps;
 
   function selectResultSet(index: number) {
@@ -273,9 +279,9 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
 
   function enableEditMode() {
     if (activeConnectionReadOnly) {
-      const message = "read-only connection: data edits are blocked";
+      const message = t("notice.grid.readOnlyEditsDetail");
       setCommitError(message);
-      showActionNotice("error", "Edit blocked", message);
+      showActionNotice("error", t("notice.grid.editBlocked"), message);
       return;
     }
     setCommitError(null);
@@ -365,22 +371,30 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     }
     if (undoEdit()) {
       setEditMode(true);
-      showActionNotice("info", "Edit undone", "Reverted the last staged edit");
+      showActionNotice(
+        "info",
+        t("notice.grid.editUndone"),
+        t("notice.grid.editUndoneDetail"),
+      );
     }
   }
 
   async function copyGridText(text: string | null) {
     if (text === null) {
-      showActionNotice("info", "Nothing to copy");
+      showActionNotice("info", t("notice.grid.nothingToCopy"));
       return;
     }
     try {
       await writeTextToClipboard(text);
-      showActionNotice("success", "Copied", "Selection copied to clipboard");
+      showActionNotice(
+        "success",
+        t("notice.grid.copied"),
+        t("notice.grid.copiedDetail"),
+      );
     } catch (error) {
       const message = errorMessage(error);
       setQueryError(message);
-      showActionNotice("error", "Copy failed", message);
+      showActionNotice("error", t("notice.workbench.copyFailed"), message);
     }
   }
 
@@ -525,21 +539,20 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
 
   function generateSelectedRowChangeSql() {
     if (activeConnectionReadOnly) {
-      const message = "read-only connection: data edits are blocked";
+      const message = t("notice.grid.readOnlyEditsDetail");
       setCommitError(message);
-      showActionNotice("error", "Row SQL blocked", message);
+      showActionNotice("error", t("notice.grid.rowSqlBlocked"), message);
       return;
     }
     const target = inferEditTarget();
     if (!target) {
-      const message =
-        "row SQL needs a single-table result with a visible primary or unique key";
+      const message = t("notice.grid.rowSqlUnavailableDetail");
       setCommitError(message);
-      showActionNotice("error", "Row SQL unavailable", message);
+      showActionNotice("error", t("notice.grid.rowSqlUnavailable"), message);
       return;
     }
     if (!selectedRowValues) {
-      showActionNotice("info", "Select a row first");
+      showActionNotice("info", t("notice.grid.selectRowFirst"));
       return;
     }
     const sql = buildSelectedRowChangeSql({
@@ -552,8 +565,8 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     activeEditorApi()?.focus();
     showActionNotice(
       "success",
-      "Row SQL generated",
-      "Review the transaction in the SQL editor before running it",
+      t("notice.grid.rowSqlGenerated"),
+      t("notice.grid.rowSqlGeneratedDetail"),
     );
   }
 
@@ -564,17 +577,16 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
 
   async function commitEdits() {
     if (activeConnectionReadOnly) {
-      const message = "read-only connection: data edits are blocked";
+      const message = t("notice.grid.readOnlyEditsDetail");
       setCommitError(message);
-      showActionNotice("error", "Commit failed", message);
+      showActionNotice("error", t("notice.grid.commitFailed"), message);
       return;
     }
     const target = inferEditTarget();
     if (!target) {
-      const message =
-        "could not detect an editable target table from the query";
+      const message = t("notice.grid.commitNoTargetDetail");
       setCommitError(message);
-      showActionNotice("error", "Commit failed", message);
+      showActionNotice("error", t("notice.grid.commitFailed"), message);
       return;
     }
     const updates: RowUpdate[] = [];
@@ -616,6 +628,22 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
       deletes,
     };
 
+    // Deletes are irreversible once applied, so they get a final gate even
+    // though the staged diff is visible in the grid.
+    if (deletes.length > 0) {
+      const confirmed = await confirm({
+        title: `Delete ${toCount(deletes.length)} row${
+          deletes.length === 1 ? "" : "s"
+        } from ${target.table}?`,
+        message: "Deletes are applied to the database and can't be undone.",
+        confirmLabel: "Commit",
+        tone: "danger",
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setCommitting(true);
     setCommitError(null);
     try {
@@ -626,13 +654,17 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
       await runQuery();
       showActionNotice(
         "success",
-        "Edits committed",
-        `${toCount(updates.length)} updates, ${toCount(inserts.length)} inserts, ${toCount(deletes.length)} deletes`,
+        t("notice.grid.editsCommitted"),
+        t("notice.grid.editsCommittedDetail", {
+          updates: toCount(updates.length),
+          inserts: toCount(inserts.length),
+          deletes: toCount(deletes.length),
+        }),
       );
     } catch (error) {
       const message = errorMessage(error);
       setCommitError(message);
-      showActionNotice("error", "Commit failed", message);
+      showActionNotice("error", t("notice.grid.commitFailed"), message);
     } finally {
       setCommitting(false);
     }

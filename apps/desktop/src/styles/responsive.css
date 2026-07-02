@@ -12,7 +12,7 @@
   }
 
   .titlebar {
-    --titlebar-connection-width: clamp(260px, 38vw, 360px);
+    --titlebar-connection-width: clamp(280px, 50vw, 460px);
   }
 
   .connection-select {

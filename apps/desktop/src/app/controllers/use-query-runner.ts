@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useMachine } from "@xstate/react";
 
-import { type ActionNotice } from "@/app/ActionToast";
+import { type ShowActionNotice } from "@/app/ActionToast";
 import {
   createQueryHistoryResultSnapshot,
   type QueryHistoryItem,
@@ -26,7 +26,8 @@ import {
   queryService as defaultQueryService,
   type QueryService,
 } from "@/features/workbench";
-import { errorMessage } from "@/core";
+import { errorMessage, isRetryableError } from "@/core";
+import type { Translator } from "@/i18n";
 import {
   isQueryBusy,
   queryLifecycleMachine,
@@ -98,11 +99,8 @@ export type QueryRunnerDeps = {
   bumpGridWindowVersion: () => void;
   refreshObjects: (connectionId: string, force?: boolean) => Promise<void>;
   openPlanPanel: () => void;
-  showActionNotice: (
-    kind: ActionNotice["kind"],
-    title: string,
-    detail?: string,
-  ) => void;
+  showActionNotice: ShowActionNotice;
+  t: Translator["t"];
 };
 
 export function useQueryRunner(deps: QueryRunnerDeps) {
@@ -143,6 +141,7 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
     refreshObjects,
     openPlanPanel,
     showActionNotice,
+    t,
   } = deps;
 
   const [queryRun, sendQueryRun] = useMachine(queryLifecycleMachine);
@@ -166,20 +165,22 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
 
   function validateSqlRun(sqlToRun: string) {
     if (!activeConnectionOpen) {
-      const message = `not connected: ${activeConnectionId}`;
+      const message = t("notice.query.notConnectedDetail", {
+        id: activeConnectionId,
+      });
       setQueryError(message);
-      showActionNotice("error", "Run failed", message);
+      showActionNotice("error", t("notice.query.runFailed"), message);
       return false;
     }
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
       setQueryError(runtimeError);
-      showActionNotice("error", "Run failed", runtimeError);
+      showActionNotice("error", t("notice.query.runFailed"), runtimeError);
       return false;
     }
     if (!sqlToRun) {
       setQueryError("query is empty");
-      showActionNotice("info", "Nothing to run");
+      showActionNotice("info", t("notice.query.nothingToRun"));
       return false;
     }
     return true;
@@ -189,9 +190,9 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
     if (!activeConnectionReadOnly || !sqlMayWrite(sqlToRun)) {
       return false;
     }
-    const message = "read-only connection: write statements are blocked";
+    const message = t("notice.query.readOnlyDetail");
     setQueryError(message);
-    showActionNotice("error", "Read-only mode", message);
+    showActionNotice("error", t("notice.query.readOnly"), message);
     return true;
   }
 
@@ -228,7 +229,11 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
       setQueryError(runtimeError);
-      showActionNotice("error", "Parameter scan failed", runtimeError);
+      showActionNotice(
+        "error",
+        t("notice.query.parameterScanFailed"),
+        runtimeError,
+      );
       return true;
     }
     try {
@@ -249,13 +254,13 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
       }
       if (requirePrompt) {
         setQueryError("No query parameters found in this SQL.");
-        showActionNotice("info", "No parameters found");
+        showActionNotice("info", t("notice.query.noParameters"));
         return true;
       }
     } catch (error) {
       const message = errorMessage(error);
       setQueryError(message);
-      showActionNotice("error", "Parameter scan failed", message);
+      showActionNotice("error", t("notice.query.parameterScanFailed"), message);
       return true;
     }
     return false;
@@ -267,20 +272,22 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
     options: ExecuteQueryOptions = {},
   ) {
     if (!activeConnectionOpen) {
-      const message = `not connected: ${activeConnectionId}`;
+      const message = t("notice.query.notConnectedDetail", {
+        id: activeConnectionId,
+      });
       setQueryError(message);
-      showActionNotice("error", "Run failed", message);
+      showActionNotice("error", t("notice.query.runFailed"), message);
       return;
     }
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
       setQueryError(runtimeError);
-      showActionNotice("error", "Run failed", runtimeError);
+      showActionNotice("error", t("notice.query.runFailed"), runtimeError);
       return;
     }
     if (!sqlToRun.trim()) {
       setQueryError("query is empty");
-      showActionNotice("info", "Nothing to run");
+      showActionNotice("info", t("notice.query.nothingToRun"));
       return;
     }
     if (blockReadOnlySql(sqlToRun)) {
@@ -312,7 +319,7 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
       cancelRequestedQueryIdRef.current === queryId;
     const showCancelledRun = () => {
       setQueryError(null);
-      showActionNotice("info", "Query cancelled");
+      showActionNotice("info", t("notice.query.cancelled"));
     };
     let publishRaf: number | null = null;
     const appendErrorHistory = (message: string) => {
@@ -451,8 +458,11 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
         refreshMetadataForDdl();
         showActionNotice(
           "success",
-          "Query finished",
-          `${toCount(totalRows)} rows in ${toCount(spill.elapsedMs)} ms`,
+          t("notice.query.finished"),
+          t("notice.query.finishedDetail", {
+            rows: toCount(totalRows),
+            ms: toCount(spill.elapsedMs),
+          }),
         );
       };
       if (resultOffloadEnabled) {
@@ -563,8 +573,11 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
                 refreshMetadataForDdl();
                 showActionNotice(
                   "success",
-                  "Query finished",
-                  `${toCount(event.rowCount)} rows in ${toCount(event.elapsedMs)} ms`,
+                  t("notice.query.finished"),
+                  t("notice.query.finishedDetail", {
+                    rows: toCount(event.rowCount),
+                    ms: toCount(event.elapsedMs),
+                  }),
                 );
                 sendQueryRun({
                   type: "DONE",
@@ -583,7 +596,11 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
                 }
                 sendQueryRun({ type: "ERROR", message: event.message });
                 setQueryError(event.message);
-                showActionNotice("error", "Query failed", event.message);
+                showActionNotice(
+                  "error",
+                  t("notice.query.failed"),
+                  event.message,
+                );
                 appendErrorHistory(event.message);
                 break;
             }
@@ -598,7 +615,19 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
       } else {
         sendQueryRun({ type: "ERROR", message });
         setQueryError(message);
-        showActionNotice("error", "Query failed", message);
+        showActionNotice(
+          "error",
+          t("notice.query.failed"),
+          message,
+          isRetryableError(error)
+            ? {
+                action: {
+                  label: t("common.retry"),
+                  run: () => void executeQuery(sqlToRun, params, options),
+                },
+              }
+            : undefined,
+        );
         appendErrorHistory(message);
       }
     } finally {
@@ -635,46 +664,52 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
       return;
     }
     if (cancelRequestedQueryIdRef.current === id) {
-      showActionNotice("info", "Cancel already requested");
+      showActionNotice("info", t("notice.query.cancelAlreadyRequested"));
       return;
     }
     try {
       cancelRequestedQueryIdRef.current = id;
       const cancelled = await queryService.cancel(id);
       if (cancelled) {
-        showActionNotice("info", "Cancel requested");
+        showActionNotice("info", t("notice.query.cancelRequested"));
       } else {
         if (cancelRequestedQueryIdRef.current === id) {
           cancelRequestedQueryIdRef.current = null;
         }
-        showActionNotice("info", "Query already finished");
+        showActionNotice("info", t("notice.query.alreadyFinished"));
       }
     } catch (error) {
       if (cancelRequestedQueryIdRef.current === id) {
         cancelRequestedQueryIdRef.current = null;
       }
-      showActionNotice("error", "Cancel failed", errorMessage(error));
+      showActionNotice(
+        "error",
+        t("notice.query.cancelFailed"),
+        errorMessage(error),
+      );
     }
   }
 
   async function explainSql(sqlToExplain: string, mode: QueryPlanMode) {
     if (!activeConnectionOpen) {
-      const message = `not connected: ${activeConnectionId}`;
+      const message = t("notice.query.notConnectedDetail", {
+        id: activeConnectionId,
+      });
       setPlanError(message);
-      showActionNotice("error", "Explain failed", message);
+      showActionNotice("error", t("notice.query.explainFailed"), message);
       openPlanPanel();
       return;
     }
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
       setPlanError(runtimeError);
-      showActionNotice("error", "Explain failed", runtimeError);
+      showActionNotice("error", t("notice.query.explainFailed"), runtimeError);
       openPlanPanel();
       return;
     }
     if (!sqlToExplain) {
       setPlanError("query is empty");
-      showActionNotice("info", "Nothing to explain");
+      showActionNotice("info", t("notice.query.nothingToExplain"));
       openPlanPanel();
       return;
     }
@@ -690,13 +725,18 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
       setPlanAnalysis(plan);
       showActionNotice(
         "success",
-        mode === "analyze" ? "Analyse complete" : "Plan ready",
-        `${plan.nodes.length} nodes · ${plan.findings.length} findings`,
+        mode === "analyze"
+          ? t("notice.query.analyzeComplete")
+          : t("notice.query.planReady"),
+        t("notice.query.planSummary", {
+          nodes: plan.nodes.length,
+          findings: plan.findings.length,
+        }),
       );
     } catch (error) {
       const message = errorMessage(error);
       setPlanError(message);
-      showActionNotice("error", "Explain failed", message);
+      showActionNotice("error", t("notice.query.explainFailed"), message);
     } finally {
       setPlanLoading(false);
     }

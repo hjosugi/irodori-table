@@ -8,7 +8,10 @@ import {
   type AiProviderKind,
 } from "@/generated/irodori-api";
 import { aiDeleteLocalModel, aiUnloadLocal } from "./chat-bridge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { errorMessage } from "@/core/errors";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 
 const PROVIDER_LABELS: Record<AiProviderKind, string> = {
   local: "Local (embedded model)",
@@ -132,6 +135,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<AiEngineStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const { confirm, confirmElement } = useConfirm();
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
 
   const refreshStatus = useCallback(() => {
     void aiEngineStatus()
@@ -156,22 +162,26 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       await aiUnloadLocal();
       notify?.(
         "success",
-        "Local model unloaded",
-        "Memory freed; it reloads on next use.",
+        t("notice.ai.localModelUnloaded"),
+        t("notice.ai.localModelUnloadedDetail"),
       );
     } catch (err) {
-      notify?.("error", "Could not unload model", errorMessage(err));
+      notify?.("error", t("notice.ai.unloadFailed"), errorMessage(err));
     } finally {
       setBusy(false);
       refreshStatus();
     }
-  }, [notify, refreshStatus]);
+  }, [notify, refreshStatus, t]);
 
   const deleteLocal = useCallback(async () => {
     if (
-      !window.confirm(
-        "Delete the embedded model file from disk? It must be reinstalled to use the local provider again.",
-      )
+      !(await confirm({
+        title: "Delete the embedded model file?",
+        message:
+          "Removes the model from disk. It must be reinstalled to use the local provider again.",
+        confirmLabel: "Delete",
+        tone: "danger",
+      }))
     ) {
       return;
     }
@@ -180,16 +190,16 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       await aiDeleteLocalModel();
       notify?.(
         "success",
-        "Local model deleted",
-        "The model file was removed from disk.",
+        t("notice.ai.localModelDeleted"),
+        t("notice.ai.localModelDeletedDetail"),
       );
     } catch (err) {
-      notify?.("error", "Could not delete model", errorMessage(err));
+      notify?.("error", t("notice.ai.deleteFailed"), errorMessage(err));
     } finally {
       setBusy(false);
       refreshStatus();
     }
-  }, [notify, refreshStatus]);
+  }, [confirm, notify, refreshStatus, t]);
 
   const applyPreset = useCallback((id: string) => {
     setPresetId(id);
@@ -210,15 +220,19 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       };
       await aiSetProvider(payload);
       setApiKey("");
-      notify?.("success", "AI provider updated", PROVIDER_LABELS[config.kind]);
+      notify?.(
+        "success",
+        t("notice.ai.providerUpdated"),
+        PROVIDER_LABELS[config.kind],
+      );
     } catch (err) {
       const message = errorMessage(err);
       setError(message);
-      notify?.("error", "Could not update provider", message);
+      notify?.("error", t("notice.ai.providerUpdateFailed"), message);
     } finally {
       setSaving(false);
     }
-  }, [config, apiKey, notify]);
+  }, [config, apiKey, notify, t]);
 
   const needsKey = config.kind === "openaiCompat";
   const isHttp = config.kind === "ollama" || config.kind === "openaiCompat";
@@ -401,6 +415,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       >
         {saving ? "Saving…" : "Use this model"}
       </button>
+      {confirmElement}
     </div>
   );
 }

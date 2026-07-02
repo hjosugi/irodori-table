@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import type { ActionNotice } from "@/app/ActionToast";
+import type { ConfirmOptions } from "@/components/ConfirmDialog";
 import { queryService } from "@/features/workbench";
 import type { WindowedRows } from "@/features/results";
+import type { Translator } from "@/i18n";
 
 function isPrimaryRefreshShortcut(event: KeyboardEvent) {
   const isRKey = event.key.toLowerCase() === "r" || event.code === "KeyR";
@@ -24,12 +26,16 @@ export type PendingResultChangesGuardDeps = {
     title: string,
     detail?: string,
   ) => void;
+  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  t: Translator["t"];
 };
 
 export function usePendingResultChangesGuard({
   pendingCount,
   resetEdits,
   showActionNotice,
+  confirm,
+  t,
 }: PendingResultChangesGuardDeps) {
   useEffect(() => {
     if (pendingCount === 0) {
@@ -45,19 +51,25 @@ export function usePendingResultChangesGuard({
       }
       event.preventDefault();
       event.stopPropagation();
-      const discard = window.confirm(
-        `Discard ${pendingCount} unsaved result change${pendingCount === 1 ? "" : "s"} and reload?`,
-      );
-      if (!discard) {
-        showActionNotice(
-          "info",
-          "Reload cancelled",
-          "Use Save Changes or Discard before refreshing.",
-        );
-        return;
-      }
-      resetEdits();
-      window.location.reload();
+      void (async () => {
+        const discard = await confirm({
+          title: `Discard ${pendingCount} unsaved result change${
+            pendingCount === 1 ? "" : "s"
+          } and reload?`,
+          confirmLabel: "Discard & reload",
+          tone: "danger",
+        });
+        if (!discard) {
+          showActionNotice(
+            "info",
+            t("notice.grid.reloadCancelled"),
+            t("notice.grid.reloadCancelledDetail"),
+          );
+          return;
+        }
+        resetEdits();
+        window.location.reload();
+      })();
     };
     window.addEventListener("beforeunload", preventUnload);
     window.addEventListener("keydown", interceptRefresh, { capture: true });
@@ -67,7 +79,7 @@ export function usePendingResultChangesGuard({
         capture: true,
       });
     };
-  }, [pendingCount, resetEdits, showActionNotice]);
+  }, [confirm, pendingCount, resetEdits, showActionNotice, t]);
 }
 
 export type ResultGridSpillPagingDeps = {

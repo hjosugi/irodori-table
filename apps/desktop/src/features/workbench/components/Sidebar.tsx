@@ -36,12 +36,98 @@ import {
   type ConnectionDraft,
   type WorkspaceConnection,
 } from "@/features/connections";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import type { WorkbenchViewId } from "../types";
 import type { WorkbenchSide } from "../types";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
 type SidebarViewId = WorkbenchViewId;
+
+const TREE_ROW_SELECTOR =
+  ".schema-tree > summary, .object-tree > summary, .metadata-row, .object-row";
+
+// Keyboard navigation for the object browser. The tree keeps native
+// details/summary semantics (Enter/Space toggling stays built-in); this adds
+// Up/Down row movement, Left/Right collapse/expand, and Home/End.
+function handleTreeKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+  const { key } = event;
+  if (
+    key !== "ArrowDown" &&
+    key !== "ArrowUp" &&
+    key !== "ArrowLeft" &&
+    key !== "ArrowRight" &&
+    key !== "Home" &&
+    key !== "End"
+  ) {
+    return;
+  }
+  const container = event.currentTarget;
+  const rows = Array.from(
+    container.querySelectorAll<HTMLElement>(TREE_ROW_SELECTOR),
+  ).filter((row) => row.offsetParent !== null);
+  if (rows.length === 0) {
+    return;
+  }
+  const active =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement.closest<HTMLElement>(TREE_ROW_SELECTOR)
+      : null;
+  const currentIndex = active ? rows.indexOf(active) : -1;
+  const focusRow = (index: number) => {
+    rows[Math.max(0, Math.min(index, rows.length - 1))]?.focus();
+  };
+  event.preventDefault();
+  event.stopPropagation();
+  if (key === "Home") {
+    focusRow(0);
+    return;
+  }
+  if (key === "End") {
+    focusRow(rows.length - 1);
+    return;
+  }
+  if (key === "ArrowDown") {
+    focusRow(currentIndex + 1);
+    return;
+  }
+  if (key === "ArrowUp") {
+    focusRow(currentIndex <= 0 ? 0 : currentIndex - 1);
+    return;
+  }
+  if (!active) {
+    focusRow(0);
+    return;
+  }
+  const details =
+    active instanceof HTMLElement && active.tagName === "SUMMARY"
+      ? (active.parentElement as HTMLDetailsElement | null)
+      : null;
+  if (key === "ArrowRight") {
+    if (details && !details.open) {
+      details.open = true;
+    } else {
+      focusRow(currentIndex + 1);
+    }
+    return;
+  }
+  // ArrowLeft: collapse an open node, otherwise move to the parent row.
+  if (details?.open) {
+    details.open = false;
+    return;
+  }
+  const owner =
+    active.tagName === "SUMMARY"
+      ? active
+          .closest("details")
+          ?.parentElement?.closest("details")
+          ?.querySelector<HTMLElement>(":scope > summary")
+      : active
+          .closest("details")
+          ?.querySelector<HTMLElement>(":scope > summary");
+  owner?.focus();
+}
 
 type SidebarProps = {
   sidebarOpen: boolean;
@@ -71,6 +157,7 @@ type SidebarProps = {
   formatObjectName: (object: DbObjectMetadata) => string;
   onAddProfile: () => void;
   onOpenConnectionManager: () => void;
+  onOpenSqliteSample: () => void;
   onSelectConnection: (
     connection: WorkspaceConnection,
     profile: ConnectionDraft | undefined,
@@ -122,6 +209,7 @@ export function Sidebar({
   formatObjectName,
   onAddProfile,
   onOpenConnectionManager,
+  onOpenSqliteSample,
   onSelectConnection,
   onOpenBlankSchemaDesigner,
   onNewTableFromFile,
@@ -150,6 +238,8 @@ export function Sidebar({
     y: number;
   } | null>(null);
   const connectionMenuRef = useRef<HTMLDivElement | null>(null);
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
 
   useEffect(() => {
     if (!objectActionMenu) {
@@ -637,7 +727,11 @@ export function Sidebar({
                   </button>
                 </div>
               </div>
-              <div className="object-browser">
+              <div
+                className="object-browser"
+                aria-label="Database objects"
+                onKeyDown={handleTreeKeyDown}
+              >
                 {activeMetadataLoading ? (
                   <div className="empty-browser loading" role="status">
                     Loading objects...
@@ -813,7 +907,24 @@ export function Sidebar({
                       </details>
                     ))
                   ) : (
-                    <div className="empty-browser">No objects found</div>
+                    <div className="empty-browser-cta">
+                      <p>{t("sidebar.empty.databaseEmpty")}</p>
+                      <button
+                        type="button"
+                        className="text-button primary"
+                        onClick={onOpenBlankSchemaDesigner}
+                      >
+                        {t("sidebar.empty.createTable")}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={onNewTableFromFile}
+                      >
+                        {t("sidebar.empty.importFromFile")}
+                      </button>
+                      <small>{t("sidebar.empty.editorHint")}</small>
+                    </div>
                   )
                 ) : activeConnection.objects.length > 0 ? (
                   activeConnection.objects.map((object) => (
@@ -834,6 +945,25 @@ export function Sidebar({
                       <small>{object.rows ?? object.kind}</small>
                     </button>
                   ))
+                ) : !activeConnectionOpen ? (
+                  <div className="empty-browser-cta">
+                    <p>{t("sidebar.empty.notConnected")}</p>
+                    <button
+                      type="button"
+                      className="text-button primary"
+                      onClick={onOpenSqliteSample}
+                    >
+                      {t("sidebar.empty.openSample")}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={onAddProfile}
+                    >
+                      {t("sidebar.empty.addConnection")}
+                    </button>
+                    <small>{t("sidebar.empty.sampleHint")}</small>
+                  </div>
                 ) : (
                   <div className="empty-browser">No objects loaded</div>
                 )}

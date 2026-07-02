@@ -22,4 +22,4 @@ export {
   type VimKeybindingConflictResolution,
   type VimKeybindingConflictResolutions,
 } from "./keybindings";
-export { errorMessage, isIrodoriError } from "./errors";
+export { errorMessage, isIrodoriError, isRetryableError } from "./errors";

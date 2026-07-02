@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { AlertTriangle, Clock3, Play, Search, Trash2, X } from "lucide-react";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { DialogShell } from "@/components/DialogShell";
 import {
   type QueryHistoryItem,
@@ -60,18 +61,26 @@ export function QueryHistoryDialog({
     historyDialogItems[0] ??
     null;
   const hasSearch = search.trim().length > 0;
+  const { confirm, confirmElement } = useConfirm();
 
   if (!open) {
     return null;
   }
 
-  function clearVisibleHistory() {
+  async function clearVisibleHistory() {
     if (historyDialogItems.length === 0) {
       return;
     }
     const count = historyDialogItems.length;
     const label = count === 1 ? "history entry" : "history entries";
-    if (!window.confirm(`Delete ${toCount(count)} visible ${label}?`)) {
+    if (
+      !(await confirm({
+        title: `Delete ${toCount(count)} visible ${label}?`,
+        message: "This can't be undone.",
+        confirmLabel: "Delete",
+        tone: "danger",
+      }))
+    ) {
       return;
     }
     clearItems(historyDialogItems.map((item) => item.id));
@@ -140,7 +149,7 @@ export function QueryHistoryDialog({
           className="text-button danger"
           type="button"
           disabled={historyDialogItems.length === 0}
-          onClick={clearVisibleHistory}
+          onClick={() => void clearVisibleHistory()}
         >
           <Trash2 size={13} />
           Clear visible
@@ -283,6 +292,7 @@ export function QueryHistoryDialog({
           )}
         </section>
       </div>
+      {confirmElement}
     </DialogShell>
   );
 }

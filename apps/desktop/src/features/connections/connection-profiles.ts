@@ -182,6 +182,69 @@ export function newDraft(seed: number): ConnectionDraft {
   };
 }
 
+// In-memory SQLite is the one connection that needs no external service, so
+// it can be offered from an empty workspace without ever looking broken.
+// Deliberately NOT part of starterProfiles: samples are created on demand
+// from the empty-state CTA, never pre-seeded (see commit 2d42fb79).
+export function sqliteSampleProfile(): ConnectionDraft {
+  return {
+    id: "sqlite-memory",
+    name: "SQLite Sample",
+    color: sampleConnectionColors.sqlite,
+    engine: "sqlite",
+    mode: "fields",
+    url: "",
+    connectionTransport: "tcp",
+    host: "",
+    port: "",
+    user: "",
+    password: "",
+    database: ":memory:",
+    socketPath: "",
+    readOnly: false,
+  };
+}
+
+// Idempotent demo schema for the SQLite sample (PK conflicts make re-runs
+// no-ops). Two related tables so joins, aggregates, and the ER diagram all
+// have something to show.
+export const sqliteSampleSeedSql: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  price REAL NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  quantity INTEGER NOT NULL,
+  ordered_at TEXT NOT NULL
+)`,
+  `INSERT OR IGNORE INTO products (id, name, category, price) VALUES
+  (1, 'Gouda', 'cheese', 12.5),
+  (2, 'Comte', 'cheese', 18.0),
+  (3, 'Oolong', 'tea', 6.5),
+  (4, 'Sencha', 'tea', 7.2),
+  (5, 'Baguette', 'bakery', 3.1),
+  (6, 'Croissant', 'bakery', 2.4),
+  (7, 'Brie', 'cheese', 9.8),
+  (8, 'Matcha', 'tea', 11.0)`,
+  `INSERT OR IGNORE INTO orders (id, product_id, quantity, ordered_at) VALUES
+  (1, 1, 2, '2026-06-01'),
+  (2, 3, 1, '2026-06-03'),
+  (3, 2, 1, '2026-06-05'),
+  (4, 5, 4, '2026-06-08'),
+  (5, 1, 1, '2026-06-11'),
+  (6, 8, 2, '2026-06-14'),
+  (7, 6, 6, '2026-06-17'),
+  (8, 4, 3, '2026-06-20'),
+  (9, 7, 1, '2026-06-22'),
+  (10, 2, 2, '2026-06-25'),
+  (11, 5, 2, '2026-06-27'),
+  (12, 3, 5, '2026-06-30')`,
+];
+
 export function withStarterProfiles(profiles: ConnectionDraft[]) {
   const existing = new Set(profiles.map((profile) => profile.id));
   return [

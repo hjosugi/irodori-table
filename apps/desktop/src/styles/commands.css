@@ -134,7 +134,8 @@
 }
 
 .palette-item:hover,
-.palette-item:focus-visible {
+.palette-item:focus-visible,
+.palette-item.active {
   background: var(--hover);
 }
 

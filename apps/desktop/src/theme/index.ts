@@ -879,6 +879,12 @@ export function editorThemeExtensions(theme: IrodoriTheme): Extension {
         color: ui.gutterText,
         border: "none",
         borderRight: `1px solid ${ui.border}`,
+        // Pin the gutter to the exact content metrics. Inheritance covers
+        // this in Chromium, but the Tauri WebKitGTK webview can resolve
+        // fallback fonts/line boxes differently, drifting numbers off their
+        // lines.
+        fontSize: "var(--font-code, 13px)",
+        lineHeight: "var(--editor-line-height, 20px)",
       },
       ".cm-line": {
         paddingLeft: "10px",

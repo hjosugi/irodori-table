@@ -1246,6 +1246,31 @@
   font-size: var(--font-ui-sm);
 }
 
+.empty-browser-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 8px;
+  padding: 12px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+  text-align: center;
+}
+
+.empty-browser-cta p {
+  margin: 0;
+  color: var(--text);
+}
+
+.empty-browser-cta small {
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+  line-height: 1.4;
+}
+
 .empty-browser.loading::before,
 .grid-state.loading::before {
   content: "";

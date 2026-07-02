@@ -141,6 +141,7 @@
 .app-shell[data-theme="dark"] .command-item:hover,
 .app-shell[data-theme="dark"] .command-item:focus-within,
 .app-shell[data-theme="dark"] .palette-item:focus-visible,
+.app-shell[data-theme="dark"] .palette-item.active,
 .app-shell[data-theme="dark"] .settings-nav button.active {
   background: var(--selected);
 }

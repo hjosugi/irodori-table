@@ -10,6 +10,8 @@ export type ConfirmOptions = {
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: ConfirmTone;
+  // Acknowledgement-only dialogs (alert replacement): no cancel button.
+  hideCancel?: boolean;
 };
 
 type ConfirmDialogProps = ConfirmOptions & {
@@ -31,6 +33,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   tone = "default",
+  hideCancel = false,
   busy = false,
   onConfirm,
   onCancel,
@@ -60,14 +63,16 @@ export function ConfirmDialog({
         <div className="dialog-body confirm-body">{message}</div>
       ) : null}
       <div className="dialog-footer">
-        <button
-          type="button"
-          className="text-button"
-          onClick={onCancel}
-          disabled={busy}
-        >
-          {cancelLabel}
-        </button>
+        {hideCancel ? null : (
+          <button
+            type="button"
+            className="text-button"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            {cancelLabel}
+          </button>
+        )}
         <button
           type="button"
           className={
@@ -119,6 +124,7 @@ export function useConfirm() {
       confirmLabel={state.confirmLabel}
       cancelLabel={state.cancelLabel}
       tone={state.tone}
+      hideCancel={state.hideCancel}
       onConfirm={() => settle(true)}
       onCancel={() => settle(false)}
     />

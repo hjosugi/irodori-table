@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { GitChangesView } from "./GitChangesView";
 import { GitGraphView } from "./GitGraphView";
 import { branchSummary, gitAccentColor, providerLabel } from "./git-format";
@@ -40,6 +41,7 @@ type GitPanelProps = {
 };
 
 export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
+  const { confirm, confirmElement } = useConfirm();
   const view = useGitStore((state) => state.view);
   const repoPath = useGitStore((state) => state.repoPath);
   const repoPathDraft = useGitStore((state) => state.repoPathDraft);
@@ -100,28 +102,51 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     if (!hasChanges) {
       return;
     }
-    if (!window.confirm("Commit all current changes?")) {
+    if (
+      !(await confirm({
+        title: "Commit all changes?",
+        message: "Commits every modified file in the working tree.",
+        confirmLabel: "Commit",
+      }))
+    ) {
       return;
     }
     await commitAll();
   }
 
   async function onCommitStaged() {
-    if (!window.confirm("Commit staged changes?")) {
+    if (
+      !(await confirm({
+        title: "Commit staged changes?",
+        confirmLabel: "Commit",
+      }))
+    ) {
       return;
     }
     await commitStaged();
   }
 
   async function onPush() {
-    if (!window.confirm("Push the current branch to its configured remote?")) {
+    if (
+      !(await confirm({
+        title: "Push current branch?",
+        message: "Pushes to the configured remote.",
+        confirmLabel: "Push",
+      }))
+    ) {
       return;
     }
     await push();
   }
 
   async function onPull() {
-    if (!window.confirm("Pull with fast-forward only?")) {
+    if (
+      !(await confirm({
+        title: "Pull latest changes?",
+        message: "Fast-forward only; stops instead of merging.",
+        confirmLabel: "Pull",
+      }))
+    ) {
       return;
     }
     await pull();
@@ -132,9 +157,12 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
       return;
     }
     if (
-      !window.confirm(
-        `Discard local changes in ${selectedPath}? This cannot be undone.`,
-      )
+      !(await confirm({
+        title: "Discard local changes?",
+        message: `Discards changes in ${selectedPath}. This can't be undone.`,
+        confirmLabel: "Discard",
+        tone: "danger",
+      }))
     ) {
       return;
     }
@@ -158,7 +186,11 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     }
     if (
       hasChanges &&
-      !window.confirm(`Switch to ${branch} with local changes present?`)
+      !(await confirm({
+        title: `Switch to ${branch}?`,
+        message: "Local changes are present and will carry over.",
+        confirmLabel: "Switch",
+      }))
     ) {
       return;
     }
@@ -171,10 +203,22 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
       return;
     }
     if (branch === status?.branch) {
-      window.alert("Switch away from the branch before deleting it.");
+      await confirm({
+        title: "Cannot delete the current branch",
+        message: "Switch away from the branch before deleting it.",
+        confirmLabel: "OK",
+        hideCancel: true,
+      });
       return;
     }
-    if (!window.confirm(`Delete branch ${branch}?`)) {
+    if (
+      !(await confirm({
+        title: `Delete branch ${branch}?`,
+        message: "This can't be undone.",
+        confirmLabel: "Delete",
+        tone: "danger",
+      }))
+    ) {
       return;
     }
     await deleteBranch(branch);
@@ -394,6 +438,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
           />
         )}
       </div>
+      {confirmElement}
     </div>
   );
 }

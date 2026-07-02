@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import type { ActionNotice } from "@/app/ActionToast";
+import type { ShowActionNotice } from "@/app/ActionToast";
 import {
   describeConnection,
   engineLabel,
@@ -10,6 +10,8 @@ import {
   profileFromDraft,
   repairBuiltinSampleProfile,
   sanitizedProfile,
+  sqliteSampleProfile,
+  sqliteSampleSeedSql,
   validateDraft,
   withStarterProfiles,
   withUniqueProfileIds,
@@ -20,7 +22,8 @@ import {
 import { toCount } from "@/features/results";
 import { downloadBlob } from "@/features/erd";
 import { queryService } from "@/features/workbench";
-import { errorMessage } from "@/core";
+import { errorMessage, isRetryableError } from "@/core";
+import type { Translator } from "@/i18n";
 import type { DatabaseMetadata } from "@/generated/irodori-api";
 import { tauriRuntimeError } from "../app-workbench-utils";
 
@@ -51,11 +54,8 @@ export type ConnectionActionsDeps = {
   setTestingConnection: (value: ValueUpdater<boolean>) => void;
   setConnecting: (value: ValueUpdater<boolean>) => void;
   setConnectionManagerOpen: (value: ValueUpdater<boolean>) => void;
-  showActionNotice: (
-    kind: ActionNotice["kind"],
-    title: string,
-    detail?: string,
-  ) => void;
+  showActionNotice: ShowActionNotice;
+  t: Translator["t"];
 };
 
 export function useConnectionActions(deps: ConnectionActionsDeps) {
@@ -79,6 +79,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     setConnecting,
     setConnectionManagerOpen,
     showActionNotice,
+    t,
   } = deps;
 
   function updateDraft(patch: Partial<ConnectionDraft>) {
@@ -112,7 +113,11 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     const validationError = validateDraft(draft);
     if (validationError) {
       setConnectionError(validationError);
-      showActionNotice("error", "Connection was not saved", validationError);
+      showActionNotice(
+        "error",
+        t("notice.connection.notSaved"),
+        validationError,
+      );
       return false;
     }
     const cleanDraft = sanitizedProfile(repairBuiltinSampleProfile(draft));
@@ -130,7 +135,11 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     setSelectedProfileId(cleanDraft.id);
     if (showSaved) {
       setConnectionError(null);
-      showActionNotice("success", "Connection saved", cleanDraft.name);
+      showActionNotice(
+        "success",
+        t("notice.connection.saved"),
+        cleanDraft.name,
+      );
     }
     return true;
   }
@@ -141,7 +150,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     setSelectedProfileId(next.id);
     setDraft(next);
     setConnectionError(null);
-    showActionNotice("info", "New connection draft created", next.name);
+    showActionNotice("info", t("notice.connection.draftCreated"), next.name);
   }
 
   async function importConnectionFile(file: File) {
@@ -168,13 +177,16 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       }
       showActionNotice(
         "success",
-        "Connections imported",
-        `${imported.source} · ${toCount(importedProfiles.length)} profile(s)`,
+        t("notice.connection.imported"),
+        t("notice.connection.importedDetail", {
+          source: imported.source,
+          count: toCount(importedProfiles.length),
+        }),
       );
     } catch (error) {
       const message = errorMessage(error);
       setConnectionError(message);
-      showActionNotice("error", "Connection import failed", message);
+      showActionNotice("error", t("notice.connection.importFailed"), message);
     }
   }
 
@@ -189,17 +201,22 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       );
       const skipped =
         exported.skippedCount > 0
-          ? ` · ${toCount(exported.skippedCount)} skipped`
+          ? t("notice.connection.exportedSkippedSuffix", {
+              count: toCount(exported.skippedCount),
+            })
           : "";
       showActionNotice(
         "success",
-        "Connections exported",
-        `${exported.label} · ${toCount(exported.profileCount)} profile(s)${skipped}`,
+        t("notice.connection.exported"),
+        `${t("notice.connection.exportedDetail", {
+          label: exported.label,
+          count: toCount(exported.profileCount),
+        })}${skipped}`,
       );
     } catch (error) {
       const message = errorMessage(error);
       setConnectionError(message);
-      showActionNotice("error", "Connection export failed", message);
+      showActionNotice("error", t("notice.connection.exportFailed"), message);
     }
   }
 
@@ -220,20 +237,28 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       setDraft(fallback);
       return next.length > 0 ? next : [sanitizedProfile(fallback)];
     });
-    showActionNotice("success", "Connection deleted", id);
+    showActionNotice("success", t("notice.connection.deleted"), id);
   }
 
   async function testActiveProfile() {
     const validationError = validateDraft(draft);
     if (validationError) {
       setConnectionError(validationError);
-      showActionNotice("error", "Connection test failed", validationError);
+      showActionNotice(
+        "error",
+        t("notice.connection.testFailed"),
+        validationError,
+      );
       return;
     }
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
       setConnectionError(runtimeError);
-      showActionNotice("error", "Connection test failed", runtimeError);
+      showActionNotice(
+        "error",
+        t("notice.connection.testFailed"),
+        runtimeError,
+      );
       return;
     }
     setTestingConnection(true);
@@ -248,39 +273,43 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       setConnectionError(null);
       showActionNotice(
         "success",
-        "Connection test succeeded",
+        t("notice.connection.testSucceeded"),
         `${draft.name.trim()} (${engineLabel(draft.engine)})`,
       );
     } catch (error) {
       const message = errorMessage(error);
       setConnectionError(message);
-      showActionNotice("error", "Connection test failed", message);
+      showActionNotice("error", t("notice.connection.testFailed"), message);
     } finally {
       setTestingConnection(false);
     }
   }
 
-  async function connectActiveProfile(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
-    if (!saveDraft(false)) {
-      return;
-    }
+  async function connectProfile(
+    profile: ConnectionDraft,
+    afterConnect?: (connectionId: string) => Promise<void>,
+  ) {
     const runtimeError = tauriRuntimeError();
     if (runtimeError) {
       setConnectionError(runtimeError);
-      showActionNotice("error", "Connect failed", runtimeError);
+      showActionNotice(
+        "error",
+        t("notice.connection.connectFailed"),
+        runtimeError,
+      );
       return;
     }
     setConnecting(true);
     setConnectionError(null);
     try {
       const started = performance.now();
-      const info = await queryService.connect(profileFromDraft(draft));
+      const info = await queryService.connect(profileFromDraft(profile));
+      await afterConnect?.(info.id);
       const elapsedMs = Math.max(1, Math.round(performance.now() - started));
       const nextConnection = describeConnection(
         info,
         elapsedMs,
-        draft.name.trim(),
+        profile.name.trim(),
       );
       setLiveConnections((current) => ({
         ...current,
@@ -292,16 +321,70 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       setConnectionManagerOpen(false);
       showActionNotice(
         "success",
-        "Connected",
-        `${draft.name.trim()} · ${elapsedMs} ms`,
+        t("notice.connection.connected"),
+        t("notice.connection.connectedDetail", {
+          name: profile.name.trim(),
+          ms: elapsedMs,
+        }),
       );
     } catch (error) {
       const message = errorMessage(error);
       setConnectionError(message);
-      showActionNotice("error", "Connect failed", message);
+      showActionNotice(
+        "error",
+        t("notice.connection.connectFailed"),
+        message,
+        isRetryableError(error)
+          ? {
+              action: {
+                label: t("common.retry"),
+                run: () => void connectProfile(profile, afterConnect),
+              },
+            }
+          : undefined,
+      );
     } finally {
       setConnecting(false);
     }
+  }
+
+  async function connectActiveProfile(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (!saveDraft(false)) {
+      return;
+    }
+    await connectProfile(draft);
+  }
+
+  // Empty-state CTA: create (or reuse) the in-memory SQLite sample, connect,
+  // and seed its demo tables so the first workspace is explorable right away.
+  async function openSqliteSample() {
+    const existing = profiles.find(
+      (profile) => profile.id === sqliteSampleProfile().id,
+    );
+    const sample = existing
+      ? repairBuiltinSampleProfile(existing)
+      : sqliteSampleProfile();
+    if (!existing) {
+      setProfiles((current) => [...current, sample]);
+    }
+    setSelectedProfileId(sample.id);
+    setDraft(sample);
+    setConnectionError(null);
+    if (connectedIds.has(sample.id)) {
+      setActiveConnectionId(sample.id);
+      return;
+    }
+    await connectProfile(sample, async (connectionId) => {
+      for (const sql of sqliteSampleSeedSql) {
+        await queryService.execute({
+          connectionId,
+          sql,
+          maxRows: 1,
+          timeoutMs: 10_000,
+        });
+      }
+    });
   }
 
   async function disconnectActiveProfile() {
@@ -323,7 +406,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       const { [id]: _removed, ...next } = current;
       return next;
     });
-    showActionNotice("success", "Disconnected", id);
+    showActionNotice("success", t("notice.connection.disconnected"), id);
   }
 
   async function refreshObjects(
@@ -341,7 +424,11 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
         [connectionId]: runtimeError,
       }));
       if (notify) {
-        showActionNotice("error", "Refresh failed", runtimeError);
+        showActionNotice(
+          "error",
+          t("notice.connection.refreshFailed"),
+          runtimeError,
+        );
       }
       return;
     }
@@ -363,8 +450,10 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
         );
         showActionNotice(
           "success",
-          "Objects refreshed",
-          `${toCount(objectCount)} objects loaded`,
+          t("notice.connection.objectsRefreshed"),
+          t("notice.connection.objectsRefreshedDetail", {
+            count: toCount(objectCount),
+          }),
         );
       }
     } catch (error) {
@@ -374,7 +463,11 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
         [connectionId]: message,
       }));
       if (notify) {
-        showActionNotice("error", "Refresh failed", message);
+        showActionNotice(
+          "error",
+          t("notice.connection.refreshFailed"),
+          message,
+        );
       }
     } finally {
       setMetadataLoading((current) => {
@@ -396,6 +489,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     deleteProfile,
     testActiveProfile,
     connectActiveProfile,
+    openSqliteSample,
     disconnectActiveProfile,
     refreshObjects,
   };

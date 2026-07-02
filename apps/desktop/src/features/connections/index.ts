@@ -15,6 +15,8 @@ export {
   redactPasswordFromConnectionUrl,
   sanitizedProfile,
   settingsProfileFromJson,
+  sqliteSampleProfile,
+  sqliteSampleSeedSql,
   starterProfiles,
   validateDraft,
   withStarterProfiles,

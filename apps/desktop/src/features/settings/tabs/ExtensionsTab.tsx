@@ -185,6 +185,10 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
           <span>{pluginStoreError}</span>
         </div>
       ) : null}
+      <div className="extension-runtime-notice">
+        <AlertTriangle size={15} />
+        <span>{t("settings.extensions.runtimeNotice")}</span>
+      </div>
       <ExtensionSection
         title={t("settings.extensions.installed")}
         count={0}

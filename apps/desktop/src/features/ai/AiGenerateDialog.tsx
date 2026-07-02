@@ -11,6 +11,8 @@ import {
 } from "@/generated/irodori-api";
 import { errorMessage, isIrodoriError } from "@/core/errors";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import "./ai-generate-dialog.css";
 
 type ActionNoticeKind = "success" | "error" | "info";
@@ -65,6 +67,8 @@ export function AiGenerateDialog({
   const [apiKey, setApiKey] = useState("");
   const [savingProvider, setSavingProvider] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
 
   useEffect(() => {
     if (!open) return;
@@ -89,8 +93,16 @@ export function AiGenerateDialog({
       onInsert(result.sql);
       notify(
         "success",
-        "SQL generated",
-        `${result.model} · ${result.tokensOut} tokens${result.repaired ? " · repaired" : ""}`,
+        t("notice.ai.sqlGenerated"),
+        result.repaired
+          ? t("notice.ai.sqlGeneratedRepairedDetail", {
+              model: result.model,
+              tokens: result.tokensOut,
+            })
+          : t("notice.ai.sqlGeneratedDetail", {
+              model: result.model,
+              tokens: result.tokensOut,
+            }),
       );
       setPrompt("");
       onClose();
@@ -104,7 +116,7 @@ export function AiGenerateDialog({
     } finally {
       setLoading(false);
     }
-  }, [prompt, loading, connectionId, engine, onInsert, notify, onClose]);
+  }, [prompt, loading, connectionId, engine, onInsert, notify, onClose, t]);
 
   const saveProvider = useCallback(async () => {
     setSavingProvider(true);
@@ -117,13 +129,17 @@ export function AiGenerateDialog({
       };
       await aiSetProvider(config);
       setApiKey("");
-      notify("success", "Provider updated", PROVIDER_LABELS[provider.kind]);
+      notify(
+        "success",
+        t("notice.ai.providerSaved"),
+        PROVIDER_LABELS[provider.kind],
+      );
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setSavingProvider(false);
     }
-  }, [provider, apiKey, notify]);
+  }, [provider, apiKey, notify, t]);
 
   if (!open) return null;
 

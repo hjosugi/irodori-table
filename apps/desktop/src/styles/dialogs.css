@@ -119,6 +119,16 @@
   line-height: 1.45;
 }
 
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-links .text-button {
+  gap: 6px;
+}
+
 .dialog-header,
 .dialog-footer {
   display: flex;

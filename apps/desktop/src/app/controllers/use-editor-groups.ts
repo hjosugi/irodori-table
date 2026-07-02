@@ -22,6 +22,7 @@ import type {
 } from "@/features/query-editor";
 import type { SearchTab } from "@/features/search/SearchReplacePanel";
 import type { EditorSplitMode } from "@/features/workbench";
+import type { Translator } from "@/i18n";
 import type { TextMatch } from "@/sql/text-search";
 
 type EditorGroupStates = Record<EditorGroup, EditorGroupState>;
@@ -43,6 +44,7 @@ export type UseEditorGroupsDeps = {
     title: string,
     detail?: string,
   ) => void;
+  t: Translator["t"];
 };
 
 export function useEditorGroups({
@@ -51,6 +53,7 @@ export function useEditorGroups({
   editorApiRef,
   secondaryEditorApiRef,
   showActionNotice,
+  t,
 }: UseEditorGroupsDeps) {
   const [editorGroupStates, setEditorGroupStates] = useState<EditorGroupStates>(
     () => ({
@@ -187,7 +190,7 @@ export function useEditorGroups({
       renameSqlTabInEditorGroup(current, tabId, next),
     );
     setActiveEditorGroup(group);
-    showActionNotice("success", "Tab renamed", next);
+    showActionNotice("success", t("notice.editor.tabRenamed"), next);
   }
 
   function duplicateSqlTab(group: EditorGroup, tabId: string) {
@@ -198,7 +201,7 @@ export function useEditorGroups({
       duplicateSqlTabInEditorGroup(current, tabId),
     );
     setActiveEditorGroup(group);
-    showActionNotice("success", "Tab duplicated", source.label);
+    showActionNotice("success", t("notice.editor.tabDuplicated"), source.label);
   }
 
   function closeActiveSqlTab(group: EditorGroup = activeEditorGroup) {
@@ -212,13 +215,17 @@ export function useEditorGroups({
     if (result.keptLast || !result.closedTab) {
       showActionNotice(
         "info",
-        "Tab kept open",
-        "The last SQL tab stays open so Ctrl+W never closes the browser tab.",
+        t("notice.editor.tabKeptOpen"),
+        t("notice.editor.tabKeptOpenDetail"),
       );
       return;
     }
     updateEditorGroupState(group, () => result.state);
-    showActionNotice("info", "Tab closed", result.closedTab.label);
+    showActionNotice(
+      "info",
+      t("notice.editor.tabClosed"),
+      result.closedTab.label,
+    );
   }
 
   function closeOtherSqlTabs(group: EditorGroup, tabId: string) {
@@ -229,19 +236,23 @@ export function useEditorGroups({
       closeOtherSqlTabsInEditorGroup(current, tabId),
     );
     setActiveEditorGroup(group);
-    showActionNotice("info", "Other tabs closed", tab.label);
+    showActionNotice("info", t("notice.editor.otherTabsClosed"), tab.label);
   }
 
   function reopenSqlTab(group: EditorGroup = activeEditorGroup) {
     const state = editorGroupStates[group];
     const result = reopenSqlTabInEditorGroup(state);
     if (!result.restoredTab) {
-      showActionNotice("info", "Tabs already open");
+      showActionNotice("info", t("notice.editor.tabsAlreadyOpen"));
       return;
     }
     setActiveEditorGroup(group);
     updateEditorGroupState(group, () => result.state);
-    showActionNotice("success", "Tab restored", result.restoredTab.label);
+    showActionNotice(
+      "success",
+      t("notice.editor.tabRestored"),
+      result.restoredTab.label,
+    );
   }
 
   return {

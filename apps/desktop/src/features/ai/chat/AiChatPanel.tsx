@@ -21,6 +21,8 @@ import {
 import { useAiChatStore, type ChatResultView } from "./ai-chat-store";
 import { ProviderPicker } from "./ProviderPicker";
 import { Markdown } from "./Markdown";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator, type Translator } from "@/i18n";
 import "./ai-chat.css";
 
 type Notify = (
@@ -133,6 +135,8 @@ export function AiChatPanel({
   const setAgentMode = useAiChatStore((s) => s.setAgentMode);
   const clear = useAiChatStore((s) => s.clear);
   const dropLastAssistant = useAiChatStore((s) => s.dropLastAssistant);
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const streaming = activeSessionId !== null;
@@ -175,7 +179,7 @@ export function AiChatPanel({
             engine: connectionId ? engine : undefined,
             agentMode: agentMode && activeConnectionOpen,
           },
-          (event: ChatEvent) => handleEvent(assistantId, event, notify),
+          (event: ChatEvent) => handleEvent(assistantId, event, t, notify),
         );
       } catch (err) {
         useAiChatStore.getState().addError(assistantId, String(err));
@@ -183,7 +187,7 @@ export function AiChatPanel({
         useAiChatStore.getState().finishAssistant(assistantId);
       }
     },
-    [activeConnectionId, activeConnectionOpen, agentMode, engine, notify],
+    [activeConnectionId, activeConnectionOpen, agentMode, engine, notify, t],
   );
 
   const send = useCallback(() => {
@@ -383,7 +387,12 @@ export function AiChatPanel({
   );
 }
 
-function handleEvent(assistantId: string, event: ChatEvent, notify?: Notify) {
+function handleEvent(
+  assistantId: string,
+  event: ChatEvent,
+  t: Translator["t"],
+  notify?: Notify,
+) {
   const store = useAiChatStore.getState();
   switch (event.type) {
     case "token":
@@ -416,7 +425,7 @@ function handleEvent(assistantId: string, event: ChatEvent, notify?: Notify) {
       break;
     case "error":
       store.addError(assistantId, event.message);
-      notify?.("error", "AI chat error", event.message);
+      notify?.("error", t("notice.ai.chatError"), event.message);
       store.finishAssistant(assistantId);
       break;
   }

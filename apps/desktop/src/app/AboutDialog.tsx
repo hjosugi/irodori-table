@@ -1,5 +1,10 @@
-import { Copy, Info } from "lucide-react";
+import { BookOpen, Bug, Copy, ExternalLink, Info } from "lucide-react";
 import { DialogShell } from "@/components/DialogShell";
+import { openExternalUrl } from "@/features/settings/tabs/shared";
+
+const DOCS_URL = "https://hjosugi.github.io/irodori-docs/";
+const REPO_URL = "https://github.com/hjosugi/irodori-table";
+const ISSUES_URL = "https://github.com/hjosugi/irodori-table/issues";
 
 export function AboutDialog({
   appName,
@@ -63,6 +68,32 @@ export function AboutDialog({
             Use Connection Manager for saved database profiles, and copy
             diagnostics when sharing runtime details for support.
           </span>
+        </div>
+        <div className="about-links">
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => openExternalUrl(DOCS_URL)}
+          >
+            <BookOpen size={13} />
+            Documentation
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => openExternalUrl(REPO_URL)}
+          >
+            <ExternalLink size={13} />
+            GitHub
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => openExternalUrl(ISSUES_URL)}
+          >
+            <Bug size={13} />
+            Report an issue
+          </button>
         </div>
       </div>
       <div className="dialog-footer">
