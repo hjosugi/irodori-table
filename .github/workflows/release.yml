@@ -120,7 +120,7 @@ jobs:
           uploadUpdaterJson: true
           uploadUpdaterSignatures: true
           updaterJsonPreferNsis: true
-          args: ${{ matrix.args }} --config src-tauri/tauri.updater.conf.json
+          args: ${{ matrix.args }} --features legacy-connectors,duckdb --config src-tauri/tauri.updater.conf.json
           projectPath: apps/desktop
 
       - name: Verify Linux AppImage artifact

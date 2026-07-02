@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import {
+  buildBundledPluginStoreCatalog,
   buildExtensionCatalog,
   hasHeavyExtensionCatalogFields,
   serializeExtensionCatalog,
@@ -15,6 +16,10 @@ const enginesJsonPath = resolve(root, "knowledge/engines.json");
 const sourcesJsonPath = resolve(root, "knowledge/sources.json");
 const marketplaceIndexPath = resolve(root, "registry/catalog/index.json");
 const marketplaceCatalogPath = resolve(root, "registry/catalog/catalog.json");
+const bundledCatalogPath = resolve(
+  root,
+  "apps/desktop/src/features/extensions/bundled-catalog.json",
+);
 const connectorRepositoriesPath = resolve(
   root,
   "registry/catalog/connector-repositories.json",
@@ -30,6 +35,8 @@ function main() {
   const marketplaceCatalogSource = read(marketplaceCatalogPath);
   const marketplaceCatalog = JSON.parse(marketplaceCatalogSource);
   const expectedMarketplaceCatalog = buildExtensionCatalog(marketplaceIndex);
+  const bundledCatalogSource = read(bundledCatalogPath);
+  const expectedBundledCatalog = buildBundledPluginStoreCatalog(marketplaceIndex);
   const connectorRepositories = JSON.parse(read(connectorRepositoriesPath));
   const supportStatus = read(supportStatusPath);
 
@@ -88,6 +95,11 @@ function main() {
       ? []
       : [
           "registry/catalog/catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
+        ]),
+    ...(bundledCatalogSource === serializeExtensionCatalog(expectedBundledCatalog)
+      ? []
+      : [
+          "apps/desktop/src/features/extensions/bundled-catalog.json is stale; run node tools/docs/build-extension-catalog.mjs",
         ]),
     ...setDiff(marketplaceCatalogEngineIds, jsonIds).map(
       (id) => `registry/catalog/catalog.json lists engine '${id}' missing from knowledge/engines.json`,

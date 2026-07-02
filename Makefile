@@ -225,10 +225,12 @@ ml-extract:
 	node tools/knowledge/ml-extract.mjs --all --limit 12
 
 docs:
+	node tools/docs/build-extension-catalog.mjs
 	node tools/knowledge/cheatsheet.mjs
 
 docs-check:
 	node tools/docs/agent-workstreams.mjs
+	node tools/docs/build-extension-catalog.mjs --check
 	node tools/docs/support-status.mjs
 	node tools/docs/db-feature-samples.mjs
 	node tools/knowledge/cheatsheet.mjs --check

@@ -59,7 +59,10 @@ explicitly and verify the lockfile diff is intentional.
 1. Push the release commit and tag created by the release target.
 2. Watch the release workflow in GitHub Actions.
 3. Confirm packaged artifacts include the expected connector feature set for
-   that release.
+   that release. The default release workflow builds the desktop app with
+   `--features legacy-connectors,duckdb` so the Wired/Verified built-in
+   connectors listed in `registry/data-source-support-status.md` are present in
+   shipped binaries.
 4. Compare `registry/data-source-support-status.md` against shipped build
    behavior before publishing user-facing notes.
 5. Publish release notes that separate app changes from sibling-crate and

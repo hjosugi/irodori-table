@@ -1,3 +1,5 @@
+import bundledCatalogJson from "./bundled-catalog.json";
+
 export const defaultPluginStoreCatalogUrl =
   "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json";
 
@@ -39,54 +41,8 @@ export type PluginStoreCatalog = {
   extensions: PluginStoreExtension[];
 };
 
-export const bundledPluginStoreCatalog: PluginStoreCatalog = {
-  schemaVersion: 1,
-  updatedAt: "2026-06-27T00:00:00Z",
-  source: "bundled-extension-catalog",
-  extensions: [
-    connector("irodori.duckdb", "DuckDB Connector", ["duckdb"]),
-    connector("irodori.motherduck", "MotherDuck Connector", ["motherduck"]),
-    connector("irodori.hive", "Hive Connector", ["hive"]),
-    connector("irodori.iceberg", "Iceberg Connector", ["iceberg"]),
-    connector("irodori.s3-tables", "S3 Tables Connector", ["s3Tables"]),
-    connector("irodori.athena", "Athena Connector", ["athena"]),
-    connector("irodori.delta-lake", "Delta Lake Connector", ["deltaLake"]),
-    connector("irodori.hudi", "Hudi Connector", ["hudi"]),
-    connector("irodori.snowflake", "Snowflake Connector", ["snowflake"]),
-    connector("irodori.bigquery", "BigQuery Connector", ["bigquery"]),
-    connector("irodori.bigtable", "Bigtable Connector", ["bigtable"]),
-    connector("irodori.cloud-spanner", "Cloud Spanner Connector", [
-      "cloudSpanner",
-    ]),
-    connector("irodori.redis", "Redis Connector", ["redis"]),
-    connector("irodori.dynamodb", "DynamoDB Connector", ["dynamodb"]),
-    connector("irodori.mongodb", "MongoDB Connector", ["mongodb"]),
-    connector("irodori.clickhouse", "ClickHouse Connector", ["clickhouse"]),
-    connector("irodori.cassandra", "Cassandra Connector", ["cassandra"]),
-    connector("irodori.scylladb", "ScyllaDB Connector", ["scylladb"]),
-    connector("irodori.neo4j", "Neo4j Connector", ["neo4j"]),
-    connector("irodori.memgraph", "Memgraph Connector", ["memgraph"]),
-    connector("irodori.elasticsearch", "Elasticsearch Connector", [
-      "elasticsearch",
-    ]),
-    connector("irodori.opensearch", "OpenSearch Connector", ["openSearch"]),
-    connector("irodori.sqlserver", "SQL Server Connector", ["sqlserver"]),
-    connector("irodori.oracle", "Oracle Connector", ["oracle"]),
-    connector("irodori.influxdb", "InfluxDB Connector", ["influxdb"]),
-    connector("irodori.qdrant", "Qdrant Connector", ["qdrant"]),
-    connector("irodori.milvus", "Milvus Connector", ["milvus"]),
-    connector("irodori.pinecone", "Pinecone Connector", ["pinecone"]),
-    connector("irodori.couchbase", "Couchbase Connector", ["couchbase"]),
-    connector("irodori.arangodb", "ArangoDB Connector", ["arangodb"]),
-    connector("irodori.questdb", "QuestDB Connector", ["questdb"]),
-    connector("irodori.iotdb", "IoTDB Connector", ["iotdb"]),
-    connector("irodori.trino-presto", "Trino / Presto Connector", [
-      "trinoPresto",
-    ]),
-    connector("irodori.firebird", "Firebird Connector", ["firebird"]),
-    connector("irodori.databricks", "Databricks Connector", ["databricks"]),
-  ],
-};
+export const bundledPluginStoreCatalog: PluginStoreCatalog =
+  normalizePluginStoreCatalog(bundledCatalogJson, "bundled-extension-catalog");
 
 export async function fetchPluginStoreCatalog(
   url = defaultPluginStoreCatalogUrl,
@@ -163,30 +119,6 @@ function normalizeInstallSource(value: unknown): PluginStoreInstallSource {
     assetName: optionalString(raw.assetName),
     manifestPath: optionalString(raw.manifestPath),
     sha256: optionalString(raw.sha256),
-  };
-}
-
-function connector(
-  id: string,
-  name: string,
-  engines: string[],
-): PluginStoreExtension {
-  const repoName = `irodori-extension-${id.replace("irodori.", "")}`;
-  return {
-    id,
-    name,
-    publisher: "irodori",
-    version: "0.1.0",
-    apiVersion: "0.1",
-    summary: `Adds ${engines.join(", ")} connectivity as an installable connector extension.`,
-    license: "MIT OR 0BSD",
-    repository: `https://github.com/hjosugi/${repoName}`,
-    categories: ["connector", "database"],
-    engines,
-    permissions: [],
-    runtime: "native",
-    verified: true,
-    publishedAt: "2026-06-27T00:00:00Z",
   };
 }
 

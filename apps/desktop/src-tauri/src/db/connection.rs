@@ -624,9 +624,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "duckdb"))]
             {
-                return Err(
-                    "DuckDB support is not built in. Rebuild with `--features duckdb`.".into(),
-                );
+                return Err(feature_required("DuckDB", "duckdb"));
             }
         }
         Wire::Oracle => {
@@ -720,7 +718,9 @@ pub(crate) async fn connect_engine(
 }
 
 fn feature_required(engine: &str, feature: &str) -> String {
-    format!("{engine} support is not built in. Rebuild with `--features {feature}`.")
+    format!(
+        "{engine} is not included in this desktop build. Use a release build that ships connector feature `{feature}`, or install the matching marketplace connector when available. See https://hjosugi.github.io/irodori-docs/data-source-support-status.html."
+    )
 }
 
 fn should_seed_builtin_sample(profile: &ConnectionProfile) -> bool {

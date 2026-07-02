@@ -49,7 +49,7 @@ jobs:
 
       - name: Build debug AppImage
         working-directory: apps/desktop
-        run: npm run release:appimage -- --debug
+        run: npm run release:appimage -- --debug --features legacy-connectors,duckdb
 
       - name: Verify AppImage artifact
         working-directory: apps/desktop
