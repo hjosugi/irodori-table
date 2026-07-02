@@ -10,7 +10,7 @@
 // a configurable hook.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { usePreferencesStore } from "@/features/preferences";
 import {
   Compartment,
@@ -242,13 +242,15 @@ function createSqlEditorState({
 }
 
 // Click a line number to select that whole line (Shift+click extends the
-// selection to the clicked line), matching other editors.
+// selection to the clicked line), matching other editors. This must be a raw
+// DOM listener on the editor root: EditorView.domEventHandlers only observes
+// the content element, and gutter clicks never reach it.
 function gutterLineSelection(): Extension {
-  return EditorView.domEventHandlers({
-    mousedown(event, view) {
+  return ViewPlugin.define((view) => {
+    const onMouseDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest(".cm-lineNumbers")) {
-        return false;
+        return;
       }
       const block = view.lineBlockAtHeight(event.clientY - view.documentTop);
       const line = view.state.doc.lineAt(block.from);
@@ -262,8 +264,12 @@ function gutterLineSelection(): Extension {
       });
       view.focus();
       event.preventDefault();
-      return true;
-    },
+      event.stopPropagation();
+    };
+    view.dom.addEventListener("mousedown", onMouseDown);
+    return {
+      destroy: () => view.dom.removeEventListener("mousedown", onMouseDown),
+    };
   });
 }
 

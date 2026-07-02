@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 (pre-1.0: minor versions may include breaking changes).
 
-## [Unreleased]
+## [0.6.0] - 2026-07-02
 
 ### Added
 
@@ -23,6 +23,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - About dialog links to documentation, GitHub, and the issue tracker.
 - Notification, sidebar, and onboarding strings are localized (English and
   Japanese).
+
+- Clicking a line number selects that line (Shift+click extends), plus a
+  Mod+L select-line shortcut.
+- Editor accuracy and performance regression suite (e2e): exact-text edit
+  scenarios plus 5,000-line load/typing/scroll benchmarks with a gutter
+  alignment check.
+
+### Fixed
+
+- Desktop exports (results, ERD SVG/PNG, table specs, connection profiles,
+  SQL tabs, schema diagrams) use the native Save As dialog instead of a
+  browser download, which exposed the dev-server address in the WebKitGTK
+  download banner.
+- The editor re-measures font metrics on UI zoom changes and after async
+  font loads, and the code font is integer-px — the caret no longer drifts
+  off the character it edits.
+- Editor gutter pins the content font metrics so line numbers stay aligned
+  with their lines in the WebKitGTK webview.
 
 ### Changed
 
@@ -43,5 +61,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundled sample connections and the seeded demo workspace were removed;
   a fresh install starts with an empty workspace.
 
-[Unreleased]: https://github.com/hjosugi/irodori-table/compare/v0.5.0...HEAD
+[0.6.0]: https://github.com/hjosugi/irodori-table/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/hjosugi/irodori-table/releases/tag/v0.5.0
