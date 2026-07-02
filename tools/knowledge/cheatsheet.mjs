@@ -18,8 +18,8 @@
 //
 // Exit code is non-zero on validation failure or (in --check) on drift.
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const ROOT = resolve(new URL("../..", import.meta.url).pathname);
@@ -73,6 +73,24 @@ function main(args) {
       writeFileSync(target.path, rendered);
       written += 1;
       console.log(`wrote ${rel(target.path)} (from ${target.kind})`);
+    }
+  }
+
+  // Mirror every page into a second directory (e.g. an irodori-docs checkout's
+  // src/cheatsheets) so the docs site is generated from the same single source
+  // instead of hand-maintaining a drifting copy.
+  if (args.also && !args.check) {
+    const alsoDir = resolve(String(args.also));
+    mkdirSync(alsoDir, { recursive: true });
+    for (const target of targets) {
+      if (target.kind === "seed" && !existsSync(target.path)) continue;
+      const content = existsSync(target.path) ? readFileSync(target.path, "utf8") : null;
+      if (content == null) continue;
+      const mirrored = resolve(alsoDir, basename(target.path));
+      const current = existsSync(mirrored) ? readFileSync(mirrored, "utf8") : null;
+      if (current === content) continue;
+      writeFileSync(mirrored, content);
+      console.log(`mirrored ${rel(target.path)} -> ${mirrored}`);
     }
   }
 

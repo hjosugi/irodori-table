@@ -49,7 +49,9 @@ jobs:
           IRODORI_LLM_BASE_URL: ${{ secrets.IRODORI_LLM_BASE_URL }}
           IRODORI_LLM_API_KEY: ${{ secrets.IRODORI_LLM_API_KEY }}
           IRODORI_LLM_MODEL: ${{ secrets.IRODORI_LLM_MODEL }}
-        run: node tools/knowledge/ml-extract.mjs --all --limit 12
+        # --strict surfaces misconfiguration/model failures in the job result
+        # (unset secrets still no-op); incremental skip keeps re-runs cheap.
+        run: node tools/knowledge/ml-extract.mjs --all --limit 12 --strict --no-app-provider
 
       - name: Regenerate cheatsheets
         run: node tools/knowledge/cheatsheet.mjs
