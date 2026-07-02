@@ -9,6 +9,45 @@
         "README.md": "ROADMAP.md, CONTRIBUTING.md, SECURITY.md, LICENSE, extension.schema.json",
         "package.json": "package-lock.json, tsconfig*.json, vite.config.*, index.html"
     },
+    "typescript.tsdk": "apps/desktop/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "typescript.tsserver.maxTsServerMemory": 4096,
+    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml"
+    ],
+    "rust-analyzer.cargo.targetDir": ".irodori-local/rust-analyzer-target",
+    "rust-analyzer.cargo.features": [],
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.extraArgs": [
+        "--workspace",
+        "--all-targets"
+    ],
+    "rust-analyzer.files.excludeDirs": [
+        ".cache",
+        ".irodori-dev",
+        ".irodori-local",
+        "apps/desktop/dist",
+        "apps/desktop/node_modules",
+        "node_modules",
+        "ref"
+    ],
+    "editor.formatOnSave": false,
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
     "files.exclude": {
         "**/.agents": true,
         "**/.cache": true,
@@ -22,7 +61,6 @@
         "**/.irodori-dev": true,
         "**/.irodori-dev/**": true,
         "**/.local": true,
-        "**/.vscode": true,
         "**/ref/**": true,
         "**/{.irodori-local,.irodori-dev,ref}/**/{codeql-pack.yml,qlpack.yml,codeql-pack.lock.yml,qlpack.lock.yml}": true,
         "**/dist": true,

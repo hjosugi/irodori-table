@@ -2,6 +2,35 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "repo: setup",
+      "type": "shell",
+      "command": "make",
+      "args": ["setup"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "group": "setup",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "repo: doctor",
+      "type": "shell",
+      "command": "make",
+      "args": ["doctor"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "group": "setup",
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    },
+    {
       "label": "desktop: vite",
       "type": "shell",
       "command": "npm",
@@ -28,6 +57,66 @@
       }
     },
     {
+      "label": "desktop: format check",
+      "type": "shell",
+      "command": "make",
+      "args": ["desktop-format-check"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "group": "desktop-checks",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "desktop: lint",
+      "type": "shell",
+      "command": "make",
+      "args": ["desktop-lint"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "group": "desktop-checks",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "desktop: test",
+      "type": "shell",
+      "command": "make",
+      "args": ["desktop-test"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "group": "desktop-checks",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "desktop: build verified",
+      "type": "shell",
+      "command": "make",
+      "args": ["desktop-build-verified"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "group": "desktop-checks",
+        "panel": "dedicated"
+      }
+    },
+    {
       "label": "desktop: cargo build",
       "type": "shell",
       "command": "cargo",
@@ -43,6 +132,21 @@
       "problemMatcher": ["$rustc"],
       "presentation": {
         "group": "desktop",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "rust: test workspace",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test", "--workspace"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "group": "rust",
         "panel": "dedicated"
       }
     },

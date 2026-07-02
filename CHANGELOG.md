@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.1] - 2026-07-02
+
+### Fixed
+
+- Release builds now pass `--features legacy-connectors,duckdb` so packaged
+  binaries include the built-in connectors documented as shipped.
+- The release dry-run workflow uses the same connector feature set as the
+  release workflow.
+- Feature-gated connector errors now point users toward release builds or
+  marketplace connectors instead of only telling developers to rebuild locally.
+
+### Changed
+
+- TypeScript binding generation dependencies were updated to `typeship` 0.2.0.
+
 ## [0.7.0] - 2026-07-02
 
 ### Added
@@ -97,6 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundled sample connections and the seeded demo workspace were removed;
   a fresh install starts with an empty workspace.
 
+[0.7.1]: https://github.com/hjosugi/irodori-table/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/hjosugi/irodori-table/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hjosugi/irodori-table/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/hjosugi/irodori-table/releases/tag/v0.5.0

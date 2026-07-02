@@ -717,6 +717,7 @@ pub(crate) async fn connect_engine(
     Ok(conn)
 }
 
+#[allow(dead_code)]
 fn feature_required(engine: &str, feature: &str) -> String {
     format!(
         "{engine} is not included in this desktop build. Use a release build that ships connector feature `{feature}`, or install the matching marketplace connector when available. See https://hjosugi.github.io/irodori-docs/data-source-support-status.html."
