@@ -15,6 +15,11 @@ RUSTSEC-2024-0419 gtk3-macros via Tauri/wry Linux WebKitGTK
 RUSTSEC-2024-0420 gtk-sys via Tauri/wry Linux WebKitGTK
 RUSTSEC-2024-0429 glib via Tauri/wry Linux WebKitGTK
 
+# Tauri 2 currently reaches quick-xml through plist 1.9.0, whose latest
+# compatible release pins quick-xml ^0.39.2. Remove when plist accepts >=0.41.0.
+RUSTSEC-2026-0194 quick-xml via Tauri/plist; no compatible plist release yet
+RUSTSEC-2026-0195 quick-xml via Tauri/plist; no compatible plist release yet
+
 # Optional/database/tooling transitive crates with no compatible upstream
 # replacement in the current dependency graph.
 RUSTSEC-2024-0370 proc-macro-error via schema/codegen tooling

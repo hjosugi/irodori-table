@@ -1,4 +1,4 @@
-<!-- seed: flagship hand-authored example of the cheatsheet format; target is generation from knowledge sources neo4j-cypher-manual + neo4j-browser-docs -->
+<!-- seed: flagship hand-authored example of the cheatsheet format; target is generation from knowledge sources neo4j-cypher-manual + neo4j-browser-docs + neo4j-graph-data-science + memgraph-docs -->
 
 # Neo4j Cheatsheet
 
@@ -10,8 +10,9 @@
 | Adapter | `apps/desktop/src-tauri/src/db/neo4j.rs` |
 | Default port | 7687 (Bolt) |
 | Query language | **Cypher** (not SQL) |
-| Irodori status | Wired (graph) — see `registry/data-source-support-status.md` |
+| Irodori status | Neo4j is Wired (graph); Memgraph is extension-required until registry promotion — see `registry/data-source-support-status.md` |
 | What's different | Data is **nodes and relationships**, not rows. You query patterns with Cypher and get back records of nodes/relationships/scalars. |
+| Optional analytics | Graph Data Science (GDS) procedures are available only when installed/enabled on the connected Neo4j database. |
 
 ## Connect
 
@@ -94,6 +95,7 @@ CALL db.propertyKeys()        YIELD propertyKey        RETURN propertyKey;      
 SHOW INDEXES;                 -- indexes (4.x+)
 SHOW CONSTRAINTS;             -- constraints (4.x+)
 CALL dbms.components();       -- server name / version / edition
+SHOW PROCEDURES YIELD name WHERE name STARTS WITH 'gds.' RETURN name LIMIT 25; -- GDS present?
 ```
 
 Indexes & constraints you will create often:
@@ -104,14 +106,65 @@ CREATE CONSTRAINT person_name_unique IF NOT EXISTS
   FOR (p:Person) REQUIRE p.name IS UNIQUE;
 ```
 
+## Graph Data Science / ML
+
+Neo4j Graph Data Science is a Neo4j-side library/service, not part of Bolt or the
+base connector. Irodori can run the `gds.*` Cypher procedures when the connected
+database exposes them; otherwise these queries fail with an unknown procedure
+error and the base graph browser still works.
+
+Read-only checks that are safe for exploration:
+
+```cypher
+-- Check whether GDS procedures are available
+SHOW PROCEDURES YIELD name, description
+WHERE name STARTS WITH 'gds.'
+RETURN name, description
+ORDER BY name
+LIMIT 50;
+
+-- Projected in-memory graphs
+CALL gds.graph.list()
+YIELD graphName, nodeCount, relationshipCount, schema
+RETURN graphName, nodeCount, relationshipCount, schema
+ORDER BY graphName;
+
+-- ML training pipelines and trained models
+CALL gds.pipeline.list()
+YIELD pipelineName, pipelineType, creationTime, pipelineInfo
+RETURN pipelineName, pipelineType, creationTime, pipelineInfo
+ORDER BY pipelineName;
+
+CALL gds.model.list()
+YIELD modelName, modelType, modelInfo, loaded, stored, published
+RETURN modelName, modelType, modelInfo, loaded, stored, published
+ORDER BY modelName;
+```
+
+Algorithms run against a **projected graph** in the GDS graph catalog. Prefer
+`stream` or `stats` mode for inspection; `mutate` changes the in-memory graph and
+`write` persists results back into Neo4j.
+
+```cypher
+CALL gds.degree.stream($graphName)
+YIELD nodeId, score
+RETURN gds.util.asNode(nodeId) AS node, score
+ORDER BY score DESC
+LIMIT $limit;
+```
+
+ML pipelines are catalog objects too. Node classification and link prediction
+pipelines need feature properties in the projected graph before training.
+
 ## Irodori-specific behavior
 
-- **Object browser mapping** (`neo4j.rs::metadata`): node **labels are shown as
-  "tables"** and **relationship types as "views"**. Their "columns" are the
-  property keys, sampled with
-  `MATCH (n:\`Label\`) UNWIND keys(n) AS key RETURN DISTINCT key LIMIT 100`. This is
-  a sampling pass, so a property that only appears on a few nodes can be missed —
-  treat the column list as representative, not exhaustive.
+- **Object browser mapping**: node **labels are shown as graph objects** and
+  **relationship types as graph objects**. Their columns are sampled property
+  keys, so a property that only appears on a few nodes can be missed — treat the
+  column list as representative, not exhaustive.
+- **Extension metadata** additionally reports relationship endpoints,
+  indexes/constraints, inferred property types from samples, and optional GDS
+  graph/model/pipeline catalog objects when `gds.*` procedures are available.
 - **Results are tabular today.** Node/relationship records show as JSON property
   cells. A query-result **graph visualization** is a planned shared capability
   (P1, see
@@ -132,9 +185,20 @@ CREATE CONSTRAINT person_name_unique IF NOT EXISTS
 
 ## Related: Memgraph
 
-Memgraph speaks Bolt + Cypher and is in the `DbEngine` enum (`memgraph`) but is
-currently **"recognized, no connector"** — most of this page applies once it is
-routed through the Neo4j/Bolt adapter and verified.
+Memgraph speaks Bolt + Cypher and has an installable extension implementation in
+`../irodori-extensions/irodori-extension-memgraph`. Core still treats
+`memgraph` as extension-required until the root registry/support-status promotion
+lands, so keep Memgraph-specific notes here instead of publishing a standalone
+`memgraph.md`.
+
+Most Cypher examples above apply. Metadata can differ from Neo4j's `CALL db.*`
+procedures; the extension uses portable pattern queries for labels and
+relationship types, for example:
+
+```cypher
+MATCH (n) UNWIND labels(n) AS label RETURN DISTINCT label ORDER BY label;
+MATCH ()-[r]->() RETURN DISTINCT type(r) AS relationshipType ORDER BY relationshipType;
+```
 
 ## Sources
 
@@ -142,3 +206,5 @@ Generated from `knowledge/sources.json`:
 
 - `neo4j-cypher-manual` — https://neo4j.com/docs/cypher-manual/current/
 - `neo4j-browser-docs` — https://neo4j.com/docs/browser/
+- `neo4j-graph-data-science` — https://neo4j.com/docs/graph-data-science/current/
+- `memgraph-docs` — https://memgraph.com/docs

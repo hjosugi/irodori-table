@@ -60,6 +60,17 @@ jobs:
         working-directory: apps/desktop
         run: npm run verify:release
 
+      - name: Prepare Windows code signing
+        if: matrix.platform == 'windows-latest'
+        working-directory: apps/desktop
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+        run: npm run release:prepare-windows-signing
+
       - name: Build and Publish Tauri App
         uses: tauri-apps/tauri-action@v0.6.2
         env:

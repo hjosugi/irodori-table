@@ -280,6 +280,16 @@
     "notes": "Reference for Cypher syntax, functions, indexes, constraints, procedures, and completion metadata."
   },
   {
+    "id": "neo4j-graph-data-science",
+    "name": "Neo4j Graph Data Science manual",
+    "product": "Neo4j Graph Data Science",
+    "category": "analytics",
+    "sourceType": "product_docs",
+    "url": "https://neo4j.com/docs/graph-data-science/current/",
+    "cadence": "weekly",
+    "notes": "Track GDS graph catalog, graph algorithms, machine-learning pipeline catalog, model catalog, and procedure availability."
+  },
+  {
     "id": "mongodb-compass",
     "name": "MongoDB Compass product docs",
     "product": "MongoDB Compass",

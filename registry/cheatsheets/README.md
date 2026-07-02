@@ -18,18 +18,40 @@ automatic data collection that feeds it are specified in
 
 | Cheatsheet | Engine(s) covered | Status |
 |---|---|---|
-| [neo4j.md](neo4j.md) | Neo4j (graph, Bolt/Cypher); Memgraph notes | Seed (flagship) |
-| [postgres.md](postgres.md) | PostgreSQL (+ Cockroach/Yugabyte/Redshift/Timescale/Neon) | Generated (`knowledge/cheatsheets/postgres.json`) |
+| [neo4j.md](neo4j.md) | Neo4j (graph, Bolt/Cypher); Memgraph extension notes | Seed (flagship graph/Bolt page) |
+| [postgres.md](postgres.md) | PostgreSQL (+ Cockroach/Yugabyte/Redshift/Timescale/Neon; H2 wire notes) | Generated (`knowledge/cheatsheets/postgres.json`) |
 | _mysql.md_ | MySQL / MariaDB / TiDB | Planned |
 | _sqlite.md_ | SQLite | Planned |
+| _oracle.md_ | Oracle | Planned |
 | _sqlserver.md_ | SQL Server | Planned |
-| _duckdb.md_ | DuckDB | Planned |
+| _duckdb.md_ | DuckDB / MotherDuck | Planned |
 | _mongodb.md_ | MongoDB | Planned |
+| _redis.md_ | Redis | Planned |
+| _cassandra.md_ | Cassandra / ScyllaDB | Planned |
+| _clickhouse.md_ | ClickHouse | Planned |
+| _snowflake.md_ | Snowflake | Planned |
+| _bigquery.md_ | BigQuery | Planned |
+| _bigtable.md_ | Bigtable | Planned |
+| _influxdb.md_ | InfluxDB | Planned |
+| _questdb.md_ | QuestDB | Planned |
 
 New cheatsheets are added only for engines that are at least **Wired** in
 `registry/data-source-support-status.md`. An engine that is "Recognized, no connector"
 or "Not registered" gets a row in the support-status doc, not a cheatsheet, until
 it can actually connect.
+
+## Maintenance queue
+
+Seed the next pages in the same order as the support-status table, prioritizing
+engines with verified or wired query paths and enough source coverage in
+`knowledge/sources.json`: `duckdb.md`, `mongodb.md`, `redis.md`,
+`cassandra.md`, `clickhouse.md`, `snowflake.md`, `bigquery.md`, `bigtable.md`,
+and `influxdb.md`.
+
+Some sibling connector implementations can run ahead of the root registry. Until
+`knowledge/engines.json` and `registry/data-source-support-status.md` promote an
+engine to Wired/Extension, keep those details as related notes under the nearest
+wired cheatsheet instead of publishing a standalone page.
 
 ## Page format (the template every cheatsheet follows)
 
