@@ -458,7 +458,7 @@ async fn exercise_duckdb() {
     let profile = url_profile("it", DbEngine::DuckDb, ":memory:".into());
     let info = match connect_impl(&state, &SecurityState::default(), profile).await {
         Ok(info) => info,
-        Err(e) if e.contains("not built in") => {
+        Err(e) if is_duckdb_feature_off(&e) => {
             eprintln!("skip: duckdb feature off");
             return;
         }
@@ -517,6 +517,10 @@ fn duckdb_in_memory() {
     tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(exercise_duckdb());
+}
+
+fn is_duckdb_feature_off(error: &str) -> bool {
+    error.contains("not built in") || error.contains("not included in this desktop build")
 }
 
 /// MongoDB through the same `Connection` trait: connect, version, and a
