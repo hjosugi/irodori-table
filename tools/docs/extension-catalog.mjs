@@ -25,7 +25,7 @@ export function buildBundledPluginStoreCatalog(index) {
 }
 
 export function serializeExtensionCatalog(catalog) {
-  return `${JSON.stringify(catalog)}\n`;
+  return `${JSON.stringify(catalog, null, 2)}\n`;
 }
 
 export function hasHeavyExtensionCatalogFields(extension) {
