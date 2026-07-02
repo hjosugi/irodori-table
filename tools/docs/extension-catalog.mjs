@@ -1,4 +1,5 @@
 export const heavyExtensionCatalogFields = ["description", "install", "permissions"];
+const jsonPrintWidth = 80;
 
 export function buildExtensionCatalog(index) {
   if (!index || typeof index !== "object") {
@@ -25,7 +26,7 @@ export function buildBundledPluginStoreCatalog(index) {
 }
 
 export function serializeExtensionCatalog(catalog) {
-  return `${JSON.stringify(catalog, null, 2)}\n`;
+  return `${formatJsonValue(catalog, 0, 0)}\n`;
 }
 
 export function hasHeavyExtensionCatalogFields(extension) {
@@ -127,4 +128,57 @@ function stringOr(value, fallback) {
 
 function optionalString(value) {
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function formatJsonValue(value, indent, inlinePrefixLength) {
+  if (Array.isArray(value)) {
+    return formatJsonArray(value, indent, inlinePrefixLength);
+  }
+  if (value && typeof value === "object") {
+    return formatJsonObject(value, indent);
+  }
+  return JSON.stringify(value);
+}
+
+function formatJsonObject(value, indent) {
+  const entries = Object.entries(value);
+  if (entries.length === 0) {
+    return "{}";
+  }
+  const currentIndent = " ".repeat(indent);
+  const nextIndent = " ".repeat(indent + 2);
+  const lines = entries.map(([key, entryValue], index) => {
+    const keyPrefix = `${JSON.stringify(key)}: `;
+    const formattedValue = formatJsonValue(
+      entryValue,
+      indent + 2,
+      nextIndent.length + keyPrefix.length,
+    );
+    const comma = index === entries.length - 1 ? "" : ",";
+    return `${nextIndent}${keyPrefix}${formattedValue}${comma}`;
+  });
+  return `{\n${lines.join("\n")}\n${currentIndent}}`;
+}
+
+function formatJsonArray(value, indent, inlinePrefixLength) {
+  if (value.length === 0) {
+    return "[]";
+  }
+  if (value.every(isJsonPrimitive)) {
+    const inline = `[${value.map((item) => JSON.stringify(item)).join(", ")}]`;
+    if (inlinePrefixLength + inline.length <= jsonPrintWidth) {
+      return inline;
+    }
+  }
+  const currentIndent = " ".repeat(indent);
+  const nextIndent = " ".repeat(indent + 2);
+  const lines = value.map((item, index) => {
+    const comma = index === value.length - 1 ? "" : ",";
+    return `${nextIndent}${formatJsonValue(item, indent + 2, nextIndent.length)}${comma}`;
+  });
+  return `[\n${lines.join("\n")}\n${currentIndent}]`;
+}
+
+function isJsonPrimitive(value) {
+  return value === null || typeof value !== "object";
 }

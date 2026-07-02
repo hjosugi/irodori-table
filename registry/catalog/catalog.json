@@ -12,13 +12,8 @@
       "summary": "Adds DuckDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-duckdb",
-      "categories": [
-        "connector",
-        "database"
-      ],
-      "engines": [
-        "duckdb"
-      ],
+      "categories": ["connector", "database"],
+      "engines": ["duckdb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -32,14 +27,8 @@
       "summary": "Adds MotherDuck connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-motherduck",
-      "categories": [
-        "connector",
-        "database",
-        "lakehouse"
-      ],
-      "engines": [
-        "motherduck"
-      ],
+      "categories": ["connector", "database", "lakehouse"],
+      "engines": ["motherduck"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -53,14 +42,8 @@
       "summary": "Adds Apache Hive and Hive Metastore connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-hive",
-      "categories": [
-        "connector",
-        "lakehouse",
-        "catalog"
-      ],
-      "engines": [
-        "hive"
-      ],
+      "categories": ["connector", "lakehouse", "catalog"],
+      "engines": ["hive"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -74,14 +57,8 @@
       "summary": "Adds Apache Iceberg REST, Glue, and Hive catalog workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-iceberg",
-      "categories": [
-        "connector",
-        "lakehouse",
-        "catalog"
-      ],
-      "engines": [
-        "iceberg"
-      ],
+      "categories": ["connector", "lakehouse", "catalog"],
+      "engines": ["iceberg"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -95,14 +72,8 @@
       "summary": "Adds AWS S3 Tables connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-s3-tables",
-      "categories": [
-        "connector",
-        "lakehouse",
-        "aws"
-      ],
-      "engines": [
-        "s3Tables"
-      ],
+      "categories": ["connector", "lakehouse", "aws"],
+      "engines": ["s3Tables"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -116,14 +87,8 @@
       "summary": "Adds Amazon Athena connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-athena",
-      "categories": [
-        "connector",
-        "lakehouse",
-        "aws"
-      ],
-      "engines": [
-        "athena"
-      ],
+      "categories": ["connector", "lakehouse", "aws"],
+      "engines": ["athena"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -137,13 +102,8 @@
       "summary": "Adds Delta Lake table discovery and query workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-delta-lake",
-      "categories": [
-        "connector",
-        "lakehouse"
-      ],
-      "engines": [
-        "deltaLake"
-      ],
+      "categories": ["connector", "lakehouse"],
+      "engines": ["deltaLake"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -157,13 +117,8 @@
       "summary": "Adds Apache Hudi table discovery and query workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-hudi",
-      "categories": [
-        "connector",
-        "lakehouse"
-      ],
-      "engines": [
-        "hudi"
-      ],
+      "categories": ["connector", "lakehouse"],
+      "engines": ["hudi"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -177,14 +132,8 @@
       "summary": "Adds Google Cloud Spanner connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-cloud-spanner",
-      "categories": [
-        "connector",
-        "database",
-        "google-cloud"
-      ],
-      "engines": [
-        "cloudSpanner"
-      ],
+      "categories": ["connector", "database", "google-cloud"],
+      "engines": ["cloudSpanner"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -198,13 +147,8 @@
       "summary": "Adds Redis connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-redis",
-      "categories": [
-        "connector",
-        "key-value"
-      ],
-      "engines": [
-        "redis"
-      ],
+      "categories": ["connector", "key-value"],
+      "engines": ["redis"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -218,14 +162,8 @@
       "summary": "Adds DynamoDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-dynamodb",
-      "categories": [
-        "connector",
-        "key-value",
-        "aws"
-      ],
-      "engines": [
-        "dynamodb"
-      ],
+      "categories": ["connector", "key-value", "aws"],
+      "engines": ["dynamodb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -239,13 +177,8 @@
       "summary": "Adds Snowflake connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-snowflake",
-      "categories": [
-        "connector",
-        "warehouse"
-      ],
-      "engines": [
-        "snowflake"
-      ],
+      "categories": ["connector", "warehouse"],
+      "engines": ["snowflake"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -259,14 +192,8 @@
       "summary": "Adds BigQuery connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-bigquery",
-      "categories": [
-        "connector",
-        "warehouse",
-        "google-cloud"
-      ],
-      "engines": [
-        "bigquery"
-      ],
+      "categories": ["connector", "warehouse", "google-cloud"],
+      "engines": ["bigquery"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -280,14 +207,8 @@
       "summary": "Adds Bigtable connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-bigtable",
-      "categories": [
-        "connector",
-        "wide-column",
-        "google-cloud"
-      ],
-      "engines": [
-        "bigtable"
-      ],
+      "categories": ["connector", "wide-column", "google-cloud"],
+      "engines": ["bigtable"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -301,13 +222,8 @@
       "summary": "Adds MongoDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-mongodb",
-      "categories": [
-        "connector",
-        "document"
-      ],
-      "engines": [
-        "mongodb"
-      ],
+      "categories": ["connector", "document"],
+      "engines": ["mongodb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -321,13 +237,8 @@
       "summary": "Adds ClickHouse connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-clickhouse",
-      "categories": [
-        "connector",
-        "analytics"
-      ],
-      "engines": [
-        "clickhouse"
-      ],
+      "categories": ["connector", "analytics"],
+      "engines": ["clickhouse"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -341,13 +252,8 @@
       "summary": "Adds Apache Cassandra connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-cassandra",
-      "categories": [
-        "connector",
-        "wide-column"
-      ],
-      "engines": [
-        "cassandra"
-      ],
+      "categories": ["connector", "wide-column"],
+      "engines": ["cassandra"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -361,13 +267,8 @@
       "summary": "Adds ScyllaDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-scylladb",
-      "categories": [
-        "connector",
-        "wide-column"
-      ],
-      "engines": [
-        "scylladb"
-      ],
+      "categories": ["connector", "wide-column"],
+      "engines": ["scylladb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -381,13 +282,8 @@
       "summary": "Adds Neo4j connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-neo4j",
-      "categories": [
-        "connector",
-        "graph"
-      ],
-      "engines": [
-        "neo4j"
-      ],
+      "categories": ["connector", "graph"],
+      "engines": ["neo4j"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -401,13 +297,8 @@
       "summary": "Adds Memgraph connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-memgraph",
-      "categories": [
-        "connector",
-        "graph"
-      ],
-      "engines": [
-        "memgraph"
-      ],
+      "categories": ["connector", "graph"],
+      "engines": ["memgraph"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -421,13 +312,8 @@
       "summary": "Adds complete Elasticsearch index, search, mapping, aggregation, and bulk workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-elasticsearch",
-      "categories": [
-        "connector",
-        "search"
-      ],
-      "engines": [
-        "elasticsearch"
-      ],
+      "categories": ["connector", "search"],
+      "engines": ["elasticsearch"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -441,13 +327,8 @@
       "summary": "Adds OpenSearch index, search, mapping, aggregation, and bulk workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-opensearch",
-      "categories": [
-        "connector",
-        "search"
-      ],
-      "engines": [
-        "openSearch"
-      ],
+      "categories": ["connector", "search"],
+      "engines": ["openSearch"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -461,13 +342,8 @@
       "summary": "Adds SQL Server connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-sqlserver",
-      "categories": [
-        "connector",
-        "database"
-      ],
-      "engines": [
-        "sqlserver"
-      ],
+      "categories": ["connector", "database"],
+      "engines": ["sqlserver"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -481,13 +357,8 @@
       "summary": "Adds Oracle connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-oracle",
-      "categories": [
-        "connector",
-        "database"
-      ],
-      "engines": [
-        "oracle"
-      ],
+      "categories": ["connector", "database"],
+      "engines": ["oracle"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -501,13 +372,8 @@
       "summary": "Adds InfluxDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-influxdb",
-      "categories": [
-        "connector",
-        "time-series"
-      ],
-      "engines": [
-        "influxdb"
-      ],
+      "categories": ["connector", "time-series"],
+      "engines": ["influxdb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -521,13 +387,8 @@
       "summary": "Adds Qdrant vector database connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-qdrant",
-      "categories": [
-        "connector",
-        "vector"
-      ],
-      "engines": [
-        "qdrant"
-      ],
+      "categories": ["connector", "vector"],
+      "engines": ["qdrant"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -541,13 +402,8 @@
       "summary": "Adds Milvus vector database connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-milvus",
-      "categories": [
-        "connector",
-        "vector"
-      ],
-      "engines": [
-        "milvus"
-      ],
+      "categories": ["connector", "vector"],
+      "engines": ["milvus"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -561,13 +417,8 @@
       "summary": "Adds Pinecone vector database connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-pinecone",
-      "categories": [
-        "connector",
-        "vector"
-      ],
-      "engines": [
-        "pinecone"
-      ],
+      "categories": ["connector", "vector"],
+      "engines": ["pinecone"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -581,13 +432,8 @@
       "summary": "Adds Couchbase connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-couchbase",
-      "categories": [
-        "connector",
-        "document"
-      ],
-      "engines": [
-        "couchbase"
-      ],
+      "categories": ["connector", "document"],
+      "engines": ["couchbase"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -601,14 +447,8 @@
       "summary": "Adds ArangoDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-arangodb",
-      "categories": [
-        "connector",
-        "graph",
-        "document"
-      ],
-      "engines": [
-        "arangodb"
-      ],
+      "categories": ["connector", "graph", "document"],
+      "engines": ["arangodb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -622,13 +462,8 @@
       "summary": "Adds QuestDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-questdb",
-      "categories": [
-        "connector",
-        "time-series"
-      ],
-      "engines": [
-        "questdb"
-      ],
+      "categories": ["connector", "time-series"],
+      "engines": ["questdb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -642,13 +477,8 @@
       "summary": "Adds Apache IoTDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-iotdb",
-      "categories": [
-        "connector",
-        "time-series"
-      ],
-      "engines": [
-        "iotdb"
-      ],
+      "categories": ["connector", "time-series"],
+      "engines": ["iotdb"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -662,13 +492,8 @@
       "summary": "Adds Trino and Presto connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-trino-presto",
-      "categories": [
-        "connector",
-        "query-engine"
-      ],
-      "engines": [
-        "trinoPresto"
-      ],
+      "categories": ["connector", "query-engine"],
+      "engines": ["trinoPresto"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -682,13 +507,8 @@
       "summary": "Adds Firebird connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-firebird",
-      "categories": [
-        "connector",
-        "database"
-      ],
-      "engines": [
-        "firebird"
-      ],
+      "categories": ["connector", "database"],
+      "engines": ["firebird"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
@@ -702,13 +522,8 @@
       "summary": "Adds Databricks SQL Warehouse connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-databricks",
-      "categories": [
-        "connector",
-        "warehouse"
-      ],
-      "engines": [
-        "databricks"
-      ],
+      "categories": ["connector", "warehouse"],
+      "engines": ["databricks"],
       "runtime": "native",
       "verified": true,
       "publishedAt": "2026-06-27T00:00:00Z"
