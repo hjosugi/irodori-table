@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.0] - 2026-07-02
+
+### Added
+
+- Native connector extension framework groundwork, connector repository
+  scaffolding updates, and extension scenario/fleet tooling.
+- Release hardening for public desktop distribution: Windows code signing,
+  macOS signing/notarization preparation, signed Tauri updater artifacts, and
+  stable-channel `latest.json` publication.
+- Knowledge ML cheatsheet extraction hardening and developer doctor checks for
+  release/environment readiness.
+
+### Changed
+
+- Desktop app structure was reorganized around controller hooks and clearer
+  workbench boundaries.
+- Release documentation now records signing secrets, notarization setup,
+  updater channel policy, and breaking-change policy.
+- Connector catalog and support snapshots were aligned with the managed
+  extension distribution model.
+
+### Removed
+
+- Legacy generic `objectStore` and `kvStore` engine exposure was removed from
+  the root catalog and app-consumed docs/snapshots.
+
 ## [0.6.0] - 2026-07-02
 
 ### Added
@@ -71,5 +97,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundled sample connections and the seeded demo workspace were removed;
   a fresh install starts with an empty workspace.
 
+[0.7.0]: https://github.com/hjosugi/irodori-table/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hjosugi/irodori-table/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/hjosugi/irodori-table/releases/tag/v0.5.0
