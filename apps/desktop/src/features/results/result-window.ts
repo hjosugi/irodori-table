@@ -44,7 +44,7 @@ export class WindowedRows {
   readonly pageSize: number;
   readonly maxResidentPages: number;
   readonly pageCount: number;
-  private readonly pages = new Map<number, WindowRow[]>();
+  private readonly pages = new Map<number, Array<WindowRow | undefined>>();
   /** Page indices ordered oldest-first for LRU eviction. */
   private readonly lru: number[] = [];
 
@@ -104,7 +104,7 @@ export class WindowedRows {
       const pageEnd = Math.min(pageStart + this.pageSize, this.total);
       let page = this.pages.get(pageIndex);
       if (!page) {
-        page = new Array<WindowRow>(pageEnd - pageStart);
+        page = Array.from({ length: pageEnd - pageStart });
         this.pages.set(pageIndex, page);
       }
       while (cursor < pageEnd && index < rows.length) {

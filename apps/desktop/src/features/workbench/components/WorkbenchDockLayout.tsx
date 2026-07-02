@@ -193,7 +193,7 @@ export function WorkbenchDockLayout({
 
   const syncPanels = useCallback(
     (api: DockviewApi) => {
-      for (const panel of [...api.panels]) {
+      for (const panel of Array.from(api.panels)) {
         if (!isDockPanelId(panel.id)) {
           api.removePanel(panel);
         }

@@ -5,11 +5,12 @@ DB ?= postgres
 LIMIT ?= 16
 JS_PM ?= npm
 ENGINE_BIN ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo docker)
+EXTENSION_SDK_DIR ?= $(firstword $(wildcard ../irodori-kit/packages/extension-sdk irodori-kit/packages/extension-sdk))
 
 .PHONY: help setup setup-desktop setup-fast \
         dev test build typegen e2e doctor \
-        desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-format desktop-format-check desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
-        check security security-strict extension-manifests db db-verify db-all db-up db-down \
+        desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-format desktop-format-check desktop-lint desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
+        check security security-strict extension-manifests kit-link kit-unlink kit-patch-check db db-verify db-all db-up db-down \
         extension-scenarios \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract docs docs-check
@@ -43,6 +44,7 @@ help:
 	@printf "  make desktop-typegen-check verify generated bindings are current\n"
 	@printf "  make desktop-format    format desktop JS/TS sources with oxfmt\n"
 	@printf "  make desktop-format-check verify desktop JS/TS formatting with oxfmt\n"
+	@printf "  make desktop-lint      lint desktop JS/TS sources with oxlint\n"
 	@printf "  make desktop-test      Vitest\n"
 	@printf "  make desktop-test-rust-ts Vitest + cargo test in parallel\n"
 	@printf "  make desktop-test-watch Vitest watch mode\n"
@@ -61,6 +63,9 @@ help:
 	@printf "  make security          license, lockfile, npm audit/signature, RustSec checks\n"
 	@printf "  make security-strict   same as security, but requires cargo-audit locally\n"
 	@printf "  make extension-manifests validate kit extension SDK templates when present\n"
+	@printf "  make kit-link          add a local Cargo [patch] for ../irodori-kit\n"
+	@printf "  make kit-unlink        remove the managed local irodori-kit Cargo [patch]\n"
+	@printf "  make kit-patch-check   fail if a local irodori-kit Cargo [patch] remains\n"
 	@printf "  make extension-scenarios run connector extension scenario tests\n"
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
@@ -104,6 +109,9 @@ desktop-format:
 desktop-format-check:
 	$(call js-run,apps/desktop,format:check)
 
+desktop-lint:
+	$(call js-run,apps/desktop,lint)
+
 desktop-test:
 	$(call js-run,apps/desktop,test)
 
@@ -135,11 +143,23 @@ security-strict:
 	REQUIRE_CARGO_AUDIT=1 scripts/security-check.sh
 
 extension-manifests:
-	@if [ -d ../irodori-kit/packages/extension-sdk ]; then \
-		npm --prefix ../irodori-kit/packages/extension-sdk run validate; \
+	@if [ -n "$(EXTENSION_SDK_DIR)" ]; then \
+		npm --prefix "$(EXTENSION_SDK_DIR)" run validate; \
+	elif [ -n "$$CI" ]; then \
+		printf "irodori-kit/packages/extension-sdk not found; CI must check out irodori-kit\n"; \
+		exit 1; \
 	else \
 		printf "irodori-kit/packages/extension-sdk not found; skipping SDK manifest validation\n"; \
 	fi
+
+kit-link:
+	node tools/dev/patch-siblings.mjs link
+
+kit-unlink:
+	node tools/dev/patch-siblings.mjs unlink
+
+kit-patch-check:
+	node tools/dev/patch-siblings.mjs check
 
 extension-scenarios:
 	node tools/extensions/scenario-test.mjs --all --strict-package --require-archive

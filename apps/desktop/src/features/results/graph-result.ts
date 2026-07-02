@@ -222,7 +222,7 @@ class GraphBuilder {
       id,
       label: nodeLabel(nextLabels, properties, id),
       labels: mergeUnique(current?.labels ?? [], nextLabels),
-      properties: { ...(current?.properties ?? {}), ...properties },
+      properties: Object.assign({}, current?.properties, properties),
     });
     return id;
   }
@@ -357,7 +357,7 @@ function readProperties(record: Record<string, unknown>) {
       ([key, value]) => !ignored.has(key) && isScalar(value),
     ),
   );
-  return { ...direct, ...(nested ?? {}) };
+  return nested ? { ...direct, ...nested } : direct;
 }
 
 function isScalar(value: unknown) {

@@ -1,12 +1,82 @@
 # Contributing
 
-Irodori Table is built as a permissive, clean-room project. Contributions should
-be easy for downstream users to copy, fork, embed, or compete with under
-`MIT OR 0BSD`.
+Irodori Table is built as a permissive, clean-room desktop app. Contributions
+should stay easy for downstream users to copy, fork, embed, or compete with
+under `MIT OR 0BSD`.
+
+## Quick Start
+
+```sh
+make doctor
+make setup
+make desktop-dev
+```
+
+The root is not an npm workspace. Run JavaScript commands through the root
+`Makefile` or with `npm --prefix apps/desktop ...`.
+
+## Required Tooling
+
+- Node.js 24.x. Use `.nvmrc`; `apps/desktop/package.json` also declares this in
+  `engines`.
+- Rust 1.96.0. `rust-toolchain.toml` pins the compiler, `rustfmt`, and `clippy`.
+- npm for reproducible installs. `JS_PM=bun` is allowed for local loops, but do
+  not replace the committed npm lockfile.
+- Linux x86_64: `mold` is required because `.cargo/config.toml` links that
+  target with `-fuse-ld=mold`.
+- Linux desktop builds: `pkg-config`, WebKitGTK 4.1, libsoup 3, OpenSSL headers,
+  and the normal Tauri GTK/AppIndicator packages.
+
+Run `make doctor` after installing tools. It checks the pinned Node/Rust
+versions, mold, Linux pkg-config dependencies, Playwright readiness, sample/kit
+sibling checkouts, TMPDIR capacity, and local Cargo patch leakage.
+
+## Linux Notes
+
+CI installs the Ubuntu package set used by desktop builds:
+
+```sh
+sudo apt-get install -y \
+  build-essential curl file libayatana-appindicator3-dev librsvg2-dev \
+  libssl-dev libwebkit2gtk-4.1-dev libxdo-dev mold wget
+```
+
+On Arch/CachyOS, Fedora, or other distributions, install the equivalent WebKit,
+GTK/AppIndicator, OpenSSL, pkg-config, Rust, Node, and mold packages.
+
+If `/tmp` is a small tmpfs, large Rust/Tauri builds can fail while compiling or
+linking. Use a repo-local temp directory for those runs:
+
+```sh
+mkdir -p .irodori-local/tmp
+TMPDIR=$PWD/.irodori-local/tmp make desktop-build-verified
+```
+
+For deeper Linux troubleshooting, see
+<https://hjosugi.github.io/irodori-docs/linux-development.html>.
+
+## Repo Boundaries
+
+The public boundary policy is
+<https://hjosugi.github.io/irodori-docs/repository-boundaries.html>.
+
+- `irodori-table`: desktop app, app-local tooling, generated snapshots consumed
+  by the app or CI.
+- `irodori-kit`: shared foundation crates, extension SDK, and packaging
+  templates.
+- `irodori-sql` and `irodori-knowledge`: reusable shared crates consumed by git
+  tag.
+- `irodori-samples`: sample database containers and seed data.
+- `irodori-docs`: durable public docs, policy pages, feature matrix, and
+  backlog/progress pages.
+
+Keep generated snapshots paired with their source data or generator. Do not
+hand-edit generated output alone.
 
 ## Clean-Room Rules
 
-Read and follow [clean-room](https://hjosugi.github.io/irodori-docs/clean-room.html) before using any
+Read and follow
+<https://hjosugi.github.io/irodori-docs/clean-room.html> before using any
 reference product, repository, docs, issue, screenshot, icon, theme, snippet, or
 sample code for implementation work.
 
@@ -19,48 +89,69 @@ The short version:
 - Record public references and code-level OSS influences in the PR when they
   affected the implementation.
 
-## Licensing
-
-Project-authored code, official examples, and official templates use
-`MIT OR 0BSD` by default. Asset and dependency rules are documented in
-[licensing](https://hjosugi.github.io/irodori-docs/licensing.html).
-
-Run the license check before opening a PR:
-
-```sh
-scripts/check-licenses.sh
-```
-
-For dependency, build, CI, release, extension, or credential-handling changes,
-also read [development-security](https://hjosugi.github.io/irodori-docs/development-security.html) and run:
-
-```sh
-make security
-```
-
 ## Local Checks
 
-The root workspace contains the Rust crate skeletons used by the roadmap. The
-desktop app remains in `apps/desktop`.
+Choose the narrowest check that covers your change, then broaden when shared
+contracts, release paths, generated files, or user-facing workflows are touched.
 
-For system packages, troubleshooting webview rendering bugs on Wayland/NVIDIA, and debugging procedures on Linux (particularly Arch Linux or CachyOS), please refer to [linux-development](https://hjosugi.github.io/irodori-docs/linux-development.html).
+| Change | Run |
+| --- | --- |
+| Frontend TypeScript/React | `make desktop-format-check`, `make desktop-lint`, `make desktop-test` |
+| Frontend build or release path | `make desktop-build-verified` |
+| Rust backend or Tauri command payloads | `cargo test --workspace`, `make desktop-typegen-check` |
+| Generated registry/docs snapshots | edit the source/generator, then `make docs-check` |
+| Extension manifests/templates | `make extension-manifests` |
+| Browser behavior | `cd apps/desktop && npx playwright install --with-deps chromium`, then `make desktop-e2e` |
+| Dependency, build, CI, release, or credential handling | `make security` |
+| Broad pre-PR confidence | `make check` |
+
+Formatting and linting use Oxc-family tooling for the desktop app:
 
 ```sh
-make setup
-make check
+make desktop-format-check
+make desktop-lint
 ```
 
-For generated Tauri bindings:
+## Cross-Repo Development
+
+The app consumes sibling foundation crates by git tag. For local co-development
+against `irodori-kit`, clone the sibling repo and add a temporary Cargo patch:
 
 ```sh
-make desktop-typegen
+git clone https://github.com/hjosugi/irodori-kit ../irodori-kit
+make kit-link
 ```
 
-## Pull Requests
+Before committing, remove the local patch and verify it is gone:
 
-Use the default PR template and keep the clean-room checklist filled in. If a
-change is influenced by third-party OSS code, name the source, license, files or
-APIs reviewed, and what was adapted.
+```sh
+make kit-unlink
+make kit-patch-check
+```
+
+`make extension-manifests` validates the extension SDK templates when
+`../irodori-kit/packages/extension-sdk` or `irodori-kit/packages/extension-sdk`
+is present. In CI, missing SDK checkout is a failure.
+
+Sample databases live in the sibling samples repo:
+
+```sh
+git clone https://github.com/hjosugi/irodori-samples ../irodori-samples
+make db-up DB=postgres
+make db-verify DB=postgres
+```
+
+## Issue And PR Intake
+
+Good first contributions should be small, single-area, and independently
+verifiable: docs fixes, focused UI polish, small unit-test gaps, connector
+metadata corrections, and doctor/check improvements are good fits. Avoid using a
+good-first issue for shared contract changes, generated binding changes, release
+automation, or connector ABI work.
+
+Use the bug, feature, or backlog-mirror issue templates. For PRs, keep the
+clean-room checklist filled in. If a change is influenced by third-party OSS
+code, name the source, license, files or APIs reviewed, and what was adapted.
 
 Example PR body:
 
@@ -75,3 +166,9 @@ Example PR body:
 - cargo test -p irodori-table-desktop edit::tests
 - scripts/check-licenses.sh
 ```
+
+## Licensing
+
+Project-authored code, official examples, and official templates use
+`MIT OR 0BSD` by default. Asset and dependency rules are documented at
+<https://hjosugi.github.io/irodori-docs/licensing.html>.

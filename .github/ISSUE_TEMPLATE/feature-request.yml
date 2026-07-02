@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a focused product or developer-experience improvement.
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Durable planning lives in `irodori-docs`. Use this template for a concrete, reviewable slice in `irodori-table`.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow is blocked or unnecessarily hard today?
+      placeholder: "When I ..., I cannot ... because ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should change in this repository?
+      placeholder: "Add ..., change ..., or expose ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - workbench-ui
+        - db-runtime
+        - extension-host
+        - docs-registry
+        - devex-ci
+        - release
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: clean-room
+    attributes:
+      label: References and clean-room notes
+      description: Link public specs/docs used as requirements. Do not attach copied proprietary or unclear-license material.
+      placeholder: "Public references reviewed: ...\nImplementation must avoid: ..."
+    validations:
+      required: false
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Concrete acceptance criteria and verification.
+      placeholder: "- Behavior ...\n- Test/check ... passes\n- Docs/source data updated if needed"
+    validations:
+      required: true

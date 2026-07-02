@@ -47,21 +47,6 @@ declare global {
   }
 }
 
-function cellFor(rowIndex: number, columnIndex: number): string {
-  return columnIndex === 0
-    ? `row_${rowIndex}`
-    : `${fixture.columns[columnIndex]}_${rowIndex}`;
-}
-
-function rowsFor(offset: number, limit: number): string[][] {
-  const length = Math.max(0, Math.min(limit, fixture.total - offset));
-  return Array.from({ length }, (_, i) =>
-    fixture.columns.map((_column, columnIndex) =>
-      cellFor(offset + i, columnIndex),
-    ),
-  );
-}
-
 function expectedFirstRowIndex(scrollTop: number): number {
   return calculateResultGridVirtualRowWindow({
     rowCount: fixture.total,

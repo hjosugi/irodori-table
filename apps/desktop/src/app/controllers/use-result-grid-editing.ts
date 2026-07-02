@@ -300,7 +300,7 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
       if (origin.kind === "orig") {
         const deletedRows = new Set(draft.deletedRows).add(origin.index);
         const cellEdits = new Map(draft.cellEdits);
-        for (const key of [...cellEdits.keys()]) {
+        for (const key of Array.from(cellEdits.keys())) {
           if (key.startsWith(`o${origin.index}:`)) {
             cellEdits.delete(key);
           }

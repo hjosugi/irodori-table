@@ -14,7 +14,12 @@ Current focus: Linux desktop builds. Release packaging templates live in
 
 ## Develop
 
+Required local versions are pinned in `.nvmrc` and `rust-toolchain.toml`.
+Start with the doctor so missing Linux packages, mold, TMPDIR capacity, and
+sibling checkouts are visible before a long build:
+
 ```sh
+make doctor
 make setup
 make desktop-dev
 ```
@@ -22,9 +27,21 @@ make desktop-dev
 Useful checks:
 
 ```sh
+make desktop-format-check
+make desktop-lint
 make check
 make desktop-build-verified
 make desktop-e2e
+```
+
+For local co-development with `irodori-kit`, clone it as a sibling checkout and
+use the managed Cargo patch helper:
+
+```sh
+git clone https://github.com/hjosugi/irodori-kit ../irodori-kit
+make kit-link
+make kit-unlink
+make kit-patch-check
 ```
 
 Sample databases live in the sibling repo:
@@ -51,6 +68,8 @@ make db-verify DB=postgres
 - Docs: <https://hjosugi.github.io/irodori-docs/>
 - Roadmap: [ROADMAP.md](ROADMAP.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Releasing: [RELEASING.md](RELEASING.md)
 - Security: [SECURITY.md](SECURITY.md)
+- Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 License: `MIT OR 0BSD`.
