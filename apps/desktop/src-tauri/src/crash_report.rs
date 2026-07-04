@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime, State};
 use ts_rs::TS;
 
@@ -14,6 +14,7 @@ const PENDING_CRASH_JSON: &str = "irodori-last-panic.json";
 const PENDING_CRASH_TEXT: &str = "irodori-last-panic.txt";
 const LATEST_BUNDLE_DIR: &str = "irodori-crash-report-latest";
 const LATEST_MANIFEST: &str = "irodori-crash-report-latest.json";
+const TELEMETRY_STATUS: &str = "disabled";
 
 static PANIC_LOG_DIR: OnceLock<PathBuf> = OnceLock::new();
 static PANIC_HOOK_INSTALLED: OnceLock<()> = OnceLock::new();
@@ -25,10 +26,27 @@ pub struct CrashReportState {
     pub latest_manifest_path: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+impl CrashReportState {
+    pub fn status(&self) -> CrashReportStatus {
+        let latest_bundle_dir = existing_path(self.latest_bundle_dir.as_ref());
+        let latest_manifest_path = existing_path(self.latest_manifest_path.as_ref());
+        CrashReportStatus {
+            has_report: latest_bundle_dir.is_some() || latest_manifest_path.is_some(),
+            log_dir: path_string(&self.log_dir),
+            latest_bundle_dir,
+            latest_manifest_path,
+            telemetry_enabled: false,
+            app_version: app_version(),
+            platform: platform_label(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub struct CrashReportStatus {
+    pub has_report: bool,
     pub log_dir: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -36,13 +54,17 @@ pub struct CrashReportStatus {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub latest_manifest_path: Option<String>,
+    pub telemetry_enabled: bool,
+    pub app_version: String,
+    pub platform: String,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PanicRecord {
     schema_version: u8,
-    app_version: &'static str,
+    app_version: String,
+    platform: String,
     captured_at_unix: String,
     process_id: u32,
     thread: String,
@@ -64,7 +86,8 @@ struct PanicLocation {
 #[serde(rename_all = "camelCase")]
 struct CrashReportManifest {
     schema_version: u8,
-    app_version: &'static str,
+    app_version: String,
+    platform: String,
     created_at_unix: String,
     telemetry: &'static str,
     bundle_dir: String,
@@ -95,11 +118,7 @@ pub fn initialize<R: Runtime>(app: &AppHandle<R>) -> CrashReportState {
 
 #[tauri::command]
 pub fn crash_report_status(state: State<'_, CrashReportState>) -> CrashReportStatus {
-    CrashReportStatus {
-        log_dir: path_string(&state.log_dir),
-        latest_bundle_dir: state.latest_bundle_dir.as_deref().map(path_string),
-        latest_manifest_path: state.latest_manifest_path.as_deref().map(path_string),
-    }
+    state.status()
 }
 
 fn install_panic_hook(log_dir: PathBuf) {
@@ -129,7 +148,8 @@ fn panic_record(info: &PanicHookInfo<'_>) -> PanicRecord {
     let thread = std::thread::current();
     PanicRecord {
         schema_version: 1,
-        app_version: env!("CARGO_PKG_VERSION"),
+        app_version: app_version(),
+        platform: platform_label(),
         captured_at_unix: unix_timestamp(SystemTime::now()),
         process_id: std::process::id(),
         thread: thread.name().unwrap_or("unnamed").to_string(),
@@ -140,7 +160,7 @@ fn panic_record(info: &PanicHookInfo<'_>) -> PanicRecord {
             column: location.column(),
         }),
         backtrace: Backtrace::force_capture().to_string(),
-        telemetry: "disabled",
+        telemetry: TELEMETRY_STATUS,
     }
 }
 
@@ -164,6 +184,7 @@ fn panic_text_report(record: &PanicRecord) -> String {
         "Irodori Table crash report\n\
          schemaVersion: {}\n\
          appVersion: {}\n\
+         platform: {}\n\
          capturedAtUnix: {}\n\
          processId: {}\n\
          thread: {}\n\
@@ -173,6 +194,7 @@ fn panic_text_report(record: &PanicRecord) -> String {
          Backtrace:\n{}\n",
         record.schema_version,
         record.app_version,
+        record.platform,
         record.captured_at_unix,
         record.process_id,
         record.thread,
@@ -212,9 +234,10 @@ fn stage_pending_crash_bundle(log_dir: &Path) -> io::Result<Option<PathBuf>> {
 
     let manifest = CrashReportManifest {
         schema_version: 1,
-        app_version: env!("CARGO_PKG_VERSION"),
+        app_version: app_version(),
+        platform: platform_label(),
         created_at_unix: unix_timestamp(SystemTime::now()),
-        telemetry: "disabled",
+        telemetry: TELEMETRY_STATUS,
         bundle_dir: bundle_dir.display().to_string(),
         files,
         note: "Generated on restart from the previous local panic record.",
@@ -237,8 +260,21 @@ fn move_into_bundle(from: &Path, to: &Path) -> io::Result<()> {
     }
 }
 
+fn existing_path(path: Option<&PathBuf>) -> Option<String> {
+    path.filter(|path| path.exists())
+        .map(|path| path_string(path.as_path()))
+}
+
 fn path_string(path: &Path) -> String {
     path.display().to_string()
+}
+
+fn app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+fn platform_label() -> String {
+    format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
 fn unix_timestamp(time: SystemTime) -> String {
@@ -302,5 +338,32 @@ mod tests {
         let temp = TempDir::new("empty");
         let bundle = stage_pending_crash_bundle(&temp.path).expect("stage bundle");
         assert!(bundle.is_none());
+    }
+
+    #[test]
+    fn status_reports_latest_local_bundle_paths() {
+        let temp = TempDir::new("status");
+        let bundle_dir = temp.path.join(LATEST_BUNDLE_DIR);
+        let manifest_path = temp.path.join(LATEST_MANIFEST);
+        fs::create_dir_all(&bundle_dir).expect("create bundle");
+        fs::write(&manifest_path, "{}").expect("write manifest");
+
+        let state = CrashReportState {
+            log_dir: temp.path.clone(),
+            latest_bundle_dir: Some(bundle_dir.clone()),
+            latest_manifest_path: Some(manifest_path.clone()),
+        };
+
+        let status = state.status();
+        assert!(status.has_report);
+        assert_eq!(status.log_dir, path_string(&temp.path));
+        assert_eq!(status.latest_bundle_dir, Some(path_string(&bundle_dir)));
+        assert_eq!(
+            status.latest_manifest_path,
+            Some(path_string(&manifest_path))
+        );
+        assert!(!status.telemetry_enabled);
+        assert_eq!(status.app_version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(status.platform, platform_label());
     }
 }

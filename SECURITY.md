@@ -41,6 +41,12 @@ Release builds allow the integrated terminal to spawn the platform default
 shell only. Custom PTY shell paths are rejected unless a trusted local operator
 sets `IRODORI_ALLOW_CUSTOM_PTY_SHELL=1`.
 
+Treat the integrated terminal as an interactive local shell, not a sandbox. PTY
+sessions inherit the app process privileges and can run any command the current
+OS user can run; do not paste untrusted commands or secrets into terminal
+sessions. Irodori does not intentionally pass database credentials to PTY
+environment variables.
+
 Crash reports are local only. Backend panics write a pending crash record under
 the app log directory, and the next launch stages it as
 `irodori-crash-report-latest` plus `irodori-crash-report-latest.json`. Review

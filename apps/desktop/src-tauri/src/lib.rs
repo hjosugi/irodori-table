@@ -127,6 +127,7 @@ pub fn run() {
             workspace_snapshot,
             open_developer_tools,
             sql_format_snowflake,
+            crash_report::crash_report_status,
             jobs::jobs_list,
             jobs::jobs_get,
             indexing::db_search_schema,
@@ -340,6 +341,7 @@ mod typegen {
                     .arg(Arg::rust("indent_width", TsType::number()).optional())
                     .arg(Arg::rust("uppercase_keywords", TsType::boolean()).optional()),
             )
+            .command(Command::new("crash_report_status", "CrashReportStatus"))
             .command(Command::new("jobs_list", "JobList"))
             .command(
                 Command::new("jobs_get", "JobRecord | null")
