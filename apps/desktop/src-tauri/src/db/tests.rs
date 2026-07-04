@@ -247,6 +247,51 @@ async fn successful_mutation_refreshes_metadata_without_manual_invalidation() {
 }
 
 #[tokio::test]
+async fn manual_metadata_invalidation_runs_refresh_through_jobs() {
+    let state = DbState::default();
+    let conn_id = "metadata_job".to_string();
+    connect_impl(
+        &state,
+        &SecurityState::default(),
+        temp_sqlite_profile(&conn_id),
+    )
+    .await
+    .expect("connect");
+    run_query_impl(
+        &state,
+        conn_id.clone(),
+        "create table metadata_job_visible (id integer primary key, label text)".into(),
+        None,
+    )
+    .await
+    .expect("create table");
+    list_objects_impl(&state, conn_id.clone())
+        .await
+        .expect("warm metadata cache");
+
+    let jobs = crate::jobs::JobState::default();
+    let invalidated = state
+        .metadata_manager()
+        .invalidate_cache(Some(&jobs), conn_id.clone(), None, None)
+        .await
+        .expect("invalidate cache");
+    assert!(invalidated);
+
+    let job = wait_for_terminal_job(jobs.runtime()).await;
+    assert_eq!(job.spec.kind, irodori_core::JobKind::KnowledgeRefresh);
+    assert_eq!(job.status, irodori_core::JobStatus::Succeeded);
+    assert_eq!(job.progress.percent, Some(100));
+    assert!(
+        job.spec.source.as_deref() == Some(conn_id.as_str()),
+        "unexpected job source: {:?}",
+        job.spec.source
+    );
+
+    let cache = state.metadata_cache.lock().await;
+    assert!(cache.snapshot(&conn_id).is_some());
+}
+
+#[tokio::test]
 async fn cancel_signals_a_registered_query_then_is_a_noop() {
     let state = DbState::default();
     let token = CancellationToken::new();
@@ -1251,4 +1296,15 @@ fn secret_redaction_handles_urls_and_connection_strings() {
     assert!(redacted.contains("PWD=****;"));
     assert!(redacted.contains("token=****&"));
     assert!(redacted.contains("api_key=****"));
+}
+
+async fn wait_for_terminal_job(runtime: &irodori_core::JobRuntime) -> irodori_core::JobRecord {
+    for _ in 0..100 {
+        let jobs = runtime.list();
+        if let Some(job) = jobs.history.into_iter().next() {
+            return runtime.get(&job.id).expect("job record");
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    panic!("timed out waiting for metadata refresh job");
 }

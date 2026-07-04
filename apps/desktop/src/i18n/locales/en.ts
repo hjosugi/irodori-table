@@ -616,6 +616,7 @@ export const en = {
   "settings.jobs.history": "History",
   "settings.jobs.attempt": "Attempt {attempt}",
   "settings.jobs.artifacts": "{count} artifacts",
+  "settings.jobs.cancel": "Cancel job",
   "settings.jobs.noArtifacts": "No artifacts",
   "settings.jobs.noActive": "No active jobs",
   "settings.jobs.noFinished": "No finished jobs",

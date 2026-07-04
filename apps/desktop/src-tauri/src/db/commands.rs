@@ -4,6 +4,7 @@ use std::time::Instant;
 use irodori_core::{AuditEventKind, IrodoriError, Result as IrodoriResult};
 use tokio::sync::mpsc;
 
+use crate::jobs::JobState;
 use crate::security::SecurityState;
 
 use super::*;
@@ -56,15 +57,16 @@ pub async fn db_inspect_column(
 #[tauri::command]
 pub async fn db_invalidate_cache(
     state: tauri::State<'_, DbState>,
+    jobs: tauri::State<'_, JobState>,
     connection_id: String,
     schema: Option<String>,
     object: Option<String>,
 ) -> IrodoriResult<bool> {
-    Ok(state
+    state
         .inner()
         .metadata_manager()
-        .invalidate_cache(connection_id, schema, object)
-        .await)
+        .invalidate_cache(Some(jobs.inner()), connection_id, schema, object)
+        .await
 }
 
 // ---- Tauri commands -----------------------------------------------------------

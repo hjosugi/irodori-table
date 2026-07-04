@@ -326,6 +326,10 @@ export function jobsGet(jobId: string): Promise<JobRecord | null> {
   return invoke<JobRecord | null>("jobs_get", { jobId });
 }
 
+export function jobsCancel(jobId: string): Promise<boolean> {
+  return invoke<boolean>("jobs_cancel", { jobId });
+}
+
 export function dbSearchSchema(connectionId: string, term: string, limit?: number): Promise<Array<SchemaSearchHit>> {
   return invoke<Array<SchemaSearchHit>>("db_search_schema", { connectionId, term, limit });
 }

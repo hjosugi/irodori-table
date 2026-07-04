@@ -130,6 +130,7 @@ pub fn run() {
             crash_report::crash_report_status,
             jobs::jobs_list,
             jobs::jobs_get,
+            jobs::jobs_cancel,
             indexing::db_search_schema,
             db::db_engine_build_support,
             db::db_connect,
@@ -343,6 +344,10 @@ mod typegen {
             .command(Command::new("jobs_list", "JobList"))
             .command(
                 Command::new("jobs_get", "JobRecord | null")
+                    .arg(Arg::rust("job_id", TsType::string())),
+            )
+            .command(
+                Command::returning("jobs_cancel", TsType::boolean())
                     .arg(Arg::rust("job_id", TsType::string())),
             )
             .command(

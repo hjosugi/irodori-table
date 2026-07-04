@@ -1,4 +1,6 @@
 use super::*;
+use crate::jobs::JobState;
+use irodori_core::IrodoriError;
 
 pub(crate) struct MetadataManager<'a> {
     state: &'a DbState,
@@ -137,10 +139,11 @@ impl<'a> MetadataManager<'a> {
 
     pub(crate) async fn invalidate_cache(
         self,
+        jobs: Option<&JobState>,
         connection_id: String,
         schema: Option<String>,
         object: Option<String>,
-    ) -> bool {
+    ) -> Result<bool, IrodoriError> {
         let mut cache = self.state.metadata_cache.lock().await;
         let invalidated = if let Some(obj) = object {
             if let Some(sch) = schema {
@@ -156,10 +159,18 @@ impl<'a> MetadataManager<'a> {
 
         drop(cache);
         if invalidated {
-            trigger_background_refresh(self.state.clone(), connection_id);
+            if let Some(jobs) = jobs {
+                super::state::trigger_metadata_refresh_job(
+                    self.state.clone(),
+                    jobs,
+                    connection_id,
+                )?;
+            } else {
+                trigger_background_refresh(self.state.clone(), connection_id);
+            }
         }
 
-        invalidated
+        Ok(invalidated)
     }
 
     pub(crate) async fn refresh_after_query_if_needed(self, connection_id: &str, sql: &str) {

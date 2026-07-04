@@ -230,6 +230,7 @@ export function WorkbenchDialogs() {
           jobsLoading={settings.jobsLoading}
           jobsError={settings.jobsError}
           refreshJobs={settings.refreshJobs}
+          cancelJob={settings.cancelJob}
           settingsJsonDraft={settings.settingsJsonDraft}
           setSettingsJsonDraft={settings.setSettingsJsonDraft}
           settingsJsonError={settings.settingsJsonError}

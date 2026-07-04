@@ -263,6 +263,16 @@ export function useSettingsController({
     }
   }
 
+  async function cancelJob(jobId: string) {
+    setJobsError(null);
+    try {
+      await workbenchRuntimeService.jobsCancel(jobId);
+      await refreshJobs();
+    } catch (error) {
+      setJobsError(errorMessage(error));
+    }
+  }
+
   function resetSettingsJsonDraft() {
     setSettingsJsonDraft(buildSettingsJson());
     setSettingsJsonError(null);
@@ -645,6 +655,7 @@ export function useSettingsController({
     jobsLoading,
     jobsError,
     refreshJobs,
+    cancelJob,
   };
 }
 

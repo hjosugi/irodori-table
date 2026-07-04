@@ -1,4 +1,5 @@
 import {
+  jobsCancel,
   jobsList,
   openDeveloperTools,
   workspaceSnapshot,
@@ -9,12 +10,14 @@ import {
 export interface WorkbenchRuntimeService {
   snapshot(): Promise<WorkspaceSnapshot>;
   jobsList(): Promise<JobList>;
+  jobsCancel(jobId: string): Promise<boolean>;
   openDeveloperTools(): Promise<void>;
 }
 
 export const tauriWorkbenchRuntimeService: WorkbenchRuntimeService = {
   snapshot: workspaceSnapshot,
   jobsList,
+  jobsCancel,
   openDeveloperTools,
 };
 

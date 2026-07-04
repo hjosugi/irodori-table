@@ -625,6 +625,7 @@ export const ja = {
   "settings.jobs.history": "履歴",
   "settings.jobs.attempt": "試行 {attempt}",
   "settings.jobs.artifacts": "{count} 件の成果物",
+  "settings.jobs.cancel": "ジョブをキャンセル",
   "settings.jobs.noArtifacts": "成果物なし",
   "settings.jobs.noActive": "実行中のジョブはありません",
   "settings.jobs.noFinished": "完了したジョブはありません",

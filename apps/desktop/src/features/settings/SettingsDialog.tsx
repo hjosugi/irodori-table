@@ -102,6 +102,7 @@ export interface SettingsDialogProps {
   jobsLoading: boolean;
   jobsError: string | null;
   refreshJobs: () => Promise<void>;
+  cancelJob: (jobId: string) => Promise<void>;
   settingsJsonDraft: string;
   setSettingsJsonDraft: (value: string) => void;
   settingsJsonError: string | null;
@@ -171,6 +172,7 @@ export function SettingsDialog({
   jobsLoading,
   jobsError,
   refreshJobs,
+  cancelJob,
   settingsJsonDraft,
   setSettingsJsonDraft,
   settingsJsonError,
@@ -335,6 +337,7 @@ export function SettingsDialog({
                 jobsLoading={jobsLoading}
                 jobsError={jobsError}
                 refreshJobs={refreshJobs}
+                cancelJob={cancelJob}
               />
             ) : (
               <JsonTab

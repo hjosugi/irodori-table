@@ -36,3 +36,9 @@ pub fn jobs_list(state: State<'_, JobState>) -> JobList {
 pub fn jobs_get(state: State<'_, JobState>, job_id: String) -> IrodoriResult<Option<JobRecord>> {
     Ok(state.runtime().get(&job_id))
 }
+
+#[tauri::command]
+pub fn jobs_cancel(state: State<'_, JobState>, job_id: String) -> IrodoriResult<bool> {
+    state.runtime().request_cancel(&job_id)?;
+    Ok(true)
+}

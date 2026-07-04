@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, XCircle } from "lucide-react";
 import type { JobList, JobSummary } from "../../../generated/irodori-api";
 import type { TranslateFn } from "./shared";
 
@@ -56,6 +56,7 @@ export interface JobsTabProps {
   jobsLoading: boolean;
   jobsError: string | null;
   refreshJobs: () => Promise<void>;
+  cancelJob: (jobId: string) => Promise<void>;
 }
 
 export function JobsTab({
@@ -64,6 +65,7 @@ export function JobsTab({
   jobsLoading,
   jobsError,
   refreshJobs,
+  cancelJob,
 }: JobsTabProps) {
   return (
     <div className="settings-jobs">
@@ -114,6 +116,16 @@ export function JobsTab({
                       attempt: job.attempt,
                     })}
                   </small>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title={t("settings.jobs.cancel")}
+                    aria-label={t("settings.jobs.cancel")}
+                    disabled={job.cancelRequested || job.status === "cancelling"}
+                    onClick={() => void cancelJob(job.id)}
+                  >
+                    <XCircle size={14} />
+                  </button>
                 </div>
               </div>
             ))}
