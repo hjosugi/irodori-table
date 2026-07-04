@@ -104,6 +104,7 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
         extension.summary,
         extension.engines.join(" "),
         extension.categories.join(" "),
+        extension.topics.join(" "),
       ]
         .join(" ")
         .toLowerCase()

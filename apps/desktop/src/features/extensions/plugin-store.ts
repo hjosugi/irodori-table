@@ -26,6 +26,7 @@ export type PluginStoreExtension = {
   homepage?: string;
   detailsUrl?: string;
   categories: string[];
+  topics: string[];
   engines: string[];
   permissions: string[];
   runtime: "typescript" | "javascript" | "wasm" | "native";
@@ -96,6 +97,7 @@ function normalizePluginStoreExtension(value: unknown): PluginStoreExtension {
     homepage: optionalString(raw.homepage),
     detailsUrl: optionalString(raw.detailsUrl),
     categories: stringList(raw.categories),
+    topics: stringList(raw.topics),
     engines: stringList(raw.engines),
     permissions: stringList(raw.permissions),
     runtime: requiredString(

@@ -13,6 +13,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-duckdb",
       "categories": ["connector", "database"],
+      "topics": ["embedded", "olap", "analytics", "local-file"],
       "engines": ["duckdb"],
       "permissions": [
         "connections:read",
@@ -41,6 +42,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-motherduck",
       "categories": ["connector", "database", "lakehouse"],
+      "topics": ["duckdb", "cloud", "olap", "serverless"],
       "engines": ["motherduck"],
       "permissions": [
         "connections:read",
@@ -69,6 +71,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-hive",
       "categories": ["connector", "lakehouse", "catalog"],
+      "topics": ["apache", "metastore", "hdfs", "sql"],
       "engines": ["hive"],
       "permissions": [
         "connections:read",
@@ -97,6 +100,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-iceberg",
       "categories": ["connector", "lakehouse", "catalog"],
+      "topics": ["apache", "rest-catalog", "glue", "table-format"],
       "engines": ["iceberg"],
       "permissions": [
         "connections:read",
@@ -125,6 +129,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-s3-tables",
       "categories": ["connector", "lakehouse", "aws"],
+      "topics": ["s3", "table-buckets", "iceberg"],
       "engines": ["s3Tables"],
       "permissions": [
         "connections:read",
@@ -153,6 +158,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-athena",
       "categories": ["connector", "lakehouse", "aws"],
+      "topics": ["s3", "serverless", "query-engine"],
       "engines": ["athena"],
       "permissions": [
         "connections:read",
@@ -181,6 +187,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-delta-lake",
       "categories": ["connector", "lakehouse"],
+      "topics": ["delta", "table-format", "data-lake"],
       "engines": ["deltaLake"],
       "permissions": [
         "connections:read",
@@ -209,6 +216,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-hudi",
       "categories": ["connector", "lakehouse"],
+      "topics": ["apache", "table-format", "data-lake"],
       "engines": ["hudi"],
       "permissions": [
         "connections:read",
@@ -237,6 +245,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-cloud-spanner",
       "categories": ["connector", "database", "google-cloud"],
+      "topics": ["gcp", "distributed-sql", "relational"],
       "engines": ["cloudSpanner"],
       "permissions": [
         "connections:read",
@@ -265,6 +274,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-redis",
       "categories": ["connector", "key-value"],
+      "topics": ["cache", "in-memory"],
       "engines": ["redis"],
       "permissions": [
         "connections:read",
@@ -293,6 +303,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-dynamodb",
       "categories": ["connector", "key-value", "aws"],
+      "topics": ["nosql", "serverless", "key-value"],
       "engines": ["dynamodb"],
       "permissions": [
         "connections:read",
@@ -321,6 +332,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-snowflake",
       "categories": ["connector", "warehouse"],
+      "topics": ["cloud", "analytics"],
       "engines": ["snowflake"],
       "permissions": [
         "connections:read",
@@ -349,6 +361,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-bigquery",
       "categories": ["connector", "warehouse", "google-cloud"],
+      "topics": ["gcp", "serverless", "analytics"],
       "engines": ["bigquery"],
       "permissions": [
         "connections:read",
@@ -377,6 +390,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-bigtable",
       "categories": ["connector", "wide-column", "google-cloud"],
+      "topics": ["gcp", "wide-column", "nosql"],
       "engines": ["bigtable"],
       "permissions": [
         "connections:read",
@@ -405,6 +419,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-mongodb",
       "categories": ["connector", "document"],
+      "topics": ["document", "nosql", "bson"],
       "engines": ["mongodb"],
       "permissions": [
         "connections:read",
@@ -433,6 +448,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-clickhouse",
       "categories": ["connector", "analytics"],
+      "topics": ["olap", "analytics", "columnar"],
       "engines": ["clickhouse"],
       "permissions": [
         "connections:read",
@@ -461,6 +477,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-cassandra",
       "categories": ["connector", "wide-column"],
+      "topics": ["apache", "wide-column", "nosql", "cql"],
       "engines": ["cassandra"],
       "permissions": [
         "connections:read",
@@ -489,6 +506,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-scylladb",
       "categories": ["connector", "wide-column"],
+      "topics": ["wide-column", "nosql", "cassandra-compatible", "cql"],
       "engines": ["scylladb"],
       "permissions": [
         "connections:read",
@@ -517,6 +535,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-neo4j",
       "categories": ["connector", "graph"],
+      "topics": ["cypher", "bolt"],
       "engines": ["neo4j"],
       "permissions": [
         "connections:read",
@@ -545,6 +564,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-memgraph",
       "categories": ["connector", "graph"],
+      "topics": ["cypher", "bolt"],
       "engines": ["memgraph"],
       "permissions": [
         "connections:read",
@@ -573,6 +593,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-elasticsearch",
       "categories": ["connector", "search"],
+      "topics": ["analytics", "index", "lucene"],
       "engines": ["elasticsearch"],
       "permissions": [
         "connections:read",
@@ -601,6 +622,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-opensearch",
       "categories": ["connector", "search"],
+      "topics": ["analytics", "index", "lucene"],
       "engines": ["openSearch"],
       "permissions": [
         "connections:read",
@@ -629,6 +651,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-sqlserver",
       "categories": ["connector", "database"],
+      "topics": ["relational", "mssql", "t-sql"],
       "engines": ["sqlserver"],
       "permissions": [
         "connections:read",
@@ -657,6 +680,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-oracle",
       "categories": ["connector", "database"],
+      "topics": ["relational", "enterprise", "plsql"],
       "engines": ["oracle"],
       "permissions": [
         "connections:read",
@@ -685,6 +709,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-influxdb",
       "categories": ["connector", "time-series"],
+      "topics": ["metrics", "iot"],
       "engines": ["influxdb"],
       "permissions": [
         "connections:read",
@@ -713,6 +738,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-qdrant",
       "categories": ["connector", "vector"],
+      "topics": ["semantic-search", "embedding"],
       "engines": ["qdrant"],
       "permissions": [
         "connections:read",
@@ -741,6 +767,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-milvus",
       "categories": ["connector", "vector"],
+      "topics": ["semantic-search", "embedding"],
       "engines": ["milvus"],
       "permissions": [
         "connections:read",
@@ -769,6 +796,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-pinecone",
       "categories": ["connector", "vector"],
+      "topics": ["semantic-search", "embedding", "managed"],
       "engines": ["pinecone"],
       "permissions": [
         "connections:read",
@@ -797,6 +825,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-couchbase",
       "categories": ["connector", "document"],
+      "topics": ["nosql", "key-value", "n1ql"],
       "engines": ["couchbase"],
       "permissions": [
         "connections:read",
@@ -825,6 +854,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-arangodb",
       "categories": ["connector", "graph", "document"],
+      "topics": ["multi-model", "aql"],
       "engines": ["arangodb"],
       "permissions": [
         "connections:read",
@@ -853,6 +883,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-questdb",
       "categories": ["connector", "time-series"],
+      "topics": ["postgres-wire", "analytics"],
       "engines": ["questdb"],
       "permissions": [
         "connections:read",
@@ -881,6 +912,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-iotdb",
       "categories": ["connector", "time-series"],
+      "topics": ["apache", "iot"],
       "engines": ["iotdb"],
       "permissions": [
         "connections:read",
@@ -909,6 +941,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-trino-presto",
       "categories": ["connector", "query-engine"],
+      "topics": ["trino", "presto", "federated-query"],
       "engines": ["trinoPresto"],
       "permissions": [
         "connections:read",
@@ -937,6 +970,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-firebird",
       "categories": ["connector", "database"],
+      "topics": ["relational", "embedded", "sql"],
       "engines": ["firebird"],
       "permissions": [
         "connections:read",
@@ -965,6 +999,7 @@
       "license": "MIT OR 0BSD",
       "repository": "https://github.com/hjosugi/irodori-extension-databricks",
       "categories": ["connector", "warehouse"],
+      "topics": ["lakehouse", "spark", "delta"],
       "engines": ["databricks"],
       "permissions": [
         "connections:read",

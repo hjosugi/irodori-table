@@ -22,6 +22,7 @@ describe("plugin store catalog", () => {
     expect(bundledPluginStoreCatalog.extensions.length).toBeGreaterThan(0);
 
     for (const extension of bundledPluginStoreCatalog.extensions) {
+      expect(extension.topics.length, extension.id).toBeGreaterThan(0);
       expect(extension.install, extension.id).toBeDefined();
       expect(extension.install?.kind, extension.id).toBe("githubRelease");
       expect(extension.install?.url, extension.id).toMatch(
@@ -55,5 +56,6 @@ describe("plugin store catalog", () => {
       headers: { accept: "application/json" },
     });
     expect(loaded.extensions[0].install).toEqual(catalog.extensions[0].install);
+    expect(loaded.extensions[0].topics).toEqual(catalog.extensions[0].topics);
   });
 });
