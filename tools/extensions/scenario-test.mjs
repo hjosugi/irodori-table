@@ -25,6 +25,15 @@ const REQUIRED_ENTRYPOINTS = [
   "irodori_connector_free_buffer",
 ];
 const REQUIRED_CALLS = ["health", "describe", "manifest", "config", "connect", "query", "metadata", "close"];
+const DUCKDB_RUNTIME_ENGINES = new Set([
+  "duckdb",
+  "motherduck",
+  "deltaLake",
+  "hive",
+  "hudi",
+  "iceberg",
+  "s3Tables",
+]);
 
 const options = parseArgs(process.argv.slice(2));
 if (options.help) {
@@ -170,9 +179,17 @@ function validatePackage({ repoDir, config, cargoLibName, catalogEntry, warnings
 
   const expectedLibrary = currentPlatformLibraryName(cargoLibName);
   assert(existsSync(resolve(nativeDir, expectedLibrary)), `native package is missing ${expectedLibrary}`);
+  const runtimeLibraries = runtimeLibraryNames(config);
+  for (const runtimeLibrary of runtimeLibraries) {
+    assert(
+      existsSync(resolve(nativeDir, runtimeLibrary)),
+      `native package is missing runtime dependency ${runtimeLibrary}`,
+    );
+  }
 
   const dynamicLibraries = listFiles(nativeDir).filter((file) => isDynamicLibrary(file));
-  const extraLibraries = dynamicLibraries.filter((file) => file !== expectedLibrary);
+  const allowedLibraries = new Set([expectedLibrary, ...runtimeLibraries]);
+  const extraLibraries = dynamicLibraries.filter((file) => !allowedLibraries.has(file));
   if (extraLibraries.length > 0) {
     const message = `native package contains ${extraLibraries.length} extra dynamic librar${
       extraLibraries.length === 1 ? "y" : "ies"
@@ -193,13 +210,13 @@ function validatePackage({ repoDir, config, cargoLibName, catalogEntry, warnings
       }
       warnings.push(`${message}; rerun with --require-archive to gate this`);
     } else {
-      validateArchiveContents({ archivePath, expectedLibrary, catalogEntry });
-      validateArchiveInstall({ archivePath, expectedLibrary, catalogEntry });
+      validateArchiveContents({ archivePath, expectedLibrary, runtimeLibraries, catalogEntry });
+      validateArchiveInstall({ archivePath, expectedLibrary, runtimeLibraries, catalogEntry });
     }
   }
 }
 
-function validateArchiveContents({ archivePath, expectedLibrary, catalogEntry }) {
+function validateArchiveContents({ archivePath, expectedLibrary, runtimeLibraries, catalogEntry }) {
   const result = spawnSync("tar", ["-tzf", archivePath], { encoding: "utf8" });
   assert(result.status === 0, `catalog archive cannot be listed: ${archivePath}`);
   const entries = new Set(
@@ -215,9 +232,15 @@ function validateArchiveContents({ archivePath, expectedLibrary, catalogEntry })
     entries.has(`dist/native/${expectedLibrary}`),
     `catalog archive is missing dist/native/${expectedLibrary}`,
   );
+  for (const runtimeLibrary of runtimeLibraries) {
+    assert(
+      entries.has(`dist/native/${runtimeLibrary}`),
+      `catalog archive is missing dist/native/${runtimeLibrary}`,
+    );
+  }
 }
 
-function validateArchiveInstall({ archivePath, expectedLibrary, catalogEntry }) {
+function validateArchiveInstall({ archivePath, expectedLibrary, runtimeLibraries, catalogEntry }) {
   const installRoot = mkdtempSync(resolve(tmpdir(), "irodori-extension-install-"));
   try {
     const checksum = createHash("sha256").update(readFileSync(archivePath)).digest("hex");
@@ -257,6 +280,12 @@ function validateArchiveInstall({ archivePath, expectedLibrary, catalogEntry }) 
       existsSync(resolve(nativeModuleDir, expectedLibrary)),
       `installed native module is missing ${expectedLibrary}`,
     );
+    for (const runtimeLibrary of runtimeLibraries) {
+      assert(
+        existsSync(resolve(nativeModuleDir, runtimeLibrary)),
+        `installed native module is missing runtime dependency ${runtimeLibrary}`,
+      );
+    }
   } finally {
     rmSync(installRoot, { force: true, recursive: true });
   }
@@ -350,6 +379,19 @@ function currentPlatformLibraryName(libName) {
     return `lib${libName}.dylib`;
   }
   return `lib${libName}.so`;
+}
+
+function runtimeLibraryNames(config) {
+  if (!DUCKDB_RUNTIME_ENGINES.has(config.connector?.engine)) {
+    return [];
+  }
+  if (process.platform === "win32") {
+    return ["duckdb.dll"];
+  }
+  if (process.platform === "darwin") {
+    return ["libduckdb.dylib"];
+  }
+  return ["libduckdb.so"];
 }
 
 function isDynamicLibrary(file) {
@@ -507,7 +549,7 @@ Options:
   --skip-check       Skip connector repo make check
   --skip-package     Skip connector repo make package and native artifact checks
   --require-archive  Fail when catalog .tar.gz install assets are not produced
-  --strict-package   Fail when dist/native contains dynamic libraries for other connectors
+  --strict-package   Fail when dist/native contains undeclared dynamic libraries
   --keep-dist        Keep dist artifacts produced by make package
   --list             Print selected repositories and exit
   --help             Show this help
