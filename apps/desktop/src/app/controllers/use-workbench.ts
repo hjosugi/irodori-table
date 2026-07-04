@@ -421,7 +421,11 @@ export function useWorkbench() {
     // Cross-cutting services.
     t,
     appStyle,
-    notices: { list: actionNotices, show: showActionNotice, dismiss: dismissNotice },
+    notices: {
+      list: actionNotices,
+      show: showActionNotice,
+      dismiss: dismissNotice,
+    },
     confirmElement,
     // Domain controllers, one per workspace concern.
     connections,

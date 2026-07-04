@@ -14,10 +14,7 @@ import type {
 } from "@/features/query-editor";
 import { useWorkbenchStore } from "@/features/workbench";
 import { formatKeySequence, type Keymap } from "@/core";
-import type {
-  DatabaseMetadata,
-  DbEngine,
-} from "@/generated/irodori-api";
+import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 import type { IrodoriTheme } from "@/theme";
 import type { useQueryRunner } from "@/app/controllers/use-query-runner";
 import type { useWorkspaceActions } from "@/app/controllers/use-workspace-actions";

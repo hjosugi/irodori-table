@@ -1,5 +1,4 @@
 import { Suspense, lazy } from "react";
-import type { ShowActionNotice } from "@/app/ActionToast";
 import { AboutDialog } from "@/app/AboutDialog";
 import {
   APP_IDENTIFIER,
@@ -9,25 +8,12 @@ import {
 } from "@/app/app-config";
 import { tauriRuntimeError } from "@/app/app-workbench-utils";
 import { CommandPalette } from "@/app/CommandPalette";
-import type { ConnectionController } from "@/app/controllers/workbench-controllers";
-import type { useErdDiagram } from "@/app/controllers/use-erd-diagram";
-import type { useHistoryActions } from "@/app/controllers/use-history-actions";
-import type { KeybindingManager } from "@/app/controllers/use-keybinding-manager";
-import type { useQueryRunner } from "@/app/controllers/use-query-runner";
-import type { SettingsController } from "@/app/controllers/use-settings-controller";
-import type { ThemeManager } from "@/app/controllers/use-theme-manager";
-import type { useWorkspaceActions } from "@/app/controllers/use-workspace-actions";
-import {
-  ConnectionManagerDialog,
-  type WorkspaceConnection,
-} from "@/features/connections";
+import { useWorkbenchContext } from "@/app/workbench-context";
+import { ConnectionManagerDialog } from "@/features/connections";
 import { ErdDialog, hasDiagram } from "@/features/erd";
 import { ImportDialog } from "@/features/import";
 import { usePreferencesStore } from "@/features/preferences";
-import {
-  QueryParameterDialog,
-  type SqlEditorHandle,
-} from "@/features/query-editor";
+import { QueryParameterDialog } from "@/features/query-editor";
 import { useQueryHistoryStore } from "@/features/query-history/query-history-store";
 import {
   formatResultGridCell as formatCell,
@@ -43,7 +29,6 @@ import { SettingsDialog } from "@/features/settings";
 import { AiGenerateDialog } from "@/features/ai/AiGenerateDialog";
 import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import { useWorkbenchStore } from "@/features/workbench";
-import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 
 const MigrationStudioDialog = lazy(() =>
   import("@/features/migration").then((module) => ({
@@ -56,80 +41,34 @@ const QueryHistoryDialog = lazy(() =>
   })),
 );
 
-export type WorkbenchDialogsProps = {
-  themes: ThemeManager;
-  settings: SettingsController;
-  erd: ReturnType<typeof useErdDiagram>;
-  workspace: ReturnType<typeof useWorkspaceActions>;
-  keybindings: KeybindingManager;
-  queryRunner: Pick<
-    ReturnType<typeof useQueryRunner>,
-    | "running"
-    | "pendingQueryParameters"
-    | "parameterDraftValues"
-    | "setParameterDraftValues"
-    | "setPendingQueryParameters"
-    | "submitQueryParameters"
-  >;
-  historyActions: ReturnType<typeof useHistoryActions>;
-  connectionController: ConnectionController | null;
-  connectionById: Map<string, WorkspaceConnection>;
-  activeConnection: WorkspaceConnection;
-  activeConnectionId: string;
-  activeConnectionOpen: boolean;
-  activeMetadata: DatabaseMetadata | undefined;
-  editorEngine: DbEngine;
-  activeEditorApi: () => SqlEditorHandle | null;
-  runCommand: (commandId: string) => void;
-  paletteOpen: boolean;
-  paletteQuery: string;
-  setPaletteQuery: (value: string) => void;
-  closePalette: () => void;
-  aboutOpen: boolean;
-  closeAbout: () => void;
-  migrationStudioOpen: boolean;
-  closeMigrationStudio: () => void;
-  aiGenerateOpen: boolean;
-  closeAiGenerate: () => void;
-  terminalOpen: boolean;
-  closeTerminal: () => void;
-  showActionNotice: ShowActionNotice;
-};
-
 // Every modal/overlay surface the workbench can open, in one place. State that
 // only dialogs read or write (settings toggles, dialog-open flags in stores)
 // is subscribed here so the composition root stays about wiring, not forms.
-export function WorkbenchDialogs({
-  themes,
-  settings,
-  erd,
-  workspace,
-  keybindings,
-  queryRunner,
-  historyActions,
-  connectionController,
-  connectionById,
-  activeConnection,
-  activeConnectionId,
-  activeConnectionOpen,
-  activeMetadata,
-  editorEngine,
-  activeEditorApi,
-  runCommand,
-  paletteOpen,
-  paletteQuery,
-  setPaletteQuery,
-  closePalette,
-  aboutOpen,
-  closeAbout,
-  migrationStudioOpen,
-  closeMigrationStudio,
-  aiGenerateOpen,
-  closeAiGenerate,
-  terminalOpen,
-  closeTerminal,
-  showActionNotice,
-}: WorkbenchDialogsProps) {
+export function WorkbenchDialogs() {
+  const {
+    connections,
+    editor,
+    erd,
+    historyActions,
+    keybindings,
+    notices,
+    overlays,
+    queryRunner,
+    runCommand,
+    settings,
+    themes,
+    workspace,
+  } = useWorkbenchContext();
+  const {
+    activeConnection,
+    activeConnectionId,
+    activeConnectionOpen,
+    activeMetadata,
+    connectionById,
+    connectionController,
+    editorEngine,
+  } = connections;
+  const { activeEditorApi } = editor;
   const locale = usePreferencesStore((state) => state.locale);
   const setLocale = usePreferencesStore((state) => state.setLocale);
   const vimMode = usePreferencesStore((state) => state.vimMode);
@@ -185,7 +124,7 @@ export function WorkbenchDialogs({
   const paletteResults = appCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
-      .includes(paletteQuery.trim().toLowerCase()),
+      .includes(overlays.paletteQuery.trim().toLowerCase()),
   );
 
   return (
@@ -194,10 +133,10 @@ export function WorkbenchDialogs({
         <ConnectionManagerDialog {...connectionController} />
       ) : null}
 
-      {migrationStudioOpen ? (
+      {overlays.migrationStudioOpen ? (
         <Suspense fallback={null}>
           <MigrationStudioDialog
-            onClose={closeMigrationStudio}
+            onClose={overlays.closeMigrationStudio}
             onCopyText={(text, label) =>
               void workspace.copyMigrationText(text, label)
             }
@@ -207,17 +146,17 @@ export function WorkbenchDialogs({
       ) : null}
 
       <AiGenerateDialog
-        open={aiGenerateOpen}
-        onClose={closeAiGenerate}
+        open={overlays.aiGenerateOpen}
+        onClose={overlays.closeAiGenerate}
         connectionId={activeConnectionId}
         engine={editorEngine}
         onInsert={(sql) => activeEditorApi()?.insertText(sql)}
-        notify={showActionNotice}
+        notify={notices.show}
       />
 
-      {terminalOpen && (
+      {overlays.terminalOpen && (
         <div className="terminal-dock">
-          <TerminalPanel onClose={closeTerminal} />
+          <TerminalPanel onClose={overlays.closeTerminal} />
         </div>
       )}
 
@@ -294,7 +233,7 @@ export function WorkbenchDialogs({
         />
       ) : null}
 
-      {aboutOpen ? (
+      {overlays.aboutOpen ? (
         <AboutDialog
           appName={APP_NAME}
           appVersion={APP_VERSION}
@@ -305,7 +244,7 @@ export function WorkbenchDialogs({
           activeConnectionLabel={`${activeConnection.name} · ${
             activeConnectionOpen ? "connected" : "closed"
           }`}
-          onClose={closeAbout}
+          onClose={overlays.closeAbout}
           onCopyDiagnostics={() => void workspace.copyAppDiagnostics()}
         />
       ) : null}
@@ -334,14 +273,14 @@ export function WorkbenchDialogs({
         />
       ) : null}
 
-      {paletteOpen ? (
+      {overlays.paletteOpen ? (
         <CommandPalette
-          query={paletteQuery}
+          query={overlays.paletteQuery}
           commands={paletteResults}
           keymap={keybindings.keymap}
-          onQueryChange={setPaletteQuery}
+          onQueryChange={overlays.setPaletteQuery}
           onRunCommand={runCommand}
-          onClose={closePalette}
+          onClose={overlays.closePalette}
         />
       ) : null}
 
