@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 
 export type ActionNoticeAction = {
   label: string;
@@ -104,6 +106,8 @@ export function ActionToast({
   notice: ActionNotice;
   onDismiss: () => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   return (
     <div
       className={`action-toast ${notice.kind}`}
@@ -130,7 +134,7 @@ export function ActionToast({
         ) : null}
         <button
           type="button"
-          aria-label="Dismiss notification"
+          aria-label={t("notice.dismiss")}
           onClick={onDismiss}
         >
           <X size={13} />

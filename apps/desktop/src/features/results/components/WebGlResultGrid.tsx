@@ -22,6 +22,7 @@ import {
   webGlResultGridScrollSize,
   type WebGlRgba,
 } from "../webgl-grid";
+import type { Translator } from "@/i18n";
 
 type WebGlResultGridProps = {
   columns: readonly string[];
@@ -51,6 +52,7 @@ type WebGlResultGridProps = {
     col: number,
     extendRange?: boolean,
   ) => void;
+  t: Translator["t"];
 };
 
 type Rect = {
@@ -107,6 +109,7 @@ export function WebGlResultGrid({
   onToggleSort,
   onSelectGridRow,
   onSelectGridCell,
+  t,
 }: WebGlResultGridProps) {
   const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const textCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -224,7 +227,8 @@ export function WebGlResultGrid({
     return (
       <GridState
         gridRef={gridRef}
-        label="Running query..."
+        label={t("results.runningQuery")}
+        t={t}
         onGridCopy={onGridCopy}
         onGridKeyDown={onGridKeyDown}
         onGridPaste={onGridPaste}
@@ -239,9 +243,10 @@ export function WebGlResultGrid({
         gridRef={gridRef}
         label={
           filtersActive && unfilteredRowCount > 0
-            ? "No rows match filters"
-            : "No rows returned"
+            ? t("results.noRowsMatchFilters")
+            : t("results.noRowsReturned")
         }
+        t={t}
         onGridCopy={onGridCopy}
         onGridKeyDown={onGridKeyDown}
         onGridPaste={onGridPaste}
@@ -254,7 +259,8 @@ export function WebGlResultGrid({
     return (
       <GridState
         gridRef={gridRef}
-        label="WebGL unavailable"
+        label={t("results.webGlUnavailable")}
+        t={t}
         onGridCopy={onGridCopy}
         onGridKeyDown={onGridKeyDown}
         onGridPaste={onGridPaste}
@@ -267,7 +273,7 @@ export function WebGlResultGrid({
     <div
       className="webgl-result-grid"
       role="table"
-      aria-label="Query result WebGL preview"
+      aria-label={t("results.webGlPreview")}
       aria-rowcount={totalRows + 1}
       aria-colcount={columns.length}
       ref={gridRef}
@@ -326,6 +332,7 @@ export function WebGlResultGrid({
 function GridState({
   gridRef,
   label,
+  t,
   onGridCopy,
   onGridKeyDown,
   onGridPaste,
@@ -333,6 +340,7 @@ function GridState({
 }: {
   gridRef: RefObject<HTMLDivElement | null>;
   label: string;
+  t: Translator["t"];
   onGridScroll: (event: UIEvent<HTMLDivElement>) => void;
   onGridKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   onGridPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void;
@@ -342,7 +350,7 @@ function GridState({
     <div
       className="result-grid"
       role="table"
-      aria-label="Query result WebGL preview"
+      aria-label={t("results.webGlPreview")}
       ref={gridRef}
       tabIndex={0}
       onScroll={onGridScroll}

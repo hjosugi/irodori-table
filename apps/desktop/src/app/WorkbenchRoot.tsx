@@ -1,7 +1,10 @@
+import { useMemo } from "react";
 import { ActionToastStack } from "@/app/ActionToast";
 import {
   APP_NAME,
   appMenuCommandCatalog,
+  localizeCommandCatalog,
+  localizeMenuSections,
   menuBarSections,
 } from "@/app/app-config";
 import { WorkbenchDialogs } from "@/app/WorkbenchDialogs";
@@ -31,6 +34,7 @@ export function WorkbenchRoot() {
     resultGridController,
     runCommand,
     sidebars,
+    t,
     themes,
   } = useWorkbenchContext();
   const { theme, themeSwitching } = themes;
@@ -39,6 +43,14 @@ export function WorkbenchRoot() {
   const sqlLinter = usePreferencesStore((state) => state.sqlLinter);
   const animationsEnabled = usePreferencesStore(
     (state) => state.animationsEnabled,
+  );
+  const localizedMenuBarSections = useMemo(
+    () => localizeMenuSections(menuBarSections, t),
+    [t],
+  );
+  const localizedMenuCommandCatalog = useMemo(
+    () => localizeCommandCatalog(appMenuCommandCatalog, t),
+    [t],
   );
 
   return (
@@ -62,8 +74,8 @@ export function WorkbenchRoot() {
         inspectorWidth={layout.inspectorWidth}
         resultsHeight={layout.resultsHeight}
         editorSplitPercent={layout.editorSplitPercent}
-        menuBarSections={menuBarSections}
-        commandCatalog={appMenuCommandCatalog}
+        menuBarSections={localizedMenuBarSections}
+        commandCatalog={localizedMenuCommandCatalog}
         keymap={keybindings.keymap}
         activeConnectionName={connections.activeConnection.name}
         activeConnectionEngine={connections.activeConnection.engine}

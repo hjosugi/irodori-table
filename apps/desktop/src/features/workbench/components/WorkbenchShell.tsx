@@ -16,6 +16,8 @@ import {
   type KeybindingScope,
   type Keymap,
 } from "@/core/keybindings";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import type { ThemeKind } from "@/theme";
 
 export type WorkbenchStatusBarItem = {
@@ -125,6 +127,8 @@ export function WorkbenchShell({
   onRunCommand,
   onCloseWorkspaceMenu,
 }: WorkbenchShellProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const [activeMenuLabel, setActiveMenuLabel] = useState<string | null>(null);
   // The menu bar dropdown is portaled to <body> and positioned from the
   // anchor button's rect: the titlebar/menubar set `overflow: hidden` to clip
@@ -223,17 +227,23 @@ export function WorkbenchShell({
   const titleFor = (command: CommandMeta) => {
     switch (command.id) {
       case "view.sidebar.toggle":
-        return leftSidebarOpen ? "Hide Left Sidebar" : "Show Left Sidebar";
+        return leftSidebarOpen
+          ? t("shell.hideLeftSidebar")
+          : t("shell.showLeftSidebar");
       case "view.completion.toggle":
-        return completionOpen ? "Hide Completion" : "Show Completion";
+        return completionOpen
+          ? t("shell.hideCompletion")
+          : t("shell.showCompletion");
       case "view.history.toggle":
-        return historyOpen ? "Hide History" : "Show History";
+        return historyOpen ? t("shell.hideHistory") : t("shell.showHistory");
       case "view.plan.toggle":
-        return planOpen ? "Hide Plan" : "Show Plan";
+        return planOpen ? t("shell.hidePlan") : t("shell.showPlan");
       case "theme.toggle":
-        return themeKind === "dark" ? "Light Theme" : "Dark Theme";
+        return themeKind === "dark"
+          ? t("shell.lightTheme")
+          : t("shell.darkTheme");
       case "about.open":
-        return `About ${appName}`;
+        return t("commands.about.open.title");
       default:
         return command.title;
     }
@@ -397,7 +407,7 @@ export function WorkbenchShell({
           </div>
           <nav
             className="menubar"
-            aria-label="Application menu"
+            aria-label={t("shell.applicationMenu")}
             ref={menubarRef}
           >
             {menuBarSections.map((section) => (
@@ -439,7 +449,10 @@ export function WorkbenchShell({
           <small>{activeConnectionEngine}</small>
           <ChevronDown size={15} />
         </button>
-        <div className="titlebar-control-zone" aria-label="Layout controls">
+        <div
+          className="titlebar-control-zone"
+          aria-label={t("shell.layoutControls")}
+        >
           <button
             className={[
               "icon-button",
@@ -450,9 +463,15 @@ export function WorkbenchShell({
               .filter(Boolean)
               .join(" ")}
             type="button"
-            title={leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+            title={
+              leftSidebarOpen
+                ? t("shell.hideLeftSidebar")
+                : t("shell.showLeftSidebar")
+            }
             aria-label={
-              leftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"
+              leftSidebarOpen
+                ? t("shell.hideLeftSidebar")
+                : t("shell.showLeftSidebar")
             }
             aria-pressed={leftSidebarOpen}
             data-sidebar-toggle="left"
@@ -469,10 +488,14 @@ export function WorkbenchShell({
             ].join(" ")}
             type="button"
             title={
-              rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"
+              rightSidebarOpen
+                ? t("shell.hideRightSidebar")
+                : t("shell.showRightSidebar")
             }
             aria-label={
-              rightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"
+              rightSidebarOpen
+                ? t("shell.hideRightSidebar")
+                : t("shell.showRightSidebar")
             }
             aria-pressed={rightSidebarOpen}
             data-sidebar-toggle="right"
@@ -545,9 +568,12 @@ export function WorkbenchShell({
         <div className="statusbar-group statusbar-right">
           {rightStatusBarItems.map(renderStatusBarItem)}
           <span className="statusbar-item">
-            {vimMode ? "Vim" : "Default"} · {queryLineCount} lines ·{" "}
-            {sqlLintEnabled ? "lint on" : "lint off"} ·{" "}
-            {running ? "running" : "idle"}
+            {vimMode
+              ? t("shell.editorMode.vim")
+              : t("shell.editorMode.default")}{" "}
+            · {t("shell.lineCount", { count: queryLineCount })} ·{" "}
+            {sqlLintEnabled ? t("shell.lintOn") : t("shell.lintOff")} ·{" "}
+            {running ? t("shell.running") : t("shell.idle")}
           </span>
         </div>
       </footer>
@@ -569,8 +595,10 @@ export function WorkbenchShell({
             >
               <span>
                 {contextMenu.label
-                  ? `Activate ${contextMenu.label}`
-                  : "Activate"}
+                  ? t("shell.context.activateLabel", {
+                      label: contextMenu.label,
+                    })
+                  : t("shell.context.activate")}
               </span>
             </button>
           ) : null}
@@ -580,7 +608,7 @@ export function WorkbenchShell({
               role="menuitem"
               onClick={() => copyContextText(contextMenu.selectedText)}
             >
-              <span>Copy Selected Text</span>
+              <span>{t("shell.context.copySelectedText")}</span>
             </button>
           ) : contextMenu.copyText ? (
             <button
@@ -588,7 +616,11 @@ export function WorkbenchShell({
               role="menuitem"
               onClick={() => copyContextText(contextMenu.copyText)}
             >
-              <span>{contextMenu.editable ? "Copy Value" : "Copy Text"}</span>
+              <span>
+                {contextMenu.editable
+                  ? t("shell.context.copyValue")
+                  : t("shell.context.copyText")}
+              </span>
             </button>
           ) : null}
           {contextMenu.editable ? (
@@ -600,7 +632,7 @@ export function WorkbenchShell({
               }
               onClick={clearContextField}
             >
-              <span>Clear Field</span>
+              <span>{t("shell.context.clearField")}</span>
             </button>
           ) : null}
           <span className="menu-separator" aria-hidden="true" />
@@ -609,7 +641,7 @@ export function WorkbenchShell({
             role="menuitem"
             onClick={() => runMenuCommand("connection.manager")}
           >
-            <span>Connection Manager</span>
+            <span>{t("commands.connection.manager.shortTitle")}</span>
             {shortcutFor("connection.manager") ? (
               <kbd>{shortcutFor("connection.manager")}</kbd>
             ) : null}
@@ -624,7 +656,9 @@ export function WorkbenchShell({
             }}
           >
             <span>
-              {leftSidebarOpen ? "Hide Left Sidebar" : "Show Left Sidebar"}
+              {leftSidebarOpen
+                ? t("shell.hideLeftSidebar")
+                : t("shell.showLeftSidebar")}
             </span>
           </button>
           <button
@@ -636,7 +670,9 @@ export function WorkbenchShell({
             }}
           >
             <span>
-              {rightSidebarOpen ? "Hide Right Sidebar" : "Show Right Sidebar"}
+              {rightSidebarOpen
+                ? t("shell.hideRightSidebar")
+                : t("shell.showRightSidebar")}
             </span>
           </button>
         </div>

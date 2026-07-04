@@ -5,6 +5,7 @@ import type {
   MigrationPlanInput,
   MigrationPlanOutput,
 } from "@/generated/irodori-api";
+import type { Translator } from "@/i18n";
 
 export type MigrationEngine = Extract<
   DbEngine,
@@ -123,34 +124,47 @@ export function migrationEngineLabel(engine: MigrationEngine) {
 export function migrationOutputText(
   plan: MigrationPlan,
   kind: MigrationOutputKind,
+  t?: Translator["t"],
 ) {
+  const notReady =
+    t?.("migration.plan.notReady") ?? "Migration plan is not ready yet.";
   switch (kind) {
     case "source":
-      return plan.sourceSql || "-- Migration plan is not ready yet.";
+      return plan.sourceSql || `-- ${notReady}`;
     case "target":
-      return plan.targetSql || "-- Migration plan is not ready yet.";
+      return plan.targetSql || `-- ${notReady}`;
     case "diff":
-      return plan.diffSql || "-- Migration plan is not ready yet.";
+      return plan.diffSql || `-- ${notReady}`;
     case "runbook":
-      return plan.runbook || "Migration plan is not ready yet.";
+      return plan.runbook || notReady;
     default:
       return [
         `# ${plan.title}`,
         "",
-        "## Validation Gates",
+        `## ${t?.("migration.plan.validationGates") ?? "Validation Gates"}`,
         ...(plan.tasks.length > 0
           ? plan.tasks.map((task) => `- ${task.title}: ${task.detail}`)
-          : ["- Migration plan is not ready yet."]),
+          : [`- ${notReady}`]),
         "",
-        "## Engine Notes",
+        `## ${t?.("migration.plan.engineNotes") ?? "Engine Notes"}`,
         ...(plan.pairNotes.length > 0
           ? plan.pairNotes.map((note) => `- ${note}`)
-          : ["- No engine notes generated yet."]),
+          : [
+              `- ${
+                t?.("migration.plan.noEngineNotes") ??
+                "No engine notes generated yet."
+              }`,
+            ]),
         "",
-        "## Warnings",
+        `## ${t?.("migration.plan.warnings") ?? "Warnings"}`,
         ...(plan.warnings.length > 0
           ? plan.warnings.map((warning) => `- ${warning}`)
-          : ["- No blocking warning generated."]),
+          : [
+              `- ${
+                t?.("migration.plan.noBlockingWarning") ??
+                "No blocking warning generated."
+              }`,
+            ]),
       ].join("\n");
   }
 }
@@ -197,6 +211,7 @@ export async function buildMigrationPlan(
 export function createMigrationPlanPlaceholder(
   draft: MigrationDraft,
   warning?: string,
+  t?: Translator["t"],
 ): MigrationPlan {
   const sourceLabel = migrationEngineLabel(draft.sourceEngine);
   const targetLabel = migrationEngineLabel(draft.targetEngine);
@@ -222,8 +237,13 @@ export function createMigrationPlanPlaceholder(
     warnings: warning ? [warning] : [],
     tasks: [
       {
-        title: warning ? "Planner unavailable" : "Build plan",
-        detail: warning ?? "Waiting for the native migration planner.",
+        title: warning
+          ? (t?.("migration.plan.plannerUnavailable") ?? "Planner unavailable")
+          : (t?.("migration.plan.buildPlan") ?? "Build plan"),
+        detail:
+          warning ??
+          t?.("migration.plan.waitingForPlanner") ??
+          "Waiting for the native migration planner.",
         level: warning ? "risk" : "manual",
       },
     ],

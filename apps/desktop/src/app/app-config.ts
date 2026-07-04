@@ -1,4 +1,5 @@
 import { commandCatalog, type CommandMeta, type Keymap } from "@/core";
+import type { TranslationKey, Translator } from "@/i18n";
 import type { WorkspaceSnapshot } from "../generated/irodori-api";
 
 export const APP_NAME = "Irodori Table";
@@ -181,6 +182,299 @@ export const appMenuCommandCatalog: CommandMeta[] = [
   ...developerCommands,
 ];
 
+type CommandTranslationKeys = {
+  category: TranslationKey;
+  title: TranslationKey;
+};
+
+const commandCategoryKeys: Partial<Record<string, TranslationKey>> = {
+  Edit: "commands.category.edit",
+  Editor: "commands.category.editor",
+  File: "commands.category.file",
+  General: "commands.category.general",
+  Help: "commands.category.help",
+  Preferences: "commands.category.preferences",
+  Query: "commands.category.query",
+  Result: "commands.category.result",
+  Search: "commands.category.search",
+  View: "commands.category.view",
+  Workspace: "commands.category.workspace",
+};
+
+const commandTranslationKeys: Partial<Record<string, CommandTranslationKeys>> =
+  {
+    "about.open": {
+      title: "commands.about.open.title",
+      category: "commands.category.help",
+    },
+    "app.exit": {
+      title: "commands.app.exit.title",
+      category: "commands.category.file",
+    },
+    "connection.manager": {
+      title: "commands.connection.manager.title",
+      category: "commands.category.workspace",
+    },
+    "developer.openDevtools": {
+      title: "commands.developer.openDevtools.title",
+      category: "commands.category.help",
+    },
+    "diagram.show": {
+      title: "commands.diagram.show.title",
+      category: "commands.category.general",
+    },
+    "edit.addRow": {
+      title: "commands.edit.addRow.title",
+      category: "commands.category.edit",
+    },
+    "edit.commit": {
+      title: "commands.edit.commit.title",
+      category: "commands.category.edit",
+    },
+    "edit.toggle": {
+      title: "commands.edit.toggle.title",
+      category: "commands.category.edit",
+    },
+    "edit.undo": {
+      title: "commands.edit.undo.title",
+      category: "commands.category.edit",
+    },
+    "editor.cleanup": {
+      title: "commands.editor.cleanup.title",
+      category: "commands.category.editor",
+    },
+    "editor.comment.toggle": {
+      title: "commands.editor.comment.toggle.title",
+      category: "commands.category.editor",
+    },
+    "editor.focus": {
+      title: "commands.editor.focus.title",
+      category: "commands.category.editor",
+    },
+    "editor.format": {
+      title: "commands.editor.format.title",
+      category: "commands.category.editor",
+    },
+    "editor.generateSql": {
+      title: "commands.editor.generateSql.title",
+      category: "commands.category.editor",
+    },
+    "editor.indent": {
+      title: "commands.editor.indent.title",
+      category: "commands.category.editor",
+    },
+    "editor.outdent": {
+      title: "commands.editor.outdent.title",
+      category: "commands.category.editor",
+    },
+    "editor.quickDefinition": {
+      title: "commands.editor.quickDefinition.title",
+      category: "commands.category.editor",
+    },
+    "editor.quickFix": {
+      title: "commands.editor.quickFix.title",
+      category: "commands.category.editor",
+    },
+    "editor.searchInAllTabs": {
+      title: "commands.editor.searchInAllTabs.title",
+      category: "commands.category.search",
+    },
+    "editor.transform.addCommas": {
+      title: "commands.editor.transform.addCommas.title",
+      category: "commands.category.editor",
+    },
+    "editor.transform.doubleToSingleQuotes": {
+      title: "commands.editor.transform.doubleToSingleQuotes.title",
+      category: "commands.category.editor",
+    },
+    "editor.transform.lowercase": {
+      title: "commands.editor.transform.lowercase.title",
+      category: "commands.category.editor",
+    },
+    "editor.transform.unformat": {
+      title: "commands.editor.transform.unformat.title",
+      category: "commands.category.editor",
+    },
+    "editor.transform.uppercase": {
+      title: "commands.editor.transform.uppercase.title",
+      category: "commands.category.editor",
+    },
+    "file.save": {
+      title: "commands.file.save.title",
+      category: "commands.category.file",
+    },
+    "file.saveAs": {
+      title: "commands.file.saveAs.title",
+      category: "commands.category.file",
+    },
+    "git.open": {
+      title: "commands.git.open.title",
+      category: "commands.category.workspace",
+    },
+    "help.open": {
+      title: "commands.help.open.title",
+      category: "commands.category.help",
+    },
+    "history.open": {
+      title: "commands.history.open.title",
+      category: "commands.category.view",
+    },
+    "migration.studio": {
+      title: "commands.migration.studio.title",
+      category: "commands.category.general",
+    },
+    "palette.open": {
+      title: "commands.palette.open.title",
+      category: "commands.category.general",
+    },
+    "query.cancel": {
+      title: "commands.query.cancel.title",
+      category: "commands.category.query",
+    },
+    "query.explainAnalyze": {
+      title: "commands.query.explainAnalyze.title",
+      category: "commands.category.query",
+    },
+    "query.explainPlan": {
+      title: "commands.query.explainPlan.title",
+      category: "commands.category.query",
+    },
+    "query.run": {
+      title: "commands.query.run.title",
+      category: "commands.category.query",
+    },
+    "query.runAll": {
+      title: "commands.query.runAll.title",
+      category: "commands.category.query",
+    },
+    "query.runCurrent": {
+      title: "commands.query.runCurrent.title",
+      category: "commands.category.query",
+    },
+    "query.runFromStart": {
+      title: "commands.query.runFromStart.title",
+      category: "commands.category.query",
+    },
+    "result.copyRow": {
+      title: "commands.result.copyRow.title",
+      category: "commands.category.result",
+    },
+    "result.copySelection": {
+      title: "commands.result.copySelection.title",
+      category: "commands.category.result",
+    },
+    "result.copySqlInserts": {
+      title: "commands.result.copySqlInserts.title",
+      category: "commands.category.result",
+    },
+    "result.copyVisible": {
+      title: "commands.result.copyVisible.title",
+      category: "commands.category.result",
+    },
+    "result.export": {
+      title: "commands.result.export.title",
+      category: "commands.category.result",
+    },
+    "result.exportSqlInserts": {
+      title: "commands.result.exportSqlInserts.title",
+      category: "commands.category.result",
+    },
+    "settings.keymap": {
+      title: "commands.settings.keymap.title",
+      category: "commands.category.preferences",
+    },
+    "settings.open": {
+      title: "commands.settings.open.title",
+      category: "commands.category.preferences",
+    },
+    "tab.close": {
+      title: "commands.tab.close.title",
+      category: "commands.category.workspace",
+    },
+    "tab.new": {
+      title: "commands.tab.new.title",
+      category: "commands.category.workspace",
+    },
+    "terminal.toggle": {
+      title: "commands.terminal.toggle.title",
+      category: "commands.category.view",
+    },
+    "theme.toggle": {
+      title: "commands.theme.toggle.title",
+      category: "commands.category.preferences",
+    },
+    "view.aiChat.toggle": {
+      title: "commands.view.aiChat.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.bi.toggle": {
+      title: "commands.view.bi.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.completion.toggle": {
+      title: "commands.view.completion.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.history.toggle": {
+      title: "commands.view.history.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.plan.toggle": {
+      title: "commands.view.plan.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.search.toggle": {
+      title: "commands.view.search.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.sidebar.toggle": {
+      title: "commands.view.sidebar.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.zoomIn": {
+      title: "commands.view.zoomIn.title",
+      category: "commands.category.view",
+    },
+    "view.zoomOut": {
+      title: "commands.view.zoomOut.title",
+      category: "commands.category.view",
+    },
+    "view.zoomReset": {
+      title: "commands.view.zoomReset.title",
+      category: "commands.category.view",
+    },
+  };
+
+const menuSectionLabelKeys: Partial<Record<string, TranslationKey>> = {
+  Edit: "menu.section.edit",
+  File: "menu.section.file",
+  Help: "menu.section.help",
+  Preferences: "menu.section.preferences",
+  Run: "menu.section.run",
+  Tools: "menu.section.tools",
+  View: "menu.section.view",
+  Workspace: "menu.section.workspace",
+};
+
+export function localizeCommandCatalog(
+  commands: readonly CommandMeta[],
+  t: Translator["t"],
+): CommandMeta[] {
+  return commands.map((command) => {
+    const keys = commandTranslationKeys[command.id];
+    const categoryKey = commandCategoryKeys[command.category];
+    return {
+      ...command,
+      title: keys ? t(keys.title) : command.title,
+      category: keys
+        ? t(keys.category)
+        : categoryKey
+          ? t(categoryKey)
+          : command.category,
+    };
+  });
+}
+
 export type AppMenuItem = {
   commandId: string;
 };
@@ -189,6 +483,19 @@ export type AppMenuSection = {
   label: string;
   items: AppMenuItem[];
 };
+
+export function localizeMenuSections(
+  sections: readonly AppMenuSection[],
+  t: Translator["t"],
+): AppMenuSection[] {
+  return sections.map((section) => {
+    const labelKey = menuSectionLabelKeys[section.label];
+    return {
+      ...section,
+      label: labelKey ? t(labelKey) : section.label,
+    };
+  });
+}
 
 export const workspaceMenuSections: AppMenuSection[] = [
   {

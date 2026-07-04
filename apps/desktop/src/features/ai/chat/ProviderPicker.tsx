@@ -186,10 +186,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
   const deleteLocal = useCallback(async () => {
     if (
       !(await confirm({
-        title: "Delete the embedded model file?",
-        message:
-          "Removes the model from disk. It must be reinstalled to use the local provider again.",
-        confirmLabel: "Delete",
+        title: t("ai.provider.confirmDeleteLocal.title"),
+        message: t("ai.provider.confirmDeleteLocal.message"),
+        confirmLabel: t("common.delete"),
         tone: "danger",
       }))
     ) {
@@ -263,7 +262,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
     <div className="aichat-provider">
       <div className="aichat-provider-row">
         <label className="aichat-provider-select">
-          <span>Model</span>
+          <span>{t("ai.provider.model")}</span>
           <select
             value={presetId}
             onChange={(e) => applyPreset(e.target.value)}
@@ -283,7 +282,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           className="aichat-provider-toggle"
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
-          title="Provider settings"
+          title={t("ai.provider.settings")}
         >
           {expanded ? "▾" : "⚙"}
         </button>
@@ -292,7 +291,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       {/* API key shown inline so auth is obvious for ChatGPT / Gemini / DeepSeek. */}
       {needsKey ? (
         <label className="aichat-field">
-          <span>API key</span>
+          <span>{t("ai.provider.apiKey")}</span>
           <input
             type="password"
             value={apiKey}
@@ -303,9 +302,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       ) : null}
       {isCommand ? (
         <p className="aichat-provider-hint">
-          Sign in via the CLI itself (e.g. <code>claude</code> /{" "}
-          <code>codex</code> login). Irodori runs your authenticated CLI — no
-          API key needed here.
+          {t("ai.provider.commandHintBefore")}
+          <code>claude</code> / <code>codex</code>
+          {t("ai.provider.commandHintAfter")}
         </p>
       ) : null}
       {cloudProviderSelected ? (
@@ -334,30 +333,30 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
         <div className="aichat-local">
           <span className="aichat-local-status">
             {!status.compiled
-              ? "Not in this build (rebuild with --features llama)"
+              ? t("ai.provider.local.notCompiled")
               : status.loaded
-                ? "● Loaded in memory"
+                ? t("ai.provider.local.loaded")
                 : status.modelPresent
-                  ? "○ Installed (not loaded)"
-                  : "Model file not installed"}
+                  ? t("ai.provider.local.installed")
+                  : t("ai.provider.local.notInstalled")}
           </span>
           <div className="aichat-local-actions">
             <button
               type="button"
               onClick={() => void unloadLocal()}
               disabled={busy || !status.loaded}
-              title="Unload from memory (frees RAM; reloads on next use)"
+              title={t("ai.provider.unloadLocal")}
             >
-              Stop
+              {t("common.stop")}
             </button>
             <button
               type="button"
               className="aichat-local-danger"
               onClick={() => void deleteLocal()}
               disabled={busy || !status.modelPresent}
-              title="Delete the model file from disk"
+              title={t("ai.provider.deleteLocal")}
             >
-              Delete
+              {t("common.delete")}
             </button>
           </div>
         </div>
@@ -366,7 +365,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
       {expanded ? (
         <div className="aichat-provider-body">
           <label className="aichat-field">
-            <span>Kind</span>
+            <span>{t("ai.provider.kind")}</span>
             <select
               value={config.kind}
               onChange={(e) => {
@@ -390,7 +389,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           {isHttp ? (
             <>
               <label className="aichat-field">
-                <span>Model</span>
+                <span>{t("ai.provider.model")}</span>
                 <input
                   value={config.model}
                   placeholder={
@@ -402,7 +401,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
                 />
               </label>
               <label className="aichat-field">
-                <span>Endpoint</span>
+                <span>{t("ai.provider.endpoint")}</span>
                 <input
                   value={config.endpoint ?? ""}
                   placeholder="https://api.openai.com"
@@ -420,7 +419,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           {isCommand ? (
             <>
               <label className="aichat-field">
-                <span>Program</span>
+                <span>{t("ai.provider.program")}</span>
                 <input
                   value={config.program}
                   placeholder="claude"
@@ -430,7 +429,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
                 />
               </label>
               <label className="aichat-field">
-                <span>Args</span>
+                <span>{t("ai.provider.args")}</span>
                 <input
                   value={config.args.join(" ")}
                   placeholder="-p  (or use {prompt})"
@@ -460,7 +459,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
             : undefined
         }
       >
-        {saving ? "Saving…" : "Use this model"}
+        {saving ? t("common.saving") : t("ai.provider.useThisModel")}
       </button>
       {confirmElement}
     </div>

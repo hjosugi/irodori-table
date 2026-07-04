@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { Maximize2, Search, X } from "lucide-react";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import {
   queryHistoryDisplayLimit,
   type QueryHistoryItem,
@@ -27,6 +29,8 @@ export function QueryHistorySidebar({
   onLoad,
   onClose,
 }: QueryHistorySidebarProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const items = useQueryHistoryStore((state) => state.items);
   const search = useQueryHistoryStore((state) => state.search);
   const setSearch = useQueryHistoryStore((state) => state.setSearch);
@@ -52,13 +56,13 @@ export function QueryHistorySidebar({
   return (
     <section>
       <div className="section-heading">
-        <span>History</span>
+        <span>{t("history.titleShort")}</span>
         <div className="section-heading-actions">
           <small>{toCount(activeHistoryCount)}</small>
           <button
             type="button"
-            aria-label="Open query history"
-            title="Open query history"
+            aria-label={t("history.open")}
+            title={t("history.open")}
             onClick={() => openDialog(scopedHistory[0]?.id)}
           >
             <Maximize2 size={12} />
@@ -66,8 +70,8 @@ export function QueryHistorySidebar({
           {onClose ? (
             <button
               type="button"
-              aria-label="Close history"
-              title="Close history"
+              aria-label={t("history.close")}
+              title={t("history.close")}
               onClick={onClose}
             >
               <X size={12} />
@@ -79,15 +83,15 @@ export function QueryHistorySidebar({
         <Search size={13} />
         <input
           value={search}
-          placeholder="Search history"
-          aria-label="Search query history"
+          placeholder={t("history.search")}
+          aria-label={t("history.searchQueryHistory")}
           onChange={(event) => setSearch(event.currentTarget.value)}
         />
         {hasSearch ? (
           <button
             type="button"
-            aria-label="Clear history search"
-            title="Clear history search"
+            aria-label={t("history.clearSearch")}
+            title={t("history.clearSearch")}
             onClick={() => setSearch("")}
           >
             <X size={12} />
@@ -115,7 +119,7 @@ export function QueryHistorySidebar({
           ))
         ) : (
           <div className="empty-browser">
-            {hasSearch ? "No matching history" : "No query history"}
+            {hasSearch ? t("history.noMatches") : t("history.noHistory")}
           </div>
         )}
       </div>

@@ -10,6 +10,8 @@ import {
 import type { CSSProperties } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import { GitChangesView } from "./GitChangesView";
 import { GitGraphView } from "./GitGraphView";
 import { branchSummary, gitAccentColor, providerLabel } from "./git-format";
@@ -41,6 +43,8 @@ type GitPanelProps = {
 };
 
 export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const { confirm, confirmElement } = useConfirm();
   const view = useGitStore((state) => state.view);
   const repoPath = useGitStore((state) => state.repoPath);
@@ -108,9 +112,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     }
     if (
       !(await confirm({
-        title: "Commit all changes?",
-        message: "Commits every modified file in the working tree.",
-        confirmLabel: "Commit",
+        title: t("git.confirm.commitAll.title"),
+        message: t("git.confirm.commitAll.message"),
+        confirmLabel: t("git.actions.commit"),
       }))
     ) {
       return;
@@ -121,8 +125,8 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   async function onCommitStaged() {
     if (
       !(await confirm({
-        title: "Commit staged changes?",
-        confirmLabel: "Commit",
+        title: t("git.confirm.commitStaged.title"),
+        confirmLabel: t("git.actions.commit"),
       }))
     ) {
       return;
@@ -133,9 +137,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   async function onPush() {
     if (
       !(await confirm({
-        title: "Push current branch?",
-        message: "Pushes to the configured remote.",
-        confirmLabel: "Push",
+        title: t("git.confirm.push.title"),
+        message: t("git.confirm.push.message"),
+        confirmLabel: t("git.actions.push"),
       }))
     ) {
       return;
@@ -146,9 +150,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   async function onPull() {
     if (
       !(await confirm({
-        title: "Pull latest changes?",
-        message: "Fast-forward only; stops instead of merging.",
-        confirmLabel: "Pull",
+        title: t("git.confirm.pull.title"),
+        message: t("git.confirm.pull.message"),
+        confirmLabel: t("git.actions.pull"),
       }))
     ) {
       return;
@@ -162,9 +166,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     }
     if (
       !(await confirm({
-        title: "Discard local changes?",
-        message: `Discards changes in ${selectedPath}. This can't be undone.`,
-        confirmLabel: "Discard",
+        title: t("git.confirm.discard.title"),
+        message: t("git.confirm.discard.message", { path: selectedPath }),
+        confirmLabel: t("git.actions.discard"),
         tone: "danger",
       }))
     ) {
@@ -177,7 +181,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     const result = await openDialog({
       directory: true,
       multiple: false,
-      title: "Select Git repository",
+      title: t("git.selectRepository"),
     });
     if (typeof result === "string") {
       setRepoPath(result);
@@ -191,9 +195,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     if (
       hasChanges &&
       !(await confirm({
-        title: `Switch to ${branch}?`,
-        message: "Local changes are present and will carry over.",
-        confirmLabel: "Switch",
+        title: t("git.confirm.switchBranch.title", { branch }),
+        message: t("git.confirm.localChangesCarry"),
+        confirmLabel: t("git.actions.switch"),
       }))
     ) {
       return;
@@ -209,9 +213,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     if (
       hasChanges &&
       !(await confirm({
-        title: `Create ${target}?`,
-        message: "Local changes are present and will carry over.",
-        confirmLabel: "Create",
+        title: t("git.confirm.createBranch.title", { branch: target }),
+        message: t("git.confirm.localChangesCarry"),
+        confirmLabel: t("git.actions.create"),
       }))
     ) {
       return;
@@ -226,18 +230,18 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     }
     if (branch === status?.branch) {
       await confirm({
-        title: "Cannot delete the current branch",
-        message: "Switch away from the branch before deleting it.",
-        confirmLabel: "OK",
+        title: t("git.confirm.deleteCurrent.title"),
+        message: t("git.confirm.deleteCurrent.message"),
+        confirmLabel: t("common.ok"),
         hideCancel: true,
       });
       return;
     }
     if (
       !(await confirm({
-        title: `Delete branch ${branch}?`,
-        message: "This can't be undone.",
-        confirmLabel: "Delete",
+        title: t("git.confirm.deleteBranch.title", { branch }),
+        message: t("confirm.cannotUndo"),
+        confirmLabel: t("common.delete"),
         tone: "danger",
       }))
     ) {
@@ -254,7 +258,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     <div
       className={`git-drawer git-panel-${variant} ${error ? "has-error" : ""}`}
       role={variant === "drawer" ? "dialog" : "region"}
-      aria-label="Git integration"
+      aria-label={t("git.integration")}
       style={drawerStyle}
     >
       <div className="git-drawer-header">
@@ -264,24 +268,24 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
         </span>
         <div
           className="segmented-control git-view-switch"
-          aria-label="Git view"
+          aria-label={t("git.view")}
         >
           <ViewButton
             active={view === "graph"}
-            label="Graph"
+            label={t("git.views.graph")}
             onClick={() => setView("graph")}
           />
           <ViewButton
             active={view === "changes"}
-            label="Changes"
+            label={t("git.views.changes")}
             onClick={() => setView("changes")}
           />
         </div>
         <button
           className="icon-button"
           type="button"
-          title="Refresh Git status"
-          aria-label="Refresh Git status"
+          title={t("git.refresh")}
+          aria-label={t("git.refresh")}
           onClick={() => void refresh()}
           disabled={loading}
         >
@@ -290,8 +294,8 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
         <button
           className="icon-button"
           type="button"
-          title="Close Git panel"
-          aria-label="Close Git panel"
+          title={t("git.close")}
+          aria-label={t("git.close")}
           onClick={closePanel}
         >
           <X size={14} />
@@ -315,7 +319,9 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             className={`git-clean-badge ${status.clean ? "clean" : "dirty"}`}
           >
             {status.clean ? <CheckCircle2 size={13} /> : <FileDiff size={13} />}
-            {status.clean ? "Clean" : `${status.files.length} changes`}
+            {status.clean
+              ? t("git.clean")
+              : t("git.changesCount", { count: status.files.length })}
           </span>
           <div className="git-provider-row">
             {status.remotes.length > 0 ? (
@@ -346,11 +352,11 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             ) : (
               <span className="git-provider-badge">
                 <i style={{ background: accentColor }} />
-                Local Git
+                {t("git.localGit")}
               </span>
             )}
             <label className="git-color-picker">
-              <span>Color</span>
+              <span>{t("git.color")}</span>
               <input
                 type="color"
                 value={accentColor}
@@ -371,14 +377,14 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               type="button"
               onClick={() => setRepoPath(repoPathDraft)}
             >
-              Use
+              {t("git.actions.use")}
             </button>
             <button
               className="text-button"
               type="button"
               onClick={() => void onBrowseRepo()}
             >
-              Browse
+              {t("git.actions.browse")}
             </button>
           </div>
           <div className="git-branch-row">
@@ -405,7 +411,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               type="button"
               onClick={() => void onCreateBranch(branchDraft)}
             >
-              Create
+              {t("git.actions.create")}
             </button>
             <button
               className="text-button danger"
@@ -413,7 +419,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               disabled={!branchDraft.trim()}
               onClick={() => void onDeleteBranchDraft()}
             >
-              Delete
+              {t("common.delete")}
             </button>
           </div>
         </div>
@@ -451,6 +457,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
               void onCreateBranch(branch, startPoint)
             }
             onDeleteBranch={(branch) => void onDeleteBranchName(branch)}
+            t={t}
           />
         ) : (
           <GitChangesView
@@ -473,6 +480,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             onStageAll={() => void stagePaths(files.map((file) => file.path))}
             onUnstageSelected={() => void unstagePaths(selectedPaths)}
             onDiscardSelected={() => void onDiscardSelected()}
+            t={t}
           />
         )}
       </div>

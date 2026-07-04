@@ -81,13 +81,22 @@ function isSqlLang(lang: string): boolean {
   return lang === "" || lang.toLowerCase() === "sql";
 }
 
-function ResultTable({ result }: { result: ChatResultView }) {
+function ResultTable({
+  result,
+  t,
+}: {
+  result: ChatResultView;
+  t: Translator["t"];
+}) {
   const previewRows = result.rows.slice(0, 20);
   return (
     <div className="aichat-result">
       <div className="aichat-result-meta">
-        {result.rowCount} rows · {result.elapsedMs} ms
-        {result.truncated ? " · truncated" : ""}
+        {t("ai.chat.resultMeta", {
+          columns: result.columns.length,
+          rows: result.rowCount,
+        })}
+        {result.truncated ? ` · ${t("common.truncated")}` : ""}
       </div>
       <div className="aichat-result-scroll">
         <table>
@@ -111,7 +120,10 @@ function ResultTable({ result }: { result: ChatResultView }) {
       </div>
       {result.rows.length > previewRows.length ? (
         <div className="aichat-result-meta">
-          showing {previewRows.length} of {result.rows.length} fetched rows
+          {t("ai.chat.showingRows", {
+            shown: previewRows.length,
+            total: result.rows.length,
+          })}
         </div>
       ) : null}
     </div>
@@ -214,24 +226,24 @@ export function AiChatPanel({
     .find((t) => t.role === "assistant")?.id;
 
   return (
-    <section className="aichat-panel" aria-label="AI Chat">
+    <section className="aichat-panel" aria-label={t("ai.chat.title")}>
       <header className="aichat-header">
         <span className="aichat-title">
-          <Bot size={14} /> AI Chat
+          <Bot size={14} /> {t("ai.chat.title")}
         </span>
         <div className="aichat-header-actions">
           <button
             type="button"
-            title="Clear conversation"
-            aria-label="Clear"
+            title={t("ai.chat.clearConversation")}
+            aria-label={t("common.clear")}
             onClick={clear}
           >
             <Eraser size={13} />
           </button>
           <button
             type="button"
-            title="Close"
-            aria-label="Close"
+            title={t("common.close")}
+            aria-label={t("common.close")}
             onClick={onClose}
           >
             <X size={14} />
@@ -242,18 +254,20 @@ export function AiChatPanel({
       <div className="aichat-subbar">
         <span className="aichat-connection" title={activeConnectionName}>
           <Database size={12} />
-          {activeConnectionOpen ? activeConnectionName : "No active connection"}
+          {activeConnectionOpen
+            ? activeConnectionName
+            : t("ai.chat.noActiveConnection")}
         </span>
         <label
           className="aichat-agent-toggle"
-          title="Let the assistant run read-only SELECT queries to answer with real data"
+          title={t("ai.chat.agentTooltip")}
         >
           <input
             type="checkbox"
             checked={agentMode}
             onChange={(e) => setAgentMode(e.target.checked)}
           />
-          Agent (run queries)
+          {t("ai.chat.agentMode")}
         </label>
       </div>
 
@@ -262,9 +276,9 @@ export function AiChatPanel({
       <div className="aichat-messages" ref={scrollRef}>
         {turns.length === 0 ? (
           <div className="aichat-empty">
-            Ask about your data. With <strong>Agent</strong> on, the assistant
-            runs read-only SELECT queries against the connected database and
-            answers from the results.
+            {t("ai.chat.emptyBeforeAgent")}
+            <strong>{t("ai.chat.agentName")}</strong>
+            {t("ai.chat.emptyAfterAgent")}
           </div>
         ) : null}
         {turns.map((turn) => (
@@ -286,9 +300,9 @@ export function AiChatPanel({
                           <button
                             type="button"
                             onClick={() => onInsertSql(seg.text)}
-                            title="Insert into editor"
+                            title={t("ai.chat.insertIntoEditor")}
                           >
-                            <Plus size={12} /> Insert
+                            <Plus size={12} /> {t("common.insert")}
                           </button>
                         ) : null}
                         <button
@@ -296,9 +310,9 @@ export function AiChatPanel({
                           onClick={() =>
                             void navigator.clipboard?.writeText(seg.text)
                           }
-                          title="Copy"
+                          title={t("common.copy")}
                         >
-                          <Copy size={12} /> Copy
+                          <Copy size={12} /> {t("common.copy")}
                         </button>
                       </div>
                     </div>
@@ -310,7 +324,7 @@ export function AiChatPanel({
                   </div>
                 ))}
                 {turn.results.map((result, i) => (
-                  <ResultTable key={`r-${i}`} result={result} />
+                  <ResultTable key={`r-${i}`} result={result} t={t} />
                 ))}
                 {turn.errors.map((err, i) => (
                   <div key={`e-${i}`} className="aichat-error">
@@ -326,18 +340,18 @@ export function AiChatPanel({
                       type="button"
                       onClick={regenerate}
                       disabled={streaming}
-                      title="Regenerate"
+                      title={t("ai.chat.regenerate")}
                     >
-                      <RefreshCw size={12} /> Regenerate
+                      <RefreshCw size={12} /> {t("ai.chat.regenerate")}
                     </button>
                     <button
                       type="button"
                       onClick={() =>
                         void navigator.clipboard?.writeText(turn.content)
                       }
-                      title="Copy reply"
+                      title={t("ai.chat.copyReply")}
                     >
-                      <Copy size={12} /> Copy
+                      <Copy size={12} /> {t("common.copy")}
                     </button>
                   </div>
                 ) : null}
@@ -353,7 +367,7 @@ export function AiChatPanel({
         <textarea
           value={input}
           rows={2}
-          placeholder="Ask anything about your data…"
+          placeholder={t("ai.chat.placeholder")}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -367,7 +381,7 @@ export function AiChatPanel({
             type="button"
             className="aichat-send aichat-stop"
             onClick={stop}
-            title="Stop"
+            title={t("common.stop")}
           >
             <Square size={14} />
           </button>
@@ -377,7 +391,7 @@ export function AiChatPanel({
             className="aichat-send"
             onClick={() => void send()}
             disabled={!input.trim()}
-            title="Send (Enter)"
+            title={t("ai.chat.send")}
           >
             <Send size={14} />
           </button>
@@ -403,7 +417,7 @@ function handleEvent(
       // kept so future UI (e.g. a dedicated "run" affordance) can hook in.
       break;
     case "queryStart":
-      store.addStep(assistantId, "Running query…");
+      store.addStep(assistantId, t("ai.chat.runningQuery"));
       break;
     case "queryResult":
       store.addResult(assistantId, {
@@ -415,7 +429,10 @@ function handleEvent(
       });
       break;
     case "queryError":
-      store.addError(assistantId, `Query failed: ${event.message}`);
+      store.addError(
+        assistantId,
+        t("ai.chat.queryFailed", { message: event.message }),
+      );
       break;
     case "step":
       store.addStep(assistantId, event.message);

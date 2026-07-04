@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowRight, Copy, Search, X } from "lucide-react";
 
+import { usePreferencesStore } from "@/features/preferences";
 import {
   dbRunQuery,
   type DatabaseMetadata,
@@ -18,16 +19,24 @@ import {
   rowToJsonObject,
   type JsonTreeNode,
 } from "../row-detail";
+import { createTranslator, type Translator } from "@/i18n";
 
 const MAX_FK_DEPTH = 6;
 
 type DetailMode = "fields" | "json" | "tree";
 
-const DETAIL_MODES: Array<{ id: DetailMode; label: string }> = [
-  { id: "fields", label: "Fields" },
-  { id: "json", label: "JSON" },
-  { id: "tree", label: "Tree" },
+const DETAIL_MODES: Array<{ id: DetailMode }> = [
+  { id: "fields" },
+  { id: "json" },
+  { id: "tree" },
 ];
+
+const detailModeLabelKeys: Record<DetailMode, Parameters<Translator["t"]>[0]> =
+  {
+    fields: "rowDetail.mode.fields",
+    json: "rowDetail.mode.json",
+    tree: "rowDetail.mode.tree",
+  };
 
 const emptyRowValues: readonly unknown[] = [];
 
@@ -40,10 +49,14 @@ type RowDetailSidebarProps = {
   engine: DbEngine;
   connectionId: string;
   onClose: () => void;
+  t?: Translator["t"];
 };
 
 /** A right-side drawer showing one result row's columns, JSON values, and FK links. */
 export function RowDetailSidebar(props: RowDetailSidebarProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t: fallbackT } = createTranslator(locale);
+  const t = props.t ?? fallbackT;
   const [mode, setMode] = useState<DetailMode>("fields");
   const [query, setQuery] = useState("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">(
@@ -73,20 +86,22 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
   }
 
   return (
-    <aside className="row-detail" aria-label="Row detail">
+    <aside className="row-detail" aria-label={t("rowDetail.label")}>
       <div className="row-detail-header">
         <div className="row-detail-title">
-          <span>Row Viewer</span>
+          <span>{t("rowDetail.title")}</span>
           <span>
-            {rowSelected ? `${props.columns.length} fields` : "No row selected"}
+            {rowSelected
+              ? t("rowDetail.fieldsCount", { count: props.columns.length })
+              : t("rowDetail.noRowSelected")}
           </span>
         </div>
         <button
           type="button"
           className="row-detail-close"
           onClick={props.onClose}
-          aria-label="Clear row selection"
-          title="Clear row selection"
+          aria-label={t("rowDetail.clearSelection")}
+          title={t("rowDetail.clearSelection")}
           disabled={!rowSelected}
         >
           <X size={14} />
@@ -96,7 +111,7 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
         <div
           className="row-detail-tabs"
           role="tablist"
-          aria-label="Row detail view"
+          aria-label={t("rowDetail.view")}
         >
           {DETAIL_MODES.map((item) => (
             <button
@@ -107,7 +122,7 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
               className={mode === item.id ? "is-active" : undefined}
               onClick={() => setMode(item.id)}
             >
-              {item.label}
+              {t(detailModeLabelKeys[item.id])}
             </button>
           ))}
         </div>
@@ -115,16 +130,16 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
           type="button"
           className={`row-detail-copy${copyStatus !== "idle" ? " is-status" : ""}`}
           onClick={copyJson}
-          title="Copy row JSON"
+          title={t("rowDetail.copyJson")}
           disabled={!rowSelected}
         >
           <Copy size={12} aria-hidden="true" />
           <span>
             {copyStatus === "copied"
-              ? "Copied"
+              ? t("rowDetail.copied")
               : copyStatus === "failed"
-                ? "Failed"
-                : "Copy"}
+                ? t("rowDetail.failed")
+                : t("common.copy")}
           </span>
         </button>
         <label className="row-detail-search">
@@ -136,15 +151,15 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
               setQuery(event.target.value);
               setCopyStatus("idle");
             }}
-            placeholder="Search row"
-            aria-label="Search row"
+            placeholder={t("rowDetail.search")}
+            aria-label={t("rowDetail.search")}
             disabled={!rowSelected}
           />
         </label>
       </div>
       <div className="row-detail-body">
         {!rowSelected ? (
-          <div className="row-detail-empty">No row selected</div>
+          <div className="row-detail-empty">{t("rowDetail.noRowSelected")}</div>
         ) : mode === "fields" ? (
           <RowDetailFields
             columns={props.columns}
@@ -155,11 +170,12 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
             connectionId={props.connectionId}
             depth={0}
             filter={query}
+            t={t}
           />
         ) : mode === "json" ? (
-          <RowJsonDocument text={rowJson} filter={query} />
+          <RowJsonDocument text={rowJson} filter={query} t={t} />
         ) : (
-          <JsonTreeView value={rowObject} filter={query} />
+          <JsonTreeView value={rowObject} filter={query} t={t} />
         )}
       </div>
     </aside>
@@ -175,6 +191,7 @@ type RowDetailFieldsProps = {
   connectionId: string;
   depth: number;
   filter: string;
+  t: Translator["t"];
 };
 
 type ReferencedRow = {
@@ -193,6 +210,7 @@ function RowDetailFields(props: RowDetailFieldsProps) {
     connectionId,
     depth,
     filter,
+    t,
   } = props;
 
   const fkColumns = useMemo(
@@ -243,7 +261,11 @@ function RowDetailFields(props: RowDetailFieldsProps) {
         lookup.params,
       );
       if (result.rows.length === 0) {
-        setError("No matching row in " + fk.referencesTable + ".");
+        setError(
+          t("rowDetail.noMatchingReferencedRow", {
+            table: fk.referencesTable,
+          }),
+        );
         return;
       }
       setReferenced({
@@ -273,7 +295,9 @@ function RowDetailFields(props: RowDetailFieldsProps) {
     );
 
   if (rows.length === 0) {
-    return <div className="detail-empty">No matching fields</div>;
+    return (
+      <div className="detail-empty">{t("rowDetail.noMatchingFields")}</div>
+    );
   }
 
   return (
@@ -298,7 +322,9 @@ function RowDetailFields(props: RowDetailFieldsProps) {
                   onClick={() =>
                     navigate(index, binding.fk, binding.columnIndexes)
                   }
-                  title={`References ${binding.fk.referencesTable}`}
+                  title={t("rowDetail.referencesTable", {
+                    table: binding.fk.referencesTable,
+                  })}
                 >
                   <ArrowRight size={12} aria-hidden="true" />
                   <span>{detail.text}</span>
@@ -316,7 +342,9 @@ function RowDetailFields(props: RowDetailFieldsProps) {
                 <div className="detail-ref">
                   {loading ? (
                     <span className="detail-ref-status">
-                      Loading {binding.fk.referencesTable}…
+                      {t("rowDetail.loadingTable", {
+                        table: binding.fk.referencesTable,
+                      })}
                     </span>
                   ) : null}
                   {error ? (
@@ -336,6 +364,7 @@ function RowDetailFields(props: RowDetailFieldsProps) {
                         connectionId={connectionId}
                         depth={depth + 1}
                         filter={filter}
+                        t={t}
                       />
                     </>
                   ) : null}
@@ -363,7 +392,15 @@ function matchesDetailFilter(
     .includes(normalizedFilter);
 }
 
-function RowJsonDocument({ text, filter }: { text: string; filter: string }) {
+function RowJsonDocument({
+  text,
+  filter,
+  t,
+}: {
+  text: string;
+  filter: string;
+  t: Translator["t"];
+}) {
   const normalizedFilter = filter.trim().toLowerCase();
   const matches =
     normalizedFilter.length === 0 ||
@@ -372,7 +409,7 @@ function RowJsonDocument({ text, filter }: { text: string; filter: string }) {
     <div className="row-json-view">
       {normalizedFilter.length > 0 ? (
         <div className={`detail-filter-status${matches ? "" : " is-empty"}`}>
-          {matches ? "JSON document matches" : "No JSON text match"}
+          {matches ? t("rowDetail.jsonMatches") : t("rowDetail.noJsonMatch")}
         </div>
       ) : null}
       <pre
@@ -384,12 +421,20 @@ function RowJsonDocument({ text, filter }: { text: string; filter: string }) {
   );
 }
 
-function JsonTreeView({ value, filter }: { value: unknown; filter: string }) {
+function JsonTreeView({
+  value,
+  filter,
+  t,
+}: {
+  value: unknown;
+  filter: string;
+  t: Translator["t"];
+}) {
   const tree = useMemo(() => buildJsonTree(value), [value]);
   const normalizedFilter = filter.trim().toLowerCase();
   const matches = nodeMatchesFilter(tree, normalizedFilter);
   if (!matches) {
-    return <div className="detail-empty">No matching JSON paths</div>;
+    return <div className="detail-empty">{t("rowDetail.noJsonPaths")}</div>;
   }
   return (
     <div className="json-tree">

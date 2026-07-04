@@ -41,6 +41,22 @@ describe("i18n core", () => {
     expect(translator.t("query.run")).toBe("クエリを実行");
   });
 
+  it("covers migrated workbench UI key families", () => {
+    const translator = createTranslator("ja");
+
+    expect(translator.t("commandPalette.placeholder")).toBe("コマンドを検索");
+    expect(translator.t("git.confirm.discard.title")).toBe(
+      "変更を破棄しますか？",
+    );
+    expect(
+      translator.t("results.confirmDeleteRows.title", {
+        count: 2,
+        table: "orders",
+      }),
+    ).toBe("orders から 2 行を削除しますか？");
+    expect(translator.t("rowDetail.mode.tree")).toBe("ツリー");
+  });
+
   it("interpolates Japanese translations", () => {
     expect(
       translate("query.rowsReturned", {

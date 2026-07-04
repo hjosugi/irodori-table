@@ -5,7 +5,9 @@ import {
   type EditorGroupState,
 } from "@/app/editor-tabs";
 import type { EditorTabMenuState } from "@/app/controllers/use-editor-groups";
+import { usePreferencesStore } from "@/features/preferences";
 import type { EditorGroup } from "@/features/query-editor";
+import { createTranslator } from "@/i18n";
 
 export type EditorTabStripProps = {
   group: EditorGroup;
@@ -36,6 +38,8 @@ export function EditorTabStrip({
   onCloseOtherTabs,
   onReopenClosedTab,
 }: EditorTabStripProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const openTabs = openTabsForEditorGroup(state);
   const closedTabsAvailable = state.tabs.some(
     (tab) => !state.openTabIds.includes(tab.id),
@@ -72,8 +76,8 @@ export function EditorTabStrip({
       <button
         className="mini-button"
         type="button"
-        title="New SQL tab"
-        aria-label="New SQL tab"
+        title={t("editorTabs.newSqlTab")}
+        aria-label={t("editorTabs.newSqlTab")}
         onClick={() => onNewTab(group)}
       >
         <Plus size={14} />
@@ -95,7 +99,7 @@ export function EditorTabStrip({
               onNewTab(group);
             }}
           >
-            <span>New SQL Tab</span>
+            <span>{t("editorTabs.newSqlTab")}</span>
           </button>
           <button
             type="button"
@@ -106,7 +110,7 @@ export function EditorTabStrip({
               onRenameTab(group, tabId);
             }}
           >
-            <span>Rename Tab</span>
+            <span>{t("editorTabs.renameTab")}</span>
           </button>
           <button
             type="button"
@@ -117,7 +121,7 @@ export function EditorTabStrip({
               onDuplicateTab(group, tabId);
             }}
           >
-            <span>Duplicate Tab</span>
+            <span>{t("editorTabs.duplicateTab")}</span>
           </button>
           <span className="menu-separator" aria-hidden="true" />
           <button
@@ -129,7 +133,7 @@ export function EditorTabStrip({
               onCloseTab(group, tabId);
             }}
           >
-            <span>Close Tab</span>
+            <span>{t("editorTabs.closeTab")}</span>
           </button>
           <button
             type="button"
@@ -141,7 +145,7 @@ export function EditorTabStrip({
               onCloseOtherTabs(group, tabId);
             }}
           >
-            <span>Close Other Tabs</span>
+            <span>{t("editorTabs.closeOtherTabs")}</span>
           </button>
           <button
             type="button"
@@ -153,7 +157,7 @@ export function EditorTabStrip({
               onReopenClosedTab(group);
             }}
           >
-            <span>Reopen Closed Tab</span>
+            <span>{t("editorTabs.reopenClosedTab")}</span>
           </button>
         </div>
       ) : null}

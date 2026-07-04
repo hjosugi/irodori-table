@@ -15,6 +15,8 @@ import {
   type IDockviewPanelProps,
   type SerializedDockview,
 } from "dockview-react";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 
 type WorkbenchDockPanelId =
   | "leftSidebar"
@@ -67,6 +69,8 @@ export function WorkbenchDockLayout({
   editor,
   results,
 }: WorkbenchDockLayoutProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const apiRef = useRef<DockviewApi | null>(null);
   const readyRef = useRef(false);
   const layoutDisposableRef = useRef<Disposable | null>(null);
@@ -90,19 +94,22 @@ export function WorkbenchDockLayout({
     );
   }, []);
 
-  const addEditorPanel = useCallback((api: DockviewApi) => {
-    if (api.getPanel("editor")) {
-      return;
-    }
-    api.addPanel({
-      id: "editor",
-      component: "workbenchPanel",
-      title: "SQL Editor",
-      renderer: "always",
-      minimumWidth: 360,
-      minimumHeight: 220,
-    });
-  }, []);
+  const addEditorPanel = useCallback(
+    (api: DockviewApi) => {
+      if (api.getPanel("editor")) {
+        return;
+      }
+      api.addPanel({
+        id: "editor",
+        component: "workbenchPanel",
+        title: t("dock.sqlEditor"),
+        renderer: "always",
+        minimumWidth: 360,
+        minimumHeight: 220,
+      });
+    },
+    [t],
+  );
 
   const addResultsPanel = useCallback(
     (api: DockviewApi) => {
@@ -113,7 +120,7 @@ export function WorkbenchDockLayout({
       api.addPanel({
         id: "results",
         component: "workbenchPanel",
-        title: "Results",
+        title: t("dock.results"),
         renderer: "always",
         initialHeight: resultsHeight,
         minimumHeight: 180,
@@ -123,7 +130,7 @@ export function WorkbenchDockLayout({
         },
       });
     },
-    [addEditorPanel, resultsHeight],
+    [addEditorPanel, resultsHeight, t],
   );
 
   const addLeftSidebarPanel = useCallback(
@@ -135,7 +142,7 @@ export function WorkbenchDockLayout({
       api.addPanel({
         id: "leftSidebar",
         component: "workbenchPanel",
-        title: "Explorer",
+        title: t("dock.explorer"),
         renderer: "always",
         initialWidth: sidebarWidth,
         minimumWidth: 180,
@@ -145,7 +152,7 @@ export function WorkbenchDockLayout({
         },
       });
     },
-    [addEditorPanel, sidebarWidth],
+    [addEditorPanel, sidebarWidth, t],
   );
 
   const addRightSidebarPanel = useCallback(
@@ -157,7 +164,7 @@ export function WorkbenchDockLayout({
       api.addPanel({
         id: "rightSidebar",
         component: "workbenchPanel",
-        title: "Inspector",
+        title: t("dock.inspector"),
         renderer: "always",
         initialWidth: inspectorWidth,
         minimumWidth: 220,
@@ -167,7 +174,7 @@ export function WorkbenchDockLayout({
         },
       });
     },
-    [addEditorPanel, inspectorWidth],
+    [addEditorPanel, inspectorWidth, t],
   );
 
   const addDefaultPanels = useCallback(

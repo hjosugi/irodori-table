@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { AlertTriangle, Clock3, Play, Search, Trash2, X } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator, type Translator } from "@/i18n";
 import {
   type QueryHistoryItem,
   useQueryHistoryStore,
@@ -34,6 +36,8 @@ export function QueryHistoryDialog({
   onRun,
   onRestoreResult,
 }: QueryHistoryDialogProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const items = useQueryHistoryStore((state) => state.items);
   const search = useQueryHistoryStore((state) => state.search);
   const open = useQueryHistoryStore((state) => state.open);
@@ -72,12 +76,11 @@ export function QueryHistoryDialog({
       return;
     }
     const count = historyDialogItems.length;
-    const label = count === 1 ? "history entry" : "history entries";
     if (
       !(await confirm({
-        title: `Delete ${toCount(count)} visible ${label}?`,
-        message: "This can't be undone.",
-        confirmLabel: "Delete",
+        title: t("history.confirmClear.title", { count: toCount(count) }),
+        message: t("confirm.cannotUndo"),
+        confirmLabel: t("common.delete"),
         tone: "danger",
       }))
     ) {
@@ -90,18 +93,20 @@ export function QueryHistoryDialog({
     <DialogShell
       className="data-dialog history-dialog"
       overlayClassName="palette-overlay history-overlay"
-      label="Query history"
+      label={t("history.title")}
       onClose={closeDialog}
     >
       <div className="dialog-header">
-        <strong>Query History</strong>
+        <strong>{t("history.title")}</strong>
         <span>
-          {toCount(historyDialogItems.length)} visible of{" "}
-          {toCount(items.length)} saved
+          {t("history.visibleSaved", {
+            saved: toCount(items.length),
+            visible: toCount(historyDialogItems.length),
+          })}
         </span>
         <button className="text-button" type="button" onClick={closeDialog}>
           <X size={13} />
-          Close
+          {t("common.close")}
         </button>
       </div>
       <div className="history-toolbar">
@@ -110,15 +115,15 @@ export function QueryHistoryDialog({
           <input
             autoFocus
             value={search}
-            placeholder="Search SQL, connection, engine, or error"
-            aria-label="Search query history"
+            placeholder={t("history.searchDialog")}
+            aria-label={t("history.searchQueryHistory")}
             onChange={(event) => setSearch(event.currentTarget.value)}
           />
           {hasSearch ? (
             <button
               type="button"
-              aria-label="Clear history search"
-              title="Clear history search"
+              aria-label={t("history.clearSearch")}
+              title={t("history.clearSearch")}
               onClick={() => setSearch("")}
             >
               <X size={12} />
@@ -128,21 +133,21 @@ export function QueryHistoryDialog({
         <div
           className="segmented-control history-scope"
           role="group"
-          aria-label="History scope"
+          aria-label={t("history.scope")}
         >
           <button
             type="button"
             className={scope === "active" ? "active" : undefined}
             onClick={() => setScope("active")}
           >
-            Active
+            {t("history.scopeActive")}
           </button>
           <button
             type="button"
             className={scope === "all" ? "active" : undefined}
             onClick={() => setScope("all")}
           >
-            All
+            {t("history.scopeAll")}
           </button>
         </div>
         <button
@@ -152,14 +157,14 @@ export function QueryHistoryDialog({
           onClick={() => void clearVisibleHistory()}
         >
           <Trash2 size={13} />
-          Clear visible
+          {t("history.clearVisible")}
         </button>
       </div>
       <div className="history-dialog-body">
         <div
           className="history-results"
           role="listbox"
-          aria-label="Query history entries"
+          aria-label={t("history.entries")}
         >
           {historyDialogItems.length > 0 ? (
             historyDialogItems.map((item) => {
@@ -191,11 +196,11 @@ export function QueryHistoryDialog({
             })
           ) : (
             <div className="empty-browser">
-              {hasSearch ? "No matching history" : "No query history"}
+              {hasSearch ? t("history.noMatches") : t("history.noHistory")}
             </div>
           )}
         </div>
-        <section className="history-detail" aria-label="Selected query history">
+        <section className="history-detail" aria-label={t("history.selected")}>
           {selectedHistoryItem ? (
             <>
               <div className="history-detail-header">
@@ -207,7 +212,9 @@ export function QueryHistoryDialog({
                   <span
                     className={`history-status-badge ${selectedHistoryItem.status}`}
                   >
-                    {selectedHistoryItem.status === "ok" ? "Success" : "Failed"}
+                    {selectedHistoryItem.status === "ok"
+                      ? t("history.success")
+                      : t("history.failed")}
                   </span>
                 </div>
                 <div className="history-meta">
@@ -224,7 +231,7 @@ export function QueryHistoryDialog({
                     type="button"
                     onClick={() => onLoad(selectedHistoryItem)}
                   >
-                    Load
+                    {t("history.load")}
                   </button>
                   <button
                     className="text-button"
@@ -232,12 +239,12 @@ export function QueryHistoryDialog({
                     disabled={!selectedHistoryItem.result}
                     title={
                       selectedHistoryItem.result
-                        ? "Restore the saved result preview into the grid"
-                        : "No result was retained for this history entry"
+                        ? t("history.restoreResultTitle")
+                        : t("history.noResultRetainedTitle")
                     }
                     onClick={() => onRestoreResult(selectedHistoryItem)}
                   >
-                    Restore result
+                    {t("history.restoreResult")}
                   </button>
                   <button
                     className="primary-button"
@@ -249,15 +256,15 @@ export function QueryHistoryDialog({
                     }
                     title={
                       selectedHistoryItem.connectionId !== activeConnectionId
-                        ? "Load this SQL to switch connection before running"
+                        ? t("history.loadBeforeRunning")
                         : activeConnectionOpen
-                          ? "Run this SQL again"
-                          : "Connect before running"
+                          ? t("history.runAgainTitle")
+                          : t("history.connectBeforeRunning")
                     }
                     onClick={() => onRun(selectedHistoryItem)}
                   >
                     <Play size={13} fill="currentColor" />
-                    Run again
+                    {t("history.runAgain")}
                   </button>
                   <button
                     className="text-button danger"
@@ -265,7 +272,7 @@ export function QueryHistoryDialog({
                     onClick={() => deleteItem(selectedHistoryItem.id)}
                   >
                     <Trash2 size={13} />
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>
@@ -277,17 +284,17 @@ export function QueryHistoryDialog({
                 </div>
               ) : null}
               {selectedHistoryItem.result ? (
-                <HistoryResultPreview item={selectedHistoryItem} />
+                <HistoryResultPreview item={selectedHistoryItem} t={t} />
               ) : selectedHistoryItem.status === "ok" ? (
                 <div className="history-result-empty">
-                  No result rows retained for this entry.
+                  {t("history.noResultRowsRetained")}
                 </div>
               ) : null}
             </>
           ) : (
             <div className="history-empty-detail">
               <Clock3 size={18} />
-              <span>Select a history entry</span>
+              <span>{t("history.selectEntry")}</span>
             </div>
           )}
         </section>
@@ -297,7 +304,13 @@ export function QueryHistoryDialog({
   );
 }
 
-function HistoryResultPreview({ item }: { item: QueryHistoryItem }) {
+function HistoryResultPreview({
+  item,
+  t,
+}: {
+  item: QueryHistoryItem;
+  t: Translator["t"];
+}) {
   const result = item.result;
   if (!result) {
     return null;
@@ -306,13 +319,16 @@ function HistoryResultPreview({ item }: { item: QueryHistoryItem }) {
   return (
     <section
       className="history-result-preview"
-      aria-label="Saved result preview"
+      aria-label={t("history.savedResultPreview")}
     >
       <div className="history-result-preview-header">
-        <strong>Saved result</strong>
+        <strong>{t("history.savedResult")}</strong>
         <span>
-          {toCount(result.retainedRows)} of {toCount(result.rowCount)} rows
-          {result.retentionTruncated ? " retained" : ""}
+          {t("history.retainedRows", {
+            retained: toCount(result.retainedRows),
+            rows: toCount(result.rowCount),
+          })}
+          {result.retentionTruncated ? ` ${t("history.retained")}` : ""}
         </span>
       </div>
       <div className="history-result-table-wrap">
@@ -339,7 +355,9 @@ function HistoryResultPreview({ item }: { item: QueryHistoryItem }) {
       </div>
       {result.retainedRows > displayRows.length ? (
         <small>
-          Showing first {toCount(displayRows.length)} retained rows.
+          {t("history.showingRetainedRows", {
+            count: toCount(displayRows.length),
+          })}
         </small>
       ) : null}
     </section>

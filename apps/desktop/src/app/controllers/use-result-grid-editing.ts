@@ -632,11 +632,12 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
     // though the staged diff is visible in the grid.
     if (deletes.length > 0) {
       const confirmed = await confirm({
-        title: `Delete ${toCount(deletes.length)} row${
-          deletes.length === 1 ? "" : "s"
-        } from ${target.table}?`,
-        message: "Deletes are applied to the database and can't be undone.",
-        confirmLabel: "Commit",
+        title: t("results.confirmDeleteRows.title", {
+          count: toCount(deletes.length),
+          table: target.table,
+        }),
+        message: t("results.confirmDeleteRows.message"),
+        confirmLabel: t("git.actions.commit"),
         tone: "danger",
       });
       if (!confirmed) {

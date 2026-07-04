@@ -1,10 +1,11 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useMemo } from "react";
 import { AboutDialog } from "@/app/AboutDialog";
 import {
   APP_IDENTIFIER,
   APP_NAME,
   APP_VERSION,
   appCommandCatalog,
+  localizeCommandCatalog,
 } from "@/app/app-config";
 import { tauriRuntimeError } from "@/app/app-workbench-utils";
 import { CommandPalette } from "@/app/CommandPalette";
@@ -56,6 +57,7 @@ export function WorkbenchDialogs() {
     queryRunner,
     runCommand,
     settings,
+    t,
     themes,
     workspace,
   } = useWorkbenchContext();
@@ -121,7 +123,11 @@ export function WorkbenchDialogs() {
   );
   const schemaDraft = useSchemaDesignerStore((state) => state.draft);
   const setSchemaDraft = useSchemaDesignerStore((state) => state.setDraft);
-  const paletteResults = appCommandCatalog.filter((command) =>
+  const localizedAppCommandCatalog = useMemo(
+    () => localizeCommandCatalog(appCommandCatalog, t),
+    [t],
+  );
+  const paletteResults = localizedAppCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
       .includes(overlays.paletteQuery.trim().toLowerCase()),
@@ -209,7 +215,7 @@ export function WorkbenchDialogs() {
           setQueryHistoryResultRows={settings.setQueryHistoryResultRows}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          commandCatalog={appCommandCatalog}
+          commandCatalog={localizedAppCommandCatalog}
           keymap={keybindings.keymap}
           keymapOverrides={keybindings.keymapOverrides}
           keymapConflicts={keybindings.keymapConflicts}

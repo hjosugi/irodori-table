@@ -106,8 +106,8 @@ export function useEditorWorkspace({
   const selectedEditorSql = selectedSqlFromSelections(query, editorSelections);
   const hasSelectedEditorSql = selectedEditorSql.length > 0;
   const runPrimaryLabel = hasSelectedEditorSql
-    ? "Run Selection"
-    : "Run Current";
+    ? t("editor.runSelection")
+    : t("editor.runCurrent");
   const runShortcutLabel = formatKeySequence(keymap["query.run"] ?? "");
   const runCurrentShortcutLabel = formatKeySequence(
     keymap["query.runCurrent"] ?? "",
@@ -121,14 +121,14 @@ export function useEditorWorkspace({
     shortcut: formatKeySequence(keymap[commandId] ?? "") || null,
   });
   const resultShortcutTips = [
-    shortcutTip("New Tab", "tab.new"),
-    shortcutTip("Show Commands", "palette.open"),
-    shortcutTip("Export CSV", "result.export"),
-    shortcutTip("Copy TSV", "result.copyVisible"),
-    shortcutTip("Toggle Edit Data", "edit.toggle"),
-    shortcutTip("Add Row", "edit.addRow"),
-    shortcutTip("Undo Edit", "edit.undo"),
-    shortcutTip("Commit Edits", "edit.commit"),
+    shortcutTip(t("shortcuts.newTab"), "tab.new"),
+    shortcutTip(t("shortcuts.showCommands"), "palette.open"),
+    shortcutTip(t("shortcuts.exportCsv"), "result.export"),
+    shortcutTip(t("shortcuts.copyTsv"), "result.copyVisible"),
+    shortcutTip(t("shortcuts.toggleEditData"), "edit.toggle"),
+    shortcutTip(t("shortcuts.addRow"), "edit.addRow"),
+    shortcutTip(t("shortcuts.undoEdit"), "edit.undo"),
+    shortcutTip(t("shortcuts.commitEdits"), "edit.commit"),
   ];
 
   function renderEditorTabStrip(group: EditorGroup) {

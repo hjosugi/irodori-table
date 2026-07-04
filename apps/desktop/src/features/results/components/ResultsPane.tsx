@@ -24,6 +24,7 @@ import type {
   QueryResultSet,
 } from "@/generated/irodori-api";
 import { ErrorDetails } from "@/components/ErrorDetails";
+import { usePreferencesStore } from "@/features/preferences";
 import {
   buildResultExport,
   resultExportFormats,
@@ -51,6 +52,7 @@ import type {
   ResultMode,
   SelectedCell,
 } from "../types";
+import { createTranslator } from "@/i18n";
 
 export type ResultsPaneFiltering = {
   quickFilter: string;
@@ -249,6 +251,8 @@ export function ResultsPane({
   selection,
   gridGeometry,
 }: ResultsPaneProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const {
     quickFilter,
     filtersOpen,
@@ -429,7 +433,7 @@ export function ResultsPane({
                 className={resultMode === "data" ? "active" : undefined}
                 onClick={() => onResultModeChange("data")}
               >
-                Data
+                {t("results.mode.data")}
               </button>
               {chartAvailable ? (
                 <button
@@ -438,7 +442,7 @@ export function ResultsPane({
                   disabled={editMode}
                   onClick={() => onResultModeChange("chart")}
                 >
-                  Chart
+                  {t("results.mode.chart")}
                 </button>
               ) : null}
               {webGlAvailable ? (
@@ -457,7 +461,7 @@ export function ResultsPane({
                   className={resultMode === "graph" ? "active" : undefined}
                   onClick={() => onResultModeChange("graph")}
                 >
-                  Graph
+                  {t("results.mode.graph")}
                 </button>
               ) : null}
               {tableViewObject ? (
@@ -466,7 +470,7 @@ export function ResultsPane({
                   className={resultMode === "structure" ? "active" : undefined}
                   onClick={() => onResultModeChange("structure")}
                 >
-                  Structure
+                  {t("results.mode.structure")}
                 </button>
               ) : null}
             </div>
@@ -475,7 +479,7 @@ export function ResultsPane({
             <div
               className="result-tabs"
               role="tablist"
-              aria-label="Result sets"
+              aria-label={t("results.resultSets")}
             >
               {resultSets.map((set, index) => (
                 <button
@@ -487,18 +491,21 @@ export function ResultsPane({
                   title={set.statement}
                   onClick={() => onSelectResultSet(index)}
                 >
-                  Result {index + 1}
+                  {t("results.resultSet", { index: index + 1 })}
                 </button>
               ))}
             </div>
           ) : (
-            <strong>Result 1</strong>
+            <strong>{t("results.resultSet", { index: 1 })}</strong>
           )}
           <span>
             {queryError
-              ? "failed"
+              ? t("results.failed")
               : pendingCount > 0
-                ? `${displayedResultSummary} · ${pendingCount} pending`
+                ? t("results.summaryPending", {
+                    count: pendingCount,
+                    summary: displayedResultSummary,
+                  })
                 : displayedResultSummary}
           </span>
         </div>
@@ -506,10 +513,10 @@ export function ResultsPane({
           <label className="result-quick-filter">
             <Search size={13} />
             <input
-              aria-label="Quick result filter"
+              aria-label={t("results.quickFilter")}
               value={quickFilter}
               disabled={!activeResult || showingStructure}
-              placeholder="Filter rows"
+              placeholder={t("results.filterRows")}
               onChange={(event) =>
                 onQuickFilterChange(event.currentTarget.value)
               }
@@ -517,8 +524,8 @@ export function ResultsPane({
             {quickFilter ? (
               <button
                 type="button"
-                aria-label="Clear quick filter"
-                title="Clear quick filter"
+                aria-label={t("results.clearQuickFilter")}
+                title={t("results.clearQuickFilter")}
                 onClick={onClearQuickFilter}
               >
                 <X size={12} />
@@ -535,15 +542,15 @@ export function ResultsPane({
             <ListFilter size={13} />
             <span>
               {activeFilters.length > 0
-                ? `Filter ${activeFilters.length}`
-                : "Filter"}
+                ? t("results.filterCount", { count: activeFilters.length })
+                : t("results.filter")}
             </span>
           </button>
           <div className="action-split" ref={exportMenuRef}>
             <button
               className="text-button"
               type="button"
-              title={`Export as ${exportFormatLabel}`}
+              title={t("results.exportAs", { format: exportFormatLabel })}
               disabled={!copyExportAvailable}
               onClick={() => onExportActiveResult(exportFormat)}
             >
@@ -553,8 +560,8 @@ export function ResultsPane({
             <button
               className="mini-button"
               type="button"
-              title="Export formats"
-              aria-label="Export formats"
+              title={t("results.exportFormats")}
+              aria-label={t("results.exportFormats")}
               disabled={!copyExportAvailable}
               onClick={onToggleExportMenu}
             >
@@ -591,18 +598,20 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              title={`Copy as ${copyFormatLabel}`}
+              title={t("results.copyAs", { format: copyFormatLabel })}
               disabled={!copyExportAvailable}
               onClick={() => copyInFormat(copyFormat)}
             >
               <Copy size={13} />
-              <span>Copy {copyFormatLabel}</span>
+              <span>
+                {t("results.copyFormat", { format: copyFormatLabel })}
+              </span>
             </button>
             <button
               className="mini-button"
               type="button"
-              title="Copy formats"
-              aria-label="Copy formats"
+              title={t("results.copyFormats")}
+              aria-label={t("results.copyFormats")}
               disabled={!copyExportAvailable}
               onClick={() => setCopyMenuOpen((open) => !open)}
             >
@@ -623,7 +632,9 @@ export function ResultsPane({
                       setCopyMenuOpen(false);
                     }}
                   >
-                    <span>Copy {format.label}</span>
+                    <span>
+                      {t("results.copyFormat", { format: format.label })}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -633,11 +644,11 @@ export function ResultsPane({
             className="text-button"
             type="button"
             disabled={readOnly}
-            title={readOnly ? "Read-only connection" : undefined}
+            title={readOnly ? t("results.readOnlyConnection") : undefined}
             onClick={() => importFileRef.current?.click()}
           >
             <Upload size={13} />
-            <span>Import</span>
+            <span>{t("results.import")}</span>
           </button>
           <input
             ref={importFileRef}
@@ -663,14 +674,14 @@ export function ResultsPane({
             }
             title={
               readOnly
-                ? "Read-only connection"
+                ? t("results.readOnlyConnection")
                 : selectedRowValues
-                  ? "Generate a BEGIN/COMMIT wrapped UPDATE for the selected row"
-                  : "Select a result row first"
+                  ? t("results.rowSqlTitle")
+                  : t("results.selectRowFirst")
             }
             onClick={onGenerateRowChangeSql}
           >
-            Row SQL
+            {t("results.rowSql")}
           </button>
           {editMode ? (
             <>
@@ -682,12 +693,12 @@ export function ResultsPane({
                 }
                 title={
                   readOnly
-                    ? "Read-only connection"
-                    : "Requires a single-table result with a visible primary or unique key"
+                    ? t("results.readOnlyConnection")
+                    : t("results.requiresEditableTarget")
                 }
                 onClick={onAddNewRow}
               >
-                + Row
+                {t("results.addRow")}
               </button>
               <button
                 className="text-button"
@@ -695,13 +706,13 @@ export function ResultsPane({
                 disabled={editUndoDepth === 0 || committing || showingStructure}
                 title={
                   editUndoDepth > 0
-                    ? `Undo last staged edit (${editUndoDepth} available)`
-                    : "No staged edits to undo"
+                    ? t("results.undoEditTitle", { count: editUndoDepth })
+                    : t("results.noStagedEdits")
                 }
                 onClick={onUndoEdit}
               >
                 <Undo2 size={13} />
-                <span>Undo</span>
+                <span>{t("common.undo")}</span>
               </button>
               <button
                 className="text-button"
@@ -715,15 +726,15 @@ export function ResultsPane({
                 onClick={onCommitEdits}
               >
                 {committing
-                  ? "Saving..."
-                  : `Save Changes${pendingCount ? ` (${pendingCount})` : ""}`}
+                  ? t("common.saving")
+                  : t("results.saveChanges", { count: pendingCount })}
               </button>
               <button
                 className="text-button"
                 type="button"
                 onClick={onDiscardEdits}
               >
-                Discard
+                {t("git.actions.discard")}
               </button>
             </>
           ) : (
@@ -733,12 +744,12 @@ export function ResultsPane({
               disabled={readOnly || !canEditActiveResult() || showingStructure}
               title={
                 readOnly
-                  ? "Read-only connection"
-                  : "Requires a single-table result with a visible primary or unique key"
+                  ? t("results.readOnlyConnection")
+                  : t("results.requiresEditableTarget")
               }
               onClick={onEnableEditMode}
             >
-              Edit Data
+              {t("results.editData")}
             </button>
           )}
         </div>
@@ -771,6 +782,7 @@ export function ResultsPane({
             onUpdateFilterRule={onUpdateFilterRule}
             onRemoveFilterRule={onRemoveFilterRule}
             onClearResultFilters={onClearResultFilters}
+            t={t}
           />
         </div>
       ) : null}
@@ -827,6 +839,7 @@ export function ResultsPane({
         onEndCellEdit={onEndCellEdit}
         onCloseRowDetail={onCloseRowDetail}
         shortcutTips={shortcutTips}
+        t={t}
       />
     </section>
   );

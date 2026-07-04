@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator, type Translator } from "@/i18n";
 import { Copy, FileText } from "lucide-react";
 import {
   buildMigrationPlan,
@@ -21,11 +23,24 @@ type MigrationStudioDialogProps = {
   onPutTextInEditor: (text: string) => void;
 };
 
+const migrationOutputTabKeys: Record<
+  MigrationOutputKind,
+  Parameters<Translator["t"]>[0]
+> = {
+  diff: "migration.output.diff",
+  overview: "migration.output.overview",
+  runbook: "migration.output.runbook",
+  source: "migration.output.source",
+  target: "migration.output.target",
+};
+
 export function MigrationStudioDialog({
   onClose,
   onCopyText,
   onPutTextInEditor,
 }: MigrationStudioDialogProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = useMemo(() => createTranslator(locale), [locale]);
   const [draft, setDraft] = useState<MigrationDraft>(defaultMigrationDraft);
   const [activeOutput, setActiveOutput] =
     useState<MigrationOutputKind>("overview");
@@ -34,14 +49,14 @@ export function MigrationStudioDialog({
     plan: MigrationPlan;
   }>(() => ({
     status: "loading",
-    plan: createMigrationPlanPlaceholder(defaultMigrationDraft),
+    plan: createMigrationPlanPlaceholder(defaultMigrationDraft, undefined, t),
   }));
 
   useEffect(() => {
     let cancelled = false;
     setPlanState({
       status: "loading",
-      plan: createMigrationPlanPlaceholder(draft),
+      plan: createMigrationPlanPlaceholder(draft, undefined, t),
     });
 
     buildMigrationPlan(draft)
@@ -56,7 +71,7 @@ export function MigrationStudioDialog({
             error instanceof Error ? error.message : String(error);
           setPlanState({
             status: "error",
-            plan: createMigrationPlanPlaceholder(draft, message),
+            plan: createMigrationPlanPlaceholder(draft, message, t),
           });
         }
       });
@@ -64,17 +79,19 @@ export function MigrationStudioDialog({
     return () => {
       cancelled = true;
     };
-  }, [draft]);
+  }, [draft, t]);
 
   const plan = planState.plan;
-  const outputText = migrationOutputText(plan, activeOutput);
-  const outputLabel =
-    migrationOutputTabs.find((tab) => tab.value === activeOutput)?.label ??
-    "Output";
+  const outputText = migrationOutputText(plan, activeOutput, t);
+  const outputLabel = t(
+    migrationOutputTabs.some((tab) => tab.value === activeOutput)
+      ? migrationOutputTabKeys[activeOutput]
+      : "migration.output.default",
+  );
   const editorButtonLabel =
     activeOutput === "overview" || activeOutput === "runbook"
-      ? "Put text in editor"
-      : "Put SQL in editor";
+      ? t("migration.actions.putText")
+      : t("migration.actions.putSql");
 
   function updateDraft<K extends keyof MigrationDraft>(
     key: K,
@@ -86,25 +103,25 @@ export function MigrationStudioDialog({
   return (
     <DialogShell
       className="data-dialog migration-dialog"
-      label="Migration Studio"
+      label={t("migration.title")}
       onClose={onClose}
     >
       <div className="dialog-header">
-        <strong>Migration Studio</strong>
+        <strong>{t("migration.title")}</strong>
         <span>
           {planState.status === "loading"
-            ? "Building migration plan..."
+            ? t("migration.status.building")
             : plan.title}
         </span>
         <button className="text-button" type="button" onClick={onClose}>
-          Close
+          {t("common.close")}
         </button>
       </div>
       <div className="dialog-body migration-body">
-        <section className="migration-form" aria-label="Migration inputs">
+        <section className="migration-form" aria-label={t("migration.inputs")}>
           <div className="migration-form-grid">
             <label>
-              <span>Source</span>
+              <span>{t("migration.source")}</span>
               <select
                 value={draft.sourceEngine}
                 onChange={(event) =>
@@ -122,7 +139,7 @@ export function MigrationStudioDialog({
               </select>
             </label>
             <label>
-              <span>Source version</span>
+              <span>{t("migration.sourceVersion")}</span>
               <input
                 value={draft.sourceVersion}
                 onChange={(event) =>
@@ -131,7 +148,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Target</span>
+              <span>{t("migration.target")}</span>
               <select
                 value={draft.targetEngine}
                 onChange={(event) =>
@@ -149,7 +166,7 @@ export function MigrationStudioDialog({
               </select>
             </label>
             <label>
-              <span>Target version</span>
+              <span>{t("migration.targetVersion")}</span>
               <input
                 value={draft.targetVersion}
                 onChange={(event) =>
@@ -158,7 +175,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Source table</span>
+              <span>{t("migration.sourceTable")}</span>
               <input
                 value={draft.sourceTable}
                 onChange={(event) =>
@@ -167,7 +184,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Target table</span>
+              <span>{t("migration.targetTable")}</span>
               <input
                 value={draft.targetTable}
                 onChange={(event) =>
@@ -179,7 +196,7 @@ export function MigrationStudioDialog({
 
           <div className="migration-textareas">
             <label>
-              <span>Key columns</span>
+              <span>{t("migration.keyColumns")}</span>
               <textarea
                 rows={5}
                 value={draft.keyColumnsText}
@@ -189,7 +206,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Compare columns</span>
+              <span>{t("migration.compareColumns")}</span>
               <textarea
                 rows={5}
                 value={draft.compareColumnsText}
@@ -202,7 +219,7 @@ export function MigrationStudioDialog({
 
           <div className="migration-form-grid compact">
             <label>
-              <span>Partition column</span>
+              <span>{t("migration.partitionColumn")}</span>
               <input
                 value={draft.partitionColumn}
                 onChange={(event) =>
@@ -211,7 +228,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Predicate</span>
+              <span>{t("migration.predicate")}</span>
               <input
                 value={draft.partitionPredicate}
                 onChange={(event) =>
@@ -220,7 +237,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Export</span>
+              <span>{t("migration.export")}</span>
               <select
                 value={draft.exportFormat}
                 onChange={(event) =>
@@ -236,7 +253,7 @@ export function MigrationStudioDialog({
               </select>
             </label>
             <label>
-              <span>Batch rows</span>
+              <span>{t("migration.batchRows")}</span>
               <input
                 min={1000}
                 step={1000}
@@ -248,7 +265,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Diff limit</span>
+              <span>{t("migration.diffLimit")}</span>
               <input
                 min={10}
                 step={100}
@@ -260,7 +277,7 @@ export function MigrationStudioDialog({
               />
             </label>
             <label>
-              <span>Delimiter</span>
+              <span>{t("migration.delimiter")}</span>
               <input
                 value={draft.delimiter}
                 onChange={(event) =>
@@ -282,7 +299,7 @@ export function MigrationStudioDialog({
                   )
                 }
               />
-              <span>Normalize whitespace</span>
+              <span>{t("migration.normalizeWhitespace")}</span>
             </label>
             <label>
               <input
@@ -292,15 +309,18 @@ export function MigrationStudioDialog({
                   updateDraft("normalizeCase", event.currentTarget.checked)
                 }
               />
-              <span>Lowercase text before hash</span>
+              <span>{t("migration.normalizeCase")}</span>
             </label>
           </div>
         </section>
 
-        <section className="migration-preview" aria-label="Migration output">
+        <section
+          className="migration-preview"
+          aria-label={t("migration.output.label")}
+        >
           <div
             className="segmented-control migration-tabs"
-            aria-label="Migration output"
+            aria-label={t("migration.output.label")}
           >
             {migrationOutputTabs.map((tab) => (
               <button
@@ -309,13 +329,13 @@ export function MigrationStudioDialog({
                 key={tab.value}
                 onClick={() => setActiveOutput(tab.value)}
               >
-                {tab.label}
+                {t(migrationOutputTabKeys[tab.value])}
               </button>
             ))}
           </div>
 
           {activeOutput === "overview" ? (
-            <MigrationOverview plan={plan} />
+            <MigrationOverview plan={plan} t={t} />
           ) : (
             <pre className="sql-preview migration-output">{outputText}</pre>
           )}
@@ -328,7 +348,7 @@ export function MigrationStudioDialog({
           onClick={() => onCopyText(outputText, outputLabel)}
         >
           <Copy size={14} />
-          <span>Copy</span>
+          <span>{t("common.copy")}</span>
         </button>
         <button
           className="primary-action"
@@ -343,12 +363,18 @@ export function MigrationStudioDialog({
   );
 }
 
-function MigrationOverview({ plan }: { plan: MigrationPlan }) {
+function MigrationOverview({
+  plan,
+  t,
+}: {
+  plan: MigrationPlan;
+  t: Translator["t"];
+}) {
   return (
     <div className="migration-overview">
       <div className="migration-summary-grid">
         <div>
-          <small>Route</small>
+          <small>{t("migration.overview.route")}</small>
           <strong>
             {plan.sourceLabel}
             {" -> "}
@@ -356,19 +382,19 @@ function MigrationOverview({ plan }: { plan: MigrationPlan }) {
           </strong>
         </div>
         <div>
-          <small>Keys</small>
+          <small>{t("migration.overview.keys")}</small>
           <strong>{plan.keys.length}</strong>
         </div>
         <div>
-          <small>Hash columns</small>
+          <small>{t("migration.overview.hashColumns")}</small>
           <strong>{plan.hashColumns.length}</strong>
         </div>
         <div>
-          <small>Hash</small>
+          <small>{t("migration.overview.hash")}</small>
           <strong>{plan.hashAlgorithmLabel}</strong>
         </div>
         <div>
-          <small>Warnings</small>
+          <small>{t("migration.overview.warnings")}</small>
           <strong>{plan.warnings.length}</strong>
         </div>
       </div>
@@ -383,7 +409,7 @@ function MigrationOverview({ plan }: { plan: MigrationPlan }) {
       </div>
 
       <div className="migration-notes">
-        <strong>Engine notes</strong>
+        <strong>{t("migration.plan.engineNotes")}</strong>
         <ul>
           {plan.pairNotes.map((note) => (
             <li key={note}>{note}</li>
@@ -393,7 +419,7 @@ function MigrationOverview({ plan }: { plan: MigrationPlan }) {
 
       {plan.warnings.length > 0 ? (
         <div className="migration-notes warning">
-          <strong>Warnings</strong>
+          <strong>{t("migration.plan.warnings")}</strong>
           <ul>
             {plan.warnings.map((warning) => (
               <li key={warning}>{warning}</li>

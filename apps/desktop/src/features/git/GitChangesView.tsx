@@ -11,6 +11,7 @@ import type {
   GitFileStatus,
   GitCommandOutput,
 } from "../../generated/irodori-api";
+import type { Translator } from "@/i18n";
 import { changeLabel } from "./git-format";
 
 function FileStatusRow({
@@ -70,6 +71,7 @@ export function GitChangesView({
   onStageAll,
   onUnstageSelected,
   onDiscardSelected,
+  t,
 }: {
   files: GitFileStatus[];
   selectedPath: string | null;
@@ -90,6 +92,7 @@ export function GitChangesView({
   onStageAll: () => void;
   onUnstageSelected: () => void;
   onDiscardSelected: () => void;
+  t: Translator["t"];
 }) {
   const hasChanges = files.length > 0;
   const hasStagedChanges = files.some(
@@ -111,7 +114,7 @@ export function GitChangesView({
     <>
       <section className="git-section git-files">
         <div className="git-section-title">
-          <strong>Changes</strong>
+          <strong>{t("git.views.changes")}</strong>
           <span>{files.length}</span>
         </div>
         <div className="git-file-actions">
@@ -122,7 +125,7 @@ export function GitChangesView({
             onClick={onStageSelected}
           >
             <Plus size={13} />
-            Stage
+            {t("git.actions.stage")}
           </button>
           <button
             className="text-button"
@@ -131,7 +134,7 @@ export function GitChangesView({
             onClick={onStageAll}
           >
             <Plus size={13} />
-            Stage all
+            {t("git.actions.stageAll")}
           </button>
           <button
             className="text-button"
@@ -140,7 +143,7 @@ export function GitChangesView({
             onClick={onUnstageSelected}
           >
             <Undo2 size={13} />
-            Unstage
+            {t("git.actions.unstage")}
           </button>
           <button
             className="text-button danger"
@@ -149,7 +152,7 @@ export function GitChangesView({
             onClick={onDiscardSelected}
           >
             <RotateCcw size={13} />
-            Discard
+            {t("git.actions.discard")}
           </button>
         </div>
         <div className="git-file-list">
@@ -164,7 +167,7 @@ export function GitChangesView({
             ))
           ) : (
             <div className="empty-browser">
-              {loading ? "Loading Git status..." : "No local changes"}
+              {loading ? t("git.loadingStatus") : t("git.noLocalChanges")}
             </div>
           )}
         </div>
@@ -172,19 +175,21 @@ export function GitChangesView({
 
       <section className="git-section git-diff">
         <div className="git-section-title">
-          <strong>{selectedPath ?? "Repository diff"}</strong>
-          {diff?.truncated ? <span>truncated</span> : null}
+          <strong>{selectedPath ?? t("git.repositoryDiff")}</strong>
+          {diff?.truncated ? <span>{t("git.truncated")}</span> : null}
         </div>
-        <pre>{diffLoading ? "Loading diff..." : diffText || "No diff"}</pre>
+        <pre>
+          {diffLoading ? t("git.loadingDiff") : diffText || t("git.noDiff")}
+        </pre>
       </section>
 
       <section className="git-section">
         <div className="git-section-title">
-          <strong>Commit</strong>
+          <strong>{t("git.commit")}</strong>
         </div>
         <textarea
           value={commitMessage}
-          placeholder="Commit message"
+          placeholder={t("git.commitMessage")}
           spellCheck={true}
           onChange={(event) => onCommitMessageChange(event.currentTarget.value)}
         />
@@ -196,7 +201,7 @@ export function GitChangesView({
             onClick={onFetch}
           >
             <Download size={14} />
-            Fetch
+            {t("git.actions.fetch")}
           </button>
           <button
             className="text-button"
@@ -205,7 +210,7 @@ export function GitChangesView({
             onClick={onPull}
           >
             <Download size={14} />
-            Pull
+            {t("git.actions.pull")}
           </button>
           <button
             className="primary-button"
@@ -214,7 +219,7 @@ export function GitChangesView({
             onClick={onCommit}
           >
             <GitCommitHorizontal size={14} />
-            Commit all
+            {t("git.actions.commitAll")}
           </button>
           <button
             className="text-button"
@@ -223,7 +228,7 @@ export function GitChangesView({
             onClick={onCommitStaged}
           >
             <GitCommitHorizontal size={14} />
-            Commit staged
+            {t("git.actions.commitStaged")}
           </button>
           <button
             className="text-button"
@@ -232,7 +237,7 @@ export function GitChangesView({
             onClick={onPush}
           >
             <Upload size={14} />
-            Push
+            {t("git.actions.push")}
           </button>
         </div>
         {commandOutput ? (

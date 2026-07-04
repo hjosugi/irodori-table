@@ -180,15 +180,15 @@ export function AiGenerateDialog({
     <DialogShell
       className="ai-generate-panel"
       overlayClassName="ai-generate-overlay"
-      label="Generate SQL with AI"
+      label={t("ai.generate.label")}
       onClose={onClose}
     >
       <header className="ai-generate-header">
-        <span className="ai-generate-title">Generate SQL</span>
+        <span className="ai-generate-title">{t("ai.generate.title")}</span>
         <button
           type="button"
           className="ai-generate-close"
-          aria-label="Close"
+          aria-label={t("common.close")}
           onClick={onClose}
         >
           ×
@@ -198,7 +198,7 @@ export function AiGenerateDialog({
       <textarea
         ref={textareaRef}
         className="ai-generate-input"
-        placeholder="Describe the query in plain language — e.g. “top 10 customers by revenue last month”"
+        placeholder={t("ai.generate.placeholder")}
         value={prompt}
         rows={3}
         onChange={(event) => setPrompt(event.target.value)}
@@ -212,16 +212,13 @@ export function AiGenerateDialog({
 
       {notCompiled && (
         <p className="ai-generate-note">
-          The embedded model isn’t in this build — rebuild with{" "}
-          <code>--features llama</code>, or pick another provider below (Ollama
-          / API / CLI work without it).
+          {t("ai.generate.notCompiledBefore")}
+          <code>--features llama</code>
+          {t("ai.generate.notCompiledAfter")}
         </p>
       )}
       {modelMissing && (
-        <p className="ai-generate-note">
-          The local model is not present. Use a preinstalled model or pick
-          another provider below.
-        </p>
+        <p className="ai-generate-note">{t("ai.generate.modelMissing")}</p>
       )}
       {error && <p className="ai-generate-error">{error}</p>}
 
@@ -231,13 +228,13 @@ export function AiGenerateDialog({
           className="ai-generate-link"
           onClick={() => setShowProvider((v) => !v)}
         >
-          {showProvider ? "▾" : "▸"} Model provider:{" "}
+          {showProvider ? "▾" : "▸"} {t("ai.provider.modelProvider")}{" "}
           {PROVIDER_LABELS[provider.kind]}
         </button>
         {showProvider && (
           <div className="ai-generate-provider-body">
             <label className="ai-generate-field">
-              <span>Provider</span>
+              <span>{t("ai.provider.provider")}</span>
               <select
                 value={provider.kind}
                 onChange={(e) =>
@@ -260,7 +257,7 @@ export function AiGenerateDialog({
             {(provider.kind === "ollama" ||
               provider.kind === "openaiCompat") && (
               <label className="ai-generate-field">
-                <span>Model</span>
+                <span>{t("ai.provider.model")}</span>
                 <input
                   value={provider.model}
                   placeholder={
@@ -275,7 +272,7 @@ export function AiGenerateDialog({
             {(provider.kind === "ollama" ||
               provider.kind === "openaiCompat") && (
               <label className="ai-generate-field">
-                <span>Endpoint</span>
+                <span>{t("ai.provider.endpoint")}</span>
                 <input
                   value={provider.endpoint ?? ""}
                   placeholder={
@@ -294,7 +291,7 @@ export function AiGenerateDialog({
             )}
             {provider.kind === "openaiCompat" && (
               <label className="ai-generate-field">
-                <span>API key</span>
+                <span>{t("ai.provider.apiKey")}</span>
                 <input
                   type="password"
                   value={apiKey}
@@ -330,7 +327,7 @@ export function AiGenerateDialog({
             ) : null}
             {provider.kind === "command" && (
               <label className="ai-generate-field">
-                <span>Program</span>
+                <span>{t("ai.provider.program")}</span>
                 <input
                   value={provider.program}
                   placeholder="claude"
@@ -342,7 +339,7 @@ export function AiGenerateDialog({
             )}
             {provider.kind === "command" && (
               <label className="ai-generate-field">
-                <span>Args</span>
+                <span>{t("ai.provider.args")}</span>
                 <input
                   value={provider.args.join(" ")}
                   placeholder="-p   (use {prompt} as a placeholder, else prompt is piped to stdin)"
@@ -368,7 +365,9 @@ export function AiGenerateDialog({
                     : undefined
                 }
               >
-                {savingProvider ? "Saving…" : "Save provider"}
+                {savingProvider
+                  ? t("common.saving")
+                  : t("ai.provider.saveProvider")}
               </button>
             </div>
           </div>
@@ -377,7 +376,7 @@ export function AiGenerateDialog({
 
       <footer className="ai-generate-footer">
         <span className="ai-generate-hint">
-          ⌘/Ctrl+Enter to generate · inserts into the editor, never runs
+          {t("ai.generate.shortcutHint")}
         </span>
         <div className="ai-generate-actions">
           <button
@@ -385,7 +384,7 @@ export function AiGenerateDialog({
             className="ai-generate-button"
             onClick={onClose}
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -393,7 +392,7 @@ export function AiGenerateDialog({
             onClick={() => void submit()}
             disabled={loading || !prompt.trim()}
           >
-            {loading ? "Generating…" : "Generate"}
+            {loading ? t("ai.generate.generating") : t("ai.generate.generate")}
           </button>
         </div>
       </footer>

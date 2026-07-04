@@ -182,7 +182,9 @@ export function useEditorGroups({
     const state = editorGroupStates[group];
     const tab = state.tabs.find((item) => item.id === tabId);
     if (!tab) return;
-    const next = window.prompt("Rename SQL tab", tab.label)?.trim();
+    const next = window
+      .prompt(t("editorTabs.renameSqlTabPrompt"), tab.label)
+      ?.trim();
     if (!next || next === tab.label) {
       return;
     }

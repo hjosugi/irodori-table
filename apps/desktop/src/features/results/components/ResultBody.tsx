@@ -36,6 +36,7 @@ import {
   ShortcutTips,
   type ShortcutTip,
 } from "@/features/workbench/components/ShortcutTips";
+import type { Translator } from "@/i18n";
 
 function isGridCellTarget(event: ReactFocusEvent | ReactMouseEvent) {
   return (
@@ -96,6 +97,7 @@ export function ResultBody({
   onEndCellEdit,
   onCloseRowDetail,
   shortcutTips,
+  t,
 }: {
   structureObject: DbObjectMetadata | null;
   resultMode: ResultMode;
@@ -161,6 +163,7 @@ export function ResultBody({
   onEndCellEdit: () => void;
   onCloseRowDetail: () => void;
   shortcutTips: readonly ShortcutTip[];
+  t: Translator["t"];
 }) {
   const rowDetailSidebar = (
     <RowDetailSidebar
@@ -171,6 +174,7 @@ export function ResultBody({
       engine={editorEngine}
       connectionId={activeConnectionId}
       onClose={onCloseRowDetail}
+      t={t}
     />
   );
 
@@ -180,6 +184,7 @@ export function ResultBody({
         object={structureObject}
         formatObjectName={formatObjectName}
         formatCount={formatCount}
+        t={t}
       />
     );
   }
@@ -219,6 +224,7 @@ export function ResultBody({
           onToggleSort={onToggleSort}
           onSelectGridRow={onSelectGridRow}
           onSelectGridCell={onSelectGridCell}
+          t={t}
         />
         {rowDetailSidebar}
       </div>
@@ -230,7 +236,7 @@ export function ResultBody({
       <div
         className="result-grid"
         role="table"
-        aria-label="Query result"
+        aria-label={t("results.queryResult")}
         aria-rowcount={totalRows + 1}
         aria-colcount={resultColumns.length + (editMode ? 1 : 0)}
         data-visible-rows-revision={visibleRowsRevision}
@@ -257,7 +263,7 @@ export function ResultBody({
                 aria-colindex={editMode ? colIndex + 2 : colIndex + 1}
                 key={`${column}-${colIndex}`}
                 className={`sortable${sortRule ? " sorted" : ""}`}
-                title="Click to sort. Shift-click to add a sort key."
+                title={t("results.sortTitle", { column })}
                 onClick={(event) => onToggleSort(colIndex, event.shiftKey)}
               >
                 <b className="column-label">{column}</b>
@@ -291,7 +297,7 @@ export function ResultBody({
           <div
             className="grid-state loading"
             role="status"
-            aria-label="Running query"
+            aria-label={t("results.runningQuery")}
             style={{ minWidth: gridTotalWidth, width: "100%" }}
           >
             <div className="result-grid-skeleton" aria-hidden="true">
@@ -310,8 +316,8 @@ export function ResultBody({
             <div className="grid-empty-content">
               <span>
                 {filtersActive && unfilteredRowCount > 0
-                  ? "No rows match filters"
-                  : "No rows returned"}
+                  ? t("results.noRowsMatchFilters")
+                  : t("results.noRowsReturned")}
               </span>
               {!filtersActive ? (
                 <ShortcutTips
@@ -346,8 +352,8 @@ export function ResultBody({
               <button
                 className="grid-gutter delete-row"
                 type="button"
-                title="Delete row"
-                aria-label="Delete row"
+                title={t("results.deleteRow")}
+                aria-label={t("results.deleteRow")}
                 onClick={() => onDeleteRow(row.origin)}
               >
                 &times;
@@ -388,7 +394,7 @@ export function ResultBody({
                   aria-colindex={editMode ? cellIndex + 2 : cellIndex + 1}
                   aria-selected={isSelected || isRangeSelected}
                   className={cellClass || undefined}
-                  title={isEmptyCell ? "EMPTY string" : cell}
+                  title={isEmptyCell ? t("results.emptyString") : cell}
                   onClick={(event) => {
                     event.stopPropagation();
                     onSelectGridCell(row.key, cellIndex, event.shiftKey);
@@ -444,7 +450,7 @@ export function ResultBody({
                       />
                       <button
                         type="button"
-                        title="Set NULL"
+                        title={t("results.setNull")}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => {
                           onSetCellValue(row.origin, cellIndex, null);
@@ -490,10 +496,12 @@ function StructureView({
   object,
   formatObjectName,
   formatCount,
+  t,
 }: {
   object: DbObjectMetadata;
   formatObjectName: (object: DbObjectMetadata) => string;
   formatCount: (value: bigint | number) => string;
+  t: Translator["t"];
 }) {
   return (
     <div className="structure-view">
@@ -501,9 +509,11 @@ function StructureView({
         <header>
           <strong>{formatObjectName(object)}</strong>
           <span>
-            {object.columns.length} columns
+            {t("results.structure.columns", { count: object.columns.length })}
             {object.rowEstimate
-              ? ` \u00b7 ~${formatCount(object.rowEstimate)} rows`
+              ? ` \u00b7 ${t("results.structure.estimatedRows", {
+                  count: formatCount(object.rowEstimate),
+                })}`
               : ""}
           </span>
         </header>
@@ -511,12 +521,12 @@ function StructureView({
           <table className="structure-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Null</th>
-                <th>Key</th>
-                <th>Default</th>
-                <th>Comment</th>
+                <th>{t("results.structure.name")}</th>
+                <th>{t("results.structure.type")}</th>
+                <th>{t("results.structure.null")}</th>
+                <th>{t("results.structure.key")}</th>
+                <th>{t("results.structure.default")}</th>
+                <th>{t("results.structure.comment")}</th>
               </tr>
             </thead>
             <tbody>
@@ -536,29 +546,31 @@ function StructureView({
       </section>
       <section className="structure-side">
         <div className="structure-card">
-          <strong>Primary Key</strong>
+          <strong>{t("results.structure.primaryKey")}</strong>
           <span>
             {object.primaryKey.length > 0
               ? object.primaryKey.join(", ")
-              : "No primary key"}
+              : t("results.structure.noPrimaryKey")}
           </span>
         </div>
         <div className="structure-card">
-          <strong>Indexes</strong>
+          <strong>{t("results.structure.indexes")}</strong>
           {object.indexes.length > 0 ? (
             object.indexes.map((index) => (
               <span key={index.name}>
                 {index.name || "(unnamed)"} \u00b7{" "}
-                {index.unique ? "unique" : "index"} \u00b7{" "}
-                {index.columns.join(", ")}
+                {index.unique
+                  ? t("results.structure.unique")
+                  : t("results.structure.index")}{" "}
+                \u00b7 {index.columns.join(", ")}
               </span>
             ))
           ) : (
-            <span>No indexes loaded</span>
+            <span>{t("results.structure.noIndexes")}</span>
           )}
         </div>
         <div className="structure-card">
-          <strong>Foreign Keys</strong>
+          <strong>{t("results.structure.foreignKeys")}</strong>
           {object.foreignKeys.length > 0 ? (
             object.foreignKeys.map((fk, index) => (
               <span key={`${fk.referencesTable}:${index}`}>
@@ -570,7 +582,7 @@ function StructureView({
               </span>
             ))
           ) : (
-            <span>No outgoing foreign keys</span>
+            <span>{t("results.structure.noForeignKeys")}</span>
           )}
         </div>
         {object.ddl ? (

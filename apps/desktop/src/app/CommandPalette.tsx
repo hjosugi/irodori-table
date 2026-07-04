@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DialogShell } from "@/components/DialogShell";
 import type { CommandMeta, Keymap } from "@/core/keybindings";
 import { formatKeySequence } from "@/core/keybindings";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 
 export function CommandPalette({
   query,
@@ -18,6 +20,8 @@ export function CommandPalette({
   onRunCommand: (commandId: string) => void;
   onClose: () => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -58,12 +62,12 @@ export function CommandPalette({
       onClose={onClose}
       className="palette"
       overlayClassName="palette-overlay"
-      label="Command palette"
+      label={t("commandPalette.label")}
     >
       <input
         className="palette-input"
         autoFocus
-        placeholder="Type a command..."
+        placeholder={t("commandPalette.placeholder")}
         value={query}
         role="combobox"
         aria-expanded="true"
@@ -94,7 +98,7 @@ export function CommandPalette({
         className="palette-list"
         id="palette-command-list"
         role="listbox"
-        aria-label="Commands"
+        aria-label={t("commandPalette.commands")}
         ref={listRef}
       >
         {commands.length > 0 ? (
@@ -120,7 +124,7 @@ export function CommandPalette({
             </button>
           ))
         ) : (
-          <div className="palette-empty">No matching commands</div>
+          <div className="palette-empty">{t("commandPalette.noMatches")}</div>
         )}
       </div>
     </DialogShell>

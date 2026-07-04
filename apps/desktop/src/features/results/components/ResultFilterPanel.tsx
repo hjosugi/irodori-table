@@ -6,6 +6,7 @@ import {
   type ResultFilterOperator,
   type ResultFilterRule,
 } from "../result-grid";
+import type { Translator } from "@/i18n";
 
 type ResultFilterPanelProps = {
   filtersActive: boolean;
@@ -19,6 +20,7 @@ type ResultFilterPanelProps = {
   onUpdateFilterRule: (id: string, patch: Partial<ResultFilterRule>) => void;
   onRemoveFilterRule: (id: string) => void;
   onClearResultFilters: () => void;
+  t: Translator["t"];
 };
 
 export function ResultFilterPanel({
@@ -33,19 +35,22 @@ export function ResultFilterPanel({
   onUpdateFilterRule,
   onRemoveFilterRule,
   onClearResultFilters,
+  t,
 }: ResultFilterPanelProps) {
   return (
     <div className="result-filter-panel">
       <div className="result-filter-toolbar">
         <span>
           {filtersActive
-            ? `${formatCount(filteredOutCount)} hidden`
-            : "No active filters"}
+            ? t("results.filters.hidden", {
+                count: formatCount(filteredOutCount),
+              })
+            : t("results.filters.none")}
         </span>
         <div
           className="segmented-control"
           role="group"
-          aria-label="Filter join"
+          aria-label={t("results.filters.join")}
         >
           <button
             type="button"
@@ -68,7 +73,7 @@ export function ResultFilterPanel({
           onClick={() => onAddFilterRule("any")}
         >
           <Plus size={13} />
-          <span>Rule</span>
+          <span>{t("results.filters.rule")}</span>
         </button>
         {filtersActive ? (
           <button
@@ -76,7 +81,7 @@ export function ResultFilterPanel({
             type="button"
             onClick={onClearResultFilters}
           >
-            Clear
+            {t("common.clear")}
           </button>
         ) : null}
       </div>
@@ -90,7 +95,7 @@ export function ResultFilterPanel({
                   <input
                     type="checkbox"
                     checked={rule.enabled}
-                    aria-label="Filter enabled"
+                    aria-label={t("results.filters.enabled")}
                     onChange={(event) =>
                       onUpdateFilterRule(rule.id, {
                         enabled: event.currentTarget.checked,
@@ -99,7 +104,7 @@ export function ResultFilterPanel({
                   />
                 </label>
                 <select
-                  aria-label="Filter column"
+                  aria-label={t("results.filters.column")}
                   value={
                     rule.columnIndex === "any"
                       ? "any"
@@ -114,7 +119,7 @@ export function ResultFilterPanel({
                     })
                   }
                 >
-                  <option value="any">Any column</option>
+                  <option value="any">{t("results.filters.anyColumn")}</option>
                   {resultColumns.map((column, index) => (
                     <option value={index} key={`${column}-${index}`}>
                       {column}
@@ -122,7 +127,7 @@ export function ResultFilterPanel({
                   ))}
                 </select>
                 <select
-                  aria-label="Filter operator"
+                  aria-label={t("results.filters.operator")}
                   value={rule.operator}
                   onChange={(event) =>
                     onUpdateFilterRule(rule.id, {
@@ -139,7 +144,7 @@ export function ResultFilterPanel({
                 </select>
                 {needsValue ? (
                   <input
-                    aria-label="Filter value"
+                    aria-label={t("results.filters.value")}
                     value={rule.value}
                     onChange={(event) =>
                       onUpdateFilterRule(rule.id, {
@@ -153,8 +158,8 @@ export function ResultFilterPanel({
                 <button
                   className="mini-button"
                   type="button"
-                  title="Remove filter"
-                  aria-label="Remove filter"
+                  title={t("results.filters.remove")}
+                  aria-label={t("results.filters.remove")}
                   onClick={() => onRemoveFilterRule(rule.id)}
                 >
                   <X size={13} />
