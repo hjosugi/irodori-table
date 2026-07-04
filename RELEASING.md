@@ -77,14 +77,16 @@ bindings.
 
 1. Push the release commit and tag created by the release target.
 2. Watch the release workflow in GitHub Actions.
-3. Confirm packaged artifacts include the expected connector feature set for
-   that release. The default release workflow builds the desktop app with
-   `--features legacy-connectors,duckdb` so the Wired/Verified built-in
-   connectors listed in `registry/data-source-support-status.md` are present in
-   shipped binaries.
-4. Compare `registry/data-source-support-status.md` against shipped build
+3. The current tag workflow publishes a lightweight Linux pre-release with
+   `--features legacy-connectors,duckdb`. macOS, Windows, and updater artifacts
+   are intentionally omitted until signing secrets are configured.
+4. Confirm packaged Linux artifacts include the expected connector feature set
+   for that release. The Wired/Verified built-in connectors listed in
+   `registry/data-source-support-status.md` should be present in shipped Linux
+   binaries.
+5. Compare `registry/data-source-support-status.md` against shipped build
    behavior before publishing user-facing notes.
-5. Publish release notes that separate app changes from sibling-crate and
+6. Publish release notes that separate app changes from sibling-crate and
    extension SDK changes.
 
 ## Signing, Notarization, And Updates

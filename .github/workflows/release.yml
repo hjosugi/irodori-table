@@ -9,30 +9,27 @@ permissions:
   contents: write
 
 jobs:
-  publish:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-latest'
-            args: ''
-          - platform: 'windows-latest'
-            args: ''
-
-    runs-on: ${{ matrix.platform }}
+  publish-linux:
+    name: Publish lightweight Linux release
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout irodori-table
         uses: actions/checkout@v7
 
-      - name: Install dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-latest'
+      - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev mold
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            mold \
+            wget
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -43,8 +40,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       # Cache the Cargo registry and workspace target dir so external deps
       # don't recompile from scratch every run. Keep this aligned with
@@ -53,8 +48,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          # Keep separate caches per OS in the build matrix.
-          key: ${{ matrix.platform }}
+          key: release-linux
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
@@ -64,66 +58,21 @@ jobs:
         working-directory: apps/desktop
         run: npm run verify:release
 
-      - name: Prepare updater signing config
-        working-directory: apps/desktop
-        env:
-          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npm run release:prepare-updater
-
-      - name: Prepare macOS code signing and notarization
-        if: matrix.platform == 'macos-latest'
-        working-directory: apps/desktop
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run release:prepare-macos-signing
-
-      - name: Prepare Windows code signing
-        if: matrix.platform == 'windows-latest'
-        working-directory: apps/desktop
-        shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
-          WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
-        run: npm run release:prepare-windows-signing
-
       - name: Build and Publish Tauri App
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Irodori Table v__VERSION__'
-          releaseBody: 'See the asset list below for downloads.'
-          releaseDraft: true
-          prerelease: false
-          uploadUpdaterJson: true
-          uploadUpdaterSignatures: true
-          updaterJsonPreferNsis: true
-          args: ${{ matrix.args }} --features legacy-connectors,duckdb --config src-tauri/tauri.updater.conf.json
+          releaseBody: 'Lightweight Linux pre-release. Signed macOS, Windows, and updater artifacts are intentionally omitted until release signing secrets are configured.'
+          releaseDraft: false
+          prerelease: true
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          args: --features legacy-connectors,duckdb
           projectPath: apps/desktop
 
       - name: Verify Linux AppImage artifact
-        if: matrix.platform == 'ubuntu-latest'
         working-directory: apps/desktop
         run: npm run release:verify-linux
