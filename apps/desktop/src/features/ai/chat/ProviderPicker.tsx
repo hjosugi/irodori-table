@@ -319,13 +319,8 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           <p>
             {t("ai.provider.cloudDisclosure.body", {
               host: cloudProviderHost,
-            })}
-            {" "}
-            <a
-              href={cloudProviderPrivacyUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
+            })}{" "}
+            <a href={cloudProviderPrivacyUrl} target="_blank" rel="noreferrer">
               {t("ai.provider.cloudDisclosure.privacyLink")}
             </a>
           </p>

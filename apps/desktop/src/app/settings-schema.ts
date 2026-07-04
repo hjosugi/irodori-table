@@ -39,11 +39,7 @@ function readSettingsVersion(value: unknown) {
   if (value === undefined || value === null) {
     return 0;
   }
-  if (
-    typeof value !== "number" ||
-    !Number.isInteger(value) ||
-    value < 0
-  ) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
     throw new Error("settings JSON version must be a non-negative integer");
   }
   return value;

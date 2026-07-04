@@ -314,8 +314,7 @@ export function AiGenerateDialog({
                 <p>
                   {t("ai.provider.cloudDisclosure.body", {
                     host: cloudProviderHost,
-                  })}
-                  {" "}
+                  })}{" "}
                   <a
                     href={cloudProviderPrivacyUrl}
                     target="_blank"
