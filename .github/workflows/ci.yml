@@ -11,21 +11,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  preflight:
-    name: Preflight
+  formatting:
+    name: Formatting checks
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/checkout@v7
-        with:
-          repository: hjosugi/irodori-kit
-          path: irodori-kit
+      - name: Check out irodori-table
+        uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: rustfmt
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+      - name: Check desktop formatting
+        run: make desktop-format-check
+
+  preflight:
+    name: Tooling preflight
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out irodori-table
+        uses: actions/checkout@v7
+
+      - name: Check out irodori-kit
+        uses: actions/checkout@v7
+        with:
+          repository: hjosugi/irodori-kit
+          path: irodori-kit
 
       - uses: actions/setup-node@v6
         with:
@@ -46,12 +72,6 @@ jobs:
       - name: Check local kit patch is not committed
         run: make kit-patch-check
 
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
-
-      - name: Check desktop formatting
-        run: make desktop-format-check
-
       - name: Lint desktop sources
         run: make desktop-lint
 
@@ -63,11 +83,15 @@ jobs:
         run: node tools/docs/support-status.mjs --check
 
       - name: Validate extension manifests
+        env:
+          EXTENSION_SDK_DIR: irodori-kit/packages/extension-sdk
         run: make extension-manifests
 
   desktop-typegen:
     name: Desktop generated bindings
-    needs: preflight
+    needs:
+      - formatting
+      - preflight
     runs-on: ubuntu-latest
 
     steps:
@@ -107,7 +131,9 @@ jobs:
 
   rust-foundation:
     name: Rust foundation (${{ matrix.os }})
-    needs: preflight
+    needs:
+      - formatting
+      - preflight
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -153,7 +179,7 @@ jobs:
 
   desktop-frontend-checks:
     name: Desktop frontend checks
-    needs: preflight
+    needs: formatting
     runs-on: ubuntu-latest
 
     steps:
@@ -179,7 +205,9 @@ jobs:
 
   desktop-browser:
     name: Desktop browser tests
-    needs: preflight
+    needs:
+      - formatting
+      - preflight
     runs-on: ubuntu-latest
 
     steps:
