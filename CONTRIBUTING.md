@@ -123,11 +123,17 @@ make db-verify DB=postgres
 
 ## Issue And PR Intake
 
+### Finding Something To Work On
+
+Look for issues labeled `good first issue` when you want a starter-sized task.
+Maintainers should reserve that label for changes that stay in one area, have a
+clear owner, and can be verified with one or two documented checks. Good fits
+include docs fixes, focused UI polish, small unit-test gaps, connector metadata
+corrections, and doctor/check improvements.
+
 Good first contributions should be small, single-area, and independently
-verifiable: docs fixes, focused UI polish, small unit-test gaps, connector
-metadata corrections, and doctor/check improvements are good fits. Avoid using a
-good-first issue for shared contract changes, generated binding changes, release
-automation, or connector ABI work.
+verifiable. Avoid using `good first issue` for shared contract changes,
+generated binding changes, release automation, or connector ABI work.
 
 Use the bug, feature, or backlog-mirror issue templates. For PRs, keep the
 clean-room checklist filled in. If a change is influenced by third-party OSS

@@ -3,6 +3,13 @@
 Fast desktop database client for querying, browsing, editing, diagramming, and
 checking data across many engines.
 
+## Preview
+
+Project-authored screenshot pending. This repository does not currently include
+a checked-in screenshot asset; launch the desktop app with the quickstart below
+to inspect the current interface without relying on external or generated
+mockups.
+
 ## Install
 
 Use the public install guide for the current desktop downloads and
@@ -16,7 +23,31 @@ Release assets are published from GitHub Releases:
 
 ## Develop
 
-Contributor setup, platform prerequisites, and troubleshooting live in the
+### 5-Minute Quickstart
+
+1. Install the platform prerequisites for your OS:
+   [Windows](https://hjosugi.github.io/irodori-docs/windows-development.html),
+   [macOS](https://hjosugi.github.io/irodori-docs/macos-development.html), or
+   [Linux](https://hjosugi.github.io/irodori-docs/linux-development.html).
+   Linux users should install the WebKitGTK and linker packages from that guide
+   before running the desktop app.
+2. From the repository root, install dependencies and check the local setup:
+
+   ```sh
+   make setup
+   make doctor
+   ```
+
+3. Start the desktop development shell:
+
+   ```sh
+   make desktop-dev
+   ```
+
+`make desktop-dev` starts the Tauri shell and Vite dev server. Run `make help`
+for the full list of root commands.
+
+Contributor setup, troubleshooting, and deeper development notes live in the
 project docs:
 
 - [Contributing](CONTRIBUTING.md)
