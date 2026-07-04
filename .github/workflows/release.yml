@@ -65,12 +65,11 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Irodori Table v__VERSION__'
-          releaseBody: 'Lightweight Linux pre-release. Signed macOS, Windows, and updater artifacts are intentionally omitted until release signing secrets are configured.'
+          releaseBody: 'Lightweight Linux pre-release. Built with default features only; signed macOS, Windows, updater artifacts, DuckDB, and legacy connector bundles are intentionally omitted until the full release lane is restored.'
           releaseDraft: false
           prerelease: true
           uploadUpdaterJson: false
           uploadUpdaterSignatures: false
-          args: --features legacy-connectors,duckdb
           projectPath: apps/desktop
 
       - name: Verify Linux AppImage artifact

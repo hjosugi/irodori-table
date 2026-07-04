@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.4] - 2026-07-04
+
+### Changed
+
+- Lightweight Linux releases now build default features only, leaving DuckDB and
+  legacy connector bundles out of the fast release lane.
+
 ## [0.7.3] - 2026-07-04
 
 ### Changed
@@ -130,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundled sample connections and the seeded demo workspace were removed;
   a fresh install starts with an empty workspace.
 
+[0.7.4]: https://github.com/hjosugi/irodori-table/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/hjosugi/irodori-table/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/hjosugi/irodori-table/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/hjosugi/irodori-table/compare/v0.7.0...v0.7.1
