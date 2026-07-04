@@ -392,7 +392,7 @@ async function waitForCompletedRun(page: Page, expectedDoneCount: number) {
       (window.__IRODORI_VIRTUALIZATION_DONE_COUNT__ ?? 0) >= expected,
     expectedDoneCount,
   );
-  await expect(page.locator(".statusbar")).toContainText("idle");
+  await expect(page.locator(".statusbar")).toContainText(/idle/i);
 }
 
 async function waitForGridPaint() {
@@ -671,7 +671,7 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
     );
     await expectRenderedRowsWithinBudget(grid, renderedRows);
 
-    await page.getByRole("button", { name: "Edit Data", exact: true }).click();
+    await page.getByRole("button", { name: "Edit data", exact: true }).click();
     await scrollGridTo(grid, { left: 200 });
     await expectStickyGutterPinned(grid);
 
@@ -918,7 +918,7 @@ test.describe("Result Grid Virtualization and Sticky Gutter", () => {
       visibleRowCount * visibleColumnCount,
     );
 
-    await page.getByRole("button", { name: "Edit Data", exact: true }).click();
+    await page.getByRole("button", { name: "Edit data", exact: true }).click();
     await scrollGridTo(grid, { left: deepScrollLeft + 400 });
     await expectStickyGutterPinned(grid);
     await expectRenderedColumnsWithinBudget(

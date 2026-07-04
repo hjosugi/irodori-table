@@ -242,7 +242,7 @@ async function runFixtureQuery(page: Page) {
   await page.waitForFunction(
     () => (window.__IRODORI_MULTI_RESULTS_DONE_COUNT__ ?? 0) >= 1,
   );
-  await expect(page.locator(".statusbar")).toContainText("idle");
+  await expect(page.locator(".statusbar")).toContainText(/idle/i);
 }
 
 async function scrollGridTo(
@@ -296,8 +296,8 @@ test("streamed multi-statement results expose tabs, summaries, switching, and re
 
   const grid = page.locator(".result-grid");
   const resultTabs = page.getByRole("tablist", { name: "Result sets" });
-  const resultOneTab = page.getByRole("tab", { name: "Result 1" });
-  const resultTwoTab = page.getByRole("tab", { name: "Result 2" });
+  const resultOneTab = page.getByRole("tab", { name: "Result set 1" });
+  const resultTwoTab = page.getByRole("tab", { name: "Result set 2" });
 
   await expect(resultTabs).toBeVisible();
   await expect(resultOneTab).toHaveAttribute("aria-selected", "true");

@@ -204,7 +204,7 @@ async function connectAndRun(page: Page) {
   await page.waitForFunction(
     () => (window.__IRODORI_COPY_DONE_COUNT__ ?? 0) >= 1,
   );
-  await expect(page.locator(".statusbar")).toContainText("idle");
+  await expect(page.locator(".statusbar")).toContainText(/idle/i);
   await expect(page.locator(".results-title")).toContainText("2 rows");
 }
 
@@ -244,7 +244,7 @@ test.describe("result grid copy", () => {
     await installCopyMock(page);
     await connectAndRun(page);
 
-    await page.getByRole("button", { name: "Copy TSV" }).click();
+    await page.getByRole("button", { name: "Copy as TSV" }).click();
     await expectCopiedText(
       page,
       "id\tname\tcity\n1\tAster Works\tTokyo\n2\tKawase Foods\tOsaka",

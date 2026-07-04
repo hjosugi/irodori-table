@@ -99,12 +99,12 @@ describe("WorkbenchShell", () => {
     const menu = container.querySelector<HTMLElement>(
       ".workbench-context-menu",
     );
-    expect(menu?.textContent).toContain("Connection Manager");
-    expect(menu?.textContent).not.toContain("Command Palette");
+    expect(menu?.textContent).toContain("Connections");
+    expect(menu?.textContent).not.toContain("Command palette");
 
     const commandButton = Array.from(
       menu?.querySelectorAll<HTMLButtonElement>("button") ?? [],
-    ).find((button) => button.textContent?.includes("Connection Manager"));
+    ).find((button) => button.textContent?.includes("Connections"));
     flushSync(() => commandButton?.click());
 
     expect(props.onRunCommand).toHaveBeenCalledWith("connection.manager");

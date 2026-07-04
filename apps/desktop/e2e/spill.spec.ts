@@ -290,7 +290,7 @@ async function runHugeTable(page: Page, expectedDone: number) {
     (expected) => (window.__IRODORI_SPILL_DONE__ ?? 0) >= expected,
     expectedDone,
   );
-  await expect(page.locator(".statusbar")).toContainText("idle");
+  await expect(page.locator(".statusbar")).toContainText(/idle/i);
 }
 
 async function connectAndRun(page: Page) {
