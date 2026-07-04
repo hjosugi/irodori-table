@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
 import {
@@ -192,6 +194,7 @@ function validatePackage({ repoDir, config, cargoLibName, catalogEntry, warnings
       warnings.push(`${message}; rerun with --require-archive to gate this`);
     } else {
       validateArchiveContents({ archivePath, expectedLibrary, catalogEntry });
+      validateArchiveInstall({ archivePath, expectedLibrary, catalogEntry });
     }
   }
 }
@@ -212,6 +215,62 @@ function validateArchiveContents({ archivePath, expectedLibrary, catalogEntry })
     entries.has(`dist/native/${expectedLibrary}`),
     `catalog archive is missing dist/native/${expectedLibrary}`,
   );
+}
+
+function validateArchiveInstall({ archivePath, expectedLibrary, catalogEntry }) {
+  const installRoot = mkdtempSync(resolve(tmpdir(), "irodori-extension-install-"));
+  try {
+    const checksum = createHash("sha256").update(readFileSync(archivePath)).digest("hex");
+    const expectedChecksum = catalogEntry?.install?.sha256 ?? catalogEntry?.install?.checksum;
+    if (expectedChecksum) {
+      assertEqual(checksum, expectedChecksum, "catalog archive sha256");
+    }
+
+    const result = spawnSync("tar", ["-xzf", archivePath, "-C", installRoot], { encoding: "utf8" });
+    assert(result.status === 0, `catalog archive cannot be extracted: ${archivePath}`);
+
+    const manifestPath = catalogEntry?.install?.manifestPath ?? "irodori.extension.json";
+    const installedManifestPath = resolveInstallPath(installRoot, manifestPath);
+    const manifest = readJson(installedManifestPath);
+    assertEqual(manifest.id, catalogEntry.id, "installed manifest id");
+    assertEqual(manifest.runtime, "native", "installed manifest runtime");
+    assertIncludes(manifest.permissions ?? [], "native", "installed manifest permissions");
+    assertIncludes(manifest.permissions ?? [], "connectors", "installed manifest permissions");
+
+    const installedConfig = readJson(resolveInstallPath(installRoot, "connector.config.json"));
+    assertEqual(installedConfig.extensionId, manifest.id, "installed connector.config extensionId");
+
+    const connector = manifest.contributes?.connectors?.[0];
+    assert(connector && typeof connector === "object", "installed manifest connector is missing");
+    const nativeModule = (manifest.capabilities?.nativeModules ?? []).find(
+      (module) => module.id === connector.module,
+    );
+    assert(nativeModule, `installed manifest native module is missing ${connector.module}`);
+    assertEqual(installedConfig.connector?.module, nativeModule.id, "installed connector module");
+    assertEqual(installedConfig.runtime?.module?.path, nativeModule.path, "installed runtime module path");
+
+    const entryDir = resolveInstallPath(installRoot, manifest.entry);
+    assert(existsSync(entryDir), `installed manifest entry is missing: ${manifest.entry}`);
+    const nativeModuleDir = resolveInstallPath(installRoot, nativeModule.path);
+    assert(existsSync(nativeModuleDir), `installed native module path is missing: ${nativeModule.path}`);
+    assert(
+      existsSync(resolve(nativeModuleDir, expectedLibrary)),
+      `installed native module is missing ${expectedLibrary}`,
+    );
+  } finally {
+    rmSync(installRoot, { force: true, recursive: true });
+  }
+}
+
+function resolveInstallPath(installRoot, path) {
+  assert(typeof path === "string" && path.length > 0, "installed archive path is missing");
+  const resolved = resolve(installRoot, path);
+  const rel = relative(installRoot, resolved);
+  assert(
+    rel && rel !== ".." && !rel.startsWith("../") && !rel.startsWith("..\\"),
+    `installed archive path escapes root: ${path}`,
+  );
+  return resolved;
 }
 
 function parseArgs(args) {
