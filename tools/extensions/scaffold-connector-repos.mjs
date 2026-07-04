@@ -3386,7 +3386,7 @@ permissions:
 
 jobs:
   extension-ci:
-    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@main
+    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@v0.6.7
     with:
       manifest-root: "."
       package-command: "make package"
