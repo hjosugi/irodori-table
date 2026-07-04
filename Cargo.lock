@@ -3312,16 +3312,18 @@ dependencies = [
 
 [[package]]
 name = "irodori-completion"
-version = "0.6.3"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.3#83a0eb029788ecf5c9f7c6599094e9b4f53f4db9"
+version = "0.6.4"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.4#cce30645883b693802e34cf3a202da14ba159be0"
 dependencies = [
  "irodori-sql",
+ "serde",
+ "ts-rs",
 ]
 
 [[package]]
 name = "irodori-connection"
-version = "0.6.3"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.3#83a0eb029788ecf5c9f7c6599094e9b4f53f4db9"
+version = "0.6.4"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.4#cce30645883b693802e34cf3a202da14ba159be0"
 dependencies = [
  "irodori-error",
  "serde",
@@ -3339,8 +3341,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-generate"
-version = "0.6.3"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.3#83a0eb029788ecf5c9f7c6599094e9b4f53f4db9"
+version = "0.6.4"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.4#cce30645883b693802e34cf3a202da14ba159be0"
 dependencies = [
  "irodori-error",
  "irodori-sql",
@@ -3385,8 +3387,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-proxy"
-version = "0.6.3"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.3#83a0eb029788ecf5c9f7c6599094e9b4f53f4db9"
+version = "0.6.4"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.4#cce30645883b693802e34cf3a202da14ba159be0"
 dependencies = [
  "irodori-connection",
  "irodori-error",
@@ -3401,8 +3403,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-secure-store"
-version = "0.6.3"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.3#83a0eb029788ecf5c9f7c6599094e9b4f53f4db9"
+version = "0.6.4"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.4#cce30645883b693802e34cf3a202da14ba159be0"
 dependencies = [
  "irodori-connection",
  "irodori-error",
@@ -3411,8 +3413,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-security"
-version = "0.6.3"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.3#83a0eb029788ecf5c9f7c6599094e9b4f53f4db9"
+version = "0.6.4"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.4#cce30645883b693802e34cf3a202da14ba159be0"
 dependencies = [
  "serde",
  "ts-rs",

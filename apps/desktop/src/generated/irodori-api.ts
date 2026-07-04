@@ -223,16 +223,7 @@ export type ForeignKey = { columns: Array<string>, referencesSchema?: string, re
 
 export type DbQuickSample = { columns: Array<string>, rows: Array<Array<string>>, truncated: boolean, };
 
-export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, comment?: string, ddl?: string, rowEstimate?: bigint, sample?: DbQuickSample, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>,
-/**
- * Primary-key column names in key order (empty when there is no PK). Used for
- * safe edit keys and the ER diagram's key markers.
- */
-primaryKey: Array<string>,
-/**
- * Outgoing foreign keys — the edges of the ER diagram.
- */
-foreignKeys: Array<ForeignKey>, };
+export type DbObjectMetadata = { schema: string, name: string, kind: DbObjectMetadataKind, comment?: string, ddl?: string, rowEstimate?: bigint, sample?: DbQuickSample, columns: Array<ColumnMetadata>, indexes: Array<IndexMetadata>, primaryKey: Array<string>, foreignKeys: Array<ForeignKey>, };
 
 export type DbObjectMetadataKind = "table" | "view" | "index" | "procedure" | "function";
 
