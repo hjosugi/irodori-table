@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
@@ -190,8 +190,28 @@ function validatePackage({ repoDir, config, cargoLibName, catalogEntry, warnings
         throw new Error(message);
       }
       warnings.push(`${message}; rerun with --require-archive to gate this`);
+    } else {
+      validateArchiveContents({ archivePath, expectedLibrary, catalogEntry });
     }
   }
+}
+
+function validateArchiveContents({ archivePath, expectedLibrary, catalogEntry }) {
+  const result = spawnSync("tar", ["-tzf", archivePath], { encoding: "utf8" });
+  assert(result.status === 0, `catalog archive cannot be listed: ${archivePath}`);
+  const entries = new Set(
+    result.stdout
+      .split(/\r?\n/)
+      .map((entry) => entry.replace(/^\.\//, ""))
+      .filter(Boolean),
+  );
+  const manifestPath = catalogEntry?.install?.manifestPath ?? "irodori.extension.json";
+  assert(entries.has(manifestPath), `catalog archive is missing ${manifestPath}`);
+  assert(entries.has("connector.config.json"), "catalog archive is missing connector.config.json");
+  assert(
+    entries.has(`dist/native/${expectedLibrary}`),
+    `catalog archive is missing dist/native/${expectedLibrary}`,
+  );
 }
 
 function parseArgs(args) {

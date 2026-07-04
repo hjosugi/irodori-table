@@ -53,7 +53,7 @@ type ResultGridState = {
   filterRules: ResultFilterRule[];
   selectedRowKey: string | null;
   committing: boolean;
-  commitError: string | null;
+  commitError: unknown | null;
   editUndoStack: ResultGridEditDraft[];
   setGridScrollTop: (value: ValueUpdater<number>) => void;
   setGridScrollLeft: (value: ValueUpdater<number>) => void;
@@ -79,7 +79,7 @@ type ResultGridState = {
   setFilterRules: (value: ValueUpdater<ResultFilterRule[]>) => void;
   setSelectedRowKey: (value: ValueUpdater<string | null>) => void;
   setCommitting: (value: ValueUpdater<boolean>) => void;
-  setCommitError: (value: ValueUpdater<string | null>) => void;
+  setCommitError: (value: ValueUpdater<unknown | null>) => void;
   updateEditDraft: (
     updater: (draft: ResultGridEditDraft) => ResultGridEditDraft,
   ) => void;

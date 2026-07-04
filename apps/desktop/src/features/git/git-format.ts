@@ -2,6 +2,7 @@ import type {
   GitChangeKind,
   GitCommitSummary,
   GitRemoteProvider,
+  GitRemoteSummary,
 } from "../../generated/irodori-api";
 
 export function changeLabel(kind: GitChangeKind) {
@@ -74,6 +75,92 @@ export function refKind(ref: string) {
 
 export function refLabel(ref: string) {
   return ref.replace(/^tag: /, "").replace(/^HEAD -> /, "");
+}
+
+export function localBranchNameFromRef(
+  ref: string,
+  localBranches: ReadonlySet<string> | string[] = [],
+) {
+  const label = refLabel(ref).trim();
+  if (label && hasKnownBranch(localBranches, label)) {
+    return label;
+  }
+  const kind = refKind(ref);
+  if (kind !== "head" && kind !== "branch") {
+    return null;
+  }
+  return label && !label.includes(" -> ") ? label : null;
+}
+
+export function remoteBranchInfoFromRef(ref: string) {
+  if (refKind(ref) !== "remote") {
+    return null;
+  }
+  const label = refLabel(ref).trim();
+  if (!label || label.includes(" -> ")) {
+    return null;
+  }
+  const [remoteName, ...branchParts] = label.split("/");
+  const branchName = branchParts.join("/");
+  if (!remoteName || !branchName) {
+    return null;
+  }
+  return {
+    branchName,
+    localBranchName: branchName,
+    remoteName,
+    startPoint: label,
+  };
+}
+
+export function remoteCommitUrl(
+  remote: Pick<GitRemoteSummary, "provider" | "webUrl"> | null | undefined,
+  hash: string | null | undefined,
+) {
+  const webUrl = remote?.webUrl?.trim();
+  const provider = remote?.provider;
+  const commitHash = hash?.trim();
+  if (!webUrl || !provider || !commitHash) {
+    return null;
+  }
+
+  switch (provider) {
+    case "github":
+    case "azureRepos":
+    case "gitea":
+      return appendRemotePath(webUrl, `commit/${commitHash}`);
+    case "gitlab":
+      return appendRemotePath(webUrl, `-/commit/${commitHash}`);
+    case "bitbucket":
+      return appendRemotePath(webUrl, `commits/${commitHash}`);
+    case "codeCommit":
+      return appendRemotePath(webUrl, `commit/${commitHash}`);
+    default:
+      return null;
+  }
+}
+
+function appendRemotePath(webUrl: string, suffix: string) {
+  try {
+    const url = new URL(webUrl);
+    url.pathname = `${url.pathname.replace(/\/+$/, "")}/${suffix.replace(/^\/+/, "")}`;
+    return url.toString();
+  } catch {
+    const [base, query = ""] = webUrl.split("?", 2);
+    return `${base.replace(/\/+$/, "")}/${suffix.replace(/^\/+/, "")}${
+      query ? `?${query}` : ""
+    }`;
+  }
+}
+
+function hasKnownBranch(
+  localBranches: ReadonlySet<string> | string[],
+  branch: string,
+) {
+  if ("has" in localBranches) {
+    return localBranches.has(branch);
+  }
+  return localBranches.includes(branch);
 }
 
 export function providerLabel(provider: GitRemoteProvider | undefined) {

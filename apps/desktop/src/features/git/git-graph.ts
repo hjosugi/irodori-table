@@ -1,4 +1,7 @@
-import type { GitCommitSummary } from "../../generated/irodori-api";
+import type {
+  GitChangeKind,
+  GitCommitSummary,
+} from "../../generated/irodori-api";
 import { refKind } from "./git-format";
 
 export type GitGraphRefFilter = "all" | "branches" | "remotes" | "tags";
@@ -12,6 +15,13 @@ export type GitGraphRow = {
   after: string[];
   parentLanes: number[];
   laneCount: number;
+};
+
+export type GitCommitFileSummary = {
+  path: string;
+  originalPath?: string;
+  status: string;
+  kind: GitChangeKind;
 };
 
 export function buildGitGraphRows(commits: GitCommitSummary[]): GitGraphRow[] {
@@ -94,6 +104,13 @@ export function nextGraphCommitHash(
   return commits[nextIndex]?.hash ?? null;
 }
 
+export function parseCommitFileSummary(text: string): GitCommitFileSummary[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => parseNameStatusLine(line))
+    .filter((file): file is GitCommitFileSummary => file !== null);
+}
+
 function graphNavigationIndex(
   currentIndex: number,
   count: number,
@@ -108,6 +125,50 @@ function graphNavigationIndex(
       return Math.max(0, currentIndex - 1);
     case "next":
       return Math.min(count - 1, currentIndex + 1);
+  }
+}
+
+function parseNameStatusLine(line: string): GitCommitFileSummary | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("[diff truncated]")) {
+    return null;
+  }
+  const [status = "", firstPath = "", secondPath = ""] = trimmed.split("\t");
+  const statusKind = status.charAt(0);
+  const renamedOrCopied = statusKind === "R" || statusKind === "C";
+  const path = renamedOrCopied ? secondPath : firstPath;
+  if (!status || !path) {
+    return null;
+  }
+  const summary: GitCommitFileSummary = {
+    path,
+    status,
+    kind: nameStatusKind(statusKind),
+  };
+  if (renamedOrCopied && firstPath) {
+    summary.originalPath = firstPath;
+  }
+  return summary;
+}
+
+function nameStatusKind(status: string): GitChangeKind {
+  switch (status) {
+    case "A":
+      return "added";
+    case "D":
+      return "deleted";
+    case "R":
+      return "renamed";
+    case "C":
+      return "copied";
+    case "U":
+      return "unmerged";
+    case "T":
+      return "typeChanged";
+    case "M":
+      return "modified";
+    default:
+      return "unknown";
   }
 }
 

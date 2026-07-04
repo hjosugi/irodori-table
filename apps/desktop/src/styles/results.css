@@ -1417,6 +1417,33 @@
   min-height: 240px;
 }
 
+.result-grid-skeleton {
+  display: grid;
+  gap: 8px;
+  width: min(520px, calc(100% - 24px));
+}
+
+.result-grid-skeleton span {
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted),
+    var(--hover),
+    var(--surface-muted)
+  );
+  background-size: 200% 100%;
+  animation: irodori-skeleton 1.2s ease-in-out infinite;
+}
+
+.result-grid-skeleton span:nth-child(2n) {
+  width: 82%;
+}
+
+.result-grid-skeleton span:nth-child(3n) {
+  width: 68%;
+}
+
 .grid-empty-content {
   display: grid;
   place-items: center;
@@ -1553,6 +1580,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.result-error .error-callout-body,
+.result-error .error-callout-title,
+.result-error .error-callout-summary {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .statusbar {

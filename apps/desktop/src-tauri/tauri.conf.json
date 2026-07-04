@@ -20,7 +20,32 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost https://raw.githubusercontent.com",
+        "font-src": "'self' data:",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "worker-src": "'self' blob:",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self' customprotocol: asset: http://localhost:1420 http://127.0.0.1:1420",
+        "connect-src": "ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420 http://127.0.0.1:1420 ws://127.0.0.1:1420 https://raw.githubusercontent.com",
+        "font-src": "'self' data: http://localhost:1420 http://127.0.0.1:1420",
+        "img-src": "'self' asset: http://asset.localhost blob: data: http://localhost:1420 http://127.0.0.1:1420",
+        "script-src": "'self' http://localhost:1420 http://127.0.0.1:1420",
+        "style-src": "'self' 'unsafe-inline' http://localhost:1420 http://127.0.0.1:1420",
+        "worker-src": "'self' blob: http://localhost:1420 http://127.0.0.1:1420",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      }
     }
   },
   "bundle": {

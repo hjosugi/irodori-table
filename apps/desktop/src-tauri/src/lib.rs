@@ -3,6 +3,7 @@ use sql_dialect_fmt_formatter::{format as format_snowflake_sql, Dialect, FormatO
 use ts_rs::TS;
 
 pub mod ai;
+pub mod crash_report;
 pub mod db;
 pub mod git;
 pub mod indexing;
@@ -116,6 +117,7 @@ pub fn run() {
             // the user doesn't reconfigure it on every launch.
             use tauri::Manager;
             let handle = app.handle().clone();
+            app.manage(crash_report::initialize(&handle));
             let ai = app.state::<ai::AiState>();
             let security = app.state::<security::SecurityState>();
             ai::hydrate_provider(&handle, &ai, &security);

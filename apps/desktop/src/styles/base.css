@@ -794,6 +794,59 @@ textarea:disabled {
   text-overflow: ellipsis;
 }
 
+.error-callout-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.inline-error .error-callout-body,
+.result-error .error-callout-body {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.error-callout-title,
+.error-callout-summary {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.error-callout-title {
+  font-weight: 800;
+}
+
+.error-callout-summary {
+  color: var(--text);
+}
+
+.error-callout-details {
+  min-width: 0;
+  color: var(--muted);
+}
+
+.error-callout-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.error-callout-details pre {
+  max-height: 180px;
+  margin: 5px 0 0;
+  padding: 7px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: var(--font-ui-xs);
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
 .toolbar-command {
   color: var(--text);
   font-weight: 700;

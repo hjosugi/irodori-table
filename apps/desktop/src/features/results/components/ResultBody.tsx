@@ -291,9 +291,14 @@ export function ResultBody({
           <div
             className="grid-state loading"
             role="status"
+            aria-label="Running query"
             style={{ minWidth: gridTotalWidth, width: "100%" }}
           >
-            Running query...
+            <div className="result-grid-skeleton" aria-hidden="true">
+              {Array.from({ length: 5 }, (_, index) => (
+                <span key={index} />
+              ))}
+            </div>
           </div>
         ) : null}
         {!running && hasResult && totalRows === 0 ? (

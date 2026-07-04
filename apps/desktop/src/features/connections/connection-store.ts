@@ -22,7 +22,7 @@ type ConnectionState = {
   liveConnections: Record<string, WorkspaceConnection>;
   connecting: boolean;
   testingConnection: boolean;
-  connectionError: string | null;
+  connectionError: unknown | null;
   metadataByConnection: Record<string, DatabaseMetadata>;
   metadataLoading: Set<string>;
   metadataErrors: Record<string, string>;
@@ -39,7 +39,7 @@ type ConnectionState = {
   ) => void;
   setConnecting: (value: ValueUpdater<boolean>) => void;
   setTestingConnection: (value: ValueUpdater<boolean>) => void;
-  setConnectionError: (value: ValueUpdater<string | null>) => void;
+  setConnectionError: (value: ValueUpdater<unknown | null>) => void;
   setMetadataByConnection: (
     value: ValueUpdater<Record<string, DatabaseMetadata>>,
   ) => void;

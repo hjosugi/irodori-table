@@ -7,16 +7,39 @@ import {
   type KeyboardEvent,
   type UIEvent,
 } from "react";
-import { Search, X } from "lucide-react";
-import type { GitCommitSummary } from "../../generated/irodori-api";
+import {
+  Copy,
+  ExternalLink,
+  GitBranch,
+  GitBranchPlus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import type {
+  GitBranchSummary,
+  GitCommitSummary,
+  GitDiffResult,
+  GitRemoteSummary,
+} from "../../generated/irodori-api";
 import {
   buildGitGraphRows,
   filterGraphCommits,
   nextGraphCommitHash,
+  parseCommitFileSummary,
   type GitGraphRefFilter,
   type GitGraphRow,
 } from "./git-graph";
-import { commitRefs, formatCommitTime, refKind, refLabel } from "./git-format";
+import {
+  changeLabel,
+  commitRefs,
+  formatCommitTime,
+  localBranchNameFromRef,
+  refKind,
+  refLabel,
+  remoteBranchInfoFromRef,
+  remoteCommitUrl,
+} from "./git-format";
 
 const graphLaneColors = [
   "#20a4f3",
@@ -29,6 +52,25 @@ const graphLaneColors = [
 
 const gitGraphRowHeight = 36;
 const gitGraphOverscanRows = 8;
+
+type LocalBranchRefAction = {
+  branchName: string;
+  current: boolean;
+  kind: "local";
+  refName: string;
+};
+
+type RemoteBranchRefAction = {
+  branchName: string;
+  current: boolean;
+  kind: "remote";
+  localExists: boolean;
+  remoteName: string;
+  refName: string;
+  startPoint: string;
+};
+
+type BranchRefAction = LocalBranchRefAction | RemoteBranchRefAction;
 
 function laneColor(lane: number) {
   return graphLaneColors[lane % graphLaneColors.length];
@@ -152,24 +194,195 @@ const GraphCommitRow = memo(function GraphCommitRow({
 });
 
 function CommitDetail({
+  branches,
   commit,
+  commitDiff,
+  commitDiffLoading,
+  currentBranch,
+  remotes,
+  selectedCommitPath,
   showRemoteRefs,
+  onCheckoutBranch,
+  onCreateBranch,
+  onDeleteBranch,
+  onSelectCommitFile,
 }: {
+  branches: GitBranchSummary[];
   commit: GitCommitSummary | null;
+  commitDiff: GitDiffResult | null;
+  commitDiffLoading: boolean;
+  currentBranch: string | null;
+  remotes: GitRemoteSummary[];
+  selectedCommitPath: string | null;
   showRemoteRefs: boolean;
+  onCheckoutBranch: (branch: string) => void;
+  onCreateBranch: (branch: string, startPoint?: string) => void;
+  onDeleteBranch: (branch: string) => void;
+  onSelectCommitFile: (path: string | null) => void;
 }) {
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   if (!commit) {
     return <div className="empty-browser">Select a commit</div>;
   }
   const refs = visibleCommitRefs(commit, showRemoteRefs);
+  const remote = remotes.find((item) => item.webUrl);
+  const commitUrl = remoteCommitUrl(remote, commit.hash);
+  const commitFiles = parseCommitFileSummary(commitDiff?.staged ?? "");
+  const localBranches = new Set(branches.map((branch) => branch.name));
+  const branchActions: BranchRefAction[] = [];
+  for (const refName of refs) {
+    const localBranch = localBranchNameFromRef(refName, localBranches);
+    if (localBranch) {
+      branchActions.push({
+        branchName: localBranch,
+        current: localBranch === currentBranch,
+        kind: "local",
+        refName,
+      });
+      continue;
+    }
+    const remoteBranch = remoteBranchInfoFromRef(refName);
+    if (!remoteBranch) {
+      continue;
+    }
+    branchActions.push({
+      branchName: remoteBranch.localBranchName,
+      current: remoteBranch.localBranchName === currentBranch,
+      kind: "remote",
+      localExists: localBranches.has(remoteBranch.localBranchName),
+      remoteName: remoteBranch.remoteName,
+      refName,
+      startPoint: remoteBranch.startPoint,
+    });
+  }
+
+  async function copyText(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setActionMessage(`Copied ${label}`);
+    } catch {
+      setActionMessage(`Could not copy ${label}`);
+    }
+  }
 
   return (
-    <div className="git-commit-detail">
+    <div
+      className="git-commit-detail"
+      style={{ maxHeight: "min(460px, 48vh)" }}
+    >
       <strong>{commit.subject}</strong>
+      <div className="git-action-row" style={{ justifyContent: "flex-start" }}>
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => void copyText(commit.hash, "hash")}
+        >
+          <Copy size={12} />
+          Hash
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => void copyText(commit.subject, "subject")}
+        >
+          <Copy size={12} />
+          Subject
+        </button>
+        {commitUrl ? (
+          <a
+            className="text-button"
+            href={commitUrl}
+            target="_blank"
+            rel="noreferrer"
+            title={commitUrl}
+          >
+            <ExternalLink size={12} />
+            Remote
+          </a>
+        ) : (
+          <button
+            className="text-button"
+            type="button"
+            disabled
+            title="No supported remote commit URL is available"
+          >
+            <ExternalLink size={12} />
+            Remote
+          </button>
+        )}
+        {actionMessage ? (
+          <small aria-live="polite">{actionMessage}</small>
+        ) : null}
+      </div>
       {refs.length ? (
         <div className="git-ref-list detail">
           {refs.map((refName) => (
             <RefBadge key={refName} refName={refName} />
+          ))}
+        </div>
+      ) : null}
+      {branchActions.length ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          {branchActions.map((action) => (
+            <div
+              className="git-branch-row"
+              key={`${action.kind}-${action.refName}`}
+            >
+              <RefBadge refName={action.refName} />
+              {action.kind === "local" ? (
+                <>
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={action.current}
+                    onClick={() => onCheckoutBranch(action.branchName)}
+                  >
+                    <GitBranch size={12} />
+                    Checkout
+                  </button>
+                  <button
+                    className="text-button danger"
+                    type="button"
+                    disabled={action.current}
+                    onClick={() => onDeleteBranch(action.branchName)}
+                  >
+                    <Trash2 size={12} />
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={action.localExists}
+                    title={
+                      action.localExists
+                        ? `${action.branchName} already exists locally`
+                        : `Create ${action.branchName} from ${action.refName}`
+                    }
+                    onClick={() =>
+                      onCreateBranch(action.branchName, action.startPoint)
+                    }
+                  >
+                    <GitBranchPlus size={12} />
+                    Create
+                  </button>
+                  {action.localExists ? (
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={action.current}
+                      onClick={() => onCheckoutBranch(action.branchName)}
+                    >
+                      <GitBranch size={12} />
+                      Checkout
+                    </button>
+                  ) : null}
+                  <small>{action.remoteName}</small>
+                </>
+              )}
+            </div>
           ))}
         </div>
       ) : null}
@@ -195,6 +408,53 @@ function CommitDetail({
           </dd>
         </div>
       </dl>
+      <div
+        className="git-action-row"
+        style={{ justifyContent: "space-between" }}
+      >
+        <strong>Files</strong>
+        <button
+          className="text-button"
+          type="button"
+          disabled={!selectedCommitPath}
+          onClick={() => onSelectCommitFile(null)}
+        >
+          All Files
+        </button>
+      </div>
+      {commitDiffLoading ? (
+        <div className="empty-browser">Loading commit diff...</div>
+      ) : commitFiles.length ? (
+        <div style={{ display: "grid", gap: 4 }}>
+          {commitFiles.map((file) => (
+            <button
+              className={`git-file-row ${file.kind} ${
+                selectedCommitPath === file.path ? "active" : ""
+              }`}
+              key={`${file.status}-${file.originalPath ?? ""}-${file.path}`}
+              type="button"
+              onClick={() => onSelectCommitFile(file.path)}
+            >
+              <span className="git-file-kind">{changeLabel(file.kind)}</span>
+              <span className="git-file-path">
+                <span>{file.path}</span>
+                {file.originalPath ? <small>{file.originalPath}</small> : null}
+              </span>
+              <small>{file.status}</small>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <small>No file summary available</small>
+      )}
+      <div className="git-diff">
+        <pre style={{ maxHeight: 240 }}>
+          {commitDiffLoading
+            ? "Loading commit diff..."
+            : commitDiff?.unstaged.trim() || "No commit diff available"}
+        </pre>
+      </div>
+      {commitDiff?.truncated ? <small>Diff truncated</small> : null}
     </div>
   );
 }
@@ -218,23 +478,43 @@ const refFilterOptions: Array<{
 ];
 
 export function GitGraphView({
+  branches,
+  commitDiff,
+  commitDiffLoading,
   commits,
+  currentBranch,
   query,
   refFilter,
+  remotes,
+  selectedCommitPath,
   selectedCommitHash,
   loading,
+  onCheckoutBranch,
+  onCreateBranch,
+  onDeleteBranch,
   onQueryChange,
   onRefFilterChange,
   onSelectCommit,
+  onSelectCommitFile,
 }: {
+  branches: GitBranchSummary[];
+  commitDiff: GitDiffResult | null;
+  commitDiffLoading: boolean;
   commits: GitCommitSummary[];
+  currentBranch: string | null;
   query: string;
   refFilter: GitGraphRefFilter;
+  remotes: GitRemoteSummary[];
+  selectedCommitPath: string | null;
   selectedCommitHash: string | null;
   loading: boolean;
+  onCheckoutBranch: (branch: string) => void;
+  onCreateBranch: (branch: string, startPoint?: string) => void;
+  onDeleteBranch: (branch: string) => void;
   onQueryChange: (query: string) => void;
   onRefFilterChange: (refFilter: GitGraphRefFilter) => void;
   onSelectCommit: (hash: string) => void;
+  onSelectCommitFile: (path: string | null) => void;
 }) {
   const [showRemoteRefs, setShowRemoteRefs] = useState(true);
   const [scrollTop, setScrollTop] = useState(0);
@@ -311,6 +591,12 @@ export function GitGraphView({
     }
     scrollCommitIntoView(activeCommitHash);
   }, [activeCommitHash, filteredCommits]);
+
+  useEffect(() => {
+    if (activeCommitHash && activeCommitHash !== selectedCommitHash) {
+      onSelectCommit(activeCommitHash);
+    }
+  }, [activeCommitHash, onSelectCommit, selectedCommitHash]);
 
   function onGraphScroll(event: UIEvent<HTMLDivElement>) {
     setScrollTop(event.currentTarget.scrollTop);
@@ -470,7 +756,20 @@ export function GitGraphView({
             )}
           </div>
         </div>
-        <CommitDetail commit={selectedCommit} showRemoteRefs={showRemoteRefs} />
+        <CommitDetail
+          branches={branches}
+          commit={selectedCommit}
+          commitDiff={commitDiff}
+          commitDiffLoading={commitDiffLoading}
+          currentBranch={currentBranch}
+          remotes={remotes}
+          selectedCommitPath={selectedCommitPath}
+          showRemoteRefs={showRemoteRefs}
+          onCheckoutBranch={onCheckoutBranch}
+          onCreateBranch={onCreateBranch}
+          onDeleteBranch={onDeleteBranch}
+          onSelectCommitFile={onSelectCommitFile}
+        />
       </div>
     </section>
   );

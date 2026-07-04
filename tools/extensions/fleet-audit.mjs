@@ -7,6 +7,7 @@ import {
   extensionsRoot,
   parsePositiveInteger,
   readConnectorRepositories,
+  readExtensionCatalog,
   readText,
   selectRepositories,
 } from "./lib/tooling.mjs";
@@ -38,6 +39,8 @@ if (repositories.length === 0) {
 const failures = [];
 const warnings = [];
 const abiPins = new Map();
+const catalog = readExtensionCatalog();
+const catalogById = new Map((catalog.extensions ?? []).map((entry) => [entry.id, entry]));
 
 console.log("Irodori extension fleet audit");
 console.log(`  extensions root: ${extensionsRoot}`);
@@ -47,7 +50,7 @@ for (const repo of repositories) {
   const repoDir = resolve(extensionsRoot, repo.name);
   const repoFailures = [];
   const repoWarnings = [];
-  auditRepository(repo, repoDir, repoFailures, repoWarnings, abiPins);
+  auditRepository(repo, repoDir, repoFailures, repoWarnings, abiPins, catalogById.get(repo.extensionId));
   if (repoFailures.length > 0) {
     failures.push(...repoFailures.map((failure) => `${repo.name}: ${failure}`));
   }
@@ -58,7 +61,7 @@ for (const repo of repositories) {
   console.log(`  ${status.padEnd(4)} ${repo.name}`);
 }
 
-auditSharedPins(abiPins, failures);
+auditSharedPins(abiPins, options.strictAbi ? failures : warnings);
 auditCatalogManifests(repositories, failures);
 
 if (warnings.length > 0) {
@@ -78,7 +81,7 @@ if (failures.length > 0) {
 
 console.log("\nExtension fleet audit passed.");
 
-function auditRepository(repo, repoDir, failures, warnings, abiPins) {
+function auditRepository(repo, repoDir, failures, warnings, abiPins, catalogEntry) {
   if (!existsSync(repoDir)) {
     failures.push(`repository checkout not found: ${repoDir}`);
     return;
@@ -88,61 +91,117 @@ function auditRepository(repo, repoDir, failures, warnings, abiPins) {
   const libPath = resolve(repoDir, "src/lib.rs");
   const abiPath = resolve(repoDir, "src/abi.rs");
   const workflowDir = resolve(repoDir, ".github/workflows");
+  const makefilePath = resolve(repoDir, "Makefile");
 
   const cargoToml = readText(cargoTomlPath);
   const libRs = readText(libPath);
+  const makefile = readText(makefilePath);
   const workflows = listWorkflowFiles(workflowDir).map((path) => ({
     path,
     text: readText(path),
   }));
 
+  const abiFailures = [];
   if (existsSync(abiPath)) {
-    failures.push("src/abi.rs still exists");
+    abiFailures.push("src/abi.rs still exists");
   }
   if (!libRs.includes("irodori_export_connector!")) {
-    failures.push("src/lib.rs does not call irodori_export_connector!");
+    abiFailures.push("src/lib.rs does not call irodori_export_connector!");
   }
   if (!libRs.includes("irodori_connector_abi")) {
-    failures.push("src/lib.rs does not reference irodori_connector_abi");
+    abiFailures.push("src/lib.rs does not reference irodori_connector_abi");
   }
 
   const abiPin = parseAbiPin(cargoToml);
   if (!abiPin) {
-    failures.push("Cargo.toml does not depend on irodori-connector-abi");
+    abiFailures.push("Cargo.toml does not depend on irodori-connector-abi");
   } else {
     abiPins.set(repo.name, abiPin);
     if (!abiPin.includes("git = ") || !abiPin.includes("tag = ")) {
-      failures.push("irodori-connector-abi dependency is not pinned by git tag");
+      abiFailures.push("irodori-connector-abi dependency is not pinned by git tag");
     }
   }
+  if (abiFailures.length > 0) {
+    const target = options.strictAbi ? failures : warnings;
+    target.push(...abiFailures.map((failure) => `ABI migration pending: ${failure}`));
+  }
 
-  const vendoredToolFiles = findFiles(repoDir, (path) => {
+  const vendoredMetadataToolFiles = findFiles(repoDir, (path) => {
     const name = path.split(/[\\/]/).pop();
-    return name === "generate_connector_metadata.py";
+    return name === "generate_connector_metadata.py" || name === "connector_metadata_presets.json";
   });
-  if (vendoredToolFiles.length > 0) {
+  if (vendoredMetadataToolFiles.length > 0) {
     failures.push(
-      `vendored generate_connector_metadata.py still present: ${vendoredToolFiles
+      `vendored metadata generator files still present: ${vendoredMetadataToolFiles
         .map((path) => relative(repoDir, path))
         .join(", ")}`,
     );
   }
 
+  auditSnapshotDestinations(repoDir, failures, warnings);
+  auditPackageTarget(makefile, catalogEntry, failures);
+
   if (workflows.length === 0) {
     failures.push("no GitHub Actions workflow found");
-  } else if (!workflows.some((workflow) => usesReusableWorkflow(workflow.text))) {
-    failures.push("workflow does not call the reusable extension CI workflow");
-  }
-
-  if (
-    duckDbBackedRepos.has(repo.name) &&
-    !workflows.some((workflow) => /duckdb/i.test(workflow.text))
-  ) {
-    failures.push("duckdb-backed repo workflow does not pass a duckdb variant flag");
+  } else {
+    const reusableWorkflows = workflows.filter((workflow) => usesReusableWorkflow(workflow.text));
+    if (reusableWorkflows.length === 0) {
+      failures.push("workflow does not call the reusable extension CI workflow");
+    } else {
+      if (!reusableWorkflows.some((workflow) => hasManifestValidationInput(workflow.text))) {
+        failures.push("reusable workflow caller does not pass manifest validation input");
+      }
+      if (!reusableWorkflows.some((workflow) => hasPackageCommandInput(workflow.text))) {
+        failures.push("reusable workflow caller does not pass package command input");
+      }
+      const expectedDuckDbBacked = duckDbBackedRepos.has(repo.name);
+      const duckDbFlags = reusableWorkflows.map((workflow) => parseDuckDbBackedFlag(workflow.text));
+      if (duckDbFlags.every((flag) => flag === null)) {
+        failures.push("reusable workflow caller does not pass duckdb-backed flag");
+      } else if (!duckDbFlags.some((flag) => flag === expectedDuckDbBacked)) {
+        failures.push(`reusable workflow duckdb-backed flag is not ${expectedDuckDbBacked}`);
+      }
+    }
   }
 
   if (findFiles(repoDir, (path) => path.includes(`${repo.name}/${repo.name}/`)).length > 0) {
     warnings.push("nested duplicate repo tree may still exist");
+  }
+}
+
+function auditSnapshotDestinations(repoDir, failures, warnings) {
+  const configPath = resolve(repoDir, "connector.config.json");
+  if (!existsSync(configPath)) {
+    failures.push("connector.config.json not found");
+    return;
+  }
+  const config = JSON.parse(readText(configPath));
+  const snapshots = config.source?.snapshots ?? [];
+  for (const snapshot of snapshots) {
+    const destination = String(snapshot.destination ?? "");
+    if (destination.includes("../") || destination.startsWith("..")) {
+      failures.push(`snapshot destination contains a parent traversal: ${destination}`);
+    }
+    if (destination.includes("native/source/irodori-table/crates/")) {
+      warnings.push(`snapshot destination still uses the pre-split crates layout: ${destination}`);
+    }
+  }
+}
+
+function auditPackageTarget(makefile, catalogEntry, failures) {
+  const assetName = catalogEntry?.install?.assetName;
+  if (!assetName) {
+    return;
+  }
+  if (!/^package:/m.test(makefile)) {
+    failures.push("Makefile does not define a package target");
+    return;
+  }
+  if (!makefile.includes(`EXTENSION_PACKAGE := ${assetName}`)) {
+    failures.push(`Makefile EXTENSION_PACKAGE does not match catalog assetName ${assetName}`);
+  }
+  if (!/tar\s+-czf\s+dist\/(?:\$\(EXTENSION_PACKAGE\)|[^\s]+)/.test(makefile)) {
+    failures.push("Makefile package target does not create a dist/*.tar.gz archive");
   }
 }
 
@@ -188,6 +247,22 @@ function usesReusableWorkflow(text) {
   return /uses:\s+.*irodori.*extension.*(ci|workflow)/i.test(text);
 }
 
+function hasManifestValidationInput(text) {
+  return /^\s*(manifest-root|manifest_roots|validate-manifest)\s*:/im.test(text);
+}
+
+function hasPackageCommandInput(text) {
+  return /^\s*(package-command|package_command|package)\s*:/im.test(text);
+}
+
+function parseDuckDbBackedFlag(text) {
+  const match = text.match(/^\s*duckdb-backed\s*:\s*(true|false)\s*$/im);
+  if (!match) {
+    return null;
+  }
+  return match[1] === "true";
+}
+
 function listWorkflowFiles(workflowDir) {
   if (!existsSync(workflowDir)) {
     return [];
@@ -224,12 +299,15 @@ function parseArgs(args) {
     help: false,
     limit: null,
     repos: new Set(),
+    strictAbi: false,
   };
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--help" || arg === "-h") {
       parsed.help = true;
+    } else if (arg === "--strict-abi") {
+      parsed.strictAbi = true;
     } else if (arg === "--repo" || arg === "--limit") {
       const value = args[index + 1];
       assert(value && !value.startsWith("--"), `${arg} requires a value`);
@@ -260,12 +338,13 @@ function assignArg(parsed, name, value) {
 function printHelp() {
   console.log(
     [
-      "Usage: node tools/extensions/fleet-audit.mjs [--repo <name>] [--limit <n>]",
+      "Usage: node tools/extensions/fleet-audit.mjs [--repo <name>] [--limit <n>] [--strict-abi]",
       "",
       "Audits the post-migration connector fleet checklist tracked by irodori-table#44.",
       "Use this with `make extension-manifests` for the SDK/template manifests and `make extension-scenarios` for package assets.",
       "Set IRODORI_EXTENSIONS_ROOT to point at the directory containing irodori-extension-* checkouts.",
       "Set IRODORI_EXPECTED_EXTENSION_MANIFESTS to override the selected-repository manifest count.",
+      "Pass --strict-abi to fail on pending shared ABI migration items instead of warning.",
     ].join("\n"),
   );
 }

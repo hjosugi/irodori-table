@@ -13,6 +13,13 @@ import { errorMessage, isIrodoriError } from "@/core/errors";
 import { DialogShell } from "@/components/DialogShell";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
+import {
+  hasCloudProviderConsent,
+  isCloudProvider,
+  cloudProviderPrivacyUrl,
+  providerHostLabel,
+  rememberCloudProviderConsent,
+} from "./provider-disclosure";
 import "./ai-generate-dialog.css";
 
 type ActionNoticeKind = "success" | "error" | "info";
@@ -66,6 +73,9 @@ export function AiGenerateDialog({
   const [showProvider, setShowProvider] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [savingProvider, setSavingProvider] = useState(false);
+  const [cloudProviderConsent, setCloudProviderConsent] = useState(
+    hasCloudProviderConsent,
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
@@ -119,6 +129,10 @@ export function AiGenerateDialog({
   }, [prompt, loading, connectionId, engine, onInsert, notify, onClose, t]);
 
   const saveProvider = useCallback(async () => {
+    if (isCloudProvider(provider) && !cloudProviderConsent) {
+      setError(t("ai.provider.cloudDisclosure.required"));
+      return;
+    }
     setSavingProvider(true);
     setError(null);
     try {
@@ -139,7 +153,7 @@ export function AiGenerateDialog({
     } finally {
       setSavingProvider(false);
     }
-  }, [provider, apiKey, notify, t]);
+  }, [provider, cloudProviderConsent, apiKey, notify, t]);
 
   if (!open) return null;
 
@@ -149,6 +163,18 @@ export function AiGenerateDialog({
       : false;
   const notCompiled =
     provider.kind === "local" && status ? !status.compiled : false;
+  const cloudProviderSelected = isCloudProvider(provider);
+  const cloudProviderHost = providerHostLabel(
+    provider,
+    t("ai.provider.cloudDisclosure.hostUnknown"),
+  );
+  const cloudConsentRequired = cloudProviderSelected && !cloudProviderConsent;
+
+  const acceptCloudProviderDisclosure = () => {
+    rememberCloudProviderConsent();
+    setCloudProviderConsent(true);
+    setError(null);
+  };
 
   return (
     <DialogShell
@@ -277,6 +303,32 @@ export function AiGenerateDialog({
                 />
               </label>
             )}
+            {cloudProviderSelected ? (
+              <p className="ai-generate-provider-hint">
+                {t("ai.provider.cloudHint", { host: cloudProviderHost })}
+              </p>
+            ) : null}
+            {cloudConsentRequired ? (
+              <div className="ai-generate-provider-disclosure" role="status">
+                <strong>{t("ai.provider.cloudDisclosure.title")}</strong>
+                <p>
+                  {t("ai.provider.cloudDisclosure.body", {
+                    host: cloudProviderHost,
+                  })}
+                  {" "}
+                  <a
+                    href={cloudProviderPrivacyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("ai.provider.cloudDisclosure.privacyLink")}
+                  </a>
+                </p>
+                <button type="button" onClick={acceptCloudProviderDisclosure}>
+                  {t("ai.provider.cloudDisclosure.accept")}
+                </button>
+              </div>
+            ) : null}
             {provider.kind === "command" && (
               <label className="ai-generate-field">
                 <span>Program</span>
@@ -310,7 +362,12 @@ export function AiGenerateDialog({
                 type="button"
                 className="ai-generate-button"
                 onClick={() => void saveProvider()}
-                disabled={savingProvider}
+                disabled={savingProvider || cloudConsentRequired}
+                title={
+                  cloudConsentRequired
+                    ? t("ai.provider.cloudDisclosure.required")
+                    : undefined
+                }
               >
                 {savingProvider ? "Saving…" : "Save provider"}
               </button>

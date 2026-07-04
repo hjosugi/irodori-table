@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { invoke } from "@tauri-apps/api/core";
 import {
   gitCheckoutBranch,
   gitCommitAll,
@@ -35,6 +36,8 @@ type GitState = {
   status: GitStatusSummary | null;
   graphCommits: GitCommitSummary[];
   selectedCommitHash: string | null;
+  commitDiff: GitDiffResult | null;
+  selectedCommitPath: string | null;
   graphQuery: string;
   graphRefFilter: GitGraphRefFilter;
   diff: GitDiffResult | null;
@@ -43,6 +46,7 @@ type GitState = {
   loading: boolean;
   logLoading: boolean;
   diffLoading: boolean;
+  commitDiffLoading: boolean;
   error: string | null;
   commandOutput: GitCommandOutput | null;
   commitMessage: string;
@@ -55,6 +59,7 @@ type GitState = {
   setGraphQuery: (query: string) => void;
   setGraphRefFilter: (refFilter: GitGraphRefFilter) => void;
   selectCommit: (hash: string) => void;
+  selectCommitFile: (path: string | null) => Promise<void>;
   setCommitMessage: (message: string) => void;
   setBranchDraft: (branchDraft: string) => void;
   refresh: () => Promise<void>;
@@ -68,7 +73,7 @@ type GitState = {
   unstagePaths: (paths: string[]) => Promise<boolean>;
   discardPaths: (paths: string[]) => Promise<boolean>;
   checkoutBranch: (branch: string) => Promise<boolean>;
-  createBranch: (branch: string) => Promise<boolean>;
+  createBranch: (branch: string, startPoint?: string) => Promise<boolean>;
   deleteBranch: (branch: string, force?: boolean) => Promise<boolean>;
 };
 
@@ -118,6 +123,28 @@ function selectedPaths(paths: string[]) {
   return paths.map((path) => path.trim()).filter(Boolean);
 }
 
+function gitCommitDiff(
+  repoPath: string | undefined,
+  commit: string,
+  filePath?: string,
+) {
+  return invoke<GitDiffResult>("git_diff", { repoPath, filePath, commit });
+}
+
+function gitCheckoutBranchFromStartPoint(
+  branch: string,
+  create: boolean,
+  repoPath: string | undefined,
+  startPoint?: string,
+) {
+  return invoke<GitCommandOutput>("git_checkout_branch", {
+    branch,
+    create,
+    repoPath,
+    startPoint,
+  });
+}
+
 export const useGitStore = create<GitState>((set, get) => ({
   open: false,
   view: "graph",
@@ -127,6 +154,8 @@ export const useGitStore = create<GitState>((set, get) => ({
   status: null,
   graphCommits: [],
   selectedCommitHash: null,
+  commitDiff: null,
+  selectedCommitPath: null,
   graphQuery: "",
   graphRefFilter: "all",
   diff: null,
@@ -135,6 +164,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   loading: false,
   logLoading: false,
   diffLoading: false,
+  commitDiffLoading: false,
   error: null,
   commandOutput: null,
   commitMessage: "",
@@ -153,6 +183,9 @@ export const useGitStore = create<GitState>((set, get) => ({
       repoPathDraft: next,
       status: null,
       graphCommits: [],
+      selectedCommitHash: null,
+      commitDiff: null,
+      selectedCommitPath: null,
       selectedPath: null,
       graphRefFilter: "all",
       diff: null,
@@ -171,7 +204,48 @@ export const useGitStore = create<GitState>((set, get) => ({
     }),
   setGraphQuery: (graphQuery) => set({ graphQuery }),
   setGraphRefFilter: (graphRefFilter) => set({ graphRefFilter }),
-  selectCommit: (selectedCommitHash) => set({ selectedCommitHash }),
+  selectCommit: (selectedCommitHash) => {
+    set({ selectedCommitHash, selectedCommitPath: null, commitDiff: null });
+    void get().selectCommitFile(null);
+  },
+  selectCommitFile: async (path) => {
+    const selectedCommitHash = get().selectedCommitHash;
+    const selectedCommitPath = path?.trim() || null;
+    if (!selectedCommitHash) {
+      set({
+        commitDiff: null,
+        commitDiffLoading: false,
+        selectedCommitPath: null,
+      });
+      return;
+    }
+    set({
+      selectedCommitPath,
+      commitDiff: null,
+      commitDiffLoading: true,
+      error: null,
+    });
+    try {
+      const commitDiff = await gitCommitDiff(
+        repoArg(get()),
+        selectedCommitHash,
+        selectedCommitPath ?? undefined,
+      );
+      if (
+        get().selectedCommitHash === selectedCommitHash &&
+        get().selectedCommitPath === selectedCommitPath
+      ) {
+        set({ commitDiff, commitDiffLoading: false });
+      }
+    } catch (error) {
+      if (
+        get().selectedCommitHash === selectedCommitHash &&
+        get().selectedCommitPath === selectedCommitPath
+      ) {
+        set({ error: errorMessage(error), commitDiffLoading: false });
+      }
+    }
+  },
   setCommitMessage: (commitMessage) => set({ commitMessage }),
   setBranchDraft: (branchDraft) => set({ branchDraft }),
   refresh: async () => {
@@ -200,7 +274,10 @@ export const useGitStore = create<GitState>((set, get) => ({
         loading: false,
         logLoading: false,
       });
-      await get().selectFile(selectedPath);
+      await Promise.all([
+        get().selectFile(selectedPath),
+        get().selectCommitFile(null),
+      ]);
     } catch (error) {
       set({ error: errorMessage(error), loading: false, logLoading: false });
     }
@@ -356,7 +433,7 @@ export const useGitStore = create<GitState>((set, get) => ({
       return false;
     }
   },
-  createBranch: async (branch) => {
+  createBranch: async (branch, startPoint) => {
     const target = branch.trim();
     if (!target) {
       set({ error: "Branch name is required" });
@@ -364,10 +441,11 @@ export const useGitStore = create<GitState>((set, get) => ({
     }
     set({ loading: true, error: null, commandOutput: null });
     try {
-      const commandOutput = await gitCheckoutBranch(
+      const commandOutput = await gitCheckoutBranchFromStartPoint(
         target,
         true,
         repoArg(get()),
+        startPoint?.trim() || undefined,
       );
       set({ commandOutput, branchDraft: "", loading: false });
       await get().refresh();

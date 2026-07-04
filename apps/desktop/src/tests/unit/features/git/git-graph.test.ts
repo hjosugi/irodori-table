@@ -4,12 +4,16 @@ import {
   buildGitGraphRows,
   filterGraphCommits,
   nextGraphCommitHash,
+  parseCommitFileSummary,
 } from "@/features/git/git-graph";
 import {
   gitAccentColor,
+  localBranchNameFromRef,
   normalizeHexColor,
   providerDefaultColor,
   providerLabel,
+  remoteBranchInfoFromRef,
+  remoteCommitUrl,
 } from "@/features/git/git-format";
 
 function commit(
@@ -96,6 +100,69 @@ describe("git graph lane layout", () => {
     expect(nextGraphCommitHash(commits, "b222222", "last")).toBe("c333333");
     expect(nextGraphCommitHash(commits, "missing", "next")).toBe("b222222");
     expect(nextGraphCommitHash([], "missing", "next")).toBeNull();
+  });
+});
+
+describe("git commit detail helpers", () => {
+  it("parses name-status summaries for commit file lists", () => {
+    expect(
+      parseCommitFileSummary(
+        [
+          "M\tapps/desktop/src/features/git/GitGraphView.tsx",
+          "A\tapps/desktop/src/features/git/new-file.ts",
+          "R100\told/path.ts\tnew/path.ts",
+        ].join("\n"),
+      ),
+    ).toEqual([
+      {
+        kind: "modified",
+        path: "apps/desktop/src/features/git/GitGraphView.tsx",
+        status: "M",
+      },
+      {
+        kind: "added",
+        path: "apps/desktop/src/features/git/new-file.ts",
+        status: "A",
+      },
+      {
+        kind: "renamed",
+        originalPath: "old/path.ts",
+        path: "new/path.ts",
+        status: "R100",
+      },
+    ]);
+  });
+
+  it("derives local and remote branch actions from graph refs", () => {
+    expect(localBranchNameFromRef("HEAD -> main")).toBe("main");
+    expect(
+      localBranchNameFromRef("feature/git-actions", ["feature/git-actions"]),
+    ).toBe("feature/git-actions");
+    expect(remoteBranchInfoFromRef("origin/feature/git-actions")).toEqual({
+      branchName: "feature/git-actions",
+      localBranchName: "feature/git-actions",
+      remoteName: "origin",
+      startPoint: "origin/feature/git-actions",
+    });
+    expect(remoteBranchInfoFromRef("origin/HEAD -> origin/main")).toBeNull();
+  });
+
+  it("builds provider-specific remote commit URLs", () => {
+    expect(
+      remoteCommitUrl(
+        { provider: "github", webUrl: "https://github.com/hjosugi/repo" },
+        "abc123",
+      ),
+    ).toBe("https://github.com/hjosugi/repo/commit/abc123");
+    expect(
+      remoteCommitUrl(
+        { provider: "gitlab", webUrl: "https://gitlab.com/hjosugi/repo/" },
+        "abc123",
+      ),
+    ).toBe("https://gitlab.com/hjosugi/repo/-/commit/abc123");
+    expect(
+      remoteCommitUrl({ provider: "generic", webUrl: undefined }, "abc123"),
+    ).toBeNull();
   });
 });
 

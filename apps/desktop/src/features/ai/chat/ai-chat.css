@@ -155,6 +155,40 @@
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+.aichat-provider-disclosure {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--focus) 38%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--focus) 8%, var(--surface));
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.aichat-provider-disclosure strong,
+.aichat-provider-disclosure p {
+  margin: 0;
+}
+
+.aichat-provider-disclosure p {
+  color: var(--muted);
+}
+
+.aichat-provider-disclosure button {
+  justify-self: start;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.aichat-provider-disclosure button:hover {
+  background: var(--hover);
+}
+
 .aichat-local {
   display: flex;
   align-items: center;

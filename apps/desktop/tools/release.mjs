@@ -49,12 +49,16 @@ console.log(`Updated tauri.conf.json`);
 
 // src-tauri/Cargo.toml
 let tauriCargo = readFileSync(tauriCargoPath, "utf8");
-tauriCargo = tauriCargo.replace(
-  /^(version\s*=\s*")[^"]*(")/m,
-  `$1${newVersion}$2`,
-);
-writeFileSync(tauriCargoPath, tauriCargo, "utf8");
-console.log(`Updated apps/desktop/src-tauri/Cargo.toml`);
+if (/^version\s*=/m.test(tauriCargo)) {
+  tauriCargo = tauriCargo.replace(
+    /^(version\s*=\s*")[^"]*(")/m,
+    `$1${newVersion}$2`,
+  );
+  writeFileSync(tauriCargoPath, tauriCargo, "utf8");
+  console.log(`Updated apps/desktop/src-tauri/Cargo.toml`);
+} else {
+  console.log(`apps/desktop/src-tauri/Cargo.toml uses version.workspace`);
+}
 
 // Cargo.toml (root)
 let rootCargo = readFileSync(rootCargoPath, "utf8");

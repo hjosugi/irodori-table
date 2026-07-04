@@ -3,6 +3,10 @@ import type { ShowActionNotice } from "@/app/ActionToast";
 import { clampNumber, emptyJobList, isRecord } from "@/app/app-workbench-utils";
 import type { KeybindingManager } from "@/app/controllers/use-keybinding-manager";
 import type { ThemeManager } from "@/app/controllers/use-theme-manager";
+import {
+  CURRENT_SETTINGS_SCHEMA_VERSION,
+  migrateSettingsJson,
+} from "@/app/settings-schema";
 import { errorMessage, type Keymap } from "@/core";
 import {
   portableProfile,
@@ -184,7 +188,7 @@ export function useSettingsController({
   function buildSettingsJson() {
     return JSON.stringify(
       {
-        version: 1,
+        version: CURRENT_SETTINGS_SCHEMA_VERSION,
         locale,
         theme: themes.activeCustomTheme?.theme ?? themes.themePreference,
         defaultThemeId:
@@ -271,10 +275,11 @@ export function useSettingsController({
 
   function applySettingsJson() {
     try {
-      const parsed = JSON.parse(settingsJsonDraft) as unknown;
-      if (!isRecord(parsed)) {
+      const parsedRoot = JSON.parse(settingsJsonDraft) as unknown;
+      if (!isRecord(parsedRoot)) {
         throw new Error("settings JSON root must be an object");
       }
+      const parsed = migrateSettingsJson(parsedRoot);
       if (typeof parsed.locale === "string") {
         const nextLocale = normalizeLocale(parsed.locale);
         setLocale(nextLocale);

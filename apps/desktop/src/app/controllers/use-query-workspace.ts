@@ -62,7 +62,7 @@ export function useQueryWorkspace({
 
   // Query error + EXPLAIN-plan state, fed by the runner, read by the results
   // pane and the plan sidebar panel.
-  const [queryError, setQueryError] = useState<string | null>(null);
+  const [queryError, setQueryError] = useState<unknown | null>(null);
   const [planAnalysis, setPlanAnalysis] = useState<QueryPlanAnalysis | null>(
     null,
   );

@@ -37,7 +37,7 @@ export type ConnectionActionsDeps = {
   connectedIds: Set<string>;
   activeConnectionId: string;
   setDraft: (value: ValueUpdater<ConnectionDraft>) => void;
-  setConnectionError: (value: ValueUpdater<string | null>) => void;
+  setConnectionError: (value: ValueUpdater<unknown | null>) => void;
   setSelectedProfileId: (value: ValueUpdater<string>) => void;
   setActiveConnectionId: (value: ValueUpdater<string>) => void;
   setProfiles: (value: ValueUpdater<ConnectionDraft[]>) => void;
@@ -281,7 +281,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       );
     } catch (error) {
       const display = errorDisplay(error);
-      setConnectionError(display.title);
+      setConnectionError(error);
       showActionNotice(
         "error",
         t("notice.connection.testFailed"),
@@ -336,7 +336,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
       );
     } catch (error) {
       const display = errorDisplay(error);
-      setConnectionError(display.title);
+      setConnectionError(error);
       showActionNotice(
         "error",
         t("notice.connection.connectFailed"),

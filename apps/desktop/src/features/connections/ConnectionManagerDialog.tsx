@@ -25,6 +25,7 @@ import {
   type EngineBuildSupport,
 } from "@/generated/irodori-api";
 import { DialogShell } from "@/components/DialogShell";
+import { ErrorDetails } from "@/components/ErrorDetails";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
   connectionCustomColorOptions,
@@ -285,7 +286,7 @@ export function ConnectionManagerDialog({
   selectedProfileId: string;
   draft: ConnectionDraft;
   search: string;
-  error: string | null;
+  error: unknown | null;
   activeConnectionOpen: boolean;
   testing: boolean;
   connecting: boolean;
@@ -791,10 +792,11 @@ export function ConnectionManagerDialog({
             </strong>
           </div>
           {error ? (
-            <p className="inline-error full-row">
-              <AlertTriangle size={13} />
-              <span>{error}</span>
-            </p>
+            <ErrorDetails
+              className="inline-error full-row error-callout"
+              error={error}
+              icon={<AlertTriangle size={13} />}
+            />
           ) : null}
         </div>
         <div className="dialog-footer">

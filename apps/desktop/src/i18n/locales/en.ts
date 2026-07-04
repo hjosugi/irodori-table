@@ -291,6 +291,16 @@ export const en = {
   "notice.ai.providerUpdated": "AI provider updated",
   "notice.ai.providerUpdateFailed": "Could not update provider",
   "notice.ai.providerSaved": "Provider updated",
+  "ai.provider.cloudHint":
+    "Cloud provider host: {host}. Prompts and schema context may leave this device.",
+  "ai.provider.cloudDisclosure.title": "Cloud provider disclosure",
+  "ai.provider.cloudDisclosure.body":
+    "Prompts, selected schema metadata, query context, generated SQL, and API keys used for authentication may leave this device. Requests go to {host}. Review that provider's retention and training settings before use.",
+  "ai.provider.cloudDisclosure.privacyLink": "Privacy docs",
+  "ai.provider.cloudDisclosure.accept": "I understand",
+  "ai.provider.cloudDisclosure.required":
+    "Review the cloud provider disclosure before saving.",
+  "ai.provider.cloudDisclosure.hostUnknown": "the configured provider endpoint",
   "notice.ai.sqlGenerated": "SQL generated",
   "notice.ai.sqlGeneratedDetail": "{model} · {tokens} tokens",
   "notice.ai.sqlGeneratedRepairedDetail":
@@ -358,6 +368,18 @@ export const en = {
   "sidebar.empty.editorHint":
     "Or run CREATE TABLE / INSERT statements in the editor.",
   "errors.unknown": "Something went wrong",
+  "errors.details": "Details",
+  "errors.kind.validation": "Check the input",
+  "errors.kind.unsupported": "Not supported in this build",
+  "errors.kind.notFound": "Not found",
+  "errors.kind.connection": "Connection failed",
+  "errors.kind.query": "Query failed",
+  "errors.kind.metadata": "Could not load metadata",
+  "errors.kind.edit": "Could not apply the edit",
+  "errors.kind.timeout": "Timed out",
+  "errors.kind.cancelled": "Cancelled",
+  "errors.kind.transport": "Connection transport failed",
+  "errors.kind.internal": "Internal error",
 } as const;
 
 export type TranslationKey = keyof typeof en;

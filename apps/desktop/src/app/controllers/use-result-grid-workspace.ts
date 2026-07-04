@@ -49,7 +49,7 @@ export type ResultGridWorkspaceDeps = {
   // Supplied through a deferring closure: the editor-commands hook that owns
   // runQuery is created after this workspace because it needs activeResult.
   runQuery: () => Promise<void>;
-  setQueryError: (value: string | null) => void;
+  setQueryError: (value: unknown | null) => void;
   confirm: (options: ConfirmOptions) => Promise<boolean>;
   showActionNotice: ShowActionNotice;
   t: Translator["t"];
@@ -406,7 +406,7 @@ export function useResultGridWorkspace({
 
   function buildResultGridController(extra: {
     running: boolean;
-    queryError: string | null;
+    queryError: unknown | null;
     importFileRef: RefObject<HTMLInputElement | null>;
     shortcutTips: { label: string; shortcut: string | null }[];
     formatObjectName: (object: DbObjectMetadata) => string;

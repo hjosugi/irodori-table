@@ -301,6 +301,16 @@ export const ja = {
   "notice.ai.providerUpdated": "AI プロバイダを更新しました",
   "notice.ai.providerUpdateFailed": "プロバイダを更新できませんでした",
   "notice.ai.providerSaved": "プロバイダを更新しました",
+  "ai.provider.cloudHint":
+    "クラウドプロバイダのホスト: {host}。プロンプトとスキーマ情報がこのデバイスの外へ送信される場合があります。",
+  "ai.provider.cloudDisclosure.title": "クラウドプロバイダの開示",
+  "ai.provider.cloudDisclosure.body":
+    "プロンプト、選択したスキーマメタデータ、クエリ文脈、生成された SQL、認証に使う API キーがこのデバイスの外へ送信される場合があります。リクエスト先は {host} です。利用前にプロバイダの保持設定と学習利用設定を確認してください。",
+  "ai.provider.cloudDisclosure.privacyLink": "プライバシー docs",
+  "ai.provider.cloudDisclosure.accept": "理解しました",
+  "ai.provider.cloudDisclosure.required":
+    "保存する前にクラウドプロバイダの開示を確認してください。",
+  "ai.provider.cloudDisclosure.hostUnknown": "設定したプロバイダエンドポイント",
   "notice.ai.sqlGenerated": "SQL を生成しました",
   "notice.ai.sqlGeneratedDetail": "{model} · {tokens} トークン",
   "notice.ai.sqlGeneratedRepairedDetail":
@@ -373,4 +383,16 @@ export const ja = {
   "sidebar.empty.editorHint":
     "またはエディタで CREATE TABLE / INSERT ステートメントを実行してください。",
   "errors.unknown": "問題が発生しました",
+  "errors.details": "詳細",
+  "errors.kind.validation": "入力を確認してください",
+  "errors.kind.unsupported": "このビルドでは対応していません",
+  "errors.kind.notFound": "見つかりません",
+  "errors.kind.connection": "接続に失敗しました",
+  "errors.kind.query": "クエリが失敗しました",
+  "errors.kind.metadata": "メタデータを読み込めませんでした",
+  "errors.kind.edit": "編集を適用できませんでした",
+  "errors.kind.timeout": "タイムアウトしました",
+  "errors.kind.cancelled": "キャンセルされました",
+  "errors.kind.transport": "接続トランスポートに失敗しました",
+  "errors.kind.internal": "内部エラー",
 } satisfies TranslationDictionary;

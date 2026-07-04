@@ -76,7 +76,7 @@ export type QueryRunnerDeps = {
   queryHistoryResultRows: number;
   appendHistory: (item: QueryHistoryItem) => void;
   setResult: (value: QueryResult | null) => void;
-  setQueryError: (value: string | null) => void;
+  setQueryError: (value: unknown | null) => void;
   setLastRunSql: (value: string) => void;
   setPlanAnalysis: (value: QueryPlanAnalysis | null) => void;
   setPlanLoading: (value: boolean) => void;
@@ -259,7 +259,7 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
       }
     } catch (error) {
       const message = errorMessage(error);
-      setQueryError(message);
+      setQueryError(error);
       showActionNotice("error", t("notice.query.parameterScanFailed"), message);
       return true;
     }
@@ -614,7 +614,7 @@ export function useQueryRunner(deps: QueryRunnerDeps) {
         sendQueryRun({ type: "CANCEL" });
       } else {
         sendQueryRun({ type: "ERROR", message });
-        setQueryError(message);
+        setQueryError(error);
         showActionNotice(
           "error",
           t("notice.query.failed"),

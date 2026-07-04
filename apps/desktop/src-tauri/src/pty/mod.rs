@@ -8,6 +8,7 @@
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -61,12 +62,8 @@ pub fn pty_spawn(
         .openpty(size)
         .map_err(|e| internal(format!("openpty failed: {e}")))?;
 
-    let mut cmd = CommandBuilder::new(shell.unwrap_or_else(default_shell));
-    if let Some(dir) = cwd.or_else(|| {
-        std::env::current_dir()
-            .ok()
-            .map(|p| p.display().to_string())
-    }) {
+    let mut cmd = CommandBuilder::new(resolve_shell(shell)?);
+    if let Some(dir) = resolve_cwd(cwd)? {
         cmd.cwd(dir);
     }
     cmd.env("TERM", "xterm-256color");
@@ -190,10 +187,86 @@ fn default_shell() -> String {
     }
 }
 
+fn resolve_shell(shell: Option<String>) -> IrodoriResult<String> {
+    let Some(shell) = shell
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(default_shell());
+    };
+
+    if cfg!(debug_assertions) || env_flag_enabled("IRODORI_ALLOW_CUSTOM_PTY_SHELL") {
+        Ok(shell)
+    } else {
+        Err(IrodoriError::new(
+            IrodoriErrorKind::Validation,
+            "custom terminal shells are disabled in release builds; set IRODORI_ALLOW_CUSTOM_PTY_SHELL=1 for trusted local debugging",
+        ))
+    }
+}
+
+fn resolve_cwd(cwd: Option<String>) -> IrodoriResult<Option<PathBuf>> {
+    let candidate = match cwd
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        Some(cwd) => PathBuf::from(cwd),
+        None => match std::env::current_dir() {
+            Ok(current_dir) => current_dir,
+            Err(_) => return Ok(None),
+        },
+    };
+    let canonical = candidate.canonicalize().map_err(|e| {
+        IrodoriError::new(
+            IrodoriErrorKind::Validation,
+            format!("terminal cwd is not accessible: {e}"),
+        )
+    })?;
+    if !canonical.is_dir() {
+        return Err(IrodoriError::new(
+            IrodoriErrorKind::Validation,
+            "terminal cwd must be a directory",
+        ));
+    }
+    Ok(Some(canonical))
+}
+
+fn env_flag_enabled(name: &str) -> bool {
+    matches!(
+        std::env::var(name)
+            .ok()
+            .map(|value| value.trim().to_ascii_lowercase()),
+        Some(value) if matches!(value.as_str(), "1" | "true" | "yes")
+    )
+}
+
 fn session_not_found() -> IrodoriError {
     IrodoriError::new(IrodoriErrorKind::NotFound, "terminal session not found")
 }
 
 fn internal(message: impl Into<String>) -> IrodoriError {
     IrodoriError::new(IrodoriErrorKind::Internal, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_shell_is_used_when_shell_input_is_empty() {
+        assert_eq!(resolve_shell(None).unwrap(), default_shell());
+        assert_eq!(
+            resolve_shell(Some("  ".to_string())).unwrap(),
+            default_shell()
+        );
+    }
+
+    #[test]
+    fn cwd_must_resolve_to_directory() {
+        let cwd = resolve_cwd(None).expect("resolve current dir");
+        assert!(cwd.map(|path| path.is_dir()).unwrap_or(true));
+
+        let missing = resolve_cwd(Some("/definitely/missing/irodori-table-cwd".to_string()));
+        assert!(missing.is_err());
+    }
 }

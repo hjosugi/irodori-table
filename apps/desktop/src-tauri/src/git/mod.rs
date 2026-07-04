@@ -52,6 +52,7 @@ pub fn git_log(
 pub fn git_diff(
     repo_path: Option<String>,
     file_path: Option<String>,
+    commit: Option<String>,
 ) -> IrodoriResult<GitDiffResult> {
     let repo_root = resolve_repo_root(repo_path.as_deref())?;
     let file = match file_path
@@ -62,6 +63,14 @@ pub fn git_diff(
         Some(path) => Some(validate_relative_file_path(path)?),
         None => None,
     };
+
+    if let Some(commit) = commit
+        .as_deref()
+        .map(str::trim)
+        .filter(|commit| !commit.is_empty())
+    {
+        return git_commit_diff(&repo_root, file, commit.to_string());
+    }
 
     let mut staged_args = vec!["diff", "--no-ext-diff", "--cached", "--"];
     let mut unstaged_args = vec!["diff", "--no-ext-diff", "--"];
@@ -219,11 +228,24 @@ pub fn git_checkout_branch(
     repo_path: Option<String>,
     branch: String,
     create: Option<bool>,
+    start_point: Option<String>,
 ) -> IrodoriResult<GitCommandOutput> {
     let repo_root = resolve_repo_root(repo_path.as_deref())?;
     let branch = validate_branch_name(&repo_root, branch)?;
     let output = if create.unwrap_or(false) {
-        run_git_owned(&repo_root, vec!["switch".into(), "-c".into(), branch], &[0])?
+        let mut args = vec!["switch".into(), "-c".into(), branch];
+        if let Some(start_point) = start_point
+            .as_deref()
+            .map(str::trim)
+            .filter(|start_point| !start_point.is_empty())
+        {
+            args.push(validate_git_commit_ref(
+                &repo_root,
+                start_point.to_string(),
+                "git branch start point",
+            )?);
+        }
+        run_git_owned(&repo_root, args, &[0])?
     } else {
         run_git_owned(&repo_root, vec!["switch".into(), branch], &[0])?
     };
@@ -279,6 +301,57 @@ fn git_branches_impl(repo_root: &Path) -> IrodoriResult<Vec<GitBranchSummary>> {
         .lines()
         .filter_map(parse_branch_line)
         .collect())
+}
+
+fn git_commit_diff(
+    repo_root: &Path,
+    file: Option<PathBuf>,
+    commit: String,
+) -> IrodoriResult<GitDiffResult> {
+    let commit = validate_git_commit_ref(repo_root, commit, "git commit")?;
+    let file_path = file.as_ref().map(|path| path_to_string(path));
+    let file_string = file.as_ref().map(|path| path.to_string_lossy().to_string());
+
+    let mut summary_args = vec![
+        "show".into(),
+        "--format=".into(),
+        "--name-status".into(),
+        "--find-renames".into(),
+        "--find-copies".into(),
+        commit.clone(),
+        "--".into(),
+    ];
+    if let Some(file_string) = &file_string {
+        summary_args.push(file_string.clone());
+    }
+
+    let mut diff_args = vec![
+        "show".into(),
+        "--format=".into(),
+        "--patch".into(),
+        "--stat".into(),
+        "--find-renames".into(),
+        "--find-copies".into(),
+        "--no-ext-diff".into(),
+        commit,
+        "--".into(),
+    ];
+    if let Some(file_string) = &file_string {
+        diff_args.push(file_string.clone());
+    }
+
+    let summary_output = run_git_owned(repo_root, summary_args, &[0])?;
+    let diff_output = run_git_owned(repo_root, diff_args, &[0])?;
+    let (staged, staged_truncated) = truncate_text(output_stdout(summary_output), DIFF_TEXT_LIMIT);
+    let (unstaged, unstaged_truncated) = truncate_text(output_stdout(diff_output), DIFF_TEXT_LIMIT);
+
+    Ok(GitDiffResult {
+        repo_root: path_to_string(repo_root),
+        file_path,
+        staged,
+        unstaged,
+        truncated: staged_truncated || unstaged_truncated,
+    })
 }
 
 fn resolve_repo_root(repo_path: Option<&str>) -> IrodoriResult<PathBuf> {
@@ -421,6 +494,26 @@ fn validate_branch_name(repo_root: &Path, branch: String) -> IrodoriResult<Strin
     }
     run_git(repo_root, &["check-ref-format", "--branch", branch], &[0])?;
     Ok(branch.to_string())
+}
+
+fn validate_git_commit_ref(repo_root: &Path, value: String, label: &str) -> IrodoriResult<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(IrodoriError::validation(format!("{label} is required")));
+    }
+    if value.starts_with('-') {
+        return Err(IrodoriError::validation(format!(
+            "{label} cannot start with '-'",
+        )));
+    }
+    if value.chars().any(char::is_control) {
+        return Err(IrodoriError::validation(format!(
+            "{label} cannot contain control characters",
+        )));
+    }
+    let rev = format!("{value}^{{commit}}");
+    run_git(repo_root, &["rev-parse", "--verify", "--quiet", &rev], &[0])?;
+    Ok(value.to_string())
 }
 
 fn file_is_untracked(repo_root: &Path, path: &Path) -> IrodoriResult<bool> {

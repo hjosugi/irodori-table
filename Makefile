@@ -13,7 +13,7 @@ EXTENSION_SDK_DIR ?= $(firstword $(wildcard ../irodori-kit/packages/extension-sd
         check security security-strict extension-manifests kit-link kit-unlink kit-patch-check db db-verify db-all db-up db-down \
         extension-scenarios extension-fleet-audit \
         release release-patch release-minor release-major run-linux run-linux-release \
-        knowledge-refresh knowledge-analyze ml-extract docs docs-check
+        knowledge-refresh knowledge-analyze ml-extract perf-hot-surfaces docs docs-check
 
 ifneq ($(filter $(JS_PM),npm bun),$(JS_PM))
 $(error Unsupported JS_PM="$(JS_PM)"; use JS_PM=npm or JS_PM=bun)
@@ -70,6 +70,7 @@ help:
 	@printf "  make extension-fleet-audit run post-ABI-migration connector fleet audit (#44)\n"
 	@printf "  make docs              regenerate generated docs\n"
 	@printf "  make docs-check        verify generated docs are current\n"
+	@printf "  make perf-hot-surfaces benchmark editor/result-grid hot-surface paths\n"
 
 setup: setup-desktop
 
@@ -223,6 +224,9 @@ knowledge-analyze:
 
 ml-extract:
 	node tools/knowledge/ml-extract.mjs --all --limit 12
+
+perf-hot-surfaces:
+	node tools/perf/hot-surface-benchmark.mjs
 
 docs:
 	node tools/docs/build-extension-catalog.mjs

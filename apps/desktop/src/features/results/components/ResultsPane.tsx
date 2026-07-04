@@ -23,6 +23,7 @@ import type {
   DbObjectMetadata,
   QueryResultSet,
 } from "@/generated/irodori-api";
+import { ErrorDetails } from "@/components/ErrorDetails";
 import {
   buildResultExport,
   resultExportFormats,
@@ -149,8 +150,8 @@ type ResultsPaneProps = {
   activeResult: QueryResultSet | null;
   hasResult: boolean;
   activeResultIndex: number;
-  queryError: string | null;
-  commitError: string | null;
+  queryError: unknown | null;
+  commitError: unknown | null;
   pendingCount: number;
   displayedResultSummary: string;
   resultColumns: string[];
@@ -743,16 +744,18 @@ export function ResultsPane({
         </div>
       </div>
       {commitError ? (
-        <div className="result-error" role="alert">
-          <AlertTriangle size={16} />
-          <span>{commitError}</span>
-        </div>
+        <ErrorDetails
+          className="result-error error-callout"
+          error={commitError}
+          icon={<AlertTriangle size={16} />}
+        />
       ) : null}
       {queryError ? (
-        <div className="result-error" role="alert">
-          <AlertTriangle size={16} />
-          <span>{queryError}</span>
-        </div>
+        <ErrorDetails
+          className="result-error error-callout"
+          error={queryError}
+          icon={<AlertTriangle size={16} />}
+        />
       ) : null}
       {filtersOpen || filterRules.length > 0 ? (
         <div ref={filterPanelRef}>

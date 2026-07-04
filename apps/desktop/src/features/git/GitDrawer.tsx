@@ -49,6 +49,8 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   const status = useGitStore((state) => state.status);
   const graphCommits = useGitStore((state) => state.graphCommits);
   const selectedCommitHash = useGitStore((state) => state.selectedCommitHash);
+  const commitDiff = useGitStore((state) => state.commitDiff);
+  const selectedCommitPath = useGitStore((state) => state.selectedCommitPath);
   const graphQuery = useGitStore((state) => state.graphQuery);
   const graphRefFilter = useGitStore((state) => state.graphRefFilter);
   const diff = useGitStore((state) => state.diff);
@@ -57,6 +59,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   const loading = useGitStore((state) => state.loading);
   const logLoading = useGitStore((state) => state.logLoading);
   const diffLoading = useGitStore((state) => state.diffLoading);
+  const commitDiffLoading = useGitStore((state) => state.commitDiffLoading);
   const error = useGitStore((state) => state.error);
   const commandOutput = useGitStore((state) => state.commandOutput);
   const commitMessage = useGitStore((state) => state.commitMessage);
@@ -70,6 +73,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   const setGraphQuery = useGitStore((state) => state.setGraphQuery);
   const setGraphRefFilter = useGitStore((state) => state.setGraphRefFilter);
   const selectCommit = useGitStore((state) => state.selectCommit);
+  const selectCommitFile = useGitStore((state) => state.selectCommitFile);
   const selectFile = useGitStore((state) => state.selectFile);
   const setCommitMessage = useGitStore((state) => state.setCommitMessage);
   const setBranchDraft = useGitStore((state) => state.setBranchDraft);
@@ -197,8 +201,26 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
     await checkoutBranch(branch);
   }
 
-  async function onDeleteBranchDraft() {
-    const branch = branchDraft.trim();
+  async function onCreateBranch(branch: string, startPoint?: string) {
+    const target = branch.trim();
+    if (!target) {
+      return;
+    }
+    if (
+      hasChanges &&
+      !(await confirm({
+        title: `Create ${target}?`,
+        message: "Local changes are present and will carry over.",
+        confirmLabel: "Create",
+      }))
+    ) {
+      return;
+    }
+    await createBranch(target, startPoint);
+  }
+
+  async function onDeleteBranchName(branchName: string) {
+    const branch = branchName.trim();
     if (!branch) {
       return;
     }
@@ -222,6 +244,10 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
       return;
     }
     await deleteBranch(branch);
+  }
+
+  async function onDeleteBranchDraft() {
+    await onDeleteBranchName(branchDraft);
   }
 
   return (
@@ -377,7 +403,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             <button
               className="text-button"
               type="button"
-              onClick={() => void createBranch(branchDraft)}
+              onClick={() => void onCreateBranch(branchDraft)}
             >
               Create
             </button>
@@ -409,10 +435,22 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             query={graphQuery}
             refFilter={graphRefFilter}
             selectedCommitHash={selectedCommitHash}
+            commitDiff={commitDiff}
+            selectedCommitPath={selectedCommitPath}
+            remotes={status?.remotes ?? []}
+            branches={status?.branches ?? []}
+            currentBranch={status?.branch ?? null}
             loading={logLoading}
+            commitDiffLoading={commitDiffLoading}
             onQueryChange={setGraphQuery}
             onRefFilterChange={setGraphRefFilter}
             onSelectCommit={selectCommit}
+            onSelectCommitFile={(path) => void selectCommitFile(path)}
+            onCheckoutBranch={(branch) => void onCheckoutBranch(branch)}
+            onCreateBranch={(branch, startPoint) =>
+              void onCreateBranch(branch, startPoint)
+            }
+            onDeleteBranch={(branch) => void onDeleteBranchName(branch)}
           />
         ) : (
           <GitChangesView

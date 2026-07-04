@@ -31,9 +31,20 @@ Security-sensitive areas include:
 - database credentials, connection profiles, and secret persistence;
 - query execution, cancellation, result streaming, import/export, and local file
   writes;
+- integrated terminal PTY sessions, because they execute the user's local shell
+  with the user's OS privileges;
 - extension SDK behavior and any future plugin execution path;
 - desktop release packaging, updater/signing, and generated bindings;
 - dependency, build, and CI configuration.
+
+Release builds allow the integrated terminal to spawn the platform default
+shell only. Custom PTY shell paths are rejected unless a trusted local operator
+sets `IRODORI_ALLOW_CUSTOM_PTY_SHELL=1`.
+
+Crash reports are local only. Backend panics write a pending crash record under
+the app log directory, and the next launch stages it as
+`irodori-crash-report-latest` plus `irodori-crash-report-latest.json`. Review
+and redact those files before sharing them; the app does not upload telemetry.
 
 ## Baseline Checks
 

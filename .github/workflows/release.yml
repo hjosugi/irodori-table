@@ -4,17 +4,106 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing v* tag to publish'
+        required: true
+        type: string
+      channel:
+        description: 'Release channel'
+        required: true
+        default: lightweight
+        type: choice
+        options:
+          - lightweight
+          - stable
 
 permissions:
   contents: write
 
 jobs:
+  release-gates:
+    name: Resolve release channel gates
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.resolve.outputs.channel }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+      upload_updater: ${{ steps.resolve.outputs.upload_updater }}
+      tauri_args: ${{ steps.resolve.outputs.tauri_args }}
+      release_body: ${{ steps.resolve.outputs.release_body }}
+    env:
+      REQUESTED_CHANNEL: ${{ inputs.channel || 'lightweight' }}
+      REQUESTED_TAG: ${{ inputs.release_tag || github.ref_name }}
+      TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+    steps:
+      - name: Check release channel inputs
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          channel="${REQUESTED_CHANNEL}"
+          release_tag="${REQUESTED_TAG}"
+
+          if [[ "${release_tag}" != v* ]]; then
+            echo "::error::release_tag must be an existing v* tag; got '${release_tag}'."
+            exit 1
+          fi
+
+          case "${channel}" in
+            lightweight)
+              prerelease=true
+              upload_updater=false
+              tauri_args="--bundles appimage"
+              ;;
+            stable)
+              missing=()
+              for name in TAURI_UPDATER_PUBLIC_KEY TAURI_SIGNING_PRIVATE_KEY; do
+                if [[ -z "${!name:-}" ]]; then
+                  missing+=("${name}")
+                fi
+              done
+              if (( ${#missing[@]} > 0 )); then
+                printf '::error::stable updater releases require missing secret(s): %s\n' "${missing[*]}"
+                exit 1
+              fi
+              prerelease=false
+              upload_updater=true
+              tauri_args="--bundles appimage --config src-tauri/tauri.updater.conf.json"
+              ;;
+            *)
+              echo "::error::unknown release channel '${channel}'."
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "channel=${channel}"
+            echo "release_tag=${release_tag}"
+            echo "prerelease=${prerelease}"
+            echo "upload_updater=${upload_updater}"
+            echo "tauri_args=${tauri_args}"
+            echo "release_body<<EOF_RELEASE_BODY"
+            if [[ "${channel}" == "stable" ]]; then
+              echo "Stable Linux AppImage release with signed Tauri updater artifacts for the stable update channel. macOS and Windows signing/notarization remain gated until their runner lanes are restored."
+            else
+              echo "Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, DuckDB, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored."
+            fi
+            echo "EOF_RELEASE_BODY"
+          } >> "${GITHUB_OUTPUT}"
+
   publish-linux:
-    name: Publish lightweight Linux release
+    name: Publish Linux AppImage
+    needs: release-gates
     runs-on: ubuntu-latest
     steps:
       - name: Checkout irodori-table
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-gates.outputs.release_tag }}
 
       - name: Install Linux build dependencies
         run: |
@@ -54,20 +143,32 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
+      - name: Prepare stable updater signing config
+        if: needs.release-gates.outputs.channel == 'stable'
+        working-directory: apps/desktop
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          IRODORI_UPDATER_ENDPOINT: ${{ vars.IRODORI_UPDATER_ENDPOINT }}
+        run: npm run release:prepare-updater
+
       - name: Build and Publish Tauri App
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Irodori Table v__VERSION__'
-          releaseBody: 'Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, DuckDB, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored.'
+          tagName: ${{ needs.release-gates.outputs.release_tag }}
+          releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
+          releaseBody: ${{ needs.release-gates.outputs.release_body }}
           releaseDraft: false
-          prerelease: true
-          uploadUpdaterJson: false
-          uploadUpdaterSignatures: false
+          prerelease: ${{ needs.release-gates.outputs.prerelease }}
+          uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
+          uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
-          args: --bundles appimage
+          args: ${{ needs.release-gates.outputs.tauri_args }}
 
       - name: Verify Linux AppImage artifact
         working-directory: apps/desktop

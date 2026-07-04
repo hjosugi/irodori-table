@@ -31,7 +31,7 @@ export type EditorCommandsDeps = {
   activeEditorSelections: () => readonly EditorSelection[];
   activeMainEditorSelection: () => EditorSelection;
   setQuery: (value: string) => void;
-  setQueryError: (value: string | null) => void;
+  setQueryError: (value: unknown | null) => void;
   setRunMenuOpen: (value: boolean) => void;
   runEditorSqlWithRunner: (
     sqlToRun: string,

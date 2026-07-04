@@ -12,6 +12,13 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { errorMessage } from "@/core/errors";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
+import {
+  hasCloudProviderConsent,
+  isCloudProvider,
+  cloudProviderPrivacyUrl,
+  providerHostLabel,
+  rememberCloudProviderConsent,
+} from "../provider-disclosure";
 
 const PROVIDER_LABELS: Record<AiProviderKind, string> = {
   local: "Local (embedded model)",
@@ -135,6 +142,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<AiEngineStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const [cloudProviderConsent, setCloudProviderConsent] = useState(
+    hasCloudProviderConsent,
+  );
   const { confirm, confirmElement } = useConfirm();
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
@@ -237,6 +247,17 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
   const needsKey = config.kind === "openaiCompat";
   const isHttp = config.kind === "ollama" || config.kind === "openaiCompat";
   const isCommand = config.kind === "command";
+  const cloudProviderSelected = isCloudProvider(config);
+  const cloudProviderHost = providerHostLabel(
+    config,
+    t("ai.provider.cloudDisclosure.hostUnknown"),
+  );
+  const cloudConsentRequired = cloudProviderSelected && !cloudProviderConsent;
+
+  const acceptCloudProviderDisclosure = useCallback(() => {
+    rememberCloudProviderConsent();
+    setCloudProviderConsent(true);
+  }, []);
 
   return (
     <div className="aichat-provider">
@@ -286,6 +307,32 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           <code>codex</code> login). Irodori runs your authenticated CLI — no
           API key needed here.
         </p>
+      ) : null}
+      {cloudProviderSelected ? (
+        <p className="aichat-provider-hint">
+          {t("ai.provider.cloudHint", { host: cloudProviderHost })}
+        </p>
+      ) : null}
+      {cloudConsentRequired ? (
+        <div className="aichat-provider-disclosure" role="status">
+          <strong>{t("ai.provider.cloudDisclosure.title")}</strong>
+          <p>
+            {t("ai.provider.cloudDisclosure.body", {
+              host: cloudProviderHost,
+            })}
+            {" "}
+            <a
+              href={cloudProviderPrivacyUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("ai.provider.cloudDisclosure.privacyLink")}
+            </a>
+          </p>
+          <button type="button" onClick={acceptCloudProviderDisclosure}>
+            {t("ai.provider.cloudDisclosure.accept")}
+          </button>
+        </div>
       ) : null}
 
       {config.kind === "local" && status ? (
@@ -411,7 +458,12 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
         type="button"
         className="aichat-provider-save"
         onClick={() => void save()}
-        disabled={saving}
+        disabled={saving || cloudConsentRequired}
+        title={
+          cloudConsentRequired
+            ? t("ai.provider.cloudDisclosure.required")
+            : undefined
+        }
       >
         {saving ? "Saving…" : "Use this model"}
       </button>

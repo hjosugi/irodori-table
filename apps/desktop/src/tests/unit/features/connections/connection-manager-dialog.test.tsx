@@ -179,4 +179,24 @@ describe("ConnectionManagerDialog", () => {
 
     expect(props.onDeleteProfile).toHaveBeenCalledTimes(1);
   });
+
+  it("shows structured connection errors with raw details", () => {
+    renderDialog({
+      error: {
+        kind: "connection",
+        message: "password authentication failed",
+        code: "28P01",
+        retryable: false,
+      },
+    });
+
+    expect(container.textContent).toContain("Connection failed");
+    expect(container.textContent).toContain("password authentication failed");
+    expect(
+      container.querySelector(".error-callout-details summary")?.textContent,
+    ).toBe("Details");
+    expect(container.querySelector("pre")?.textContent).toContain(
+      '"code": "28P01"',
+    );
+  });
 });

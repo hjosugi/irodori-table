@@ -37,7 +37,16 @@ const linkedDriverEngines = new Set(
     .map((engine) => engine.trim())
     .filter(Boolean),
 );
-const supportedLinkedDriverEngines = new Set(["duckdb", "motherduck"]);
+const duckDbBackedEngines = new Set([
+  "duckdb",
+  "motherduck",
+  "deltaLake",
+  "hive",
+  "hudi",
+  "iceberg",
+  "s3Tables",
+]);
+const supportedLinkedDriverEngines = duckDbBackedEngines;
 const unsupportedLinkedDriverEngines = [...linkedDriverEngines].filter(
   (engine) => !supportedLinkedDriverEngines.has(engine),
 );
@@ -45,7 +54,7 @@ if (unsupportedLinkedDriverEngines.length > 0) {
   throw new Error(
     `IRODORI_CONNECTOR_LINKED_DRIVERS includes unsupported generated drivers: ${unsupportedLinkedDriverEngines.join(
       ", ",
-    )}. Supported generated drivers are duckdb and motherduck.`,
+    )}. Supported generated drivers are ${[...supportedLinkedDriverEngines].join(", ")}.`,
   );
 }
 const linkDuckDbDrivers = process.env.IRODORI_CONNECTOR_LINK_DUCKDB !== "0";
@@ -303,7 +312,7 @@ function writeConnectorRepo(entry) {
   writeText(resolve(repoDir, "LICENSE-0BSD"), licenseZeroBsd());
   writeText(resolve(repoDir, "Makefile"), makefile(repoName, crateName, realDriverLinked));
   writeText(resolve(repoDir, ".gitignore"), gitignore());
-  writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(realDriverLinked));
+  writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(isDuckDbBackedConnector(engine)));
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
   formatRustSources(repoDir);
   return "written";
@@ -338,10 +347,18 @@ function migrationSourceInfo(adapterSource) {
       sourceSnapshot(
         source.kind,
         source.path,
-        `native/source/irodori-table/${source.path}`,
+        snapshotDestinationForPath(source.path),
       ),
     ),
   ].filter(Boolean);
+}
+
+function snapshotDestinationForPath(path) {
+  const kitPrefix = "../irodori-kit/";
+  if (path.startsWith(kitPrefix)) {
+    return `native/source/irodori-kit/${path.slice(kitPrefix.length)}`;
+  }
+  return `native/source/irodori-table/${path}`;
 }
 
 function sourceSnapshot(kind, path, destination) {
@@ -399,7 +416,7 @@ function connectorLabel(name, fallback) {
 }
 
 function isDuckDbBackedConnector(engine) {
-  return engine === "duckdb" || engine === "motherduck";
+  return duckDbBackedEngines.has(engine);
 }
 
 function connectorFeatures(entry, engineMeta) {
@@ -2227,10 +2244,12 @@ bundled-duckdb = ["duckdb/bundled"]
 
 [dependencies]
 duckdb = { version = "1", default-features = false }
+irodori-connector-abi = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.0" }
 serde_json = "1"
 `
     : `
 [dependencies]
+irodori-connector-abi = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.0" }
 serde_json = "1"
 `;
   return `[package]
@@ -2267,7 +2286,7 @@ color = "auto"
 
 function writeRustSources(repoDir, engine, label, realDriverLinked) {
   writeText(resolve(repoDir, "src/lib.rs"), rustLib(engine, label, realDriverLinked));
-  writeText(resolve(repoDir, "src/abi.rs"), abiRust());
+  removeIfExists(resolve(repoDir, "src/abi.rs"));
   if (realDriverLinked) {
     writeText(resolve(repoDir, "src/driver.rs"), duckDbDriverRust());
     removeIfExists(resolve(repoDir, "src/stub.rs"));
@@ -2348,55 +2367,25 @@ function rustLib(engine, label, realDriverLinked) {
 
   return `//! Native connector ABI for ${label}.
 //!
-//! Generated extension entrypoints stay small: \`abi\` owns buffer/JSON ABI
-//! mechanics, and \`${dispatcherModule}\` owns connector behavior.
+//! Generated extension entrypoints stay small: \`irodori-connector-abi\` owns
+//! buffer/JSON ABI mechanics, and \`${dispatcherModule}\` owns connector behavior.
 
-mod abi;
 mod ${dispatcherModule};
 
-pub use abi::IrodoriConnectorBuffer;
+pub use irodori_connector_abi as abi;
 
-pub const ABI_VERSION: u32 = 1;
-pub const ENGINE: &str = "${engine}";
-pub const DRIVER_LINKED: bool = ${realDriverLinked};
-pub const CONFIG_JSON: &str = include_str!("../connector.config.json");
-pub const MANIFEST_JSON: &str = include_str!("../irodori.extension.json");
-
-#[no_mangle]
-pub extern "C" fn irodori_extension_abi_version() -> u32 {
-    ABI_VERSION
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_engine_json() -> IrodoriConnectorBuffer {
-    abi::owned_buffer(ENGINE.to_string())
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_extension_manifest_json() -> IrodoriConnectorBuffer {
-    abi::owned_buffer(MANIFEST_JSON.to_string())
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_config_json() -> IrodoriConnectorBuffer {
-    abi::owned_buffer(CONFIG_JSON.to_string())
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_call_json(
-    request: IrodoriConnectorBuffer,
-) -> IrodoriConnectorBuffer {
-    ${dispatcherModule}::call_json(request)
-}
-
-#[no_mangle]
-pub extern "C" fn irodori_connector_free_buffer(buffer: IrodoriConnectorBuffer) {
-    abi::free_owned_buffer(buffer);
-}
+irodori_connector_abi::irodori_export_connector!(
+    engine: "${engine}",
+    driver: ${dispatcherModule},
+    config: "../connector.config.json",
+    manifest: "../irodori.extension.json",
+    driver_linked: ${realDriverLinked},
+);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use abi::IrodoriConnectorBuffer;
     use serde_json::{json, Value};
 
     fn buffer_from_str(value: &'static str) -> IrodoriConnectorBuffer {
@@ -3135,8 +3124,8 @@ function readme(entry, engineMeta, visibility, realDriverLinked, connection, exp
     ? `A desktop adapter source snapshot is staged in \`native/source/\` from \`${adapter}\`.`
     : "No desktop adapter source exists yet; this package starts from the refactored ABI shim and connector metadata.";
   const driverNote = realDriverLinked
-    ? "The Rust code keeps native ABI exports in `src/lib.rs`, shared buffer/JSON helpers in `src/abi.rs`, and DuckDB-compatible connect/query/metadata behavior in `src/driver.rs`."
-    : "The Rust code keeps native ABI exports in `src/lib.rs`, shared buffer/JSON helpers in `src/abi.rs`, and metadata-only behavior in `src/stub.rs` until the engine driver is linked.";
+    ? "The Rust code keeps native ABI exports in `src/lib.rs`, shared buffer/JSON helpers in `irodori-connector-abi`, and DuckDB-compatible connect/query/metadata behavior in `src/driver.rs`."
+    : "The Rust code keeps native ABI exports in `src/lib.rs`, shared buffer/JSON helpers in `irodori-connector-abi`, and metadata-only behavior in `src/stub.rs` until the engine driver is linked.";
   const callRows = realDriverLinked
     ? `| \`connect\` | Opens an in-memory/local DuckDB-compatible connection. |
 | \`query\` | Runs SQL and returns columns, rows, and truncation status. |
@@ -3298,8 +3287,9 @@ ${sourceNote}
 ${shaNote}
 
 This directory is a migration staging area for \`${entry.id}\`. The active native
-entrypoints live in \`src/lib.rs\`, shared ABI helpers live in \`src/abi.rs\`, and
-engine behavior lives in \`src/stub.rs\` or \`src/driver.rs\`. Engine-specific
+entrypoints live in \`src/lib.rs\`, shared ABI helpers come from
+\`irodori-connector-abi\`, and engine behavior lives in \`src/stub.rs\` or
+\`src/driver.rs\`. Engine-specific
 connect/query/metadata code should move from these snapshots into that behavior
 module as the connector runtime contract is wired into the desktop app.
 
@@ -3338,6 +3328,10 @@ CARGO_TARGET_DIR ?= ../target
 CARGO_BUILD_JOBS ?= 2
 EXTENSION_PACKAGE := ${repoName}.tar.gz
 LIB_NAME := ${crateName}
+PACKAGE_FILES := README.md LICENSE-MIT LICENSE-0BSD connector.config.json irodori.extension.json dist/native
+ifneq ($(wildcard connector.source.json),)
+PACKAGE_FILES += connector.source.json
+endif
 export CARGO_TARGET_DIR
 export CARGO_BUILD_JOBS
 
@@ -3364,7 +3358,7 @@ package: build
 \tcp $(CARGO_TARGET_DIR)/release/lib$(LIB_NAME).so dist/native/ 2>/dev/null || true
 \tcp $(CARGO_TARGET_DIR)/release/$(LIB_NAME).dll dist/native/ 2>/dev/null || true
 \tcp $(CARGO_TARGET_DIR)/release/lib$(LIB_NAME).dylib dist/native/ 2>/dev/null || true
-\ttar -czf dist/$(EXTENSION_PACKAGE) README.md LICENSE-MIT LICENSE-0BSD connector.config.json connector.source.json irodori.extension.json dist/native
+\ttar -czf dist/$(EXTENSION_PACKAGE) $(PACKAGE_FILES)
 
 clean:
 \t$(CARGO) clean
@@ -3380,33 +3374,23 @@ dist/native/*
 `;
 }
 
-function ciWorkflow(realDriverLinked) {
-  const clippyCommand = realDriverLinked
-    ? "DUCKDB_DOWNLOAD_LIB=1 cargo clippy --all-targets --no-default-features -- -D warnings"
-    : "cargo clippy --all-targets -- -D warnings";
-  const testCommand = realDriverLinked
-    ? "DUCKDB_DOWNLOAD_LIB=1 cargo test --no-default-features"
-    : "cargo test";
+function ciWorkflow(duckDbBacked) {
   return `name: CI
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    env:
-      CARGO_BUILD_JOBS: "2"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --check
-      - run: ${clippyCommand}
-      - run: ${testCommand}
+  extension-ci:
+    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@main
+    with:
+      manifest-root: "."
+      package-command: "make package"
+      duckdb-backed: ${duckDbBacked}
 `;
 }
 

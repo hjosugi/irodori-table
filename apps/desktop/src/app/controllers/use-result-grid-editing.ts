@@ -86,7 +86,7 @@ export type ResultGridEditingDeps = {
   setSelectedRowKey: (value: ValueUpdater<string | null>) => void;
   setSelectedRange: (value: ValueUpdater<ResultCellRange>) => void;
   setCommitting: (value: ValueUpdater<boolean>) => void;
-  setCommitError: (value: ValueUpdater<string | null>) => void;
+  setCommitError: (value: ValueUpdater<unknown | null>) => void;
   setSpillInfo: (
     value: ValueUpdater<{ handle: string; total: number } | null>,
   ) => void;
@@ -99,7 +99,7 @@ export type ResultGridEditingDeps = {
   resetGridStoreView: () => void;
   clearPendingPages: () => void;
   // Component-level state setters.
-  setQueryError: (value: string | null) => void;
+  setQueryError: (value: unknown | null) => void;
   // Refs + collaborating hook outputs / component methods.
   spillRef: { current: { handle: string; source: WindowedRows } | null };
   resetGridScrollPosition: (clearSelection?: boolean) => void;
@@ -393,7 +393,7 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
       );
     } catch (error) {
       const message = errorMessage(error);
-      setQueryError(message);
+      setQueryError(error);
       showActionNotice("error", t("notice.workbench.copyFailed"), message);
     }
   }
@@ -663,7 +663,7 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
       );
     } catch (error) {
       const message = errorMessage(error);
-      setCommitError(message);
+      setCommitError(error);
       showActionNotice("error", t("notice.grid.commitFailed"), message);
     } finally {
       setCommitting(false);
