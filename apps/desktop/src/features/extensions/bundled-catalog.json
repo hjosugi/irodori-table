@@ -15,6 +15,35 @@
       "categories": ["connector", "database"],
       "topics": ["embedded", "olap", "analytics", "local-file"],
       "engines": ["duckdb"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "duckdb",
+            "kind": "lakehouse",
+            "objectTypes": [
+              "catalogs",
+              "namespaces",
+              "tables",
+              "tableMetadata"
+            ],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["duckdb"],
+            "tableFormats": ["iceberg", "delta"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -44,6 +73,35 @@
       "categories": ["connector", "database", "lakehouse"],
       "topics": ["duckdb", "cloud", "olap", "serverless"],
       "engines": ["motherduck"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "motherduck",
+            "kind": "lakehouse",
+            "objectTypes": [
+              "catalogs",
+              "namespaces",
+              "tables",
+              "tableMetadata"
+            ],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["motherduck", "duckdb"],
+            "tableFormats": ["iceberg", "delta"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -73,6 +131,30 @@
       "categories": ["connector", "lakehouse", "catalog"],
       "topics": ["apache", "metastore", "hdfs", "sql"],
       "engines": ["hive"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "hive",
+            "kind": "lakehouse",
+            "objectTypes": ["catalogs", "databases", "tables", "tableMetadata"],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["hive", "spark", "trino"],
+            "tableFormats": ["hive", "iceberg"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -102,6 +184,30 @@
       "categories": ["connector", "lakehouse", "catalog"],
       "topics": ["apache", "rest-catalog", "glue", "table-format"],
       "engines": ["iceberg"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "iceberg",
+            "kind": "lakehouse",
+            "objectTypes": ["catalogs", "namespaces", "tables", "snapshots"],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["duckdb", "athena", "spark", "trino"],
+            "tableFormats": ["iceberg"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -131,6 +237,35 @@
       "categories": ["connector", "lakehouse", "aws"],
       "topics": ["s3", "table-buckets", "iceberg"],
       "engines": ["s3Tables"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "s3Tables",
+            "kind": "lakehouse",
+            "objectTypes": [
+              "tableBuckets",
+              "namespaces",
+              "tables",
+              "snapshots"
+            ],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["athena", "duckdb", "spark"],
+            "tableFormats": ["iceberg"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -160,6 +295,30 @@
       "categories": ["connector", "lakehouse", "aws"],
       "topics": ["s3", "serverless", "query-engine"],
       "engines": ["athena"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "athena",
+            "kind": "lakehouse",
+            "objectTypes": ["catalogs", "databases", "tables", "tableMetadata"],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["athena"],
+            "tableFormats": ["iceberg", "hive"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -189,6 +348,30 @@
       "categories": ["connector", "lakehouse"],
       "topics": ["delta", "table-format", "data-lake"],
       "engines": ["deltaLake"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "deltaLake",
+            "kind": "lakehouse",
+            "objectTypes": ["catalogs", "namespaces", "tables", "snapshots"],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["duckdb", "databricks", "spark"],
+            "tableFormats": ["delta"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -218,6 +401,30 @@
       "categories": ["connector", "lakehouse"],
       "topics": ["apache", "table-format", "data-lake"],
       "engines": ["hudi"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "hudi",
+            "kind": "lakehouse",
+            "objectTypes": ["catalogs", "namespaces", "tables", "timelines"],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["spark", "trino"],
+            "tableFormats": ["hudi"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -740,6 +947,28 @@
       "categories": ["connector", "vector"],
       "topics": ["semantic-search", "embedding"],
       "engines": ["qdrant"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "qdrant",
+            "kind": "vector",
+            "objectTypes": ["collections", "vectors", "payloadFields"],
+            "workflows": [
+              "collectionBrowsing",
+              "vectorMetadata",
+              "similaritySearch",
+              "filteredSearch",
+              "hybridSearch"
+            ],
+            "resultViews": ["vectorNeighbors", "json", "table"],
+            "queryTemplates": [
+              "vector-similarity",
+              "vector-filtered",
+              "vector-health"
+            ]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -769,6 +998,28 @@
       "categories": ["connector", "vector"],
       "topics": ["semantic-search", "embedding"],
       "engines": ["milvus"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "milvus",
+            "kind": "vector",
+            "objectTypes": ["collections", "partitions", "indexes", "fields"],
+            "workflows": [
+              "collectionBrowsing",
+              "vectorMetadata",
+              "similaritySearch",
+              "filteredSearch",
+              "hybridSearch"
+            ],
+            "resultViews": ["vectorNeighbors", "json", "table"],
+            "queryTemplates": [
+              "vector-similarity",
+              "vector-filtered",
+              "vector-health"
+            ]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -798,6 +1049,33 @@
       "categories": ["connector", "vector"],
       "topics": ["semantic-search", "embedding", "managed"],
       "engines": ["pinecone"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "pinecone",
+            "kind": "vector",
+            "objectTypes": [
+              "indexes",
+              "namespaces",
+              "vectors",
+              "metadataFields"
+            ],
+            "workflows": [
+              "collectionBrowsing",
+              "vectorMetadata",
+              "similaritySearch",
+              "filteredSearch",
+              "hybridSearch"
+            ],
+            "resultViews": ["vectorNeighbors", "json", "table"],
+            "queryTemplates": [
+              "vector-similarity",
+              "vector-filtered",
+              "vector-health"
+            ]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",
@@ -1001,6 +1279,30 @@
       "categories": ["connector", "warehouse"],
       "topics": ["lakehouse", "spark", "delta"],
       "engines": ["databricks"],
+      "contributes": {
+        "sourceTypes": [
+          {
+            "engine": "databricks",
+            "kind": "lakehouse",
+            "objectTypes": ["catalogs", "schemas", "tables", "tableMetadata"],
+            "workflows": [
+              "catalogBrowsing",
+              "tableFormatMetadata",
+              "executionBackendSelection",
+              "catalogCredentials",
+              "queryTemplates"
+            ],
+            "resultViews": ["table", "json"],
+            "queryTemplates": [
+              "lakehouse-preview",
+              "lakehouse-catalog",
+              "lakehouse-maintenance"
+            ],
+            "executionBackends": ["databricks-sql"],
+            "tableFormats": ["delta", "iceberg"]
+          }
+        ]
+      },
       "permissions": [
         "connections:read",
         "connections:write",

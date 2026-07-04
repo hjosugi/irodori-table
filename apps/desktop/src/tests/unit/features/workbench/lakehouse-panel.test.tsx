@@ -1,7 +1,10 @@
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LakehousePanel } from "@/features/workbench/components/LakehousePanel";
+import {
+  isLakehouseEngine,
+  LakehousePanel,
+} from "@/features/workbench/components/LakehousePanel";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -35,6 +38,19 @@ function renderPanel(
 }
 
 describe("LakehousePanel", () => {
+  it("detects lakehouse contract engines", () => {
+    expect(isLakehouseEngine("duckdb")).toBe(true);
+    expect(isLakehouseEngine("motherduck")).toBe(true);
+    expect(isLakehouseEngine("hive")).toBe(true);
+    expect(isLakehouseEngine("athena")).toBe(true);
+    expect(isLakehouseEngine("iceberg")).toBe(true);
+    expect(isLakehouseEngine("s3Tables")).toBe(true);
+    expect(isLakehouseEngine("deltaLake")).toBe(true);
+    expect(isLakehouseEngine("hudi")).toBe(true);
+    expect(isLakehouseEngine("databricks")).toBe(true);
+    expect(isLakehouseEngine("mysql")).toBe(false);
+  });
+
   it("renders action titles and details as separate readable blocks", () => {
     renderPanel();
 

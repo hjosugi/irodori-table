@@ -1,27 +1,33 @@
 export const heavyExtensionCatalogFields = ["description", "install", "permissions"];
 const jsonPrintWidth = 80;
 
-export function buildExtensionCatalog(index) {
+export function buildExtensionCatalog(index, options = {}) {
   if (!index || typeof index !== "object") {
     throw new Error("extension marketplace index must be an object");
   }
+  const sourceTypeContracts = sourceTypeContractsByEngine(options.engines);
   return {
     schemaVersion: 1,
     updatedAt: stringOr(index.updatedAt, new Date().toISOString()),
     source: "prebuilt-extension-catalog",
-    extensions: arrayOrEmpty(index.extensions).map(toCatalogExtension),
+    extensions: arrayOrEmpty(index.extensions).map((extension) =>
+      toCatalogExtension(extension, sourceTypeContracts),
+    ),
   };
 }
 
-export function buildBundledPluginStoreCatalog(index) {
+export function buildBundledPluginStoreCatalog(index, options = {}) {
   if (!index || typeof index !== "object") {
     throw new Error("extension marketplace index must be an object");
   }
+  const sourceTypeContracts = sourceTypeContractsByEngine(options.engines);
   return {
     schemaVersion: 1,
     updatedAt: stringOr(index.updatedAt, new Date().toISOString()),
     source: "bundled-extension-catalog",
-    extensions: arrayOrEmpty(index.extensions).map(toBundledExtension),
+    extensions: arrayOrEmpty(index.extensions).map((extension) =>
+      toBundledExtension(extension, sourceTypeContracts),
+    ),
   };
 }
 
@@ -35,11 +41,12 @@ export function hasHeavyExtensionCatalogFields(extension) {
   );
 }
 
-function toCatalogExtension(extension) {
+function toCatalogExtension(extension, sourceTypeContracts) {
   if (!extension || typeof extension !== "object") {
     throw new Error("extension marketplace entry must be an object");
   }
   const homepage = optionalString(extension.homepage);
+  const contributes = extensionContributions(extension, sourceTypeContracts);
   return {
     id: requiredString(extension.id, "extension id"),
     name: requiredString(extension.name, "extension name"),
@@ -53,13 +60,14 @@ function toCatalogExtension(extension) {
     categories: stringList(extension.categories),
     topics: stringList(extension.topics),
     engines: stringList(extension.engines),
+    ...(contributes ? { contributes } : {}),
     runtime: requiredString(extension.runtime, "extension runtime"),
     verified: Boolean(extension.verified),
     publishedAt: requiredString(extension.publishedAt, "extension publishedAt"),
   };
 }
 
-function toBundledExtension(extension) {
+function toBundledExtension(extension, sourceTypeContracts) {
   if (!extension || typeof extension !== "object") {
     throw new Error("extension marketplace entry must be an object");
   }
@@ -67,6 +75,7 @@ function toBundledExtension(extension) {
   const homepage = optionalString(extension.homepage);
   const detailsUrl = optionalString(extension.detailsUrl);
   const install = optionalInstallSource(extension.install);
+  const contributes = extensionContributions(extension, sourceTypeContracts);
   return {
     id: requiredString(extension.id, "extension id"),
     name: requiredString(extension.name, "extension name"),
@@ -82,11 +91,56 @@ function toBundledExtension(extension) {
     categories: stringList(extension.categories),
     topics: stringList(extension.topics),
     engines: stringList(extension.engines),
+    ...(contributes ? { contributes } : {}),
     permissions: stringList(extension.permissions),
     runtime: requiredString(extension.runtime, "extension runtime"),
     verified: Boolean(extension.verified),
     publishedAt: requiredString(extension.publishedAt, "extension publishedAt"),
     ...(install ? { install } : {}),
+  };
+}
+
+function sourceTypeContractsByEngine(engines) {
+  return new Map(
+    arrayOrEmpty(engines)
+      .filter((engine) => engine && typeof engine === "object")
+      .flatMap((engine) => {
+        const id = optionalString(engine.id);
+        const contract = normalizedSourceTypeContract(engine.sourceTypeContract);
+        return id && contract ? [[id, contract]] : [];
+      }),
+  );
+}
+
+function extensionContributions(extension, sourceTypeContracts) {
+  const sourceTypes = stringList(extension.engines).flatMap((engine) => {
+    const contract = sourceTypeContracts.get(engine);
+    return contract ? [{ engine, ...contract }] : [];
+  });
+  return sourceTypes.length > 0 ? { sourceTypes } : undefined;
+}
+
+function normalizedSourceTypeContract(contract) {
+  if (!contract || typeof contract !== "object") {
+    return undefined;
+  }
+  const kind = optionalString(contract.kind);
+  if (!kind) {
+    return undefined;
+  }
+  const result = {
+    kind,
+    objectTypes: stringList(contract.objectTypes),
+    workflows: stringList(contract.workflows),
+    resultViews: stringList(contract.resultViews),
+    queryTemplates: stringList(contract.queryTemplates),
+  };
+  const executionBackends = stringList(contract.executionBackends);
+  const tableFormats = stringList(contract.tableFormats);
+  return {
+    ...result,
+    ...(executionBackends.length > 0 ? { executionBackends } : {}),
+    ...(tableFormats.length > 0 ? { tableFormats } : {}),
   };
 }
 
@@ -168,7 +222,7 @@ function formatJsonArray(value, indent, inlinePrefixLength) {
   }
   if (value.every(isJsonPrimitive)) {
     const inline = `[${value.map((item) => JSON.stringify(item)).join(", ")}]`;
-    if (inlinePrefixLength + inline.length <= jsonPrintWidth) {
+    if (inlinePrefixLength + inline.length < jsonPrintWidth) {
       return inline;
     }
   }

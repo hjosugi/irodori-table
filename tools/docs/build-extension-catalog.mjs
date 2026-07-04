@@ -9,6 +9,7 @@ import {
 import { fromRepoRoot } from "../lib/paths.mjs";
 
 const indexPath = fromRepoRoot("registry/catalog/index.json");
+const enginesPath = fromRepoRoot("knowledge/engines.json");
 const catalogPath = fromRepoRoot("registry/catalog/catalog.json");
 const bundledCatalogPath = fromRepoRoot(
   "apps/desktop/src/features/extensions/bundled-catalog.json",
@@ -23,9 +24,10 @@ for (const arg of process.argv.slice(2)) {
 }
 
 const index = JSON.parse(readFileSync(indexPath, "utf8"));
-const catalog = buildExtensionCatalog(index);
+const engines = JSON.parse(readFileSync(enginesPath, "utf8")).engines ?? [];
+const catalog = buildExtensionCatalog(index, { engines });
 const next = serializeExtensionCatalog(catalog);
-const bundledCatalog = buildBundledPluginStoreCatalog(index);
+const bundledCatalog = buildBundledPluginStoreCatalog(index, { engines });
 const nextBundled = serializeExtensionCatalog(bundledCatalog);
 
 if (check) {

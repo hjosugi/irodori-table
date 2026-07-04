@@ -37,6 +37,42 @@ describe("plugin store catalog", () => {
     }
   });
 
+  it("bundles source-type contracts for vector and lakehouse extensions", () => {
+    const qdrant = bundledPluginStoreCatalog.extensions.find(
+      (extension) => extension.id === "irodori.qdrant",
+    );
+    const iceberg = bundledPluginStoreCatalog.extensions.find(
+      (extension) => extension.id === "irodori.iceberg",
+    );
+
+    expect(qdrant?.contributes?.sourceTypes[0]).toMatchObject({
+      engine: "qdrant",
+      kind: "vector",
+      workflows: expect.arrayContaining([
+        "collectionBrowsing",
+        "similaritySearch",
+        "filteredSearch",
+        "hybridSearch",
+      ]),
+      resultViews: expect.arrayContaining(["vectorNeighbors"]),
+      queryTemplates: expect.arrayContaining([
+        "vector-similarity",
+        "vector-filtered",
+      ]),
+    });
+    expect(iceberg?.contributes?.sourceTypes[0]).toMatchObject({
+      engine: "iceberg",
+      kind: "lakehouse",
+      workflows: expect.arrayContaining([
+        "catalogBrowsing",
+        "tableFormatMetadata",
+        "executionBackendSelection",
+      ]),
+      executionBackends: expect.arrayContaining(["duckdb", "athena"]),
+      tableFormats: ["iceberg"],
+    });
+  });
+
   it("keeps install sources when fetching the default remote catalog shape", async () => {
     const catalog: PluginStoreCatalog = {
       schemaVersion: 1,
@@ -57,5 +93,8 @@ describe("plugin store catalog", () => {
     });
     expect(loaded.extensions[0].install).toEqual(catalog.extensions[0].install);
     expect(loaded.extensions[0].topics).toEqual(catalog.extensions[0].topics);
+    expect(loaded.extensions[0].contributes).toEqual(
+      catalog.extensions[0].contributes,
+    );
   });
 });

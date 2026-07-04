@@ -131,14 +131,18 @@ surface beyond connection templates. They route through existing adapters:
 ## 6. Gaps worth deciding on
 
 - **Vector DBs are extension-first.** Qdrant/Milvus/Pinecone are registry entries
-  with marketplace extensions; core still needs the shared vector source-type
-  contract for collection/index browsing and similarity-search query surfaces.
+  with marketplace extensions. Their shared `vector` source-type contract is
+  projected into the catalog for collection/index browsing, vector metadata,
+  similarity search, filtered/hybrid search, and vector-neighbor result views.
 - **Memgraph is extension-first.** It speaks Bolt/Cypher like Neo4j; the extension
   can reuse the Neo4j path internally before core promotes it to a wired adapter.
 - **ScyllaDB** now rides the existing `cassandra.rs` CQL path; the remaining work is verification against a real ScyllaDB instance and source-specific UX polish.
 - **Iceberg/lakehouse** is now extension-first: Apache Iceberg, S3 Tables, Delta
-  Lake, Hudi, Hive, and Athena all have marketplace connectors. Core still needs
-  shared table/catalog UX and execution-backend contracts for those extensions.
+  Lake, Hudi, Hive, Athena, MotherDuck, DuckDB, and Databricks all have
+  marketplace connectors or recognized entries. Their shared `lakehouse`
+  source-type contract is projected into the catalog for catalog/namespace/table
+  browsing, table-format metadata, execution-backend selection, catalog
+  credentials, and starter query templates.
 
 When section 1–4 membership changes, it should be regenerated from the registry,
 not hand-edited — see

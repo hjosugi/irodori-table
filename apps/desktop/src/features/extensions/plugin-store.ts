@@ -13,6 +13,23 @@ export type PluginStoreInstallSource = {
   sha256?: string;
 };
 
+export type PluginStoreSourceTypeKind = "vector" | "lakehouse";
+
+export type PluginStoreSourceTypeContribution = {
+  engine: string;
+  kind: PluginStoreSourceTypeKind;
+  objectTypes: string[];
+  workflows: string[];
+  resultViews: string[];
+  queryTemplates: string[];
+  executionBackends?: string[];
+  tableFormats?: string[];
+};
+
+export type PluginStoreContributions = {
+  sourceTypes: PluginStoreSourceTypeContribution[];
+};
+
 export type PluginStoreExtension = {
   id: string;
   name: string;
@@ -28,6 +45,7 @@ export type PluginStoreExtension = {
   categories: string[];
   topics: string[];
   engines: string[];
+  contributes?: PluginStoreContributions;
   permissions: string[];
   runtime: "typescript" | "javascript" | "wasm" | "native";
   verified: boolean;
@@ -99,6 +117,9 @@ function normalizePluginStoreExtension(value: unknown): PluginStoreExtension {
     categories: stringList(raw.categories),
     topics: stringList(raw.topics),
     engines: stringList(raw.engines),
+    contributes: raw.contributes
+      ? normalizeContributions(raw.contributes)
+      : undefined,
     permissions: stringList(raw.permissions),
     runtime: requiredString(
       raw.runtime,
@@ -107,6 +128,40 @@ function normalizePluginStoreExtension(value: unknown): PluginStoreExtension {
     verified: Boolean(raw.verified),
     publishedAt: requiredString(raw.publishedAt, "extension publishedAt"),
     install: raw.install ? normalizeInstallSource(raw.install) : undefined,
+  };
+}
+
+function normalizeContributions(value: unknown): PluginStoreContributions {
+  if (!value || typeof value !== "object") {
+    throw new Error("extension contributions must be an object");
+  }
+  const raw = value as Partial<PluginStoreContributions>;
+  return {
+    sourceTypes: Array.isArray(raw.sourceTypes)
+      ? raw.sourceTypes.map(normalizeSourceTypeContribution)
+      : [],
+  };
+}
+
+function normalizeSourceTypeContribution(
+  value: unknown,
+): PluginStoreSourceTypeContribution {
+  if (!value || typeof value !== "object") {
+    throw new Error("extension sourceType contribution must be an object");
+  }
+  const raw = value as Partial<PluginStoreSourceTypeContribution>;
+  return {
+    engine: requiredString(raw.engine, "sourceType engine"),
+    kind: requiredString(
+      raw.kind,
+      "sourceType kind",
+    ) as PluginStoreSourceTypeKind,
+    objectTypes: stringList(raw.objectTypes),
+    workflows: stringList(raw.workflows),
+    resultViews: stringList(raw.resultViews),
+    queryTemplates: stringList(raw.queryTemplates),
+    executionBackends: optionalStringList(raw.executionBackends),
+    tableFormats: optionalStringList(raw.tableFormats),
   };
 }
 
@@ -128,6 +183,11 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+function optionalStringList(value: unknown): string[] | undefined {
+  const items = stringList(value);
+  return items.length > 0 ? items : undefined;
 }
 
 function requiredString(value: unknown, label: string): string {

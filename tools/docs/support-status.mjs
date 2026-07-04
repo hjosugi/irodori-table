@@ -32,16 +32,20 @@ function main() {
   const enginesJson = JSON.parse(read(enginesJsonPath));
   const sourcesJson = JSON.parse(read(sourcesJsonPath));
   const marketplaceIndex = JSON.parse(read(marketplaceIndexPath));
+  const engineRows = enginesJson.engines ?? [];
   const marketplaceCatalogSource = read(marketplaceCatalogPath);
   const marketplaceCatalog = JSON.parse(marketplaceCatalogSource);
-  const expectedMarketplaceCatalog = buildExtensionCatalog(marketplaceIndex);
+  const expectedMarketplaceCatalog = buildExtensionCatalog(marketplaceIndex, {
+    engines: engineRows,
+  });
   const bundledCatalogSource = read(bundledCatalogPath);
-  const expectedBundledCatalog = buildBundledPluginStoreCatalog(marketplaceIndex);
+  const expectedBundledCatalog = buildBundledPluginStoreCatalog(marketplaceIndex, {
+    engines: engineRows,
+  });
   const connectorRepositories = JSON.parse(read(connectorRepositoriesPath));
   const supportStatus = read(supportStatusPath);
 
   const registryIds = parseDbEngineIds(engineSource);
-  const engineRows = enginesJson.engines ?? [];
   const jsonIds = new Set(engineRows.map((engine) => engine.id));
   const sourceProducts = new Set(sourcesJson.map((source) => sourceProductKey(source.product)));
   const marketplaceExtensions = marketplaceIndex.extensions ?? [];
@@ -54,6 +58,14 @@ function main() {
       (extension.engines ?? []).map((engine) => [engine, extension.id]),
     ),
   );
+  const marketplaceExtensionByEngine = new Map(
+    marketplaceExtensions.flatMap((extension) =>
+      (extension.engines ?? []).map((engine) => [engine, extension]),
+    ),
+  );
+  const catalogExtensionById = new Map(
+    marketplaceCatalogExtensions.map((extension) => [extension.id, extension]),
+  );
   const marketplaceCatalogEngineIds = new Set(
     marketplaceCatalogExtensions.flatMap((extension) => extension.engines ?? []),
   );
@@ -61,6 +73,7 @@ function main() {
   const marketplaceCatalogExtensionIds = new Set(
     marketplaceCatalogExtensions.map((extension) => extension.id),
   );
+  const engineRowsById = new Map(engineRows.map((engine) => [engine.id, engine]));
   const repositoryExtensionIds = new Set(
     (connectorRepositories.repositories ?? []).map((repository) => repository.extensionId),
   );
@@ -136,6 +149,16 @@ function main() {
         (engine) =>
           `knowledge/sources.json has no source coverage for engine '${engine.id}' (${engine.label})`,
       ),
+    ...engineRows.flatMap((engine) =>
+      validateSourceTypeContract(engine, marketplaceExtensionByEngine.get(engine.id)),
+    ),
+    ...marketplaceExtensions.flatMap((extension) =>
+      validateSourceTypeCatalogProjection(
+        extension,
+        catalogExtensionById.get(extension.id),
+        engineRowsById,
+      ),
+    ),
     ...setDiff(expectedNoConnectorIds, recognizedNoConnectorIds).map(
       (id) => `engine '${id}' is rejected by is_unimplemented_wire() but is not marked recognized_no_connector`,
     ),
@@ -207,6 +230,124 @@ function camelId(value) {
 function hasSourceCoverage(engine, sourceProducts) {
   const products = [engine.label, ...(engine.sourceProducts ?? [])];
   return products.some((product) => sourceProducts.has(sourceProductKey(product)));
+}
+
+function validateSourceTypeContract(engine, marketplaceExtension) {
+  const expectedKind = expectedSourceTypeKind(engine, marketplaceExtension);
+  const contract = engine.sourceTypeContract;
+  if (!expectedKind && contract === undefined) {
+    return [];
+  }
+  const label = `engine '${engine.id}' sourceTypeContract`;
+  const errors = [];
+  if (!contract || typeof contract !== "object") {
+    return expectedKind ? [`${label} is required for ${expectedKind} engines`] : [];
+  }
+  if (expectedKind && contract.kind !== expectedKind) {
+    errors.push(`${label}.kind must be '${expectedKind}'`);
+  }
+  if (contract.kind !== "vector" && contract.kind !== "lakehouse") {
+    errors.push(`${label}.kind must be 'vector' or 'lakehouse'`);
+  }
+  for (const key of ["objectTypes", "workflows", "resultViews", "queryTemplates"]) {
+    if (!hasNonEmptyStringList(contract[key])) {
+      errors.push(`${label}.${key} must be a non-empty string array`);
+    }
+  }
+  if (contract.kind === "vector") {
+    errors.push(
+      ...requireItems(label, "workflows", contract.workflows, [
+        "collectionBrowsing",
+        "vectorMetadata",
+        "similaritySearch",
+        "filteredSearch",
+        "hybridSearch",
+      ]),
+      ...requireItems(label, "resultViews", contract.resultViews, ["vectorNeighbors"]),
+      ...requireItems(label, "queryTemplates", contract.queryTemplates, [
+        "vector-similarity",
+        "vector-filtered",
+        "vector-health",
+      ]),
+    );
+  }
+  if (contract.kind === "lakehouse") {
+    errors.push(
+      ...requireItems(label, "workflows", contract.workflows, [
+        "catalogBrowsing",
+        "tableFormatMetadata",
+        "executionBackendSelection",
+        "catalogCredentials",
+        "queryTemplates",
+      ]),
+      ...requireItems(label, "resultViews", contract.resultViews, ["table"]),
+      ...requireItems(label, "queryTemplates", contract.queryTemplates, [
+        "lakehouse-preview",
+        "lakehouse-catalog",
+        "lakehouse-maintenance",
+      ]),
+    );
+    if (!hasNonEmptyStringList(contract.executionBackends)) {
+      errors.push(`${label}.executionBackends must be a non-empty string array`);
+    }
+    if (!hasNonEmptyStringList(contract.tableFormats)) {
+      errors.push(`${label}.tableFormats must be a non-empty string array`);
+    }
+  }
+  return errors;
+}
+
+function validateSourceTypeCatalogProjection(indexExtension, catalogExtension, engineRowsById) {
+  const expectedSourceTypes = (indexExtension.engines ?? []).filter(
+    (engine) => engineRowsById.get(engine)?.sourceTypeContract,
+  );
+  const actualSourceTypes = new Set(
+    catalogExtension?.contributes?.sourceTypes?.map((sourceType) => sourceType.engine) ?? [],
+  );
+  const missingSourceTypes = expectedSourceTypes.filter(
+    (engine) => !actualSourceTypes.has(engine),
+  );
+  if (missingSourceTypes.length > 0) {
+    return missingSourceTypes.map(
+      (engine) =>
+        `registry/catalog/catalog.json extension '${indexExtension.id}' is missing sourceType projection for engine '${engine}'`,
+    );
+  }
+  return [];
+}
+
+function expectedSourceTypeKind(engine, marketplaceExtension) {
+  const family = String(engine.family ?? "").toLowerCase();
+  const wire = String(engine.wire ?? "").toLowerCase();
+  const categories = (marketplaceExtension?.categories ?? []).map((item) =>
+    String(item).toLowerCase(),
+  );
+  const topics = (marketplaceExtension?.topics ?? []).map((item) =>
+    String(item).toLowerCase(),
+  );
+  if (family.includes("vector") || categories.includes("vector")) {
+    return "vector";
+  }
+  if (
+    family.includes("lakehouse") ||
+    wire === "lakehouse" ||
+    categories.includes("lakehouse") ||
+    topics.includes("lakehouse")
+  ) {
+    return "lakehouse";
+  }
+  return null;
+}
+
+function hasNonEmptyStringList(value) {
+  return Array.isArray(value) && value.some((item) => typeof item === "string" && item);
+}
+
+function requireItems(label, key, actual, expected) {
+  const values = new Set(Array.isArray(actual) ? actual : []);
+  return expected
+    .filter((item) => !values.has(item))
+    .map((item) => `${label}.${key} is missing '${item}'`);
 }
 
 function sourceProductKey(value) {

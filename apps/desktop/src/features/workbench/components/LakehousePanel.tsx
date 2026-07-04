@@ -139,11 +139,13 @@ function lakehouseActions(engine: DbEngine): LakehouseAction[] {
   return actions;
 }
 
-function isLakehouseEngine(engine: DbEngine) {
+export function isLakehouseEngine(engine: DbEngine) {
   return [
+    "databricks",
     "athena",
     "duckdb",
     "motherduck",
+    "hive",
     "iceberg",
     "s3Tables",
     "deltaLake",

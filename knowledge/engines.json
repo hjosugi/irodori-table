@@ -50,6 +50,25 @@
       "defaultPort": 0,
       "status": "extension",
       "extensionId": "irodori.duckdb",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "namespaces", "tables", "tableMetadata"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["duckdb"],
+        "tableFormats": ["iceberg", "delta"]
+      },
       "notes": "installable connector; local file and in-memory workflows live outside the core desktop build"
     },
     {
@@ -60,6 +79,25 @@
       "defaultPort": 443,
       "status": "extension",
       "extensionId": "irodori.motherduck",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "namespaces", "tables", "tableMetadata"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["motherduck", "duckdb"],
+        "tableFormats": ["iceberg", "delta"]
+      },
       "notes": "installable connector; DuckDB/MotherDuck service workflow"
     },
     {
@@ -260,7 +298,24 @@
       "wire": "qdrant",
       "defaultPort": 6333,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.qdrant"
+      "extensionId": "irodori.qdrant",
+      "sourceTypeContract": {
+        "kind": "vector",
+        "objectTypes": ["collections", "vectors", "payloadFields"],
+        "workflows": [
+          "collectionBrowsing",
+          "vectorMetadata",
+          "similaritySearch",
+          "filteredSearch",
+          "hybridSearch"
+        ],
+        "resultViews": ["vectorNeighbors", "json", "table"],
+        "queryTemplates": [
+          "vector-similarity",
+          "vector-filtered",
+          "vector-health"
+        ]
+      }
     },
     {
       "id": "milvus",
@@ -269,7 +324,24 @@
       "wire": "milvus",
       "defaultPort": 19530,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.milvus"
+      "extensionId": "irodori.milvus",
+      "sourceTypeContract": {
+        "kind": "vector",
+        "objectTypes": ["collections", "partitions", "indexes", "fields"],
+        "workflows": [
+          "collectionBrowsing",
+          "vectorMetadata",
+          "similaritySearch",
+          "filteredSearch",
+          "hybridSearch"
+        ],
+        "resultViews": ["vectorNeighbors", "json", "table"],
+        "queryTemplates": [
+          "vector-similarity",
+          "vector-filtered",
+          "vector-health"
+        ]
+      }
     },
     {
       "id": "pinecone",
@@ -279,6 +351,23 @@
       "defaultPort": 0,
       "status": "recognized_no_connector",
       "extensionId": "irodori.pinecone",
+      "sourceTypeContract": {
+        "kind": "vector",
+        "objectTypes": ["indexes", "namespaces", "vectors", "metadataFields"],
+        "workflows": [
+          "collectionBrowsing",
+          "vectorMetadata",
+          "similaritySearch",
+          "filteredSearch",
+          "hybridSearch"
+        ],
+        "resultViews": ["vectorNeighbors", "json", "table"],
+        "queryTemplates": [
+          "vector-similarity",
+          "vector-filtered",
+          "vector-health"
+        ]
+      },
       "notes": "HTTP API"
     },
     {
@@ -309,7 +398,26 @@
       "wire": "jdbc",
       "defaultPort": 443,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.databricks"
+      "extensionId": "irodori.databricks",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "schemas", "tables", "tableMetadata"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["databricks-sql"],
+        "tableFormats": ["delta", "iceberg"]
+      }
     },
     {
       "id": "elasticsearch",
@@ -395,6 +503,25 @@
       "defaultPort": 10000,
       "status": "recognized_no_connector",
       "extensionId": "irodori.hive",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "databases", "tables", "tableMetadata"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["hive", "spark", "trino"],
+        "tableFormats": ["hive", "iceberg"]
+      },
       "notes": "catalog/metastore shape still pending"
     },
     {
@@ -405,6 +532,25 @@
       "defaultPort": 443,
       "status": "recognized_no_connector",
       "extensionId": "irodori.athena",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "databases", "tables", "tableMetadata"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["athena"],
+        "tableFormats": ["iceberg", "hive"]
+      },
       "notes": "AWS Athena connector is modeled separately from Iceberg and S3 Tables"
     },
     {
@@ -415,6 +561,25 @@
       "defaultPort": 443,
       "status": "recognized_no_connector",
       "extensionId": "irodori.iceberg",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "namespaces", "tables", "snapshots"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["duckdb", "athena", "spark", "trino"],
+        "tableFormats": ["iceberg"]
+      },
       "notes": "catalog-backed lakehouse connector is provided as an installable extension"
     },
     {
@@ -425,6 +590,25 @@
       "defaultPort": 443,
       "status": "recognized_no_connector",
       "extensionId": "irodori.s3-tables",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["tableBuckets", "namespaces", "tables", "snapshots"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["athena", "duckdb", "spark"],
+        "tableFormats": ["iceberg"]
+      },
       "notes": "managed Iceberg connector is provided as an installable extension"
     },
     {
@@ -434,7 +618,26 @@
       "wire": "lakehouse",
       "defaultPort": 443,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.delta-lake"
+      "extensionId": "irodori.delta-lake",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "namespaces", "tables", "snapshots"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["duckdb", "databricks", "spark"],
+        "tableFormats": ["delta"]
+      }
     },
     {
       "id": "hudi",
@@ -443,7 +646,26 @@
       "wire": "lakehouse",
       "defaultPort": 443,
       "status": "recognized_no_connector",
-      "extensionId": "irodori.hudi"
+      "extensionId": "irodori.hudi",
+      "sourceTypeContract": {
+        "kind": "lakehouse",
+        "objectTypes": ["catalogs", "namespaces", "tables", "timelines"],
+        "workflows": [
+          "catalogBrowsing",
+          "tableFormatMetadata",
+          "executionBackendSelection",
+          "catalogCredentials",
+          "queryTemplates"
+        ],
+        "resultViews": ["table", "json"],
+        "queryTemplates": [
+          "lakehouse-preview",
+          "lakehouse-catalog",
+          "lakehouse-maintenance"
+        ],
+        "executionBackends": ["spark", "trino"],
+        "tableFormats": ["hudi"]
+      }
     }
   ],
   "notRegistered": []
