@@ -35,6 +35,7 @@ async fn exercise(engine: DbEngine, url: String) {
     let info = connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         url_profile("it", engine, url),
     )
     .await
@@ -209,6 +210,7 @@ async fn connect_only(engine: DbEngine, url: String) {
     let info = connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         url_profile("it", engine, url),
     )
     .await
@@ -251,6 +253,7 @@ async fn exercise_mssql(url: String) {
     let info = connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         url_profile("it", DbEngine::SqlServer, url),
     )
     .await
@@ -458,6 +461,7 @@ async fn exercise_mongo(url: String) {
     let info = connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         url_profile("it", DbEngine::Mongo, url),
     )
     .await
@@ -508,7 +512,7 @@ fn mongo_samples() {
 /// — Oracle's `database` field is the service name.
 async fn exercise_oracle(profile: ConnectionProfile) {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), profile)
+    let info = connect_impl(&state, &SecurityState::default(), None, profile)
         .await
         .expect("connect");
     assert_eq!(info.engine, DbEngine::Oracle);

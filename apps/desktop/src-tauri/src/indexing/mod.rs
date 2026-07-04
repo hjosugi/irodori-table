@@ -297,7 +297,7 @@ mod tests {
     #[tokio::test]
     async fn indexes_schema_as_a_job_and_searches_it() {
         let db = DbState::default();
-        connect_impl(&db, &SecurityState::default(), memory_profile("idx"))
+        connect_impl(&db, &SecurityState::default(), None, memory_profile("idx"))
             .await
             .expect("connect");
         run_query_impl(

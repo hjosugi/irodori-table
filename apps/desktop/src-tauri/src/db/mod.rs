@@ -153,6 +153,7 @@ use transport::resolve_transport;
 pub async fn connect_impl(
     state: &DbState,
     security: &SecurityState,
+    app: Option<&tauri::AppHandle>,
     profile: ConnectionProfile,
 ) -> Result<ConnectionInfo, String> {
     let mut profile = normalize_profile(profile)?;
@@ -174,7 +175,7 @@ pub async fn connect_impl(
         }
     }
 
-    let conn_res = connect_engine(&profile).await;
+    let conn_res = connect_engine(&profile, app).await;
     let conn = match conn_res {
         Ok(conn) => conn,
         Err(error) => {

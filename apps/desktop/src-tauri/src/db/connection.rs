@@ -30,6 +30,7 @@ use super::query::{PreparedQuery, RawResultSet, RowSet};
 use super::redis;
 use super::stream;
 use super::{clickhouse, influx, mysql, postgres, snowflake, sqlite, DatabaseMetadata, DbEngine};
+use crate::extensions;
 
 // ---- The per-engine connection abstraction ------------------------------------
 
@@ -190,6 +191,31 @@ impl Connection for PgConn {
     }
     async fn close(&self) {
         self.pool.close().await
+    }
+}
+
+struct ExtensionConn(extensions::NativeExtensionConnection);
+
+#[async_trait]
+impl Connection for ExtensionConn {
+    fn wire(&self) -> Wire {
+        self.0.engine().wire()
+    }
+
+    async fn version(&self) -> Option<String> {
+        Some(self.0.server_version().to_string())
+    }
+
+    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+        self.0.run_query(sql, cap)
+    }
+
+    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+        self.0.metadata()
+    }
+
+    async fn close(&self) {
+        self.0.close();
     }
 }
 
@@ -554,6 +580,7 @@ impl Connection for CassandraConnection {
 /// [`Connection`]. This is the only place that knows every engine.
 pub(crate) async fn connect_engine(
     profile: &ConnectionProfile,
+    app: Option<&tauri::AppHandle>,
 ) -> Result<Arc<dyn Connection>, String> {
     let conn: Arc<dyn Connection> = match profile.engine.wire() {
         Wire::Postgres => Arc::new(PgConn {
@@ -593,7 +620,11 @@ pub(crate) async fn connect_engine(
             }
         }
         Wire::DuckDb => {
-            return Err(connector_extension_required_message(profile.engine));
+            if let Some(conn) = connect_installed_extension(profile, app)? {
+                conn
+            } else {
+                return Err(connector_extension_required_message(profile.engine));
+            }
         }
         Wire::Oracle => {
             #[cfg(feature = "oracle")]
@@ -670,10 +701,33 @@ pub(crate) async fn connect_engine(
         | Wire::Graph
         | Wire::TimeSeries
         | Wire::Lakehouse => {
-            return Err(connector_extension_required_message(profile.engine));
+            if let Some(conn) = connect_installed_extension(profile, app)? {
+                conn
+            } else {
+                return Err(connector_extension_required_message(profile.engine));
+            }
         }
     };
     Ok(conn)
+}
+
+fn connect_installed_extension(
+    profile: &ConnectionProfile,
+    app: Option<&tauri::AppHandle>,
+) -> Result<Option<Arc<dyn Connection>>, String> {
+    let Some(extension_id) = profile.engine.connector_extension_id() else {
+        return Ok(None);
+    };
+    let Some(app) = app else {
+        return Ok(None);
+    };
+    let Some(extension) =
+        extensions::installed_by_id(app, extension_id).map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+    let conn = extensions::NativeExtensionConnection::connect(&extension, profile)?;
+    Ok(Some(Arc::new(ExtensionConn(conn))))
 }
 
 #[allow(dead_code)]

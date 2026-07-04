@@ -129,6 +129,16 @@ pub(crate) fn set_enabled(
     Ok(updated)
 }
 
+pub(crate) fn installed_by_id(
+    app: &AppHandle,
+    id: &str,
+) -> IrodoriResult<Option<InstalledExtension>> {
+    Ok(read_registry(app)?
+        .extensions
+        .into_iter()
+        .find(|extension| extension.id == id && extension.enabled))
+}
+
 fn install_archive(
     app: &AppHandle,
     requested_id: &str,

@@ -11,6 +11,7 @@ mod abi;
 mod connection;
 mod store;
 
+pub(crate) use connection::NativeExtensionConnection;
 pub use store::ExtensionsState;
 
 use irodori_core::Result as IrodoriResult;
@@ -86,4 +87,11 @@ pub async fn ext_set_enabled(
     enabled: bool,
 ) -> IrodoriResult<InstalledExtension> {
     store::set_enabled(&app, &state, &id, enabled)
+}
+
+pub(crate) fn installed_by_id(
+    app: &AppHandle,
+    id: &str,
+) -> IrodoriResult<Option<InstalledExtension>> {
+    store::installed_by_id(app, id)
 }

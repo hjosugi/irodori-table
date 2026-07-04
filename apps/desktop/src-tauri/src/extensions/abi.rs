@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use libloading::Library;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub(crate) const ABI_VERSION: u32 = 1;
 
@@ -24,6 +24,76 @@ pub(crate) struct NativeConnectorProbe {
     pub(crate) config_json: String,
     pub(crate) health: Value,
     pub(crate) describe: Value,
+}
+
+pub(crate) struct NativeConnector {
+    _library: Library,
+    engine: String,
+    call_json: CallJsonFn,
+    free_buffer: FreeBufferFn,
+}
+
+impl NativeConnector {
+    pub(crate) fn load(path: &Path) -> Result<Self, String> {
+        let library = unsafe { Library::new(path) }
+            .map_err(|error| format!("failed to load native connector library: {error}"))?;
+        unsafe { Self::from_library(library) }
+    }
+
+    unsafe fn from_library(library: Library) -> Result<Self, String> {
+        let abi_version = *library
+            .get::<AbiVersionFn>(b"irodori_extension_abi_version\0")
+            .map_err(|error| {
+                format!("connector is missing irodori_extension_abi_version: {error}")
+            })?;
+        let engine_json = *library
+            .get::<BufferFn>(b"irodori_connector_engine_json\0")
+            .map_err(|error| {
+                format!("connector is missing irodori_connector_engine_json: {error}")
+            })?;
+        let call_json = *library
+            .get::<CallJsonFn>(b"irodori_connector_call_json\0")
+            .map_err(|error| {
+                format!("connector is missing irodori_connector_call_json: {error}")
+            })?;
+        let free_buffer = *library
+            .get::<FreeBufferFn>(b"irodori_connector_free_buffer\0")
+            .map_err(|error| {
+                format!("connector is missing irodori_connector_free_buffer: {error}")
+            })?;
+
+        let version = abi_version();
+        if version != ABI_VERSION {
+            return Err(format!(
+                "unsupported connector ABI version {version}; expected {ABI_VERSION}"
+            ));
+        }
+
+        let engine = read_owned_buffer(engine_json(), free_buffer)?;
+        Ok(Self {
+            _library: library,
+            engine,
+            call_json,
+            free_buffer,
+        })
+    }
+
+    pub(crate) fn engine(&self) -> &str {
+        &self.engine
+    }
+
+    pub(crate) fn call(&self, request: Value) -> Result<Value, String> {
+        let request = request.to_string();
+        call_owned_json(self.call_json, self.free_buffer, &request)
+    }
+
+    pub(crate) fn call_ok(&self, request: Value) -> Result<Value, String> {
+        let response = self.call(request)?;
+        if response.get("ok").and_then(Value::as_bool) == Some(false) {
+            return Err(connector_error_message(&response));
+        }
+        Ok(response)
+    }
 }
 
 pub(crate) fn probe_library(path: &Path) -> Result<NativeConnectorProbe, String> {
@@ -89,6 +159,30 @@ fn call_owned_json(
     let response = read_owned_buffer(response, free_buffer)?;
     serde_json::from_str(&response)
         .map_err(|error| format!("connector returned non-JSON response to health check: {error}"))
+}
+
+pub(crate) fn connector_error_message(response: &Value) -> String {
+    let message = response
+        .get("error")
+        .and_then(|error| error.get("message"))
+        .and_then(Value::as_str)
+        .or_else(|| response.get("message").and_then(Value::as_str))
+        .unwrap_or("connector call failed");
+    let Some(code) = response
+        .get("error")
+        .and_then(|error| error.get("code"))
+        .and_then(Value::as_str)
+    else {
+        return message.to_string();
+    };
+    format!("{code}: {message}")
+}
+
+pub(crate) fn connector_request(method: &str, connection_id: &str) -> Value {
+    json!({
+        "method": method,
+        "connectionId": connection_id,
+    })
 }
 
 fn read_owned_buffer(

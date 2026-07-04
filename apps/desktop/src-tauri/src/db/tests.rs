@@ -26,6 +26,7 @@ async fn metadata_cache_integration_test() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile(&conn_id),
     )
     .await
@@ -138,7 +139,7 @@ fn detects_sql_that_can_write_for_read_only_connections() {
 async fn read_only_connection_blocks_writes_and_grid_edits() {
     let state = DbState::default();
     let mut profile = temp_sqlite_profile("readonly");
-    connect_impl(&state, &SecurityState::default(), profile.clone())
+    connect_impl(&state, &SecurityState::default(), None, profile.clone())
         .await
         .expect("connect writable");
     run_query_impl(
@@ -154,7 +155,7 @@ async fn read_only_connection_blocks_writes_and_grid_edits() {
         .expect("disconnect writable");
 
     profile.read_only = true;
-    connect_impl(&state, &SecurityState::default(), profile)
+    connect_impl(&state, &SecurityState::default(), None, profile)
         .await
         .expect("connect read-only");
 
@@ -214,6 +215,7 @@ async fn successful_mutation_refreshes_metadata_without_manual_invalidation() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile(&conn_id),
     )
     .await
@@ -253,6 +255,7 @@ async fn manual_metadata_invalidation_runs_refresh_through_jobs() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile(&conn_id),
     )
     .await
@@ -321,9 +324,14 @@ async fn cancel_signals_a_registered_query_then_is_a_noop() {
 #[tokio::test]
 async fn stream_delivers_header_then_rows() {
     let state = DbState::default();
-    connect_impl(&state, &SecurityState::default(), temp_sqlite_profile("st"))
-        .await
-        .expect("connect");
+    connect_impl(
+        &state,
+        &SecurityState::default(),
+        None,
+        temp_sqlite_profile("st"),
+    )
+    .await
+    .expect("connect");
     run_query_impl(
         &state,
         "st".into(),
@@ -388,6 +396,7 @@ async fn stream_caps_rows_and_flags_truncation() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("stcap"),
     )
     .await
@@ -459,6 +468,7 @@ async fn sqlite_multi_statement_run_returns_result_sets() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("multi"),
     )
     .await
@@ -489,6 +499,7 @@ async fn sqlite_multi_statement_stream_tags_result_set_events() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("multistream"),
     )
     .await
@@ -534,6 +545,7 @@ async fn query_parameters_are_detected_bound_and_streamed() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("params"),
     )
     .await
@@ -621,6 +633,7 @@ async fn stream_query_stops_on_a_cancelled_token() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("stcancel"),
     )
     .await
@@ -672,6 +685,7 @@ async fn apply_edits_commits_update_insert_delete() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("edit"),
     )
     .await
@@ -752,6 +766,7 @@ async fn metadata_reports_primary_and_foreign_keys() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         temp_sqlite_profile("keys"),
     )
     .await
@@ -814,9 +829,14 @@ fn temp_sqlite_profile(id: &str) -> ConnectionProfile {
 #[tokio::test]
 async fn sqlite_connect_and_query_round_trip() {
     let state = DbState::default();
-    let info = connect_impl(&state, &SecurityState::default(), temp_sqlite_profile("rt"))
-        .await
-        .expect("connect");
+    let info = connect_impl(
+        &state,
+        &SecurityState::default(),
+        None,
+        temp_sqlite_profile("rt"),
+    )
+    .await
+    .expect("connect");
     assert_eq!(info.engine, DbEngine::Sqlite);
 
     run_query_impl(
@@ -905,7 +925,7 @@ async fn sqlite_memory_profile_uses_in_memory_database() {
         read_only: false,
         options: Default::default(),
     };
-    connect_impl(&state, &SecurityState::default(), profile)
+    connect_impl(&state, &SecurityState::default(), None, profile)
         .await
         .expect("connect memory");
     run_query_impl(
@@ -952,7 +972,7 @@ async fn spill_run_keeps_memory_flat_and_pages_deep_rows_from_disk() {
         read_only: false,
         options: Default::default(),
     };
-    connect_impl(&state, &SecurityState::default(), profile)
+    connect_impl(&state, &SecurityState::default(), None, profile)
         .await
         .expect("connect memory");
 
@@ -1051,7 +1071,7 @@ async fn spill_run_offload_disabled_caps_at_budget() {
         read_only: false,
         options: Default::default(),
     };
-    connect_impl(&state, &SecurityState::default(), profile)
+    connect_impl(&state, &SecurityState::default(), None, profile)
         .await
         .expect("connect memory");
 
@@ -1080,7 +1100,7 @@ async fn command_boundary_rejects_invalid_inputs() {
     let state = DbState::default();
     let mut invalid = temp_sqlite_profile("invalid");
     invalid.id = "  ".into();
-    let err = connect_impl(&state, &SecurityState::default(), invalid)
+    let err = connect_impl(&state, &SecurityState::default(), None, invalid)
         .await
         .unwrap_err();
     assert!(err.contains("connection id is required"));
@@ -1099,7 +1119,7 @@ async fn command_boundary_rejects_invalid_inputs() {
         read_only: false,
         options: Default::default(),
     };
-    let err = connect_impl(&state, &SecurityState::default(), missing_host)
+    let err = connect_impl(&state, &SecurityState::default(), None, missing_host)
         .await
         .unwrap_err();
     assert!(err.contains("host is required"));
@@ -1118,7 +1138,7 @@ async fn command_boundary_rejects_invalid_inputs() {
         read_only: false,
         options: Default::default(),
     };
-    let err = connect_impl(&state, &SecurityState::default(), unsupported)
+    let err = connect_impl(&state, &SecurityState::default(), None, unsupported)
         .await
         .unwrap_err();
     assert!(err.contains("irodori.pinecone"));
@@ -1140,7 +1160,7 @@ async fn command_boundary_rejects_invalid_inputs() {
         read_only: false,
         options: Default::default(),
     };
-    let err = connect_impl(&state, &SecurityState::default(), duckdb)
+    let err = connect_impl(&state, &SecurityState::default(), None, duckdb)
         .await
         .unwrap_err();
     assert!(err.contains("irodori.duckdb"));
@@ -1159,6 +1179,7 @@ async fn query_bounds_are_enforced() {
     connect_impl(
         &state,
         &SecurityState::default(),
+        None,
         ConnectionProfile {
             id: "bounds".into(),
             engine: DbEngine::Sqlite,
@@ -1243,7 +1264,7 @@ async fn reconnect_replaces_existing_connection() {
         read_only: false,
         options: Default::default(),
     };
-    connect_impl(&state, &SecurityState::default(), profile.clone())
+    connect_impl(&state, &SecurityState::default(), None, profile.clone())
         .await
         .expect("connect memory");
     run_query_impl(
@@ -1255,7 +1276,7 @@ async fn reconnect_replaces_existing_connection() {
     .await
     .expect("create");
 
-    connect_impl(&state, &SecurityState::default(), profile)
+    connect_impl(&state, &SecurityState::default(), None, profile)
         .await
         .expect("reconnect memory");
     let err = run_query_impl(&state, "replace".into(), "select * from t".into(), None)

@@ -76,7 +76,7 @@ pub(super) fn normalize_profile(
     normalize_optional_text(&mut profile.socket_path);
 
     let wire = profile.engine.wire();
-    if is_unimplemented_wire(wire) {
+    if is_unimplemented_wire(wire) && profile.engine.connector_extension_id().is_none() {
         return Err(connector_extension_required_message(profile.engine));
     }
 
@@ -124,7 +124,8 @@ pub(super) fn normalize_profile(
         | Wire::Graph
         | Wire::TimeSeries
         | Wire::Lakehouse => {
-            unreachable!("unimplemented wires are rejected above")
+            // Installable native connectors own their required profile shape.
+            // Some use host/port, others use API keys or file/options only.
         }
     }
 

@@ -80,12 +80,13 @@ pub fn db_engine_build_support() -> Vec<EngineBuildSupport> {
 pub async fn db_connect(
     state: tauri::State<'_, DbState>,
     security: tauri::State<'_, SecurityState>,
+    app: tauri::AppHandle,
     profile: ConnectionProfile,
 ) -> IrodoriResult<ConnectionInfo> {
     let connection_id = profile.id.clone();
     let engine = format!("{:?}", profile.engine);
     let started = Instant::now();
-    match connect_impl(state.inner(), security.inner(), profile).await {
+    match connect_impl(state.inner(), security.inner(), Some(&app), profile).await {
         Ok(info) => {
             security
                 .record(
