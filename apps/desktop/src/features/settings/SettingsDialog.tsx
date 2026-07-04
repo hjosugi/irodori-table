@@ -4,10 +4,12 @@ import {
   Keyboard,
   Palette,
   Package,
+  ShieldCheck,
   Settings,
   TerminalSquare,
 } from "lucide-react";
 import type { JobList } from "../../generated/irodori-api";
+import type { PasskeyCredentialRecord } from "@/features/security";
 import type { CustomThemeEntry, ThemePreference } from "../preferences";
 import type {
   CommandMeta,
@@ -29,11 +31,13 @@ import { SnippetsTab } from "./tabs/SnippetsTab";
 import { ExtensionsTab } from "./tabs/ExtensionsTab";
 import { JobsTab } from "./tabs/JobsTab";
 import { JsonTab } from "./tabs/JsonTab";
+import { SecurityTab } from "./tabs/SecurityTab";
 
 export type SettingsTab =
   | "general"
   | "theme"
   | "keymap"
+  | "security"
   | "snippets"
   | "extensions"
   | "jobs"
@@ -67,6 +71,10 @@ export interface SettingsDialogProps {
   setFormatter: (value: SqlFormatterId) => void;
   sqlLinter: SqlLinterId;
   setSqlLinter: (value: SqlLinterId) => void;
+  passkeyLockEnabled: boolean;
+  setPasskeyLockEnabled: (value: BooleanUpdater) => void;
+  passkeyCredential: PasskeyCredentialRecord | null;
+  setPasskeyCredential: (value: PasskeyCredentialRecord | null) => void;
   sqlSnippets: SqlSnippetDefinition[];
   setSqlSnippets: (value: ValueUpdater<SqlSnippetDefinition[]>) => void;
   editorBackgroundImage: string;
@@ -139,6 +147,10 @@ export function SettingsDialog({
   setFormatter,
   sqlLinter,
   setSqlLinter,
+  passkeyLockEnabled,
+  setPasskeyLockEnabled,
+  passkeyCredential,
+  setPasskeyCredential,
   sqlSnippets,
   setSqlSnippets,
   editorBackgroundImage,
@@ -230,6 +242,14 @@ export function SettingsDialog({
             >
               <Code2 size={15} />
               {t("settings.nav.snippets")}
+            </button>
+            <button
+              type="button"
+              className={settingsTab === "security" ? "active" : undefined}
+              onClick={() => onOpenSection("security")}
+            >
+              <ShieldCheck size={15} />
+              {t("settings.nav.security")}
             </button>
             <button
               type="button"
@@ -327,6 +347,14 @@ export function SettingsDialog({
                 t={t}
                 sqlSnippets={sqlSnippets}
                 setSqlSnippets={setSqlSnippets}
+              />
+            ) : settingsTab === "security" ? (
+              <SecurityTab
+                t={t}
+                passkeyLockEnabled={passkeyLockEnabled}
+                setPasskeyLockEnabled={setPasskeyLockEnabled}
+                passkeyCredential={passkeyCredential}
+                setPasskeyCredential={setPasskeyCredential}
               />
             ) : settingsTab === "extensions" ? (
               <ExtensionsTab t={t} active={settingsTab === "extensions"} />

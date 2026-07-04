@@ -751,6 +751,10 @@ textarea:disabled {
   background: var(--danger-bg);
 }
 
+.icon-button.danger {
+  color: var(--red);
+}
+
 .text-button.active {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: var(--accent-soft);

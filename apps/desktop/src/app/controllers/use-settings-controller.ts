@@ -20,6 +20,7 @@ import {
   normalizeUiZoom,
   usePreferencesStore,
 } from "@/features/preferences";
+import { normalizePasskeyCredentialRecord } from "@/features/security";
 import {
   queryHistoryMaxItemsHardLimit,
   queryHistoryResultRowsHardLimit,
@@ -118,6 +119,18 @@ export function useSettingsController({
     (state) => state.setActiveCustomThemeId,
   );
   const setCustomThemes = usePreferencesStore((state) => state.setCustomThemes);
+  const passkeyLockEnabled = usePreferencesStore(
+    (state) => state.passkeyLockEnabled,
+  );
+  const setPasskeyLockEnabled = usePreferencesStore(
+    (state) => state.setPasskeyLockEnabled,
+  );
+  const passkeyCredential = usePreferencesStore(
+    (state) => state.passkeyCredential,
+  );
+  const setPasskeyCredential = usePreferencesStore(
+    (state) => state.setPasskeyCredential,
+  );
 
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
@@ -212,6 +225,10 @@ export function useSettingsController({
         results: {
           offloadEnabled: resultOffloadEnabled,
           memoryBudget: resultMemoryBudget,
+        },
+        security: {
+          passkeyLockEnabled,
+          passkeyCredential,
         },
         layout: {
           uiZoom,
@@ -485,6 +502,23 @@ export function useSettingsController({
           setResultMemoryBudget(clampNumber(nextMemoryBudget, 1_000, 100_000));
         }
       }
+      if (isRecord(parsed.security)) {
+        const nextPasskeyCredential = normalizePasskeyCredentialRecord(
+          parsed.security.passkeyCredential,
+        );
+        if ("passkeyCredential" in parsed.security) {
+          setPasskeyCredential(nextPasskeyCredential);
+          parsed.security.passkeyCredential = nextPasskeyCredential;
+        }
+        if (typeof parsed.security.passkeyLockEnabled === "boolean") {
+          const canEnable = Boolean(nextPasskeyCredential ?? passkeyCredential);
+          setPasskeyLockEnabled(
+            parsed.security.passkeyLockEnabled && canEnable,
+          );
+          parsed.security.passkeyLockEnabled =
+            parsed.security.passkeyLockEnabled && canEnable;
+        }
+      }
       if (isRecord(parsed.layout)) {
         const nextUiZoom = Number(parsed.layout.uiZoom);
         if (Number.isFinite(nextUiZoom)) {
@@ -633,6 +667,10 @@ export function useSettingsController({
     setFormatter,
     sqlLinter,
     setSqlLinter,
+    passkeyLockEnabled,
+    setPasskeyLockEnabled,
+    passkeyCredential,
+    setPasskeyCredential,
     sqlSnippets,
     setSqlSnippets,
     resultOffloadEnabled,

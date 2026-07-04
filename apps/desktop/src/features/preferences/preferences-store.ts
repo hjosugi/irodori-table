@@ -10,6 +10,10 @@ import { detectBrowserLocale, normalizeLocale, type Locale } from "../../i18n";
 import { isSqlLinterId, type SqlLinterId } from "../../sql/linter";
 import { addCustomPaletteColor, normalizeCustomPalette } from "../../lib/color";
 import {
+  normalizePasskeyCredentialRecord,
+  type PasskeyCredentialRecord,
+} from "@/features/security/passkey-lock";
+import {
   defaultThemeEntryForKind,
   type CustomThemeEntry,
   type IrodoriTheme,
@@ -38,6 +42,8 @@ const customPaletteStorageKey = "irodori.ui.customPalette.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const localeStorageKey = "irodori.locale.v1";
 const uiZoomStorageKey = "irodori.ui.zoom.v1";
+const passkeyLockEnabledStorageKey = "irodori.security.passkeyLockEnabled.v1";
+const passkeyCredentialStorageKey = "irodori.security.passkeyCredential.v1";
 
 export const UI_ZOOM_DEFAULT = 1;
 export const UI_ZOOM_MIN = 0.75;
@@ -65,6 +71,8 @@ type PreferencesState = {
   customPalette: string[];
   autoCommit: boolean;
   uiZoom: number;
+  passkeyLockEnabled: boolean;
+  passkeyCredential: PasskeyCredentialRecord | null;
   setLocale: (value: ValueUpdater<Locale>) => void;
   setThemePreference: (value: ValueUpdater<ThemePreference>) => void;
   setThemeKind: (value: ValueUpdater<ThemeKind>) => void;
@@ -83,6 +91,10 @@ type PreferencesState = {
   removeCustomPaletteColor: (color: string) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
   setUiZoom: (value: ValueUpdater<number>) => void;
+  setPasskeyLockEnabled: (value: ValueUpdater<boolean>) => void;
+  setPasskeyCredential: (
+    value: ValueUpdater<PasskeyCredentialRecord | null>,
+  ) => void;
 };
 
 function resolveValue<T>(current: T, value: ValueUpdater<T>): T {
@@ -308,9 +320,22 @@ function loadUiZoom() {
   return normalizeUiZoom(readStorage(uiZoomStorageKey));
 }
 
+function loadPasskeyCredential() {
+  const stored = readStorage(passkeyCredentialStorageKey);
+  if (!stored) {
+    return null;
+  }
+  try {
+    return normalizePasskeyCredentialRecord(JSON.parse(stored) as unknown);
+  } catch {
+    return null;
+  }
+}
+
 const initialCustomThemes = loadCustomThemes();
 const initialThemePreference = loadThemePreference();
 const initialThemeKind = themeKindForPreference(initialThemePreference);
+const initialPasskeyCredential = loadPasskeyCredential();
 
 export const usePreferencesStore = create<PreferencesState>((set) => ({
   locale: loadLocale(),
@@ -329,6 +354,10 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   customPalette: loadCustomPalette(),
   autoCommit: loadAutoCommit(),
   uiZoom: loadUiZoom(),
+  passkeyLockEnabled:
+    readStorage(passkeyLockEnabledStorageKey) === "true" &&
+    Boolean(initialPasskeyCredential),
+  passkeyCredential: initialPasskeyCredential,
   setLocale: (value) =>
     set((state) => ({
       locale: normalizeLocale(resolveValue(state.locale, value)),
@@ -427,6 +456,22 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({
       uiZoom: normalizeUiZoom(resolveValue(state.uiZoom, value)),
     })),
+  setPasskeyLockEnabled: (value) =>
+    set((state) => ({
+      passkeyLockEnabled:
+        Boolean(state.passkeyCredential) &&
+        resolveValue(state.passkeyLockEnabled, value),
+    })),
+  setPasskeyCredential: (value) =>
+    set((state) => {
+      const passkeyCredential = resolveValue(state.passkeyCredential, value);
+      return {
+        passkeyCredential,
+        passkeyLockEnabled: passkeyCredential
+          ? state.passkeyLockEnabled
+          : false,
+      };
+    }),
 }));
 
 usePreferencesStore.subscribe((state) => {
@@ -465,6 +510,15 @@ usePreferencesStore.subscribe((state) => {
   }
   writeStorage(autoCommitStorageKey, String(state.autoCommit));
   writeStorage(uiZoomStorageKey, String(state.uiZoom));
+  writeStorage(passkeyLockEnabledStorageKey, String(state.passkeyLockEnabled));
+  if (state.passkeyCredential) {
+    writeStorage(
+      passkeyCredentialStorageKey,
+      JSON.stringify(state.passkeyCredential),
+    );
+  } else {
+    removeStorage(passkeyCredentialStorageKey);
+  }
 });
 
 if (typeof window !== "undefined" && typeof window.matchMedia === "function") {

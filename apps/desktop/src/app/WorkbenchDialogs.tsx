@@ -203,6 +203,10 @@ export function WorkbenchDialogs() {
           setFormatter={setFormatter}
           sqlLinter={sqlLinter}
           setSqlLinter={setSqlLinter}
+          passkeyLockEnabled={settings.passkeyLockEnabled}
+          setPasskeyLockEnabled={settings.setPasskeyLockEnabled}
+          passkeyCredential={settings.passkeyCredential}
+          setPasskeyCredential={settings.setPasskeyCredential}
           sqlSnippets={sqlSnippets}
           setSqlSnippets={setSqlSnippets}
           resultOffloadEnabled={resultOffloadEnabled}
