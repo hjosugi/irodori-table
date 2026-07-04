@@ -17,42 +17,22 @@ The root is not an npm workspace. Run JavaScript commands through the root
 
 ## Required Tooling
 
-- Node.js 24.x. Use `.nvmrc`; `apps/desktop/package.json` also declares this in
-  `engines`.
-- Rust 1.96.0. `rust-toolchain.toml` pins the compiler, `rustfmt`, and `clippy`.
-- npm for reproducible installs. `JS_PM=bun` is allowed for local loops, but do
-  not replace the committed npm lockfile.
-- Linux x86_64: `mold` is required because `.cargo/config.toml` links that
-  target with `-fuse-ld=mold`.
-- Linux desktop builds: `pkg-config`, WebKitGTK 4.1, libsoup 3, OpenSSL headers,
-  and the normal Tauri GTK/AppIndicator packages.
+Required local versions are pinned in `.nvmrc`, `rust-toolchain.toml`, and
+`apps/desktop/package.json`.
+
+- Use npm for reproducible installs. `JS_PM=bun` is allowed for local loops, but
+  do not replace the committed npm lockfile.
+- Linux desktop build prerequisites are documented in
+  <https://hjosugi.github.io/irodori-docs/linux-development.html>.
 
 Run `make doctor` after installing tools. It checks the pinned Node/Rust
-versions, mold, Linux pkg-config dependencies, Playwright readiness, sample/kit
-sibling checkouts, TMPDIR capacity, and local Cargo patch leakage.
+versions, Linux desktop prerequisites, Playwright readiness, sample/kit sibling
+checkouts, temp-directory capacity, and local Cargo patch leakage.
 
 ## Linux Notes
 
-CI installs the Ubuntu package set used by desktop builds:
-
-```sh
-sudo apt-get install -y \
-  build-essential curl file libayatana-appindicator3-dev librsvg2-dev \
-  libssl-dev libwebkit2gtk-4.1-dev libxdo-dev mold wget
-```
-
-On Arch/CachyOS, Fedora, or other distributions, install the equivalent WebKit,
-GTK/AppIndicator, OpenSSL, pkg-config, Rust, Node, and mold packages.
-
-If `/tmp` is a small tmpfs, large Rust/Tauri builds can fail while compiling or
-linking. Use a repo-local temp directory for those runs:
-
-```sh
-mkdir -p .irodori-local/tmp
-TMPDIR=$PWD/.irodori-local/tmp make desktop-build-verified
-```
-
-For deeper Linux troubleshooting, see
+Linux package lists, build temp-directory workarounds, and desktop runtime
+troubleshooting are maintained in
 <https://hjosugi.github.io/irodori-docs/linux-development.html>.
 
 ## Repo Boundaries

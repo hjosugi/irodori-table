@@ -3,54 +3,27 @@
 Fast desktop database client for querying, browsing, editing, diagramming, and
 checking data across many engines.
 
-## Use
+## Install
 
-Download builds from GitHub Releases:
+Use the public install guide for the current desktop downloads and
+OS-specific install paths:
+
+<https://hjosugi.github.io/irodori-docs/install-guide.html>
+
+Release assets are published from GitHub Releases:
 
 <https://github.com/hjosugi/irodori-table/releases>
 
-Current focus: Linux desktop builds. Release packaging templates live in
-`hjosugi/irodori-kit` under `packaging/irodori-table/`.
-
 ## Develop
 
-Required local versions are pinned in `.nvmrc` and `rust-toolchain.toml`.
-Start with the doctor so missing Linux packages, mold, TMPDIR capacity, and
-sibling checkouts are visible before a long build:
+Contributor setup, platform prerequisites, and troubleshooting live in the
+project docs:
 
-```sh
-make doctor
-make setup
-make desktop-dev
-```
-
-Useful checks:
-
-```sh
-make desktop-format-check
-make desktop-lint
-make check
-make desktop-build-verified
-make desktop-e2e
-```
-
-For local co-development with `irodori-kit`, clone it as a sibling checkout and
-use the managed Cargo patch helper:
-
-```sh
-git clone https://github.com/hjosugi/irodori-kit ../irodori-kit
-make kit-link
-make kit-unlink
-make kit-patch-check
-```
-
-Sample databases live in the sibling repo:
-
-```sh
-git clone https://github.com/hjosugi/irodori-samples ../irodori-samples
-make db-up DB=postgres
-make db-verify DB=postgres
-```
+- [Contributing](CONTRIBUTING.md)
+- [Windows development](https://hjosugi.github.io/irodori-docs/windows-development.html)
+- [macOS development](https://hjosugi.github.io/irodori-docs/macos-development.html)
+- [Linux development](https://hjosugi.github.io/irodori-docs/linux-development.html)
+- [Extension development](https://hjosugi.github.io/irodori-docs/extension-development.html)
 
 ## Repos
 
@@ -66,6 +39,7 @@ make db-verify DB=postgres
 ## Links
 
 - Docs: <https://hjosugi.github.io/irodori-docs/>
+- Install guide: <https://hjosugi.github.io/irodori-docs/install-guide.html>
 - Roadmap: [ROADMAP.md](ROADMAP.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Releasing: [RELEASING.md](RELEASING.md)
