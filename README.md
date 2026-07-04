@@ -5,10 +5,7 @@ checking data across many engines.
 
 ## Preview
 
-Project-authored screenshot pending. This repository does not currently include
-a checked-in screenshot asset; launch the desktop app with the quickstart below
-to inspect the current interface without relying on external or generated
-mockups.
+![Irodori Table workbench preview](docs/assets/irodori-table-preview.png)
 
 ## Install
 
