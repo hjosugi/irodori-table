@@ -9,7 +9,8 @@ const groups = {
   kit: {
     repository: "https://github.com/hjosugi/irodori-kit",
     crates: [
-      "irodori-core",
+      "irodori-connection",
+      "irodori-security",
       "irodori-proxy",
       "irodori-secure-store",
       "irodori-completion",
@@ -170,9 +171,6 @@ function collectPins(loaded) {
       const tags = new Map();
       for (const crate of group.crates) {
         const tag = readCrateTag(manifest.source, crate);
-        if (!tag && manifest.label === "irodori-kit" && groupName === "kit") {
-          continue;
-        }
         if (!tag) {
           fail(`${manifest.label}: missing git tag for ${crate}`);
         }
