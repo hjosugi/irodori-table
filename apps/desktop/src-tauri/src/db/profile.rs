@@ -1,8 +1,3 @@
-use std::collections::BTreeMap;
-
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
-
 use super::engine::{DbEngine, Wire};
 use super::{DbError, DbResult};
 
@@ -10,49 +5,7 @@ pub(super) const CONNECTOR_STATUS_DOC_URL: &str =
     "https://hjosugi.github.io/irodori-docs/data-source-support-status.html";
 const MAX_CONNECTION_ID_LEN: usize = 128;
 
-/// How to reach a database. Either give structured fields or a raw `url`/DSN.
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub struct ConnectionProfile {
-    pub id: String,
-    pub engine: DbEngine,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub host: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub port: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub user: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub password: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub database: Option<String>,
-    /// Unix-domain socket path. For Postgres this is the socket directory; for
-    /// MySQL this is the socket file path. Used instead of TCP host/port when set.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub socket_path: Option<String>,
-    /// Raw connection URL/DSN. Overrides the structured fields when present.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub transport: Option<irodori_connection::TransportConfig>,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub read_only: bool,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub options: BTreeMap<String, String>,
-}
-
-fn is_false(value: &bool) -> bool {
-    !*value
-}
+pub type ConnectionProfile = irodori_connection::DesktopConnectionProfile<DbEngine>;
 
 pub(super) fn normalize_profile(mut profile: ConnectionProfile) -> DbResult<ConnectionProfile> {
     profile.id = profile.id.trim().to_string();

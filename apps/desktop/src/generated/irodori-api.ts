@@ -132,16 +132,7 @@ export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" 
 
 export type EngineBuildSupport = { engine: DbEngine, includedInCurrentBuild: boolean, requiredFeature?: string, };
 
-export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string,
-/**
- * Unix-domain socket path. For Postgres this is the socket directory; for
- * MySQL this is the socket file path. Used instead of TCP host/port when set.
- */
-socketPath?: string,
-/**
- * Raw connection URL/DSN. Overrides the structured fields when present.
- */
-url?: string, transport?: TransportConfig, readOnly?: boolean, options?: { [key in string]: string }, };
+export type ConnectionProfile<Engine> = { id: string, engine: Engine, host?: string, port?: number, user?: string, password?: string, database?: string, socketPath?: string, url?: string, transport?: TransportConfig, readOnly?: boolean, options?: { [key in string]: string }, };
 
 export type ConnectionInfo = { id: string, engine: DbEngine, serverVersion: string, };
 
@@ -358,7 +349,7 @@ export function dbEngineBuildSupport(): Promise<Array<EngineBuildSupport>> {
   return invoke<Array<EngineBuildSupport>>("db_engine_build_support");
 }
 
-export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {
+export function dbConnect(profile: ConnectionProfile<DbEngine>): Promise<ConnectionInfo> {
   return invoke<ConnectionInfo>("db_connect", { profile });
 }
 

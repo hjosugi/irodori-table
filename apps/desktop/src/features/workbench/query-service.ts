@@ -13,6 +13,7 @@ import {
   type ConnectionInfo,
   type ConnectionProfile,
   type DatabaseMetadata,
+  type DbEngine,
   type QueryParameterInput,
   type QueryParameterPromptSet,
   type QueryPlanAnalysis,
@@ -74,7 +75,7 @@ export interface QueryService {
     mode: QueryPlanMode,
   ): Promise<QueryPlanAnalysis>;
   applyEdits(connectionId: string, edits: TableEdits): Promise<AppliedEdits>;
-  connect(profile: ConnectionProfile): Promise<ConnectionInfo>;
+  connect(profile: ConnectionProfile<DbEngine>): Promise<ConnectionInfo>;
   disconnect(connectionId: string): Promise<void>;
   listObjects(connectionId: string): Promise<DatabaseMetadata>;
 }

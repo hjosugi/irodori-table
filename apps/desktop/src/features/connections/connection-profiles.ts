@@ -594,7 +594,9 @@ export function validateDraft(draft: ConnectionDraft): string | null {
   return null;
 }
 
-export function profileFromDraft(draft: ConnectionDraft): ConnectionProfile {
+export function profileFromDraft(
+  draft: ConnectionDraft,
+): ConnectionProfile<DbEngine> {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
   const readOnly = resolvedDraft.readOnly ? { readOnly: true } : {};
   const socketPath =

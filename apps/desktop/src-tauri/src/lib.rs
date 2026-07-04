@@ -212,10 +212,10 @@ mod typegen {
                 "db_engine_build_support",
                 "Array<EngineBuildSupport>",
             ))
-            .command(
-                Command::new("db_connect", "ConnectionInfo")
-                    .arg(Arg::new("profile", TsType::named("ConnectionProfile"))),
-            )
+            .command(Command::new("db_connect", "ConnectionInfo").arg(Arg::new(
+                "profile",
+                TsType::named("ConnectionProfile<DbEngine>"),
+            )))
             .command(
                 Command::new("db_query_parameters", "QueryParameterPromptSet")
                     .arg(Arg::new("sql", TsType::string())),
