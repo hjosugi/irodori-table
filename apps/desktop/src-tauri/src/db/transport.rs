@@ -1,4 +1,6 @@
-use irodori_core::{ProxyAuthConfig, ProxyHopConfig, ProxyTransport, SecretRef, SshAuthConfig};
+use irodori_connection::{
+    ProxyAuthConfig, ProxyHopConfig, ProxyTransport, SecretRef, SshAuthConfig, TransportConfig,
+};
 use irodori_proxy::{
     ResolvedProxy, ResolvedProxyAuth, ResolvedProxyChain, ResolvedProxyChainHop,
     ResolvedProxyHopConfig, ResolvedSshAuth, ResolvedSshTunnel, ResolvedTransport,
@@ -117,35 +119,31 @@ async fn resolve_proxy_hop_config(
 
 pub(super) async fn resolve_transport(
     store: &irodori_secure_store::OsKeychainStore,
-    transport: &irodori_core::TransportConfig,
+    transport: &TransportConfig,
 ) -> DbResult<ResolvedTransport> {
     match transport {
-        irodori_core::TransportConfig::Direct(_) | irodori_core::TransportConfig::LocalFile(_) => {
-            Err(DbError::validation(
-                "direct and local file transports do not require resolution",
-            ))
-        }
-        irodori_core::TransportConfig::SshTunnel(tunnel) => {
-            Ok(ResolvedTransport::SshTunnel(ResolvedSshTunnel {
-                ssh_host: tunnel.ssh_host.clone(),
-                ssh_port: tunnel.ssh_port,
-                username: tunnel.username.clone(),
-                auth: resolve_ssh_auth(store, &tunnel.auth).await?,
-                target_host: tunnel.target_host.clone(),
-                target_port: tunnel.target_port,
-                strict_host_key: tunnel.strict_host_key,
-                host_key: tunnel.host_key.clone(),
-            }))
-        }
-        irodori_core::TransportConfig::Socks5Proxy(proxy) => {
+        TransportConfig::Direct(_) | TransportConfig::LocalFile(_) => Err(DbError::validation(
+            "direct and local file transports do not require resolution",
+        )),
+        TransportConfig::SshTunnel(tunnel) => Ok(ResolvedTransport::SshTunnel(ResolvedSshTunnel {
+            ssh_host: tunnel.ssh_host.clone(),
+            ssh_port: tunnel.ssh_port,
+            username: tunnel.username.clone(),
+            auth: resolve_ssh_auth(store, &tunnel.auth).await?,
+            target_host: tunnel.target_host.clone(),
+            target_port: tunnel.target_port,
+            strict_host_key: tunnel.strict_host_key,
+            host_key: tunnel.host_key.clone(),
+        })),
+        TransportConfig::Socks5Proxy(proxy) => {
             let proxy = resolve_proxy_transport(store, proxy).await?;
             Ok(ResolvedTransport::Socks5Proxy(proxy))
         }
-        irodori_core::TransportConfig::HttpConnectProxy(proxy) => {
+        TransportConfig::HttpConnectProxy(proxy) => {
             let proxy = resolve_proxy_transport(store, proxy).await?;
             Ok(ResolvedTransport::HttpConnectProxy(proxy))
         }
-        irodori_core::TransportConfig::Chain(chain) => {
+        TransportConfig::Chain(chain) => {
             let mut resolved_hops = Vec::new();
             for hop in &chain.hops {
                 resolved_hops.push(ResolvedProxyChainHop {

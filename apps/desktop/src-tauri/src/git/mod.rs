@@ -1,7 +1,7 @@
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 
-use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 mod parser;
 mod types;
 

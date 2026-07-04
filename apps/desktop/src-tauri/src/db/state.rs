@@ -3,10 +3,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use irodori_completion::metadata::MetadataCache;
-use irodori_core::{
-    run_job, BatchOutcome, BatchResult, IrodoriError, IrodoriErrorKind, JobKind, JobRuntime,
-    JobSpec,
-};
+use irodori_error::{IrodoriError, IrodoriErrorKind};
+use irodori_jobs::{run_job, BatchOutcome, BatchResult, JobKind, JobRuntime, JobSpec};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 

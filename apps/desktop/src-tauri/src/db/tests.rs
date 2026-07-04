@@ -1,5 +1,5 @@
 use super::*;
-use irodori_core::{IrodoriError, IrodoriErrorKind};
+use irodori_error::{IrodoriError, IrodoriErrorKind};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -285,8 +285,8 @@ async fn manual_metadata_invalidation_runs_refresh_through_jobs() {
     assert!(invalidated);
 
     let job = wait_for_terminal_job(jobs.runtime()).await;
-    assert_eq!(job.spec.kind, irodori_core::JobKind::KnowledgeRefresh);
-    assert_eq!(job.status, irodori_core::JobStatus::Succeeded);
+    assert_eq!(job.spec.kind, irodori_jobs::JobKind::KnowledgeRefresh);
+    assert_eq!(job.status, irodori_jobs::JobStatus::Succeeded);
     assert_eq!(job.progress.percent, Some(100));
     assert!(
         job.spec.source.as_deref() == Some(conn_id.as_str()),
@@ -1334,7 +1334,7 @@ fn secret_redaction_handles_urls_and_connection_strings() {
     assert!(redacted.contains("api_key=****"));
 }
 
-async fn wait_for_terminal_job(runtime: &irodori_core::JobRuntime) -> irodori_core::JobRecord {
+async fn wait_for_terminal_job(runtime: &irodori_jobs::JobRuntime) -> irodori_jobs::JobRecord {
     for _ in 0..100 {
         let jobs = runtime.list();
         if let Some(job) = jobs.history.into_iter().next() {

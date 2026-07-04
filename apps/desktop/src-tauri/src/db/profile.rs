@@ -43,7 +43,7 @@ pub struct ConnectionProfile {
     pub url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
-    pub transport: Option<irodori_core::TransportConfig>,
+    pub transport: Option<irodori_connection::TransportConfig>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub read_only: bool,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]

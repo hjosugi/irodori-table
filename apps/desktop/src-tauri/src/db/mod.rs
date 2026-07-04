@@ -162,7 +162,8 @@ pub async fn connect_impl(
     if let Some(transport) = &profile.transport {
         if !matches!(
             transport,
-            irodori_core::TransportConfig::Direct(_) | irodori_core::TransportConfig::LocalFile(_)
+            irodori_connection::TransportConfig::Direct(_)
+                | irodori_connection::TransportConfig::LocalFile(_)
         ) {
             let resolved = resolve_transport(security.store(), transport).await?;
             let (local_port, cancel_token) = start_forwarder(resolved)

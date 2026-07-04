@@ -14,7 +14,7 @@ mod store;
 pub(crate) use connection::NativeExtensionConnection;
 pub use store::ExtensionsState;
 
-use irodori_core::Result as IrodoriResult;
+use irodori_error::Result as IrodoriResult;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 use ts_rs::TS;

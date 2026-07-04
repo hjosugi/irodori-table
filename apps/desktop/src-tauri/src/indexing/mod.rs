@@ -13,10 +13,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use irodori_core::{
-    run_job, BatchOutcome, BatchResult, IrodoriError, IrodoriErrorKind, JobArtifact, JobKind,
-    JobRuntime, JobSpec,
-};
+use irodori_error::{IrodoriError, IrodoriErrorKind};
+use irodori_jobs::{run_job, BatchOutcome, BatchResult, JobArtifact, JobKind, JobRuntime, JobSpec};
 use irodori_knowledge::index::{
     build_index_with, Document, IndexBuildConfig, IndexBuildReport, IndexStore,
 };
@@ -274,7 +272,7 @@ mod tests {
     use super::*;
     use crate::db::{connect_impl, run_query_impl, ConnectionProfile, DbEngine};
     use crate::security::SecurityState;
-    use irodori_core::JobStatus;
+    use irodori_jobs::JobStatus;
     use tokio::time::{sleep, Duration};
 
     fn memory_profile(id: &str) -> ConnectionProfile {
@@ -384,7 +382,7 @@ mod tests {
         assert_eq!(error.kind, IrodoriErrorKind::NotFound);
     }
 
-    async fn wait_for_terminal_job(runtime: &JobRuntime, job_id: &str) -> irodori_core::JobRecord {
+    async fn wait_for_terminal_job(runtime: &JobRuntime, job_id: &str) -> irodori_jobs::JobRecord {
         for _ in 0..100 {
             let job = runtime.get(job_id).expect("job");
             if job.status.is_terminal() {

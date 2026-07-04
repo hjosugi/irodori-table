@@ -1,4 +1,4 @@
-use irodori_core::{IrodoriError, IrodoriErrorKind};
+use irodori_error::{IrodoriError, IrodoriErrorKind};
 
 pub type DbResult<T> = std::result::Result<T, DbError>;
 

@@ -18,7 +18,7 @@ use tauri::{AppHandle, Manager, State};
 use ts_rs::TS;
 
 use irodori_completion::{MetadataObjectKind, MetadataSnapshot};
-use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use irodori_generate::{
     generate, ChatModel, CommandConfig, CommandModel, DecodeOptions, GenColumn, GenForeignKey,
     GenSchema, GenTable, GenerateRequest, GrammarChatAdapter, GrammarModel, HttpConfig,
@@ -369,7 +369,7 @@ pub fn ai_set_provider(
 
 /// Keychain handle for the AI provider API key (one shared slot, like the rest of
 /// the AI provider config).
-fn ai_secret_ref() -> IrodoriResult<irodori_core::SecretRef> {
+fn ai_secret_ref() -> IrodoriResult<irodori_connection::SecretRef> {
     connection_secret_ref("ai-provider", SecretPurpose::Token)
         .map_err(|e| IrodoriError::new(IrodoriErrorKind::Internal, format!("secret ref: {e}")))
 }

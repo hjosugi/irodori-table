@@ -19,6 +19,8 @@ irodori-knowledge = { git = "https://github.com/hjosugi/irodori-knowledge", tag 
 # Foundation crates, extracted to the irodori-kit sibling repo. For local
 # co-development, override with a `[patch]` pointing at a `../irodori-kit` checkout.
 irodori-core = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.1" }
+irodori-connection = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.1" }
+irodori-security = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.1" }
 irodori-proxy = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.1" }
 irodori-secure-store = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.1" }
 irodori-completion = { git = "https://github.com/hjosugi/irodori-kit", tag = "v0.6.1" }

@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
-use irodori_core::{
-    AuditEventKind, AuditLog, IrodoriError, PrivacyMode, RedactedExport, RedactionReport, Redactor,
-    Result as IrodoriResult, SecretRef, TransportConfig,
-};
+use irodori_connection::{SecretRef, TransportConfig};
+use irodori_error::{IrodoriError, Result as IrodoriResult};
 use irodori_proxy::{ConnectionDiagnostics, DialTarget, DirectTcpProbe, TransportPlan};
 use irodori_secure_store::{
     OsKeychainStore, SecretPurpose, SecretValue, SecureStore, DEFAULT_SERVICE,
+};
+use irodori_security::{
+    AuditEventKind, AuditLog, PrivacyMode, RedactedExport, RedactionReport, Redactor,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -258,7 +259,10 @@ fn unsupported_transport_error(target: &DialTarget) -> IrodoriError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use irodori_core::{DirectTransport, ProxyChainHop, ProxyChainTransport, ProxyHopConfig};
+    use irodori_connection::{
+        DirectTransport, ProxyChainHop, ProxyChainTransport, ProxyHopConfig, ProxyTransport,
+    };
+    use irodori_error::IrodoriErrorKind;
     use irodori_proxy::DiagnosticStatus;
 
     #[tokio::test]
@@ -287,17 +291,11 @@ mod tests {
             vec![
                 ProxyChainHop::new(
                     "a",
-                    ProxyHopConfig::Socks5(irodori_core::ProxyTransport::new(
-                        "proxy-a.internal",
-                        1080,
-                    )),
+                    ProxyHopConfig::Socks5(ProxyTransport::new("proxy-a.internal", 1080)),
                 ),
                 ProxyChainHop::new(
                     "b",
-                    ProxyHopConfig::HttpConnect(irodori_core::ProxyTransport::new(
-                        "proxy-b.internal",
-                        8080,
-                    )),
+                    ProxyHopConfig::HttpConnect(ProxyTransport::new("proxy-b.internal", 8080)),
                 ),
             ],
         )))
@@ -316,6 +314,6 @@ mod tests {
             None,
         )))
         .unwrap_err();
-        assert_eq!(error.kind, irodori_core::IrodoriErrorKind::Validation);
+        assert_eq!(error.kind, IrodoriErrorKind::Validation);
     }
 }

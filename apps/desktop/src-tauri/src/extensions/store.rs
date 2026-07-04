@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use flate2::read::GzDecoder;
-use irodori_core::{IrodoriError, Result as IrodoriResult};
+use irodori_error::{IrodoriError, Result as IrodoriResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};

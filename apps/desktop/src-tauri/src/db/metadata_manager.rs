@@ -2,7 +2,7 @@ use super::error::DbResult;
 use super::state::refresh_metadata_after_query_if_needed;
 use super::*;
 use crate::jobs::JobState;
-use irodori_core::IrodoriError;
+use irodori_error::IrodoriError;
 
 pub(crate) struct MetadataManager<'a> {
     state: &'a DbState,

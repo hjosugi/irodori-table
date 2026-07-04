@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
-use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use tauri::ipc::Channel;

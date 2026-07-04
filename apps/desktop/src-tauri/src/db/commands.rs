@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use irodori_core::{AuditEventKind, IrodoriError, Result as IrodoriResult};
+use irodori_error::{IrodoriError, Result as IrodoriResult};
+use irodori_security::AuditEventKind;
 use tokio::sync::mpsc;
 
 use crate::jobs::JobState;

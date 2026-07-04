@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use irodori_core::{JobList, JobRecord, JobRuntime, Result as IrodoriResult};
+use irodori_error::Result as IrodoriResult;
+use irodori_jobs::{JobList, JobRecord, JobRuntime};
 use tauri::State;
 
 pub struct JobState {

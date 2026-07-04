@@ -3,7 +3,7 @@ use ts_rs::TS;
 
 use super::engine::DbEngine;
 use super::{DbError, DbResult};
-use irodori_core::{IrodoriError, Result as IrodoriResult};
+use irodori_error::{IrodoriError, Result as IrodoriResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -228,7 +228,7 @@ mod tests {
 
         let error = migration_build_plan(input).expect_err("missing key should fail closed");
 
-        assert_eq!(error.kind, irodori_core::IrodoriErrorKind::Validation);
+        assert_eq!(error.kind, irodori_error::IrodoriErrorKind::Validation);
         assert!(error.message.contains("stable key column"));
     }
 }

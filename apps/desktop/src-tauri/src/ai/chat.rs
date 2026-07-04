@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 
-use irodori_core::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use irodori_generate::{ChatMessage, ChatRole, DecodeOptions};
 
 use crate::db::{DbEngine, DbState, QueryResult};
