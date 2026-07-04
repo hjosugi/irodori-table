@@ -1,5 +1,5 @@
 import type { DbEngine } from "@/generated/irodori-api";
-import type { ResultExportFormat } from "@/features/results";
+import type { ResultExportFormat } from "@/lib/result-export-types";
 
 export type QueryMagicAction =
   | {

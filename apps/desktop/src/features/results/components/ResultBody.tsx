@@ -32,10 +32,7 @@ import type {
 import { ChartResultView } from "./ChartResultView";
 import { GraphResultView } from "./GraphResultView";
 import { WebGlResultGrid } from "./WebGlResultGrid";
-import {
-  ShortcutTips,
-  type ShortcutTip,
-} from "@/features/workbench/components/ShortcutTips";
+import { ShortcutTips, type ShortcutTip } from "@/components/ShortcutTips";
 import type { Translator } from "@/i18n";
 
 function isGridCellTarget(event: ReactFocusEvent | ReactMouseEvent) {

@@ -45,7 +45,7 @@ import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { ResultBody } from "./ResultBody";
 import { ResultFilterPanel } from "./ResultFilterPanel";
-import type { ShortcutTip } from "@/features/workbench/components/ShortcutTips";
+import type { ShortcutTip } from "@/components/ShortcutTips";
 import type {
   EditingCell,
   ResultCellRangeBounds,

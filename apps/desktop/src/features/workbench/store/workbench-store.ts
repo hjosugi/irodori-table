@@ -8,8 +8,9 @@ import {
   type WorkbenchViewPlacements,
   type WorkbenchViewVisibility,
 } from "../types";
+import type { EditorSplitMode } from "@/lib/editor-split-mode";
 
-export type EditorSplitMode = "single" | "right" | "down";
+export type { EditorSplitMode } from "@/lib/editor-split-mode";
 export type SidebarSide = WorkbenchSide;
 
 type ValueUpdater<T> = T | ((current: T) => T);

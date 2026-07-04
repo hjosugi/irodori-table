@@ -44,12 +44,8 @@ import {
  * Per-engine brand marks keyed by `DbEngine` id.
  *
  * Artwork is from simple-icons (CC0 / public domain), rendered as a monochrome
- * silhouette in the current text color so it blends into the UI — the same
- * nominative, identification-only use DBeaver / DataGrip / TablePlus / VS Code's
- * database extensions rely on. Trademark-strict brands (Oracle, SQL Server, …)
- * are deliberately absent from simple-icons, so they fall through to a neutral
- * category glyph in {@link FALLBACK} rather than a hand-drawn look-alike, which
- * would be the legally worse choice.
+ * silhouette in the current text color so it blends into the UI. Trademark-strict
+ * brands fall through to a neutral category glyph rather than a look-alike.
  */
 const BRAND: Record<string, IconType> = {
   postgres: SiPostgresql,
@@ -84,28 +80,20 @@ const BRAND: Record<string, IconType> = {
 
 /** Category glyphs for engines without a brand logo, grouped by data model. */
 const FALLBACK: Record<string, LucideIcon> = {
-  // relational
   oracle: Database,
   sqlserver: Database,
   yugabytedb: Database,
   neon: Database,
   firebird: Database,
-  // warehouse
   redshift: Warehouse,
   athena: Warehouse,
-  // graph
   memgraph: Workflow,
-  // vector
   qdrant: Boxes,
   pinecone: Boxes,
-  // document
   dynamodb: FileJson,
-  // time-series
   questdb: Activity,
   iotdb: Activity,
-  // key-value / wide-column
   bigtable: KeySquare,
-  // lakehouse
   iceberg: Layers,
   s3Tables: Layers,
   deltaLake: Layers,
@@ -118,11 +106,6 @@ type EngineIconProps = {
   className?: string;
 };
 
-/**
- * Monochrome silhouette icon for a database engine: the real product mark where
- * a public-domain one exists, a neutral category glyph otherwise — drawn in the
- * current text color so every connection is identifiable yet blends into the UI.
- */
 export function EngineIcon({ engine, size = 16, className }: EngineIconProps) {
   const Brand = BRAND[engine];
   if (Brand) {

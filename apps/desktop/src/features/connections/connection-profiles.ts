@@ -2,39 +2,28 @@ import type {
   ConnectionInfo,
   ConnectionProfile,
   DbEngine,
-  WorkspaceSnapshot,
 } from "../../generated/irodori-api";
 import connectionDefaults from "./connection-defaults.json";
 import {
   defaultPort,
   engineConnectionSettings,
 } from "./engine-connection-settings";
+import type {
+  ConnectionDraft,
+  ConnectionInputMode,
+  WorkspaceConnection,
+} from "@/lib/workspace-connection";
 export {
   defaultPort,
   engineConnectionSettings,
   type EngineConnectionSettings,
 } from "./engine-connection-settings";
-
-export type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
-export type ConnectionInputMode = "url" | "fields";
-export type ConnectionTransportMode = "tcp" | "socket";
-
-export type ConnectionDraft = {
-  id: string;
-  name: string;
-  color: string;
-  engine: DbEngine;
-  mode: ConnectionInputMode;
-  url: string;
-  connectionTransport: ConnectionTransportMode;
-  host: string;
-  port: string;
-  user: string;
-  password: string;
-  database: string;
-  socketPath: string;
-  readOnly: boolean;
-};
+export type {
+  ConnectionDraft,
+  ConnectionInputMode,
+  ConnectionTransportMode,
+  WorkspaceConnection,
+} from "@/lib/workspace-connection";
 
 type EngineOption = { value: DbEngine; label: string };
 type SampleConnectionColors = Record<

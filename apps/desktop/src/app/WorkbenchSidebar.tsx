@@ -1,5 +1,6 @@
 import { useWorkbenchContext } from "@/app/workbench-context";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
+import { defaultConnectionColor } from "@/features/connections";
 import { GitPanel } from "@/features/git";
 import { BiPanel } from "@/features/results";
 import { useSchemaDesignerStore } from "@/features/schema-designer";
@@ -157,6 +158,7 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
       }
       connections={connections.connections}
       profileById={profileById}
+      connectionColorFallback={defaultConnectionColor}
       activeConnectionId={activeConnectionId}
       activeConnection={activeConnection}
       activeConnectionOpen={activeConnectionOpen}

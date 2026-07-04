@@ -1,6 +1,6 @@
 import { AlertTriangle, Columns3, X } from "lucide-react";
 import { QueryHistorySidebar } from "@/features/query-history";
-import type { WorkspaceConnection } from "@/features/connections";
+import type { WorkspaceConnection } from "@/lib/workspace-connection";
 import type { DbEngine } from "@/generated/irodori-api";
 import { isVectorEngine, vectorHelperTemplates } from "../vector-helpers";
 import type { CompletionHint } from "../types";

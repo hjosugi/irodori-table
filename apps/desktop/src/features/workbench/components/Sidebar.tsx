@@ -25,17 +25,16 @@ import {
   TerminalSquare,
   X,
 } from "lucide-react";
+import { EngineIcon } from "@/components/EngineIcon";
 import { hasDiagram } from "@/features/erd";
-import { EngineIcon } from "@/features/connections/EngineIcon";
 import type {
   DatabaseMetadata,
   DbObjectMetadata,
 } from "@/generated/irodori-api";
-import {
-  defaultConnectionColor,
-  type ConnectionDraft,
-  type WorkspaceConnection,
-} from "@/features/connections";
+import type {
+  ConnectionDraft,
+  WorkspaceConnection,
+} from "@/lib/workspace-connection";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
 import type { WorkbenchViewId } from "../types";
@@ -145,6 +144,7 @@ type SidebarProps = {
   searchReplacePanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
+  connectionColorFallback: string;
   activeConnectionId: string;
   activeConnection: WorkspaceConnection;
   activeConnectionOpen: boolean;
@@ -197,6 +197,7 @@ export function Sidebar({
   searchReplacePanel,
   connections,
   profileById,
+  connectionColorFallback,
   activeConnectionId,
   activeConnection,
   activeConnectionOpen,
@@ -416,7 +417,7 @@ export function Sidebar({
                   <span
                     className="connection-color-dot"
                     style={{
-                      background: profile?.color || defaultConnectionColor,
+                      background: profile?.color || connectionColorFallback,
                     }}
                     aria-hidden="true"
                   />

@@ -17,7 +17,7 @@ import type { SqlFormatterId } from "../../sql/formatter";
 import type { SqlLinterId } from "../../sql/linter";
 import type { SqlMetadataTarget } from "../../sql/metadata-inspection";
 import type { IrodoriTheme } from "@/theme";
-import type { EditorSplitMode } from "../workbench";
+import type { EditorSplitMode } from "@/lib/editor-split-mode";
 import type { EditorGroup, EditorSelections } from "./query-editor-pane-types";
 
 type EditorGroupState = {

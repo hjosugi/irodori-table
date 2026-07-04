@@ -1,7 +1,7 @@
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { EngineIcon } from "@/features/connections/EngineIcon";
+import { EngineIcon } from "@/components/EngineIcon";
 
 let container: HTMLDivElement;
 let root: Root;

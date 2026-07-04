@@ -1,12 +1,9 @@
-export type ResultExportFormat =
-  | "csv"
-  | "tsv"
-  | "json"
-  | "jsonl"
-  | "sql"
-  | "xlsx"
-  | "excel"
-  | "markdown";
+import {
+  resultExportFormatIds,
+  type ResultExportFormat,
+} from "@/lib/result-export-types";
+
+export type { ResultExportFormat } from "@/lib/result-export-types";
 
 export type ResultLike = {
   columns: string[];
@@ -126,9 +123,7 @@ export function resultExportFileName(
   return `irodori-${connectionId}-${timestamp}.${extension}`;
 }
 
-const supportedResultExportFormats = new Set<string>(
-  resultExportFormats.map((format) => format.id),
-);
+const supportedResultExportFormats = new Set<string>(resultExportFormatIds);
 
 export function unsupportedResultExportFormatMessage(format: string): string {
   const normalized = format.trim().toLowerCase().replace(/^\./, "");
