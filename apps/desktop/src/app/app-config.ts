@@ -3,7 +3,7 @@ import type { TranslationKey, Translator } from "@/i18n";
 import type { WorkspaceSnapshot } from "../generated/irodori-api";
 
 export const APP_NAME = "Irodori Table";
-export const APP_VERSION = "0.7.15";
+export const APP_VERSION = "0.7.16";
 export const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
