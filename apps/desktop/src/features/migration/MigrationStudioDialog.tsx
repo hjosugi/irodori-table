@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { DialogShell } from "@/components/DialogShell";
 import { Copy, FileText } from "lucide-react";
 import {
   buildMigrationPlan,
+  createMigrationPlanPlaceholder,
   defaultMigrationDraft,
   migrationEngineOptions,
   migrationOutputTabs,
@@ -11,6 +12,7 @@ import {
   type MigrationEngine,
   type MigrationExportFormat,
   type MigrationOutputKind,
+  type MigrationPlan,
 } from "./migration-studio";
 
 type MigrationStudioDialogProps = {
@@ -27,7 +29,44 @@ export function MigrationStudioDialog({
   const [draft, setDraft] = useState<MigrationDraft>(defaultMigrationDraft);
   const [activeOutput, setActiveOutput] =
     useState<MigrationOutputKind>("overview");
-  const plan = useMemo(() => buildMigrationPlan(draft), [draft]);
+  const [planState, setPlanState] = useState<{
+    status: "loading" | "ready" | "error";
+    plan: MigrationPlan;
+  }>(() => ({
+    status: "loading",
+    plan: createMigrationPlanPlaceholder(defaultMigrationDraft),
+  }));
+
+  useEffect(() => {
+    let cancelled = false;
+    setPlanState({
+      status: "loading",
+      plan: createMigrationPlanPlaceholder(draft),
+    });
+
+    buildMigrationPlan(draft)
+      .then((plan) => {
+        if (!cancelled) {
+          setPlanState({ status: "ready", plan });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          setPlanState({
+            status: "error",
+            plan: createMigrationPlanPlaceholder(draft, message),
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draft]);
+
+  const plan = planState.plan;
   const outputText = migrationOutputText(plan, activeOutput);
   const outputLabel =
     migrationOutputTabs.find((tab) => tab.value === activeOutput)?.label ??
@@ -52,7 +91,11 @@ export function MigrationStudioDialog({
     >
       <div className="dialog-header">
         <strong>Migration Studio</strong>
-        <span>{plan.title}</span>
+        <span>
+          {planState.status === "loading"
+            ? "Building migration plan..."
+            : plan.title}
+        </span>
         <button className="text-button" type="button" onClick={onClose}>
           Close
         </button>
@@ -189,6 +232,7 @@ export function MigrationStudioDialog({
               >
                 <option value="parquet">Parquet</option>
                 <option value="csv">CSV</option>
+                <option value="tsv">TSV</option>
               </select>
             </label>
             <label>
@@ -299,11 +343,7 @@ export function MigrationStudioDialog({
   );
 }
 
-function MigrationOverview({
-  plan,
-}: {
-  plan: ReturnType<typeof buildMigrationPlan>;
-}) {
+function MigrationOverview({ plan }: { plan: MigrationPlan }) {
   return (
     <div className="migration-overview">
       <div className="migration-summary-grid">

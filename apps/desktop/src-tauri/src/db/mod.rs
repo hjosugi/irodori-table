@@ -45,6 +45,7 @@ mod explain;
 mod influx;
 mod meta;
 mod metadata_manager;
+mod migration;
 #[cfg(feature = "mongo")]
 mod mongo;
 #[cfg(feature = "sqlserver")]
@@ -82,6 +83,7 @@ pub use meta::{
     DbColumnInspection, DbColumnReference, DbCompletionItem, DbCompletionItemKind,
     DbInspectionCard, DbObjectInspection,
 };
+pub use migration::*;
 pub use profile::ConnectionProfile;
 use profile::{normalize_profile, redact_secret_text};
 #[cfg(test)]

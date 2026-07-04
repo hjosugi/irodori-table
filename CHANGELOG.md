@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.2] - 2026-07-04
+
+### Fixed
+
+- Migration Studio now delegates plan generation to `irodori-migration` 0.4
+  through a typed Tauri command, removing the incompatible TypeScript BLAKE3
+  planner and using the crate's cross-engine MD5 row-hash contract.
+- The migration planner boundary now has generated TypeScript bindings, native
+  regression tests, and UI bridge tests for the desktop command contract.
+
 ## [0.7.1] - 2026-07-02
 
 ### Fixed
@@ -112,6 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundled sample connections and the seeded demo workspace were removed;
   a fresh install starts with an empty workspace.
 
+[0.7.2]: https://github.com/hjosugi/irodori-table/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/hjosugi/irodori-table/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/hjosugi/irodori-table/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hjosugi/irodori-table/compare/v0.5.0...v0.6.0

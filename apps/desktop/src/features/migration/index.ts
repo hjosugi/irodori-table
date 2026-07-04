@@ -1,7 +1,9 @@
 export { MigrationStudioDialog } from "./MigrationStudioDialog";
 export {
   buildMigrationPlan,
+  createMigrationPlanPlaceholder,
   defaultMigrationDraft,
+  migrationPlanInputFromDraft,
   migrationEngineLabel,
   migrationEngineOptions,
   migrationOutputTabs,
@@ -10,6 +12,7 @@ export {
   type MigrationDraft,
   type MigrationEngine,
   type MigrationExportFormat,
+  type MigrationHashAlgorithm,
   type MigrationOutputKind,
   type MigrationPlan,
   type MigrationTask,

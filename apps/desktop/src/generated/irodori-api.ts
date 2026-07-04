@@ -250,6 +250,16 @@ export type TableEdits = { schema?: string, table: string, updates: Array<RowUpd
 
 export type AppliedEdits = { updated: bigint, inserted: bigint, deleted: bigint, };
 
+export type MigrationPlanExportFormat = "parquet" | "csv" | "tsv";
+
+export type MigrationPlanInput = { sourceEngine: DbEngine, targetEngine: DbEngine, sourceVersion: string, targetVersion: string, sourceTable: string, targetTable: string, keyColumnsText: string, compareColumnsText: string, partitionColumn: string, partitionPredicate: string, exportFormat: MigrationPlanExportFormat, batchSize: number, diffLimit: number, nullToken: string, delimiter: string, normalizeWhitespace: boolean, normalizeCase: boolean, };
+
+export type MigrationPlanTaskLevel = "ready" | "manual" | "risk";
+
+export type MigrationPlanTask = { title: string, detail: string, level: MigrationPlanTaskLevel, };
+
+export type MigrationPlanOutput = { title: string, sourceLabel: string, targetLabel: string, hashAlgorithm: string, hashAlgorithmLabel: string, keys: Array<string>, compareColumns: Array<string>, hashColumns: Array<string>, warnings: Array<string>, tasks: Array<MigrationPlanTask>, pairNotes: Array<string>, sourceSql: string, targetSql: string, diffSql: string, runbook: string, };
+
 export type DbCompletionItem = { label: string, insertText: string, kind: DbCompletionItemKind, detail: string, };
 
 export type DbCompletionItemKind = "schema" | "table" | "view" | "column" | "function" | "procedure" | "keyword";
@@ -348,6 +358,10 @@ export function dbReleaseResult(handle: string): Promise<boolean> {
 
 export function dbApplyEdits(connectionId: string, edits: TableEdits): Promise<AppliedEdits> {
   return invoke<AppliedEdits>("db_apply_edits", { connectionId, edits });
+}
+
+export function migrationBuildPlan(input: MigrationPlanInput): Promise<MigrationPlanOutput> {
+  return invoke<MigrationPlanOutput>("migration_build_plan", { input });
 }
 
 export function dbListObjects(connectionId: string): Promise<DatabaseMetadata> {

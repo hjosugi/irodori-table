@@ -139,6 +139,7 @@ pub fn run() {
             db::db_release_result,
             db::db_cancel,
             db::db_apply_edits,
+            db::migration_build_plan,
             db::db_list_objects,
             db::db_disconnect,
             db::db_autocomplete,
@@ -304,6 +305,11 @@ mod typegen {
             .decl(&decl::<db::RowDelete>())
             .decl(&decl::<db::TableEdits>())
             .decl(&decl::<db::AppliedEdits>())
+            .decl(&decl::<db::MigrationPlanExportFormat>())
+            .decl(&decl::<db::MigrationPlanInput>())
+            .decl(&decl::<db::MigrationPlanTaskLevel>())
+            .decl(&decl::<db::MigrationPlanTask>())
+            .decl(&decl::<db::MigrationPlanOutput>())
             .decl(&decl::<db::DbCompletionItem>())
             .decl(&decl::<db::DbCompletionItemKind>())
             .decl(&decl::<db::DbInspectionCard>())
@@ -392,6 +398,10 @@ mod typegen {
                 Command::new("db_apply_edits", "AppliedEdits")
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::new("edits", TsType::named("TableEdits"))),
+            )
+            .command(
+                Command::new("migration_build_plan", "MigrationPlanOutput")
+                    .arg(Arg::new("input", TsType::named("MigrationPlanInput"))),
             )
             .command(
                 Command::new("db_list_objects", "DatabaseMetadata")

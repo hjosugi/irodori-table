@@ -28,6 +28,7 @@ irodori-proxy = { workspace = true }
 irodori-secure-store = { workspace = true }
 irodori-sql.workspace = true
 irodori-completion = { workspace = true }
+irodori-migration.workspace = true
 # `http` (Ollama + OpenAI-compatible APIs) and the CLI provider are always on so
 # external/subscription models work without the heavy embedded `llama` build.
 irodori-generate = { workspace = true, features = ["http"] }
