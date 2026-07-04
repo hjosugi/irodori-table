@@ -3439,7 +3439,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-table-desktop"
-version = "0.7.16"
+version = "0.7.17"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
