@@ -14,7 +14,7 @@
 import { spawn } from "node:child_process";
 import { chmod, copyFile, mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { newestFileByExtension } from "../../../tools/lib/files.mjs";
 import {
@@ -25,6 +25,9 @@ import {
 import { run } from "../../../tools/lib/process.mjs";
 
 const options = parseInstallOptions(process.argv.slice(2), process.env);
+const cargoTargetDir = resolve(
+  process.env.CARGO_TARGET_DIR ?? fromRepoRoot(".irodori-local/target"),
+);
 
 const home = homedir();
 const appsDir = join(home, "Applications");
@@ -50,11 +53,7 @@ await run("npm", npmArgs, { cwd: desktopRoot });
 
 // 2. Locate the freshly built AppImage.
 const profileDir = profileDirName(options.release);
-const bundleDir = fromRepoRoot(
-  ".irodori-local/target",
-  profileDir,
-  "bundle/appimage",
-);
+const bundleDir = join(cargoTargetDir, profileDir, "bundle/appimage");
 const builtImage = await newestFileByExtension(bundleDir, ".AppImage");
 if (!builtImage) {
   console.error(`No .AppImage found under ${bundleDir}`);

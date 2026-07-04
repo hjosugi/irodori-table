@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
 import { access, open, readFile, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import { newestFileByExtension } from "../../../tools/lib/files.mjs";
 import { fromDesktopRoot, fromRepoRoot } from "../../../tools/lib/paths.mjs";
@@ -7,11 +8,10 @@ import { runWithTimeout } from "../../../tools/lib/process.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 const profile = options.debug ? "debug" : "release";
-const bundleDir = fromRepoRoot(
-  ".irodori-local/target",
-  profile,
-  "bundle/appimage",
+const cargoTargetDir = resolve(
+  process.env.CARGO_TARGET_DIR ?? fromRepoRoot(".irodori-local/target"),
 );
+const bundleDir = resolve(cargoTargetDir, profile, "bundle/appimage");
 const appImage = await newestFileByExtension(bundleDir, ".AppImage");
 
 if (!appImage) {

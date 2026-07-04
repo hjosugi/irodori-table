@@ -8,6 +8,9 @@ import { run } from "../../../tools/lib/process.mjs";
 
 const cacheRoot = fromRepoRoot(".cache");
 const configRoot = fromRepoRoot(".config");
+const cargoTargetDir = resolve(
+  process.env.CARGO_TARGET_DIR ?? fromRepoRoot(".irodori-local/target"),
+);
 const tauriCache = resolve(cacheRoot, "tauri");
 
 const options = buildLinuxReleaseOptions(process.argv.slice(2), process.arch);
@@ -24,7 +27,12 @@ await ensureRuntime(runtimeUrl, runtimeFile);
 
 await run("tauri", buildTauriArgs(options), {
   cwd: fromDesktopRoot(),
-  env: buildTauriEnv(process.env, { cacheRoot, configRoot, runtimeFile }),
+  env: buildTauriEnv(process.env, {
+    cacheRoot,
+    cargoTargetDir,
+    configRoot,
+    runtimeFile,
+  }),
 });
 
 function buildLinuxReleaseOptions(argv, nodeArch) {
@@ -52,6 +60,7 @@ function buildTauriEnv(env, paths) {
   return {
     ...env,
     NO_STRIP: env.NO_STRIP ?? "1",
+    CARGO_TARGET_DIR: env.CARGO_TARGET_DIR ?? paths.cargoTargetDir,
     XDG_CACHE_HOME: env.XDG_CACHE_HOME ?? paths.cacheRoot,
     XDG_CONFIG_HOME: env.XDG_CONFIG_HOME ?? paths.configRoot,
     LDAI_RUNTIME_FILE: env.LDAI_RUNTIME_FILE ?? paths.runtimeFile,
