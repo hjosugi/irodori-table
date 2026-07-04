@@ -11,10 +11,7 @@
     {
       "identifier": "fs:allow-write-file",
       "allow": [
-        { "path": "$APPDATA/**" },
-        { "path": "$DOWNLOAD/**" },
-        { "path": "$DOCUMENT/**" },
-        { "path": "$DESKTOP/**" }
+        { "path": "$APPDATA/**" }
       ]
     }
   ]
