@@ -413,7 +413,7 @@ export function useResultGridWorkspace({
     onImportFile: (file: File) => void;
   }): ResultGridController {
     return {
-        running: extra.running,
+      running: extra.running,
       readOnly: activeConnectionReadOnly,
       tableViewObject,
       resultMode: effectiveResultMode,

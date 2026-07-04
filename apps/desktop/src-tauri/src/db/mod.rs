@@ -71,7 +71,7 @@ mod transport;
 pub use commands::*;
 use connection::connect_engine;
 pub use edit::{AppliedEdits, CellValue, RowDelete, RowInsert, RowUpdate, TableEdits};
-pub use engine::DbEngine;
+pub use engine::{DbEngine, EngineBuildSupport};
 pub use explain::{
     QueryPlanAnalysis, QueryPlanCopyFormat, QueryPlanEdge, QueryPlanFinding, QueryPlanFlameFrame,
     QueryPlanMetric, QueryPlanMetricGuide, QueryPlanMode, QueryPlanNode, QueryPlanProperty,
@@ -84,6 +84,8 @@ pub use meta::{
 };
 pub use profile::ConnectionProfile;
 use profile::{normalize_profile, redact_secret_text};
+#[cfg(test)]
+pub(crate) use query::sql_may_change_metadata;
 pub(crate) use query::{
     bounded_query_cap, prepare_query, query_result_from_sets, query_result_set,
     split_sql_statements, sql_may_write, PreparedQuery, RawResultSet, RowSet,
@@ -93,8 +95,6 @@ pub use query::{
     QueryParameterPromptSet, QueryResult, QueryResultSet, QueryStreamEvent,
     QueryStreamResultSetSummary, ResultWindow, SpillRunResult,
 };
-#[cfg(test)]
-pub(crate) use query::sql_may_change_metadata;
 use result_spill_manager::ResultEntry;
 use spill::ResultStore;
 pub use spill::SpillConfig;

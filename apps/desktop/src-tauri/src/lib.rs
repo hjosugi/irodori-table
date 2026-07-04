@@ -128,6 +128,7 @@ pub fn run() {
             jobs::jobs_list,
             jobs::jobs_get,
             indexing::db_search_schema,
+            db::db_engine_build_support,
             db::db_connect,
             db::db_query_parameters,
             db::db_explain_query,
@@ -266,6 +267,7 @@ mod typegen {
             .decl(&decl::<Connection>())
             .decl(&decl::<WorkspaceSnapshot>())
             .decl(&decl::<db::DbEngine>())
+            .decl(&decl::<db::EngineBuildSupport>())
             .decl(&decl::<db::ConnectionProfile>())
             .decl(&decl::<db::ConnectionInfo>())
             .decl(&decl::<db::QueryResultSet>())
@@ -338,6 +340,10 @@ mod typegen {
                     .arg(Arg::new("term", TsType::string()))
                     .arg(Arg::rust("limit", TsType::number()).optional()),
             )
+            .command(Command::new(
+                "db_engine_build_support",
+                "Array<EngineBuildSupport>",
+            ))
             .command(
                 Command::new("db_connect", "ConnectionInfo")
                     .arg(Arg::new("profile", TsType::named("ConnectionProfile"))),

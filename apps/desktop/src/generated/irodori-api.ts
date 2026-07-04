@@ -128,6 +128,8 @@ export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnecti
 
 export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "cloudSpanner" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "openSearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "deltaLake" | "hudi";
 
+export type EngineBuildSupport = { engine: DbEngine, includedInCurrentBuild: boolean, requiredFeature?: string, };
+
 export type ConnectionProfile = { id: string, engine: DbEngine, host?: string, port?: number, user?: string, password?: string, database?: string,
 /**
  * Unix-domain socket path. For Postgres this is the socket directory; for
@@ -310,6 +312,10 @@ export function jobsGet(jobId: string): Promise<JobRecord | null> {
 
 export function dbSearchSchema(connectionId: string, term: string, limit?: number): Promise<Array<SchemaSearchHit>> {
   return invoke<Array<SchemaSearchHit>>("db_search_schema", { connectionId, term, limit });
+}
+
+export function dbEngineBuildSupport(): Promise<Array<EngineBuildSupport>> {
+  return invoke<Array<EngineBuildSupport>>("db_engine_build_support");
 }
 
 export function dbConnect(profile: ConnectionProfile): Promise<ConnectionInfo> {

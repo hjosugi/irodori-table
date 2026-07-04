@@ -1078,6 +1078,8 @@ async fn command_boundary_rejects_invalid_inputs() {
         .unwrap_err();
     assert!(err.contains("irodori.pinecone"));
     assert!(err.contains("connector extension"));
+    assert!(err.contains("data-source-support-status"));
+    assert!(!err.contains("core app"));
 
     let err = run_query_impl(&state, " ".into(), "select 1".into(), None)
         .await

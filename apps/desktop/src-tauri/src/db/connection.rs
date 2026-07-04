@@ -24,7 +24,9 @@ use super::mssql;
 use super::neo4j;
 #[cfg(feature = "oracle")]
 use super::oracle;
-use super::profile::ConnectionProfile;
+use super::profile::{
+    connector_extension_required_message, ConnectionProfile, CONNECTOR_STATUS_DOC_URL,
+};
 use super::query::{PreparedQuery, RawResultSet, RowSet};
 #[cfg(feature = "redis-connector")]
 use super::redis;
@@ -600,7 +602,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "sqlserver"))]
             {
-                return Err(feature_required("SQL Server", "sqlserver"));
+                return Err(feature_required("SQL Server"));
             }
         }
         Wire::Mongo => {
@@ -610,7 +612,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "mongo"))]
             {
-                return Err(feature_required("MongoDB", "mongo"));
+                return Err(feature_required("MongoDB"));
             }
         }
         Wire::DuckDb => {
@@ -624,7 +626,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "duckdb"))]
             {
-                return Err(feature_required("DuckDB", "duckdb"));
+                return Err(feature_required("DuckDB"));
             }
         }
         Wire::Oracle => {
@@ -634,7 +636,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "oracle"))]
             {
-                return Err(feature_required("Oracle", "oracle"));
+                return Err(feature_required("Oracle"));
             }
         }
         Wire::Neo4j => {
@@ -644,7 +646,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "neo4j"))]
             {
-                return Err(feature_required("Neo4j", "neo4j"));
+                return Err(feature_required("Neo4j"));
             }
         }
         Wire::InfluxDb => Arc::new(InfluxConnection(influx::connect(profile).await?)),
@@ -657,7 +659,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "bigquery"))]
             {
-                return Err(feature_required("BigQuery", "bigquery"));
+                return Err(feature_required("BigQuery"));
             }
         }
         Wire::Bigtable => {
@@ -667,7 +669,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "bigtable"))]
             {
-                return Err(feature_required("Bigtable", "bigtable"));
+                return Err(feature_required("Bigtable"));
             }
         }
         Wire::Redis => {
@@ -677,7 +679,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "redis-connector"))]
             {
-                return Err(feature_required("Redis", "redis-connector"));
+                return Err(feature_required("Redis"));
             }
         }
         Wire::Cassandra => {
@@ -687,7 +689,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "cassandra"))]
             {
-                return Err(feature_required("Cassandra/ScyllaDB", "cassandra"));
+                return Err(feature_required("Cassandra/ScyllaDB"));
             }
         }
         Wire::Memgraph
@@ -702,25 +704,16 @@ pub(crate) async fn connect_engine(
         | Wire::Graph
         | Wire::TimeSeries
         | Wire::Lakehouse => {
-            return Err(match profile.engine.connector_extension_id() {
-                Some(extension_id) => format!(
-                    "{:?} requires connector extension `{extension_id}`; the core app has no built-in driver for this engine",
-                    profile.engine
-                ),
-                None => format!(
-                    "{:?} has no public connector extension and no built-in driver",
-                    profile.engine
-                ),
-            });
+            return Err(connector_extension_required_message(profile.engine));
         }
     };
     Ok(conn)
 }
 
 #[allow(dead_code)]
-fn feature_required(engine: &str, feature: &str) -> String {
+fn feature_required(engine: &str) -> String {
     format!(
-        "{engine} is not included in this desktop build. Use a release build that ships connector feature `{feature}`, or install the matching marketplace connector when available. See https://hjosugi.github.io/irodori-docs/data-source-support-status.html."
+        "{engine} is not available in this desktop build. Download the standard Irodori Table release, or install the matching marketplace connector when available. Build availability: {CONNECTOR_STATUS_DOC_URL}."
     )
 }
 
@@ -731,5 +724,21 @@ fn should_seed_builtin_sample(profile: &ConnectionProfile) -> bool {
     match profile.database.as_deref().map(str::trim) {
         None | Some("") | Some(":memory:") => true,
         Some(_) => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{feature_required, CONNECTOR_STATUS_DOC_URL};
+
+    #[test]
+    fn feature_required_message_is_user_facing() {
+        let message = feature_required("DuckDB");
+
+        assert!(message.contains("DuckDB is not available in this desktop build"));
+        assert!(message.contains(CONNECTOR_STATUS_DOC_URL));
+        assert!(!message.contains("feature"));
+        assert!(!message.contains("rebuild"));
+        assert!(!message.contains("--features"));
     }
 }

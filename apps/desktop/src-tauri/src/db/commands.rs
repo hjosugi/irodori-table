@@ -70,6 +70,11 @@ pub async fn db_invalidate_cache(
 // ---- Tauri commands -----------------------------------------------------------
 
 #[tauri::command]
+pub fn db_engine_build_support() -> Vec<EngineBuildSupport> {
+    DbEngine::all_build_support()
+}
+
+#[tauri::command]
 pub async fn db_connect(
     state: tauri::State<'_, DbState>,
     security: tauri::State<'_, SecurityState>,

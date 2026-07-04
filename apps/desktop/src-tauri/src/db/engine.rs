@@ -149,6 +149,17 @@ pub enum DbEngine {
     Hudi,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct EngineBuildSupport {
+    pub engine: DbEngine,
+    pub included_in_current_build: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub required_feature: Option<String>,
+}
+
 /// The wire protocol an engine speaks — i.e. which connector handles it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Wire {
@@ -182,6 +193,103 @@ pub(crate) enum Wire {
 }
 
 impl DbEngine {
+    pub(crate) const ALL: &'static [DbEngine] = &[
+        DbEngine::Postgres,
+        DbEngine::Mysql,
+        DbEngine::Sqlite,
+        DbEngine::Oracle,
+        DbEngine::SqlServer,
+        DbEngine::DuckDb,
+        DbEngine::MotherDuck,
+        DbEngine::Mongo,
+        DbEngine::CockroachDb,
+        DbEngine::YugabyteDb,
+        DbEngine::Redshift,
+        DbEngine::Timescale,
+        DbEngine::MariaDb,
+        DbEngine::TiDb,
+        DbEngine::Neon,
+        DbEngine::H2,
+        DbEngine::ClickHouse,
+        DbEngine::Neo4j,
+        DbEngine::Memgraph,
+        DbEngine::InfluxDb,
+        DbEngine::Qdrant,
+        DbEngine::Milvus,
+        DbEngine::Pinecone,
+        DbEngine::Snowflake,
+        DbEngine::BigQuery,
+        DbEngine::Athena,
+        DbEngine::Redis,
+        DbEngine::Cassandra,
+        DbEngine::Bigtable,
+        DbEngine::CloudSpanner,
+        DbEngine::TrinoPresto,
+        DbEngine::Firebird,
+        DbEngine::Databricks,
+        DbEngine::Elasticsearch,
+        DbEngine::OpenSearch,
+        DbEngine::Couchbase,
+        DbEngine::DynamoDb,
+        DbEngine::ScyllaDb,
+        DbEngine::ArangoDb,
+        DbEngine::QuestDb,
+        DbEngine::IoTDb,
+        DbEngine::Hive,
+        DbEngine::Iceberg,
+        DbEngine::S3Tables,
+        DbEngine::DeltaLake,
+        DbEngine::Hudi,
+    ];
+
+    pub(crate) fn all_build_support() -> Vec<EngineBuildSupport> {
+        Self::ALL
+            .iter()
+            .copied()
+            .map(DbEngine::build_support)
+            .collect()
+    }
+
+    pub(crate) fn build_support(self) -> EngineBuildSupport {
+        let required_feature = self.required_build_feature();
+        EngineBuildSupport {
+            engine: self,
+            included_in_current_build: required_feature.is_none()
+                || self.required_build_feature_enabled(),
+            required_feature: required_feature.map(str::to_string),
+        }
+    }
+
+    pub(crate) fn required_build_feature(self) -> Option<&'static str> {
+        match self {
+            DbEngine::SqlServer => Some("sqlserver"),
+            DbEngine::DuckDb | DbEngine::MotherDuck => Some("duckdb"),
+            DbEngine::Mongo => Some("mongo"),
+            DbEngine::Oracle => Some("oracle"),
+            DbEngine::Neo4j => Some("neo4j"),
+            DbEngine::BigQuery => Some("bigquery"),
+            DbEngine::Bigtable => Some("bigtable"),
+            DbEngine::Redis => Some("redis-connector"),
+            DbEngine::Cassandra | DbEngine::ScyllaDb => Some("cassandra"),
+            _ => None,
+        }
+    }
+
+    fn required_build_feature_enabled(self) -> bool {
+        match self {
+            DbEngine::SqlServer => cfg!(feature = "sqlserver"),
+            DbEngine::DuckDb | DbEngine::MotherDuck => cfg!(feature = "duckdb"),
+            DbEngine::Mongo => cfg!(feature = "mongo"),
+            DbEngine::Oracle => cfg!(feature = "oracle"),
+            DbEngine::Neo4j => cfg!(feature = "neo4j"),
+            DbEngine::BigQuery => cfg!(feature = "bigquery"),
+            DbEngine::Bigtable => cfg!(feature = "bigtable"),
+            DbEngine::Redis => cfg!(feature = "redis-connector"),
+            DbEngine::Cassandra | DbEngine::ScyllaDb => cfg!(feature = "cassandra"),
+            _ => true,
+        }
+    }
+
     pub(crate) fn wire(self) -> Wire {
         match self {
             DbEngine::Postgres
@@ -479,6 +587,11 @@ mod tests {
         (DbEngine::Qdrant, Wire::Qdrant, 6333),
         (DbEngine::Milvus, Wire::Milvus, 19530),
         (DbEngine::Pinecone, Wire::Pinecone, 0),
+        (DbEngine::Snowflake, Wire::Snowflake, 443),
+        (DbEngine::BigQuery, Wire::BigQuery, 443),
+        (DbEngine::Redis, Wire::Redis, 6379),
+        (DbEngine::Cassandra, Wire::Cassandra, 9042),
+        (DbEngine::Bigtable, Wire::Bigtable, 443),
         (DbEngine::TrinoPresto, Wire::Jdbc, 8080),
         (DbEngine::Firebird, Wire::Jdbc, 3050),
         (DbEngine::Databricks, Wire::Jdbc, 443),
@@ -518,10 +631,69 @@ mod tests {
 
     #[test]
     fn all_engines_have_expected_wire_and_default_port() {
+        assert_eq!(ENGINE_CASES.len(), DbEngine::ALL.len());
         for (engine, wire, port) in ENGINE_CASES {
             assert_eq!(engine.wire(), *wire, "{engine:?} wire");
             assert_eq!(engine.default_port(), *port, "{engine:?} default port");
         }
+    }
+
+    #[test]
+    fn build_support_lists_every_engine() {
+        let support = DbEngine::all_build_support();
+        assert_eq!(support.len(), DbEngine::ALL.len());
+        for engine in DbEngine::ALL {
+            assert!(
+                support.iter().any(|item| item.engine == *engine),
+                "{engine:?} missing from build support"
+            );
+        }
+    }
+
+    #[test]
+    fn build_support_tracks_compile_time_features() {
+        let cases = [
+            (
+                DbEngine::SqlServer,
+                "sqlserver",
+                cfg!(feature = "sqlserver"),
+            ),
+            (DbEngine::DuckDb, "duckdb", cfg!(feature = "duckdb")),
+            (DbEngine::MotherDuck, "duckdb", cfg!(feature = "duckdb")),
+            (DbEngine::Mongo, "mongo", cfg!(feature = "mongo")),
+            (DbEngine::Oracle, "oracle", cfg!(feature = "oracle")),
+            (DbEngine::Neo4j, "neo4j", cfg!(feature = "neo4j")),
+            (DbEngine::BigQuery, "bigquery", cfg!(feature = "bigquery")),
+            (DbEngine::Bigtable, "bigtable", cfg!(feature = "bigtable")),
+            (
+                DbEngine::Redis,
+                "redis-connector",
+                cfg!(feature = "redis-connector"),
+            ),
+            (
+                DbEngine::Cassandra,
+                "cassandra",
+                cfg!(feature = "cassandra"),
+            ),
+            (DbEngine::ScyllaDb, "cassandra", cfg!(feature = "cassandra")),
+        ];
+
+        for (engine, feature, enabled) in cases {
+            let support = engine.build_support();
+            assert_eq!(
+                support.required_feature.as_deref(),
+                Some(feature),
+                "{engine:?} required feature"
+            );
+            assert_eq!(
+                support.included_in_current_build, enabled,
+                "{engine:?} build support"
+            );
+        }
+
+        let built_in = DbEngine::Postgres.build_support();
+        assert!(built_in.included_in_current_build);
+        assert_eq!(built_in.required_feature, None);
     }
 
     #[test]

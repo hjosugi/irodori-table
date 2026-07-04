@@ -301,6 +301,11 @@
   grid-column: 1 / -1;
 }
 
+.connection-build-error span {
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .connection-form-stack {
   display: grid;
   gap: 8px;

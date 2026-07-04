@@ -54,11 +54,11 @@ Status legend:
 | Neo4j | `neo4j` | Bolt / neo4rs | `db/neo4j.rs` | 7687 | Wired (graph) — see cheatsheet | `legacy-connectors` |
 | Redis | `redis` | RESP / redis | `db/redis.rs` | 6379 | Wired (adapter) | `legacy-connectors` |
 | Cassandra | `cassandra` | CQL / scylla driver | `db/cassandra.rs` | 9042 | Wired (adapter) | `legacy-connectors` |
-| ClickHouse | `clickhouse` | HTTP | `db/clickhouse.rs` | 8123 | Wired (HTTP client) | `legacy-connectors` |
-| Snowflake | `snowflake` | HTTP | `db/snowflake.rs` | 443 | Wired (password/JWT subset) | `legacy-connectors` |
+| ClickHouse | `clickhouse` | HTTP | `db/clickhouse.rs` | 8123 | Wired (HTTP client) | Built-in |
+| Snowflake | `snowflake` | HTTP | `db/snowflake.rs` | 443 | Wired (password/JWT subset) | Built-in |
 | BigQuery | `bigquery` | HTTP | `db/bigquery.rs` | 443 | Wired (HTTP client) | `legacy-connectors` |
 | Bigtable | `bigtable` | gRPC/HTTP | `db/bigtable.rs` | 443 | Wired (adapter) | `legacy-connectors` |
-| InfluxDB | `influxdb` | HTTP (SQL/v3) | `db/influx.rs` | 8086 | Wired (adapter) | `legacy-connectors` |
+| InfluxDB | `influxdb` | HTTP (SQL/v3) | `db/influx.rs` | 8086 | Wired (adapter) | Built-in |
 | ScyllaDB | `scylladb` | CQL / scylla driver | (via `cassandra.rs`) | 9042 | Wired (CQL-compatible) | `legacy-connectors` |
 | QuestDB | `questdb` | Postgres wire / sqlx | (via `postgres.rs`) | 8812 | Wired | Built-in |
 
@@ -66,7 +66,10 @@ Status legend:
 > connect/query path exists; first-class browsing, completion, editing,
 > explain/profile, and visualization per source remain tracked by SRC tickets.
 > Release builds pass `--features legacy-connectors,duckdb`; local default
-> development builds may omit feature-gated connectors for speed.
+> development builds may omit feature-gated connectors for speed. When a custom
+> build omits an optional connector, the app reports that the selected data
+> source is unavailable in this desktop build and links back to this table instead
+> of exposing developer build steps.
 
 ## 2. Pending (recognized, scaffolded, returns "not ready")
 

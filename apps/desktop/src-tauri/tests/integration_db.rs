@@ -520,7 +520,7 @@ fn duckdb_in_memory() {
 }
 
 fn is_duckdb_feature_off(error: &str) -> bool {
-    error.contains("not built in") || error.contains("not included in this desktop build")
+    error.contains("not built in") || error.contains("not available in this desktop build")
 }
 
 /// MongoDB through the same `Connection` trait: connect, version, and a

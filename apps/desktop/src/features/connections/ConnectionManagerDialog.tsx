@@ -19,7 +19,11 @@ import {
   ShieldCheck,
   Upload,
 } from "lucide-react";
-import type { DbEngine } from "@/generated/irodori-api";
+import {
+  dbEngineBuildSupport,
+  type DbEngine,
+  type EngineBuildSupport,
+} from "@/generated/irodori-api";
 import { DialogShell } from "@/components/DialogShell";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
@@ -58,6 +62,8 @@ const environmentLabels: Record<(typeof environmentOrder)[number], string> = {
   local: "Local",
   other: "Other",
 };
+const connectorStatusDocUrl =
+  "https://hjosugi.github.io/irodori-docs/data-source-support-status.html";
 
 function connectionSearchText(profile: ConnectionDraft) {
   return [profile.id, profile.name, profile.host, profile.database, profile.url]
@@ -118,6 +124,30 @@ function socketPathPlaceholder(engine: DbEngine) {
   return isMysqlSocketEngine(engine)
     ? "/var/run/mysqld/mysqld.sock"
     : "/var/run/postgresql";
+}
+
+function buildSupportByEngine(items: EngineBuildSupport[]) {
+  return new Map(items.map((item) => [item.engine, item]));
+}
+
+function isFeatureMissing(support: EngineBuildSupport | undefined) {
+  return Boolean(
+    support?.requiredFeature && support.includedInCurrentBuild === false,
+  );
+}
+
+function featureMissingMessage(
+  engine: DbEngine,
+  support: EngineBuildSupport | undefined,
+) {
+  if (!isFeatureMissing(support)) {
+    return null;
+  }
+  return [
+    `${engineLabel(engine)} is not available in this desktop build.`,
+    "Use the standard Irodori Table release, or install the matching connector extension when available.",
+    `Build availability: ${connectorStatusDocUrl}.`,
+  ].join(" ");
 }
 
 function ConnectionColorPicker({
@@ -280,16 +310,43 @@ export function ConnectionManagerDialog({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
   );
+  const [engineBuildSupport, setEngineBuildSupport] = useState(
+    () => new Map<DbEngine, EngineBuildSupport>(),
+  );
   const groupedProfiles = useMemo(
     () => groupConnectionProfiles(profiles),
     [profiles],
   );
   const normalizedDraftColor = normalizeConnectionColor(draft.color);
   const socketSupported = supportsSocketTransport(draft.engine);
+  const selectedEngineSupport = engineBuildSupport.get(draft.engine);
+  const selectedEngineMessage = featureMissingMessage(
+    draft.engine,
+    selectedEngineSupport,
+  );
+  const selectedEngineMissing = Boolean(selectedEngineMessage);
   const transportMode =
     socketSupported && draft.connectionTransport === "socket"
       ? "socket"
       : "tcp";
+
+  useEffect(() => {
+    let active = true;
+    void dbEngineBuildSupport()
+      .then((items) => {
+        if (active) {
+          setEngineBuildSupport(buildSupportByEngine(items));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setEngineBuildSupport(new Map());
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!transferMenuOpen) {
@@ -398,6 +455,14 @@ export function ConnectionManagerDialog({
     );
   }
 
+  const handleConnect: FormEventHandler<HTMLFormElement> = (event) => {
+    if (selectedEngineMissing) {
+      event.preventDefault();
+      return;
+    }
+    onConnect(event);
+  };
+
   return (
     <DialogShell
       className="connection-dialog"
@@ -492,7 +557,7 @@ export function ConnectionManagerDialog({
           {profiles.length === 0 ? "No matching connections" : null}
         </div>
       </aside>
-      <form className="connection-form" onSubmit={onConnect}>
+      <form className="connection-form" onSubmit={handleConnect}>
         <div className="dialog-header">
           <strong>{draft.name.trim() || "New Connection"}</strong>
           <span>{engineLabel(draft.engine)}</span>
@@ -535,13 +600,29 @@ export function ConnectionManagerDialog({
                   })
                 }
               >
-                {engineOptions.map((engine) => (
-                  <option key={engine.value} value={engine.value}>
-                    {engine.label}
-                  </option>
-                ))}
+                {engineOptions.map((engine) => {
+                  const missing = isFeatureMissing(
+                    engineBuildSupport.get(engine.value),
+                  );
+                  return (
+                    <option
+                      key={engine.value}
+                      value={engine.value}
+                      disabled={missing}
+                    >
+                      {engine.label}
+                      {missing ? " (not in this build)" : ""}
+                    </option>
+                  );
+                })}
               </select>
             </label>
+            {selectedEngineMessage ? (
+              <p className="inline-error connection-build-error full-row">
+                <AlertTriangle size={13} />
+                <span>{selectedEngineMessage}</span>
+              </p>
+            ) : null}
             <label>
               <span>Profile ID</span>
               <input
@@ -752,7 +833,7 @@ export function ConnectionManagerDialog({
           <button
             className="text-button"
             type="button"
-            disabled={testing}
+            disabled={testing || selectedEngineMissing}
             onClick={onTest}
           >
             {testing ? "Testing" : "Test"}
@@ -760,7 +841,7 @@ export function ConnectionManagerDialog({
           <button
             className="primary-action"
             type="submit"
-            disabled={connecting}
+            disabled={connecting || selectedEngineMissing}
           >
             <Database size={14} />
             {connecting ? "Connecting" : "Connect"}

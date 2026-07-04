@@ -5,6 +5,8 @@ use ts_rs::TS;
 
 use super::engine::{DbEngine, Wire};
 
+pub(super) const CONNECTOR_STATUS_DOC_URL: &str =
+    "https://hjosugi.github.io/irodori-docs/data-source-support-status.html";
 const MAX_CONNECTION_ID_LEN: usize = 128;
 
 /// How to reach a database. Either give structured fields or a raw `url`/DSN.
@@ -167,13 +169,13 @@ fn is_unimplemented_wire(wire: Wire) -> bool {
     )
 }
 
-fn connector_extension_required_message(engine: DbEngine) -> String {
+pub(super) fn connector_extension_required_message(engine: DbEngine) -> String {
     match engine.connector_extension_id() {
         Some(extension_id) => format!(
-            "{engine:?} is recognized, but its connector is not built into the core app. Install connector extension `{extension_id}`."
+            "This data source needs the `{extension_id}` connector extension. Install it from Extensions, then try again. Build availability: {CONNECTOR_STATUS_DOC_URL}."
         ),
         None => format!(
-            "{engine:?} is recognized as an internal connector target, but no public connector extension is published for it."
+            "{engine:?} is recognized by Irodori Table, but no public connector is available yet. Build availability: {CONNECTOR_STATUS_DOC_URL}."
         ),
     }
 }
