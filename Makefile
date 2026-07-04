@@ -11,7 +11,7 @@ EXTENSION_SDK_DIR ?= $(firstword $(wildcard ../irodori-kit/packages/extension-sd
         dev test build typegen e2e doctor \
         desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-format desktop-format-check desktop-lint desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
         rust-clippy cargo-deny workflow-lint \
-        check security security-strict extension-manifests kit-link kit-unlink kit-patch-check db db-verify db-all db-up db-down \
+        check security security-strict extension-manifests kit-link kit-unlink kit-patch-check foundation-release foundation-release-check db db-verify db-all db-up db-down \
         extension-scenarios extension-fleet-audit \
         release release-patch release-minor release-major run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract perf-hot-surfaces docs docs-check
@@ -70,6 +70,8 @@ help:
 	@printf "  make kit-link          add a local Cargo [patch] for ../irodori-kit\n"
 	@printf "  make kit-unlink        remove the managed local irodori-kit Cargo [patch]\n"
 	@printf "  make kit-patch-check   fail if a local irodori-kit Cargo [patch] remains\n"
+	@printf "  make foundation-release-check verify foundation git-tag pins are lockstep\n"
+	@printf "  make foundation-release FOUNDATION_ARGS='--kit vX.Y.Z --knowledge vX.Y.Z --sql vX.Y.Z' update foundation pins\n"
 	@printf "  make extension-scenarios run connector extension scenario tests\n"
 	@printf "  make extension-fleet-audit run post-ABI-migration connector fleet audit (#44)\n"
 	@printf "  make docs              regenerate generated docs\n"
@@ -175,6 +177,12 @@ kit-unlink:
 
 kit-patch-check:
 	node tools/dev/patch-siblings.mjs check
+
+foundation-release-check:
+	node tools/dev/foundation-release.mjs --check
+
+foundation-release:
+	node tools/dev/foundation-release.mjs --apply $(FOUNDATION_ARGS)
 
 extension-scenarios:
 	node tools/extensions/scenario-test.mjs --all --strict-package --require-archive

@@ -15,6 +15,7 @@ for (const lockfile of npmLockfiles) {
 }
 checkCargoMetadata();
 checkCargoLockGitSources("Cargo.lock");
+checkCargoLockNativeConnectorDedupe("Cargo.lock");
 
 if (errors.length > 0) {
   for (const error of errors) {
@@ -43,11 +44,7 @@ function checkNpmLockfile(lockfile) {
       errors.push(`${lockfile}: ${name} has an install script`);
     }
 
-    if (
-      packageInfo.resolved?.startsWith("http") &&
-      !packageInfo.integrity &&
-      !packageInfo.link
-    ) {
+    if (packageInfo.resolved?.startsWith("http") && !packageInfo.integrity && !packageInfo.link) {
       errors.push(`${lockfile}: ${name} has a remote tarball without integrity`);
     }
 
@@ -120,6 +117,45 @@ function checkCargoLockGitSources(lockfile) {
       errors.push(`${lockfile}: git source ${name} (${sourceValue})`);
     }
   }
+}
+
+function checkCargoLockNativeConnectorDedupe(lockfile) {
+  const fullPath = resolve(root, lockfile);
+  let source = "";
+  try {
+    source = readFileSync(fullPath, "utf8");
+  } catch {
+    return;
+  }
+
+  const packages = parseCargoLockPackages(source);
+  const packageNames = new Set(packages.map((pkg) => pkg.name));
+  for (const forbidden of ["duckdb", "libduckdb-sys"]) {
+    if (packageNames.has(forbidden)) {
+      errors.push(
+        `${lockfile}: ${forbidden} is not allowed in the desktop app lockfile; use installable connector extensions`,
+      );
+    }
+  }
+
+  const reqwestVersions = uniqueVersions(packages, "reqwest");
+  if (reqwestVersions.length > 1) {
+    errors.push(`${lockfile}: reqwest is duplicated (${reqwestVersions.join(", ")})`);
+  }
+}
+
+function parseCargoLockPackages(source) {
+  return source
+    .split(/\n\[\[package\]\]\n/)
+    .map((block) => ({
+      name: block.match(/\n?name = "([^"]+)"/)?.[1] ?? null,
+      version: block.match(/\nversion = "([^"]+)"/)?.[1] ?? null,
+    }))
+    .filter((pkg) => pkg.name && pkg.version);
+}
+
+function uniqueVersions(packages, name) {
+  return [...new Set(packages.filter((pkg) => pkg.name === name).map((pkg) => pkg.version))].sort();
 }
 
 function npmPackageName(packagePath) {
