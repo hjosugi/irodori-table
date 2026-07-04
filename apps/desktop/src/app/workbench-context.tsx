@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { Workbench } from "@/app/controllers/use-workbench";
+import type { Workbench } from "@/app/AppWorkbench";
 
 // Distribution channel for the Workbench object built by useWorkbench().
 // Views anywhere under WorkbenchProvider call useWorkbenchContext() instead
