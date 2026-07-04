@@ -41,11 +41,19 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust security tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-audit
+            ~/.cargo/bin/cargo-deny
+          key: rust-security-tools-cargo-audit-latest-cargo-deny-0.19.9-${{ runner.os }}
+
       - name: Install RustSec cargo-audit
-        run: cargo install cargo-audit --locked
+        run: command -v cargo-audit || cargo install cargo-audit --locked
 
       - name: Install cargo-deny
-        run: cargo install cargo-deny --locked --version 0.19.9
+        run: command -v cargo-deny || cargo install cargo-deny --locked --version 0.19.9
 
       - name: Run supply-chain checks
         env:

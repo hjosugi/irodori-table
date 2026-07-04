@@ -43,6 +43,12 @@ jobs:
           workspaces: '. -> .irodori-local/target'
           key: release-dry-run-linux
 
+      - name: Cache AppImage runtime
+        uses: actions/cache@v4
+        with:
+          path: .cache/tauri
+          key: appimage-runtime-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install frontend dependencies
         working-directory: apps/desktop
         run: npm ci
