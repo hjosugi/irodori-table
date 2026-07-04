@@ -4,21 +4,28 @@ use irodori_proxy::{
     ResolvedProxyHopConfig, ResolvedSshAuth, ResolvedSshTunnel, ResolvedTransport,
 };
 
+use super::{DbError, DbResult};
+
 async fn resolve_secret_ref(
     store: &irodori_secure_store::OsKeychainStore,
     secret_ref: &SecretRef,
-) -> Result<String, String> {
+) -> DbResult<String> {
     use irodori_secure_store::SecureStore;
     store
         .get(secret_ref)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| format!("secret not found for handle: {}", secret_ref.handle))
+        .map_err(|e| DbError::transport(e.to_string()))?
+        .ok_or_else(|| {
+            DbError::not_found(format!(
+                "secret not found for handle: {}",
+                secret_ref.handle
+            ))
+        })
 }
 
 async fn resolve_ssh_auth(
     store: &irodori_secure_store::OsKeychainStore,
     auth: &SshAuthConfig,
-) -> Result<ResolvedSshAuth, String> {
+) -> DbResult<ResolvedSshAuth> {
     match auth {
         SshAuthConfig::Agent => Ok(ResolvedSshAuth::Agent),
         SshAuthConfig::Password { password } => {
@@ -45,7 +52,7 @@ async fn resolve_ssh_auth(
 async fn resolve_proxy_auth(
     store: &irodori_secure_store::OsKeychainStore,
     auth: Option<&ProxyAuthConfig>,
-) -> Result<Option<ResolvedProxyAuth>, String> {
+) -> DbResult<Option<ResolvedProxyAuth>> {
     let Some(auth) = auth else {
         return Ok(None);
     };
@@ -55,19 +62,21 @@ async fn resolve_proxy_auth(
     }))
 }
 
-fn proxy_target(proxy: &ProxyTransport) -> Result<(String, u16), String> {
+fn proxy_target(proxy: &ProxyTransport) -> DbResult<(String, u16)> {
     let target_host = proxy
         .target_host
         .clone()
-        .ok_or("proxy target host is missing")?;
-    let target_port = proxy.target_port.ok_or("proxy target port is missing")?;
+        .ok_or_else(|| DbError::validation("proxy target host is missing"))?;
+    let target_port = proxy
+        .target_port
+        .ok_or_else(|| DbError::validation("proxy target port is missing"))?;
     Ok((target_host, target_port))
 }
 
 async fn resolve_proxy_transport(
     store: &irodori_secure_store::OsKeychainStore,
     proxy: &ProxyTransport,
-) -> Result<ResolvedProxy, String> {
+) -> DbResult<ResolvedProxy> {
     let auth = resolve_proxy_auth(store, proxy.auth.as_ref()).await?;
     let (target_host, target_port) = proxy_target(proxy)?;
     Ok(ResolvedProxy {
@@ -83,7 +92,7 @@ async fn resolve_proxy_transport(
 async fn resolve_proxy_hop_config(
     store: &irodori_secure_store::OsKeychainStore,
     config: &ProxyHopConfig,
-) -> Result<ResolvedProxyHopConfig, String> {
+) -> DbResult<ResolvedProxyHopConfig> {
     match config {
         ProxyHopConfig::Ssh(ssh_hop) => Ok(ResolvedProxyHopConfig::Ssh {
             ssh_host: ssh_hop.ssh_host.clone(),
@@ -109,10 +118,12 @@ async fn resolve_proxy_hop_config(
 pub(super) async fn resolve_transport(
     store: &irodori_secure_store::OsKeychainStore,
     transport: &irodori_core::TransportConfig,
-) -> Result<ResolvedTransport, String> {
+) -> DbResult<ResolvedTransport> {
     match transport {
         irodori_core::TransportConfig::Direct(_) | irodori_core::TransportConfig::LocalFile(_) => {
-            Err("direct and local file transports do not require resolution".to_string())
+            Err(DbError::validation(
+                "direct and local file transports do not require resolution",
+            ))
         }
         irodori_core::TransportConfig::SshTunnel(tunnel) => {
             Ok(ResolvedTransport::SshTunnel(ResolvedSshTunnel {

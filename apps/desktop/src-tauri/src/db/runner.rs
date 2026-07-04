@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::{mpsc, Mutex};
 use tokio_util::sync::CancellationToken;
 
+use super::error::{DbError, DbResult};
 use super::explain;
 use super::query::{
     bounded_query_cap, prepare_query, query_result_from_sets, query_result_set, sql_may_write,
@@ -25,12 +26,12 @@ use super::{
 /// for the pooled (sqlx) engines. A non-positive value means "no limit".
 pub(crate) async fn with_timeout<T>(
     timeout_ms: Option<u64>,
-    fut: impl Future<Output = Result<T, String>>,
-) -> Result<T, String> {
+    fut: impl Future<Output = DbResult<T>>,
+) -> DbResult<T> {
     match timeout_ms.filter(|ms| *ms > 0) {
         Some(ms) => tokio::time::timeout(Duration::from_millis(ms), fut)
             .await
-            .map_err(|_| format!("query timed out after {ms}ms"))?,
+            .map_err(|_| DbError::timeout(format!("query timed out after {ms}ms")))?,
         None => fut.await,
     }
 }
@@ -40,7 +41,7 @@ pub async fn run_query_impl(
     connection_id: String,
     sql: String,
     max_rows: Option<usize>,
-) -> Result<QueryResult, String> {
+) -> DbResult<QueryResult> {
     run_query_with_params_impl(state, connection_id, sql, max_rows, None).await
 }
 
@@ -50,17 +51,19 @@ pub async fn run_query_with_params_impl(
     sql: String,
     max_rows: Option<usize>,
     params: Option<Vec<QueryParameterInput>>,
-) -> Result<QueryResult, String> {
+) -> DbResult<QueryResult> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
     let sql = sql.trim().to_string();
     if sql.is_empty() {
-        return Err("query is empty".into());
+        return Err(DbError::validation("query is empty"));
     }
     if sql.len() > MAX_SQL_BYTES {
-        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+        return Err(DbError::validation(format!(
+            "query text must be at most {MAX_SQL_BYTES} bytes"
+        )));
     }
     // Clone the handle out of the lock so the query does not hold the mutex.
     let conn = {
@@ -68,7 +71,7 @@ pub async fn run_query_with_params_impl(
         guard
             .get(&connection_id)
             .cloned()
-            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+            .ok_or_else(|| DbError::not_found(format!("no open connection: {connection_id}")))?
     };
     ensure_connection_can_run_sql(state, &connection_id, &sql).await?;
 
@@ -106,23 +109,24 @@ pub async fn explain_query_impl(
     connection_id: String,
     sql: String,
     mode: QueryPlanMode,
-) -> Result<QueryPlanAnalysis, String> {
+) -> DbResult<QueryPlanAnalysis> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
     let sql = sql.trim().to_string();
     if sql.is_empty() {
-        return Err("query is empty".into());
+        return Err(DbError::validation("query is empty"));
     }
     if sql.len() > MAX_SQL_BYTES {
-        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+        return Err(DbError::validation(format!(
+            "query text must be at most {MAX_SQL_BYTES} bytes"
+        )));
     }
     if mode == QueryPlanMode::Analyze && sql_may_write(&sql) {
-        return Err(
-            "Explain Analyse is blocked for write statements because it can execute the statement"
-                .into(),
-        );
+        return Err(DbError::validation(
+            "Explain Analyse is blocked for write statements because it can execute the statement",
+        ));
     }
 
     let conn = {
@@ -130,12 +134,13 @@ pub async fn explain_query_impl(
         guard
             .get(&connection_id)
             .cloned()
-            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+            .ok_or_else(|| DbError::not_found(format!("no open connection: {connection_id}")))?
     };
     match conn.explain_query(&sql, mode).await {
         Ok(plan) => Ok(plan),
         Err(error) => {
-            Ok(explain::static_analysis(conn.wire(), &sql, mode).with_native_error(error))
+            Ok(explain::static_analysis(conn.wire(), &sql, mode)
+                .with_native_error(error.to_string()))
         }
     }
 }
@@ -153,7 +158,7 @@ pub async fn run_query_managed_impl(
     max_rows: Option<usize>,
     timeout_ms: Option<u64>,
     query_id: Option<String>,
-) -> Result<QueryResult, String> {
+) -> DbResult<QueryResult> {
     run_query_managed_with_params_impl(
         state,
         connection_id,
@@ -174,7 +179,7 @@ pub async fn run_query_managed_with_params_impl(
     timeout_ms: Option<u64>,
     query_id: Option<String>,
     params: Option<Vec<QueryParameterInput>>,
-) -> Result<QueryResult, String> {
+) -> DbResult<QueryResult> {
     let token = CancellationToken::new();
     if let Some(qid) = &query_id {
         state
@@ -187,7 +192,7 @@ pub async fn run_query_managed_with_params_impl(
     let run = async {
         tokio::select! {
             biased;
-            _ = token.cancelled() => Err("query cancelled".to_string()),
+            _ = token.cancelled() => Err(DbError::cancelled("query cancelled")),
             result = run_query_with_params_impl(state, connection_id, sql, max_rows, params) => result,
         }
     };
@@ -225,7 +230,7 @@ pub(crate) async fn run_query_stream_impl(
     timeout_ms: Option<u64>,
     query_id: Option<String>,
     sink: mpsc::Sender<stream::FetchEvent>,
-) -> Result<stream::StreamSummary, String> {
+) -> DbResult<stream::StreamSummary> {
     run_query_stream_with_params_impl(
         state,
         connection_id,
@@ -248,7 +253,7 @@ pub(crate) async fn run_query_stream_with_params_impl(
     query_id: Option<String>,
     params: Option<Vec<QueryParameterInput>>,
     sink: mpsc::Sender<stream::FetchEvent>,
-) -> Result<stream::StreamSummary, String> {
+) -> DbResult<stream::StreamSummary> {
     let cap = bounded_query_cap(max_rows)?;
     run_query_stream_capped_impl(
         state,
@@ -278,24 +283,26 @@ pub(crate) async fn run_query_stream_capped_impl(
     query_id: Option<String>,
     params: Option<Vec<QueryParameterInput>>,
     sink: mpsc::Sender<stream::FetchEvent>,
-) -> Result<stream::StreamSummary, String> {
+) -> DbResult<stream::StreamSummary> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
     let sql = sql.trim().to_string();
     if sql.is_empty() {
-        return Err("query is empty".into());
+        return Err(DbError::validation("query is empty"));
     }
     if sql.len() > MAX_SQL_BYTES {
-        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+        return Err(DbError::validation(format!(
+            "query text must be at most {MAX_SQL_BYTES} bytes"
+        )));
     }
     let conn = {
         let guard = state.conns.lock().await;
         guard
             .get(&connection_id)
             .cloned()
-            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+            .ok_or_else(|| DbError::not_found(format!("no open connection: {connection_id}")))?
     };
     ensure_connection_can_run_sql(state, &connection_id, &sql).await?;
     let prepared = prepare_query(conn.wire(), &sql, params.as_deref())?;
@@ -320,7 +327,7 @@ pub(crate) async fn run_query_stream_capped_impl(
     let run = async {
         tokio::select! {
             biased;
-            _ = token.cancelled() => Err("query cancelled".to_string()),
+            _ = token.cancelled() => Err(DbError::cancelled("query cancelled")),
             result = async {
                 if prepared.params.is_empty() {
                     conn.stream_query_sets(&prepared.sql, &ctx).await
@@ -379,7 +386,7 @@ pub(crate) async fn run_query_spill_impl(
     query_id: Option<String>,
     params: Option<Vec<QueryParameterInput>>,
     ui_sink: mpsc::Sender<stream::FetchEvent>,
-) -> Result<SpillRunResult, String> {
+) -> DbResult<SpillRunResult> {
     let started = Instant::now();
     let store = Arc::new(Mutex::new(ResultStore::new(Vec::new(), config)));
     let (prod_tx, mut prod_rx) = mpsc::channel::<stream::FetchEvent>(16);
@@ -450,7 +457,7 @@ pub(crate) async fn run_query_spill_impl(
                 }
             }
         }
-        Ok::<(), String>(())
+        Ok::<(), DbError>(())
     };
 
     let (producer_result, consumer_result) = tokio::join!(producer, consumer);
@@ -526,13 +533,13 @@ pub async fn result_window_impl(
     handle: String,
     offset: u64,
     limit: usize,
-) -> Result<ResultWindow, String> {
+) -> DbResult<ResultWindow> {
     let store = {
         let results = state.results.lock().await;
         results
             .get(&handle)
             .map(|entry| entry.store.clone())
-            .ok_or_else(|| format!("no such result: {handle}"))?
+            .ok_or_else(|| DbError::not_found(format!("no such result: {handle}")))?
     };
     let limit = limit.min(MAX_RESULT_ROWS);
     let rows = store.lock().await.window(offset, limit).await?;

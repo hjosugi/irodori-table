@@ -5,7 +5,10 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::time::SystemTime;
 
-use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    RowSet,
+};
 
 pub struct BigQueryConn {
     client: Client,
@@ -20,7 +23,7 @@ struct GcpServiceAccountKey {
     private_key: String,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<BigQueryConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<BigQueryConn> {
     let client = Client::new();
     let password = profile.password.clone().unwrap_or_default();
 
@@ -28,8 +31,9 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<BigQueryConn, String
     let (project_id, access_token) =
         if password.trim().starts_with('{') && password.trim().ends_with('}') {
             // Parse Service Account JSON key
-            let key: GcpServiceAccountKey = serde_json::from_str(&password)
-                .map_err(|e| format!("Invalid Google Service Account JSON: {e}"))?;
+            let key: GcpServiceAccountKey = serde_json::from_str(&password).map_err(|e| {
+                DbError::connection(format!("Invalid Google Service Account JSON: {e}"))
+            })?;
 
             let token = fetch_oauth2_token(&client, &key.client_email, &key.private_key).await?;
             (key.project_id, token)
@@ -41,9 +45,9 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<BigQueryConn, String
                 .or_else(|| profile.host.clone())
                 .unwrap_or_default();
             if project.is_empty() {
-                return Err(
-                    "GCP Project ID must be specified (set database or host to Project ID)".into(),
-                );
+                return Err(DbError::connection(
+                    "GCP Project ID must be specified (set database or host to Project ID)",
+                ));
             }
             (project, password)
         };
@@ -59,7 +63,7 @@ pub async fn version(_conn: &BigQueryConn) -> Option<String> {
     Some("Google BigQuery v2 API".to_string())
 }
 
-pub async fn run_query(conn: &BigQueryConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &BigQueryConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let url = format!(
         "https://bigquery.googleapis.com/bigquery/v2/projects/{}/queries",
         conn.project_id
@@ -78,20 +82,20 @@ pub async fn run_query(conn: &BigQueryConn, sql: &str, cap: usize) -> Result<Row
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("BigQuery query request failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("BigQuery query request failed: {e}")))?;
 
     if !res.status().is_success() {
         let status = res.status();
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!(
+        return Err(DbError::query(format!(
             "BigQuery query failed with HTTP {status}: {err_text}"
-        ));
+        )));
     }
 
     let val: Value = res
         .json()
         .await
-        .map_err(|e| format!("Failed to parse BigQuery response: {e}"))?;
+        .map_err(|e| DbError::query(format!("Failed to parse BigQuery response: {e}")))?;
 
     if let Some(err) = val
         .get("errors")
@@ -102,7 +106,7 @@ pub async fn run_query(conn: &BigQueryConn, sql: &str, cap: usize) -> Result<Row
             .get("message")
             .and_then(|m| m.as_str())
             .unwrap_or("Unknown BigQuery error");
-        return Err(msg.to_string());
+        return Err(DbError::query(msg.to_string()));
     }
 
     let mut columns = Vec::new();
@@ -143,7 +147,7 @@ pub async fn run_query(conn: &BigQueryConn, sql: &str, cap: usize) -> Result<Row
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(conn: &BigQueryConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &BigQueryConn) -> DbResult<DatabaseMetadata> {
     // 1. List all Datasets in the project
     let datasets_url = format!(
         "https://bigquery.googleapis.com/bigquery/v2/projects/{}/datasets",
@@ -156,7 +160,7 @@ pub async fn metadata(conn: &BigQueryConn) -> Result<DatabaseMetadata, String> {
         .bearer_auth(&conn.access_token)
         .send()
         .await
-        .map_err(|e| format!("Failed to list BigQuery datasets: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("Failed to list BigQuery datasets: {e}")))?;
 
     if !res.status().is_success() {
         return Ok(DatabaseMetadata {
@@ -246,11 +250,7 @@ pub async fn metadata(conn: &BigQueryConn) -> Result<DatabaseMetadata, String> {
 
 // ---- GCP OAuth2 Service Account Token Signing helper ----
 
-async fn fetch_oauth2_token(
-    client: &Client,
-    email: &str,
-    private_key: &str,
-) -> Result<String, String> {
+async fn fetch_oauth2_token(client: &Client, email: &str, private_key: &str) -> DbResult<String> {
     use openssl::hash::MessageDigest;
     use openssl::pkey::PKey;
     use openssl::sign::Signer;
@@ -271,17 +271,20 @@ async fn fetch_oauth2_token(
     let claims_b64 = base64_url_encode(claims.as_bytes());
     let payload = format!("{header_b64}.{claims_b64}");
 
-    let pkey = PKey::private_key_from_pem(private_key.as_bytes())
-        .map_err(|e| format!("Invalid private key in Google Service Account: {e}"))?;
+    let pkey = PKey::private_key_from_pem(private_key.as_bytes()).map_err(|e| {
+        DbError::connection(format!(
+            "Invalid private key in Google Service Account: {e}"
+        ))
+    })?;
 
     let mut signer = Signer::new(MessageDigest::sha256(), &pkey)
-        .map_err(|e| format!("Failed to initialize signer: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Failed to initialize signer: {e}")))?;
     signer
         .update(payload.as_bytes())
-        .map_err(|e| format!("Signer failed payload update: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Signer failed payload update: {e}")))?;
     let signature = signer
         .sign_to_vec()
-        .map_err(|e| format!("Failed to sign JWT assertion: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Failed to sign JWT assertion: {e}")))?;
     let signature_b64 = base64_url_encode(&signature);
 
     let assertion = format!("{payload}.{signature_b64}");
@@ -297,21 +300,21 @@ async fn fetch_oauth2_token(
         .body(body)
         .send()
         .await
-        .map_err(|e| format!("GCP token request failed: {e}"))?;
+        .map_err(|e| DbError::connection(format!("GCP token request failed: {e}")))?;
 
     if !res.status().is_success() {
         let status = res.status();
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!(
+        return Err(DbError::connection(format!(
             "GCP OAuth token request failed with HTTP {status}: {err_text}"
-        ));
+        )));
     }
 
     let val: Value = res.json().await.unwrap_or(Value::Null);
     let access_token = val
         .get("access_token")
         .and_then(|t| t.as_str())
-        .ok_or_else(|| "GCP OAuth token response missing access_token".to_string())?
+        .ok_or_else(|| DbError::connection("GCP OAuth token response missing access_token"))?
         .to_string();
 
     Ok(access_token)

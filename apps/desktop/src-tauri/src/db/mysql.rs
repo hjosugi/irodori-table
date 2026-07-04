@@ -5,6 +5,7 @@ use sqlx::types::chrono::{NaiveDate, NaiveDateTime};
 use sqlx::types::BigDecimal;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
+use super::error::{DbError, DbResult};
 use super::meta::MetaBuilder;
 use super::{engine::Wire, explain};
 use super::{
@@ -12,12 +13,12 @@ use super::{
     IndexMetadata, PreparedQuery, QueryPlanAnalysis, QueryPlanMode, RowSet,
 };
 
-pub async fn connect(url: &str) -> Result<MySqlPool, String> {
+pub async fn connect(url: &str) -> DbResult<MySqlPool> {
     MySqlPoolOptions::new()
         .max_connections(5)
         .connect(url)
         .await
-        .map_err(|e| format!("connect failed: {e}"))
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))
 }
 
 pub async fn version(pool: &MySqlPool) -> Option<String> {
@@ -27,7 +28,7 @@ pub async fn version(pool: &MySqlPool) -> Option<String> {
         .ok()
 }
 
-pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(pool: &MySqlPool, sql: &str, cap: usize) -> DbResult<RowSet> {
     super::stream::collect_capped(
         sqlx::query(super::audited_sql(sql)).fetch(pool),
         cap,
@@ -40,7 +41,7 @@ pub async fn run_prepared_query(
     pool: &MySqlPool,
     query: &PreparedQuery,
     cap: usize,
-) -> Result<RowSet, String> {
+) -> DbResult<RowSet> {
     super::stream::collect_capped(bind_query(query).fetch(pool), cap, cell_to_json).await
 }
 
@@ -48,7 +49,7 @@ pub async fn stream_query(
     pool: &MySqlPool,
     sql: &str,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     super::stream::stream_capped(
         sqlx::query(super::audited_sql(sql)).fetch(pool),
         ctx,
@@ -61,7 +62,7 @@ pub async fn stream_prepared_query(
     pool: &MySqlPool,
     query: &PreparedQuery,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
 }
 
@@ -70,7 +71,7 @@ pub async fn explain_query(
     wire: Wire,
     sql: &str,
     mode: QueryPlanMode,
-) -> Result<QueryPlanAnalysis, String> {
+) -> DbResult<QueryPlanAnalysis> {
     let statement = single_explain_statement(sql)?;
     let json_sql = format!("EXPLAIN FORMAT=JSON {statement}");
     match sqlx::query_scalar::<_, String>(super::audited_sql(&json_sql))
@@ -79,7 +80,7 @@ pub async fn explain_query(
     {
         Ok(raw) => {
             let json = serde_json::from_str::<serde_json::Value>(&raw)
-                .map_err(|e| format!("MySQL explain JSON parse failed: {e}"))?;
+                .map_err(|e| DbError::query(format!("MySQL explain JSON parse failed: {e}")))?;
             Ok(explain::analysis_from_mysql_json(
                 wire, &statement, mode, json, raw,
             ))
@@ -90,9 +91,9 @@ pub async fn explain_query(
                 run_query(pool, &table_sql, 100)
                     .await
                     .map_err(|table_error| {
-                        format!(
+                        DbError::query(format!(
                             "MySQL explain failed: {json_error}; fallback failed: {table_error}"
-                        )
+                        ))
                     })?;
             Ok(explain::analysis_from_row_table(
                 wire,
@@ -110,37 +111,37 @@ pub async fn explain_query(
 pub async fn apply_edits(
     pool: &MySqlPool,
     edits: &super::edit::TableEdits,
-) -> Result<super::edit::AppliedEdits, String> {
+) -> DbResult<super::edit::AppliedEdits> {
     let plan = super::edit::plan(super::engine::Wire::Mysql, edits)?;
     let mut tx = pool
         .begin()
         .await
-        .map_err(|e| format!("begin failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("begin failed: {e}")))?;
     let mut applied = super::edit::AppliedEdits::default();
     for stmt in &plan.deletes {
         applied.deleted += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("delete failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("delete failed: {e}")))?
             .rows_affected();
     }
     for stmt in &plan.updates {
         applied.updated += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("update failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("update failed: {e}")))?
             .rows_affected();
     }
     for stmt in &plan.inserts {
         applied.inserted += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("insert failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("insert failed: {e}")))?
             .rows_affected();
     }
     tx.commit()
         .await
-        .map_err(|e| format!("commit failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("commit failed: {e}")))?;
     Ok(applied)
 }
 
@@ -200,7 +201,7 @@ fn bind_json<'q>(
     q
 }
 
-fn single_explain_statement(sql: &str) -> Result<String, String> {
+fn single_explain_statement(sql: &str) -> DbResult<String> {
     let statements = super::split_sql_statements(sql);
     let statements = if statements.is_empty() {
         vec![sql.trim().trim_end_matches(';').trim().to_string()]
@@ -209,17 +210,19 @@ fn single_explain_statement(sql: &str) -> Result<String, String> {
     };
     match statements.as_slice() {
         [statement] if !statement.is_empty() => Ok(statement.clone()),
-        [] => Err("query is empty".into()),
-        _ => Err("Explain Plan supports one statement at a time".into()),
+        [] => Err(DbError::validation("query is empty")),
+        _ => Err(DbError::validation(
+            "Explain Plan supports one statement at a time",
+        )),
     }
 }
 
-pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(pool: &MySqlPool) -> DbResult<DatabaseMetadata> {
     let schema_name = sqlx::query_scalar::<_, Option<String>>("select database()")
         .fetch_one(pool)
         .await
-        .map_err(|e| format!("metadata failed: {e}"))?
-        .ok_or_else(|| "no active database selected".to_string())?;
+        .map_err(|e| DbError::metadata(format!("metadata failed: {e}")))?
+        .ok_or_else(|| DbError::metadata("no active database selected"))?;
 
     let object_rows = sqlx::query(
         r#"
@@ -236,7 +239,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata objects failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata objects failed: {e}")))?;
 
     let mut builder = MetaBuilder::default();
     for row in object_rows {
@@ -269,7 +272,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata routines failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata routines failed: {e}")))?;
 
     for row in routine_rows {
         let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
@@ -300,7 +303,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata columns failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata columns failed: {e}")))?;
 
     for row in column_rows {
         let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
@@ -337,7 +340,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata indexes failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata indexes failed: {e}")))?;
 
     for row in index_rows {
         let schema: String = row.try_get(0).unwrap_or_else(|_| schema_name.clone());
@@ -369,7 +372,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata primary keys failed: {e}")))?;
     for row in pk_rows {
         let schema: String = row.try_get(0).unwrap_or_default();
         let table: String = row.try_get(1).unwrap_or_default();
@@ -393,7 +396,7 @@ pub async fn metadata(pool: &MySqlPool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata foreign keys failed: {e}")))?;
     // Rows for one FK share (table, constraint_name); accumulate in order.
     let mut current: Option<(String, String, String)> = None;
     for row in fk_rows {

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use super::error::DbResult;
 use super::runner::release_results_for_connection;
 use super::spill::ResultStore;
 use super::*;
@@ -32,7 +33,7 @@ impl<'a> ResultSpillManager<'a> {
         query_id: Option<String>,
         params: Option<Vec<QueryParameterInput>>,
         ui_sink: mpsc::Sender<stream::FetchEvent>,
-    ) -> Result<SpillRunResult, String> {
+    ) -> DbResult<SpillRunResult> {
         run_query_spill_impl(
             self.state,
             connection_id,
@@ -51,7 +52,7 @@ impl<'a> ResultSpillManager<'a> {
         handle: String,
         offset: u64,
         limit: usize,
-    ) -> Result<ResultWindow, String> {
+    ) -> DbResult<ResultWindow> {
         result_window_impl(self.state, handle, offset, limit).await
     }
 

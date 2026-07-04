@@ -10,8 +10,8 @@ use oracle_rs::{Config, Connection as OraConn, Value};
 use tokio::sync::Mutex;
 
 use super::{
-    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
-    DbObjectMetadataKind, IndexMetadata, RowSet, SchemaMetadata,
+    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadata,
+    DbObjectMetadataKind, DbResult, IndexMetadata, RowSet, SchemaMetadata,
 };
 
 pub struct OracleHandle {
@@ -58,11 +58,12 @@ fn percent_decode(s: &str) -> String {
     out
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<OracleHandle, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<OracleHandle> {
     let config = if let Some(url) = &profile.url {
         let (wallet_path, wallet_password) = parse_wallet_params(url);
         let clean_url = url.split('?').next().unwrap_or(url);
-        let mut cfg = Config::from_str(clean_url).map_err(|e| format!("invalid url: {e}"))?;
+        let mut cfg = Config::from_str(clean_url)
+            .map_err(|e| DbError::connection(format!("invalid url: {e}")))?;
         if let Some(user) = &profile.user {
             cfg.set_username(user);
         }
@@ -72,7 +73,7 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<OracleHandle, String
         if let Some(wp) = wallet_path {
             cfg = cfg
                 .with_wallet(wp, wallet_password.as_deref())
-                .map_err(|e| format!("wallet failed: {e}"))?;
+                .map_err(|e| DbError::connection(format!("wallet failed: {e}")))?;
         }
         cfg
     } else {
@@ -100,7 +101,7 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<OracleHandle, String
 
     let conn = OraConn::connect_with_config(config)
         .await
-        .map_err(|e| format!("connect failed: {e}"))?;
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))?;
     Ok(OracleHandle {
         conn: Mutex::new(conn),
     })
@@ -119,7 +120,7 @@ pub async fn version(h: &OracleHandle) -> Option<String> {
         .map(|s| s.trim().to_string())
 }
 
-pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> DbResult<RowSet> {
     let guard = h.conn.lock().await;
 
     let is_explain = sql
@@ -130,7 +131,7 @@ pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet
         guard
             .query(sql, &[])
             .await
-            .map_err(|e| format!("explain plan failed: {e}"))?;
+            .map_err(|e| DbError::query(format!("explain plan failed: {e}")))?;
 
         let plan_res = guard
             .query(
@@ -138,7 +139,7 @@ pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet
                 &[],
             )
             .await
-            .map_err(|e| format!("retrieving explain plan failed: {e}"))?;
+            .map_err(|e| DbError::query(format!("retrieving explain plan failed: {e}")))?;
 
         let columns = vec!["PLAN_TABLE_OUTPUT".to_string()];
         let mut rows = Vec::new();
@@ -151,7 +152,7 @@ pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet
     let res = guard
         .query(sql, &[])
         .await
-        .map_err(|e| format!("query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?;
 
     let columns: Vec<String> = res.columns.iter().map(|c| c.name.clone()).collect();
     let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
@@ -169,12 +170,12 @@ pub async fn run_query(h: &OracleHandle, sql: &str, cap: usize) -> Result<RowSet
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(h: &OracleHandle) -> DbResult<DatabaseMetadata> {
     let guard = h.conn.lock().await;
     let user_res = guard
         .query("select user from dual", &[])
         .await
-        .map_err(|e| format!("metadata user failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata user failed: {e}")))?;
     let schema = user_res
         .rows
         .first()
@@ -192,7 +193,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             &[],
         )
         .await
-        .map_err(|e| format!("metadata objects failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata objects failed: {e}")))?;
 
     let mut objects: Vec<DbObjectMetadata> = objects_res
         .rows
@@ -230,7 +231,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             &[],
         )
         .await
-        .map_err(|e| format!("metadata columns failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata columns failed: {e}")))?;
 
     for row in &columns_res.rows {
         let table = value_string(row.get(0)).unwrap_or_default();
@@ -261,7 +262,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             &[],
         )
         .await
-        .map_err(|e| format!("metadata indexes failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata indexes failed: {e}")))?;
 
     for row in &indexes_res.rows {
         let table = value_string(row.get(0)).unwrap_or_default();
@@ -290,7 +291,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             &[],
         )
         .await
-        .map_err(|e| format!("metadata routines failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata routines failed: {e}")))?;
 
     for row in &routines_res.rows {
         let object_name = value_string(row.get(0)).unwrap_or_default();
@@ -339,7 +340,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             &[],
         )
         .await
-        .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata primary keys failed: {e}")))?;
 
     for row in &pk_res.rows {
         let table = value_string(row.get(0)).unwrap_or_default();
@@ -365,7 +366,7 @@ pub async fn metadata(h: &OracleHandle) -> Result<DatabaseMetadata, String> {
             &[],
         )
         .await
-        .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata foreign keys failed: {e}")))?;
 
     let mut current_fk: Option<(String, String)> = None;
     for row in &fk_res.rows {

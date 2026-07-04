@@ -3,7 +3,10 @@
 use reqwest::Client;
 use serde_json::Value;
 
-use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    RowSet,
+};
 
 pub struct ClickHouseConn {
     client: Client,
@@ -13,7 +16,7 @@ pub struct ClickHouseConn {
     password: Option<String>,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<ClickHouseConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<ClickHouseConn> {
     let host = profile.host.clone().unwrap_or_else(|| "127.0.0.1".into());
     let port = profile.port.unwrap_or(8123);
     let mut url = match &profile.url {
@@ -50,7 +53,7 @@ pub async fn version(conn: &ClickHouseConn) -> Option<String> {
     Some("ClickHouse".to_string())
 }
 
-pub async fn run_query(conn: &ClickHouseConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &ClickHouseConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     // Send query to the ClickHouse HTTP endpoint with default_format=JSON
     let url = format!(
         "{}/?database={}&default_format=JSON",
@@ -66,17 +69,19 @@ pub async fn run_query(conn: &ClickHouseConn, sql: &str, cap: usize) -> Result<R
         .body(sql.to_string())
         .send()
         .await
-        .map_err(|e| format!("HTTP request failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("HTTP request failed: {e}")))?;
 
     if !res.status().is_success() {
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!("ClickHouse query failed: {err_text}"));
+        return Err(DbError::query(format!(
+            "ClickHouse query failed: {err_text}"
+        )));
     }
 
     let text = res
         .text()
         .await
-        .map_err(|e| format!("failed to read response: {e}"))?;
+        .map_err(|e| DbError::query(format!("failed to read response: {e}")))?;
 
     if text.trim().is_empty() {
         return Ok((Vec::new(), Vec::new(), false));
@@ -121,7 +126,7 @@ pub async fn run_query(conn: &ClickHouseConn, sql: &str, cap: usize) -> Result<R
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(conn: &ClickHouseConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &ClickHouseConn) -> DbResult<DatabaseMetadata> {
     let sql = format!(
         "SELECT table, name, type FROM system.columns WHERE database = '{}' ORDER BY table, position",
         conn.database.replace('\'', "''")

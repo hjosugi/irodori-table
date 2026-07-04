@@ -17,7 +17,7 @@ use irodori_sql::metamodel::{
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use super::ConnectionProfile;
+use super::{ConnectionProfile, DbError, DbResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -492,7 +492,7 @@ fn append_query_param(url: &mut String, key: &str, value: &str) {
 /// Build a sqlx connection URL for the Postgres/MySQL/SQLite drivers. SQL Server,
 /// DuckDB, MongoDB, Oracle, and extension-backed engines use dedicated connectors
 /// instead.
-pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
+pub(crate) fn build_url(p: &ConnectionProfile) -> DbResult<String> {
     if let Some(url) = &p.url {
         return Ok(url.clone());
     }
@@ -502,7 +502,9 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
                 .database
                 .clone()
                 .or_else(|| p.host.clone())
-                .ok_or("SQLite needs a database file path (set `database`)")?;
+                .ok_or_else(|| {
+                    DbError::validation("SQLite needs a database file path (set `database`)")
+                })?;
             if path == ":memory:" {
                 Ok("sqlite::memory:".into())
             } else {
@@ -534,7 +536,9 @@ pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
         | Wire::KeyValue
         | Wire::Graph
         | Wire::TimeSeries
-        | Wire::Lakehouse => Err("this engine uses a dedicated connector, not a sqlx URL".into()),
+        | Wire::Lakehouse => Err(DbError::unsupported(
+            "this engine uses a dedicated connector, not a sqlx URL",
+        )),
     }
 }
 
@@ -765,7 +769,7 @@ mod tests {
             .filter(|(_, wire, _)| !matches!(wire, Wire::Postgres | Wire::Mysql | Wire::Sqlite))
         {
             assert_eq!(
-                build_url(&profile(engine)).unwrap_err(),
+                build_url(&profile(engine)).unwrap_err().message(),
                 "this engine uses a dedicated connector, not a sqlx URL",
                 "{engine:?}/{wire:?} should not go through sqlx URL generation"
             );

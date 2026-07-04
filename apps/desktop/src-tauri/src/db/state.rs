@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use super::connection::Connection;
+use super::error::{DbError, DbResult};
 use super::meta::convert_metadata_to_snapshot;
 use super::metadata_manager::MetadataManager;
 use super::query::{sql_may_change_metadata, sql_may_write};
@@ -76,19 +77,23 @@ pub(super) async fn ensure_connection_can_run_sql(
     state: &DbState,
     connection_id: &str,
     sql: &str,
-) -> Result<(), String> {
+) -> DbResult<()> {
     if !sql_may_write(sql) || !is_connection_read_only(state, connection_id).await {
         return Ok(());
     }
-    Err("read-only connection: write statements are blocked".into())
+    Err(DbError::validation(
+        "read-only connection: write statements are blocked",
+    ))
 }
 
 pub(super) async fn ensure_connection_writable(
     state: &DbState,
     connection_id: &str,
-) -> Result<(), String> {
+) -> DbResult<()> {
     if is_connection_read_only(state, connection_id).await {
-        return Err("read-only connection: write operations are blocked".into());
+        return Err(DbError::validation(
+            "read-only connection: write operations are blocked",
+        ));
     }
     Ok(())
 }

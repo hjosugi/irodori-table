@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use super::engine::DbEngine;
+use super::{DbError, DbResult};
+use irodori_core::{IrodoriError, Result as IrodoriResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -127,16 +129,16 @@ impl From<irodori_migration::MigrationPlan> for MigrationPlanOutput {
 }
 
 #[tauri::command]
-pub fn migration_build_plan(input: MigrationPlanInput) -> Result<MigrationPlanOutput, String> {
-    let spec = migration_spec_from_input(input)?;
+pub fn migration_build_plan(input: MigrationPlanInput) -> IrodoriResult<MigrationPlanOutput> {
+    let spec = migration_spec_from_input(input).map_err(IrodoriError::from)?;
     irodori_migration::try_build_migration_plan(&spec)
         .map(Into::into)
-        .map_err(|error| error.to_string())
+        .map_err(|error| IrodoriError::from(DbError::validation(error.to_string())))
 }
 
 fn migration_spec_from_input(
     input: MigrationPlanInput,
-) -> Result<irodori_migration::MigrationSpec, String> {
+) -> DbResult<irodori_migration::MigrationSpec> {
     let defaults = irodori_migration::MigrationSpec::default();
 
     Ok(irodori_migration::MigrationSpec {
@@ -161,7 +163,7 @@ fn migration_spec_from_input(
     })
 }
 
-fn migration_engine(engine: DbEngine) -> Result<irodori_migration::MigrationEngine, String> {
+fn migration_engine(engine: DbEngine) -> DbResult<irodori_migration::MigrationEngine> {
     match engine {
         DbEngine::Postgres => Ok(irodori_migration::MigrationEngine::Postgres),
         DbEngine::Mysql => Ok(irodori_migration::MigrationEngine::MySql),
@@ -175,7 +177,9 @@ fn migration_engine(engine: DbEngine) -> Result<irodori_migration::MigrationEngi
         DbEngine::Redshift => Ok(irodori_migration::MigrationEngine::Redshift),
         DbEngine::Databricks => Ok(irodori_migration::MigrationEngine::Databricks),
         DbEngine::TrinoPresto => Ok(irodori_migration::MigrationEngine::TrinoPresto),
-        other => Err(format!("{other:?} is not supported by Migration Studio")),
+        other => Err(DbError::unsupported(format!(
+            "{other:?} is not supported by Migration Studio"
+        ))),
     }
 }
 
@@ -224,6 +228,7 @@ mod tests {
 
         let error = migration_build_plan(input).expect_err("missing key should fail closed");
 
-        assert!(error.contains("stable key column"));
+        assert_eq!(error.kind, irodori_core::IrodoriErrorKind::Validation);
+        assert!(error.message.contains("stable key column"));
     }
 }

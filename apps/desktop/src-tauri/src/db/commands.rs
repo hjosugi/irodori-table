@@ -109,7 +109,7 @@ pub async fn db_connect(
                 .record(
                     AuditEventKind::ConnectionFailed,
                     Some(connection_id),
-                    error.clone(),
+                    error.to_string(),
                     BTreeMap::from([("engine".to_string(), engine)]),
                 )
                 .await;
@@ -160,7 +160,7 @@ pub async fn db_explain_query(
                     AuditEventKind::QueryFailed,
                     Some(audit_connection_id),
                     audit_sql,
-                    BTreeMap::from([("error".to_string(), error.clone())]),
+                    BTreeMap::from([("error".to_string(), error.to_string())]),
                 )
                 .await;
             Err(IrodoriError::from(error))
@@ -210,7 +210,7 @@ pub async fn db_run_query(
                     AuditEventKind::QueryFailed,
                     Some(audit_connection_id),
                     audit_sql,
-                    BTreeMap::from([("error".to_string(), error.clone())]),
+                    BTreeMap::from([("error".to_string(), error.to_string())]),
                 )
                 .await;
             Err(IrodoriError::from(error))
@@ -333,16 +333,18 @@ pub async fn db_run_query_stream(
                     .collect(),
             }
         }
-        Err(message) => {
+        Err(error) => {
             security
                 .record(
                     AuditEventKind::QueryFailed,
                     Some(audit_connection_id),
                     audit_sql,
-                    BTreeMap::from([("error".to_string(), message.clone())]),
+                    BTreeMap::from([("error".to_string(), error.to_string())]),
                 )
                 .await;
-            QueryStreamEvent::Error { message }
+            QueryStreamEvent::Error {
+                message: error.to_string(),
+            }
         }
     };
     on_event
@@ -438,7 +440,7 @@ pub async fn db_run_query_spill(
                     AuditEventKind::QueryFailed,
                     Some(audit_connection_id),
                     audit_sql,
-                    BTreeMap::from([("error".to_string(), error.clone())]),
+                    BTreeMap::from([("error".to_string(), error.to_string())]),
                 )
                 .await;
             Err(IrodoriError::from(error))

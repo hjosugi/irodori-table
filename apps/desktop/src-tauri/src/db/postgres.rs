@@ -5,6 +5,7 @@ use sqlx::types::chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use sqlx::types::{BigDecimal, Uuid};
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
+use super::error::{DbError, DbResult};
 use super::meta::MetaBuilder;
 use super::{engine::Wire, explain};
 use super::{
@@ -12,12 +13,12 @@ use super::{
     DbQuickSample, IndexMetadata, PreparedQuery, QueryPlanAnalysis, QueryPlanMode, RowSet,
 };
 
-pub async fn connect(url: &str) -> Result<PgPool, String> {
+pub async fn connect(url: &str) -> DbResult<PgPool> {
     PgPoolOptions::new()
         .max_connections(5)
         .connect(url)
         .await
-        .map_err(|e| format!("connect failed: {e}"))
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))
 }
 
 pub async fn version(pool: &PgPool) -> Option<String> {
@@ -27,7 +28,7 @@ pub async fn version(pool: &PgPool) -> Option<String> {
         .ok()
 }
 
-pub async fn run_query(pool: &PgPool, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(pool: &PgPool, sql: &str, cap: usize) -> DbResult<RowSet> {
     super::stream::collect_capped(
         sqlx::query(super::audited_sql(sql)).fetch(pool),
         cap,
@@ -40,7 +41,7 @@ pub async fn run_prepared_query(
     pool: &PgPool,
     query: &PreparedQuery,
     cap: usize,
-) -> Result<RowSet, String> {
+) -> DbResult<RowSet> {
     super::stream::collect_capped(bind_query(query).fetch(pool), cap, cell_to_json).await
 }
 
@@ -48,7 +49,7 @@ pub async fn stream_query(
     pool: &PgPool,
     sql: &str,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     super::stream::stream_capped(
         sqlx::query(super::audited_sql(sql)).fetch(pool),
         ctx,
@@ -61,7 +62,7 @@ pub async fn stream_prepared_query(
     pool: &PgPool,
     query: &PreparedQuery,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
 }
 
@@ -70,7 +71,7 @@ pub async fn explain_query(
     wire: Wire,
     sql: &str,
     mode: QueryPlanMode,
-) -> Result<QueryPlanAnalysis, String> {
+) -> DbResult<QueryPlanAnalysis> {
     let statement = single_explain_statement(sql)?;
     let prefix = match mode {
         QueryPlanMode::Plan => "EXPLAIN (FORMAT JSON)",
@@ -80,7 +81,7 @@ pub async fn explain_query(
     let json = sqlx::query_scalar::<_, serde_json::Value>(super::audited_sql(&explain_sql))
         .fetch_one(pool)
         .await
-        .map_err(|e| format!("PostgreSQL explain failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("PostgreSQL explain failed: {e}")))?;
     let raw = serde_json::to_string_pretty(&json).unwrap_or_else(|_| json.to_string());
     Ok(explain::analysis_from_postgres_json(
         wire, &statement, mode, json, raw,
@@ -94,37 +95,37 @@ pub async fn explain_query(
 pub async fn apply_edits(
     pool: &PgPool,
     edits: &super::edit::TableEdits,
-) -> Result<super::edit::AppliedEdits, String> {
+) -> DbResult<super::edit::AppliedEdits> {
     let plan = super::edit::plan(super::engine::Wire::Postgres, edits)?;
     let mut tx = pool
         .begin()
         .await
-        .map_err(|e| format!("begin failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("begin failed: {e}")))?;
     let mut applied = super::edit::AppliedEdits::default();
     for stmt in &plan.deletes {
         applied.deleted += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("delete failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("delete failed: {e}")))?
             .rows_affected();
     }
     for stmt in &plan.updates {
         applied.updated += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("update failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("update failed: {e}")))?
             .rows_affected();
     }
     for stmt in &plan.inserts {
         applied.inserted += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("insert failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("insert failed: {e}")))?
             .rows_affected();
     }
     tx.commit()
         .await
-        .map_err(|e| format!("commit failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("commit failed: {e}")))?;
     Ok(applied)
 }
 
@@ -184,7 +185,7 @@ fn bind_json<'q>(
     q
 }
 
-pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(pool: &PgPool, engine: DbEngine) -> DbResult<DatabaseMetadata> {
     let object_rows = sqlx::query(
         r#"
         select table_schema, table_name, table_type
@@ -196,7 +197,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata failed: {e}")))?;
 
     let mut builder = MetaBuilder::default();
     for row in object_rows {
@@ -260,7 +261,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata columns failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata columns failed: {e}")))?;
 
     for row in column_rows {
         let schema: String = row.try_get("table_schema").unwrap_or_default();
@@ -340,7 +341,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata indexes failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata indexes failed: {e}")))?;
 
     for row in index_rows {
         let schema: String = row.try_get("schema_name").unwrap_or_default();
@@ -369,7 +370,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata primary keys failed: {e}")))?;
     for row in pk_rows {
         let schema: String = row.try_get("schema_name").unwrap_or_default();
         let table: String = row.try_get("table_name").unwrap_or_default();
@@ -399,7 +400,7 @@ pub async fn metadata(pool: &PgPool, engine: DbEngine) -> Result<DatabaseMetadat
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata foreign keys failed: {e}")))?;
     for row in fk_rows {
         let schema: String = row.try_get("schema_name").unwrap_or_default();
         let table: String = row.try_get("table_name").unwrap_or_default();
@@ -624,7 +625,7 @@ fn quote_ident(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
 }
 
-fn single_explain_statement(sql: &str) -> Result<String, String> {
+fn single_explain_statement(sql: &str) -> DbResult<String> {
     let statements = super::split_sql_statements(sql);
     let statements = if statements.is_empty() {
         vec![sql.trim().trim_end_matches(';').trim().to_string()]
@@ -633,8 +634,10 @@ fn single_explain_statement(sql: &str) -> Result<String, String> {
     };
     match statements.as_slice() {
         [statement] if !statement.is_empty() => Ok(statement.clone()),
-        [] => Err("query is empty".into()),
-        _ => Err("Explain Plan supports one statement at a time".into()),
+        [] => Err(DbError::validation("query is empty")),
+        _ => Err(DbError::validation(
+            "Explain Plan supports one statement at a time",
+        )),
     }
 }
 

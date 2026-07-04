@@ -6,8 +6,8 @@ use neo4rs::{query, ConfigBuilder, Graph};
 use serde_json::Value;
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
-    RowSet, SchemaMetadata,
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadata,
+    DbObjectMetadataKind, DbResult, RowSet, SchemaMetadata,
 };
 
 pub struct Neo4jConn {
@@ -15,7 +15,7 @@ pub struct Neo4jConn {
     db_name: String,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<Neo4jConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<Neo4jConn> {
     let uri = match &profile.url {
         Some(u) => u.clone(),
         None => {
@@ -34,11 +34,11 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<Neo4jConn, String> {
         .password(&password)
         .db(db_name.as_str())
         .build()
-        .map_err(|e| format!("failed to build neo4j config: {e}"))?;
+        .map_err(|e| DbError::connection(format!("failed to build neo4j config: {e}")))?;
 
     let graph = Graph::connect(config)
         .await
-        .map_err(|e| format!("failed to connect to neo4j: {e}"))?;
+        .map_err(|e| DbError::connection(format!("failed to connect to neo4j: {e}")))?;
 
     Ok(Neo4jConn { graph, db_name })
 }
@@ -55,12 +55,12 @@ pub async fn version(conn: &Neo4jConn) -> Option<String> {
     Some("Neo4j".to_string())
 }
 
-pub async fn run_query(conn: &Neo4jConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &Neo4jConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let mut result = conn
         .graph
         .execute(query(sql))
         .await
-        .map_err(|e| format!("Neo4j query execution failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("Neo4j query execution failed: {e}")))?;
 
     let mut columns = Vec::new();
     let mut records: Vec<BTreeMap<String, Value>> = Vec::new();
@@ -69,7 +69,7 @@ pub async fn run_query(conn: &Neo4jConn, sql: &str, cap: usize) -> Result<RowSet
     while let Some(row) = result
         .next()
         .await
-        .map_err(|e| format!("failed to fetch row: {e}"))?
+        .map_err(|e| DbError::query(format!("failed to fetch row: {e}")))?
     {
         if records.len() >= cap {
             truncated = true;
@@ -78,7 +78,7 @@ pub async fn run_query(conn: &Neo4jConn, sql: &str, cap: usize) -> Result<RowSet
 
         let record = row
             .to::<BTreeMap<String, Value>>()
-            .map_err(|e| format!("failed to decode neo4j row: {e}"))?;
+            .map_err(|e| DbError::query(format!("failed to decode neo4j row: {e}")))?;
         for key in record.keys() {
             if !columns.contains(key) {
                 columns.push(key.clone());
@@ -100,7 +100,7 @@ pub async fn run_query(conn: &Neo4jConn, sql: &str, cap: usize) -> Result<RowSet
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &Neo4jConn) -> DbResult<DatabaseMetadata> {
     let mut objects = Vec::new();
 
     // 1. Fetch Node Labels
@@ -109,9 +109,13 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
         .graph
         .execute(label_query)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| DbError::metadata(e.to_string()))?;
     let mut labels = Vec::new();
-    while let Some(row) = label_res.next().await.map_err(|e| e.to_string())? {
+    while let Some(row) = label_res
+        .next()
+        .await
+        .map_err(|e| DbError::metadata(e.to_string()))?
+    {
         if let Ok(label) = row.get::<String>("label") {
             labels.push(label);
         }
@@ -125,10 +129,14 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
             .graph
             .execute(query(&prop_sql))
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| DbError::metadata(e.to_string()))?;
         let mut columns = Vec::new();
         let mut idx = 1;
-        while let Some(row) = prop_res.next().await.map_err(|e| e.to_string())? {
+        while let Some(row) = prop_res
+            .next()
+            .await
+            .map_err(|e| DbError::metadata(e.to_string()))?
+        {
             if let Ok(key) = row.get::<String>("key") {
                 columns.push(ColumnMetadata {
                     name: key,
@@ -164,9 +172,13 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
         .graph
         .execute(rel_query)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| DbError::metadata(e.to_string()))?;
     let mut rel_types = Vec::new();
-    while let Some(row) = rel_res.next().await.map_err(|e| e.to_string())? {
+    while let Some(row) = rel_res
+        .next()
+        .await
+        .map_err(|e| DbError::metadata(e.to_string()))?
+    {
         if let Ok(rel_type) = row.get::<String>("relationshipType") {
             rel_types.push(rel_type);
         }
@@ -180,10 +192,14 @@ pub async fn metadata(conn: &Neo4jConn) -> Result<DatabaseMetadata, String> {
             .graph
             .execute(query(&prop_sql))
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| DbError::metadata(e.to_string()))?;
         let mut columns = Vec::new();
         let mut idx = 1;
-        while let Some(row) = prop_res.next().await.map_err(|e| e.to_string())? {
+        while let Some(row) = prop_res
+            .next()
+            .await
+            .map_err(|e| DbError::metadata(e.to_string()))?
+        {
             if let Ok(key) = row.get::<String>("key") {
                 columns.push(ColumnMetadata {
                     name: key,

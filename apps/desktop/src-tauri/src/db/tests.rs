@@ -1,4 +1,5 @@
 use super::*;
+use irodori_core::{IrodoriError, IrodoriErrorKind};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -6,18 +7,18 @@ use tokio_util::sync::CancellationToken;
 #[tokio::test]
 async fn with_timeout_passes_through_and_trips() {
     // No limit (None / 0) runs to completion.
-    let ok = with_timeout(None, async { Ok::<_, String>(42) }).await;
+    let ok = with_timeout(None, async { Ok::<_, DbError>(42) }).await;
     assert_eq!(ok, Ok(42));
-    let zero = with_timeout(Some(0), async { Ok::<_, String>(7) }).await;
+    let zero = with_timeout(Some(0), async { Ok::<_, DbError>(7) }).await;
     assert_eq!(zero, Ok(7));
 
     // A slow future past the deadline returns a clean timeout error.
     let slow = with_timeout(Some(5), async {
         tokio::time::sleep(Duration::from_secs(30)).await;
-        Ok::<_, String>(())
+        Ok::<_, DbError>(())
     })
     .await;
-    assert_eq!(slow, Err("query timed out after 5ms".to_string()));
+    assert_eq!(slow, Err(DbError::timeout("query timed out after 5ms")));
 }
 
 #[tokio::test]
@@ -677,7 +678,7 @@ async fn stream_query_stops_on_a_cancelled_token() {
     };
     let res = conn.stream_query("select a from t", &ctx).await;
     assert!(
-        matches!(&res, Err(m) if m.as_str() == "query cancelled"),
+        matches!(&res, Err(m) if m.message() == "query cancelled"),
         "got {res:?}"
     );
 }
@@ -1107,6 +1108,9 @@ async fn command_boundary_rejects_invalid_inputs() {
         .await
         .unwrap_err();
     assert!(err.contains("connection id is required"));
+    let typed = IrodoriError::from(err);
+    assert_eq!(typed.kind, IrodoriErrorKind::Validation);
+    assert!(!typed.retryable);
 
     let missing_host = ConnectionProfile {
         id: "missing-host".into(),
@@ -1148,6 +1152,9 @@ async fn command_boundary_rejects_invalid_inputs() {
     assert!(err.contains("connector extension"));
     assert!(err.contains("data-source-support-status"));
     assert!(!err.contains("core app"));
+    let typed = IrodoriError::from(err);
+    assert_eq!(typed.kind, IrodoriErrorKind::Unsupported);
+    assert!(!typed.retryable);
 
     let duckdb = ConnectionProfile {
         id: "duckdb-memory".into(),
@@ -1174,6 +1181,9 @@ async fn command_boundary_rejects_invalid_inputs() {
         .await
         .unwrap_err();
     assert!(err.contains("connection id is required"));
+    let typed = IrodoriError::from(err);
+    assert_eq!(typed.kind, IrodoriErrorKind::Validation);
+    assert!(!typed.retryable);
 }
 
 #[tokio::test]
@@ -1286,7 +1296,9 @@ async fn reconnect_replaces_existing_connection() {
         .await
         .unwrap_err();
     assert!(
-        err.to_ascii_lowercase().contains("no such table"),
+        err.to_string()
+            .to_ascii_lowercase()
+            .contains("no such table"),
         "unexpected error: {err}"
     );
 }

@@ -5,13 +5,16 @@ use scylla::client::session_builder::SessionBuilder;
 use scylla::value::{CqlValue, Row};
 use serde_json::Value as JValue;
 
-use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    RowSet,
+};
 
 pub struct CassandraConn {
     session: Session,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<CassandraConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<CassandraConn> {
     let host = profile.host.clone().unwrap_or_else(|| "127.0.0.1".into());
     let port = profile.port.unwrap_or(9042);
     let user = profile.user.clone();
@@ -25,13 +28,12 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<CassandraConn, Strin
     let session = builder
         .build()
         .await
-        .map_err(|e| format!("Failed to connect to Cassandra: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Failed to connect to Cassandra: {e}")))?;
 
     if keyspace != "system" && !keyspace.is_empty() {
-        session
-            .use_keyspace(&keyspace, false)
-            .await
-            .map_err(|e| format!("Failed to select keyspace {keyspace}: {e}"))?;
+        session.use_keyspace(&keyspace, false).await.map_err(|e| {
+            DbError::connection(format!("Failed to select keyspace {keyspace}: {e}"))
+        })?;
     }
 
     Ok(CassandraConn { session })
@@ -56,30 +58,34 @@ pub async fn version(conn: &CassandraConn) -> Option<String> {
     Some("Cassandra".to_string())
 }
 
-pub async fn run_query(conn: &CassandraConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &CassandraConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let res = conn
         .session
         .query_unpaged(sql, &[])
         .await
-        .map_err(|e| format!("Cassandra query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("Cassandra query failed: {e}")))?;
 
     let mut columns = Vec::new();
     let mut rows = Vec::new();
     let mut truncated = false;
 
     if res.is_rows() {
-        let rows_result = res.into_rows_result().map_err(|e| e.to_string())?;
+        let rows_result = res
+            .into_rows_result()
+            .map_err(|e| DbError::query(e.to_string()))?;
         for col in rows_result.column_specs().iter() {
             columns.push(col.name().to_string());
         }
 
-        let res_rows = rows_result.rows::<Row>().map_err(|e| e.to_string())?;
+        let res_rows = rows_result
+            .rows::<Row>()
+            .map_err(|e| DbError::query(e.to_string()))?;
         for row in res_rows {
             if rows.len() >= cap {
                 truncated = true;
                 break;
             }
-            let row_obj = row.map_err(|e| e.to_string())?;
+            let row_obj = row.map_err(|e| DbError::query(e.to_string()))?;
             let mut row_values = Vec::new();
             for col_val in &row_obj.columns {
                 match col_val {
@@ -94,7 +100,7 @@ pub async fn run_query(conn: &CassandraConn, sql: &str, cap: usize) -> Result<Ro
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(conn: &CassandraConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &CassandraConn) -> DbResult<DatabaseMetadata> {
     let query = "SELECT keyspace_name, table_name, column_name, type \
                  FROM system_schema.columns";
 
@@ -102,15 +108,19 @@ pub async fn metadata(conn: &CassandraConn) -> Result<DatabaseMetadata, String> 
         .session
         .query_unpaged(query, &[])
         .await
-        .map_err(|e| format!("Failed to fetch columns metadata: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("Failed to fetch columns metadata: {e}")))?;
 
     let mut builder = super::meta::MetaBuilder::default();
 
     if res.is_rows() {
-        let rows_result = res.into_rows_result().map_err(|e| e.to_string())?;
-        let res_rows = rows_result.rows::<Row>().map_err(|e| e.to_string())?;
+        let rows_result = res
+            .into_rows_result()
+            .map_err(|e| DbError::metadata(e.to_string()))?;
+        let res_rows = rows_result
+            .rows::<Row>()
+            .map_err(|e| DbError::metadata(e.to_string()))?;
         for row in res_rows {
-            let row_obj = row.map_err(|e| e.to_string())?;
+            let row_obj = row.map_err(|e| DbError::metadata(e.to_string()))?;
             let keyspace = row_obj
                 .columns
                 .get(0)

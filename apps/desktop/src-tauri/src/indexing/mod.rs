@@ -155,7 +155,7 @@ async fn run_schema_index_job(
         ctx.report_progress(0, None, "metadata", "loading schema metadata")?;
         let metadata = list_objects_impl(&db, job_connection_id.clone())
             .await
-            .map_err(|message| IrodoriError::new(IrodoriErrorKind::Metadata, message))?;
+            .map_err(IrodoriError::from)?;
         let documents = schema_documents(&metadata);
         ctx.report_progress(
             0,

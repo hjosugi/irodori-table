@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use super::engine::Wire;
+use super::error::{DbError, DbResult};
 
 /// One column name paired with its JSON-decoded value.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -108,9 +109,9 @@ fn get_dialect(wire: Wire) -> Box<dyn SqlDialect> {
 }
 
 /// Build the parameterized statements for a batch of edits.
-pub(crate) fn plan(wire: Wire, edits: &TableEdits) -> Result<Plan, String> {
+pub(crate) fn plan(wire: Wire, edits: &TableEdits) -> DbResult<Plan> {
     if edits.table.trim().is_empty() {
-        return Err("no target table for edits".to_string());
+        return Err(DbError::validation("no target table for edits"));
     }
     let dialect = get_dialect(wire);
     let target = qualified(&*dialect, edits.schema.as_deref(), &edits.table);
@@ -133,16 +134,14 @@ pub(crate) fn plan(wire: Wire, edits: &TableEdits) -> Result<Plan, String> {
     })
 }
 
-fn build_update(
-    dialect: &dyn SqlDialect,
-    target: &str,
-    update: &RowUpdate,
-) -> Result<Statement, String> {
+fn build_update(dialect: &dyn SqlDialect, target: &str, update: &RowUpdate) -> DbResult<Statement> {
     if update.set.is_empty() {
-        return Err("update has no columns to set".to_string());
+        return Err(DbError::validation("update has no columns to set"));
     }
     if update.keys.is_empty() {
-        return Err("update has no key columns (would touch every row)".to_string());
+        return Err(DbError::validation(
+            "update has no key columns (would touch every row)",
+        ));
     }
     let mut params = Vec::new();
     let mut next = 1;
@@ -164,13 +163,11 @@ fn build_update(
     })
 }
 
-fn build_delete(
-    dialect: &dyn SqlDialect,
-    target: &str,
-    delete: &RowDelete,
-) -> Result<Statement, String> {
+fn build_delete(dialect: &dyn SqlDialect, target: &str, delete: &RowDelete) -> DbResult<Statement> {
     if delete.keys.is_empty() {
-        return Err("delete has no key columns (would touch every row)".to_string());
+        return Err(DbError::validation(
+            "delete has no key columns (would touch every row)",
+        ));
     }
     let mut params = Vec::new();
     let mut next = 1;
@@ -181,13 +178,9 @@ fn build_delete(
     })
 }
 
-fn build_insert(
-    dialect: &dyn SqlDialect,
-    target: &str,
-    insert: &RowInsert,
-) -> Result<Statement, String> {
+fn build_insert(dialect: &dyn SqlDialect, target: &str, insert: &RowInsert) -> DbResult<Statement> {
     if insert.values.is_empty() {
-        return Err("insert has no values".to_string());
+        return Err(DbError::validation("insert has no values"));
     }
     let mut params = Vec::new();
     let mut next = 1;

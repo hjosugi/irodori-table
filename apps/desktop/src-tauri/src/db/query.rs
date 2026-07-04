@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use super::engine::Wire;
+use super::error::{DbError, DbResult};
 use super::{DEFAULT_MAX_ROWS, MAX_RESULT_ROWS, MAX_SQL_BYTES};
 
 /// One query's decoded result: `(column names, rows of JSON cells, truncated)`.
@@ -197,13 +198,15 @@ pub(crate) struct PreparedQuery {
     pub params: Vec<serde_json::Value>,
 }
 
-pub(crate) fn bounded_query_cap(max_rows: Option<usize>) -> Result<usize, String> {
+pub(crate) fn bounded_query_cap(max_rows: Option<usize>) -> DbResult<usize> {
     let cap = max_rows.unwrap_or(DEFAULT_MAX_ROWS);
     if cap == 0 {
-        return Err("maxRows must be at least 1".into());
+        return Err(DbError::validation("maxRows must be at least 1"));
     }
     if cap > MAX_RESULT_ROWS {
-        return Err(format!("maxRows must be at most {MAX_RESULT_ROWS}"));
+        return Err(DbError::validation(format!(
+            "maxRows must be at most {MAX_RESULT_ROWS}"
+        )));
     }
     Ok(cap)
 }
@@ -545,9 +548,11 @@ fn skip_dollar_quoted(sql: &str, tag: &str, index: &mut usize) {
     }
 }
 
-pub fn query_parameter_prompt_set(sql: &str) -> Result<QueryParameterPromptSet, String> {
+pub fn query_parameter_prompt_set(sql: &str) -> DbResult<QueryParameterPromptSet> {
     if sql.len() > MAX_SQL_BYTES {
-        return Err(format!("query text must be at most {MAX_SQL_BYTES} bytes"));
+        return Err(DbError::validation(format!(
+            "query text must be at most {MAX_SQL_BYTES} bytes"
+        )));
     }
     let mut seen = std::collections::BTreeSet::new();
     let mut prompts = Vec::new();
@@ -603,7 +608,7 @@ pub(crate) fn prepare_query(
     wire: Wire,
     sql: &str,
     params: Option<&[QueryParameterInput]>,
-) -> Result<PreparedQuery, String> {
+) -> DbResult<PreparedQuery> {
     let detected = detect_parameters(sql);
     if detected.is_empty() {
         return Ok(PreparedQuery {
@@ -612,24 +617,28 @@ pub(crate) fn prepare_query(
         });
     }
 
-    let supplied = params.ok_or_else(|| "query parameters are required".to_string())?;
+    let supplied = params.ok_or_else(|| DbError::validation("query parameters are required"))?;
     let values = supplied
         .iter()
         .map(|input| (input.key.to_param_key(), input.value.clone()))
         .collect::<BTreeMap<_, _>>();
 
     if split_sql_statements(sql).len() > 1 {
-        return Err("query parameters are supported for one statement at a time".to_string());
+        return Err(DbError::validation(
+            "query parameters are supported for one statement at a time",
+        ));
     }
 
     let mut rewritten = String::with_capacity(sql.len() + detected.len() * 2);
     let mut bound = Vec::with_capacity(detected.len());
     let mut cursor = 0;
     for parameter in detected {
-        let value = values
-            .get(&parameter.key())
-            .cloned()
-            .ok_or_else(|| format!("missing value for parameter {}", parameter.placeholder))?;
+        let value = values.get(&parameter.key()).cloned().ok_or_else(|| {
+            DbError::validation(format!(
+                "missing value for parameter {}",
+                parameter.placeholder
+            ))
+        })?;
         rewritten.push_str(&sql[cursor..parameter.start]);
         rewritten.push_str(&bind_placeholder(wire, bound.len() + 1));
         cursor = parameter.end;

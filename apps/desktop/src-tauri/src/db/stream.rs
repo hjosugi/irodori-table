@@ -13,7 +13,7 @@ use sqlx::{Column, Row};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use super::RowSet;
+use super::{DbError, DbResult, RowSet};
 
 /// One row's decoded cells.
 pub(crate) type Cells = Vec<serde_json::Value>;
@@ -74,7 +74,7 @@ impl StreamCtx {
         self.token.is_cancelled()
     }
 
-    pub(crate) async fn columns(&self, columns: Vec<String>) -> Result<(), String> {
+    pub(crate) async fn columns(&self, columns: Vec<String>) -> DbResult<()> {
         self.send(FetchEvent::Columns {
             result_set_index: self.result_set_index,
             columns,
@@ -83,7 +83,7 @@ impl StreamCtx {
     }
 
     /// Emit a batch of rows; an empty batch is a no-op so callers can flush freely.
-    pub(crate) async fn rows(&self, rows: Vec<Cells>) -> Result<(), String> {
+    pub(crate) async fn rows(&self, rows: Vec<Cells>) -> DbResult<()> {
         if rows.is_empty() {
             return Ok(());
         }
@@ -94,11 +94,11 @@ impl StreamCtx {
         .await
     }
 
-    async fn send(&self, event: FetchEvent) -> Result<(), String> {
+    async fn send(&self, event: FetchEvent) -> DbResult<()> {
         self.sink
             .send(event)
             .await
-            .map_err(|_| "stream receiver closed".to_string())
+            .map_err(|_| DbError::internal("stream receiver closed"))
     }
 }
 
@@ -110,7 +110,7 @@ pub(crate) async fn stream_capped<R, S, F>(
     mut stream: S,
     ctx: &StreamCtx,
     decode: F,
-) -> Result<StreamSummary, String>
+) -> DbResult<StreamSummary>
 where
     R: Row,
     S: Stream<Item = Result<R, sqlx::Error>> + Unpin,
@@ -122,12 +122,12 @@ where
     let mut truncated = false;
     loop {
         if ctx.cancelled() {
-            return Err("query cancelled".to_string());
+            return Err(DbError::cancelled("query cancelled"));
         }
         let Some(row) = stream
             .try_next()
             .await
-            .map_err(|e| format!("query failed: {e}"))?
+            .map_err(|e| DbError::query(format!("query failed: {e}")))?
         else {
             break;
         };
@@ -174,7 +174,7 @@ pub(crate) async fn collect_capped<R, S, F>(
     mut stream: S,
     cap: usize,
     decode: F,
-) -> Result<RowSet, String>
+) -> DbResult<RowSet>
 where
     R: Row,
     S: Stream<Item = Result<R, sqlx::Error>> + Unpin,
@@ -186,7 +186,7 @@ where
     while let Some(row) = stream
         .try_next()
         .await
-        .map_err(|e| format!("query failed: {e}"))?
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?
     {
         if columns.is_empty() {
             columns = row.columns().iter().map(|c| c.name().to_string()).collect();

@@ -22,6 +22,8 @@ use sqlx::sqlite::{
 };
 use sqlx::{QueryBuilder, Row, Sqlite};
 
+use super::error::{DbError, DbResult};
+
 /// Rows buffered in RAM before a flush to the spill file. Keeps append latency low
 /// while keeping the pending buffer bounded, so memory stays flat while streaming.
 const SPILL_FLUSH_ROWS: usize = 4_096;
@@ -123,7 +125,7 @@ impl ResultStore {
     /// spill to disk when offload is enabled, or are dropped (flagging truncation)
     /// when it is not. Returns `true` while the store can accept more rows, `false`
     /// once it is full so the producer can stop early.
-    pub async fn append(&mut self, rows: Vec<Vec<Value>>) -> Result<bool, String> {
+    pub async fn append(&mut self, rows: Vec<Vec<Value>>) -> DbResult<bool> {
         for row in rows {
             if self.total as usize >= self.config.max_total_rows {
                 self.truncated = true;
@@ -133,8 +135,8 @@ impl ResultStore {
                 self.memory.push(row);
             } else if self.config.offload_enabled {
                 let idx = self.total;
-                let encoded =
-                    serde_json::to_string(&row).map_err(|e| format!("spill encode failed: {e}"))?;
+                let encoded = serde_json::to_string(&row)
+                    .map_err(|e| DbError::internal(format!("spill encode failed: {e}")))?;
                 self.pending.push((idx, encoded));
                 if self.pending.len() >= SPILL_FLUSH_ROWS {
                     self.flush().await?;
@@ -151,11 +153,11 @@ impl ResultStore {
 
     /// Flush all buffered rows and any pending writes; call once after the stream
     /// completes, before serving [`window`](ResultStore::window) reads.
-    pub async fn finalize(&mut self) -> Result<(), String> {
+    pub async fn finalize(&mut self) -> DbResult<()> {
         self.flush().await
     }
 
-    async fn flush(&mut self) -> Result<(), String> {
+    async fn flush(&mut self) -> DbResult<()> {
         if self.pending.is_empty() {
             return Ok(());
         }
@@ -170,7 +172,7 @@ impl ResultStore {
             .pool
             .begin()
             .await
-            .map_err(|e| format!("spill begin failed: {e}"))?;
+            .map_err(|e| DbError::internal(format!("spill begin failed: {e}")))?;
         for chunk in pending.chunks(SPILL_INSERT_CHUNK) {
             let mut query = QueryBuilder::<Sqlite>::new("INSERT INTO rows(idx, cells) ");
             query.push_values(chunk, |mut row, (idx, cells)| {
@@ -180,18 +182,18 @@ impl ResultStore {
                 .build()
                 .execute(&mut *tx)
                 .await
-                .map_err(|e| format!("spill write failed: {e}"))?;
+                .map_err(|e| DbError::internal(format!("spill write failed: {e}")))?;
         }
         tx.commit()
             .await
-            .map_err(|e| format!("spill commit failed: {e}"))?;
+            .map_err(|e| DbError::internal(format!("spill commit failed: {e}")))?;
         if let Some(spill) = self.spill.as_mut() {
             spill.rows_on_disk += written;
         }
         Ok(())
     }
 
-    async fn ensure_spill(&mut self) -> Result<(), String> {
+    async fn ensure_spill(&mut self) -> DbResult<()> {
         if self.spill.is_some() {
             return Ok(());
         }
@@ -207,11 +209,11 @@ impl ResultStore {
             .max_connections(1)
             .connect_with(options)
             .await
-            .map_err(|e| format!("spill open failed: {e}"))?;
+            .map_err(|e| DbError::internal(format!("spill open failed: {e}")))?;
         sqlx::query("CREATE TABLE rows (idx INTEGER PRIMARY KEY, cells TEXT NOT NULL)")
             .execute(&pool)
             .await
-            .map_err(|e| format!("spill schema failed: {e}"))?;
+            .map_err(|e| DbError::internal(format!("spill schema failed: {e}")))?;
         self.spill = Some(SpillFile {
             path,
             pool,
@@ -223,7 +225,7 @@ impl ResultStore {
     /// Read `limit` rows starting at absolute `offset`, transparently reading
     /// resident rows from RAM and spilled rows from disk. Out-of-range requests are
     /// clamped and may return fewer rows than `limit`.
-    pub async fn window(&self, offset: u64, limit: usize) -> Result<Vec<Vec<Value>>, String> {
+    pub async fn window(&self, offset: u64, limit: usize) -> DbResult<Vec<Vec<Value>>> {
         if limit == 0 || offset >= self.total {
             return Ok(Vec::new());
         }
@@ -242,23 +244,22 @@ impl ResultStore {
         // Spilled suffix.
         let disk_start = offset.max(budget);
         if disk_start < end {
-            let spill = self
-                .spill
-                .as_ref()
-                .ok_or("result has no spill file but a disk row was requested")?;
+            let spill = self.spill.as_ref().ok_or_else(|| {
+                DbError::internal("result has no spill file but a disk row was requested")
+            })?;
             let rows =
                 sqlx::query("SELECT cells FROM rows WHERE idx >= ? AND idx < ? ORDER BY idx ASC")
                     .bind(disk_start as i64)
                     .bind(end as i64)
                     .fetch_all(&spill.pool)
                     .await
-                    .map_err(|e| format!("spill read failed: {e}"))?;
+                    .map_err(|e| DbError::internal(format!("spill read failed: {e}")))?;
             for row in rows {
                 let cells: String = row
                     .try_get("cells")
-                    .map_err(|e| format!("spill decode failed: {e}"))?;
+                    .map_err(|e| DbError::internal(format!("spill decode failed: {e}")))?;
                 let decoded: Vec<Value> = serde_json::from_str(&cells)
-                    .map_err(|e| format!("spill decode failed: {e}"))?;
+                    .map_err(|e| DbError::internal(format!("spill decode failed: {e}")))?;
                 out.push(decoded);
             }
         }

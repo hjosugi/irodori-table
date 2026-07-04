@@ -13,6 +13,7 @@ use super::bigtable;
 use super::cassandra;
 use super::edit::{AppliedEdits, TableEdits};
 use super::engine::{self, Wire};
+use super::error::{DbError, DbResult};
 use super::explain::{self, QueryPlanAnalysis, QueryPlanMode};
 #[cfg(feature = "mongo")]
 use super::mongo;
@@ -32,6 +33,14 @@ use super::stream;
 use super::{clickhouse, influx, mysql, postgres, snowflake, sqlite, DatabaseMetadata, DbEngine};
 use crate::extensions;
 
+fn query_error(message: String) -> DbError {
+    if message.to_ascii_lowercase().contains("cancelled") {
+        DbError::cancelled(message)
+    } else {
+        DbError::query(message)
+    }
+}
+
 // ---- The per-engine connection abstraction ------------------------------------
 
 /// A live connection to one database. Each engine implements this over its native
@@ -40,19 +49,17 @@ use crate::extensions;
 pub(crate) trait Connection: Send + Sync {
     fn wire(&self) -> Wire;
     async fn version(&self) -> Option<String>;
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String>;
-    async fn run_prepared_query(
-        &self,
-        query: &PreparedQuery,
-        cap: usize,
-    ) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet>;
+    async fn run_prepared_query(&self, query: &PreparedQuery, cap: usize) -> DbResult<RowSet> {
         if query.params.is_empty() {
             self.run_query(&query.sql, cap).await
         } else {
-            Err("query parameters are not supported for this engine yet".to_string())
+            Err(DbError::unsupported(
+                "query parameters are not supported for this engine yet",
+            ))
         }
     }
-    async fn run_query_sets(&self, sql: &str, cap: usize) -> Result<Vec<RawResultSet>, String> {
+    async fn run_query_sets(&self, sql: &str, cap: usize) -> DbResult<Vec<RawResultSet>> {
         let start = Instant::now();
         let (columns, rows, truncated) = self.run_query(sql, cap).await?;
         Ok(vec![RawResultSet {
@@ -64,24 +71,22 @@ pub(crate) trait Connection: Send + Sync {
             truncated,
         }])
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String>;
+    async fn metadata(&self) -> DbResult<DatabaseMetadata>;
     async fn close(&self);
 
     /// Return a normalized, DataGrip-style plan model. Engines with native
     /// EXPLAIN support override this; every other engine still gets a structural
     /// static analysis so the UI can show the same cards everywhere.
-    async fn explain_query(
-        &self,
-        sql: &str,
-        mode: QueryPlanMode,
-    ) -> Result<QueryPlanAnalysis, String> {
+    async fn explain_query(&self, sql: &str, mode: QueryPlanMode) -> DbResult<QueryPlanAnalysis> {
         Ok(explain::static_analysis(self.wire(), sql, mode))
     }
 
     /// Commit a batch of result-grid edits in one transaction. The default refuses;
     /// the sqlx engines (Postgres-wire, MySQL-wire, SQLite) override it.
-    async fn apply_edits(&self, _edits: &TableEdits) -> Result<AppliedEdits, String> {
-        Err("editing is not supported for this engine yet".to_string())
+    async fn apply_edits(&self, _edits: &TableEdits) -> DbResult<AppliedEdits> {
+        Err(DbError::unsupported(
+            "editing is not supported for this engine yet",
+        ))
     }
 
     /// Stream a query's rows to `ctx.sink` in batches, checking `ctx.token` so a
@@ -95,7 +100,7 @@ pub(crate) trait Connection: Send + Sync {
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         let (columns, rows, truncated) = self.run_query(sql, ctx.cap).await?;
         let row_count = rows.len() as u64;
         ctx.columns(columns).await?;
@@ -116,11 +121,13 @@ pub(crate) trait Connection: Send + Sync {
         &self,
         query: &PreparedQuery,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         if query.params.is_empty() {
             self.stream_query(&query.sql, ctx).await
         } else {
-            Err("query parameters are not supported for this engine yet".to_string())
+            Err(DbError::unsupported(
+                "query parameters are not supported for this engine yet",
+            ))
         }
     }
 
@@ -128,7 +135,7 @@ pub(crate) trait Connection: Send + Sync {
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         let start = Instant::now();
         let mut summary = self.stream_query(sql, ctx).await?;
         let elapsed_ms = start.elapsed().as_millis() as u64;
@@ -152,41 +159,33 @@ impl Connection for PgConn {
     async fn version(&self) -> Option<String> {
         postgres::version(&self.pool).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         postgres::run_query(&self.pool, sql, cap).await
     }
-    async fn run_prepared_query(
-        &self,
-        query: &PreparedQuery,
-        cap: usize,
-    ) -> Result<RowSet, String> {
+    async fn run_prepared_query(&self, query: &PreparedQuery, cap: usize) -> DbResult<RowSet> {
         postgres::run_prepared_query(&self.pool, query, cap).await
     }
     async fn stream_query(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         postgres::stream_query(&self.pool, sql, ctx).await
     }
     async fn stream_prepared_query(
         &self,
         query: &PreparedQuery,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         postgres::stream_prepared_query(&self.pool, query, ctx).await
     }
-    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+    async fn apply_edits(&self, edits: &TableEdits) -> DbResult<AppliedEdits> {
         postgres::apply_edits(&self.pool, edits).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         postgres::metadata(&self.pool, self.engine).await
     }
-    async fn explain_query(
-        &self,
-        sql: &str,
-        mode: QueryPlanMode,
-    ) -> Result<QueryPlanAnalysis, String> {
+    async fn explain_query(&self, sql: &str, mode: QueryPlanMode) -> DbResult<QueryPlanAnalysis> {
         postgres::explain_query(&self.pool, self.wire(), sql, mode).await
     }
     async fn close(&self) {
@@ -206,12 +205,12 @@ impl Connection for ExtensionConn {
         Some(self.0.server_version().to_string())
     }
 
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
-        self.0.run_query(sql, cap)
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
+        self.0.run_query(sql, cap).map_err(query_error)
     }
 
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        self.0.metadata()
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
+        self.0.metadata().map_err(DbError::metadata)
     }
 
     async fn close(&self) {
@@ -231,10 +230,10 @@ impl Connection for Neo4jConnection {
     async fn version(&self) -> Option<String> {
         neo4j::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         neo4j::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         neo4j::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -250,10 +249,10 @@ impl Connection for InfluxConnection {
     async fn version(&self) -> Option<String> {
         influx::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         influx::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         influx::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -269,41 +268,33 @@ impl Connection for MysqlConn {
     async fn version(&self) -> Option<String> {
         mysql::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         mysql::run_query(&self.0, sql, cap).await
     }
-    async fn run_prepared_query(
-        &self,
-        query: &PreparedQuery,
-        cap: usize,
-    ) -> Result<RowSet, String> {
+    async fn run_prepared_query(&self, query: &PreparedQuery, cap: usize) -> DbResult<RowSet> {
         mysql::run_prepared_query(&self.0, query, cap).await
     }
     async fn stream_query(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         mysql::stream_query(&self.0, sql, ctx).await
     }
     async fn stream_prepared_query(
         &self,
         query: &PreparedQuery,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         mysql::stream_prepared_query(&self.0, query, ctx).await
     }
-    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+    async fn apply_edits(&self, edits: &TableEdits) -> DbResult<AppliedEdits> {
         mysql::apply_edits(&self.0, edits).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         mysql::metadata(&self.0).await
     }
-    async fn explain_query(
-        &self,
-        sql: &str,
-        mode: QueryPlanMode,
-    ) -> Result<QueryPlanAnalysis, String> {
+    async fn explain_query(&self, sql: &str, mode: QueryPlanMode) -> DbResult<QueryPlanAnalysis> {
         mysql::explain_query(&self.0, self.wire(), sql, mode).await
     }
     async fn close(&self) {
@@ -321,51 +312,43 @@ impl Connection for SqliteConn {
     async fn version(&self) -> Option<String> {
         sqlite::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         sqlite::run_query(&self.0, sql, cap).await
     }
-    async fn run_prepared_query(
-        &self,
-        query: &PreparedQuery,
-        cap: usize,
-    ) -> Result<RowSet, String> {
+    async fn run_prepared_query(&self, query: &PreparedQuery, cap: usize) -> DbResult<RowSet> {
         sqlite::run_prepared_query(&self.0, query, cap).await
     }
-    async fn run_query_sets(&self, sql: &str, cap: usize) -> Result<Vec<RawResultSet>, String> {
+    async fn run_query_sets(&self, sql: &str, cap: usize) -> DbResult<Vec<RawResultSet>> {
         sqlite::run_query_sets(&self.0, sql, cap).await
     }
     async fn stream_query(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         sqlite::stream_query(&self.0, sql, ctx).await
     }
     async fn stream_prepared_query(
         &self,
         query: &PreparedQuery,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         sqlite::stream_prepared_query(&self.0, query, ctx).await
     }
     async fn stream_query_sets(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         sqlite::stream_query_sets(&self.0, sql, ctx).await
     }
-    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+    async fn apply_edits(&self, edits: &TableEdits) -> DbResult<AppliedEdits> {
         sqlite::apply_edits(&self.0, edits).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         sqlite::metadata(&self.0).await
     }
-    async fn explain_query(
-        &self,
-        sql: &str,
-        mode: QueryPlanMode,
-    ) -> Result<QueryPlanAnalysis, String> {
+    async fn explain_query(&self, sql: &str, mode: QueryPlanMode) -> DbResult<QueryPlanAnalysis> {
         sqlite::explain_query(&self.0, self.wire(), sql, mode).await
     }
     async fn close(&self) {
@@ -385,34 +368,30 @@ impl Connection for MssqlConn {
     async fn version(&self) -> Option<String> {
         mssql::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         mssql::run_query(&self.0, sql, cap).await
     }
-    async fn run_prepared_query(
-        &self,
-        query: &PreparedQuery,
-        cap: usize,
-    ) -> Result<RowSet, String> {
+    async fn run_prepared_query(&self, query: &PreparedQuery, cap: usize) -> DbResult<RowSet> {
         mssql::run_prepared_query(&self.0, query, cap).await
     }
     async fn stream_query(
         &self,
         sql: &str,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         mssql::stream_query(&self.0, sql, ctx).await
     }
     async fn stream_prepared_query(
         &self,
         query: &PreparedQuery,
         ctx: &stream::StreamCtx,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         mssql::stream_prepared_query(&self.0, query, ctx).await
     }
-    async fn apply_edits(&self, edits: &TableEdits) -> Result<AppliedEdits, String> {
+    async fn apply_edits(&self, edits: &TableEdits) -> DbResult<AppliedEdits> {
         mssql::apply_edits(&self.0, edits).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         mssql::metadata(&self.0).await
     }
     async fn close(&self) {} // tiberius closes when its last handle drops
@@ -430,10 +409,10 @@ impl Connection for MongoConn {
     async fn version(&self) -> Option<String> {
         mongo::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         mongo::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         mongo::metadata(&self.0).await
     }
     async fn close(&self) {} // mongodb client closes when its last handle drops
@@ -451,10 +430,10 @@ impl Connection for OracleConn {
     async fn version(&self) -> Option<String> {
         oracle::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         oracle::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         oracle::metadata(&self.0).await
     }
     async fn close(&self) {} // oracle-rs closes when its last handle drops
@@ -469,10 +448,10 @@ impl Connection for ClickHouseConnection {
     async fn version(&self) -> Option<String> {
         clickhouse::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         clickhouse::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         clickhouse::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -487,10 +466,10 @@ impl Connection for SnowflakeConnection {
     async fn version(&self) -> Option<String> {
         snowflake::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         snowflake::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         snowflake::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -507,10 +486,10 @@ impl Connection for BigQueryConnection {
     async fn version(&self) -> Option<String> {
         bigquery::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         bigquery::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         bigquery::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -527,10 +506,10 @@ impl Connection for BigtableConnection {
     async fn version(&self) -> Option<String> {
         bigtable::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         bigtable::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         bigtable::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -547,10 +526,10 @@ impl Connection for RedisConnection {
     async fn version(&self) -> Option<String> {
         redis::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         redis::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         redis::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -567,10 +546,10 @@ impl Connection for CassandraConnection {
     async fn version(&self) -> Option<String> {
         cassandra::version(&self.0).await
     }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
+    async fn run_query(&self, sql: &str, cap: usize) -> DbResult<RowSet> {
         cassandra::run_query(&self.0, sql, cap).await
     }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
+    async fn metadata(&self) -> DbResult<DatabaseMetadata> {
         cassandra::metadata(&self.0).await
     }
     async fn close(&self) {}
@@ -581,7 +560,7 @@ impl Connection for CassandraConnection {
 pub(crate) async fn connect_engine(
     profile: &ConnectionProfile,
     app: Option<&tauri::AppHandle>,
-) -> Result<Arc<dyn Connection>, String> {
+) -> DbResult<Arc<dyn Connection>> {
     let conn: Arc<dyn Connection> = match profile.engine.wire() {
         Wire::Postgres => Arc::new(PgConn {
             pool: postgres::connect(&engine::build_url(profile)?).await?,
@@ -606,7 +585,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "sqlserver"))]
             {
-                return Err(feature_required("SQL Server"));
+                return Err(DbError::unsupported(feature_required("SQL Server")));
             }
         }
         Wire::Mongo => {
@@ -616,14 +595,16 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "mongo"))]
             {
-                return Err(feature_required("MongoDB"));
+                return Err(DbError::unsupported(feature_required("MongoDB")));
             }
         }
         Wire::DuckDb => {
             if let Some(conn) = connect_installed_extension(profile, app)? {
                 conn
             } else {
-                return Err(connector_extension_required_message(profile.engine));
+                return Err(DbError::unsupported(connector_extension_required_message(
+                    profile.engine,
+                )));
             }
         }
         Wire::Oracle => {
@@ -633,7 +614,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "oracle"))]
             {
-                return Err(feature_required("Oracle"));
+                return Err(DbError::unsupported(feature_required("Oracle")));
             }
         }
         Wire::Neo4j => {
@@ -643,7 +624,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "neo4j"))]
             {
-                return Err(feature_required("Neo4j"));
+                return Err(DbError::unsupported(feature_required("Neo4j")));
             }
         }
         Wire::InfluxDb => Arc::new(InfluxConnection(influx::connect(profile).await?)),
@@ -656,7 +637,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "bigquery"))]
             {
-                return Err(feature_required("BigQuery"));
+                return Err(DbError::unsupported(feature_required("BigQuery")));
             }
         }
         Wire::Bigtable => {
@@ -666,7 +647,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "bigtable"))]
             {
-                return Err(feature_required("Bigtable"));
+                return Err(DbError::unsupported(feature_required("Bigtable")));
             }
         }
         Wire::Redis => {
@@ -676,7 +657,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "redis-connector"))]
             {
-                return Err(feature_required("Redis"));
+                return Err(DbError::unsupported(feature_required("Redis")));
             }
         }
         Wire::Cassandra => {
@@ -686,7 +667,7 @@ pub(crate) async fn connect_engine(
             }
             #[cfg(not(feature = "cassandra"))]
             {
-                return Err(feature_required("Cassandra/ScyllaDB"));
+                return Err(DbError::unsupported(feature_required("Cassandra/ScyllaDB")));
             }
         }
         Wire::Memgraph
@@ -704,7 +685,9 @@ pub(crate) async fn connect_engine(
             if let Some(conn) = connect_installed_extension(profile, app)? {
                 conn
             } else {
-                return Err(connector_extension_required_message(profile.engine));
+                return Err(DbError::unsupported(connector_extension_required_message(
+                    profile.engine,
+                )));
             }
         }
     };
@@ -714,19 +697,19 @@ pub(crate) async fn connect_engine(
 fn connect_installed_extension(
     profile: &ConnectionProfile,
     app: Option<&tauri::AppHandle>,
-) -> Result<Option<Arc<dyn Connection>>, String> {
+) -> DbResult<Option<Arc<dyn Connection>>> {
     let Some(extension_id) = profile.engine.connector_extension_id() else {
         return Ok(None);
     };
     let Some(app) = app else {
         return Ok(None);
     };
-    let Some(extension) =
-        extensions::installed_by_id(app, extension_id).map_err(|error| error.to_string())?
+    let Some(extension) = extensions::installed_by_id(app, extension_id).map_err(DbError::from)?
     else {
         return Ok(None);
     };
-    let conn = extensions::NativeExtensionConnection::connect(&extension, profile)?;
+    let conn = extensions::NativeExtensionConnection::connect(&extension, profile)
+        .map_err(DbError::connection)?;
     Ok(Some(Arc::new(ExtensionConn(conn))))
 }
 

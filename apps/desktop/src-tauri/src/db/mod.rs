@@ -32,6 +32,7 @@ mod commands;
 mod connection;
 mod edit;
 mod engine;
+mod error;
 mod explain;
 mod influx;
 mod meta;
@@ -66,6 +67,7 @@ pub use commands::*;
 use connection::connect_engine;
 pub use edit::{AppliedEdits, CellValue, RowDelete, RowInsert, RowUpdate, TableEdits};
 pub use engine::{DbEngine, EngineBuildSupport};
+pub use error::{DbError, DbResult};
 pub use explain::{
     QueryPlanAnalysis, QueryPlanCopyFormat, QueryPlanEdge, QueryPlanFinding, QueryPlanFlameFrame,
     QueryPlanMetric, QueryPlanMetricGuide, QueryPlanMode, QueryPlanNode, QueryPlanProperty,
@@ -153,7 +155,7 @@ pub async fn connect_impl(
     security: &SecurityState,
     app: Option<&tauri::AppHandle>,
     profile: ConnectionProfile,
-) -> Result<ConnectionInfo, String> {
+) -> DbResult<ConnectionInfo> {
     let mut profile = normalize_profile(profile)?;
     let mut resolved_tunnel = None;
 
@@ -165,7 +167,7 @@ pub async fn connect_impl(
             let resolved = resolve_transport(security.store(), transport).await?;
             let (local_port, cancel_token) = start_forwarder(resolved)
                 .await
-                .map_err(|e| format!("failed to start local forwarder: {e}"))?;
+                .map_err(|e| DbError::transport(format!("failed to start local forwarder: {e}")))?;
             profile.host = Some("127.0.0.1".to_string());
             profile.port = Some(local_port);
             profile.url = None;
@@ -180,7 +182,8 @@ pub async fn connect_impl(
             if let Some(cancel_token) = resolved_tunnel {
                 cancel_token.cancel();
             }
-            return Err(redact_secret_text(&error, &profile));
+            let redacted = redact_secret_text(error.message(), &profile);
+            return Err(error.with_message(redacted));
         }
     };
 
@@ -224,10 +227,10 @@ pub async fn connect_impl(
 pub async fn list_objects_impl(
     state: &DbState,
     connection_id: String,
-) -> Result<DatabaseMetadata, String> {
+) -> DbResult<DatabaseMetadata> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
 
     let now = std::time::SystemTime::now();
@@ -254,7 +257,7 @@ pub async fn list_objects_impl(
         guard
             .get(&connection_id)
             .cloned()
-            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+            .ok_or_else(|| DbError::not_found(format!("no open connection: {connection_id}")))?
     };
     let generation = metadata_generation(state);
     let db_meta = conn.metadata().await?;
@@ -266,10 +269,10 @@ pub async fn apply_edits_impl(
     state: &DbState,
     connection_id: String,
     edits: TableEdits,
-) -> Result<AppliedEdits, String> {
+) -> DbResult<AppliedEdits> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
     ensure_connection_writable(state, &connection_id).await?;
     let conn = {
@@ -277,15 +280,15 @@ pub async fn apply_edits_impl(
         guard
             .get(&connection_id)
             .cloned()
-            .ok_or_else(|| format!("no open connection: {connection_id}"))?
+            .ok_or_else(|| DbError::not_found(format!("no open connection: {connection_id}")))?
     };
     conn.apply_edits(&edits).await
 }
 
-pub async fn disconnect_impl(state: &DbState, connection_id: String) -> Result<(), String> {
+pub async fn disconnect_impl(state: &DbState, connection_id: String) -> DbResult<()> {
     let connection_id = connection_id.trim().to_string();
     if connection_id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
     if let Some(conn) = state.conns.lock().await.remove(&connection_id) {
         conn.close().await;

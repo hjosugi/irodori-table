@@ -6,7 +6,10 @@ use serde_json::{json, Value};
 use std::collections::{BTreeSet, HashMap};
 use std::time::SystemTime;
 
-use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    RowSet,
+};
 
 pub struct BigtableConn {
     client: Client,
@@ -22,28 +25,33 @@ struct GcpServiceAccountKey {
     private_key: String,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<BigtableConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<BigtableConn> {
     let client = Client::new();
     let password = profile.password.clone().unwrap_or_default();
 
     // 1. Resolve GCP Auth and Project/Instance IDs
     let (project_id, access_token) =
         if password.trim().starts_with('{') && password.trim().ends_with('}') {
-            let key: GcpServiceAccountKey = serde_json::from_str(&password)
-                .map_err(|e| format!("Invalid Google Service Account JSON: {e}"))?;
+            let key: GcpServiceAccountKey = serde_json::from_str(&password).map_err(|e| {
+                DbError::connection(format!("Invalid Google Service Account JSON: {e}"))
+            })?;
             let token = fetch_oauth2_token(&client, &key.client_email, &key.private_key).await?;
             (key.project_id, token)
         } else {
             let project = profile.host.clone().unwrap_or_default();
             if project.is_empty() {
-                return Err("GCP Project ID must be specified in the Host field".into());
+                return Err(DbError::connection(
+                    "GCP Project ID must be specified in the Host field",
+                ));
             }
             (project, password)
         };
 
     let instance_id = profile.database.clone().unwrap_or_default();
     if instance_id.is_empty() {
-        return Err("Bigtable Instance ID must be specified in the Database field".into());
+        return Err(DbError::connection(
+            "Bigtable Instance ID must be specified in the Database field",
+        ));
     }
 
     Ok(BigtableConn {
@@ -89,7 +97,7 @@ struct TempRow {
     cells: HashMap<String, String>,
 }
 
-pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let sql_trimmed = sql.trim();
     let mut table_id = sql_trimmed.to_string();
     let mut user_payload = json!({});
@@ -117,7 +125,7 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
     }
 
     if table_id.is_empty() {
-        return Err("Could not extract table ID from query".into());
+        return Err(DbError::validation("Could not extract table ID from query"));
     }
 
     let url = format!(
@@ -138,20 +146,20 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Bigtable query request failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("Bigtable query request failed: {e}")))?;
 
     if !res.status().is_success() {
         let status = res.status();
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!(
+        return Err(DbError::query(format!(
             "Bigtable query failed with HTTP {status}: {err_text}"
-        ));
+        )));
     }
 
     let responses: Vec<ReadRowsResponse> = res
         .json()
         .await
-        .map_err(|e| format!("Failed to parse Bigtable response: {e}"))?;
+        .map_err(|e| DbError::query(format!("Failed to parse Bigtable response: {e}")))?;
 
     // State machine to parse CellChunks into rows
     let mut temp_row: Option<TempRow> = None;
@@ -168,8 +176,9 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
             for chunk in chunks {
                 if let Some(ref rk) = chunk.row_key {
                     let decoded_rk = base64_decode(rk)
-                        .and_then(|bytes| String::from_utf8(bytes).map_err(|e| e.to_string()))
-                        .unwrap_or_else(|_| rk.clone());
+                        .ok()
+                        .and_then(|bytes| String::from_utf8(bytes).ok())
+                        .unwrap_or_else(|| rk.clone());
                     temp_row = Some(TempRow {
                         row_key: decoded_rk,
                         cells: HashMap::new(),
@@ -183,8 +192,9 @@ pub async fn run_query(conn: &BigtableConn, sql: &str, cap: usize) -> Result<Row
                 }
                 if let Some(ref q) = chunk.qualifier {
                     current_qualifier = base64_decode(q)
-                        .and_then(|bytes| String::from_utf8(bytes).map_err(|e| e.to_string()))
-                        .unwrap_or_else(|_| q.clone());
+                        .ok()
+                        .and_then(|bytes| String::from_utf8(bytes).ok())
+                        .unwrap_or_else(|| q.clone());
                 }
                 if let Some(ref ts) = chunk.timestamp_micros {
                     current_timestamp = ts.clone();
@@ -272,7 +282,7 @@ struct AdminTable {
     column_families: Option<HashMap<String, Value>>,
 }
 
-pub async fn metadata(conn: &BigtableConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &BigtableConn) -> DbResult<DatabaseMetadata> {
     let url = format!(
         "https://bigtableadmin.googleapis.com/v2/projects/{}/instances/{}/tables",
         conn.project_id, conn.instance_id
@@ -284,7 +294,7 @@ pub async fn metadata(conn: &BigtableConn) -> Result<DatabaseMetadata, String> {
         .bearer_auth(&conn.access_token)
         .send()
         .await
-        .map_err(|e| format!("Failed to list Bigtable tables: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("Failed to list Bigtable tables: {e}")))?;
 
     if !res.status().is_success() {
         return Ok(DatabaseMetadata {
@@ -295,7 +305,7 @@ pub async fn metadata(conn: &BigtableConn) -> Result<DatabaseMetadata, String> {
     let val: TableListResponse = res
         .json()
         .await
-        .map_err(|e| format!("Failed to parse Bigtable Admin response: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("Failed to parse Bigtable Admin response: {e}")))?;
 
     let mut builder = super::meta::MetaBuilder::default();
     let schema_name = conn.instance_id.clone();
@@ -351,11 +361,7 @@ pub async fn metadata(conn: &BigtableConn) -> Result<DatabaseMetadata, String> {
 
 // ---- GCP OAuth2 Service Account Token Signing helper ----
 
-async fn fetch_oauth2_token(
-    client: &Client,
-    email: &str,
-    private_key: &str,
-) -> Result<String, String> {
+async fn fetch_oauth2_token(client: &Client, email: &str, private_key: &str) -> DbResult<String> {
     use openssl::hash::MessageDigest;
     use openssl::pkey::PKey;
     use openssl::sign::Signer;
@@ -376,17 +382,20 @@ async fn fetch_oauth2_token(
     let claims_b64 = base64_url_encode(claims.as_bytes());
     let payload = format!("{header_b64}.{claims_b64}");
 
-    let pkey = PKey::private_key_from_pem(private_key.as_bytes())
-        .map_err(|e| format!("Invalid private key in Google Service Account: {e}"))?;
+    let pkey = PKey::private_key_from_pem(private_key.as_bytes()).map_err(|e| {
+        DbError::connection(format!(
+            "Invalid private key in Google Service Account: {e}"
+        ))
+    })?;
 
     let mut signer = Signer::new(MessageDigest::sha256(), &pkey)
-        .map_err(|e| format!("Failed to initialize signer: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Failed to initialize signer: {e}")))?;
     signer
         .update(payload.as_bytes())
-        .map_err(|e| format!("Signer failed payload update: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Signer failed payload update: {e}")))?;
     let signature = signer
         .sign_to_vec()
-        .map_err(|e| format!("Failed to sign JWT assertion: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Failed to sign JWT assertion: {e}")))?;
     let signature_b64 = base64_url_encode(&signature);
 
     let assertion = format!("{payload}.{signature_b64}");
@@ -402,21 +411,21 @@ async fn fetch_oauth2_token(
         .body(body)
         .send()
         .await
-        .map_err(|e| format!("GCP token request failed: {e}"))?;
+        .map_err(|e| DbError::connection(format!("GCP token request failed: {e}")))?;
 
     if !res.status().is_success() {
         let status = res.status();
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!(
+        return Err(DbError::connection(format!(
             "GCP OAuth token request failed with HTTP {status}: {err_text}"
-        ));
+        )));
     }
 
     let val: Value = res.json().await.unwrap_or(Value::Null);
     let access_token = val
         .get("access_token")
         .and_then(|t| t.as_str())
-        .ok_or_else(|| "GCP OAuth token response missing access_token".to_string())?
+        .ok_or_else(|| DbError::connection("GCP OAuth token response missing access_token"))?
         .to_string();
 
     Ok(access_token)
@@ -457,7 +466,7 @@ fn base64_url_encode(input: &[u8]) -> String {
     out
 }
 
-fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+fn base64_decode(input: &str) -> DbResult<Vec<u8>> {
     let mut out = Vec::new();
     let mut val = 0u32;
     let mut valb = -8;

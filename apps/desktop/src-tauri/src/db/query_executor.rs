@@ -1,3 +1,4 @@
+use super::error::DbResult;
 use super::*;
 use tokio::sync::mpsc;
 
@@ -18,7 +19,7 @@ impl<'a> QueryExecutor<'a> {
         timeout_ms: Option<u64>,
         query_id: Option<String>,
         params: Option<Vec<QueryParameterInput>>,
-    ) -> Result<QueryResult, String> {
+    ) -> DbResult<QueryResult> {
         run_query_managed_with_params_impl(
             self.state,
             connection_id,
@@ -40,7 +41,7 @@ impl<'a> QueryExecutor<'a> {
         query_id: Option<String>,
         params: Option<Vec<QueryParameterInput>>,
         sink: mpsc::Sender<stream::FetchEvent>,
-    ) -> Result<stream::StreamSummary, String> {
+    ) -> DbResult<stream::StreamSummary> {
         run_query_stream_with_params_impl(
             self.state,
             connection_id,
@@ -63,7 +64,7 @@ impl<'a> QueryExecutor<'a> {
         connection_id: String,
         sql: String,
         mode: QueryPlanMode,
-    ) -> Result<QueryPlanAnalysis, String> {
+    ) -> DbResult<QueryPlanAnalysis> {
         explain_query_impl(self.state, connection_id, sql, mode).await
     }
 }

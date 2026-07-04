@@ -272,7 +272,7 @@ async fn run_chat(
             }
             Err(message) => {
                 let _ = on_event.send(ChatEvent::QueryError {
-                    message: message.clone(),
+                    message: message.to_string(),
                 });
                 conversation.push(ChatMessage::user(format!(
                     "The query failed: {message}. Either correct the SQL in a new ```sql``` block or explain the problem to the user."

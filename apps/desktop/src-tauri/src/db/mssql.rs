@@ -17,16 +17,18 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
+use super::DbResult;
 use super::{
-    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata,
+    hex_encode, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadata,
     DbObjectMetadataKind, IndexMetadata, PreparedQuery, RowSet, SchemaMetadata,
 };
 
 pub type MssqlClient = Client<Compat<TcpStream>>;
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<MssqlClient, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<MssqlClient> {
     let config = if let Some(url) = &profile.url {
-        Config::from_ado_string(url).map_err(|e| format!("bad connection string: {e}"))?
+        Config::from_ado_string(url)
+            .map_err(|e| DbError::connection(format!("bad connection string: {e}")))?
     } else {
         let mut config = Config::new();
         let host = profile.host.clone().unwrap_or_else(|| "localhost".into());
@@ -46,11 +48,11 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<MssqlClient, String>
 
     let tcp = TcpStream::connect(config.get_addr())
         .await
-        .map_err(|e| format!("connect failed: {e}"))?;
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))?;
     tcp.set_nodelay(true).ok();
     Client::connect(config, tcp.compat_write())
         .await
-        .map_err(|e| format!("connect failed: {e}"))
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))
 }
 
 pub async fn version(client: &Arc<Mutex<MssqlClient>>) -> Option<String> {
@@ -65,12 +67,12 @@ pub async fn run_query(
     client: &Arc<Mutex<MssqlClient>>,
     sql: &str,
     cap: usize,
-) -> Result<RowSet, String> {
+) -> DbResult<RowSet> {
     let mut guard = client.lock().await;
     let mut stream = guard
         .query(sql, &[])
         .await
-        .map_err(|e| format!("query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?;
 
     let mut columns: Vec<String> = Vec::new();
     let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
@@ -81,7 +83,7 @@ pub async fn run_query(
     while let Some(item) = stream
         .try_next()
         .await
-        .map_err(|e| format!("query failed: {e}"))?
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?
     {
         if let QueryItem::Row(row) = item {
             if columns.is_empty() {
@@ -105,7 +107,7 @@ pub async fn run_prepared_query(
     client: &Arc<Mutex<MssqlClient>>,
     query: &PreparedQuery,
     cap: usize,
-) -> Result<RowSet, String> {
+) -> DbResult<RowSet> {
     let params = mssql_params(&query.params);
     let refs: Vec<&dyn tiberius::ToSql> =
         params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
@@ -113,7 +115,7 @@ pub async fn run_prepared_query(
     let mut stream = guard
         .query(&query.sql, &refs)
         .await
-        .map_err(|e| format!("query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?;
 
     let mut columns: Vec<String> = Vec::new();
     let mut rows: Vec<Vec<serde_json::Value>> = Vec::new();
@@ -121,7 +123,7 @@ pub async fn run_prepared_query(
     while let Some(item) = stream
         .try_next()
         .await
-        .map_err(|e| format!("query failed: {e}"))?
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?
     {
         if let QueryItem::Row(row) = item {
             if columns.is_empty() {
@@ -149,12 +151,12 @@ pub async fn stream_query(
     client: &Arc<Mutex<MssqlClient>>,
     sql: &str,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     let mut guard = client.lock().await;
     let mut stream = guard
         .query(sql, &[])
         .await
-        .map_err(|e| format!("query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?;
 
     let mut columns_sent = false;
     let mut batch: Vec<super::stream::Cells> = Vec::new();
@@ -163,11 +165,11 @@ pub async fn stream_query(
     while let Some(item) = stream
         .try_next()
         .await
-        .map_err(|e| format!("query failed: {e}"))?
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?
     {
         if let QueryItem::Row(row) = item {
             if ctx.cancelled() {
-                return Err("query cancelled".to_string());
+                return Err(DbError::cancelled("query cancelled"));
             }
             if !columns_sent {
                 ctx.columns(row.columns().iter().map(|c| c.name().to_string()).collect())
@@ -209,7 +211,7 @@ pub async fn stream_prepared_query(
     client: &Arc<Mutex<MssqlClient>>,
     query: &PreparedQuery,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     let params = mssql_params(&query.params);
     let refs: Vec<&dyn tiberius::ToSql> =
         params.iter().map(|p| p as &dyn tiberius::ToSql).collect();
@@ -217,7 +219,7 @@ pub async fn stream_prepared_query(
     let mut stream = guard
         .query(&query.sql, &refs)
         .await
-        .map_err(|e| format!("query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?;
 
     let mut columns_sent = false;
     let mut batch: Vec<super::stream::Cells> = Vec::new();
@@ -226,11 +228,11 @@ pub async fn stream_prepared_query(
     while let Some(item) = stream
         .try_next()
         .await
-        .map_err(|e| format!("query failed: {e}"))?
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?
     {
         if let QueryItem::Row(row) = item {
             if ctx.cancelled() {
-                return Err("query cancelled".to_string());
+                return Err(DbError::cancelled("query cancelled"));
             }
             if !columns_sent {
                 ctx.columns(row.columns().iter().map(|c| c.name().to_string()).collect())
@@ -268,7 +270,7 @@ pub async fn stream_prepared_query(
     })
 }
 
-pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> DbResult<DatabaseMetadata> {
     let mut guard = client.lock().await;
     let mut schemas: BTreeMap<String, BTreeMap<String, DbObjectMetadata>> = BTreeMap::new();
 
@@ -283,11 +285,11 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         let mut stream = guard
             .query(objects_sql, &[])
             .await
-            .map_err(|e| format!("metadata objects failed: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata objects failed: {e}")))?;
         while let Some(item) = stream
             .try_next()
             .await
-            .map_err(|e| format!("metadata objects failed: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata objects failed: {e}")))?
         {
             if let QueryItem::Row(row) = item {
                 let schema = get_str(&row, 0);
@@ -332,11 +334,11 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         let mut stream = guard
             .query(columns_sql, &[])
             .await
-            .map_err(|e| format!("metadata columns failed: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata columns failed: {e}")))?;
         while let Some(item) = stream
             .try_next()
             .await
-            .map_err(|e| format!("metadata columns failed: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata columns failed: {e}")))?
         {
             if let QueryItem::Row(row) = item {
                 let schema = get_str(&row, 0);
@@ -376,11 +378,11 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         let mut stream = guard
             .query(indexes_sql, &[])
             .await
-            .map_err(|e| format!("metadata indexes failed: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata indexes failed: {e}")))?;
         while let Some(item) = stream
             .try_next()
             .await
-            .map_err(|e| format!("metadata indexes failed: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata indexes failed: {e}")))?
         {
             if let QueryItem::Row(row) = item {
                 let schema = get_str(&row, 0);
@@ -416,11 +418,11 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         let mut stream = guard
             .query(pk_sql, &[])
             .await
-            .map_err(|e| format!("metadata primary keys failed: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata primary keys failed: {e}")))?;
         while let Some(item) = stream
             .try_next()
             .await
-            .map_err(|e| format!("metadata primary keys failed: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata primary keys failed: {e}")))?
         {
             if let QueryItem::Row(row) = item {
                 let schema = get_str(&row, 0);
@@ -453,12 +455,12 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         let mut stream = guard
             .query(fk_sql, &[])
             .await
-            .map_err(|e| format!("metadata foreign keys failed: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata foreign keys failed: {e}")))?;
         let mut current: Option<(String, String, String)> = None;
         while let Some(item) = stream
             .try_next()
             .await
-            .map_err(|e| format!("metadata foreign keys failed: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata foreign keys failed: {e}")))?
         {
             if let QueryItem::Row(row) = item {
                 let schema = get_str(&row, 0);
@@ -501,11 +503,11 @@ pub async fn metadata(client: &Arc<Mutex<MssqlClient>>) -> Result<DatabaseMetada
         let mut stream = guard
             .query(routines_sql, &[])
             .await
-            .map_err(|e| format!("metadata routines failed: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata routines failed: {e}")))?;
         while let Some(item) = stream
             .try_next()
             .await
-            .map_err(|e| format!("metadata routines failed: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata routines failed: {e}")))?
         {
             if let QueryItem::Row(row) = item {
                 let schema = get_str(&row, 0);
@@ -698,14 +700,14 @@ impl tiberius::ToSql for MssqlParam {
 pub async fn apply_edits(
     client: &Arc<Mutex<MssqlClient>>,
     edits: &super::edit::TableEdits,
-) -> Result<super::edit::AppliedEdits, String> {
+) -> DbResult<super::edit::AppliedEdits> {
     let plan = super::edit::plan(super::engine::Wire::SqlServer, edits)?;
     let mut guard = client.lock().await;
 
     guard
         .execute("BEGIN TRANSACTION", &[])
         .await
-        .map_err(|e| format!("begin transaction failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("begin transaction failed: {e}")))?;
 
     let mut applied = super::edit::AppliedEdits::default();
 
@@ -735,7 +737,7 @@ pub async fn apply_edits(
             let rows = guard
                 .execute(&stmt.sql, &refs)
                 .await
-                .map_err(|e| format!("delete failed: {e}"))?;
+                .map_err(|e| DbError::edit(format!("delete failed: {e}")))?;
             applied.deleted += rows.rows_affected().iter().sum::<u64>();
         }
         for stmt in &plan.updates {
@@ -763,7 +765,7 @@ pub async fn apply_edits(
             let rows = guard
                 .execute(&stmt.sql, &refs)
                 .await
-                .map_err(|e| format!("update failed: {e}"))?;
+                .map_err(|e| DbError::edit(format!("update failed: {e}")))?;
             applied.updated += rows.rows_affected().iter().sum::<u64>();
         }
         for stmt in &plan.inserts {
@@ -791,10 +793,10 @@ pub async fn apply_edits(
             let rows = guard
                 .execute(&stmt.sql, &refs)
                 .await
-                .map_err(|e| format!("insert failed: {e}"))?;
+                .map_err(|e| DbError::edit(format!("insert failed: {e}")))?;
             applied.inserted += rows.rows_affected().iter().sum::<u64>();
         }
-        Ok::<_, String>(())
+        Ok::<_, DbError>(())
     };
 
     match run_plan.await {
@@ -802,7 +804,7 @@ pub async fn apply_edits(
             guard
                 .execute("COMMIT TRANSACTION", &[])
                 .await
-                .map_err(|e| format!("commit transaction failed: {e}"))?;
+                .map_err(|e| DbError::edit(format!("commit transaction failed: {e}")))?;
             Ok(applied)
         }
         Err(e) => {

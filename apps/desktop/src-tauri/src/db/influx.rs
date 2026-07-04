@@ -4,8 +4,8 @@ use reqwest::Client;
 use serde_json::{json, Value};
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet,
-    SchemaMetadata,
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    RowSet, SchemaMetadata,
 };
 
 pub struct InfluxConn {
@@ -15,7 +15,7 @@ pub struct InfluxConn {
     token: String,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<InfluxConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<InfluxConn> {
     let host = profile.host.clone().unwrap_or_else(|| "127.0.0.1".into());
     let port = profile.port.unwrap_or(8086);
     let mut url = match &profile.url {
@@ -58,7 +58,7 @@ pub async fn version(conn: &InfluxConn) -> Option<String> {
     Some(format!("InfluxDB {version_header}"))
 }
 
-pub async fn run_query(conn: &InfluxConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &InfluxConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let query_url = format!("{}/api/v3/query?database={}", conn.url, conn.database);
     let payload = json!({
         "query": sql,
@@ -74,17 +74,17 @@ pub async fn run_query(conn: &InfluxConn, sql: &str, cap: usize) -> Result<RowSe
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("HTTP request failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("HTTP request failed: {e}")))?;
 
     if !res.status().is_success() {
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!("InfluxDB query failed: {err_text}"));
+        return Err(DbError::query(format!("InfluxDB query failed: {err_text}")));
     }
 
     let text = res
         .text()
         .await
-        .map_err(|e| format!("failed to read response: {e}"))?;
+        .map_err(|e| DbError::query(format!("failed to read response: {e}")))?;
 
     let mut rows_json: Vec<Value> = Vec::new();
     if let Ok(v) = serde_json::from_str::<Value>(&text) {
@@ -140,7 +140,7 @@ pub async fn run_query(conn: &InfluxConn, sql: &str, cap: usize) -> Result<RowSe
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(conn: &InfluxConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &InfluxConn) -> DbResult<DatabaseMetadata> {
     // Introspect schema using InfluxDB's information_schema
     let sql = "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position";
     let (cols, rows, _) = match run_query(conn, sql, 5000).await {

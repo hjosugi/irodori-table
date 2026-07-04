@@ -11,8 +11,8 @@ use mongodb::bson::{doc, to_document, Bson, Document};
 use mongodb::Client;
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadata, DbObjectMetadataKind,
-    IndexMetadata, RowSet, SchemaMetadata,
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadata,
+    DbObjectMetadataKind, DbResult, IndexMetadata, RowSet, SchemaMetadata,
 };
 
 pub struct MongoHandle {
@@ -20,7 +20,7 @@ pub struct MongoHandle {
     db: String,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<MongoHandle, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<MongoHandle> {
     let uri = match &profile.url {
         Some(u) => u.clone(),
         None => {
@@ -37,7 +37,7 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<MongoHandle, String>
     };
     let client = Client::with_uri_str(&uri)
         .await
-        .map_err(|e| format!("connect failed: {e}"))?;
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))?;
     let db = profile
         .database
         .clone()
@@ -56,20 +56,20 @@ pub async fn version(h: &MongoHandle) -> Option<String> {
     res.get_str("version").ok().map(|v| format!("MongoDB {v}"))
 }
 
-pub async fn run_query(h: &MongoHandle, input: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(h: &MongoHandle, input: &str, cap: usize) -> DbResult<RowSet> {
     let (coll_name, filter) = parse_input(input)?;
     let coll = h.client.database(&h.db).collection::<Document>(&coll_name);
     let mut cursor = coll
         .find(filter)
         .await
-        .map_err(|e| format!("query failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?;
 
     let mut docs: Vec<Document> = Vec::new();
     let mut truncated = false;
     while let Some(doc) = cursor
         .try_next()
         .await
-        .map_err(|e| format!("query failed: {e}"))?
+        .map_err(|e| DbError::query(format!("query failed: {e}")))?
     {
         if docs.len() >= cap {
             truncated = true;
@@ -103,26 +103,25 @@ pub async fn run_query(h: &MongoHandle, input: &str, cap: usize) -> Result<RowSe
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(h: &MongoHandle) -> DbResult<DatabaseMetadata> {
     let db = h.client.database(&h.db);
     let names = db
         .list_collection_names()
         .await
-        .map_err(|e| format!("metadata collections failed: {e}"))?;
+        .map_err(|e| DbError::metadata(format!("metadata collections failed: {e}")))?;
 
     let mut objects = Vec::new();
     for name in names {
         let coll = db.collection::<Document>(&name);
         let mut keys: Vec<(String, String)> = Vec::new();
-        let mut cursor = coll
-            .find(Document::new())
-            .limit(20)
-            .await
-            .map_err(|e| format!("metadata sample failed for {name}: {e}"))?;
+        let mut cursor =
+            coll.find(Document::new()).limit(20).await.map_err(|e| {
+                DbError::metadata(format!("metadata sample failed for {name}: {e}"))
+            })?;
         while let Some(doc) = cursor
             .try_next()
             .await
-            .map_err(|e| format!("metadata sample failed for {name}: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata sample failed for {name}: {e}")))?
         {
             for (key, value) in doc.iter() {
                 if !keys.iter().any(|(existing, _)| existing == key) {
@@ -135,11 +134,11 @@ pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
         let mut index_cursor = coll
             .list_indexes()
             .await
-            .map_err(|e| format!("metadata indexes failed for {name}: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata indexes failed for {name}: {e}")))?;
         while let Some(index) = index_cursor
             .try_next()
             .await
-            .map_err(|e| format!("metadata indexes failed for {name}: {e}"))?
+            .map_err(|e| DbError::metadata(format!("metadata indexes failed for {name}: {e}")))?
         {
             let keys_doc = index.keys;
             indexes.push(IndexMetadata {
@@ -193,18 +192,20 @@ pub async fn metadata(h: &MongoHandle) -> Result<DatabaseMetadata, String> {
 
 /// A query is either a bare collection name, or a JSON object with a `collection`
 /// and an optional `filter`.
-fn parse_input(input: &str) -> Result<(String, Document), String> {
+fn parse_input(input: &str) -> DbResult<(String, Document)> {
     let t = input.trim();
     if t.starts_with('{') {
-        let v: serde_json::Value =
-            serde_json::from_str(t).map_err(|e| format!("invalid query json: {e}"))?;
+        let v: serde_json::Value = serde_json::from_str(t)
+            .map_err(|e| DbError::validation(format!("invalid query json: {e}")))?;
         let coll = v
             .get("collection")
             .and_then(|c| c.as_str())
-            .ok_or("query json needs a string \"collection\"")?
+            .ok_or_else(|| DbError::validation("query json needs a string \"collection\""))?
             .to_string();
         let filter = match v.get("filter") {
-            Some(f) => to_document(f).map_err(|e| format!("invalid filter: {e}"))?,
+            Some(f) => {
+                to_document(f).map_err(|e| DbError::validation(format!("invalid filter: {e}")))?
+            }
             None => Document::new(),
         };
         Ok((coll, filter))

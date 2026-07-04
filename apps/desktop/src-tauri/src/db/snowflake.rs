@@ -4,7 +4,8 @@ use reqwest::{Client, Url};
 use serde_json::{json, Value};
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, ForeignKey, RowSet,
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    ForeignKey, RowSet,
 };
 
 pub struct SnowflakeConn {
@@ -17,7 +18,7 @@ pub struct SnowflakeConn {
     role: Option<String>,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<SnowflakeConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<SnowflakeConn> {
     let raw_url = profile
         .url
         .as_deref()
@@ -120,20 +121,19 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<SnowflakeConn, Strin
             .json(&payload)
             .send()
             .await
-            .map_err(|e| format!("Snowflake login request failed: {e}"))?;
+            .map_err(|e| DbError::connection(format!("Snowflake login request failed: {e}")))?;
 
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(format!(
+            return Err(DbError::connection(format!(
                 "Snowflake login failed with HTTP {status}: {err_text}"
-            ));
+            )));
         }
 
-        let val: Value = res
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse Snowflake login response: {e}"))?;
+        let val: Value = res.json().await.map_err(|e| {
+            DbError::connection(format!("Failed to parse Snowflake login response: {e}"))
+        })?;
 
         if val
             .get("success")
@@ -143,14 +143,18 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<SnowflakeConn, Strin
             val.get("data")
                 .and_then(|d| d.get("token"))
                 .and_then(|t| t.as_str())
-                .ok_or_else(|| "Snowflake login succeeded but returned no token".to_string())?
+                .ok_or_else(|| {
+                    DbError::connection("Snowflake login succeeded but returned no token")
+                })?
                 .to_string()
         } else {
             let msg = val
                 .get("message")
                 .and_then(|m| m.as_str())
                 .unwrap_or("Unknown error");
-            return Err(format!("Snowflake authentication failed: {msg}"));
+            return Err(DbError::connection(format!(
+                "Snowflake authentication failed: {msg}"
+            )));
         }
     } else {
         // Fallback or OAuth/Direct token authentication
@@ -185,7 +189,7 @@ pub async fn version(conn: &SnowflakeConn) -> Option<String> {
     Some("Snowflake".to_string())
 }
 
-pub async fn run_query(conn: &SnowflakeConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &SnowflakeConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let query_url = format!("{}/api/v1/query-request", conn.url);
 
     let mut payload = json!({
@@ -224,20 +228,20 @@ pub async fn run_query(conn: &SnowflakeConn, sql: &str, cap: usize) -> Result<Ro
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("HTTP request failed: {e}"))?;
+        .map_err(|e| DbError::query(format!("HTTP request failed: {e}")))?;
 
     if !res.status().is_success() {
         let status = res.status();
         let err_text = res.text().await.unwrap_or_default();
-        return Err(format!(
+        return Err(DbError::query(format!(
             "Snowflake query failed with HTTP {status}: {err_text}"
-        ));
+        )));
     }
 
     let val: Value = res
         .json()
         .await
-        .map_err(|e| format!("failed to parse JSON response: {e}"))?;
+        .map_err(|e| DbError::query(format!("failed to parse JSON response: {e}")))?;
 
     if !val
         .get("success")
@@ -248,12 +252,14 @@ pub async fn run_query(conn: &SnowflakeConn, sql: &str, cap: usize) -> Result<Ro
             .get("message")
             .and_then(|m| m.as_str())
             .unwrap_or("Unknown query execution error");
-        return Err(format!("Snowflake query failed: {err_text}"));
+        return Err(DbError::query(format!(
+            "Snowflake query failed: {err_text}"
+        )));
     }
 
     let data = val
         .get("data")
-        .ok_or_else(|| "Missing data field in Snowflake response".to_string())?;
+        .ok_or_else(|| DbError::query("Missing data field in Snowflake response"))?;
 
     let mut columns = Vec::new();
     if let Some(rowtype) = data.get("rowtype").and_then(|r| r.as_array()) {
@@ -287,7 +293,7 @@ pub async fn run_query(conn: &SnowflakeConn, sql: &str, cap: usize) -> Result<Ro
     Ok((columns, rows, truncated))
 }
 
-pub async fn metadata(conn: &SnowflakeConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &SnowflakeConn) -> DbResult<DatabaseMetadata> {
     let mut builder = super::meta::MetaBuilder::default();
     let database = sql_string_literal(&conn.database);
     let schema_filter = metadata_schema_filter("TABLE_SCHEMA", conn.schema.as_deref());

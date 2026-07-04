@@ -1,3 +1,4 @@
+use super::error::DbResult;
 use super::state::refresh_metadata_after_query_if_needed;
 use super::*;
 use crate::jobs::JobState;
@@ -12,10 +13,7 @@ impl<'a> MetadataManager<'a> {
         Self { state }
     }
 
-    pub(crate) async fn list_objects(
-        self,
-        connection_id: String,
-    ) -> Result<DatabaseMetadata, String> {
+    pub(crate) async fn list_objects(self, connection_id: String) -> DbResult<DatabaseMetadata> {
         list_objects_impl(self.state, connection_id).await
     }
 

@@ -4,6 +4,7 @@
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions, SqliteRow};
 use sqlx::{Row, ValueRef};
 
+use super::error::{DbError, DbResult};
 use super::meta::MetaBuilder;
 use super::{engine::Wire, explain};
 use super::{
@@ -11,16 +12,16 @@ use super::{
     IndexMetadata, PreparedQuery, QueryPlanAnalysis, QueryPlanMode, RawResultSet, RowSet,
 };
 
-pub async fn connect(url: &str) -> Result<SqlitePool, String> {
+pub async fn connect(url: &str) -> DbResult<SqlitePool> {
     // Single writer; one connection avoids file-lock surprises.
     SqlitePoolOptions::new()
         .max_connections(1)
         .connect(url)
         .await
-        .map_err(|e| format!("connect failed: {e}"))
+        .map_err(|e| DbError::connection(format!("connect failed: {e}")))
 }
 
-pub async fn seed_sample(pool: &SqlitePool) -> Result<(), String> {
+pub async fn seed_sample(pool: &SqlitePool) -> DbResult<()> {
     let statements = [
         r#"
         create table if not exists countries (
@@ -59,7 +60,7 @@ pub async fn seed_sample(pool: &SqlitePool) -> Result<(), String> {
         sqlx::query(super::audited_sql(statement))
             .execute(pool)
             .await
-            .map_err(|e| format!("sqlite sample schema failed: {e}"))?;
+            .map_err(|e| DbError::query(format!("sqlite sample schema failed: {e}")))?;
     }
 
     let existing = sqlx::query_scalar::<_, i64>("select count(*) from customers")
@@ -102,7 +103,7 @@ pub async fn seed_sample(pool: &SqlitePool) -> Result<(), String> {
         sqlx::query(super::audited_sql(statement))
             .execute(pool)
             .await
-            .map_err(|e| format!("sqlite sample data failed: {e}"))?;
+            .map_err(|e| DbError::query(format!("sqlite sample data failed: {e}")))?;
     }
     Ok(())
 }
@@ -114,7 +115,7 @@ pub async fn version(pool: &SqlitePool) -> Option<String> {
         .ok()
 }
 
-pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(pool: &SqlitePool, sql: &str, cap: usize) -> DbResult<RowSet> {
     super::stream::collect_capped(
         sqlx::query(super::audited_sql(sql)).fetch(pool),
         cap,
@@ -127,7 +128,7 @@ pub async fn run_prepared_query(
     pool: &SqlitePool,
     query: &PreparedQuery,
     cap: usize,
-) -> Result<RowSet, String> {
+) -> DbResult<RowSet> {
     super::stream::collect_capped(bind_query(query).fetch(pool), cap, cell_to_json).await
 }
 
@@ -135,7 +136,7 @@ pub async fn run_query_sets(
     pool: &SqlitePool,
     sql: &str,
     cap: usize,
-) -> Result<Vec<RawResultSet>, String> {
+) -> DbResult<Vec<RawResultSet>> {
     let statements = super::split_sql_statements(sql);
     let statements = if statements.is_empty() {
         vec![sql.trim().to_string()]
@@ -162,7 +163,7 @@ pub async fn stream_query(
     pool: &SqlitePool,
     sql: &str,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     super::stream::stream_capped(
         sqlx::query(super::audited_sql(sql)).fetch(pool),
         ctx,
@@ -175,7 +176,7 @@ pub async fn stream_prepared_query(
     pool: &SqlitePool,
     query: &PreparedQuery,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     super::stream::stream_capped(bind_query(query).fetch(pool), ctx, cell_to_json).await
 }
 
@@ -183,7 +184,7 @@ pub async fn stream_query_sets(
     pool: &SqlitePool,
     sql: &str,
     ctx: &super::stream::StreamCtx,
-) -> Result<super::stream::StreamSummary, String> {
+) -> DbResult<super::stream::StreamSummary> {
     let statements = super::split_sql_statements(sql);
     let statements = if statements.is_empty() {
         vec![sql.trim().to_string()]
@@ -195,7 +196,7 @@ pub async fn stream_query_sets(
     let mut truncated = false;
     for (statement_index, statement) in statements.into_iter().enumerate() {
         if ctx.cancelled() {
-            return Err("query cancelled".to_string());
+            return Err(DbError::cancelled("query cancelled"));
         }
         let set_ctx = ctx.for_result_set(statement_index);
         let start = std::time::Instant::now();
@@ -220,13 +221,13 @@ pub async fn explain_query(
     wire: Wire,
     sql: &str,
     mode: QueryPlanMode,
-) -> Result<QueryPlanAnalysis, String> {
+) -> DbResult<QueryPlanAnalysis> {
     let statement = single_explain_statement(sql)?;
     let explain_sql = format!("EXPLAIN QUERY PLAN {statement}");
     let rows = sqlx::query(super::audited_sql(&explain_sql))
         .fetch_all(pool)
         .await
-        .map_err(|e| format!("SQLite explain failed: {e}"))?
+        .map_err(|e| DbError::query(format!("SQLite explain failed: {e}")))?
         .into_iter()
         .map(|row| {
             let id = row.try_get::<i64, _>(0).unwrap_or_default();
@@ -243,7 +244,7 @@ pub async fn explain_query(
     ))
 }
 
-pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(pool: &SqlitePool) -> DbResult<DatabaseMetadata> {
     let object_rows = sqlx::query(
         r#"
         select 'main' as schema_name, name, type, sql
@@ -255,7 +256,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("metadata objects failed: {e}"))?;
+    .map_err(|e| DbError::metadata(format!("metadata objects failed: {e}")))?;
 
     let mut builder = MetaBuilder::default();
     builder.ensure_schema("main".to_string());
@@ -279,7 +280,7 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
         let column_rows = sqlx::query(super::audited_sql(&column_sql))
             .fetch_all(pool)
             .await
-            .map_err(|e| format!("metadata columns failed for {table}: {e}"))?;
+            .map_err(|e| DbError::metadata(format!("metadata columns failed for {table}: {e}")))?;
 
         if let Some(object) = builder.object_mut(&schema, &table) {
             // `pk` in table_xinfo is the 1-based position in the primary key (0 = not
@@ -317,7 +318,9 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
             let fk_rows = sqlx::query(super::audited_sql(&fk_sql))
                 .fetch_all(pool)
                 .await
-                .map_err(|e| format!("metadata foreign keys failed for {table}: {e}"))?;
+                .map_err(|e| {
+                    DbError::metadata(format!("metadata foreign keys failed for {table}: {e}"))
+                })?;
             // Rows for one FK share an `id`, ordered by `seq`.
             let mut by_id: std::collections::BTreeMap<i64, super::ForeignKey> =
                 std::collections::BTreeMap::new();
@@ -342,7 +345,9 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
             let index_rows = sqlx::query(super::audited_sql(&index_sql))
                 .fetch_all(pool)
                 .await
-                .map_err(|e| format!("metadata indexes failed for {table}: {e}"))?;
+                .map_err(|e| {
+                    DbError::metadata(format!("metadata indexes failed for {table}: {e}"))
+                })?;
 
             for row in index_rows {
                 let name: String = row.try_get("name").unwrap_or_default();
@@ -354,7 +359,9 @@ pub async fn metadata(pool: &SqlitePool) -> Result<DatabaseMetadata, String> {
                 let info_rows = sqlx::query(super::audited_sql(&info_sql))
                     .fetch_all(pool)
                     .await
-                    .map_err(|e| format!("metadata index columns failed for {name}: {e}"))?;
+                    .map_err(|e| {
+                        DbError::metadata(format!("metadata index columns failed for {name}: {e}"))
+                    })?;
                 let mut columns = Vec::new();
                 for info in info_rows {
                     if let Ok(column) = info.try_get::<String, _>("name") {
@@ -438,7 +445,7 @@ fn sample_cell(value: serde_json::Value) -> String {
     }
 }
 
-fn single_explain_statement(sql: &str) -> Result<String, String> {
+fn single_explain_statement(sql: &str) -> DbResult<String> {
     let statements = super::split_sql_statements(sql);
     let statements = if statements.is_empty() {
         vec![sql.trim().trim_end_matches(';').trim().to_string()]
@@ -447,8 +454,10 @@ fn single_explain_statement(sql: &str) -> Result<String, String> {
     };
     match statements.as_slice() {
         [statement] if !statement.is_empty() => Ok(statement.clone()),
-        [] => Err("query is empty".into()),
-        _ => Err("Explain Plan supports one statement at a time".into()),
+        [] => Err(DbError::validation("query is empty")),
+        _ => Err(DbError::validation(
+            "Explain Plan supports one statement at a time",
+        )),
     }
 }
 
@@ -460,37 +469,37 @@ fn quote_string(value: &str) -> String {
 pub async fn apply_edits(
     pool: &SqlitePool,
     edits: &super::edit::TableEdits,
-) -> Result<super::edit::AppliedEdits, String> {
+) -> DbResult<super::edit::AppliedEdits> {
     let plan = super::edit::plan(super::engine::Wire::Sqlite, edits)?;
     let mut tx = pool
         .begin()
         .await
-        .map_err(|e| format!("begin failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("begin failed: {e}")))?;
     let mut applied = super::edit::AppliedEdits::default();
     for stmt in &plan.deletes {
         applied.deleted += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("delete failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("delete failed: {e}")))?
             .rows_affected();
     }
     for stmt in &plan.updates {
         applied.updated += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("update failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("update failed: {e}")))?
             .rows_affected();
     }
     for stmt in &plan.inserts {
         applied.inserted += bind(stmt)
             .execute(&mut *tx)
             .await
-            .map_err(|e| format!("insert failed: {e}"))?
+            .map_err(|e| DbError::edit(format!("insert failed: {e}")))?
             .rows_affected();
     }
     tx.commit()
         .await
-        .map_err(|e| format!("commit failed: {e}"))?;
+        .map_err(|e| DbError::edit(format!("commit failed: {e}")))?;
     Ok(applied)
 }
 

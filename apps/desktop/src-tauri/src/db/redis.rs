@@ -3,14 +3,17 @@
 use serde_json::Value as JValue;
 use tokio::sync::Mutex;
 
-use super::{ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbObjectMetadataKind, RowSet};
+use super::{
+    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
+    RowSet,
+};
 
 pub struct RedisConn {
     conn: Mutex<redis::aio::MultiplexedConnection>,
     db_index: i64,
 }
 
-pub async fn connect(profile: &ConnectionProfile) -> Result<RedisConn, String> {
+pub async fn connect(profile: &ConnectionProfile) -> DbResult<RedisConn> {
     let host = profile.host.clone().unwrap_or_else(|| "127.0.0.1".into());
     let port = profile.port.unwrap_or(6379);
 
@@ -39,11 +42,11 @@ pub async fn connect(profile: &ConnectionProfile) -> Result<RedisConn, String> {
         url = format!("{url}/{db_index}");
     }
 
-    let client = redis::Client::open(url).map_err(|e| e.to_string())?;
+    let client = redis::Client::open(url).map_err(|e| DbError::connection(e.to_string()))?;
     let conn = client
         .get_multiplexed_async_connection()
         .await
-        .map_err(|e| format!("Failed to connect to Redis: {e}"))?;
+        .map_err(|e| DbError::connection(format!("Failed to connect to Redis: {e}")))?;
 
     Ok(RedisConn {
         conn: Mutex::new(conn),
@@ -67,10 +70,10 @@ pub async fn version(conn: &RedisConn) -> Option<String> {
     Some("Redis".into())
 }
 
-pub async fn run_query(conn: &RedisConn, sql: &str, cap: usize) -> Result<RowSet, String> {
+pub async fn run_query(conn: &RedisConn, sql: &str, cap: usize) -> DbResult<RowSet> {
     let parts = split_args(sql);
     if parts.is_empty() {
-        return Err("No command specified".into());
+        return Err(DbError::validation("No command specified"));
     }
 
     let cmd = parts[0].to_uppercase();
@@ -85,12 +88,12 @@ pub async fn run_query(conn: &RedisConn, sql: &str, cap: usize) -> Result<RowSet
     let val: redis::Value = c
         .query_async(&mut *guard)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| DbError::query(e.to_string()))?;
 
     Ok(map_redis_value_to_rowset(val, cap))
 }
 
-pub async fn metadata(conn: &RedisConn) -> Result<DatabaseMetadata, String> {
+pub async fn metadata(conn: &RedisConn) -> DbResult<DatabaseMetadata> {
     let mut guard = conn.conn.lock().await;
 
     // Scan up to 200 keys

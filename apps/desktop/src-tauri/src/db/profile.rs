@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use super::engine::{DbEngine, Wire};
+use super::{DbError, DbResult};
 
 pub(super) const CONNECTOR_STATUS_DOC_URL: &str =
     "https://hjosugi.github.io/irodori-docs/data-source-support-status.html";
@@ -53,20 +54,20 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 
-pub(super) fn normalize_profile(
-    mut profile: ConnectionProfile,
-) -> Result<ConnectionProfile, String> {
+pub(super) fn normalize_profile(mut profile: ConnectionProfile) -> DbResult<ConnectionProfile> {
     profile.id = profile.id.trim().to_string();
     if profile.id.is_empty() {
-        return Err("connection id is required".into());
+        return Err(DbError::validation("connection id is required"));
     }
     if profile.id.len() > MAX_CONNECTION_ID_LEN {
-        return Err(format!(
+        return Err(DbError::validation(format!(
             "connection id must be at most {MAX_CONNECTION_ID_LEN} bytes"
-        ));
+        )));
     }
     if profile.id.chars().any(char::is_control) {
-        return Err("connection id cannot contain control characters".into());
+        return Err(DbError::validation(
+            "connection id cannot contain control characters",
+        ));
     }
 
     normalize_optional_text(&mut profile.url);
@@ -77,7 +78,9 @@ pub(super) fn normalize_profile(
 
     let wire = profile.engine.wire();
     if is_unimplemented_wire(wire) && profile.engine.connector_extension_id().is_none() {
-        return Err(connector_extension_required_message(profile.engine));
+        return Err(DbError::unsupported(connector_extension_required_message(
+            profile.engine,
+        )));
     }
 
     if profile.url.is_some() {
@@ -87,7 +90,9 @@ pub(super) fn normalize_profile(
     match wire {
         Wire::Sqlite => {
             if profile.database.is_none() && profile.host.is_none() {
-                return Err("SQLite needs a database file path or :memory:".into());
+                return Err(DbError::validation(
+                    "SQLite needs a database file path or :memory:",
+                ));
             }
         }
         Wire::DuckDb => {
@@ -109,7 +114,9 @@ pub(super) fn normalize_profile(
         | Wire::InfluxDb => {
             let socket_supported = matches!(wire, Wire::Postgres | Wire::Mysql);
             if profile.host.is_none() && !(socket_supported && profile.socket_path.is_some()) {
-                return Err("host is required when URL/DSN is not provided".into());
+                return Err(DbError::validation(
+                    "host is required when URL/DSN is not provided",
+                ));
             }
         }
         Wire::Memgraph
