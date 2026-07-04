@@ -1,3 +1,4 @@
+use super::state::refresh_metadata_after_query_if_needed;
 use super::*;
 use crate::jobs::JobState;
 use irodori_core::IrodoriError;

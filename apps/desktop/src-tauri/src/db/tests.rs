@@ -1,4 +1,7 @@
 use super::*;
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
 async fn with_timeout_passes_through_and_trips() {

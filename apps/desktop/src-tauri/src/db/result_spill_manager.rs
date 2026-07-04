@@ -1,4 +1,9 @@
+use std::sync::Arc;
+
+use super::runner::release_results_for_connection;
+use super::spill::ResultStore;
 use super::*;
+use tokio::sync::{mpsc, Mutex};
 
 /// A retained result store plus the bookkeeping eviction and disconnect-cleanup
 /// need.
