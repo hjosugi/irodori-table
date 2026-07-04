@@ -10,6 +10,7 @@ EXTENSION_SDK_DIR ?= $(firstword $(wildcard ../irodori-kit/packages/extension-sd
 .PHONY: help setup setup-desktop setup-fast \
         dev test build typegen e2e doctor \
         desktop-dev desktop-vite desktop-typegen desktop-typegen-check desktop-format desktop-format-check desktop-lint desktop-test desktop-test-rust-ts desktop-test-watch desktop-build desktop-build-verified desktop-e2e \
+        rust-clippy workflow-lint \
         check security security-strict extension-manifests kit-link kit-unlink kit-patch-check db db-verify db-all db-up db-down \
         extension-scenarios extension-fleet-audit \
         release release-patch release-minor release-major run-linux run-linux-release \
@@ -60,6 +61,8 @@ help:
 	@printf "  DB options: postgres mysql mariadb timescaledb cockroachdb yugabytedb tidb sqlserver mongodb oracle\n\n"
 	@printf "Checks and docs\n"
 	@printf "  make check             cargo test + desktop test/build\n"
+	@printf "  make rust-clippy       cargo clippy warning gate\n"
+	@printf "  make workflow-lint     actionlint for GitHub Actions workflows\n"
 	@printf "  make security          license, lockfile, npm audit/signature, RustSec checks\n"
 	@printf "  make security-strict   same as security, but requires cargo-audit locally\n"
 	@printf "  make extension-manifests validate kit extension SDK templates when present\n"
@@ -131,6 +134,12 @@ desktop-build-verified:
 
 desktop-e2e:
 	$(call js-run,apps/desktop,test:e2e)
+
+rust-clippy:
+	scripts/rust-clippy.sh
+
+workflow-lint:
+	actionlint
 
 check:
 	cargo test --workspace

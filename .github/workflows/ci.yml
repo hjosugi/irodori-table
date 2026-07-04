@@ -11,6 +11,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  workflow-lint:
+    name: GitHub Actions lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out irodori-table
+        uses: actions/checkout@v7
+
+      - name: Lint workflow files
+        uses: rhysd/actionlint@v1
+
   formatting:
     name: Formatting checks
     runs-on: ubuntu-latest
@@ -147,6 +158,8 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          components: clippy
 
       # The committed .cargo/config.toml links Linux builds with mold, and the
       # desktop crate needs WebKit/GTK headers on Linux.
@@ -174,8 +187,100 @@ jobs:
           workspaces: '. -> .irodori-local/target'
           key: ${{ matrix.os }}
 
+      - name: Run Rust clippy
+        run: make rust-clippy
+
       - name: Run Rust workspace tests
         run: cargo test --workspace
+
+  db-integration:
+    name: DB integration (postgres/mysql)
+    needs:
+      - formatting
+      - preflight
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: irodori
+          POSTGRES_PASSWORD: irodori
+          POSTGRES_DB: samples
+        ports:
+          - "55432:5432"
+        options: >-
+          --health-cmd "pg_isready -U irodori -d samples"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: irodori
+          MYSQL_PASSWORD: irodori
+          MYSQL_DATABASE: samples
+        ports:
+          - "55306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uirodori -pirodori"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 18
+          --health-start-period 30s
+
+    steps:
+      - name: Check out irodori-table
+        uses: actions/checkout@v7
+
+      - name: Check out sample fixtures
+        uses: actions/checkout@v7
+        with:
+          repository: hjosugi/irodori-samples
+          path: irodori-samples
+
+      - uses: dtolnay/rust-toolchain@1.96.0
+
+      # The desktop crate needs WebKit/GTK headers when compiling the
+      # integration-test binary on Linux.
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            mold \
+            wget
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> .irodori-local/target'
+          key: db-integration-${{ runner.os }}
+
+      - name: Seed Postgres sample database
+        shell: bash
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U irodori -d samples < irodori-samples/postgres/01_samples.sql
+
+      - name: Seed MySQL sample database
+        shell: bash
+        run: docker exec -i "${{ job.services.mysql.id }}" mysql -uirodori -pirodori samples < irodori-samples/mysql/01_samples.sql
+
+      - name: Run Postgres integration test
+        env:
+          IRODORI_PG_URL: postgres://irodori:irodori@127.0.0.1:55432/samples
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test integration_db postgres_samples -- --nocapture
+
+      - name: Run MySQL integration test
+        env:
+          IRODORI_MYSQL_URL: mysql://irodori:irodori@localhost:55306/samples
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test integration_db mysql_samples -- --nocapture
 
   desktop-frontend-checks:
     name: Desktop frontend checks
