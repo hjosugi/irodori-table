@@ -2,6 +2,7 @@ pub mod ai;
 mod command_registry;
 pub mod crash_report;
 pub mod db;
+pub mod extensions;
 pub mod git;
 pub mod indexing;
 pub mod jobs;
@@ -16,6 +17,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(db::DbState::default())
+        .manage(extensions::ExtensionsState::default())
         .manage(jobs::JobState::default())
         .manage(indexing::SchemaIndexState::default())
         .manage(security::SecurityState::default())
@@ -169,6 +171,8 @@ mod typegen {
             .decl(&decl::<db::DbObjectInspection>())
             .decl(&decl::<db::DbColumnInspection>())
             .decl(&decl::<db::DbColumnReference>())
+            .decl(&decl::<extensions::InstalledExtension>())
+            .decl(&decl::<extensions::ExtensionInstallRequest>())
             .decl(&decl::<indexing::SchemaSearchHit>())
             .decl(&decl::<git::GitChangeKind>())
             .decl(&decl::<git::GitRemoteProvider>())
@@ -295,6 +299,22 @@ mod typegen {
                     .arg(Arg::rust("connection_id", TsType::string()))
                     .arg(Arg::rust("schema", TsType::string()).optional())
                     .arg(Arg::rust("object", TsType::string()).optional()),
+            )
+            .command(Command::new("ext_list", "Array<InstalledExtension>"))
+            .command(
+                Command::new("ext_install", "InstalledExtension").arg(Arg::new(
+                    "request",
+                    TsType::named("ExtensionInstallRequest"),
+                )),
+            )
+            .command(
+                Command::returning("ext_uninstall", TsType::boolean())
+                    .arg(Arg::new("id", TsType::string())),
+            )
+            .command(
+                Command::new("ext_set_enabled", "InstalledExtension")
+                    .arg(Arg::new("id", TsType::string()))
+                    .arg(Arg::new("enabled", TsType::boolean())),
             )
             .command(
                 Command::new("git_status", "GitStatusSummary")

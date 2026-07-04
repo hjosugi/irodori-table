@@ -274,6 +274,35 @@ export type DbColumnInspection = { schema: string, object: string, name: string,
 
 export type DbColumnReference = { schema: string, object: string, column: string, };
 
+export type InstalledExtension = { id: string, name: string, version: string, engine: string,
+/**
+ * Absolute path of the loaded cdylib inside the extensions dir.
+ */
+libraryPath: string, sha256: string, enabled: boolean, installedAt: string, abiVersion: number,
+/**
+ * Calls the connector reports supporting (e.g. connect/query/metadata).
+ */
+supportedCalls: Array<string>, };
+
+export type ExtensionInstallRequest = { id: string,
+/**
+ * `owner/repo` or full https URL of the GitHub repository.
+ */
+repository: string,
+/**
+ * Release-asset file name for the current platform, or a template
+ * containing `{target}` (e.g. `connector-{target}.tar.gz`).
+ */
+assetName: string,
+/**
+ * Pinned tag; `latest` resolves the newest release.
+ */
+tag: string | null,
+/**
+ * Expected sha256 of the asset. Verified when present.
+ */
+sha256: string | null, };
+
 export type SchemaSearchHit = {
 /**
  * The qualified object the term matched (e.g. `public.users`).
@@ -396,6 +425,22 @@ export function dbInspectColumn(connectionId: string, schema: string, object: st
 
 export function dbInvalidateCache(connectionId: string, schema?: string, object?: string): Promise<boolean> {
   return invoke<boolean>("db_invalidate_cache", { connectionId, schema, object });
+}
+
+export function extList(): Promise<Array<InstalledExtension>> {
+  return invoke<Array<InstalledExtension>>("ext_list");
+}
+
+export function extInstall(request: ExtensionInstallRequest): Promise<InstalledExtension> {
+  return invoke<InstalledExtension>("ext_install", { request });
+}
+
+export function extUninstall(id: string): Promise<boolean> {
+  return invoke<boolean>("ext_uninstall", { id });
+}
+
+export function extSetEnabled(id: string, enabled: boolean): Promise<InstalledExtension> {
+  return invoke<InstalledExtension>("ext_set_enabled", { id, enabled });
 }
 
 export function gitStatus(repoPath?: string): Promise<GitStatusSummary> {

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sql_dialect_fmt_formatter::{format as format_snowflake_sql, Dialect, FormatOptions};
 use ts_rs::TS;
 
-use crate::{ai, crash_report, db, git, indexing, jobs, pty, security};
+use crate::{ai, crash_report, db, extensions, git, indexing, jobs, pty, security};
 
 #[derive(Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -120,6 +120,10 @@ pub(crate) fn invoke_handler() -> Box<tauri::ipc::InvokeHandler<tauri::Wry>> {
         db::db_inspect_object,
         db::db_inspect_column,
         db::db_invalidate_cache,
+        extensions::ext_list,
+        extensions::ext_install,
+        extensions::ext_uninstall,
+        extensions::ext_set_enabled,
         git::git_status,
         git::git_log,
         git::git_diff,

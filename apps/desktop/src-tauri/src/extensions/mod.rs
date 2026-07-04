@@ -11,8 +11,7 @@ mod abi;
 mod connection;
 mod store;
 
-pub(crate) use connection::connect_extension;
-pub(crate) use store::ExtensionsState;
+pub use store::ExtensionsState;
 
 use irodori_core::Result as IrodoriResult;
 use serde::{Deserialize, Serialize};
