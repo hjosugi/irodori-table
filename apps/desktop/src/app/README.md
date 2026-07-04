@@ -1,9 +1,10 @@
 # `src/app` — Workbench architecture
 
 The workbench is built from three layers with one rule: **wiring happens in
-exactly one place**. If you remember nothing else: state lives in stores and
-controllers, controllers are combined only in `use-workbench.ts`, and views
-only render what the context gives them.
+exactly one chain**. If you remember nothing else: state lives in stores and
+controllers, controllers are combined only in the composition root
+(`AppWorkbench.tsx` and the three part files it calls), and views only render
+what the context gives them.
 
 ```
 feature stores (zustand)          src/features/*/…-store.ts
@@ -12,7 +13,10 @@ feature stores (zustand)          src/features/*/…-store.ts
 domain controllers (hooks)        src/app/controllers/use-<domain>.ts
         │  wired together by
         ▼
-composition root                  src/app/controllers/use-workbench.ts  ← the ONLY wiring site
+composition root                  AppWorkbench.tsx
+                                    ├─ use-workbench-layout.ts    (dock dims + resize)
+                                    ├─ use-query-workspace.ts     (grid + runner + editor commands + history)
+                                    └─ use-workbench-actions.ts   (workspace actions + runCommand + panes)
         │  distributed via
         ▼
 WorkbenchProvider (context)       src/app/workbench-context.tsx
@@ -23,10 +27,12 @@ views                             WorkbenchRoot / WorkbenchSidebar / WorkbenchDi
 
 ## Entry point
 
-`AppWorkbench.tsx` is intentionally tiny:
+`AppWorkbench.tsx` is the composition root. `useWorkbench()` calls each part
+in dependency order — independent domains first, then the query pipeline,
+then the action surface — and the component hands the result to the views:
 
 ```tsx
-const workbench = useWorkbench();          // build everything
+const workbench = useWorkbench();          // build everything, part by part
 return (
   <WorkbenchProvider workbench={workbench}>
     <WorkbenchRoot />                      // render everything
@@ -34,16 +40,22 @@ return (
 );
 ```
 
+The long controller-to-controller hand-offs (the result grid's two dozen
+setters feeding the query runner, etc.) are hidden inside the part files, so
+the root reads as a table of contents.
+
 ## File map
 
 | File | Role |
 | --- | --- |
-| `AppWorkbench.tsx` | Entry: composition + provider + root view. |
-| `controllers/use-workbench.ts` | Composition root. Creates every domain controller in dependency order, cross-wires them, returns the `Workbench` object. |
+| `AppWorkbench.tsx` | Composition root: creates every part in dependency order, exports the `Workbench` type, renders provider + root view. |
 | `workbench-context.tsx` | `WorkbenchProvider` / `useWorkbenchContext()`. |
 | `WorkbenchRoot.tsx` | The one top-level view: shell chrome, dock layout, center panes, sidebars, dialogs, toasts. |
 | `WorkbenchSidebar.tsx` | One side (left/right): view rail + dockable panels. |
 | `WorkbenchDialogs.tsx` | Every modal/overlay surface. |
+| `controllers/use-query-workspace.ts` | Part: run-a-query pipeline — grid, runner, editor commands, history actions, plan/error state, and the setter hand-offs between them. |
+| `controllers/use-workbench-actions.ts` | Part: workspace actions, the `runCommand` surface, Escape handling for transient menus, the two center-pane prop bundles. |
+| `controllers/use-workbench-layout.ts` | Part: dock dimensions + the panel resize controller. |
 | `controllers/use-<domain>.ts` | One hook per domain (below). |
 | `app-config.ts` | Command catalog, menu bar sections, app constants. |
 | `app-workbench-utils.ts` | Pure helpers (no hooks). |
@@ -52,7 +64,7 @@ return (
 
 Each controller owns one concern, takes its dependencies as an argument
 object, and returns plain state + actions. None of them import views or each
-other's internals — they meet only inside `use-workbench.ts`.
+other's internals — they meet only inside the composition root's part files.
 
 | Controller | Owns |
 | --- | --- |
@@ -75,8 +87,8 @@ other's internals — they meet only inside `use-workbench.ts`.
 
 1. **Views never wire.** A view reads `useWorkbenchContext()` (and feature
    stores for view-local concerns) and renders. If a view needs two
-   controllers to talk to each other, that conversation belongs in
-   `use-workbench.ts`.
+   controllers to talk to each other, that conversation belongs in a
+   composition-root part file.
 2. **Controllers never import views** and never reach into another
    controller — dependencies arrive through their argument object.
 3. **One command surface.** Anything a user can trigger (menu, palette,
@@ -85,6 +97,10 @@ other's internals — they meet only inside `use-workbench.ts`.
 4. **Store state stays in stores.** `useState` in a controller is fine for
    ephemeral UI state; anything persisted or shared across features belongs
    in a zustand store under `src/features/*`.
+5. **Long dependency lists stay in part files.** If wiring a controller takes
+   a screenful of properties, that call belongs in `use-query-workspace.ts` /
+   `use-workbench-actions.ts` / `use-workbench-layout.ts`, not in
+   `AppWorkbench.tsx`.
 
 ## Recipes
 
@@ -101,8 +117,9 @@ via a command.
 `WorkbenchSidebar.tsx`, add a toggle command.
 
 **Add a domain controller** — create `controllers/use-<name>.ts` taking a
-deps object, instantiate it in `use-workbench.ts` at the right point in the
-dependency order, expose it on the returned `Workbench` object.
+deps object, instantiate it in the composition root (directly in
+`AppWorkbench.tsx` if the call is short, inside the matching part file if the
+dependency list is long), expose it on the returned `Workbench` object.
 
 **Consume workbench state in a new component** — render it under
 `WorkbenchRoot` and call `useWorkbenchContext()`; never thread controller
