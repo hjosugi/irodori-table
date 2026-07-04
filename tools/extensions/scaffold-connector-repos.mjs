@@ -10,6 +10,12 @@ const root = resolve(scriptDir, "../..");
 const defaultExtensionsRoot = resolve(root, "../../irodori-extensions");
 const extensionsRoot =
   process.env.IRODORI_EXTENSIONS_ROOT ?? defaultExtensionsRoot;
+const options = parseArgs(process.argv.slice(2));
+
+if (options.help) {
+  printHelp();
+  process.exit(0);
+}
 
 const index = JSON.parse(
   readFileSync(resolve(root, "registry/catalog/index.json"), "utf8"),
@@ -101,13 +107,20 @@ const sharedMigrationSources = [
 
 const excludedExtensionIds = new Set();
 const entries = index.extensions.filter((entry) => !excludedExtensionIds.has(entry.id));
+const summary = {
+  skipped: 0,
+  written: 0,
+};
 
 for (const entry of entries) {
-  writeConnectorRepo(entry);
+  summary[writeConnectorRepo(entry)] += 1;
 }
 
+const writeVerb = options.dryRun ? "would write" : "wrote";
+const skipPhrase =
+  summary.skipped > 0 ? `, skipped ${summary.skipped} implemented repos` : "";
 console.log(
-  `connector-scaffold: wrote ${entries.length} repos in ${extensionsRoot}`,
+  `connector-scaffold: ${writeVerb} ${summary.written} repos${skipPhrase} in ${extensionsRoot}`,
 );
 
 function writeConnectorRepo(entry) {
@@ -121,6 +134,26 @@ function writeConnectorRepo(entry) {
   }
   const repoName = repositoryName(entry);
   const repoDir = resolve(extensionsRoot, repoName);
+  const implementedMarkers = implementedRepoMarkers(repoDir);
+  if (implementedMarkers.length > 0 && !options.force) {
+    const skipVerb = options.dryRun ? "would skip" : "skipped";
+    console.log(
+      `connector-scaffold: ${skipVerb} implemented repo ${repoName} (${implementedMarkers.join(
+        ", ",
+      )})`,
+    );
+    return "skipped";
+  }
+  if (implementedMarkers.length > 0 && options.force) {
+    const forceVerb = options.dryRun ? "would rewrite" : "rewriting";
+    console.log(
+      `connector-scaffold: ${forceVerb} implemented repo ${repoName} because --force is set (${implementedMarkers.join(
+        ", ",
+      )})`,
+    );
+  } else if (options.dryRun) {
+    console.log(`connector-scaffold: would write ${repoName}`);
+  }
   const crateName = repoName.replaceAll("-", "_");
   const connectorId = `${engine}.connector`;
   const moduleId = `${engine}.driver`;
@@ -239,13 +272,13 @@ function writeConnectorRepo(entry) {
     ...(experience ? { experience } : {}),
   };
 
-  mkdirSync(resolve(repoDir, "src"), { recursive: true });
-  mkdirSync(resolve(repoDir, "dist/native"), { recursive: true });
-  mkdirSync(resolve(repoDir, "native/source"), { recursive: true });
-  mkdirSync(resolve(repoDir, ".cargo"), { recursive: true });
-  mkdirSync(resolve(repoDir, ".github/workflows"), { recursive: true });
+  ensureDir(resolve(repoDir, "src"));
+  ensureDir(resolve(repoDir, "dist/native"));
+  ensureDir(resolve(repoDir, "native/source"));
+  ensureDir(resolve(repoDir, ".cargo"));
+  ensureDir(resolve(repoDir, ".github/workflows"));
   if (dialectContribution) {
-    mkdirSync(resolve(repoDir, "dialects"), { recursive: true });
+    ensureDir(resolve(repoDir, "dialects"));
   }
 
   writeJson(resolve(repoDir, "irodori.extension.json"), manifest);
@@ -273,6 +306,7 @@ function writeConnectorRepo(entry) {
   writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(realDriverLinked));
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
   formatRustSources(repoDir);
+  return "written";
 }
 
 function adapterSourceInfo(adapter) {
@@ -328,7 +362,7 @@ function copyAdapterSource(repoDir, adapterSource) {
   if (!adapterSource) {
     return;
   }
-  copyFileSync(
+  copyFile(
     adapterSource.sourcePath,
     resolve(repoDir, "native/source", adapterSource.adapter.split("/").at(-1)),
   );
@@ -338,9 +372,18 @@ function copyMigrationSources(repoDir, snapshots) {
   for (const snapshot of snapshots) {
     const sourcePath = resolve(root, snapshot.path);
     const destination = resolve(repoDir, snapshot.destination);
-    mkdirSync(dirname(destination), { recursive: true });
-    copyFileSync(sourcePath, destination);
+    ensureDir(dirname(destination));
+    copyFile(sourcePath, destination);
   }
+}
+
+function implementedRepoMarkers(repoDir) {
+  return [
+    ["connector.source.json", resolve(repoDir, "connector.source.json")],
+    ["src/driver.rs", resolve(repoDir, "src/driver.rs")],
+  ]
+    .filter(([, path]) => existsSync(path))
+    .map(([label]) => label);
 }
 
 function repositoryName(entry) {
@@ -2150,7 +2193,24 @@ function writeJson(path, value) {
   writeText(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function ensureDir(path) {
+  if (options.dryRun) {
+    return;
+  }
+  mkdirSync(path, { recursive: true });
+}
+
+function copyFile(source, destination) {
+  if (options.dryRun) {
+    return;
+  }
+  copyFileSync(source, destination);
+}
+
 function writeText(path, content) {
+  if (options.dryRun) {
+    return;
+  }
   writeFileSync(path, content);
 }
 
@@ -2218,11 +2278,14 @@ function writeRustSources(repoDir, engine, label, realDriverLinked) {
 }
 
 function removeIfExists(path) {
+  if (options.dryRun) {
+    return;
+  }
   rmSync(path, { force: true });
 }
 
 function formatRustSources(repoDir) {
-  if (process.env.IRODORI_SKIP_RUSTFMT === "1") {
+  if (options.dryRun || process.env.IRODORI_SKIP_RUSTFMT === "1") {
     return;
   }
   const result = spawnSync("cargo", ["fmt", "--manifest-path", resolve(repoDir, "Cargo.toml")], {
@@ -2234,6 +2297,40 @@ function formatRustSources(repoDir) {
       `cargo fmt failed in ${repoDir}\n${result.stdout ?? ""}${result.stderr ?? ""}`,
     );
   }
+}
+
+function parseArgs(args) {
+  const parsed = {
+    dryRun: false,
+    force: false,
+    help: false,
+  };
+
+  for (const arg of args) {
+    if (arg === "--dry-run") {
+      parsed.dryRun = true;
+    } else if (arg === "--force") {
+      parsed.force = true;
+    } else if (arg === "--help" || arg === "-h") {
+      parsed.help = true;
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  return parsed;
+}
+
+function printHelp() {
+  console.log(`Usage: node tools/extensions/scaffold-connector-repos.mjs [options]
+
+Bootstraps connector extension repositories from registry/catalog/index.json.
+
+Options:
+  --dry-run  Report which repositories would be written or skipped.
+  --force    Rewrite implemented repositories that have connector.source.json or src/driver.rs.
+  -h, --help Show this help text.
+`);
 }
 
 function rustLib(engine, label, realDriverLinked) {
