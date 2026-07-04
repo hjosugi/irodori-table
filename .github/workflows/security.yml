@@ -7,12 +7,14 @@ on:
       - .github/workflows/security.yml
       - Cargo.lock
       - Cargo.toml
+      - deny.toml
       - apps/**/Cargo.lock
       - apps/**/Cargo.toml
       - apps/**/Dockerfile
       - apps/**/package-lock.json
       - apps/**/package.json
       - scripts/check-licenses.sh
+      - scripts/cargo-deny.sh
       - scripts/dependency-review.mjs
       - scripts/security-check.sh
       - security/**
@@ -42,7 +44,11 @@ jobs:
       - name: Install RustSec cargo-audit
         run: cargo install cargo-audit --locked
 
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked --version 0.19.9
+
       - name: Run supply-chain checks
         env:
           REQUIRE_CARGO_AUDIT: "1"
+          REQUIRE_CARGO_DENY: "1"
         run: scripts/security-check.sh

@@ -98,6 +98,28 @@ jobs:
           EXTENSION_SDK_DIR: irodori-kit/packages/extension-sdk
         run: make extension-manifests
 
+  dependency-policy:
+    name: Cargo dependency policy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out irodori-table
+        uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@1.96.0
+
+      - name: Cache cargo-deny
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-deny
+          key: cargo-deny-0.19.9-${{ runner.os }}
+
+      - name: Install cargo-deny
+        run: command -v cargo-deny || cargo install cargo-deny --locked --version 0.19.9
+
+      - name: Check Rust dependency policy
+        run: make cargo-deny
+
   desktop-typegen:
     name: Desktop generated bindings
     needs:

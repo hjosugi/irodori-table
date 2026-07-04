@@ -20,6 +20,16 @@ node "$root/scripts/dependency-review.mjs"
 step "Cargo lockfile consistency"
 cargo metadata --locked --format-version 1 >/dev/null
 
+step "cargo-deny policy"
+if command -v cargo-deny >/dev/null 2>&1; then
+  "$root/scripts/cargo-deny.sh"
+else
+  echo "cargo-deny is not installed; install it with: cargo install cargo-deny --locked" >&2
+  if [[ "${REQUIRE_CARGO_DENY:-0}" == "1" ]]; then
+    exit 1
+  fi
+fi
+
 for dir in "${npm_dirs[@]}"; do
   if [[ ! -f "$root/$dir/package-lock.json" ]]; then
     continue

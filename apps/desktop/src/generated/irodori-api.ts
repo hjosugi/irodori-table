@@ -310,12 +310,12 @@ export function openDeveloperTools(): Promise<void> {
   return invoke<void>("open_developer_tools");
 }
 
-export function sqlFormatSnowflake(sql: string, lineWidth?: number, indentWidth?: number, uppercaseKeywords?: boolean): Promise<string> {
-  return invoke<string>("sql_format_snowflake", { sql, lineWidth, indentWidth, uppercaseKeywords });
-}
-
 export function crashReportStatus(): Promise<CrashReportStatus> {
   return invoke<CrashReportStatus>("crash_report_status");
+}
+
+export function sqlFormatSnowflake(sql: string, lineWidth?: number, indentWidth?: number, uppercaseKeywords?: boolean): Promise<string> {
+  return invoke<string>("sql_format_snowflake", { sql, lineWidth, indentWidth, uppercaseKeywords });
 }
 
 export function jobsList(): Promise<JobList> {

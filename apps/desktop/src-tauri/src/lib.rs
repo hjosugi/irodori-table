@@ -149,7 +149,6 @@ pub fn run() {
             db::db_inspect_object,
             db::db_inspect_column,
             db::db_invalidate_cache,
-            crash_report::crash_report_status,
             git::git_status,
             git::git_log,
             git::git_diff,
@@ -341,7 +340,6 @@ mod typegen {
                     .arg(Arg::rust("indent_width", TsType::number()).optional())
                     .arg(Arg::rust("uppercase_keywords", TsType::boolean()).optional()),
             )
-            .command(Command::new("crash_report_status", "CrashReportStatus"))
             .command(Command::new("jobs_list", "JobList"))
             .command(
                 Command::new("jobs_get", "JobRecord | null")
