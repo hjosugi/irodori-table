@@ -48,9 +48,9 @@
       "family": "analytical",
       "wire": "duckdb",
       "defaultPort": 0,
-      "adapter": "db/duck.rs",
-      "status": "verified",
-      "notes": "embedded libduckdb"
+      "status": "extension",
+      "extensionId": "irodori.duckdb",
+      "notes": "installable connector; local file and in-memory workflows live outside the core desktop build"
     },
     {
       "id": "motherduck",
@@ -58,7 +58,6 @@
       "family": "analytical / lakehouse",
       "wire": "duckdb",
       "defaultPort": 443,
-      "routesThrough": "db/duck.rs",
       "status": "extension",
       "extensionId": "irodori.motherduck",
       "notes": "installable connector; DuckDB/MotherDuck service workflow"

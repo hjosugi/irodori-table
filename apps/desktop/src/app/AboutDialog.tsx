@@ -1,6 +1,11 @@
+import { useEffect, useState } from "react";
 import { BookOpen, Bug, Copy, ExternalLink, Info } from "lucide-react";
 import { DialogShell } from "@/components/DialogShell";
 import { openExternalUrl } from "@/features/settings/tabs/shared";
+import {
+  crashReportStatus,
+  type CrashReportStatus,
+} from "@/generated/irodori-api";
 
 const DOCS_URL = "https://hjosugi.github.io/irodori-docs/";
 const REPO_URL = "https://github.com/hjosugi/irodori-table";
@@ -23,6 +28,38 @@ export function AboutDialog({
   onClose: () => void;
   onCopyDiagnostics: () => void;
 }) {
+  const [crashReport, setCrashReport] = useState<CrashReportStatus | null>(
+    null,
+  );
+  const [crashPathCopied, setCrashPathCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void crashReportStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setCrashReport(status);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCrashReport(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function copyCrashReportPath() {
+    const path = crashReport?.latestBundleDir;
+    if (!path) {
+      return;
+    }
+    await navigator.clipboard?.writeText(path);
+    setCrashPathCopied(true);
+  }
+
   return (
     <DialogShell
       className="data-dialog about-dialog"
@@ -61,7 +98,33 @@ export function AboutDialog({
             <dt>Active connection</dt>
             <dd>{activeConnectionLabel}</dd>
           </div>
+          {crashReport ? (
+            <div>
+              <dt>Log directory</dt>
+              <dd className="about-path" title={crashReport.logDir}>
+                {crashReport.logDir}
+              </dd>
+            </div>
+          ) : null}
+          {crashReport?.latestBundleDir ? (
+            <div>
+              <dt>Previous crash</dt>
+              <dd className="about-path" title={crashReport.latestBundleDir}>
+                {crashReport.latestBundleDir}
+              </dd>
+            </div>
+          ) : null}
         </dl>
+        {crashReport?.latestBundleDir ? (
+          <div className="about-help">
+            <Info size={16} />
+            <span>
+              A local crash report from the previous launch is staged on disk.
+              Review and redact it before sharing; Irodori does not upload crash
+              reports automatically.
+            </span>
+          </div>
+        ) : null}
         <div className="about-help">
           <Info size={16} />
           <span>
@@ -105,6 +168,16 @@ export function AboutDialog({
           <Copy size={13} />
           Copy diagnostics
         </button>
+        {crashReport?.latestBundleDir ? (
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => void copyCrashReportPath()}
+          >
+            <Copy size={13} />
+            {crashPathCopied ? "Crash path copied" : "Copy crash report path"}
+          </button>
+        ) : null}
       </div>
     </DialogShell>
   );

@@ -11,8 +11,6 @@ use super::bigquery;
 use super::bigtable;
 #[cfg(feature = "cassandra")]
 use super::cassandra;
-#[cfg(feature = "duckdb")]
-use super::duck;
 use super::edit::{AppliedEdits, TableEdits};
 use super::engine::{self, Wire};
 use super::explain::{self, QueryPlanAnalysis, QueryPlanMode};
@@ -88,10 +86,10 @@ pub(crate) trait Connection: Send + Sync {
     /// Stream a query's rows to `ctx.sink` in batches, checking `ctx.token` so a
     /// cancel stops the fetch promptly. The default buffers via [`run_query`] and
     /// emits the header plus a single batch — correct for engines whose driver
-    /// materializes rows before our loop (Oracle/Mongo) or keeps its own loop
-    /// (DuckDB); those rely on the managed run's timeout/cancel-drop rather than a
-    /// cooperative mid-fetch stop. Engines with a real row-by-row loop (the sqlx
-    /// trio, SQL Server) override this for incremental delivery and in-loop cancel.
+    /// materializes rows before our loop (Oracle/Mongo); those rely on the managed
+    /// run's timeout/cancel-drop rather than a cooperative mid-fetch stop. Engines
+    /// with a real row-by-row loop (the sqlx trio, SQL Server) override this for
+    /// incremental delivery and in-loop cancel.
     async fn stream_query(
         &self,
         sql: &str,
@@ -436,27 +434,6 @@ impl Connection for OracleConn {
     async fn close(&self) {} // oracle-rs closes when its last handle drops
 }
 
-#[cfg(feature = "duckdb")]
-struct DuckConn(Arc<std::sync::Mutex<duckdb::Connection>>);
-#[cfg(feature = "duckdb")]
-#[async_trait]
-impl Connection for DuckConn {
-    fn wire(&self) -> Wire {
-        Wire::DuckDb
-    }
-
-    async fn version(&self) -> Option<String> {
-        duck::version(&self.0)
-    }
-    async fn run_query(&self, sql: &str, cap: usize) -> Result<RowSet, String> {
-        duck::run_query(&self.0, sql, cap).await
-    }
-    async fn metadata(&self) -> Result<DatabaseMetadata, String> {
-        duck::metadata(&self.0).await
-    }
-    async fn close(&self) {}
-}
-
 struct ClickHouseConnection(clickhouse::ClickHouseConn);
 #[async_trait]
 impl Connection for ClickHouseConnection {
@@ -616,18 +593,7 @@ pub(crate) async fn connect_engine(
             }
         }
         Wire::DuckDb => {
-            #[cfg(feature = "duckdb")]
-            {
-                let conn = duck::connect(profile)?;
-                if should_seed_builtin_sample(profile) {
-                    duck::seed_sample(&conn)?;
-                }
-                Arc::new(DuckConn(Arc::new(std::sync::Mutex::new(conn))))
-            }
-            #[cfg(not(feature = "duckdb"))]
-            {
-                return Err(feature_required("DuckDB"));
-            }
+            return Err(connector_extension_required_message(profile.engine));
         }
         Wire::Oracle => {
             #[cfg(feature = "oracle")]
@@ -718,7 +684,7 @@ fn feature_required(engine: &str) -> String {
 }
 
 fn should_seed_builtin_sample(profile: &ConnectionProfile) -> bool {
-    if !matches!(profile.id.as_str(), "sqlite-memory" | "duckdb-memory") {
+    if profile.id != "sqlite-memory" {
         return false;
     }
     match profile.database.as_deref().map(str::trim) {
@@ -733,9 +699,9 @@ mod tests {
 
     #[test]
     fn feature_required_message_is_user_facing() {
-        let message = feature_required("DuckDB");
+        let message = feature_required("MongoDB");
 
-        assert!(message.contains("DuckDB is not available in this desktop build"));
+        assert!(message.contains("MongoDB is not available in this desktop build"));
         assert!(message.contains(CONNECTOR_STATUS_DOC_URL));
         assert!(!message.contains("feature"));
         assert!(!message.contains("rebuild"));

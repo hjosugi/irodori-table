@@ -90,7 +90,7 @@ jobs:
             if [[ "${channel}" == "stable" ]]; then
               echo "Stable Linux AppImage release with signed Tauri updater artifacts for the stable update channel. macOS and Windows signing/notarization remain gated until their runner lanes are restored."
             else
-              echo "Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, DuckDB, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored."
+              echo "Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored. DuckDB is distributed through its installable connector extension."
             fi
             echo "EOF_RELEASE_BODY"
           } >> "${GITHUB_OUTPUT}"

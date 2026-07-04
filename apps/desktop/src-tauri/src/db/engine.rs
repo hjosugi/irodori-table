@@ -263,7 +263,6 @@ impl DbEngine {
     pub(crate) fn required_build_feature(self) -> Option<&'static str> {
         match self {
             DbEngine::SqlServer => Some("sqlserver"),
-            DbEngine::DuckDb | DbEngine::MotherDuck => Some("duckdb"),
             DbEngine::Mongo => Some("mongo"),
             DbEngine::Oracle => Some("oracle"),
             DbEngine::Neo4j => Some("neo4j"),
@@ -278,7 +277,6 @@ impl DbEngine {
     fn required_build_feature_enabled(self) -> bool {
         match self {
             DbEngine::SqlServer => cfg!(feature = "sqlserver"),
-            DbEngine::DuckDb | DbEngine::MotherDuck => cfg!(feature = "duckdb"),
             DbEngine::Mongo => cfg!(feature = "mongo"),
             DbEngine::Oracle => cfg!(feature = "oracle"),
             DbEngine::Neo4j => cfg!(feature = "neo4j"),
@@ -380,6 +378,8 @@ impl DbEngine {
 
     pub(crate) fn connector_extension_id(self) -> Option<&'static str> {
         match self {
+            DbEngine::DuckDb => Some("irodori.duckdb"),
+            DbEngine::MotherDuck => Some("irodori.motherduck"),
             DbEngine::Memgraph => Some("irodori.memgraph"),
             DbEngine::Qdrant => Some("irodori.qdrant"),
             DbEngine::Milvus => Some("irodori.milvus"),
@@ -490,7 +490,8 @@ fn append_query_param(url: &mut String, key: &str, value: &str) {
 }
 
 /// Build a sqlx connection URL for the Postgres/MySQL/SQLite drivers. SQL Server,
-/// DuckDB, MongoDB, and Oracle use dedicated connectors instead.
+/// DuckDB, MongoDB, Oracle, and extension-backed engines use dedicated connectors
+/// instead.
 pub(crate) fn build_url(p: &ConnectionProfile) -> Result<String, String> {
     if let Some(url) = &p.url {
         return Ok(url.clone());
@@ -658,8 +659,6 @@ mod tests {
                 "sqlserver",
                 cfg!(feature = "sqlserver"),
             ),
-            (DbEngine::DuckDb, "duckdb", cfg!(feature = "duckdb")),
-            (DbEngine::MotherDuck, "duckdb", cfg!(feature = "duckdb")),
             (DbEngine::Mongo, "mongo", cfg!(feature = "mongo")),
             (DbEngine::Oracle, "oracle", cfg!(feature = "oracle")),
             (DbEngine::Neo4j, "neo4j", cfg!(feature = "neo4j")),
@@ -694,6 +693,13 @@ mod tests {
         let built_in = DbEngine::Postgres.build_support();
         assert!(built_in.included_in_current_build);
         assert_eq!(built_in.required_feature, None);
+
+        for engine in [DbEngine::DuckDb, DbEngine::MotherDuck] {
+            let support = engine.build_support();
+            assert!(support.included_in_current_build);
+            assert_eq!(support.required_feature, None);
+            assert!(engine.connector_extension_id().is_some());
+        }
     }
 
     #[test]

@@ -148,6 +148,7 @@ pub fn run() {
             db::db_inspect_object,
             db::db_inspect_column,
             db::db_invalidate_cache,
+            crash_report::crash_report_status,
             git::git_status,
             git::git_log,
             git::git_diff,
@@ -269,6 +270,7 @@ mod typegen {
             .decl(&decl::<DbObject>())
             .decl(&decl::<Connection>())
             .decl(&decl::<WorkspaceSnapshot>())
+            .decl(&decl::<crash_report::CrashReportStatus>())
             .decl(&decl::<db::DbEngine>())
             .decl(&decl::<db::EngineBuildSupport>())
             .decl(&decl::<db::ConnectionProfile>())
@@ -330,6 +332,7 @@ mod typegen {
             .decl(&decl::<git::GitCommandOutput>())
             .command(Command::new("workspace_snapshot", "WorkspaceSnapshot"))
             .command(Command::returning("open_developer_tools", TsType::void()))
+            .command(Command::new("crash_report_status", "CrashReportStatus"))
             .command(
                 Command::new("sql_format_snowflake", "string")
                     .arg(Arg::new("sql", TsType::string()))
@@ -452,7 +455,8 @@ mod typegen {
             .command(
                 Command::new("git_diff", "GitDiffResult")
                     .arg(Arg::rust("repo_path", TsType::string()).optional())
-                    .arg(Arg::rust("file_path", TsType::string()).optional()),
+                    .arg(Arg::rust("file_path", TsType::string()).optional())
+                    .arg(Arg::new("commit", TsType::string()).optional()),
             )
             .command(
                 Command::new("git_commit_all", "GitCommandOutput")
@@ -495,7 +499,8 @@ mod typegen {
                 Command::new("git_checkout_branch", "GitCommandOutput")
                     .arg(Arg::new("branch", TsType::string()))
                     .arg(Arg::new("create", TsType::boolean()).optional())
-                    .arg(Arg::rust("repo_path", TsType::string()).optional()),
+                    .arg(Arg::rust("repo_path", TsType::string()).optional())
+                    .arg(Arg::rust("start_point", TsType::string()).optional()),
             )
             .command(
                 Command::new("git_delete_branch", "GitCommandOutput")

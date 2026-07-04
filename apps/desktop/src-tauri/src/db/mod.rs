@@ -5,7 +5,6 @@
 //!
 //! - [`postgres`] / [`mysql`] / [`sqlite`] — native sqlx pools
 //! - [`mssql`] — pure-Rust tiberius (TDS), no SQL Server client needed
-//! - `duck` (behind `--features duckdb`) — embedded DuckDB
 //!
 //! The DBeaver-studied lesson drives the shape (SRC-001a): instead of a closed
 //! `enum` matched at every call site, a live connection is an object behind the
@@ -37,8 +36,6 @@ mod cassandra;
 mod clickhouse;
 mod commands;
 mod connection;
-#[cfg(feature = "duckdb")]
-mod duck;
 mod edit;
 mod engine;
 mod explain;

@@ -91,7 +91,8 @@ pub(super) fn normalize_profile(
             }
         }
         Wire::DuckDb => {
-            // Empty DuckDB profiles intentionally open an in-memory database.
+            // Empty DuckDB profiles intentionally map to an in-memory database.
+            // The installable connector owns the actual open path.
         }
         Wire::Postgres
         | Wire::Mysql

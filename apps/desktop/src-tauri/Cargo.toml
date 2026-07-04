@@ -78,9 +78,6 @@ tiberius = { version = "0.12", optional = true, default-features = false, featur
     "chrono",
 ] }
 tokio-util = { version = "0.7", features = ["compat"] }
-# DuckDB is embedded C++ (heavy bundled build) so it is feature-gated and off by
-# default: build with `--features duckdb`.
-duckdb = { version = "1", optional = true, features = ["bundled"] }
 oracle-rs = { version = "0.1.7", optional = true }
 reqwest = { version = "0.13.4", features = ["json", "stream"] }
 # Native connector-extension host: dynamic loading of installed connector
@@ -99,9 +96,6 @@ tauri-plugin-updater = "^2"
 
 [features]
 default = []
-# Connector extensions should provide DuckDB long-term. This feature remains as
-# a local escape hatch while the extension host grows native-driver support.
-duckdb = ["dep:duckdb"]
 cassandra = ["dep:scylla"]
 mongo = ["dep:mongodb"]
 neo4j = ["dep:neo4rs"]

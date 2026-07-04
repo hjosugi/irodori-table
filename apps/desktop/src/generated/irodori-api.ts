@@ -126,6 +126,8 @@ export type Connection = { id: string, name: string, engine: string, status: Con
 
 export type WorkspaceSnapshot = { connections: Array<Connection>, activeConnectionId: string, };
 
+export type CrashReportStatus = { logDir: string, latestBundleDir?: string, latestManifestPath?: string, };
+
 export type DbEngine = "postgres" | "mysql" | "sqlite" | "oracle" | "sqlserver" | "duckdb" | "motherduck" | "mongodb" | "cockroachdb" | "yugabytedb" | "redshift" | "timescaledb" | "mariadb" | "tidb" | "neon" | "h2" | "clickhouse" | "neo4j" | "memgraph" | "influxdb" | "qdrant" | "milvus" | "pinecone" | "snowflake" | "bigquery" | "athena" | "redis" | "cassandra" | "bigtable" | "cloudSpanner" | "trinoPresto" | "firebird" | "databricks" | "elasticsearch" | "openSearch" | "couchbase" | "dynamodb" | "scylladb" | "arangodb" | "questdb" | "iotdb" | "hive" | "iceberg" | "s3Tables" | "deltaLake" | "hudi";
 
 export type EngineBuildSupport = { engine: DbEngine, includedInCurrentBuild: boolean, requiredFeature?: string, };
@@ -308,6 +310,10 @@ export function openDeveloperTools(): Promise<void> {
   return invoke<void>("open_developer_tools");
 }
 
+export function crashReportStatus(): Promise<CrashReportStatus> {
+  return invoke<CrashReportStatus>("crash_report_status");
+}
+
 export function sqlFormatSnowflake(sql: string, lineWidth?: number, indentWidth?: number, uppercaseKeywords?: boolean): Promise<string> {
   return invoke<string>("sql_format_snowflake", { sql, lineWidth, indentWidth, uppercaseKeywords });
 }
@@ -396,8 +402,8 @@ export function gitLog(repoPath?: string, limit?: number): Promise<Array<GitComm
   return invoke<Array<GitCommitSummary>>("git_log", { repoPath, limit });
 }
 
-export function gitDiff(repoPath?: string, filePath?: string): Promise<GitDiffResult> {
-  return invoke<GitDiffResult>("git_diff", { repoPath, filePath });
+export function gitDiff(repoPath?: string, filePath?: string, commit?: string): Promise<GitDiffResult> {
+  return invoke<GitDiffResult>("git_diff", { repoPath, filePath, commit });
 }
 
 export function gitCommitAll(message: string, repoPath?: string): Promise<GitCommandOutput> {
@@ -432,8 +438,8 @@ export function gitDiscardFiles(paths: Array<string>, repoPath?: string): Promis
   return invoke<GitCommandOutput>("git_discard_files", { paths, repoPath });
 }
 
-export function gitCheckoutBranch(branch: string, create?: boolean, repoPath?: string): Promise<GitCommandOutput> {
-  return invoke<GitCommandOutput>("git_checkout_branch", { branch, create, repoPath });
+export function gitCheckoutBranch(branch: string, create?: boolean, repoPath?: string, startPoint?: string): Promise<GitCommandOutput> {
+  return invoke<GitCommandOutput>("git_checkout_branch", { branch, create, repoPath, startPoint });
 }
 
 export function gitDeleteBranch(branch: string, force?: boolean, repoPath?: string): Promise<GitCommandOutput> {

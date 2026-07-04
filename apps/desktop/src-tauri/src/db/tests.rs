@@ -1081,6 +1081,27 @@ async fn command_boundary_rejects_invalid_inputs() {
     assert!(err.contains("data-source-support-status"));
     assert!(!err.contains("core app"));
 
+    let duckdb = ConnectionProfile {
+        id: "duckdb-memory".into(),
+        engine: DbEngine::DuckDb,
+        host: None,
+        port: None,
+        user: None,
+        password: None,
+        database: Some(":memory:".into()),
+        socket_path: None,
+        url: None,
+        transport: None,
+        read_only: false,
+        options: Default::default(),
+    };
+    let err = connect_impl(&state, &SecurityState::default(), duckdb)
+        .await
+        .unwrap_err();
+    assert!(err.contains("irodori.duckdb"));
+    assert!(err.contains("connector extension"));
+    assert!(!err.contains("not available in this desktop build"));
+
     let err = run_query_impl(&state, " ".into(), "select 1".into(), None)
         .await
         .unwrap_err();

@@ -78,12 +78,13 @@ bindings.
 1. Push the release commit and tag created by the release target.
 2. Watch the release workflow in GitHub Actions.
 3. The tag workflow publishes a lightweight Linux AppImage pre-release
-   with default features only. macOS, Windows, updater artifacts, DuckDB,
-   legacy connector bundles, deb packages, and rpm packages are intentionally
-   omitted until the full signed release lane is restored.
+   with default features only. macOS, Windows, updater artifacts, legacy
+   connector bundles, deb packages, and rpm packages are intentionally omitted
+   until the full signed release lane is restored. DuckDB is distributed through
+   its installable connector extension instead of the core desktop build.
 4. Confirm the packaged AppImage matches the lightweight connector feature set.
-   Do not present DuckDB, legacy connector bundles, deb packages, or rpm
-   packages as shipped in lightweight binaries.
+   Do not present legacy connector bundles, deb packages, or rpm packages as
+   shipped in lightweight binaries.
 5. Compare `registry/data-source-support-status.md` against shipped build
    behavior before publishing user-facing notes.
 6. Publish release notes that separate app changes from sibling-crate and

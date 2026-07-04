@@ -106,6 +106,12 @@
   white-space: nowrap;
 }
 
+.about-grid dd.about-path {
+  overflow-wrap: anywhere;
+  text-overflow: initial;
+  white-space: normal;
+}
+
 .about-help {
   display: flex;
   align-items: flex-start;
