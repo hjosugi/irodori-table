@@ -121,7 +121,9 @@ export function JobsTab({
                     type="button"
                     title={t("settings.jobs.cancel")}
                     aria-label={t("settings.jobs.cancel")}
-                    disabled={job.cancelRequested || job.status === "cancelling"}
+                    disabled={
+                      job.cancelRequested || job.status === "cancelling"
+                    }
                     onClick={() => void cancelJob(job.id)}
                   >
                     <XCircle size={14} />
