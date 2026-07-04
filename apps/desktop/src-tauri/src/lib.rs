@@ -72,7 +72,7 @@ mod typegen {
             .decl(&Decl::alias("JsonValue", TsType::unknown()))
             .decl(&decl::<irodori_error::IrodoriErrorKind>())
             .decl(&decl::<irodori_error::IrodoriError>())
-            .decl(&decl::<irodori_core::CommandResult<serde_json::Value>>())
+            .decl(&decl::<irodori_error::CommandResult<serde_json::Value>>())
             .decl(&decl::<irodori_jobs::JobKind>())
             .decl(&decl::<irodori_jobs::JobStatus>())
             .decl(&decl::<irodori_jobs::JobLogLevel>())
