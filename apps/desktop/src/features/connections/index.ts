@@ -5,6 +5,7 @@ export {
   describeConnection,
   engineLabel,
   engineOptions,
+  isPristineDraftProfile,
   loadProfiles,
   memoryDefaults,
   newDraft,
