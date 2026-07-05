@@ -1803,6 +1803,56 @@
   background: color-mix(in srgb, var(--surface) 78%, var(--editor-bg));
 }
 
+/* Editor tabs wrap a select button plus a hover-revealed close button, so the
+ * .tab itself is a container and the inner buttons carry the interactions. */
+.editor-tab-strip .tab {
+  padding: 0 5px 0 0;
+  cursor: default;
+}
+
+.editor-tab-strip .tab-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 13px;
+  overflow: hidden;
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.editor-tab-strip .tab-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.editor-tab-strip .tab:hover .tab-close,
+.editor-tab-strip .tab:focus-within .tab-close,
+.editor-tab-strip .tab.active .tab-close {
+  opacity: 1;
+}
+
+.editor-tab-strip .tab-close:hover,
+.editor-tab-strip .tab-close:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+}
+
 .editor-and-inspector {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
