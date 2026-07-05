@@ -4,6 +4,7 @@ import {
   useState,
   type CSSProperties,
   type FocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from "react";
@@ -143,15 +144,168 @@ export function WorkbenchShell({
   );
   const menubarRef = useRef<HTMLElement | null>(null);
   const menuPopoverRef = useRef<HTMLDivElement | null>(null);
+  const menubarButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  // Where keyboard focus should land inside the popover once it renders.
+  const pendingMenuFocusRef = useRef<"first" | "last" | null>(null);
+  // Menu label switched to via hover while another menu was open: the click
+  // that follows must not toggle it closed again.
+  const hoverSwitchedLabelRef = useRef<string | null>(null);
+  // Roving tabindex home for the menubar (APG menubar pattern).
+  const [menubarFocusLabel, setMenubarFocusLabel] = useState<string | null>(
+    null,
+  );
 
   const openMenuFromButton = (label: string, button: HTMLElement) => {
     const rect = button.getBoundingClientRect();
     setMenuAnchor({ left: rect.left, top: rect.bottom + 1 });
     setActiveMenuLabel(label);
+    setMenubarFocusLabel(label);
   };
   const closeMenuBarMenu = () => {
     setActiveMenuLabel(null);
     setMenuAnchor(null);
+    pendingMenuFocusRef.current = null;
+    hoverSwitchedLabelRef.current = null;
+  };
+
+  const menuPopoverItems = () =>
+    Array.from(
+      menuPopoverRef.current?.querySelectorAll<HTMLElement>(
+        "button[role='menuitem']:not(:disabled)",
+      ) ?? [],
+    );
+
+  // Move keyboard focus into the popover after an open triggered by
+  // ArrowDown/ArrowUp/Enter on a menubar button or by Left/Right switching.
+  useEffect(() => {
+    const target = pendingMenuFocusRef.current;
+    if (!target || !activeMenuLabel) {
+      return;
+    }
+    pendingMenuFocusRef.current = null;
+    const items = menuPopoverItems();
+    if (items.length === 0) {
+      return;
+    }
+    (target === "first" ? items[0] : items[items.length - 1]).focus();
+  }, [activeMenuLabel]);
+
+  const focusMenubarButtonAt = (index: number) => {
+    const count = menuBarSections.length;
+    if (count === 0) {
+      return;
+    }
+    const section = menuBarSections[((index % count) + count) % count];
+    const button = menubarButtonRefs.current.get(section.label);
+    if (!button) {
+      return;
+    }
+    setMenubarFocusLabel(section.label);
+    button.focus();
+    // While a menu is open, moving along the menubar switches the open menu.
+    if (activeMenuLabel && activeMenuLabel !== section.label) {
+      openMenuFromButton(section.label, button);
+    }
+  };
+
+  const switchToAdjacentMenu = (delta: number) => {
+    const index = menuBarSections.findIndex(
+      (section) => section.label === activeMenuLabel,
+    );
+    if (index === -1) {
+      return;
+    }
+    const count = menuBarSections.length;
+    const next = menuBarSections[(index + delta + count) % count];
+    const button = menubarButtonRefs.current.get(next.label);
+    if (!button) {
+      return;
+    }
+    pendingMenuFocusRef.current = "first";
+    openMenuFromButton(next.label, button);
+  };
+
+  const handleMenubarButtonKeyDown = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    index: number,
+    label: string,
+  ) => {
+    switch (event.key) {
+      case "ArrowDown":
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        pendingMenuFocusRef.current = "first";
+        openMenuFromButton(label, event.currentTarget);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        pendingMenuFocusRef.current = "last";
+        openMenuFromButton(label, event.currentTarget);
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        focusMenubarButtonAt(index + 1);
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        focusMenubarButtonAt(index - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        focusMenubarButtonAt(0);
+        break;
+      case "End":
+        event.preventDefault();
+        focusMenubarButtonAt(menuBarSections.length - 1);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleMenuPopoverKeyDown = (
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ) => {
+    const items = menuPopoverItems();
+    if (items.length === 0) {
+      return;
+    }
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    const focusItemAt = (index: number) => {
+      items[((index % items.length) + items.length) % items.length].focus();
+    };
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        focusItemAt(currentIndex + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        focusItemAt(currentIndex < 0 ? -1 : currentIndex - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        focusItemAt(0);
+        break;
+      case "End":
+        event.preventDefault();
+        focusItemAt(items.length - 1);
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        switchToAdjacentMenu(1);
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        switchToAdjacentMenu(-1);
+        break;
+      case "Tab":
+        closeMenuBarMenu();
+        break;
+      default:
+        break;
+    }
   };
   const commandById = new Map(
     commandCatalog.map((command) => [command.id, command]),
@@ -192,8 +346,12 @@ export function WorkbenchShell({
         return;
       }
       event.preventDefault();
+      const trigger = activeMenuLabel
+        ? menubarButtonRefs.current.get(activeMenuLabel)
+        : null;
       closeMenuBarMenu();
       onCloseWorkspaceMenu();
+      trigger?.focus();
     };
     const closeOnOutsidePointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -407,16 +565,41 @@ export function WorkbenchShell({
           </div>
           <nav
             className="menubar"
+            role="menubar"
             aria-label={t("shell.applicationMenu")}
             ref={menubarRef}
           >
-            {menuBarSections.map((section) => (
-              <div className="menubar-item" key={section.label}>
+            {menuBarSections.map((section, index) => (
+              <div className="menubar-item" role="none" key={section.label}>
                 <button
                   type="button"
+                  role="menuitem"
+                  ref={(node) => {
+                    if (node) {
+                      menubarButtonRefs.current.set(section.label, node);
+                    } else {
+                      menubarButtonRefs.current.delete(section.label);
+                    }
+                  }}
+                  tabIndex={
+                    section.label ===
+                    (menubarFocusLabel ?? menuBarSections[0]?.label)
+                      ? 0
+                      : -1
+                  }
                   aria-haspopup="menu"
                   aria-expanded={activeMenuLabel === section.label}
+                  onFocus={() => setMenubarFocusLabel(section.label)}
+                  onKeyDown={(event) =>
+                    handleMenubarButtonKeyDown(event, index, section.label)
+                  }
                   onClick={(event) => {
+                    // A hover onto this button already switched the open
+                    // menu here; the click that follows must not close it.
+                    if (hoverSwitchedLabelRef.current === section.label) {
+                      hoverSwitchedLabelRef.current = null;
+                      return;
+                    }
                     if (activeMenuLabel === section.label) {
                       closeMenuBarMenu();
                     } else {
@@ -424,7 +607,8 @@ export function WorkbenchShell({
                     }
                   }}
                   onMouseEnter={(event) => {
-                    if (activeMenuLabel) {
+                    if (activeMenuLabel && activeMenuLabel !== section.label) {
+                      hoverSwitchedLabelRef.current = section.label;
                       openMenuFromButton(section.label, event.currentTarget);
                     }
                   }}
@@ -512,11 +696,13 @@ export function WorkbenchShell({
               ref={menuPopoverRef}
               className="app-menu-popover menubar-popover"
               role="menu"
+              aria-label={activeMenuLabel}
               style={{
                 position: "fixed",
                 left: menuAnchor.left,
                 top: menuAnchor.top,
               }}
+              onKeyDown={handleMenuPopoverKeyDown}
             >
               {menuBarSections
                 .filter((section) => section.label === activeMenuLabel)
