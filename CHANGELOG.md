@@ -23,6 +23,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stable release dispatch now gates on updater, Windows signing, and macOS
   signing/notarization secrets before publishing signed Windows artifacts,
   signed/notarized macOS artifacts, and stable updater manifests.
+- Editor Save/Run toolbar is docked at the bottom-right of the editor pane,
+  with the run-options dropdown opening upward (TablePlus-style). (#64)
+- Saved connections moved from the explorer panel strip to a dedicated
+  far-left connections rail with engine icons and color tags (TablePlus-style).
+  (#65)
+- Left/right sidebars span the full workspace height; the saved dockview
+  layout key is bumped to v2 so existing installs pick up the new arrangement
+  (VS Code-style). (#66)
+- Editor tabs use the WAI-ARIA tablist pattern and gain hover close buttons,
+  middle-click close, and a visible tab-actions menu. (#62)
+- Menubar supports WAI-ARIA APG keyboard navigation. (#55)
+
+### Fixed
+
+- Body-portaled popovers (menubar menus, context menus) rendered fully
+  transparent; theme variables are now mirrored onto `:root`. (#52)
+- Escape closed every stacked dialog at once; it now closes only the topmost.
+  (#53)
+- Settings dialog lacked initial focus, a focus trap, and `aria-modal`. (#54)
+- Unsaved SQL tab content was silently lost on quit/reload; editor tabs are
+  now persisted. (#56)
+- Discard wiped staged grid edits without confirmation, and the delete-rows
+  confirm button was mislabeled "Commit". (#57)
+- Large UI surfaces (Connection Manager, ERD, About, run controls, query
+  parameters, sidebar, titlebar/statusbar, results summary) bypassed i18n and
+  showed English under the Japanese locale; 141 keys added to both locales.
+  (#58)
+- Every "接続を追加" click persisted a fresh "Connection N" draft; pristine
+  drafts are now reused and discarded on close, and the SQLite sample profile
+  is only persisted after a successful connection. (#59)
+- Toast stack covered dialog action buttons (Connect/Test/Save in the
+  Connection Manager). (#60)
+- ERD showed "no tables match" while metadata was still loading, and
+  lazy-loaded dialogs opened with no feedback. (#61)
+- Result-mode control state was not announced to assistive technology, and
+  the About copy-path button failed silently and could get stuck. (#63)
 
 ## [0.7.6] - 2026-07-04
 
