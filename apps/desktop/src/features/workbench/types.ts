@@ -20,6 +20,7 @@ export const workbenchViewIds = [
   "git",
   "aiChat",
   "searchReplace",
+  "rowDetail",
 ] as const;
 
 export type WorkbenchViewId = (typeof workbenchViewIds)[number];
@@ -38,6 +39,7 @@ export const defaultWorkbenchViewPlacements: WorkbenchViewPlacements = {
   git: "left",
   aiChat: "right",
   searchReplace: "left",
+  rowDetail: "right",
 };
 
 export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
@@ -50,6 +52,7 @@ export const defaultWorkbenchViewVisibility: WorkbenchViewVisibility = {
   git: false,
   aiChat: false,
   searchReplace: false,
+  rowDetail: false,
 };
 
 export function activeWorkbenchView(

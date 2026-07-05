@@ -238,8 +238,15 @@
   min-height: 0;
   overflow: auto;
   background:
-    linear-gradient(var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
+    linear-gradient(
+      var(--grid-line, rgba(127, 127, 127, 0.08)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      var(--grid-line, rgba(127, 127, 127, 0.08)) 1px,
+      transparent 1px
+    ),
     var(--surface);
   background-size: 24px 24px;
 }
@@ -357,8 +364,15 @@
   min-height: 0;
   overflow: auto;
   background:
-    linear-gradient(var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line, rgba(127, 127, 127, 0.08)) 1px, transparent 1px),
+    linear-gradient(
+      var(--grid-line, rgba(127, 127, 127, 0.08)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      var(--grid-line, rgba(127, 127, 127, 0.08)) 1px,
+      transparent 1px
+    ),
     var(--surface);
   background-size: 24px 24px;
 }
@@ -701,7 +715,9 @@
 
 .result-filter-rule {
   display: grid;
-  grid-template-columns: 24px minmax(120px, 180px) minmax(96px, 130px) minmax(120px, 1fr) 28px;
+  grid-template-columns:
+    24px minmax(120px, 180px) minmax(96px, 130px) minmax(120px, 1fr)
+    28px;
 }
 
 .result-filter-rule select,
@@ -744,7 +760,6 @@
   font-size: var(--font-ui-sm);
 }
 
-/* Result grid + row-detail drawer sit side by side. */
 .result-body {
   display: flex;
   flex: 1;
@@ -792,14 +807,15 @@
   height: 100%;
 }
 
+/* Lives in the right sidebar (VS Code-style): fill the panel, full height,
+   header pinned with the field list scrolling inside. */
 .row-detail {
-  flex: 0 0 clamp(280px, 27vw, 390px);
-  width: clamp(280px, 27vw, 390px);
-  min-width: 260px;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
   min-height: 0;
-  border-left: 1px solid var(--border);
   background: var(--surface-raised);
 }
 
@@ -1411,8 +1427,14 @@
   border-bottom: 1px solid var(--cell-border);
   color: var(--muted);
   background: var(--editor-bg);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: 12px;
 }
 

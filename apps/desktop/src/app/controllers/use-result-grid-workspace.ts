@@ -46,6 +46,9 @@ export type ResultGridWorkspaceDeps = {
   activeConnectionReadOnly: boolean;
   biOpen: boolean;
   activeEditorApi: () => SqlEditorHandle | null;
+  // Selecting a grid row surfaces its detail in the right sidebar
+  // (VS Code-style: the detail view follows the selection).
+  onRowSelected?: () => void;
   // Supplied through a deferring closure: the editor-commands hook that owns
   // runQuery is created after this workspace because it needs activeResult.
   runQuery: () => Promise<void>;
@@ -69,6 +72,7 @@ export function useResultGridWorkspace({
   activeConnectionReadOnly,
   biOpen,
   activeEditorApi,
+  onRowSelected,
   runQuery,
   setQueryError,
   confirm,
@@ -455,13 +459,10 @@ export function useResultGridWorkspace({
       shortcutTips: extra.shortcutTips,
       showingStructure,
       structureObject,
-      editorEngine,
       unfilteredRowCount,
       totalRows,
       gridRef,
       importFileRef: extra.importFileRef,
-      activeMetadata,
-      activeConnectionId,
       formatObjectName: extra.formatObjectName,
       formatCount: toCount,
       onResultModeChange: setResultMode,
@@ -518,13 +519,15 @@ export function useResultGridWorkspace({
         selectedCell,
         selectedRangeBounds,
         selectedRowValues,
-        rowDetailTable,
-        onSelectGridRow: selectGridRow,
-        onSelectGridCell: selectGridCell,
-        onCloseRowDetail: () => {
-          setSelectedRowKey(null);
-          setSelectedCell(null);
-          setSelectedRange(null);
+        onSelectGridRow: (rowKey, focusGrid) => {
+          selectGridRow(rowKey, focusGrid);
+          onRowSelected?.();
+        },
+        // Cell clicks select the row too, so they surface the detail as well
+        // (parity with the old always-visible drawer).
+        onSelectGridCell: (rowKey, col, extendRange) => {
+          selectGridCell(rowKey, col, extendRange);
+          onRowSelected?.();
         },
       },
       gridGeometry: {
@@ -556,6 +559,16 @@ export function useResultGridWorkspace({
     setResultOffloadEnabled,
     resultMemoryBudget,
     setResultMemoryBudget,
+    // Row Detail renders in the right sidebar (not inside the results pane),
+    // so its inputs are part of the workspace surface.
+    resultColumns,
+    selectedRowValues,
+    rowDetailTable,
+    clearRowSelection: () => {
+      setSelectedRowKey(null);
+      setSelectedCell(null);
+      setSelectedRange(null);
+    },
     gridRef,
     spillRef,
     setSpillInfo,

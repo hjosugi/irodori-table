@@ -1018,6 +1018,7 @@ export const en = {
   "sidebar.view.chat": "Chat",
   "sidebar.view.searchReplace": "Search & Replace",
   "sidebar.view.find": "Find",
+  "sidebar.view.rowDetail": "Row detail",
   "sidebar.schemasCount": "{count} schemas",
   "sidebar.databaseObjects": "Database objects",
   "sidebar.loadingObjects": "Loading objects",

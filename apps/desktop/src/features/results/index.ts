@@ -1,6 +1,7 @@
 export { ResultBody } from "./components/ResultBody";
 export { ResultsPane } from "./components/ResultsPane";
 export { BiPanel } from "./components/BiPanel";
+export { RowDetailSidebar } from "./components/RowDetailSidebar";
 export {
   buildResultExport,
   resultExportFileName,

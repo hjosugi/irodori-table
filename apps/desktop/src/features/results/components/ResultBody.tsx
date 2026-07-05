@@ -7,11 +7,7 @@ import type {
   RefObject,
   UIEvent,
 } from "react";
-import type {
-  DatabaseMetadata,
-  DbEngine,
-  DbObjectMetadata,
-} from "@/generated/irodori-api";
+import type { DbObjectMetadata } from "@/generated/irodori-api";
 import type { ResultSortRule } from "../result-grid";
 import {
   type ResultGridDisplayRow,
@@ -19,7 +15,6 @@ import {
   type ResultGridRowOrigin,
   type ResultGridSortRuleView,
 } from "../result-view-model";
-import { RowDetailSidebar } from "./RowDetailSidebar";
 import type { ChartResultModel } from "../chart-result";
 import type { GraphResultModel } from "../graph-result";
 import { resultCellInRange } from "../result-selection";
@@ -46,7 +41,6 @@ export function ResultBody({
   resultMode,
   chartModel,
   graphModel,
-  editorEngine,
   formatObjectName,
   formatCount,
   editMode,
@@ -76,10 +70,6 @@ export function ResultBody({
   selectedRangeBounds,
   editingCell,
   cellEdits,
-  selectedRowValues,
-  rowDetailTable,
-  activeMetadata,
-  activeConnectionId,
   onGridScroll,
   onGridKeyDown,
   onGridPaste,
@@ -92,7 +82,6 @@ export function ResultBody({
   onDeleteRow,
   onPasteTableAt,
   onEndCellEdit,
-  onCloseRowDetail,
   shortcutTips,
   t,
 }: {
@@ -100,7 +89,6 @@ export function ResultBody({
   resultMode: ResultMode;
   chartModel: ChartResultModel | null;
   graphModel: GraphResultModel | null;
-  editorEngine: DbEngine;
   formatObjectName: (object: DbObjectMetadata) => string;
   formatCount: (value: bigint | number) => string;
   editMode: boolean;
@@ -130,10 +118,6 @@ export function ResultBody({
   selectedRangeBounds: ResultCellRangeBounds;
   editingCell: EditingCell;
   cellEdits: ReadonlyMap<string, GridCellDraft>;
-  selectedRowValues: unknown[] | null;
-  rowDetailTable: DbObjectMetadata | null;
-  activeMetadata: DatabaseMetadata | undefined;
-  activeConnectionId: string;
   onGridScroll: (event: UIEvent<HTMLDivElement>) => void;
   onGridKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   onGridPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void;
@@ -158,23 +142,9 @@ export function ResultBody({
     text: string,
   ) => void;
   onEndCellEdit: () => void;
-  onCloseRowDetail: () => void;
   shortcutTips: readonly ShortcutTip[];
   t: Translator["t"];
 }) {
-  const rowDetailSidebar = (
-    <RowDetailSidebar
-      columns={resultColumns}
-      values={selectedRowValues}
-      table={rowDetailTable}
-      metadata={activeMetadata}
-      engine={editorEngine}
-      connectionId={activeConnectionId}
-      onClose={onCloseRowDetail}
-      t={t}
-    />
-  );
-
   if (structureObject) {
     return (
       <StructureView
@@ -223,7 +193,6 @@ export function ResultBody({
           onSelectGridCell={onSelectGridCell}
           t={t}
         />
-        {rowDetailSidebar}
       </div>
     );
   }
@@ -484,7 +453,6 @@ export function ResultBody({
           />
         ) : null}
       </div>
-      {rowDetailSidebar}
     </div>
   );
 }

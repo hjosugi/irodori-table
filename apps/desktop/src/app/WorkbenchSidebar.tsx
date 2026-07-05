@@ -2,7 +2,7 @@ import { useWorkbenchContext } from "@/app/workbench-context";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
 import { defaultConnectionColor } from "@/features/connections";
 import { GitPanel } from "@/features/git";
-import { BiPanel } from "@/features/results";
+import { BiPanel, RowDetailSidebar } from "@/features/results";
 import { useSchemaDesignerStore } from "@/features/schema-designer";
 import { SearchReplacePanel } from "@/features/search/SearchReplacePanel";
 import {
@@ -154,6 +154,20 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
           onReveal={editorGroups.revealSearchMatch}
           onReplaceTab={editorGroups.replaceSearchTab}
           onClose={() => sidebars.closeSidebarView("searchReplace")}
+        />
+      }
+      rowDetailPanel={
+        <RowDetailSidebar
+          columns={grid.resultColumns}
+          values={grid.selectedRowValues}
+          table={grid.rowDetailTable}
+          metadata={activeMetadata}
+          engine={editorEngine}
+          connectionId={activeConnectionId}
+          onClose={() => {
+            grid.clearRowSelection();
+            sidebars.closeSidebarView("rowDetail");
+          }}
         />
       }
       connections={connections.connections}

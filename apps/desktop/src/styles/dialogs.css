@@ -1034,7 +1034,9 @@
 }
 
 .column-grid .designer-row {
-  grid-template-columns: minmax(120px, 1fr) minmax(120px, 0.9fr) 54px 48px minmax(100px, 0.8fr) 30px;
+  grid-template-columns:
+    minmax(120px, 1fr) minmax(120px, 0.9fr)
+    54px 48px minmax(100px, 0.8fr) 30px;
 }
 
 .index-grid .designer-row {
@@ -1042,7 +1044,9 @@
 }
 
 .fk-grid .designer-row {
-  grid-template-columns: minmax(130px, 0.7fr) minmax(120px, 0.7fr) minmax(110px, 0.6fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) 118px 30px;
+  grid-template-columns:
+    minmax(130px, 0.7fr) minmax(120px, 0.7fr) minmax(110px, 0.6fr)
+    minmax(120px, 0.7fr) minmax(120px, 0.7fr) 118px 30px;
 }
 
 .check-cell {
@@ -1197,8 +1201,8 @@
   min-height: 0;
   overflow: auto;
   padding: 0;
-  background:
-    radial-gradient(circle, var(--cell-border) 1px, transparent 1px) 0 0 / 18px 18px;
+  background: radial-gradient(circle, var(--cell-border) 1px, transparent 1px) 0
+    0 / 18px 18px;
 }
 
 .diagram-stage {

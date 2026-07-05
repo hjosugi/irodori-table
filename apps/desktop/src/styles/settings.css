@@ -190,7 +190,9 @@
 
 .ui-zoom-control {
   display: grid;
-  grid-template-columns: var(--control-md) minmax(120px, 180px) 48px var(--control-md) auto;
+  grid-template-columns:
+    var(--control-md) minmax(120px, 180px) 48px var(--control-md)
+    auto;
   align-items: center;
   gap: 7px;
   min-width: 0;
@@ -518,10 +520,15 @@
   align-items: flex-start;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--yellow, #b58900) 40%, var(--border));
+  border: 1px solid
+    color-mix(in srgb, var(--yellow, #b58900) 40%, var(--border));
   border-radius: 6px;
   color: var(--muted);
-  background: color-mix(in srgb, var(--yellow, #b58900) 8%, var(--surface-muted));
+  background: color-mix(
+    in srgb,
+    var(--yellow, #b58900) 8%,
+    var(--surface-muted)
+  );
   font-size: var(--font-ui-sm);
   line-height: 1.45;
 }
@@ -670,7 +677,10 @@
 
 .snippet-editor-grid {
   display: grid;
-  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.7fr) 92px minmax(180px, 1.4fr);
+  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.7fr) 92px minmax(
+      180px,
+      1.4fr
+    );
   gap: 8px;
 }
 
@@ -767,7 +777,9 @@
   }
 
   .ui-zoom-control {
-    grid-template-columns: var(--control-md) minmax(0, 1fr) 48px var(--control-md);
+    grid-template-columns: var(--control-md) minmax(0, 1fr) 48px var(
+        --control-md
+      );
   }
 
   .ui-zoom-control .text-button {
