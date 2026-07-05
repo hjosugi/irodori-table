@@ -417,6 +417,12 @@ export const en = {
   "results.confirmDeleteRows.title": "Delete {count} rows from {table}?",
   "results.confirmDeleteRows.message":
     "Deletes are applied to the database and cannot be undone.",
+  "results.confirmDeleteRows.confirm": "Delete rows",
+  "results.discardEdits": "Discard",
+  "results.confirmDiscardEdits.title": "Discard {count} unsaved changes?",
+  "results.confirmDiscardEdits.message":
+    "Staged edits and their undo history will be lost.",
+  "results.confirmDiscardEdits.confirm": "Discard changes",
   "results.filters.hidden": "Filters hidden",
   "results.filters.none": "No filters",
   "results.filters.join": "Join",

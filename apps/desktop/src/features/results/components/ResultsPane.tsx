@@ -734,7 +734,7 @@ export function ResultsPane({
                 type="button"
                 onClick={onDiscardEdits}
               >
-                {t("git.actions.discard")}
+                {t("results.discardEdits")}
               </button>
             </>
           ) : (
