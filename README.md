@@ -74,7 +74,7 @@ project docs:
 - Security: [SECURITY.md](SECURITY.md)
 - Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
-License: `MIT OR 0BSD`.
+License: `0BSD`.
 
 ## License
 

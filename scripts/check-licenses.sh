@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 missing=0
 
 while IFS= read -r manifest; do
-  if grep -Eq '^[[:space:]]*license[[:space:]]*=[[:space:]]*"MIT OR 0BSD"' "$manifest"; then
+  if grep -Eq '^[[:space:]]*license[[:space:]]*=[[:space:]]*"0BSD"' "$manifest"; then
     continue
   fi
 
@@ -13,7 +13,7 @@ while IFS= read -r manifest; do
     continue
   fi
 
-  echo "missing MIT OR 0BSD license field: ${manifest#$root/}" >&2
+  echo "missing 0BSD license field: ${manifest#$root/}" >&2
   missing=1
 done < <(
   find "$root" \
@@ -33,8 +33,8 @@ done < <(
 )
 
 if [[ -f "$root/apps/desktop/package.json" ]]; then
-  if ! grep -Eq '"license"[[:space:]]*:[[:space:]]*"MIT OR 0BSD"' "$root/apps/desktop/package.json"; then
-    echo "missing MIT OR 0BSD license field: apps/desktop/package.json" >&2
+  if ! grep -Eq '"license"[[:space:]]*:[[:space:]]*"0BSD"' "$root/apps/desktop/package.json"; then
+    echo "missing 0BSD license field: apps/desktop/package.json" >&2
     missing=1
   fi
 fi
