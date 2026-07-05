@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## Unreleased
+
+### Fixed
+
+- The results header wraps inside a narrowed pane instead of overflowing:
+  result-set tabs and actions were sliced at the sidebar boundary, which read
+  as the sidebar overlaying the results. (#72)
+
 ## [0.7.30] - 2026-07-06
 
 ### Changed

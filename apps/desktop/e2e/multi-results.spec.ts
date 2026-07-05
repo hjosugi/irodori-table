@@ -161,6 +161,26 @@ test("selecting a result row opens Row Detail as a full-height right sidebar", a
   expect(Math.abs(rightBox!.y - leftBox!.y)).toBeLessThanOrEqual(1);
   expect(Math.abs(rightBox!.height - leftBox!.height)).toBeLessThanOrEqual(1);
 
+  // A true split, not an overlay: every results-header control stays fully
+  // inside the (narrower) results pane instead of being sliced at the
+  // sidebar boundary.
+  const clipped = await page.evaluate(() => {
+    const pane = document.querySelector(".results-pane");
+    if (!pane) {
+      return ["missing .results-pane"];
+    }
+    const paneRight = pane.getBoundingClientRect().right;
+    return Array.from(
+      pane.querySelectorAll(".results-header button, .results-header input"),
+    )
+      .filter((el) => {
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.right > paneRight + 1;
+      })
+      .map((el) => el.textContent || el.getAttribute("aria-label") || "?");
+  });
+  expect(clipped).toEqual([]);
+
   // Closing the panel clears the selection and the sidebar.
   await detail.getByRole("button", { name: "Clear row selection" }).click();
   await expect(page.locator(".row-detail")).toHaveCount(0);
