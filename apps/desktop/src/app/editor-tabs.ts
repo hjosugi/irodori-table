@@ -45,6 +45,78 @@ export function createEditorGroupState(initialQuery: string): EditorGroupState {
   };
 }
 
+/**
+ * Validate an untrusted (localStorage) value back into an EditorGroupState.
+ * Drops malformed tabs, re-anchors openTabIds/activeTabId to surviving tabs,
+ * and defaults missing per-tab text/selections. Returns null when there is
+ * nothing usable to restore.
+ */
+export function reviveEditorGroupState(
+  value: unknown,
+): EditorGroupState | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const candidate = value as Partial<EditorGroupState>;
+  if (
+    !Array.isArray(candidate.tabs) ||
+    !Array.isArray(candidate.openTabIds) ||
+    typeof candidate.activeTabId !== "string" ||
+    typeof candidate.queryByTabId !== "object" ||
+    candidate.queryByTabId === null
+  ) {
+    return null;
+  }
+  const tabs = candidate.tabs.filter(
+    (tab): tab is EditorTabDefinition =>
+      typeof tab === "object" &&
+      tab !== null &&
+      typeof (tab as EditorTabDefinition).id === "string" &&
+      typeof (tab as EditorTabDefinition).label === "string",
+  );
+  if (tabs.length === 0) {
+    return null;
+  }
+  const tabIds = new Set(tabs.map((tab) => tab.id));
+  const openFromStore = candidate.openTabIds.filter(
+    (id): id is string => typeof id === "string" && tabIds.has(id),
+  );
+  const openTabIds = openFromStore.length > 0 ? openFromStore : [tabs[0].id];
+  const activeTabId = openTabIds.includes(candidate.activeTabId)
+    ? candidate.activeTabId
+    : openTabIds[0];
+  const storedQueries = candidate.queryByTabId as Record<string, unknown>;
+  const storedSelections = (candidate.selectionsByTabId ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const queryByTabId: Record<string, string> = {};
+  const selectionsByTabId: Record<string, EditorSelections> = {};
+  for (const tab of tabs) {
+    const query = storedQueries[tab.id];
+    queryByTabId[tab.id] = typeof query === "string" ? query : "";
+    const selections = storedSelections[tab.id];
+    selectionsByTabId[tab.id] = isEditorSelections(selections)
+      ? selections
+      : defaultEditorSelections;
+  }
+  return { tabs, activeTabId, openTabIds, queryByTabId, selectionsByTabId };
+}
+
+function isEditorSelections(value: unknown): value is EditorSelections {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (selection) =>
+        typeof selection === "object" &&
+        selection !== null &&
+        typeof (selection as { from?: unknown }).from === "number" &&
+        typeof (selection as { to?: unknown }).to === "number",
+    )
+  );
+}
+
 export function queryForEditorGroup(state: EditorGroupState) {
   return state.queryByTabId[state.activeTabId] ?? "";
 }

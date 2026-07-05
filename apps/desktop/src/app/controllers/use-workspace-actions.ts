@@ -11,6 +11,7 @@ import {
   sqlDownloadFileName,
   tauriRuntimeError,
 } from "@/app/app-workbench-utils";
+import { flushEditorTabsEvent } from "@/app/controllers/use-editor-groups";
 import {
   detectImportFileKind,
   generateImportSql,
@@ -309,6 +310,9 @@ export function useWorkspaceActions({
       return;
     }
     try {
+      // Flush the debounced editor-tab persistence before the window goes
+      // away; unload events are not guaranteed to fire on a Tauri close.
+      window.dispatchEvent(new Event(flushEditorTabsEvent));
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().close();
     } catch (error) {
