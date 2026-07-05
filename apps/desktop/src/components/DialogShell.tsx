@@ -16,6 +16,11 @@ const FOCUSABLE_SELECTOR = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
+// Stack of currently open shells, in mount order. Escape must close only the
+// topmost dialog: every shell listens on document, and stopPropagation()
+// can't silence sibling listeners on the same node.
+const openDialogStack: symbol[] = [];
+
 type DialogShellProps = {
   children: ReactNode;
   /** Called for ESC, overlay click, and (optionally) the rendered close button. */
@@ -55,6 +60,24 @@ export function DialogShell({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const fallbackLabelId = useId();
+  const stackEntryRef = useRef<symbol | null>(null);
+  if (stackEntryRef.current === null) {
+    stackEntryRef.current = Symbol("dialog-shell");
+  }
+
+  // Track this shell on the open-dialog stack for the whole mounted lifetime,
+  // even with closeOnEscape off: an escape-disabled dialog on top must still
+  // shield the dialogs underneath it from Escape.
+  useEffect(() => {
+    const entry = stackEntryRef.current as symbol;
+    openDialogStack.push(entry);
+    return () => {
+      const index = openDialogStack.indexOf(entry);
+      if (index !== -1) {
+        openDialogStack.splice(index, 1);
+      }
+    };
+  }, []);
 
   // Restore focus to the element that was active before the dialog opened.
   useEffect(() => {
@@ -77,13 +100,18 @@ export function DialogShell({
   }, [autoFocus]);
 
   // ESC closes; document-level so it works regardless of focus location.
+  // Only the topmost shell reacts, so a stacked confirm closes alone, and
+  // stopImmediatePropagation() keeps the shells underneath (and any other
+  // document-level Escape handlers) from firing on the same press.
   useEffect(() => {
     if (!closeOnEscape) return;
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onCloseRef.current();
-      }
+      if (event.key !== "Escape") return;
+      if (openDialogStack[openDialogStack.length - 1] !== stackEntryRef.current)
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onCloseRef.current();
     };
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
