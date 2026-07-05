@@ -637,7 +637,7 @@ export function useResultGridEditing(deps: ResultGridEditingDeps) {
           table: target.table,
         }),
         message: t("results.confirmDeleteRows.message"),
-        confirmLabel: t("git.actions.commit"),
+        confirmLabel: t("results.confirmDeleteRows.confirm"),
         tone: "danger",
       });
       if (!confirmed) {

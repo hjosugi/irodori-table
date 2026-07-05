@@ -421,6 +421,12 @@ export const ja = {
   "results.confirmDeleteRows.title": "{table} から {count} 行を削除しますか？",
   "results.confirmDeleteRows.message":
     "削除はデータベースへ適用され、元に戻せません。",
+  "results.confirmDeleteRows.confirm": "行を削除",
+  "results.discardEdits": "破棄",
+  "results.confirmDiscardEdits.title": "未保存の変更 {count} 件を破棄しますか？",
+  "results.confirmDiscardEdits.message":
+    "ステージ済みの編集と取り消し履歴は失われます。",
+  "results.confirmDiscardEdits.confirm": "変更を破棄",
   "results.filters.hidden": "フィルタは非表示です",
   "results.filters.none": "フィルタはありません",
   "results.filters.join": "結合",

@@ -392,6 +392,25 @@ export function useResultGridWorkspace({
     confirm,
     t,
   });
+
+  // Discard clears every staged edit plus the undo stack, so gate it the same
+  // way commit gates row deletes instead of firing on a single click.
+  async function requestDiscardEdits() {
+    if (pendingCount > 0) {
+      const confirmed = await confirm({
+        title: t("results.confirmDiscardEdits.title", {
+          count: toCount(pendingCount),
+        }),
+        message: t("results.confirmDiscardEdits.message"),
+        confirmLabel: t("results.confirmDiscardEdits.confirm"),
+        tone: "danger",
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+    discardEdits();
+  }
   useResultGridSpillPaging({
     spillInfo,
     spillRef,
@@ -484,7 +503,7 @@ export function useResultGridWorkspace({
         onAddNewRow: addNewRow,
         onUndoEdit: undoLastEdit,
         onCommitEdits: () => void commitEdits(),
-        onDiscardEdits: discardEdits,
+        onDiscardEdits: () => void requestDiscardEdits(),
         onGenerateRowChangeSql: generateSelectedRowChangeSql,
         onEnableEditMode: enableEditMode,
         onBeginCellEdit: beginCellEdit,
