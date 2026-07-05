@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
 import { KeyRound, Play } from "lucide-react";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import type { QueryParameterPromptSet } from "@/generated/irodori-api";
 
 export type PendingQueryParameters = {
@@ -29,16 +31,18 @@ export function QueryParameterDialog({
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   return (
     <DialogShell
       className="parameter-dialog"
-      label="Query parameters"
+      label={t("queryParams.title")}
       onClose={onClose}
     >
       <form onSubmit={onSubmit}>
         <div className="parameter-header">
           <KeyRound size={16} />
-          <strong>Query Parameters</strong>
+          <strong>{t("queryParams.title")}</strong>
           <span>{compactSql(pending.sql)}</span>
         </div>
         <div className="parameter-list">
@@ -63,11 +67,11 @@ export function QueryParameterDialog({
         </div>
         <div className="parameter-actions">
           <button className="text-button" type="button" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="primary-button" type="submit">
             <Play size={14} />
-            Run
+            {t("queryParams.run")}
           </button>
         </div>
       </form>

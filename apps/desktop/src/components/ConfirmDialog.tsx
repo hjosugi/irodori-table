@@ -1,5 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import { DialogShell } from "./DialogShell";
 
 export type ConfirmTone = "danger" | "default";
@@ -30,17 +32,23 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   tone = "default",
   hideCancel = false,
   busy = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  // Resolve default button labels through i18n so callers that omit labels
+  // don't show English buttons in other locales.
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   if (!open) {
     return null;
   }
+  const resolvedConfirmLabel = confirmLabel ?? t("common.confirm");
+  const resolvedCancelLabel = cancelLabel ?? t("common.cancel");
   return (
     <DialogShell
       onClose={onCancel}
@@ -70,7 +78,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={busy}
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
         )}
         <button
@@ -81,7 +89,7 @@ export function ConfirmDialog({
           onClick={onConfirm}
           disabled={busy}
         >
-          {confirmLabel}
+          {resolvedConfirmLabel}
         </button>
       </div>
     </DialogShell>

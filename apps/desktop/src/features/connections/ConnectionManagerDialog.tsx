@@ -27,6 +27,8 @@ import {
 import { DialogShell } from "@/components/DialogShell";
 import { ErrorDetails } from "@/components/ErrorDetails";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator, type TranslationKey, type Translator } from "@/i18n";
 import {
   connectionCustomColorOptions,
   connectionColorOptions,
@@ -44,24 +46,28 @@ import {
 
 type ConnectionProfileGroup = {
   id: string;
-  label: string;
+  labelKey: TranslationKey;
   profiles: ConnectionDraft[];
 };
 
 type ConnectionColorPickerProps = {
   color: string;
   normalizedColor: string;
+  t: Translator["t"];
   onChange: (color: string) => void;
   onNormalize: () => void;
 };
 
 const environmentOrder = ["prod", "stg", "dev", "local", "other"] as const;
-const environmentLabels: Record<(typeof environmentOrder)[number], string> = {
-  prod: "PRD / Production",
-  stg: "STG / Staging",
-  dev: "DEV / Development",
-  local: "Local",
-  other: "Other",
+const environmentLabelKeys: Record<
+  (typeof environmentOrder)[number],
+  TranslationKey
+> = {
+  prod: "connection.group.prod",
+  stg: "connection.group.stg",
+  dev: "connection.group.dev",
+  local: "connection.group.local",
+  other: "connection.group.other",
 };
 const connectorStatusDocUrl =
   "https://hjosugi.github.io/irodori-docs/data-source-support-status.html";
@@ -99,7 +105,7 @@ function groupConnectionProfiles(profiles: ConnectionDraft[]) {
     .filter((key) => byEnvironment.has(key))
     .map((key) => ({
       id: key,
-      label: environmentLabels[key],
+      labelKey: environmentLabelKeys[key],
       profiles: byEnvironment.get(key) ?? [],
     }));
 }
@@ -117,8 +123,10 @@ function isMysqlSocketEngine(engine: DbEngine) {
   return engine === "mysql" || engine === "mariadb" || engine === "tidb";
 }
 
-function socketPathLabel(engine: DbEngine) {
-  return isMysqlSocketEngine(engine) ? "Socket file" : "Socket directory";
+function socketPathLabelKey(engine: DbEngine): TranslationKey {
+  return isMysqlSocketEngine(engine)
+    ? "connection.socketFile"
+    : "connection.socketDirectory";
 }
 
 function socketPathPlaceholder(engine: DbEngine) {
@@ -140,20 +148,22 @@ function isFeatureMissing(support: EngineBuildSupport | undefined) {
 function featureMissingMessage(
   engine: DbEngine,
   support: EngineBuildSupport | undefined,
+  t: Translator["t"],
 ) {
   if (!isFeatureMissing(support)) {
     return null;
   }
   return [
-    `${engineLabel(engine)} is not available in this desktop build.`,
-    "Use the standard Irodori Table release, or install the matching connector extension when available.",
-    `Build availability: ${connectorStatusDocUrl}.`,
+    t("connection.build.notAvailable", { engine: engineLabel(engine) }),
+    t("connection.build.useStandardRelease"),
+    t("connection.build.availability", { url: connectorStatusDocUrl }),
   ].join(" ");
 }
 
 function ConnectionColorPicker({
   color,
   normalizedColor,
+  t,
   onChange,
   onNormalize,
 }: ConnectionColorPickerProps) {
@@ -163,7 +173,7 @@ function ConnectionColorPicker({
         <div
           className="connection-color-grid"
           role="group"
-          aria-label="Connection color"
+          aria-label={t("connection.color.label")}
         >
           {connectionColorOptions.map((option) => (
             <ConnectionColorSwatch
@@ -171,12 +181,13 @@ function ConnectionColorPicker({
               color={option}
               selected={normalizedColor === option}
               className="connection-color-swatch"
+              t={t}
               onSelect={onChange}
             />
           ))}
           <label
             className="connection-color-custom"
-            title="Pick a custom color"
+            title={t("connection.color.pickCustom")}
           >
             <span
               className="connection-color-custom-chip"
@@ -192,7 +203,7 @@ function ConnectionColorPicker({
               type="color"
               value={normalizedColor}
               onChange={(event) => onChange(event.currentTarget.value)}
-              aria-label="Use custom connection color"
+              aria-label={t("connection.color.useCustom")}
             />
           </label>
         </div>
@@ -200,7 +211,7 @@ function ConnectionColorPicker({
           className="connection-color-hex"
           value={color}
           spellCheck={false}
-          aria-label="Connection color hex"
+          aria-label={t("connection.color.hex")}
           onBlur={onNormalize}
           onChange={(event) => onChange(event.currentTarget.value)}
         />
@@ -208,12 +219,12 @@ function ConnectionColorPicker({
       <details className="connection-color-more">
         <summary>
           <ChevronRight size={13} />
-          <span>More colors</span>
+          <span>{t("connection.color.more")}</span>
         </summary>
         <div
           className="connection-color-palette"
           role="group"
-          aria-label="Extended color palette"
+          aria-label={t("connection.color.extendedPalette")}
         >
           {connectionCustomColorOptions.map((option) => (
             <ConnectionColorSwatch
@@ -221,6 +232,7 @@ function ConnectionColorPicker({
               color={option}
               selected={normalizedColor === option}
               className="connection-color-chip"
+              t={t}
               onSelect={onChange}
             />
           ))}
@@ -234,11 +246,13 @@ function ConnectionColorSwatch({
   color,
   selected,
   className,
+  t,
   onSelect,
 }: {
   color: string;
   selected: boolean;
   className: string;
+  t: Translator["t"];
   onSelect: (color: string) => void;
 }) {
   return (
@@ -249,7 +263,7 @@ function ConnectionColorSwatch({
         background: color,
         color: connectionColorForeground(color),
       }}
-      aria-label={`Use color ${color}`}
+      aria-label={t("connection.color.use", { color })}
       aria-pressed={selected}
       onClick={() => onSelect(color)}
     >
@@ -306,6 +320,8 @@ export function ConnectionManagerDialog({
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const transferMenuRef = useRef<HTMLDivElement | null>(null);
   const engineSettings = engineConnectionSettings(draft.engine);
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const { confirm, confirmElement } = useConfirm();
   const [transferMenuOpen, setTransferMenuOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
@@ -324,6 +340,7 @@ export function ConnectionManagerDialog({
   const selectedEngineMessage = featureMissingMessage(
     draft.engine,
     selectedEngineSupport,
+    t,
   );
   const selectedEngineMissing = Boolean(selectedEngineMessage);
   const transportMode =
@@ -413,7 +430,7 @@ export function ConnectionManagerDialog({
           <small>
             {engineLabel(profile.engine)}
             {profile.database ? " · " + profile.database : ""}
-            {profile.readOnly ? " · read-only" : ""}
+            {profile.readOnly ? " · " + t("connection.readOnlyBadge") : ""}
           </small>
         </span>
         <i className={connected ? "connected" : ""} />
@@ -436,14 +453,16 @@ export function ConnectionManagerDialog({
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
           <span>
-            <strong>{group.label}</strong>
+            <strong>{t(group.labelKey)}</strong>
             <small>
               {connectedCount > 0
-                ? connectedCount +
-                  " connected · " +
-                  group.profiles.length +
-                  " total"
-                : group.profiles.length + " total"}
+                ? t("connection.group.connectedCount", {
+                    connected: connectedCount,
+                    total: group.profiles.length,
+                  })
+                : t("connection.group.totalCount", {
+                    total: group.profiles.length,
+                  })}
             </small>
           </span>
         </button>
@@ -468,7 +487,7 @@ export function ConnectionManagerDialog({
     <DialogShell
       className="connection-dialog"
       overlayClassName="palette-overlay connection-overlay"
-      label="Connection manager"
+      label={t("connection.title")}
       onClose={onClose}
       autoFocus={false}
     >
@@ -477,8 +496,8 @@ export function ConnectionManagerDialog({
           <button
             className="icon-button"
             type="button"
-            title="New connection"
-            aria-label="New connection"
+            title={t("connection.newConnection")}
+            aria-label={t("connection.newConnection")}
             onClick={onAddProfile}
           >
             <Plus size={16} />
@@ -489,8 +508,8 @@ export function ConnectionManagerDialog({
                 transferMenuOpen ? "icon-button active" : "icon-button"
               }
               type="button"
-              title="Connection import and export"
-              aria-label="Connection import and export"
+              title={t("connection.importExport")}
+              aria-label={t("connection.importExport")}
               aria-expanded={transferMenuOpen}
               onClick={() => setTransferMenuOpen((open) => !open)}
             >
@@ -506,7 +525,7 @@ export function ConnectionManagerDialog({
                     importInputRef.current?.click();
                   }}
                 >
-                  <span>Import Connections...</span>
+                  <span>{t("connection.importConnections")}</span>
                   <Upload size={13} />
                 </button>
                 <span className="connection-action-menu-separator" />
@@ -521,8 +540,10 @@ export function ConnectionManagerDialog({
                       onExportProfiles(format.value);
                     }}
                   >
-                    <span>Export {format.label}</span>
-                    <small>No passwords</small>
+                    <span>
+                      {t("connection.exportFormat", { format: format.label })}
+                    </span>
+                    <small>{t("connection.noPasswords")}</small>
                   </button>
                 ))}
               </div>
@@ -533,7 +554,7 @@ export function ConnectionManagerDialog({
             <input
               autoFocus
               value={search}
-              placeholder="Search connections"
+              placeholder={t("connection.searchPlaceholder")}
               onChange={(event) => onSearchChange(event.currentTarget.value)}
             />
           </label>
@@ -555,33 +576,36 @@ export function ConnectionManagerDialog({
           {groupedProfiles.map(renderGroup)}
         </div>
         <div className="connection-picker-empty">
-          {profiles.length === 0 ? "No matching connections" : null}
+          {profiles.length === 0 ? t("connection.noMatches") : null}
         </div>
       </aside>
       <form className="connection-form" onSubmit={handleConnect}>
         <div className="dialog-header">
-          <strong>{draft.name.trim() || "New Connection"}</strong>
+          <strong>
+            {draft.name.trim() || t("connection.newConnectionName")}
+          </strong>
           <span>{engineLabel(draft.engine)}</span>
           <button className="text-button" type="button" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
         </div>
         <div className="dialog-body connection-form-body">
           <label className="full-row">
-            <span>Connection name</span>
+            <span>{t("connection.name")}</span>
             <input
               value={draft.name}
-              placeholder="Connection's name"
+              placeholder={t("connection.namePlaceholder")}
               onChange={(event) =>
                 onUpdateDraft({ name: event.currentTarget.value })
               }
             />
           </label>
           <div className="connection-color-row full-row">
-            <span>Color tag</span>
+            <span>{t("connection.colorTag")}</span>
             <ConnectionColorPicker
               color={draft.color}
               normalizedColor={normalizedDraftColor}
+              t={t}
               onChange={(color) => onUpdateDraft({ color })}
               onNormalize={() =>
                 onUpdateDraft({
@@ -592,7 +616,7 @@ export function ConnectionManagerDialog({
           </div>
           <div className="connection-form-grid">
             <label>
-              <span>Engine</span>
+              <span>{t("connection.engine")}</span>
               <select
                 value={draft.engine}
                 onChange={(event) =>
@@ -612,7 +636,7 @@ export function ConnectionManagerDialog({
                       disabled={missing}
                     >
                       {engine.label}
-                      {missing ? " (not in this build)" : ""}
+                      {missing ? ` ${t("connection.notInBuild")}` : ""}
                     </option>
                   );
                 })}
@@ -625,7 +649,7 @@ export function ConnectionManagerDialog({
               </p>
             ) : null}
             <label>
-              <span>Profile ID</span>
+              <span>{t("connection.profileId")}</span>
               <input
                 value={draft.id}
                 onChange={(event) =>
@@ -635,7 +659,7 @@ export function ConnectionManagerDialog({
             </label>
             <div
               className="mode-toggle form-toggle"
-              aria-label="Connection input mode"
+              aria-label={t("connection.inputMode")}
             >
               <button
                 className={draft.mode === "url" ? "active" : ""}
@@ -669,7 +693,7 @@ export function ConnectionManagerDialog({
               {socketSupported ? (
                 <div
                   className="connection-transport-toggle form-toggle"
-                  aria-label="Connection transport"
+                  aria-label={t("connection.transportMode")}
                 >
                   <button
                     className={transportMode === "tcp" ? "active" : ""}
@@ -678,7 +702,7 @@ export function ConnectionManagerDialog({
                       onUpdateDraft({ connectionTransport: "tcp" })
                     }
                   >
-                    Direct TCP
+                    {t("connection.transportTcp")}
                   </button>
                   <button
                     className={transportMode === "socket" ? "active" : ""}
@@ -687,14 +711,14 @@ export function ConnectionManagerDialog({
                       onUpdateDraft({ connectionTransport: "socket" })
                     }
                   >
-                    Unix socket
+                    {t("connection.transportSocket")}
                   </button>
                 </div>
               ) : null}
               <div className="connection-form-grid">
                 {transportMode === "socket" ? (
                   <label className="full-row">
-                    <span>{socketPathLabel(draft.engine)}</span>
+                    <span>{t(socketPathLabelKey(draft.engine))}</span>
                     <input
                       value={draft.socketPath}
                       placeholder={socketPathPlaceholder(draft.engine)}
@@ -779,15 +803,15 @@ export function ConnectionManagerDialog({
             />
             <span>
               <LockKeyhole size={14} />
-              <strong>Read-only mode</strong>
+              <strong>{t("connection.readOnly")}</strong>
             </span>
           </label>
           <div className="connection-transport full-row">
             <ShieldCheck size={15} />
-            <span>Transport</span>
+            <span>{t("connection.transport")}</span>
             <strong>
               {draft.mode === "fields" && transportMode === "socket"
-                ? socketPathLabel(draft.engine)
+                ? t(socketPathLabelKey(draft.engine))
                 : engineSettings.transportLabel}
             </strong>
           </div>
@@ -805,11 +829,11 @@ export function ConnectionManagerDialog({
             type="button"
             onClick={() => {
               void confirm({
-                title: "Delete connection?",
-                message: `"${
-                  draft.name.trim() || draft.id
-                }" will be removed from your saved connections. This can't be undone.`,
-                confirmLabel: "Delete",
+                title: t("connection.confirmDelete.title"),
+                message: t("connection.confirmDelete.message", {
+                  name: draft.name.trim() || draft.id,
+                }),
+                confirmLabel: t("common.delete"),
                 tone: "danger",
               }).then((confirmed) => {
                 if (confirmed) {
@@ -818,7 +842,7 @@ export function ConnectionManagerDialog({
               });
             }}
           >
-            Delete
+            {t("common.delete")}
           </button>
           <button
             className="text-button"
@@ -827,10 +851,10 @@ export function ConnectionManagerDialog({
             onClick={onDisconnect}
           >
             <Power size={13} />
-            Disconnect
+            {t("connection.disconnect")}
           </button>
           <button className="text-button" type="button" onClick={onSave}>
-            Save
+            {t("common.save")}
           </button>
           <button
             className="text-button"
@@ -838,7 +862,7 @@ export function ConnectionManagerDialog({
             disabled={testing || selectedEngineMissing}
             onClick={onTest}
           >
-            {testing ? "Testing" : "Test"}
+            {testing ? t("connection.testing") : t("connection.test")}
           </button>
           <button
             className="primary-action"
@@ -846,7 +870,7 @@ export function ConnectionManagerDialog({
             disabled={connecting || selectedEngineMissing}
           >
             <Database size={14} />
-            {connecting ? "Connecting" : "Connect"}
+            {connecting ? t("connection.connecting") : t("connection.connect")}
           </button>
         </div>
       </form>

@@ -53,10 +53,8 @@ export function usePendingResultChangesGuard({
       event.stopPropagation();
       void (async () => {
         const discard = await confirm({
-          title: `Discard ${pendingCount} unsaved result change${
-            pendingCount === 1 ? "" : "s"
-          } and reload?`,
-          confirmLabel: "Discard & reload",
+          title: t("grid.confirmDiscardReload.title", { count: pendingCount }),
+          confirmLabel: t("grid.confirmDiscardReload.confirm"),
           tone: "danger",
         });
         if (!discard) {
