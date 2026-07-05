@@ -5,6 +5,7 @@ import {
   engineLabel,
   exportConnectionProfiles,
   importConnectionProfiles,
+  isPristineDraftProfile,
   memoryDefaults,
   newDraft,
   profileFromDraft,
@@ -145,12 +146,55 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
   }
 
   function addProfile() {
-    const next = newDraft(profiles.length + 1);
+    // Reuse an untouched draft instead of persisting another "Connection N"
+    // on every open of the manager.
+    const pristine = profiles.find(isPristineDraftProfile);
+    if (pristine) {
+      setSelectedProfileId(pristine.id);
+      setDraft(pristine);
+      setConnectionError(null);
+      return;
+    }
+    const usedIds = new Set(profiles.map((profile) => profile.id));
+    let seed = profiles.length + 1;
+    while (usedIds.has(`connection-${seed}`)) {
+      seed += 1;
+    }
+    const next = newDraft(seed);
     setProfiles((current) => [...current, sanitizedProfile(next)]);
     setSelectedProfileId(next.id);
     setDraft(next);
     setConnectionError(null);
     showActionNotice("info", t("notice.connection.draftCreated"), next.name);
+  }
+
+  // Closing the manager throws away drafts the user never touched, so
+  // open/close cycles stop accumulating persisted "Connection N" entries.
+  function prunePristineDrafts() {
+    setProfiles((current) => {
+      const kept = current.filter((profile) => {
+        if (!isPristineDraftProfile(profile)) {
+          return true;
+        }
+        if (connectedIds.has(profile.id)) {
+          return true;
+        }
+        // The form draft holds unsaved edits for this row — keep it so the
+        // user can come back and save.
+        return profile.id === draft.id && !isPristineDraftProfile(draft);
+      });
+      if (kept.length === current.length) {
+        return current;
+      }
+      if (!kept.some((profile) => profile.id === draft.id)) {
+        const fallback = kept[0] ?? null;
+        if (fallback) {
+          setSelectedProfileId(fallback.id);
+          setDraft(fallback);
+        }
+      }
+      return kept;
+    });
   }
 
   async function importConnectionFile(file: File) {
@@ -372,9 +416,6 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     const sample = existing
       ? repairBuiltinSampleProfile(existing)
       : sqliteSampleProfile();
-    if (!existing) {
-      setProfiles((current) => [...current, sample]);
-    }
     setSelectedProfileId(sample.id);
     setDraft(sample);
     setConnectionError(null);
@@ -391,6 +432,13 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
           timeoutMs: 10_000,
         });
       }
+      // Persist the sample profile only once it actually connected, so a
+      // failed attempt doesn't leave a dead "SQLite Sample" entry behind.
+      setProfiles((current) =>
+        current.some((profile) => profile.id === sample.id)
+          ? current
+          : [...current, sample],
+      );
     });
   }
 
@@ -492,6 +540,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     selectSidebarConnection,
     saveDraft,
     addProfile,
+    prunePristineDrafts,
     importConnectionFile,
     exportConnectionFile,
     deleteProfile,

@@ -171,6 +171,22 @@ export function newDraft(seed: number): ConnectionDraft {
   };
 }
 
+/**
+ * True when a profile is still exactly the untouched "Connection N" draft
+ * that addProfile creates — nothing renamed, no field edited. Pristine drafts
+ * are safe to reuse or discard instead of piling up in the saved list.
+ */
+export function isPristineDraftProfile(profile: ConnectionDraft): boolean {
+  const match = /^connection-(\d+)$/.exec(profile.id);
+  if (!match) {
+    return false;
+  }
+  const pristine = newDraft(Number(match[1]));
+  return (Object.keys(pristine) as (keyof ConnectionDraft)[]).every(
+    (key) => profile[key] === pristine[key],
+  );
+}
+
 // In-memory SQLite is the one connection that needs no external service, so
 // it can be offered from an empty workspace without ever looking broken.
 // Deliberately NOT part of starterProfiles: samples are created on demand

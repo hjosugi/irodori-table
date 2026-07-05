@@ -201,6 +201,7 @@ export function useWorkbenchConnections({
     selectProfile,
     saveDraft,
     addProfile,
+    prunePristineDrafts,
     importConnectionFile,
     exportConnectionFile,
     deleteProfile,
@@ -245,7 +246,10 @@ export function useWorkbenchConnections({
         activeConnectionOpen,
         testing: testingConnection,
         connecting,
-        onClose: () => setConnectionManagerOpen(false),
+        onClose: () => {
+          setConnectionManagerOpen(false);
+          prunePristineDrafts();
+        },
         onSearchChange: setConnectionSearch,
         onAddProfile: addProfile,
         onImportProfiles: (file) => void importConnectionFile(file),
