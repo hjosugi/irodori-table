@@ -139,6 +139,26 @@ function useWorkbench() {
     [themes.theme, uiZoom],
   );
 
+  // Popovers portaled to <body> (menubar menus, context menus) live outside
+  // .app-root, so mirror the theme variables onto :root or they resolve to
+  // transparent.
+  useEffect(() => {
+    const root = document.documentElement;
+    const entries = Object.entries(appStyle).filter(([key]) =>
+      key.startsWith("--"),
+    );
+    for (const [key, value] of entries) {
+      root.style.setProperty(key, String(value));
+    }
+    root.dataset.theme = themes.theme.kind;
+    return () => {
+      for (const [key] of entries) {
+        root.style.removeProperty(key);
+      }
+      delete root.dataset.theme;
+    };
+  }, [appStyle, themes.theme.kind]);
+
   return {
     // Cross-cutting services.
     t,

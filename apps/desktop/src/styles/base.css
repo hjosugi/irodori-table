@@ -63,6 +63,7 @@ textarea:disabled {
  * Cross-theme primitive scales (theme-independent). Defined once for both
  * shell roots; color tokens still live per-theme in .app-shell below.
  */
+:root,
 .app-root,
 .app-shell {
   --space-1: 2px;
@@ -85,6 +86,25 @@ textarea:disabled {
   --elevation-2: 0 6px 18px var(--shadow-color);
   --elevation-3: 0 18px 50px var(--shadow-color-strong);
   --modal-z: 50;
+}
+
+/*
+ * Derived tokens and UI scales for elements portaled to <body> (menubar
+ * popovers, context menus): they sit outside .app-root/.app-shell, whose
+ * runtime color variables are mirrored onto :root from AppWorkbench.
+ */
+:root {
+  --font-ui-xs: 11px;
+  --font-ui-sm: 12px;
+  --font-ui-md: 13px;
+  --font-ui-lg: 14px;
+  --line-ui: 1.35;
+  --line-compact: 1;
+  --neutral-dot: color-mix(in srgb, var(--muted) 62%, var(--surface-raised));
+  --shadow-color: color-mix(in srgb, var(--text) 20%, transparent);
+  --shadow-color-strong: color-mix(in srgb, var(--text) 28%, transparent);
+  --scrim: color-mix(in srgb, var(--text) 32%, transparent);
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--focus) 24%, transparent);
 }
 
 .app-root {
@@ -452,8 +472,12 @@ textarea:disabled {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
+  color: var(--text);
   background: var(--surface-raised);
   box-shadow: 0 14px 34px var(--shadow-color);
+  /* Popovers may be portaled to <body>, outside the .app-shell font scope. */
+  font-size: var(--font-ui-md);
+  line-height: var(--line-ui);
 }
 
 .app-menu-popover {
