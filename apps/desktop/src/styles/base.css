@@ -926,6 +926,17 @@ textarea:disabled {
   gap: 8px;
 }
 
+/*
+ * Toasts render above modals (z 80 > 50) and would otherwise sit exactly on a
+ * dialog's bottom-right action row (Connect/Test/Save in the Connection
+ * Manager) — persistent error toasts then hide the very buttons needed to
+ * retry. While any modal is open, park the stack at the top-right instead.
+ */
+body:has(.modal-overlay, .palette-overlay) .action-toast-stack {
+  top: 44px;
+  bottom: auto;
+}
+
 .action-toast {
   display: grid;
   grid-template-columns: 9px minmax(0, 1fr) auto;
