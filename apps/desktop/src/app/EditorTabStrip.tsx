@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { MoreHorizontal, Plus, X } from "lucide-react";
 
 import {
   openTabsForEditorGroup,
@@ -49,29 +49,58 @@ export function EditorTabStrip({
   return (
     <div
       className="tab-strip editor-tab-strip"
+      role="tablist"
+      aria-label={t("editorTabs.strip")}
       onContextMenu={(event) => event.stopPropagation()}
     >
       {openTabs.map((tab) => (
-        <button
+        <div
           className={tab.id === state.activeTabId ? "tab active" : "tab"}
           key={tab.id}
-          type="button"
-          title={tab.label}
-          onClick={() => onSelectTab(group, tab.id)}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onSelectTab(group, tab.id);
-            onOpenMenu({
-              x: event.clientX,
-              y: event.clientY,
-              group,
-              tabId: tab.id,
-            });
-          }}
         >
-          {tab.label}
-        </button>
+          <button
+            className="tab-select"
+            type="button"
+            role="tab"
+            aria-selected={tab.id === state.activeTabId}
+            aria-haspopup="menu"
+            title={tab.label}
+            onClick={() => onSelectTab(group, tab.id)}
+            onMouseDown={(event) => {
+              // Middle-click closes; stop the browser's autoscroll gesture.
+              if (event.button === 1) {
+                event.preventDefault();
+              }
+            }}
+            onAuxClick={(event) => {
+              if (event.button === 1) {
+                onCloseTab(group, tab.id);
+              }
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onSelectTab(group, tab.id);
+              onOpenMenu({
+                x: event.clientX,
+                y: event.clientY,
+                group,
+                tabId: tab.id,
+              });
+            }}
+          >
+            {tab.label}
+          </button>
+          <button
+            className="tab-close"
+            type="button"
+            title={t("editorTabs.closeTabNamed", { label: tab.label })}
+            aria-label={t("editorTabs.closeTabNamed", { label: tab.label })}
+            onClick={() => onCloseTab(group, tab.id)}
+          >
+            <X size={12} />
+          </button>
+        </div>
       ))}
       <button
         className="mini-button"
@@ -81,6 +110,25 @@ export function EditorTabStrip({
         onClick={() => onNewTab(group)}
       >
         <Plus size={14} />
+      </button>
+      <button
+        className="mini-button"
+        type="button"
+        title={t("editorTabs.tabActions")}
+        aria-label={t("editorTabs.tabActions")}
+        aria-haspopup="menu"
+        aria-expanded={menuOpenForGroup}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          onOpenMenu({
+            x: rect.left,
+            y: rect.bottom + 4,
+            group,
+            tabId: state.activeTabId,
+          });
+        }}
+      >
+        <MoreHorizontal size={14} />
       </button>
       {menuOpenForGroup && menu ? (
         <div
