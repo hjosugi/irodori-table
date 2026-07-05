@@ -1,5 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import {
   AlertTriangle,
   Copy,
@@ -78,31 +80,37 @@ export function ErdDialog({
   onSelectTable: (tableId: string) => void;
   onCopyMermaid: () => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   return (
-    <DialogShell className="diagram" label="ER diagram" onClose={onClose}>
+    <DialogShell className="diagram" label={t("erd.title")} onClose={onClose}>
       <div className="diagram-header">
-        <strong>ER Diagram</strong>
+        <strong>{t("erd.title")}</strong>
         <span>
           {activeConnectionName}
           {model
-            ? ` \u00b7 ${model.tables.length}/${model.totalTables} tables \u00b7 ${model.edges.length} edges`
+            ? ` \u00b7 ${t("erd.summary", {
+                tables: model.tables.length,
+                total: model.totalTables,
+                edges: model.edges.length,
+              })}`
             : ""}
         </span>
         <button
           className="text-button"
           type="button"
-          title="Fit diagram"
+          title={t("erd.fitTitle")}
           onClick={onFit}
           disabled={!layout}
         >
           <Maximize2 size={13} />
-          <span>Fit</span>
+          <span>{t("erd.fit")}</span>
         </button>
         <button
           className="mini-button"
           type="button"
-          title="Zoom out"
-          aria-label="Zoom out"
+          title={t("erd.zoomOut")}
+          aria-label={t("erd.zoomOut")}
           disabled={!layout}
           onClick={() =>
             onZoomChange((current) => clampNumber(current - 0.1, 0.25, 2))
@@ -114,8 +122,8 @@ export function ErdDialog({
         <button
           className="mini-button"
           type="button"
-          title="Zoom in"
-          aria-label="Zoom in"
+          title={t("erd.zoomIn")}
+          aria-label={t("erd.zoomIn")}
           disabled={!layout}
           onClick={() =>
             onZoomChange((current) => clampNumber(current + 0.1, 0.25, 2))
@@ -126,8 +134,8 @@ export function ErdDialog({
         <button
           className="text-button"
           type="button"
-          aria-label="Copy ERD SVG"
-          title="Copy ERD SVG"
+          aria-label={t("erd.copySvg")}
+          title={t("erd.copySvg")}
           onClick={onCopySvg}
           disabled={!layout}
         >
@@ -137,8 +145,8 @@ export function ErdDialog({
         <button
           className="text-button"
           type="button"
-          aria-label="Copy ERD PNG"
-          title="Copy ERD PNG"
+          aria-label={t("erd.copyPng")}
+          title={t("erd.copyPng")}
           onClick={onCopyPng}
           disabled={!layout}
         >
@@ -148,8 +156,8 @@ export function ErdDialog({
         <button
           className="text-button"
           type="button"
-          aria-label="Download ERD SVG"
-          title="Download ERD SVG"
+          aria-label={t("erd.downloadSvg")}
+          title={t("erd.downloadSvg")}
           onClick={onDownloadSvg}
           disabled={!layout}
         >
@@ -159,8 +167,8 @@ export function ErdDialog({
         <button
           className="text-button"
           type="button"
-          aria-label="Download ERD PNG"
-          title="Download ERD PNG"
+          aria-label={t("erd.downloadPng")}
+          title={t("erd.downloadPng")}
           onClick={onDownloadPng}
           disabled={!layout}
         >
@@ -170,22 +178,22 @@ export function ErdDialog({
         <button
           className="text-button"
           type="button"
-          title="Open the current diagram in the interactive designer"
+          title={t("erd.designerTitle")}
           onClick={onEditInDesigner}
           disabled={!metadataLoaded}
         >
           <PencilRuler size={13} />
-          <span>Designer</span>
+          <span>{t("erd.designer")}</span>
         </button>
         <button
           className="text-button"
           type="button"
-          title="Generate a runnable CREATE script for the current diagram"
+          title={t("erd.createDbTitle")}
           onClick={onCreateDatabaseSql}
           disabled={!metadataLoaded}
         >
           <Database size={13} />
-          <span>Create DB</span>
+          <span>{t("erd.createDb")}</span>
         </button>
         <button
           className="text-button"
@@ -193,7 +201,7 @@ export function ErdDialog({
           onClick={onDownloadSpecMarkdown}
           disabled={!metadataLoaded}
         >
-          Spec MD
+          {t("erd.specMarkdown")}
         </button>
         <button
           className="text-button"
@@ -201,10 +209,10 @@ export function ErdDialog({
           onClick={onDownloadSpecJson}
           disabled={!metadataLoaded}
         >
-          Spec JSON
+          {t("erd.specJson")}
         </button>
         <button className="text-button" type="button" onClick={onLoadSpecDdl}>
-          Spec to DDL
+          {t("erd.specToDdl")}
         </button>
         <button
           className="text-button"
@@ -212,10 +220,10 @@ export function ErdDialog({
           onClick={onCopyMermaid}
           disabled={!metadataLoaded}
         >
-          Copy Mermaid
+          {t("erd.copyMermaid")}
         </button>
         <button className="text-button" type="button" onClick={onClose}>
-          Close
+          {t("common.close")}
         </button>
       </div>
       <div className="diagram-controls">
@@ -223,7 +231,7 @@ export function ErdDialog({
           <Search size={14} />
           <input
             value={search}
-            placeholder="Filter schemas, tables, columns"
+            placeholder={t("erd.filterPlaceholder")}
             onChange={(event) => onSearchChange(event.currentTarget.value)}
           />
         </label>
@@ -233,17 +241,21 @@ export function ErdDialog({
             type="button"
             onClick={() => onSchemaNamesChange(availableSchemas)}
           >
-            All
+            {t("erd.allSchemas")}
           </button>
           <button
             className="mini-button"
             type="button"
             onClick={() => onSchemaNamesChange([])}
           >
-            None
+            {t("erd.noSchemas")}
           </button>
         </div>
-        <div className="diagram-schema-list" role="group" aria-label="Schemas">
+        <div
+          className="diagram-schema-list"
+          role="group"
+          aria-label={t("erd.schemas")}
+        >
           {availableSchemas.map((schema) => {
             const active = schemaNames.includes(schema);
             return (
@@ -274,12 +286,10 @@ export function ErdDialog({
           </div>
         ) : null}
         {!error && !metadataLoaded ? (
-          <div className="grid-state loading">Loading schema metadata…</div>
+          <div className="grid-state loading">{t("erd.loadingMetadata")}</div>
         ) : null}
         {!error && metadataLoaded && (!layout || layout.tables.length === 0) ? (
-          <div className="grid-state">
-            No tables match the current diagram filters
-          </div>
+          <div className="grid-state">{t("erd.noTablesMatch")}</div>
         ) : null}
         {!error && layout && layout.tables.length > 0 ? (
           <div

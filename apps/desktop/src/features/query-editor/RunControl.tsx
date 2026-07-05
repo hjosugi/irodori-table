@@ -1,5 +1,7 @@
 import { useEffect, type RefObject } from "react";
 import { ChevronDown, Play, Save } from "lucide-react";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator, type Translator } from "@/i18n";
 
 export type RunControlProps = {
   running: boolean;
@@ -38,6 +40,8 @@ export function RunControl({
   runFromStartQuery,
   runAllQuery,
 }: RunControlProps) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   useEffect(() => {
     if (!runMenuOpen) {
       return;
@@ -65,12 +69,12 @@ export function RunControl({
       <button
         className="text-button toolbar-command"
         type="button"
-        title="Save query"
-        aria-label="Save query"
+        title={t("run.saveQuery")}
+        aria-label={t("run.saveQuery")}
         onClick={saveCurrentQuery}
       >
         <Save size={15} />
-        <span>Save</span>
+        <span>{t("run.save")}</span>
       </button>
       <div className="run-control editor-floating-run" ref={runControlRef}>
         <button
@@ -90,8 +94,8 @@ export function RunControl({
         <button
           className="primary-action run-menu-toggle"
           type="button"
-          title="Run options"
-          aria-label="Run options"
+          title={t("run.options")}
+          aria-label={t("run.options")}
           aria-haspopup="menu"
           aria-expanded={runMenuOpen}
           disabled={running}
@@ -101,6 +105,7 @@ export function RunControl({
         </button>
         {runMenuOpen ? (
           <RunOptionsMenu
+            t={t}
             runPrimaryLabel={runPrimaryLabel}
             runShortcutLabel={runShortcutLabel}
             runCurrentShortcutLabel={runCurrentShortcutLabel}
@@ -120,6 +125,7 @@ export function RunControl({
 }
 
 function RunOptionsMenu({
+  t,
   runPrimaryLabel,
   runShortcutLabel,
   runCurrentShortcutLabel,
@@ -138,7 +144,7 @@ function RunOptionsMenu({
   | "runMenuOpen"
   | "setRunMenuOpen"
   | "saveCurrentQuery"
->) {
+> & { t: Translator["t"] }) {
   return (
     <div className="app-menu-popover run-menu-popover" role="menu">
       <button type="button" role="menuitem" onClick={() => void runQuery()}>
@@ -151,14 +157,14 @@ function RunOptionsMenu({
         disabled={!hasSelectedEditorSql}
         onClick={() => void runSelectionQuery()}
       >
-        <span>Run Selection</span>
+        <span>{t("run.selection")}</span>
       </button>
       <button
         type="button"
         role="menuitem"
         onClick={() => void runCurrentQuery()}
       >
-        <span>Run Current</span>
+        <span>{t("run.current")}</span>
         {runCurrentShortcutLabel ? <kbd>{runCurrentShortcutLabel}</kbd> : null}
       </button>
       <button
@@ -166,13 +172,13 @@ function RunOptionsMenu({
         role="menuitem"
         onClick={() => void runFromStartQuery()}
       >
-        <span>Run From Top</span>
+        <span>{t("run.fromTop")}</span>
         {runFromStartShortcutLabel ? (
           <kbd>{runFromStartShortcutLabel}</kbd>
         ) : null}
       </button>
       <button type="button" role="menuitem" onClick={() => void runAllQuery()}>
-        <span>Run All</span>
+        <span>{t("run.all")}</span>
         {runAllShortcutLabel ? <kbd>{runAllShortcutLabel}</kbd> : null}
       </button>
     </div>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Bug, Copy, ExternalLink, Info } from "lucide-react";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import { openExternalUrl } from "@/features/settings/tabs/shared";
 import {
   crashReportStatus,
@@ -28,6 +30,8 @@ export function AboutDialog({
   onClose: () => void;
   onCopyDiagnostics: () => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const [crashReport, setCrashReport] = useState<CrashReportStatus | null>(
     null,
   );
@@ -81,14 +85,14 @@ export function AboutDialog({
   return (
     <DialogShell
       className="data-dialog about-dialog"
-      label={`About ${appName}`}
+      label={t("about.title", { name: appName })}
       onClose={onClose}
     >
       <div className="dialog-header">
-        <strong>About {appName}</strong>
-        <span>Version and support information</span>
+        <strong>{t("about.title", { name: appName })}</strong>
+        <span>{t("about.subtitle")}</span>
         <button className="text-button" type="button" onClick={onClose}>
-          Close
+          {t("common.close")}
         </button>
       </div>
       <div className="about-body">
@@ -96,29 +100,29 @@ export function AboutDialog({
           <img className="about-icon" src="/irodori-icon.svg" alt="" />
           <span>
             <strong>{appName}</strong>
-            <small>Database workbench</small>
+            <small>{t("about.tagline")}</small>
           </span>
         </div>
         <dl className="about-grid">
           <div>
-            <dt>Version</dt>
+            <dt>{t("about.version")}</dt>
             <dd>{appVersion}</dd>
           </div>
           <div>
-            <dt>Identifier</dt>
+            <dt>{t("about.identifier")}</dt>
             <dd>{appIdentifier}</dd>
           </div>
           <div>
-            <dt>Runtime</dt>
+            <dt>{t("about.runtime")}</dt>
             <dd>{runtimeLabel}</dd>
           </div>
           <div>
-            <dt>Active connection</dt>
+            <dt>{t("about.activeConnection")}</dt>
             <dd>{activeConnectionLabel}</dd>
           </div>
           {crashReport ? (
             <div>
-              <dt>Log directory</dt>
+              <dt>{t("about.logDirectory")}</dt>
               <dd className="about-path" title={crashReport.logDir}>
                 {crashReport.logDir}
               </dd>
@@ -126,7 +130,7 @@ export function AboutDialog({
           ) : null}
           {crashReport?.latestBundleDir ? (
             <div>
-              <dt>Previous crash</dt>
+              <dt>{t("about.previousCrash")}</dt>
               <dd className="about-path" title={crashReport.latestBundleDir}>
                 {crashReport.latestBundleDir}
               </dd>
@@ -136,19 +140,12 @@ export function AboutDialog({
         {crashReport?.latestBundleDir ? (
           <div className="about-help">
             <Info size={16} />
-            <span>
-              A local crash report from the previous launch is staged on disk.
-              Review and redact it before sharing; Irodori does not upload crash
-              reports automatically.
-            </span>
+            <span>{t("about.crashHelp")}</span>
           </div>
         ) : null}
         <div className="about-help">
           <Info size={16} />
-          <span>
-            Use Connection Manager for saved database profiles, and copy
-            diagnostics when sharing runtime details for support.
-          </span>
+          <span>{t("about.supportHelp")}</span>
         </div>
         <div className="about-links">
           <button
@@ -157,7 +154,7 @@ export function AboutDialog({
             onClick={() => openExternalUrl(DOCS_URL)}
           >
             <BookOpen size={13} />
-            Documentation
+            {t("about.docs")}
           </button>
           <button
             className="text-button"
@@ -165,7 +162,7 @@ export function AboutDialog({
             onClick={() => openExternalUrl(REPO_URL)}
           >
             <ExternalLink size={13} />
-            GitHub
+            {t("about.github")}
           </button>
           <button
             className="text-button"
@@ -173,7 +170,7 @@ export function AboutDialog({
             onClick={() => openExternalUrl(ISSUES_URL)}
           >
             <Bug size={13} />
-            Report an issue
+            {t("about.reportIssue")}
           </button>
         </div>
       </div>
@@ -184,7 +181,7 @@ export function AboutDialog({
           onClick={onCopyDiagnostics}
         >
           <Copy size={13} />
-          Copy diagnostics
+          {t("about.copyDiagnostics")}
         </button>
         {crashReport?.latestBundleDir ? (
           <button
@@ -194,10 +191,10 @@ export function AboutDialog({
           >
             <Copy size={13} />
             {crashPathCopyStatus === "copied"
-              ? "Crash path copied"
+              ? t("about.crashPathCopied")
               : crashPathCopyStatus === "failed"
-                ? "Copy failed"
-                : "Copy crash report path"}
+                ? t("about.copyFailed")
+                : t("about.copyCrashPath")}
           </button>
         ) : null}
       </div>

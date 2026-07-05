@@ -378,12 +378,12 @@ export function Sidebar({
   return (
     <>
       {showConnectionRail !== false ? (
-        <nav className="connection-rail" aria-label="Connections">
+        <nav className="connection-rail" aria-label={t("rail.connections")}>
           <button
             className="rail-action"
             type="button"
-            title="New connection"
-            aria-label="New connection"
+            title={t("connection.newConnection")}
+            aria-label={t("connection.newConnection")}
             onClick={onAddProfile}
           >
             <Plus size={16} />
@@ -398,10 +398,12 @@ export function Sidebar({
                   className={`rail-connection${active ? " active" : ""}`}
                   key={connection.id}
                   type="button"
-                  title={`${connection.name} · ${connection.engine}${
-                    connected ? " · connected" : " · closed"
+                  title={`${connection.name} · ${connection.engine} · ${
+                    connected
+                      ? t("rail.statusConnected")
+                      : t("rail.statusClosed")
                   }`}
-                  aria-label={`Switch to ${connection.name}`}
+                  aria-label={t("rail.switchTo", { name: connection.name })}
                   aria-current={active ? "true" : undefined}
                   onClick={() => onSelectConnection(connection, profile)}
                   onDoubleClick={onOpenConnectionManager}
@@ -456,7 +458,9 @@ export function Sidebar({
                         close();
                       }}
                     >
-                      {connected ? "Switch to connection" : "Connect"}
+                      {connected
+                        ? t("sidebar.menu.switchToConnection")
+                        : t("sidebar.menu.connect")}
                     </button>
                     <button
                       type="button"
@@ -467,7 +471,7 @@ export function Sidebar({
                         close();
                       }}
                     >
-                      Edit connection…
+                      {t("sidebar.menu.editConnection")}
                     </button>
                     <button
                       type="button"
@@ -478,7 +482,7 @@ export function Sidebar({
                         close();
                       }}
                     >
-                      Refresh objects
+                      {t("sidebar.refreshObjects")}
                     </button>
                     <button
                       type="button"
@@ -488,7 +492,7 @@ export function Sidebar({
                         close();
                       }}
                     >
-                      Copy name
+                      {t("sidebar.menu.copyName")}
                     </button>
                     {profile?.url ? (
                       <button
@@ -499,7 +503,7 @@ export function Sidebar({
                           close();
                         }}
                       >
-                        Copy connection string
+                        {t("sidebar.menu.copyConnectionString")}
                       </button>
                     ) : null}
                   </div>
@@ -513,7 +517,7 @@ export function Sidebar({
           <div
             className="sidebar-view-switcher"
             role="tablist"
-            aria-label="Sidebar views"
+            aria-label={t("sidebar.views")}
           >
             {isViewAvailable("objectBrowser") ? (
               <button
@@ -523,12 +527,12 @@ export function Sidebar({
                   activeView === "objectBrowser" ? "active" : undefined
                 }
                 aria-selected={activeView === "objectBrowser"}
-                title="Tables"
-                aria-label="Tables"
+                title={t("sidebar.view.tables")}
+                aria-label={t("sidebar.view.tables")}
                 onClick={() => onSelectView("objectBrowser")}
               >
                 <Table2 size={14} />
-                <span>Tables</span>
+                <span>{t("sidebar.view.tables")}</span>
               </button>
             ) : null}
             {isViewAvailable("completion") ? (
@@ -537,12 +541,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "completion" ? "active" : undefined}
                 aria-selected={activeView === "completion"}
-                title="Completion"
-                aria-label="Completion"
+                title={t("sidebar.view.completion")}
+                aria-label={t("sidebar.view.completion")}
                 onClick={() => onSelectView("completion")}
               >
                 <ListPlus size={14} />
-                <span>Completion</span>
+                <span>{t("sidebar.view.completion")}</span>
               </button>
             ) : null}
             {isViewAvailable("queryHistory") ? (
@@ -551,12 +555,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "queryHistory" ? "active" : undefined}
                 aria-selected={activeView === "queryHistory"}
-                title="History"
-                aria-label="History"
+                title={t("sidebar.view.history")}
+                aria-label={t("sidebar.view.history")}
                 onClick={() => onSelectView("queryHistory")}
               >
                 <History size={14} />
-                <span>History</span>
+                <span>{t("sidebar.view.history")}</span>
               </button>
             ) : null}
             {isViewAvailable("plan") ? (
@@ -565,12 +569,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "plan" ? "active" : undefined}
                 aria-selected={activeView === "plan"}
-                title="Plan"
-                aria-label="Plan"
+                title={t("sidebar.view.plan")}
+                aria-label={t("sidebar.view.plan")}
                 onClick={() => onSelectView("plan")}
               >
                 <Flame size={14} />
-                <span>Plan</span>
+                <span>{t("sidebar.view.plan")}</span>
               </button>
             ) : null}
             {isViewAvailable("lakehouse") ? (
@@ -579,12 +583,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "lakehouse" ? "active" : undefined}
                 aria-selected={activeView === "lakehouse"}
-                title="Lakehouse"
-                aria-label="Lakehouse"
+                title={t("sidebar.view.lakehouse")}
+                aria-label={t("sidebar.view.lakehouse")}
                 onClick={() => onSelectView("lakehouse")}
               >
                 <Layers3 size={14} />
-                <span>Lake</span>
+                <span>{t("sidebar.view.lake")}</span>
               </button>
             ) : null}
             {isViewAvailable("bi") ? (
@@ -593,12 +597,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "bi" ? "active" : undefined}
                 aria-selected={activeView === "bi"}
-                title="BI"
-                aria-label="BI"
+                title={t("sidebar.view.bi")}
+                aria-label={t("sidebar.view.bi")}
                 onClick={() => onSelectView("bi")}
               >
                 <BarChart3 size={14} />
-                <span>BI</span>
+                <span>{t("sidebar.view.bi")}</span>
               </button>
             ) : null}
             {isViewAvailable("git") ? (
@@ -607,12 +611,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "git" ? "active" : undefined}
                 aria-selected={activeView === "git"}
-                title="Git"
-                aria-label="Git"
+                title={t("sidebar.view.git")}
+                aria-label={t("sidebar.view.git")}
                 onClick={() => onSelectView("git")}
               >
                 <GitBranch size={14} />
-                <span>Git</span>
+                <span>{t("sidebar.view.git")}</span>
               </button>
             ) : null}
             {isViewAvailable("aiChat") ? (
@@ -621,12 +625,12 @@ export function Sidebar({
                 role="tab"
                 className={activeView === "aiChat" ? "active" : undefined}
                 aria-selected={activeView === "aiChat"}
-                title="AI Chat"
-                aria-label="AI Chat"
+                title={t("ai.chat.title")}
+                aria-label={t("ai.chat.title")}
                 onClick={() => onSelectView("aiChat")}
               >
                 <Bot size={14} />
-                <span>Chat</span>
+                <span>{t("sidebar.view.chat")}</span>
               </button>
             ) : null}
             {isViewAvailable("searchReplace") ? (
@@ -637,12 +641,12 @@ export function Sidebar({
                   activeView === "searchReplace" ? "active" : undefined
                 }
                 aria-selected={activeView === "searchReplace"}
-                title="Search & Replace"
-                aria-label="Search & Replace"
+                title={t("sidebar.view.searchReplace")}
+                aria-label={t("sidebar.view.searchReplace")}
                 onClick={() => onSelectView("searchReplace")}
               >
                 <Search size={14} />
-                <span>Find</span>
+                <span>{t("sidebar.view.find")}</span>
               </button>
             ) : null}
           </div>
@@ -651,15 +655,17 @@ export function Sidebar({
               <div className="section-heading">
                 <span>
                   {activeMetadata
-                    ? `${activeMetadata.schemas.length} schemas`
+                    ? t("sidebar.schemasCount", {
+                        count: activeMetadata.schemas.length,
+                      })
                     : "public"}
                 </span>
                 <div className="section-heading-actions">
                   <div className="schema-create-menu-wrap" ref={createMenuRef}>
                     <button
                       type="button"
-                      title="New table"
-                      aria-label="New table"
+                      title={t("sidebar.newTable")}
+                      aria-label={t("sidebar.newTable")}
                       aria-expanded={createMenuOpen}
                       onClick={() => setCreateMenuOpen((open) => !open)}
                     >
@@ -675,7 +681,7 @@ export function Sidebar({
                             onOpenBlankSchemaDesigner();
                           }}
                         >
-                          New Table
+                          {t("sidebar.menu.newTable")}
                         </button>
                         <button
                           type="button"
@@ -685,7 +691,7 @@ export function Sidebar({
                             onNewTableFromFile();
                           }}
                         >
-                          New Table from File
+                          {t("sidebar.menu.newTableFromFile")}
                         </button>
                         <button
                           type="button"
@@ -695,15 +701,15 @@ export function Sidebar({
                             onOpenSchemaDiagram();
                           }}
                         >
-                          Design on Canvas
+                          {t("sidebar.menu.designOnCanvas")}
                         </button>
                       </div>
                     ) : null}
                   </div>
                   <button
                     type="button"
-                    title="ER diagram"
-                    aria-label="ER diagram"
+                    title={t("erd.title")}
+                    aria-label={t("erd.title")}
                     disabled={!hasDiagram(activeMetadata)}
                     onClick={onOpenDiagram}
                   >
@@ -711,8 +717,8 @@ export function Sidebar({
                   </button>
                   <button
                     type="button"
-                    title="Refresh objects"
-                    aria-label="Refresh objects"
+                    title={t("sidebar.refreshObjects")}
+                    aria-label={t("sidebar.refreshObjects")}
                     disabled={!activeConnectionOpen || activeMetadataLoading}
                     onClick={onRefreshObjects}
                   >
@@ -720,8 +726,8 @@ export function Sidebar({
                   </button>
                   <button
                     type="button"
-                    title="Close sidebar"
-                    aria-label="Close sidebar"
+                    title={t("sidebar.close")}
+                    aria-label={t("sidebar.close")}
                     onClick={onCloseSidebar}
                   >
                     <X size={14} />
@@ -730,14 +736,14 @@ export function Sidebar({
               </div>
               <div
                 className="object-browser"
-                aria-label="Database objects"
+                aria-label={t("sidebar.databaseObjects")}
                 onKeyDown={handleTreeKeyDown}
               >
                 {activeMetadataLoading ? (
                   <div
                     className="metadata-skeleton"
                     role="status"
-                    aria-label="Loading objects"
+                    aria-label={t("sidebar.loadingObjects")}
                   >
                     {Array.from({ length: 6 }, (_, index) => (
                       <span key={index} />
@@ -780,7 +786,9 @@ export function Sidebar({
                                   disabled={!canOpenData}
                                   title={
                                     canOpenData
-                                      ? `Open ${formatObjectName(object)}`
+                                      ? t("sidebar.openObject", {
+                                          name: formatObjectName(object),
+                                        })
                                       : objectKindLabel(object)
                                   }
                                   onClick={(event) => {
@@ -798,8 +806,10 @@ export function Sidebar({
                                 <button
                                   className="object-menu-button"
                                   type="button"
-                                  title="Object actions"
-                                  aria-label={`Actions for ${object.name}`}
+                                  title={t("sidebar.objectActions")}
+                                  aria-label={t("sidebar.objectActionsFor", {
+                                    name: object.name,
+                                  })}
                                   onClick={(event) => {
                                     event.preventDefault();
                                     event.stopPropagation();
@@ -841,7 +851,7 @@ export function Sidebar({
                                         onOpenTableData(object);
                                       }}
                                     >
-                                      Open Data
+                                      {t("sidebar.menu.openData")}
                                     </button>
                                     <button
                                       type="button"
@@ -854,7 +864,7 @@ export function Sidebar({
                                         onSetObjectActionMenu(null);
                                       }}
                                     >
-                                      Structure
+                                      {t("sidebar.menu.structure")}
                                     </button>
                                     <button
                                       type="button"
@@ -866,7 +876,7 @@ export function Sidebar({
                                         onShowObjectInDiagram(object);
                                       }}
                                     >
-                                      Show in ERD
+                                      {t("sidebar.menu.showInErd")}
                                     </button>
                                     <button
                                       type="button"
@@ -880,7 +890,7 @@ export function Sidebar({
                                         onSetObjectActionMenu(null);
                                       }}
                                     >
-                                      Copy Name
+                                      {t("sidebar.menu.copyName")}
                                     </button>
                                   </div>
                                 ) : null}
@@ -904,7 +914,7 @@ export function Sidebar({
                                   ))
                                 ) : (
                                   <div className="metadata-empty">
-                                    No fields
+                                    {t("sidebar.noFields")}
                                   </div>
                                 )}
                               </div>
@@ -972,7 +982,9 @@ export function Sidebar({
                     <small>{t("sidebar.empty.sampleHint")}</small>
                   </div>
                 ) : (
-                  <div className="empty-browser">No objects loaded</div>
+                  <div className="empty-browser">
+                    {t("sidebar.noObjectsLoaded")}
+                  </div>
                 )}
               </div>
             </section>
@@ -983,7 +995,7 @@ export function Sidebar({
             <div
               className="panel-resizer sidebar-resizer"
               role="separator"
-              aria-label="Resize sidebar"
+              aria-label={t("sidebar.resize")}
               aria-orientation="vertical"
               tabIndex={0}
               onPointerDown={onBeginResize}

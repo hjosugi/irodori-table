@@ -262,6 +262,7 @@ export function useResultGridWorkspace({
     gridScrollTop,
     gridViewportHeight,
     gridRowHeight,
+    t,
   });
 
   useEffect(() => {

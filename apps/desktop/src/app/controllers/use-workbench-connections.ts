@@ -144,9 +144,11 @@ export function useWorkbenchConnections({
   const activeConnection = useMemo(
     () =>
       connections.find((item) => item.id === activeConnectionId) ??
-      connections[0] ??
-      NO_ACTIVE_CONNECTION,
-    [activeConnectionId, connections],
+      connections[0] ?? {
+        ...NO_ACTIVE_CONNECTION,
+        name: t("titlebar.noConnection"),
+      },
+    [activeConnectionId, connections, t],
   );
   const activeProfile = profiles.find(
     (profile) => profile.id === activeConnectionId,
@@ -159,12 +161,15 @@ export function useWorkbenchConnections({
     profileById.get(activeConnectionId)?.color ||
     defaultConnectionColor;
   const activeConnectionStatus = activeConnectionOpen
-    ? `${activeConnectionReadOnly ? "Read-only · " : ""}Connected · ${activeConnection.latencyMs} ms`
-    : "Disconnected";
+    ? `${activeConnectionReadOnly ? `${t("statusbar.readOnly")} · ` : ""}${t(
+        "statusbar.connected",
+        { ms: activeConnection.latencyMs },
+      )}`
+    : t("statusbar.disconnected");
   const activeTransportLabel =
     activeConnection.proxy === "direct"
-      ? "Direct connection"
-      : activeConnection.proxy || "Transport not configured";
+      ? t("statusbar.directConnection")
+      : activeConnection.proxy || t("statusbar.transportNotConfigured");
 
   const activeMetadata = metadataByConnection[activeConnectionId];
   const activeMetadataLoading = metadataLoading.has(activeConnectionId);

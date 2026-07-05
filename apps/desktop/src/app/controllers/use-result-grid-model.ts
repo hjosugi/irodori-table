@@ -24,6 +24,7 @@ import type {
   ResultSortRule,
 } from "@/features/results/result-grid";
 import type { ResultMode } from "@/features/results/types";
+import type { Translator } from "@/i18n";
 import {
   EMPTY_CELL_EDITS,
   EMPTY_DELETED_ROWS,
@@ -64,6 +65,7 @@ export type ResultGridModelDeps = {
   gridScrollTop: number;
   gridViewportHeight: number;
   gridRowHeight: number;
+  t: Translator["t"];
 };
 
 export function useResultGridModel({
@@ -94,6 +96,7 @@ export function useResultGridModel({
   gridScrollTop,
   gridViewportHeight,
   gridRowHeight,
+  t,
 }: ResultGridModelDeps) {
   const resultSets = useMemo<QueryResultSet[]>(() => {
     if (!result) {
@@ -318,13 +321,23 @@ export function useResultGridModel({
     effectiveResultMode === "structure" ? tableViewObject : null;
   const showingStructure = Boolean(structureObject);
   const resultSummary = activeResult
-    ? `${toCount(activeResult.rowCount)} rows${activeResult.truncated ? " capped" : ""} in ${toCount(
-        activeResult.elapsedMs,
-      )} ms`
-    : "no result";
+    ? t(
+        activeResult.truncated
+          ? "results.summary.completedCapped"
+          : "results.summary.completed",
+        {
+          rows: toCount(activeResult.rowCount),
+          ms: toCount(activeResult.elapsedMs),
+        },
+      )
+    : t("results.summary.none");
   const displayedResultSummary =
     activeResult && resultGridView.filtersActive
-      ? `${toCount(totalRows)} / ${toCount(resultGridView.unfilteredRowCount)} shown · ${resultSummary}`
+      ? t("results.summary.filtered", {
+          shown: toCount(totalRows),
+          total: toCount(resultGridView.unfilteredRowCount),
+          summary: resultSummary,
+        })
       : resultSummary;
 
   function copyCellsForRow(row: ResultGridRowLike): string[] {
