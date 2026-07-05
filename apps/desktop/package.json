@@ -2,7 +2,7 @@
   "name": "irodori-table-desktop",
   "version": "0.7.28",
   "private": true,
-  "license": "MIT OR 0BSD",
+  "license": "0BSD",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
