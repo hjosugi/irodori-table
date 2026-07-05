@@ -10,6 +10,7 @@ import {
   queryForEditorGroup,
   renameSqlTabInEditorGroup,
   reopenSqlTabInEditorGroup,
+  reviveEditorGroupState,
   selectEditorTabInGroup,
 } from "@/app/editor-tabs";
 
@@ -65,5 +66,51 @@ describe("editor tab state", () => {
     expect(restored.restoredTab?.id).toBe("scratch");
     expect(restored.state.activeTabId).toBe("scratch");
     expect(restored.state.openTabIds).toEqual(["explain", "scratch"]);
+  });
+
+  it("revives a persisted editor group state round-trip", () => {
+    let state = createEditorGroupState("select 1;");
+    state = addSqlTabToEditorGroup(state, {
+      id: "adhoc",
+      label: "adhoc.sql",
+      query: "select adhoc;",
+    });
+
+    const revived = reviveEditorGroupState(JSON.parse(JSON.stringify(state)));
+    expect(revived).toEqual(state);
+  });
+
+  it("re-anchors revived state when stored ids are stale or malformed", () => {
+    const revived = reviveEditorGroupState({
+      tabs: [
+        { id: "scratch", label: "scratch.sql" },
+        { id: 42, label: "bad.sql" },
+      ],
+      activeTabId: "gone",
+      openTabIds: ["gone", "scratch"],
+      queryByTabId: { scratch: "select 1;", gone: "select 2;" },
+      selectionsByTabId: { scratch: "not-a-selection" },
+    });
+
+    expect(revived).not.toBeNull();
+    expect(revived?.tabs).toEqual([{ id: "scratch", label: "scratch.sql" }]);
+    expect(revived?.openTabIds).toEqual(["scratch"]);
+    expect(revived?.activeTabId).toBe("scratch");
+    expect(revived?.queryByTabId).toEqual({ scratch: "select 1;" });
+    expect(revived?.selectionsByTabId.scratch).toEqual([{ from: 0, to: 0 }]);
+  });
+
+  it("rejects unusable persisted values", () => {
+    expect(reviveEditorGroupState(null)).toBeNull();
+    expect(reviveEditorGroupState("state")).toBeNull();
+    expect(reviveEditorGroupState({ tabs: [] })).toBeNull();
+    expect(
+      reviveEditorGroupState({
+        tabs: [],
+        activeTabId: "scratch",
+        openTabIds: [],
+        queryByTabId: {},
+      }),
+    ).toBeNull();
   });
 });

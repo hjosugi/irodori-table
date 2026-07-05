@@ -11,6 +11,7 @@ import {
   queryForEditorGroup,
   renameSqlTabInEditorGroup,
   reopenSqlTabInEditorGroup,
+  reviveEditorGroupState,
   selectEditorTabInGroup,
   selectionsForEditorGroup,
   type EditorGroupState,
@@ -26,6 +27,44 @@ import type { Translator } from "@/i18n";
 import type { TextMatch } from "@/sql/text-search";
 
 type EditorGroupStates = Record<EditorGroup, EditorGroupState>;
+
+// Tab text lives only in React state, so persist every group (tabs, active
+// tab, per-tab text and selections) to localStorage: quit, reload, or crash
+// must not silently lose unsaved SQL.
+const editorTabsStorageKey = "irodori.editorTabs.v1";
+const persistDebounceMs = 400;
+
+/** Dispatch to force a synchronous persist (used before closing the window). */
+export const flushEditorTabsEvent = "irodori:flush-editor-tabs";
+
+function loadPersistedEditorGroupStates(): EditorGroupStates | null {
+  try {
+    const raw = window.localStorage.getItem(editorTabsStorageKey);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as Partial<EditorGroupStates>;
+    const primary = reviveEditorGroupState(parsed.primary);
+    if (!primary) {
+      return null;
+    }
+    const secondary = reviveEditorGroupState(parsed.secondary);
+    return {
+      primary,
+      secondary: secondary ?? createEditorGroupState(""),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistEditorGroupStates(states: EditorGroupStates) {
+  try {
+    window.localStorage.setItem(editorTabsStorageKey, JSON.stringify(states));
+  } catch {
+    // Quota/privacy failures just mean no restore on next launch.
+  }
+}
 
 export type EditorTabMenuState = {
   x: number;
@@ -56,10 +95,11 @@ export function useEditorGroups({
   t,
 }: UseEditorGroupsDeps) {
   const [editorGroupStates, setEditorGroupStates] = useState<EditorGroupStates>(
-    () => ({
-      primary: createEditorGroupState(loadInitialQuery()),
-      secondary: createEditorGroupState(""),
-    }),
+    () =>
+      loadPersistedEditorGroupStates() ?? {
+        primary: createEditorGroupState(loadInitialQuery()),
+        secondary: createEditorGroupState(""),
+      },
   );
   const [preferredEditorGroup, setActiveEditorGroup] =
     useState<EditorGroup>("primary");
@@ -70,6 +110,25 @@ export function useEditorGroups({
   const editorSelections = selectionsForEditorGroup(activeEditorGroupState);
   const activeTabLabel = activeTabLabelForEditorGroup(activeEditorGroupState);
   const [editorTabMenu, setEditorTabMenu] = useState<EditorTabMenuState>(null);
+
+  // Debounced persistence while typing, plus a synchronous flush on pagehide
+  // so a quit right after the last keystroke still lands in localStorage.
+  useEffect(() => {
+    const handle = window.setTimeout(
+      () => persistEditorGroupStates(editorGroupStates),
+      persistDebounceMs,
+    );
+    const flush = () => persistEditorGroupStates(editorGroupStates);
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener(flushEditorTabsEvent, flush);
+    return () => {
+      window.clearTimeout(handle);
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener(flushEditorTabsEvent, flush);
+    };
+  }, [editorGroupStates]);
 
   useEffect(() => {
     if (!editorTabMenu) {
