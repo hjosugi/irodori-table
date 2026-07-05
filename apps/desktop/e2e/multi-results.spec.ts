@@ -161,6 +161,11 @@ test("selecting a result row opens Row Detail as a full-height right sidebar", a
   expect(Math.abs(rightBox!.y - leftBox!.y)).toBeLessThanOrEqual(1);
   expect(Math.abs(rightBox!.height - leftBox!.height)).toBeLessThanOrEqual(1);
 
+  // A fresh layout honors the configured sidebar widths (defaults 200/300)
+  // instead of stretching them proportionally to the window.
+  expect(Math.abs(leftBox!.width - 200)).toBeLessThanOrEqual(2);
+  expect(Math.abs(rightBox!.width - 300)).toBeLessThanOrEqual(2);
+
   // A true split, not an overlay: every results-header control stays fully
   // inside the (narrower) results pane instead of being sliced at the
   // sidebar boundary.

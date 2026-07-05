@@ -143,7 +143,9 @@ export function WorkbenchDockLayout({
         return;
       }
       addEditorPanel(api);
-      api.addPanel({
+      const otherSidebar = api.getPanel("rightSidebar");
+      const otherWidth = otherSidebar?.api.width;
+      const panel = api.addPanel({
         id: "leftSidebar",
         component: "workbenchPanel",
         title: t("dock.explorer"),
@@ -156,6 +158,18 @@ export function WorkbenchDockLayout({
           direction: "left",
         },
       });
+      // Dockview distributes the container proportionally when a root-edge
+      // panel is inserted, ignoring initialWidth and rescaling the opposite
+      // sidebar; pin both widths explicitly (the editor absorbs the change).
+      // The rescale lands after this tick, so pin again on the next frame.
+      const pinWidths = () => {
+        panel.api.setSize({ width: sidebarWidth });
+        if (otherSidebar && otherWidth) {
+          otherSidebar.api.setSize({ width: otherWidth });
+        }
+      };
+      pinWidths();
+      requestAnimationFrame(pinWidths);
     },
     [addEditorPanel, sidebarWidth, t],
   );
@@ -166,7 +180,9 @@ export function WorkbenchDockLayout({
         return;
       }
       addEditorPanel(api);
-      api.addPanel({
+      const otherSidebar = api.getPanel("leftSidebar");
+      const otherWidth = otherSidebar?.api.width;
+      const panel = api.addPanel({
         id: "rightSidebar",
         component: "workbenchPanel",
         title: t("dock.inspector"),
@@ -178,6 +194,17 @@ export function WorkbenchDockLayout({
           direction: "right",
         },
       });
+      // Same as the left sidebar: pin the new width and restore the opposite
+      // sidebar's width, which the root-edge insertion rescales. The rescale
+      // lands after this tick, so pin again on the next frame.
+      const pinWidths = () => {
+        panel.api.setSize({ width: inspectorWidth });
+        if (otherSidebar && otherWidth) {
+          otherSidebar.api.setSize({ width: otherWidth });
+        }
+      };
+      pinWidths();
+      requestAnimationFrame(pinWidths);
     },
     [addEditorPanel, inspectorWidth, t],
   );
