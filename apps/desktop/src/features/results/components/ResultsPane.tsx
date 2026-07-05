@@ -431,6 +431,7 @@ export function ResultsPane({
               <button
                 type="button"
                 className={resultMode === "data" ? "active" : undefined}
+                aria-pressed={resultMode === "data"}
                 onClick={() => onResultModeChange("data")}
               >
                 {t("results.mode.data")}
@@ -439,6 +440,7 @@ export function ResultsPane({
                 <button
                   type="button"
                   className={resultMode === "chart" ? "active" : undefined}
+                  aria-pressed={resultMode === "chart"}
                   disabled={editMode}
                   onClick={() => onResultModeChange("chart")}
                 >
@@ -449,6 +451,7 @@ export function ResultsPane({
                 <button
                   type="button"
                   className={resultMode === "webgl" ? "active" : undefined}
+                  aria-pressed={resultMode === "webgl"}
                   disabled={editMode}
                   onClick={() => onResultModeChange("webgl")}
                 >
@@ -459,6 +462,7 @@ export function ResultsPane({
                 <button
                   type="button"
                   className={resultMode === "graph" ? "active" : undefined}
+                  aria-pressed={resultMode === "graph"}
                   onClick={() => onResultModeChange("graph")}
                 >
                   {t("results.mode.graph")}
@@ -468,6 +472,7 @@ export function ResultsPane({
                 <button
                   type="button"
                   className={resultMode === "structure" ? "active" : undefined}
+                  aria-pressed={resultMode === "structure"}
                   onClick={() => onResultModeChange("structure")}
                 >
                   {t("results.mode.structure")}

@@ -31,7 +31,21 @@ export function AboutDialog({
   const [crashReport, setCrashReport] = useState<CrashReportStatus | null>(
     null,
   );
-  const [crashPathCopied, setCrashPathCopied] = useState(false);
+  const [crashPathCopyStatus, setCrashPathCopyStatus] = useState<
+    "idle" | "copied" | "failed"
+  >("idle");
+
+  // Show copy feedback briefly, then return the button to its resting label.
+  useEffect(() => {
+    if (crashPathCopyStatus === "idle") {
+      return;
+    }
+    const handle = window.setTimeout(
+      () => setCrashPathCopyStatus("idle"),
+      2000,
+    );
+    return () => window.clearTimeout(handle);
+  }, [crashPathCopyStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,8 +70,12 @@ export function AboutDialog({
     if (!path) {
       return;
     }
-    await navigator.clipboard?.writeText(path);
-    setCrashPathCopied(true);
+    try {
+      await navigator.clipboard.writeText(path);
+      setCrashPathCopyStatus("copied");
+    } catch {
+      setCrashPathCopyStatus("failed");
+    }
   }
 
   return (
@@ -175,7 +193,11 @@ export function AboutDialog({
             onClick={() => void copyCrashReportPath()}
           >
             <Copy size={13} />
-            {crashPathCopied ? "Crash path copied" : "Copy crash report path"}
+            {crashPathCopyStatus === "copied"
+              ? "Crash path copied"
+              : crashPathCopyStatus === "failed"
+                ? "Copy failed"
+                : "Copy crash report path"}
           </button>
         ) : null}
       </div>
