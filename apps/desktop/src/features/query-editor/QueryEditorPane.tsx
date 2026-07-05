@@ -185,39 +185,6 @@ export function QueryEditorPane({
 
   return (
     <>
-      <div className="query-toolbar">
-        <div className="query-toolbar-spacer" aria-hidden="true" />
-        <div
-          className="editor-action-dock"
-          role="toolbar"
-          aria-label="SQL query actions"
-        >
-          <EditorCommandBar
-            formatter={formatter}
-            running={running}
-            runCommand={runCommand}
-            cancelQuery={cancelQuery}
-          />
-          <RunControl
-            running={running}
-            runControlRef={runControlRef}
-            runMenuOpen={runMenuOpen}
-            setRunMenuOpen={setRunMenuOpen}
-            runPrimaryLabel={runPrimaryLabel}
-            runShortcutLabel={runShortcutLabel}
-            runCurrentShortcutLabel={runCurrentShortcutLabel}
-            runFromStartShortcutLabel={runFromStartShortcutLabel}
-            runAllShortcutLabel={runAllShortcutLabel}
-            hasSelectedEditorSql={hasSelectedEditorSql}
-            saveCurrentQuery={saveCurrentQuery}
-            runQuery={runQuery}
-            runSelectionQuery={runSelectionQuery}
-            runCurrentQuery={runCurrentQuery}
-            runFromStartQuery={runFromStartQuery}
-            runAllQuery={runAllQuery}
-          />
-        </div>
-      </div>
       <section
         className={`editor-pane${sqlFileDragOver ? " sql-file-drag-over" : ""}`}
         data-drop-label={sqlFileDropLabel}
@@ -279,6 +246,41 @@ export function QueryEditorPane({
           />
         ) : null}
       </section>
+      {/* TablePlus-style: the save/run controls live at the bottom-right of
+          the editor pane, next to where results appear. */}
+      <div className="query-toolbar query-toolbar-bottom">
+        <div className="query-toolbar-spacer" aria-hidden="true" />
+        <div
+          className="editor-action-dock"
+          role="toolbar"
+          aria-label="SQL query actions"
+        >
+          <EditorCommandBar
+            formatter={formatter}
+            running={running}
+            runCommand={runCommand}
+            cancelQuery={cancelQuery}
+          />
+          <RunControl
+            running={running}
+            runControlRef={runControlRef}
+            runMenuOpen={runMenuOpen}
+            setRunMenuOpen={setRunMenuOpen}
+            runPrimaryLabel={runPrimaryLabel}
+            runShortcutLabel={runShortcutLabel}
+            runCurrentShortcutLabel={runCurrentShortcutLabel}
+            runFromStartShortcutLabel={runFromStartShortcutLabel}
+            runAllShortcutLabel={runAllShortcutLabel}
+            hasSelectedEditorSql={hasSelectedEditorSql}
+            saveCurrentQuery={saveCurrentQuery}
+            runQuery={runQuery}
+            runSelectionQuery={runSelectionQuery}
+            runCurrentQuery={runCurrentQuery}
+            runFromStartQuery={runFromStartQuery}
+            runAllQuery={runAllQuery}
+          />
+        </div>
+      </div>
     </>
   );
 }
