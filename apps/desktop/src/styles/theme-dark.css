@@ -63,10 +63,16 @@
 .app-shell[data-theme="dark"] .primary-action:hover:not(:disabled),
 .app-shell[data-theme="dark"] .primary-button:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 82%, var(--text));
-  background: color-mix(in srgb, var(--accent-hover) 86%, var(--surface-raised));
+  background: color-mix(
+    in srgb,
+    var(--accent-hover) 86%,
+    var(--surface-raised)
+  );
 }
 
-.app-shell[data-theme="dark"] .titlebar-control-zone .layout-toggle-button.active {
+.app-shell[data-theme="dark"]
+  .titlebar-control-zone
+  .layout-toggle-button.active {
   color: color-mix(in srgb, var(--accent) 78%, var(--text));
   border-color: color-mix(in srgb, var(--accent) 54%, var(--border-strong));
   background: color-mix(in srgb, var(--accent) 24%, var(--input-bg));

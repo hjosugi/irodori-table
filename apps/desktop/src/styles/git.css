@@ -489,9 +489,8 @@
 }
 
 .git-graph-layout {
-  --git-graph-columns:
-    minmax(84px, 0.42fr) minmax(280px, 2.4fr) minmax(104px, 0.78fr)
-    minmax(96px, 0.72fr) minmax(76px, 0.55fr);
+  --git-graph-columns: minmax(84px, 0.42fr) minmax(280px, 2.4fr)
+    minmax(104px, 0.78fr) minmax(96px, 0.72fr) minmax(76px, 0.55fr);
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: 0;

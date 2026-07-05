@@ -32,10 +32,10 @@ in dependency order — independent domains first, then the query pipeline,
 then the action surface — and the component hands the result to the views:
 
 ```tsx
-const workbench = useWorkbench();          // build everything, part by part
+const workbench = useWorkbench(); // build everything, part by part
 return (
   <WorkbenchProvider workbench={workbench}>
-    <WorkbenchRoot />                      // render everything
+    <WorkbenchRoot /> // render everything
   </WorkbenchProvider>
 );
 ```
@@ -46,19 +46,19 @@ the root reads as a table of contents.
 
 ## File map
 
-| File | Role |
-| --- | --- |
-| `AppWorkbench.tsx` | Composition root: creates every part in dependency order, exports the `Workbench` type, renders provider + root view. |
-| `workbench-context.tsx` | `WorkbenchProvider` / `useWorkbenchContext()`. |
-| `WorkbenchRoot.tsx` | The one top-level view: shell chrome, dock layout, center panes, sidebars, dialogs, toasts. |
-| `WorkbenchSidebar.tsx` | One side (left/right): view rail + dockable panels. |
-| `WorkbenchDialogs.tsx` | Every modal/overlay surface. |
-| `controllers/use-query-workspace.ts` | Part: run-a-query pipeline — grid, runner, editor commands, history actions, plan/error state, and the setter hand-offs between them. |
-| `controllers/use-workbench-actions.ts` | Part: workspace actions, the `runCommand` surface, Escape handling for transient menus, the two center-pane prop bundles. |
-| `controllers/use-workbench-layout.ts` | Part: dock dimensions + the panel resize controller. |
-| `controllers/use-<domain>.ts` | One hook per domain (below). |
-| `app-config.ts` | Command catalog, menu bar sections, app constants. |
-| `app-workbench-utils.ts` | Pure helpers (no hooks). |
+| File                                   | Role                                                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `AppWorkbench.tsx`                     | Composition root: creates every part in dependency order, exports the `Workbench` type, renders provider + root view.                 |
+| `workbench-context.tsx`                | `WorkbenchProvider` / `useWorkbenchContext()`.                                                                                        |
+| `WorkbenchRoot.tsx`                    | The one top-level view: shell chrome, dock layout, center panes, sidebars, dialogs, toasts.                                           |
+| `WorkbenchSidebar.tsx`                 | One side (left/right): view rail + dockable panels.                                                                                   |
+| `WorkbenchDialogs.tsx`                 | Every modal/overlay surface.                                                                                                          |
+| `controllers/use-query-workspace.ts`   | Part: run-a-query pipeline — grid, runner, editor commands, history actions, plan/error state, and the setter hand-offs between them. |
+| `controllers/use-workbench-actions.ts` | Part: workspace actions, the `runCommand` surface, Escape handling for transient menus, the two center-pane prop bundles.             |
+| `controllers/use-workbench-layout.ts`  | Part: dock dimensions + the panel resize controller.                                                                                  |
+| `controllers/use-<domain>.ts`          | One hook per domain (below).                                                                                                          |
+| `app-config.ts`                        | Command catalog, menu bar sections, app constants.                                                                                    |
+| `app-workbench-utils.ts`               | Pure helpers (no hooks).                                                                                                              |
 
 ## Domain controllers
 
@@ -66,22 +66,22 @@ Each controller owns one concern, takes its dependencies as an argument
 object, and returns plain state + actions. None of them import views or each
 other's internals — they meet only inside the composition root's part files.
 
-| Controller | Owns |
-| --- | --- |
+| Controller                  | Owns                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
 | `use-workbench-connections` | Connection profiles, active connection facts, metadata, the connection manager dialog controller. |
-| `use-editor-workspace` | Editor tabs/groups/split, active-editor accessors, the `QueryEditorPane` prop bundle. |
-| `use-result-grid-workspace` | Result grid state (selection, editing, filters, export), the `ResultsPane` prop bundle. |
-| `use-query-runner` | Executing SQL, cancellation, parameter prompts, EXPLAIN. |
-| `use-editor-commands` | Editor-scoped commands (run/format/cleanup/indent…). |
-| `use-workbench-commands` | Maps every command id → owning controller (palette, menu, keys). |
-| `use-workbench-overlays` | Open/close state of app-level overlays (palette, about, terminal…). |
-| `use-sidebar-views` | Which dockable view lives on which side, toggle/open/close flows. |
-| `use-keybinding-manager` | Keymap overrides, chord resolution, rebind recording. |
-| `use-workspace-actions` | Save/import/export, schema designer glue, app-level actions. |
-| `use-history-actions` | Query-history load/run/restore. |
-| `use-erd-diagram` | ERD dialog state and exports. |
-| `use-settings-controller` | Settings dialog state, settings JSON, jobs. |
-| `use-theme-manager` | Theme selection and switching. |
+| `use-editor-workspace`      | Editor tabs/groups/split, active-editor accessors, the `QueryEditorPane` prop bundle.             |
+| `use-result-grid-workspace` | Result grid state (selection, editing, filters, export), the `ResultsPane` prop bundle.           |
+| `use-query-runner`          | Executing SQL, cancellation, parameter prompts, EXPLAIN.                                          |
+| `use-editor-commands`       | Editor-scoped commands (run/format/cleanup/indent…).                                              |
+| `use-workbench-commands`    | Maps every command id → owning controller (palette, menu, keys).                                  |
+| `use-workbench-overlays`    | Open/close state of app-level overlays (palette, about, terminal…).                               |
+| `use-sidebar-views`         | Which dockable view lives on which side, toggle/open/close flows.                                 |
+| `use-keybinding-manager`    | Keymap overrides, chord resolution, rebind recording.                                             |
+| `use-workspace-actions`     | Save/import/export, schema designer glue, app-level actions.                                      |
+| `use-history-actions`       | Query-history load/run/restore.                                                                   |
+| `use-erd-diagram`           | ERD dialog state and exports.                                                                     |
+| `use-settings-controller`   | Settings dialog state, settings JSON, jobs.                                                       |
+| `use-theme-manager`         | Theme selection and switching.                                                                    |
 
 ## The rules
 

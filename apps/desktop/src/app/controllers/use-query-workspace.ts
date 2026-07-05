@@ -86,6 +86,7 @@ export function useQueryWorkspace({
     activeConnectionReadOnly,
     biOpen: sidebars.biOpen,
     activeEditorApi,
+    onRowSelected: () => sidebars.setActiveSidebarView("rowDetail"),
     runQuery: async () => {
       await editorCommandsRef.current?.runQuery();
     },

@@ -22,6 +22,7 @@ import {
   Search,
   Share2,
   Table2,
+  TableProperties,
   TerminalSquare,
   X,
 } from "lucide-react";
@@ -142,6 +143,7 @@ type SidebarProps = {
   gitPanel: ReactNode;
   aiChatPanel: ReactNode;
   searchReplacePanel: ReactNode;
+  rowDetailPanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
   connectionColorFallback: string;
@@ -195,6 +197,7 @@ export function Sidebar({
   gitPanel,
   aiChatPanel,
   searchReplacePanel,
+  rowDetailPanel,
   connections,
   profileById,
   connectionColorFallback,
@@ -366,6 +369,8 @@ export function Sidebar({
         return aiChatPanel;
       case "searchReplace":
         return searchReplacePanel;
+      case "rowDetail":
+        return rowDetailPanel;
       case "objectBrowser":
         return null;
     }
@@ -647,6 +652,20 @@ export function Sidebar({
               >
                 <Search size={14} />
                 <span>{t("sidebar.view.find")}</span>
+              </button>
+            ) : null}
+            {isViewAvailable("rowDetail") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "rowDetail" ? "active" : undefined}
+                aria-selected={activeView === "rowDetail"}
+                title={t("sidebar.view.rowDetail")}
+                aria-label={t("sidebar.view.rowDetail")}
+                onClick={() => onSelectView("rowDetail")}
+              >
+                <TableProperties size={14} />
+                <span>{t("sidebar.view.rowDetail")}</span>
               </button>
             ) : null}
           </div>

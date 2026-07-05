@@ -358,3 +358,46 @@ test("streamed multi-statement results expose tabs, summaries, switching, and re
 
   expect(pageErrors.filter((message) => !ignorable(message))).toEqual([]);
 });
+
+test("selecting a result row opens Row Detail as a full-height right sidebar", async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => {
+    console.error("BROWSER PAGE ERROR:", error);
+    pageErrors.push(String(error));
+  });
+
+  await installMultiResultMock(page);
+  await page.goto("/");
+
+  await connectMockDatabase(page);
+  await runFixtureQuery(page);
+
+  // Nothing selected yet, so no detail panel anywhere.
+  await expect(page.locator(".row-detail")).toHaveCount(0);
+
+  await page.locator(".grid-row [role='cell']").first().click();
+
+  // The detail opens in the right sidebar, not inside the results pane.
+  const rightSidebar = page.locator(".sidebar.sidebar-right");
+  const detail = rightSidebar.locator(".row-detail");
+  await expect(detail).toBeVisible();
+  await expect(detail).toContainText("Row Detail");
+  await expect(page.locator(".results-pane .row-detail")).toHaveCount(0);
+
+  // VS Code-style: it spans the same vertical extent as the left sidebar.
+  const leftBox = await page.locator(".sidebar.sidebar-left").boundingBox();
+  const rightBox = await rightSidebar.boundingBox();
+  expect(leftBox).toBeTruthy();
+  expect(rightBox).toBeTruthy();
+  expect(Math.abs(rightBox!.y - leftBox!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(rightBox!.height - leftBox!.height)).toBeLessThanOrEqual(1);
+
+  // Closing the panel clears the selection and the sidebar.
+  await detail.getByRole("button", { name: "Clear row selection" }).click();
+  await expect(page.locator(".row-detail")).toHaveCount(0);
+  await expect(page.locator(".grid-row.row-selected")).toHaveCount(0);
+
+  expect(pageErrors.filter((message) => !ignorable(message))).toEqual([]);
+});

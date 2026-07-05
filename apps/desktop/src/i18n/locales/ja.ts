@@ -1037,6 +1037,7 @@ export const ja = {
   "sidebar.view.chat": "チャット",
   "sidebar.view.searchReplace": "検索と置換",
   "sidebar.view.find": "検索",
+  "sidebar.view.rowDetail": "行詳細",
   "sidebar.schemasCount": "{count} スキーマ",
   "sidebar.databaseObjects": "データベースオブジェクト",
   "sidebar.loadingObjects": "オブジェクトを読み込んでいます",

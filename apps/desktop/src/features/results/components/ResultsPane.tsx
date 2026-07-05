@@ -17,12 +17,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import type {
-  DatabaseMetadata,
-  DbEngine,
-  DbObjectMetadata,
-  QueryResultSet,
-} from "@/generated/irodori-api";
+import type { DbObjectMetadata, QueryResultSet } from "@/generated/irodori-api";
 import { ErrorDetails } from "@/components/ErrorDetails";
 import { usePreferencesStore } from "@/features/preferences";
 import {
@@ -109,14 +104,12 @@ export type ResultsPaneSelection = {
   selectedCell: SelectedCell;
   selectedRangeBounds: ResultCellRangeBounds;
   selectedRowValues: unknown[] | null;
-  rowDetailTable: DbObjectMetadata | null;
   onSelectGridRow: (rowKey: string, focusGrid?: boolean) => void;
   onSelectGridCell: (
     rowKey: string,
     col: number,
     extendRange?: boolean,
   ) => void;
-  onCloseRowDetail: () => void;
 };
 
 export type ResultsPaneGridGeometry = {
@@ -161,13 +154,10 @@ type ResultsPaneProps = {
   shortcutTips: readonly ShortcutTip[];
   showingStructure: boolean;
   structureObject: DbObjectMetadata | null;
-  editorEngine: DbEngine;
   unfilteredRowCount: number;
   totalRows: number;
   gridRef: RefObject<HTMLDivElement | null>;
   importFileRef: RefObject<HTMLInputElement | null>;
-  activeMetadata: DatabaseMetadata | undefined;
-  activeConnectionId: string;
   formatObjectName: (object: DbObjectMetadata) => string;
   formatCount: (value: bigint | number) => string;
   onResultModeChange: (mode: ResultMode) => void;
@@ -229,13 +219,10 @@ export function ResultsPane({
   shortcutTips,
   showingStructure,
   structureObject,
-  editorEngine,
   unfilteredRowCount,
   totalRows,
   gridRef,
   importFileRef,
-  activeMetadata,
-  activeConnectionId,
   formatObjectName,
   formatCount,
   onResultModeChange,
@@ -298,10 +285,8 @@ export function ResultsPane({
     selectedCell,
     selectedRangeBounds,
     selectedRowValues,
-    rowDetailTable,
     onSelectGridRow,
     onSelectGridCell,
-    onCloseRowDetail,
   } = selection;
   const {
     gridRowStyle,
@@ -796,7 +781,6 @@ export function ResultsPane({
         resultMode={resultMode}
         chartModel={chartModel}
         graphModel={graphModel}
-        editorEngine={editorEngine}
         formatObjectName={formatObjectName}
         formatCount={formatCount}
         editMode={editMode}
@@ -826,10 +810,6 @@ export function ResultsPane({
         selectedRangeBounds={selectedRangeBounds}
         editingCell={editingCell}
         cellEdits={cellEdits}
-        selectedRowValues={selectedRowValues}
-        rowDetailTable={rowDetailTable}
-        activeMetadata={activeMetadata}
-        activeConnectionId={activeConnectionId}
         onGridScroll={onGridScroll}
         onGridKeyDown={onGridKeyDown}
         onGridPaste={onGridPaste}
@@ -842,7 +822,6 @@ export function ResultsPane({
         onDeleteRow={onDeleteRow}
         onPasteTableAt={onPasteTableAt}
         onEndCellEdit={onEndCellEdit}
-        onCloseRowDetail={onCloseRowDetail}
         shortcutTips={shortcutTips}
         t={t}
       />
