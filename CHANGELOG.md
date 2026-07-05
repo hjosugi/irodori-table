@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## Unreleased
+
+### Changed
+
+- Stable release dispatch now gates on updater, Windows signing, and macOS
+  signing/notarization secrets before publishing signed Windows artifacts,
+  signed/notarized macOS artifacts, and stable updater manifests.
+
 ## [0.7.6] - 2026-07-04
 
 ### Changed

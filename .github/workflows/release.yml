@@ -38,6 +38,17 @@ jobs:
       REQUESTED_TAG: ${{ inputs.release_tag || github.ref_name }}
       TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - name: Check release channel inputs
         id: resolve
@@ -61,13 +72,25 @@ jobs:
               ;;
             stable)
               missing=()
-              for name in TAURI_UPDATER_PUBLIC_KEY TAURI_SIGNING_PRIVATE_KEY; do
+              for name in \
+                TAURI_UPDATER_PUBLIC_KEY \
+                TAURI_SIGNING_PRIVATE_KEY \
+                WINDOWS_CERTIFICATE \
+                WINDOWS_CERTIFICATE_PASSWORD \
+                WINDOWS_CERTIFICATE_THUMBPRINT \
+                APPLE_CERTIFICATE \
+                APPLE_CERTIFICATE_PASSWORD
+              do
                 if [[ -z "${!name:-}" ]]; then
                   missing+=("${name}")
                 fi
               done
               if (( ${#missing[@]} > 0 )); then
-                printf '::error::stable updater releases require missing secret(s): %s\n' "${missing[*]}"
+                printf '::error::stable releases require missing secret(s): %s\n' "${missing[*]}"
+                exit 1
+              fi
+              if [[ ! ( -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_KEY_P8:-}" ) && ! ( -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ) ]]; then
+                echo "::error::stable macOS notarization requires APPLE_API_ISSUER + APPLE_API_KEY + APPLE_API_KEY_P8 or APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID."
                 exit 1
               fi
               prerelease=false
@@ -88,7 +111,7 @@ jobs:
             echo "tauri_args=${tauri_args}"
             echo "release_body<<EOF_RELEASE_BODY"
             if [[ "${channel}" == "stable" ]]; then
-              echo "Stable Linux AppImage release with signed Tauri updater artifacts for the stable update channel. macOS and Windows signing/notarization remain gated until their runner lanes are restored."
+              echo "Stable release with signed Tauri updater artifacts for the stable update channel, plus signed Windows and signed/notarized macOS artifacts."
             else
               echo "Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored. DuckDB is distributed through its installable connector extension."
             fi
@@ -129,6 +152,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       # Cache the Cargo registry and workspace target dir so external deps
       # don't recompile from scratch every run. Keep this aligned with
@@ -179,3 +204,148 @@ jobs:
       - name: Verify Linux AppImage artifact
         working-directory: apps/desktop
         run: npm run release:verify-linux
+
+  publish-macos:
+    name: Publish signed macOS app
+    needs: release-gates
+    if: needs.release-gates.outputs.channel == 'stable'
+    runs-on: macos-latest
+    steps:
+      - name: Checkout irodori-table
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-gates.outputs.release_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> .irodori-local/target'
+          key: release-macos
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Prepare stable updater signing config
+        working-directory: apps/desktop
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          IRODORI_UPDATER_ENDPOINT: ${{ vars.IRODORI_UPDATER_ENDPOINT }}
+        run: npm run release:prepare-updater
+
+      - name: Prepare macOS signing and notarization
+        working-directory: apps/desktop
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run release:prepare-macos-signing
+
+      - name: Build and Publish Tauri App
+        uses: tauri-apps/tauri-action@v1
+        env:
+          CI: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ needs.release-gates.outputs.release_tag }}
+          releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
+          releaseBody: ${{ needs.release-gates.outputs.release_body }}
+          releaseDraft: false
+          prerelease: ${{ needs.release-gates.outputs.prerelease }}
+          uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
+          uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
+          projectPath: apps/desktop
+          args: --target universal-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json
+
+  publish-windows:
+    name: Publish signed Windows app
+    needs: release-gates
+    if: needs.release-gates.outputs.channel == 'stable'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout irodori-table
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-gates.outputs.release_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> .irodori-local/target'
+          key: release-windows
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Prepare stable updater signing config
+        working-directory: apps/desktop
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          IRODORI_UPDATER_ENDPOINT: ${{ vars.IRODORI_UPDATER_ENDPOINT }}
+        run: npm run release:prepare-updater
+
+      - name: Prepare Windows signing
+        working-directory: apps/desktop
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_DIGEST_ALGORITHM: ${{ secrets.WINDOWS_DIGEST_ALGORITHM }}
+          WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+        run: npm run release:prepare-windows-signing
+
+      - name: Build and Publish Tauri App
+        uses: tauri-apps/tauri-action@v1
+        env:
+          CI: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ needs.release-gates.outputs.release_tag }}
+          releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
+          releaseBody: ${{ needs.release-gates.outputs.release_body }}
+          releaseDraft: false
+          prerelease: ${{ needs.release-gates.outputs.prerelease }}
+          uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
+          uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
+          projectPath: apps/desktop
+          args: --bundles nsis,msi --config src-tauri/tauri.updater.conf.json

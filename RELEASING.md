@@ -96,11 +96,12 @@ The default tag workflow is intentionally unsigned and marked as a pre-release.
 It must not be used as the stable updater channel.
 
 The release workflow also has a manual `workflow_dispatch` channel named
-`stable`. That channel checks the updater signing secrets, generates the
-ignored `src-tauri/tauri.updater.conf.json` config through
-`npm run release:prepare-updater`, signs Tauri updater artifacts, and publishes
-`latest.json` for the stable update channel. Configure these GitHub Actions
-secrets before dispatching a stable release:
+`stable`. That channel checks the updater, Windows, and macOS signing secrets;
+generates the ignored `src-tauri/tauri.updater.conf.json` config through
+`npm run release:prepare-updater`; signs Tauri updater artifacts; publishes
+`latest.json` for the stable update channel; and publishes signed Windows and
+signed/notarized macOS artifacts. Configure these GitHub Actions secrets before
+dispatching a stable release:
 
 | Secret | Used by | Notes |
 | --- | --- | --- |
@@ -115,9 +116,10 @@ Override it only for a deliberate channel split by setting the
 to the updater; publish the GitHub Release only after the artifacts and
 generated `latest.json` have been reviewed.
 
-Windows and macOS signing helpers exist, but the current workflow does not
-publish those lanes. Restore runner jobs before advertising signed installers or
-notarized macOS artifacts, then configure the platform secrets:
+The stable workflow publishes Windows and macOS lanes only after the platform
+secrets below are present. The default tag workflow stays on the lightweight
+Linux AppImage lane, so missing platform credentials do not block prerelease
+checkpoints.
 
 | Secret | Used by | Notes |
 | --- | --- | --- |
