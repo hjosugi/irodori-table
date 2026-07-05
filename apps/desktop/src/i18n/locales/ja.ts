@@ -863,6 +863,9 @@ export const ja = {
   "sidebar.empty.notConnected": "まだ接続していません。",
   "sidebar.empty.openSample": "SQLite サンプルを開く",
   "sidebar.empty.addConnection": "接続を追加",
+  "rail.connections": "接続",
+  "rail.connected": "接続中",
+  "rail.addConnection": "接続を追加",
   "sidebar.empty.sampleHint":
     "サンプルはデモテーブル入りのインメモリデータベースで、セットアップ不要です。",
   "sidebar.empty.databaseEmpty": "このデータベースは空です。",

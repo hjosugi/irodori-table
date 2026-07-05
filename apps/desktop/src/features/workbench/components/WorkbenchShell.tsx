@@ -62,6 +62,8 @@ type WorkbenchShellProps = {
   statusBarItems?: readonly WorkbenchStatusBarItem[];
   shellStyle: CSSProperties;
   dockLayout?: boolean;
+  /** Far-left connections rail, rendered outside the dock layout. */
+  rail?: ReactNode;
   leftSidebar: ReactNode;
   rightSidebar?: ReactNode;
   children: ReactNode;
@@ -117,6 +119,7 @@ export function WorkbenchShell({
   statusBarItems = [],
   shellStyle,
   dockLayout = false,
+  rail,
   leftSidebar,
   rightSidebar,
   children,
@@ -230,18 +233,25 @@ export function WorkbenchShell({
     index: number,
     label: string,
   ) => {
+    const openAndFocus = (target: "first" | "last") => {
+      event.preventDefault();
+      if (activeMenuLabel === label) {
+        // Already open: the popover exists, move focus straight into it.
+        const items = menuPopoverItems();
+        (target === "first" ? items[0] : items[items.length - 1])?.focus();
+        return;
+      }
+      pendingMenuFocusRef.current = target;
+      openMenuFromButton(label, event.currentTarget);
+    };
     switch (event.key) {
       case "ArrowDown":
       case "Enter":
       case " ":
-        event.preventDefault();
-        pendingMenuFocusRef.current = "first";
-        openMenuFromButton(label, event.currentTarget);
+        openAndFocus("first");
         break;
       case "ArrowUp":
-        event.preventDefault();
-        pendingMenuFocusRef.current = "last";
-        openMenuFromButton(label, event.currentTarget);
+        openAndFocus("last");
         break;
       case "ArrowRight":
         event.preventDefault();
@@ -724,6 +734,7 @@ export function WorkbenchShell({
           .filter(Boolean)
           .join(" ")}
       >
+        {rail}
         {dockLayout ? (
           children
         ) : (

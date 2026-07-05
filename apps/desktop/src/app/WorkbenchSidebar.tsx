@@ -93,7 +93,7 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
       availableViews={
         right ? sidebars.rightSidebarViews : sidebars.leftSidebarViews
       }
-      showConnectionRail={!right}
+      showConnectionRail={false}
       completionPanel={inspectorPanel("completion")}
       historyPanel={inspectorPanel("history")}
       planPanel={
