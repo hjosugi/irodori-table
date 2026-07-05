@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## Unreleased
+
+### Fixed
+
+- Sidebars keep their configured widths (explorer 200px, inspector 300px by
+  default) when the dock layout is first built or a sidebar is opened;
+  dockview's proportional redistribution stretched the explorer to ~465px on
+  a 1440px window. (#74)
+
 ## [0.7.31] - 2026-07-06
 
 ### Fixed

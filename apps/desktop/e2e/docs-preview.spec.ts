@@ -12,8 +12,14 @@ import {
 test("capture README workbench preview", async ({ page }) => {
   test.skip(!process.env.CAPTURE_PREVIEW, "docs capture is opt-in");
 
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await installMultiResultMock(page);
+  // Roughly 1:8:1 sidebar : editor : sidebar. Runs after the mock's
+  // localStorage.clear() init script so the widths survive.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("irodori.sidebar.width.v2", "200");
+    window.localStorage.setItem("irodori.inspector.width.v1", "220");
+  });
   await page.goto("/", { waitUntil: "commit" });
   await expect(page.locator(".app-shell")).toBeVisible({ timeout: 30_000 });
 
