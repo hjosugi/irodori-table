@@ -42,7 +42,11 @@ export type WorkbenchDockLayoutProps = {
   results: ReactNode;
 };
 
-const dockLayoutStorageKey = "irodori.workbench.dockview.layout.v1";
+// v2: sidebars dock at the root edges (full workspace height, VS Code-style)
+// instead of splitting only the editor row; old layouts would keep the
+// results pane at full window width, so they are not restored.
+const dockLayoutStorageKey = "irodori.workbench.dockview.layout.v2";
+const legacyDockLayoutStorageKeys = ["irodori.workbench.dockview.layout.v1"];
 const dockPanelIds: readonly WorkbenchDockPanelId[] = [
   "leftSidebar",
   "editor",
@@ -146,8 +150,9 @@ export function WorkbenchDockLayout({
         renderer: "always",
         initialWidth: sidebarWidth,
         minimumWidth: 180,
+        // Dock at the root edge (no reference panel) so the sidebar spans
+        // the full workspace height with the editor/results split inside.
         position: {
-          referencePanel: "editor",
           direction: "left",
         },
       });
@@ -168,8 +173,8 @@ export function WorkbenchDockLayout({
         renderer: "always",
         initialWidth: inspectorWidth,
         minimumWidth: 220,
+        // Root-edge dock, same reason as the left sidebar.
         position: {
-          referencePanel: "editor",
           direction: "right",
         },
       });
@@ -238,6 +243,9 @@ export function WorkbenchDockLayout({
       if (typeof window === "undefined") {
         addDefaultPanels(api);
         return;
+      }
+      for (const legacyKey of legacyDockLayoutStorageKeys) {
+        window.localStorage.removeItem(legacyKey);
       }
       const raw = window.localStorage.getItem(dockLayoutStorageKey);
       if (!raw) {
