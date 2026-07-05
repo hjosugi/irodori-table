@@ -21,6 +21,7 @@ import type {
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
 import type { SqlLinterId } from "../../sql/linter";
+import { DialogShell } from "@/components/DialogShell";
 import { createTranslator, type Locale } from "../../i18n";
 import type { ThemeKind } from "@/theme";
 import type { BooleanUpdater, ValueUpdater } from "./tabs/shared";
@@ -195,192 +196,190 @@ export function SettingsDialog({
   const { t } = createTranslator(locale);
 
   return (
-    <div className="palette-overlay" onClick={onClose} role="presentation">
-      <div
-        className="data-dialog settings-dialog"
-        role="dialog"
-        aria-label={t("settings.title")}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-header">
-          <strong>{t("settings.title")}</strong>
-          <span>{t("settings.subtitle")}</span>
-          <button className="text-button" type="button" onClick={onClose}>
-            {t("common.close")}
-          </button>
-        </div>
-        <div className="settings-body">
-          <nav className="settings-nav" aria-label={t("settings.sections")}>
-            <button
-              type="button"
-              className={settingsTab === "general" ? "active" : undefined}
-              onClick={() => onOpenSection("general")}
-            >
-              <Settings size={15} />
-              {t("settings.nav.general")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "theme" ? "active" : undefined}
-              onClick={() => onOpenSection("theme")}
-            >
-              <Palette size={15} />
-              {t("settings.nav.theme")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "keymap" ? "active" : undefined}
-              onClick={() => onOpenSection("keymap")}
-            >
-              <Keyboard size={15} />
-              {t("settings.nav.keymap")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "snippets" ? "active" : undefined}
-              onClick={() => onOpenSection("snippets")}
-            >
-              <Code2 size={15} />
-              {t("settings.nav.snippets")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "security" ? "active" : undefined}
-              onClick={() => onOpenSection("security")}
-            >
-              <ShieldCheck size={15} />
-              {t("settings.nav.security")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "extensions" ? "active" : undefined}
-              onClick={() => onOpenSection("extensions")}
-            >
-              <Package size={15} />
-              {t("settings.nav.extensions")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "jobs" ? "active" : undefined}
-              onClick={() => onOpenSection("jobs")}
-            >
-              <Clock3 size={15} />
-              {t("settings.nav.jobs")}
-            </button>
-            <button
-              type="button"
-              className={settingsTab === "json" ? "active" : undefined}
-              onClick={() => onOpenSection("json")}
-            >
-              <TerminalSquare size={15} />
-              {t("settings.nav.json")}
-            </button>
-          </nav>
-          <section className="settings-panel">
-            {settingsTab === "general" ? (
-              <GeneralTab
-                t={t}
-                locale={locale}
-                setLocale={setLocale}
-                uiZoom={uiZoom}
-                setUiZoom={setUiZoom}
-                vimMode={vimMode}
-                setVimMode={setVimMode}
-                editorBackgroundImage={editorBackgroundImage}
-                setEditorBackgroundImage={setEditorBackgroundImage}
-                editorBackgroundOpacity={editorBackgroundOpacity}
-                setEditorBackgroundOpacity={setEditorBackgroundOpacity}
-                animationsEnabled={animationsEnabled}
-                setAnimationsEnabled={setAnimationsEnabled}
-                autoCommit={autoCommit}
-                setAutoCommit={setAutoCommit}
-                formatter={formatter}
-                setFormatter={setFormatter}
-                sqlLinter={sqlLinter}
-                setSqlLinter={setSqlLinter}
-                resultOffloadEnabled={resultOffloadEnabled}
-                setResultOffloadEnabled={setResultOffloadEnabled}
-                resultMemoryBudget={resultMemoryBudget}
-                setResultMemoryBudget={setResultMemoryBudget}
-                queryHistoryMaxItems={queryHistoryMaxItems}
-                setQueryHistoryMaxItems={setQueryHistoryMaxItems}
-                queryHistoryResultRows={queryHistoryResultRows}
-                setQueryHistoryResultRows={setQueryHistoryResultRows}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-              />
-            ) : settingsTab === "theme" ? (
-              <ThemeTab
-                t={t}
-                onOpenSection={onOpenSection}
-                themePreference={themePreference}
-                themeKind={themeKind}
-                setThemePreference={setThemePreference}
-                setThemeKind={setThemeKind}
-                activeDefaultThemeId={activeDefaultThemeId}
-                activeDefaultThemeName={activeDefaultThemeName}
-                setActiveDefaultThemeId={setActiveDefaultThemeId}
-                customThemes={customThemes}
-                activeCustomThemeId={activeCustomThemeId}
-                activeCustomThemeName={activeCustomThemeName}
-                setActiveCustomThemeId={setActiveCustomThemeId}
-                clearCustomTheme={clearCustomTheme}
-              />
-            ) : settingsTab === "keymap" ? (
-              <KeymapTab
-                t={t}
-                commandCatalog={commandCatalog}
-                keymap={keymap}
-                keymapOverrides={keymapOverrides}
-                keymapConflicts={keymapConflicts}
-                vimMode={vimMode}
-                vimKeymapConflicts={vimKeymapConflicts}
-                recordingCommand={recordingCommand}
-                recordingSequence={recordingSequence}
-                runCommand={runCommand}
-                beginRecording={beginRecording}
-                resetKeybinding={resetKeybinding}
-                applyVimKeybindingResolutions={applyVimKeybindingResolutions}
-              />
-            ) : settingsTab === "snippets" ? (
-              <SnippetsTab
-                t={t}
-                sqlSnippets={sqlSnippets}
-                setSqlSnippets={setSqlSnippets}
-              />
-            ) : settingsTab === "security" ? (
-              <SecurityTab
-                t={t}
-                passkeyLockEnabled={passkeyLockEnabled}
-                setPasskeyLockEnabled={setPasskeyLockEnabled}
-                passkeyCredential={passkeyCredential}
-                setPasskeyCredential={setPasskeyCredential}
-              />
-            ) : settingsTab === "extensions" ? (
-              <ExtensionsTab t={t} active={settingsTab === "extensions"} />
-            ) : settingsTab === "jobs" ? (
-              <JobsTab
-                t={t}
-                jobs={jobs}
-                jobsLoading={jobsLoading}
-                jobsError={jobsError}
-                refreshJobs={refreshJobs}
-                cancelJob={cancelJob}
-              />
-            ) : (
-              <JsonTab
-                t={t}
-                settingsJsonDraft={settingsJsonDraft}
-                setSettingsJsonDraft={setSettingsJsonDraft}
-                settingsJsonError={settingsJsonError}
-                setSettingsJsonError={setSettingsJsonError}
-                resetSettingsJsonDraft={resetSettingsJsonDraft}
-                applySettingsJson={applySettingsJson}
-              />
-            )}
-          </section>
-        </div>
+    <DialogShell
+      onClose={onClose}
+      overlayClassName="palette-overlay"
+      className="data-dialog settings-dialog"
+      label={t("settings.title")}
+    >
+      <div className="dialog-header">
+        <strong>{t("settings.title")}</strong>
+        <span>{t("settings.subtitle")}</span>
+        <button className="text-button" type="button" onClick={onClose}>
+          {t("common.close")}
+        </button>
       </div>
-    </div>
+      <div className="settings-body">
+        <nav className="settings-nav" aria-label={t("settings.sections")}>
+          <button
+            type="button"
+            className={settingsTab === "general" ? "active" : undefined}
+            onClick={() => onOpenSection("general")}
+          >
+            <Settings size={15} />
+            {t("settings.nav.general")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "theme" ? "active" : undefined}
+            onClick={() => onOpenSection("theme")}
+          >
+            <Palette size={15} />
+            {t("settings.nav.theme")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "keymap" ? "active" : undefined}
+            onClick={() => onOpenSection("keymap")}
+          >
+            <Keyboard size={15} />
+            {t("settings.nav.keymap")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "snippets" ? "active" : undefined}
+            onClick={() => onOpenSection("snippets")}
+          >
+            <Code2 size={15} />
+            {t("settings.nav.snippets")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "security" ? "active" : undefined}
+            onClick={() => onOpenSection("security")}
+          >
+            <ShieldCheck size={15} />
+            {t("settings.nav.security")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "extensions" ? "active" : undefined}
+            onClick={() => onOpenSection("extensions")}
+          >
+            <Package size={15} />
+            {t("settings.nav.extensions")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "jobs" ? "active" : undefined}
+            onClick={() => onOpenSection("jobs")}
+          >
+            <Clock3 size={15} />
+            {t("settings.nav.jobs")}
+          </button>
+          <button
+            type="button"
+            className={settingsTab === "json" ? "active" : undefined}
+            onClick={() => onOpenSection("json")}
+          >
+            <TerminalSquare size={15} />
+            {t("settings.nav.json")}
+          </button>
+        </nav>
+        <section className="settings-panel">
+          {settingsTab === "general" ? (
+            <GeneralTab
+              t={t}
+              locale={locale}
+              setLocale={setLocale}
+              uiZoom={uiZoom}
+              setUiZoom={setUiZoom}
+              vimMode={vimMode}
+              setVimMode={setVimMode}
+              editorBackgroundImage={editorBackgroundImage}
+              setEditorBackgroundImage={setEditorBackgroundImage}
+              editorBackgroundOpacity={editorBackgroundOpacity}
+              setEditorBackgroundOpacity={setEditorBackgroundOpacity}
+              animationsEnabled={animationsEnabled}
+              setAnimationsEnabled={setAnimationsEnabled}
+              autoCommit={autoCommit}
+              setAutoCommit={setAutoCommit}
+              formatter={formatter}
+              setFormatter={setFormatter}
+              sqlLinter={sqlLinter}
+              setSqlLinter={setSqlLinter}
+              resultOffloadEnabled={resultOffloadEnabled}
+              setResultOffloadEnabled={setResultOffloadEnabled}
+              resultMemoryBudget={resultMemoryBudget}
+              setResultMemoryBudget={setResultMemoryBudget}
+              queryHistoryMaxItems={queryHistoryMaxItems}
+              setQueryHistoryMaxItems={setQueryHistoryMaxItems}
+              queryHistoryResultRows={queryHistoryResultRows}
+              setQueryHistoryResultRows={setQueryHistoryResultRows}
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+            />
+          ) : settingsTab === "theme" ? (
+            <ThemeTab
+              t={t}
+              onOpenSection={onOpenSection}
+              themePreference={themePreference}
+              themeKind={themeKind}
+              setThemePreference={setThemePreference}
+              setThemeKind={setThemeKind}
+              activeDefaultThemeId={activeDefaultThemeId}
+              activeDefaultThemeName={activeDefaultThemeName}
+              setActiveDefaultThemeId={setActiveDefaultThemeId}
+              customThemes={customThemes}
+              activeCustomThemeId={activeCustomThemeId}
+              activeCustomThemeName={activeCustomThemeName}
+              setActiveCustomThemeId={setActiveCustomThemeId}
+              clearCustomTheme={clearCustomTheme}
+            />
+          ) : settingsTab === "keymap" ? (
+            <KeymapTab
+              t={t}
+              commandCatalog={commandCatalog}
+              keymap={keymap}
+              keymapOverrides={keymapOverrides}
+              keymapConflicts={keymapConflicts}
+              vimMode={vimMode}
+              vimKeymapConflicts={vimKeymapConflicts}
+              recordingCommand={recordingCommand}
+              recordingSequence={recordingSequence}
+              runCommand={runCommand}
+              beginRecording={beginRecording}
+              resetKeybinding={resetKeybinding}
+              applyVimKeybindingResolutions={applyVimKeybindingResolutions}
+            />
+          ) : settingsTab === "snippets" ? (
+            <SnippetsTab
+              t={t}
+              sqlSnippets={sqlSnippets}
+              setSqlSnippets={setSqlSnippets}
+            />
+          ) : settingsTab === "security" ? (
+            <SecurityTab
+              t={t}
+              passkeyLockEnabled={passkeyLockEnabled}
+              setPasskeyLockEnabled={setPasskeyLockEnabled}
+              passkeyCredential={passkeyCredential}
+              setPasskeyCredential={setPasskeyCredential}
+            />
+          ) : settingsTab === "extensions" ? (
+            <ExtensionsTab t={t} active={settingsTab === "extensions"} />
+          ) : settingsTab === "jobs" ? (
+            <JobsTab
+              t={t}
+              jobs={jobs}
+              jobsLoading={jobsLoading}
+              jobsError={jobsError}
+              refreshJobs={refreshJobs}
+              cancelJob={cancelJob}
+            />
+          ) : (
+            <JsonTab
+              t={t}
+              settingsJsonDraft={settingsJsonDraft}
+              setSettingsJsonDraft={setSettingsJsonDraft}
+              settingsJsonError={settingsJsonError}
+              setSettingsJsonError={setSettingsJsonError}
+              resetSettingsJsonDraft={resetSettingsJsonDraft}
+              applySettingsJson={applySettingsJson}
+            />
+          )}
+        </section>
+      </div>
+    </DialogShell>
   );
 }
