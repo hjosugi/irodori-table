@@ -21,9 +21,98 @@
 }
 
 .workspace.workspace-dock {
-  display: block;
+  display: flex;
   min-width: 0;
   min-height: 0;
+}
+
+.workspace.workspace-dock > .workbench-dock {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Far-left connections rail (TablePlus / VS Code activity-bar style). */
+.connections-rail {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 44px;
+  padding: 6px 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--chrome);
+  scrollbar-width: none;
+}
+
+.connections-rail-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.connections-rail-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.connections-rail-item:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.connections-rail-item.active {
+  border-color: var(--border);
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.connections-rail-item.active::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: -7px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--rail-color, var(--accent));
+}
+
+.connections-rail-color {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--surface-raised);
+  border-radius: 50%;
+  background: var(--rail-color, var(--neutral-dot));
+  opacity: 0.55;
+}
+
+.connections-rail-item.connected .connections-rail-color {
+  opacity: 1;
+}
+
+.connections-rail-add {
+  margin-top: auto;
 }
 
 .workbench-dock {
@@ -1853,10 +1942,12 @@
   background: var(--hover);
 }
 
+/* Editor pane fills the top row; the save/run toolbar docks at the bottom
+ * (TablePlus-style), next to where results appear. */
 .editor-and-inspector {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: var(--bar-md) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--bar-md);
   min-width: 0;
   min-height: 0;
 }
@@ -1916,6 +2007,18 @@
   color: var(--muted);
   font-size: var(--font-ui-sm);
   background: var(--surface);
+}
+
+.query-toolbar-bottom {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
+
+/* The toolbar sits at the bottom of the pane now, so its dropdown must open
+ * upward or it would render past the pane edge. */
+.query-toolbar-bottom .run-menu-popover {
+  top: auto;
+  bottom: calc(100% + 5px);
 }
 
 .query-toolbar-spacer {

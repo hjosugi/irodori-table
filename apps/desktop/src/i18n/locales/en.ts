@@ -846,6 +846,9 @@ export const en = {
   "sidebar.empty.notConnected": "Not connected yet.",
   "sidebar.empty.openSample": "Open SQLite sample",
   "sidebar.empty.addConnection": "Add a connection",
+  "rail.connections": "Connections",
+  "rail.connected": "Connected",
+  "rail.addConnection": "Add a connection",
   "sidebar.empty.sampleHint":
     "The sample is an in-memory database with demo tables — no setup needed.",
   "sidebar.empty.databaseEmpty": "This database is empty.",

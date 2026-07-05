@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { ActionToastStack } from "@/app/ActionToast";
+import { ConnectionsRail } from "@/app/ConnectionsRail";
 import {
   APP_NAME,
   appMenuCommandCatalog,
@@ -100,6 +101,7 @@ export function WorkbenchRoot() {
         onRunCommand={runCommand}
         onCloseWorkspaceMenu={() => overlays.setWorkspaceMenuOpen(false)}
         dockLayout
+        rail={<ConnectionsRail />}
         leftSidebar={null}
         rightSidebar={null}
       >
