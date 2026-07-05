@@ -42,6 +42,19 @@ const QueryHistoryDialog = lazy(() =>
   })),
 );
 
+// Suspense fallback for lazy-loaded dialogs: show the scrim and a spinner
+// right away, otherwise the first open looks like the command did nothing
+// while the chunk downloads.
+function DialogLoadingFallback({ label }: { label: string }) {
+  return (
+    <div className="modal-overlay" role="presentation">
+      <div className="dialog-loading-fallback" role="status" aria-live="polite">
+        {label}
+      </div>
+    </div>
+  );
+}
+
 // Every modal/overlay surface the workbench can open, in one place. State that
 // only dialogs read or write (settings toggles, dialog-open flags in stores)
 // is subscribed here so the composition root stays about wiring, not forms.
@@ -140,7 +153,9 @@ export function WorkbenchDialogs() {
       ) : null}
 
       {overlays.migrationStudioOpen ? (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={<DialogLoadingFallback label={t("common.loading")} />}
+        >
           <MigrationStudioDialog
             onClose={overlays.closeMigrationStudio}
             onCopyText={(text, label) =>
@@ -261,7 +276,9 @@ export function WorkbenchDialogs() {
       ) : null}
 
       {queryHistoryDialogOpen ? (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={<DialogLoadingFallback label={t("common.loading")} />}
+        >
           <QueryHistoryDialog
             activeConnectionId={activeConnectionId}
             activeConnectionOpen={activeConnectionOpen}

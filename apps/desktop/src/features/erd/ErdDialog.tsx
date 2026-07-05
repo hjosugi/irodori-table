@@ -273,7 +273,10 @@ export function ErdDialog({
             <span>{error}</span>
           </div>
         ) : null}
-        {!error && (!layout || layout.tables.length === 0) ? (
+        {!error && !metadataLoaded ? (
+          <div className="grid-state loading">Loading schema metadata…</div>
+        ) : null}
+        {!error && metadataLoaded && (!layout || layout.tables.length === 0) ? (
           <div className="grid-state">
             No tables match the current diagram filters
           </div>
