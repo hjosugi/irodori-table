@@ -68,7 +68,6 @@ export interface QueryEditorPaneProps {
   hasSelectedEditorSql: boolean;
   resultActionsAvailable: boolean;
   runCommand: (commandId: string) => void;
-  saveCurrentQuery: () => void;
   runQuery: () => Promise<void>;
   runSelectionQuery: () => Promise<void>;
   runCurrentQuery: () => Promise<void>;
@@ -118,7 +117,6 @@ export function QueryEditorPane({
   hasSelectedEditorSql,
   resultActionsAvailable,
   runCommand,
-  saveCurrentQuery,
   runQuery,
   runSelectionQuery,
   runCurrentQuery,
@@ -272,7 +270,6 @@ export function QueryEditorPane({
             runFromStartShortcutLabel={runFromStartShortcutLabel}
             runAllShortcutLabel={runAllShortcutLabel}
             hasSelectedEditorSql={hasSelectedEditorSql}
-            saveCurrentQuery={saveCurrentQuery}
             runQuery={runQuery}
             runSelectionQuery={runSelectionQuery}
             runCurrentQuery={runCurrentQuery}

@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from "react";
-import { ChevronDown, Play, Save } from "lucide-react";
+import { ChevronDown, Play } from "lucide-react";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator, type Translator } from "@/i18n";
 
@@ -14,7 +14,6 @@ export type RunControlProps = {
   runFromStartShortcutLabel: string;
   runAllShortcutLabel: string;
   hasSelectedEditorSql: boolean;
-  saveCurrentQuery: () => void;
   runQuery: () => Promise<void>;
   runSelectionQuery: () => Promise<void>;
   runCurrentQuery: () => Promise<void>;
@@ -33,7 +32,6 @@ export function RunControl({
   runFromStartShortcutLabel,
   runAllShortcutLabel,
   hasSelectedEditorSql,
-  saveCurrentQuery,
   runQuery,
   runSelectionQuery,
   runCurrentQuery,
@@ -66,16 +64,6 @@ export function RunControl({
 
   return (
     <div className="editor-primary-actions">
-      <button
-        className="text-button toolbar-command"
-        type="button"
-        title={t("run.saveQuery")}
-        aria-label={t("run.saveQuery")}
-        onClick={saveCurrentQuery}
-      >
-        <Save size={15} />
-        <span>{t("run.save")}</span>
-      </button>
       <div className="run-control editor-floating-run" ref={runControlRef}>
         <button
           className="primary-action run-main-button"
@@ -139,11 +127,7 @@ function RunOptionsMenu({
   runAllQuery,
 }: Omit<
   RunControlProps,
-  | "running"
-  | "runControlRef"
-  | "runMenuOpen"
-  | "setRunMenuOpen"
-  | "saveCurrentQuery"
+  "running" | "runControlRef" | "runMenuOpen" | "setRunMenuOpen"
 > & { t: Translator["t"] }) {
   return (
     <div className="app-menu-popover run-menu-popover" role="menu">

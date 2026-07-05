@@ -165,7 +165,7 @@ export function useEditorWorkspace({
     >;
     workspace: Pick<
       ReturnType<typeof useWorkspaceActions>,
-      "saveCurrentQuery" | "handleImportFile" | "jumpToSqlMetadata"
+      "handleImportFile" | "jumpToSqlMetadata"
     >;
     cancelQuery: ReturnType<typeof useQueryRunner>["cancelQuery"];
     beginPanelResize: PanelResize["beginPanelResize"];
@@ -205,7 +205,6 @@ export function useEditorWorkspace({
       hasSelectedEditorSql,
       resultActionsAvailable: extra.resultActionsAvailable,
       runCommand: extra.runCommand,
-      saveCurrentQuery: extra.workspace.saveCurrentQuery,
       runQuery: extra.editorCommands.runQuery,
       runSelectionQuery: extra.editorCommands.runSelectionQuery,
       runCurrentQuery: extra.editorCommands.runCurrentQuery,

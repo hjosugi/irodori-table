@@ -988,8 +988,6 @@ export const ja = {
   "erd.loadingMetadata": "スキーマメタデータを読み込んでいます…",
   "erd.noTablesMatch":
     "現在のダイアグラムフィルターに一致するテーブルはありません",
-  "run.save": "保存",
-  "run.saveQuery": "クエリを保存",
   "run.options": "実行オプション",
   "run.selection": "選択範囲を実行",
   "run.current": "現在を実行",
