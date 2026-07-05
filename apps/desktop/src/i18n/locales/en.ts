@@ -969,8 +969,6 @@ export const en = {
   "erd.schemas": "Schemas",
   "erd.loadingMetadata": "Loading schema metadata…",
   "erd.noTablesMatch": "No tables match the current diagram filters",
-  "run.save": "Save",
-  "run.saveQuery": "Save query",
   "run.options": "Run options",
   "run.selection": "Run Selection",
   "run.current": "Run Current",

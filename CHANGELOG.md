@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Row Detail moved out of the results pane into a full-height right sidebar
   view (VS Code-style): selecting a row or cell opens it, the sidebar view
   switcher can bring it back, and closing it clears the row selection. (#68)
+- The Save button is removed from the editor run toolbar; saving stays on
+  File → Save and its keyboard shortcut, keeping the bottom dock focused on
+  format/run actions. (#70)
 
 ## [0.7.29] - 2026-07-06
 
