@@ -665,6 +665,9 @@
 
 .segmented-control {
   display: inline-flex;
+  /* Never shrink: a squeezed control lets its buttons paint under the
+     following flex item, which then swallows their clicks. */
+  flex: 0 0 auto;
   align-items: center;
   height: var(--control-sm);
   padding: 2px;

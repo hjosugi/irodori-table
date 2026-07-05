@@ -10,8 +10,8 @@ async function runMenuCommand(
   commandName: string | RegExp,
 ) {
   await page
-    .getByRole("navigation", { name: "Application menu" })
-    .getByRole("button", { name: menuName })
+    .getByRole("menubar", { name: "Application menu" })
+    .getByRole("menuitem", { name: menuName })
     .click();
   await page.getByRole("menuitem", { name: commandName }).click();
 }
@@ -85,7 +85,8 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   await expect(content).toContainText("select");
   await expect(content.locator("span").first()).toBeVisible();
 
-  // Query actions belong in the top toolbar, not as floating editor chrome.
+  // Query actions dock below the editor pane (TablePlus-style), not as
+  // floating editor chrome.
   const queryToolbar = page.locator(".query-toolbar");
   await expect(queryToolbar).toBeVisible();
   await expect(page.getByRole("button", { name: "Run All" })).toHaveCount(0);
@@ -93,8 +94,8 @@ test("editor shell renders, themes, and formats", async ({ page }) => {
   const editorBox = await page.locator(".editor-pane").boundingBox();
   expect(toolbarBox).toBeTruthy();
   expect(editorBox).toBeTruthy();
-  expect(toolbarBox!.y + toolbarBox!.height).toBeLessThanOrEqual(
-    editorBox!.y + 1,
+  expect(toolbarBox!.y).toBeGreaterThanOrEqual(
+    editorBox!.y + editorBox!.height - 1,
   );
 
   // The object/connection sidebar is collapsible, like a workbench side bar.

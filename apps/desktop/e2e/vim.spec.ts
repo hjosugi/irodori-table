@@ -17,7 +17,7 @@ async function replaceEditorText(page: Page, text: string) {
 }
 
 async function openSettings(page: Page) {
-  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: /Open Settings/ }).click();
 }
 
