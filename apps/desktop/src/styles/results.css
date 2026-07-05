@@ -11,11 +11,14 @@
 .results-header {
   flex: 0 0 auto;
   display: flex;
+  /* Wrap instead of overflowing: when a sidebar narrows the pane, the
+     actions drop to a second row rather than being sliced at the pane edge
+     (which reads as the sidebar overlaying the results). */
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 4px 10px;
   min-height: var(--bar-md);
-  padding: 0 9px 0 10px;
+  padding: 3px 9px 3px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-raised);
 }
@@ -85,9 +88,11 @@
 .results-actions {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: 4px 5px;
   min-width: 0;
+  margin-left: auto;
 }
 
 .action-split {
