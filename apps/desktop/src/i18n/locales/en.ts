@@ -9,6 +9,7 @@ export const en = {
   "common.delete": "Delete",
   "common.dark": "Dark",
   "common.hide": "Hide",
+  "common.loading": "Loading…",
   "common.light": "Light",
   "common.off": "Off",
   "common.on": "On",

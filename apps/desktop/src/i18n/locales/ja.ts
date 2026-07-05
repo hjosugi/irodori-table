@@ -11,6 +11,7 @@ export const ja = {
   "common.delete": "削除",
   "common.dark": "ダーク",
   "common.hide": "非表示",
+  "common.loading": "読み込み中…",
   "common.light": "ライト",
   "common.off": "オフ",
   "common.on": "オン",
