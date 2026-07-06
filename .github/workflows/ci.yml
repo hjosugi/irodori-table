@@ -37,7 +37,7 @@ jobs:
       - name: Check out irodori-table
         uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           components: rustfmt
 
@@ -113,10 +113,10 @@ jobs:
       - name: Check out irodori-table
         uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Cache cargo-deny
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/bin/cargo-deny
           key: cargo-deny-0.19.9-${{ runner.os }}
@@ -137,7 +137,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.100.0
 
       - uses: actions/setup-node@v6
         with:
@@ -184,7 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           components: clippy
 
@@ -265,7 +265,7 @@ jobs:
           repository: hjosugi/irodori-samples
           path: irodori-samples
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.100.0
 
       # The desktop crate needs WebKit/GTK headers when compiling the
       # integration-test binary on Linux.
