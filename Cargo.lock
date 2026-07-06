@@ -3375,9 +3375,9 @@ dependencies = [
 
 [[package]]
 name = "irodori-migration"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e753a93536fec4405c61a9dfc2458f34bbc8b8c8f1e1a23686ba4073cbe0886"
+checksum = "4f8dec81c7662b8d96bbe17c992a94b0a65b0e413e7976b9c02eeac648d97529"
 dependencies = [
  "csv",
  "serde",
