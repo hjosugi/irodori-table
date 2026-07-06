@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.33] - 2026-07-06
+
+### Changed
+
+- Updated the desktop npm dependency group and Rust dependency group from
+  Dependabot. (#77, #78)
+
 ## [0.7.32] - 2026-07-06
 
 ### Fixed
@@ -225,6 +232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundled sample connections and the seeded demo workspace were removed;
   a fresh install starts with an empty workspace.
 
+[0.7.33]: https://github.com/hjosugi/irodori-table/compare/v0.7.32...v0.7.33
 [0.7.6]: https://github.com/hjosugi/irodori-table/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/hjosugi/irodori-table/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/hjosugi/irodori-table/compare/v0.7.3...v0.7.4
