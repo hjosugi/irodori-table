@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.34] - 2026-07-08
+
+### Fixed
+
+- Updated `crossbeam-epoch` to 0.9.20 for the RustSec advisory fix.
+- Updated GitHub Actions cache usage to the current major across CI, security,
+  and release workflows.
+
 ## [0.7.33] - 2026-07-06
 
 ### Changed
