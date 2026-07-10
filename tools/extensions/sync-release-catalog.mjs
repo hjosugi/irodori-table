@@ -20,11 +20,7 @@ if (check === write) {
 
 const currentText = readFileSync(catalogPath, "utf8");
 const current = JSON.parse(currentText);
-const extensions = await mapWithConcurrency(
-  current.extensions ?? [],
-  6,
-  syncExtension,
-);
+const extensions = await mapWithConcurrency(current.extensions ?? [], 6, syncExtension);
 const updatedAt = extensions
   .map((extension) => extension.publishedAt)
   .filter(Boolean)
@@ -46,13 +42,17 @@ if (check) {
   console.log(`extension-release-catalog: ok (${extensions.length} extensions)`);
 } else {
   writeFileSync(catalogPath, nextText);
-  console.log(
-    `extension-release-catalog: synchronized ${extensions.length} extensions`,
-  );
+  console.log(`extension-release-catalog: synchronized ${extensions.length} extensions`);
 }
 
 async function syncExtension(extension) {
-  const repository = parseGitHubRepository(extension.repository);
+  const repository = catalogRepository(extension.id);
+  const advertisedRepository = parseGitHubRepository(extension.repository);
+  if (advertisedRepository !== repository) {
+    throw new Error(
+      `${extension.id}: catalog repository ${advertisedRepository} does not match ${repository}`,
+    );
+  }
   const releases = await githubJson(
     `https://api.github.com/repos/${repository}/releases?per_page=30`,
   );
@@ -74,9 +74,7 @@ async function syncExtension(extension) {
     );
   }
   if (`v${manifest.version}` !== release.tag_name) {
-    throw new Error(
-      `${repository}@${release.tag_name}: manifest version is ${manifest.version}`,
-    );
+    throw new Error(`${repository}@${release.tag_name}: manifest version is ${manifest.version}`);
   }
 
   const assets = {};
@@ -85,7 +83,7 @@ async function syncExtension(extension) {
     if (!target) {
       continue;
     }
-    const digest = await releaseAssetDigest(asset);
+    const digest = await releaseAssetDigest(repository, asset);
     assets[target] = {
       name: asset.name,
       sha256: digest,
@@ -136,14 +134,21 @@ function releaseAssetTarget(repositoryName, assetName) {
   return /^[a-z0-9_]+-(?:linux|macos|windows)$/.test(target) ? target : null;
 }
 
-async function releaseAssetDigest(asset) {
+async function releaseAssetDigest(repository, asset) {
   const digest = String(asset.digest ?? "").replace(/^sha256:/i, "");
   if (/^[a-f0-9]{64}$/i.test(digest)) {
     return `sha256:${digest.toLowerCase()}`;
   }
-  const response = await githubFetch(asset.browser_download_url, {
-    headers: { accept: "application/octet-stream" },
-  });
+  const assetId = Number(asset.id);
+  if (!Number.isSafeInteger(assetId) || assetId <= 0) {
+    throw new Error(`${repository}: invalid GitHub release asset id`);
+  }
+  const response = await githubFetch(
+    `https://api.github.com/repos/${repository}/releases/assets/${assetId}`,
+    {
+      headers: { accept: "application/octet-stream" },
+    },
+  );
   const bytes = new Uint8Array(await response.arrayBuffer());
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
@@ -181,6 +186,83 @@ function parseGitHubRepository(value) {
   return normalized;
 }
 
+function catalogRepository(extensionId) {
+  switch (extensionId) {
+    case "irodori.duckdb":
+      return "hjosugi/irodori-extension-duckdb";
+    case "irodori.motherduck":
+      return "hjosugi/irodori-extension-motherduck";
+    case "irodori.hive":
+      return "hjosugi/irodori-extension-hive";
+    case "irodori.iceberg":
+      return "hjosugi/irodori-extension-iceberg";
+    case "irodori.s3-tables":
+      return "hjosugi/irodori-extension-s3-tables";
+    case "irodori.athena":
+      return "hjosugi/irodori-extension-athena";
+    case "irodori.delta-lake":
+      return "hjosugi/irodori-extension-delta-lake";
+    case "irodori.hudi":
+      return "hjosugi/irodori-extension-hudi";
+    case "irodori.cloud-spanner":
+      return "hjosugi/irodori-extension-cloud-spanner";
+    case "irodori.redis":
+      return "hjosugi/irodori-extension-redis";
+    case "irodori.dynamodb":
+      return "hjosugi/irodori-extension-dynamodb";
+    case "irodori.snowflake":
+      return "hjosugi/irodori-extension-snowflake";
+    case "irodori.bigquery":
+      return "hjosugi/irodori-extension-bigquery";
+    case "irodori.bigtable":
+      return "hjosugi/irodori-extension-bigtable";
+    case "irodori.mongodb":
+      return "hjosugi/irodori-extension-mongodb";
+    case "irodori.clickhouse":
+      return "hjosugi/irodori-extension-clickhouse";
+    case "irodori.cassandra":
+      return "hjosugi/irodori-extension-cassandra";
+    case "irodori.scylladb":
+      return "hjosugi/irodori-extension-scylladb";
+    case "irodori.neo4j":
+      return "hjosugi/irodori-extension-neo4j";
+    case "irodori.memgraph":
+      return "hjosugi/irodori-extension-memgraph";
+    case "irodori.elasticsearch":
+      return "hjosugi/irodori-extension-elasticsearch";
+    case "irodori.opensearch":
+      return "hjosugi/irodori-extension-opensearch";
+    case "irodori.sqlserver":
+      return "hjosugi/irodori-extension-sqlserver";
+    case "irodori.oracle":
+      return "hjosugi/irodori-extension-oracle";
+    case "irodori.influxdb":
+      return "hjosugi/irodori-extension-influxdb";
+    case "irodori.qdrant":
+      return "hjosugi/irodori-extension-qdrant";
+    case "irodori.milvus":
+      return "hjosugi/irodori-extension-milvus";
+    case "irodori.pinecone":
+      return "hjosugi/irodori-extension-pinecone";
+    case "irodori.couchbase":
+      return "hjosugi/irodori-extension-couchbase";
+    case "irodori.arangodb":
+      return "hjosugi/irodori-extension-arangodb";
+    case "irodori.questdb":
+      return "hjosugi/irodori-extension-questdb";
+    case "irodori.iotdb":
+      return "hjosugi/irodori-extension-iotdb";
+    case "irodori.trino-presto":
+      return "hjosugi/irodori-extension-trino-presto";
+    case "irodori.firebird":
+      return "hjosugi/irodori-extension-firebird";
+    case "irodori.databricks":
+      return "hjosugi/irodori-extension-databricks";
+    default:
+      throw new Error(`unsupported catalog extension id: ${extensionId}`);
+  }
+}
+
 function compareVersions(left, right) {
   const leftParts = versionParts(left);
   const rightParts = versionParts(right);
@@ -208,9 +290,7 @@ function sortObject(value) {
 }
 
 function stringList(value) {
-  return Array.isArray(value)
-    ? value.filter((entry) => typeof entry === "string")
-    : [];
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
 }
 
 async function mapWithConcurrency(values, concurrency, mapper) {

@@ -52,7 +52,7 @@ console.log(
 );
 
 function syncFile(path, expected) {
-  const current = existsSync(path) ? readFileSync(path, "utf8") : "";
+  const current = readOptionalFile(path);
   if (current === expected) {
     return;
   }
@@ -60,6 +60,17 @@ function syncFile(path, expected) {
     stale.push(path);
   } else {
     writeFileSync(path, expected);
+  }
+}
+
+function readOptionalFile(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ENOENT") {
+      return "";
+    }
+    throw error;
   }
 }
 
