@@ -18,6 +18,7 @@ import {
 } from "@/features/preferences";
 import type { SqlEditorHandle } from "@/features/query-editor";
 import { useSearchStore } from "@/features/search/search-store";
+import { checkAndOfferAppUpdate } from "@/features/updater/use-startup-update-check";
 import { createWorkbenchCommandHandler } from "@/features/workbench";
 import type { Translator } from "@/i18n";
 
@@ -124,6 +125,8 @@ export function useWorkbenchCommands({
     openPalette: ui.openPalette,
     openSettings: () => settings.openSettingsSection("general"),
     openKeymap: () => settings.openSettingsSection("keymap"),
+    openExtensions: () => settings.openSettingsSection("extensions"),
+    checkForUpdates: () => void checkAndOfferAppUpdate(showActionNotice, t),
     openHistory: openQueryHistoryDialog,
     openGit: sidebars.openGitPanel,
     openHelp: ui.openAbout,

@@ -3,7 +3,7 @@ import type { TranslationKey, Translator } from "@/i18n";
 import type { WorkspaceSnapshot } from "../generated/irodori-api";
 
 export const APP_NAME = "Irodori Table";
-export const APP_VERSION = "0.7.34";
+export const APP_VERSION = "0.7.35";
 export const APP_IDENTIFIER = "dev.irodori.table";
 
 const resultCopyCommands: CommandMeta[] = [
@@ -54,6 +54,18 @@ const shellCommands: CommandMeta[] = [
   {
     id: "settings.keymap",
     title: "Open Keyboard Shortcuts",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
+    id: "settings.extensions",
+    title: "Open Extensions",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
+    id: "app.update.check",
+    title: "Check for Updates",
     category: "Preferences",
     scope: "global",
   },
@@ -383,8 +395,16 @@ const commandTranslationKeys: Partial<Record<string, CommandTranslationKeys>> =
       title: "commands.settings.keymap.title",
       category: "commands.category.preferences",
     },
+    "settings.extensions": {
+      title: "commands.settings.extensions.title",
+      category: "commands.category.preferences",
+    },
     "settings.open": {
       title: "commands.settings.open.title",
+      category: "commands.category.preferences",
+    },
+    "app.update.check": {
+      title: "commands.app.update.check.title",
       category: "commands.category.preferences",
     },
     "tab.close": {
@@ -538,6 +558,8 @@ export const workspaceMenuSections: AppMenuSection[] = [
     items: [
       { commandId: "settings.open" },
       { commandId: "settings.keymap" },
+      { commandId: "settings.extensions" },
+      { commandId: "app.update.check" },
       { commandId: "theme.toggle" },
     ],
   },
@@ -607,6 +629,8 @@ export const menuBarSections: AppMenuSection[] = [
       { commandId: "migration.studio" },
       { commandId: "editor.cleanup" },
       { commandId: "settings.keymap" },
+      { commandId: "settings.extensions" },
+      { commandId: "app.update.check" },
       { commandId: "theme.toggle" },
     ],
   },

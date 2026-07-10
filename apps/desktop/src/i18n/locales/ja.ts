@@ -107,7 +107,9 @@ export const ja = {
   "commands.result.export.title": "結果をエクスポート",
   "commands.result.exportSqlInserts.title": "SQL INSERT をエクスポート",
   "commands.settings.keymap.title": "キーボードショートカットを開く",
+  "commands.settings.extensions.title": "Extensionsを開く",
   "commands.settings.open.title": "設定を開く",
+  "commands.app.update.check.title": "更新を確認",
   "commands.tab.close.title": "タブを閉じる",
   "commands.tab.new.title": "新しい SQL タブ",
   "commands.terminal.toggle.title": "ターミナルを切り替え",
@@ -526,6 +528,9 @@ export const ja = {
   "settings.general.autoCommit.title": "Auto Commit",
   "settings.general.autoCommit.description":
     "各ステートメントの実行後に自動でコミットします。",
+  "settings.general.updateCheckOnStartup.title": "起動時に更新を確認",
+  "settings.general.updateCheckOnStartup.description":
+    "Irodori の起動時に署名済みアプリ更新を確認します。",
   "settings.general.formatter.title": "SQL フォーマッタ",
   "settings.general.formatter.description":
     "ツールバーとキーバインドで使うフォーマッタです。",
@@ -650,6 +655,10 @@ export const ja = {
   "settings.extensions.loading": "Marketplace 拡張を更新中...",
   "settings.extensions.source": "Marketplace ソース: {source}",
   "settings.extensions.openStore": "store index を開く",
+  "settings.extensions.openRelease": "リリースを開く",
+  "settings.extensions.openReleaseFor": "{name} のリリースを開く",
+  "settings.extensions.refresh": "Extension Store を更新",
+  "settings.extensions.target": "プラットフォーム: {target}",
   "settings.extensions.installed": "インストール済み",
   "settings.extensions.marketplace": "Marketplace",
   "settings.extensions.recommended": "推奨",
@@ -657,8 +666,30 @@ export const ja = {
   "settings.extensions.noMatches":
     "検索に一致する Marketplace 拡張はありません",
   "settings.extensions.noRecommended": "推奨拡張はありません",
+  "settings.extensions.install": "インストール",
+  "settings.extensions.update": "更新",
+  "settings.extensions.uninstall": "アンインストール",
+  "settings.extensions.enable": "有効化",
+  "settings.extensions.disable": "無効化",
+  "settings.extensions.enabled": "有効",
+  "settings.extensions.disabled": "無効",
+  "settings.extensions.working": "処理中...",
+  "settings.extensions.installedAction": "インストール済み",
+  "settings.extensions.unsupported": "利用不可",
+  "settings.extensions.currentVersion": "インストール済み {version}",
+  "settings.extensions.verifiedDigest": "SHA-256 {digest}…",
+  "settings.extensions.targetUnavailable":
+    "現在のプラットフォーム向けに検証済みのリリースassetがありません。",
+  "settings.extensions.confirmInstallTitle": "{name} をインストールしますか？",
+  "settings.extensions.confirmUpdateTitle": "{name} を更新しますか？",
+  "settings.extensions.confirmInstallMessage":
+    "version {version} を固定済みGitHub releaseから取得し、検証後に読み込みます。要求される権限: {permissions}",
+  "settings.extensions.confirmUninstallTitle":
+    "{name} をアンインストールしますか？",
+  "settings.extensions.confirmUninstallMessage":
+    "インストール済みのnative extensionを無効化し、このデバイスから削除します。",
   "settings.extensions.runtimeNotice":
-    "プレビュー: アプリ内インストールはまだ利用できません。カタログの項目は GitHub リポジトリへのリンクです。拡張ランタイムの提供までコネクタ拡張をアプリに読み込むことはできません。",
+    "native extensionはアプリと同じプロセス権限で動作します。検証済みreleaseだけを使用し、要求権限を確認してください。",
   "settings.jobs.title": "バックグラウンドジョブ",
   "settings.jobs.description":
     "共有ジョブランタイムが追跡する実行中・最近のローカル作業です。",
@@ -794,6 +825,18 @@ export const ja = {
   "notice.ai.providerUpdated": "AI プロバイダを更新しました",
   "notice.ai.providerUpdateFailed": "プロバイダを更新できませんでした",
   "notice.ai.providerSaved": "プロバイダを更新しました",
+  "notice.update.available": "更新があります",
+  "notice.update.availableDetail": "{current} -> {next}",
+  "notice.update.install": "インストール",
+  "notice.update.installing": "更新をインストール中",
+  "notice.update.installed": "更新をインストールしました",
+  "notice.update.restartRequired":
+    "更新を完了するには Irodori を再起動してください。",
+  "notice.update.installFailed": "更新のインストールに失敗しました",
+  "notice.update.checkFailed": "更新の確認に失敗しました",
+  "notice.update.runtimeUnavailable":
+    "アプリ更新はインストール済みdesktop applicationでのみ利用できます。",
+  "notice.update.none": "利用可能な更新はありません",
   "ai.provider.cloudHint":
     "クラウドプロバイダのホスト: {host}。プロンプトとスキーマ情報がこのデバイスの外へ送信される場合があります。",
   "ai.provider.cloudDisclosure.title": "クラウドプロバイダの開示",

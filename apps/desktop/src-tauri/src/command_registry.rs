@@ -121,6 +121,7 @@ pub(crate) fn invoke_handler() -> Box<tauri::ipc::InvokeHandler<tauri::Wry>> {
         db::db_inspect_column,
         db::db_invalidate_cache,
         extensions::ext_list,
+        extensions::ext_target,
         extensions::ext_install,
         extensions::ext_uninstall,
         extensions::ext_set_enabled,

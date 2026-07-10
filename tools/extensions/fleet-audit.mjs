@@ -157,9 +157,9 @@ function auditRepository(repo, repoDir, failures, warnings, abiPins, catalogEntr
       const expectedDuckDbBacked = duckDbBackedRepos.has(repo.name);
       const duckDbFlags = reusableWorkflows.map((workflow) => parseDuckDbBackedFlag(workflow.text));
       if (duckDbFlags.every((flag) => flag === null)) {
-        failures.push("reusable workflow caller does not pass duckdb-backed flag");
+        failures.push("reusable workflow caller does not pass a DuckDB-backed flag");
       } else if (!duckDbFlags.some((flag) => flag === expectedDuckDbBacked)) {
-        failures.push(`reusable workflow duckdb-backed flag is not ${expectedDuckDbBacked}`);
+        failures.push(`reusable workflow DuckDB-backed flag is not ${expectedDuckDbBacked}`);
       }
     }
   }
@@ -189,7 +189,7 @@ function auditSnapshotDestinations(repoDir, failures, warnings) {
 }
 
 function auditPackageTarget(makefile, catalogEntry, failures) {
-  const assetName = catalogEntry?.install?.assetName;
+  const assetName = catalogInstallAsset(catalogEntry)?.name;
   if (!assetName) {
     return;
   }
@@ -203,6 +203,21 @@ function auditPackageTarget(makefile, catalogEntry, failures) {
   if (!/tar\s+-czf\s+dist\/(?:\$\(EXTENSION_PACKAGE\)|[^\s]+)/.test(makefile)) {
     failures.push("Makefile package target does not create a dist/*.tar.gz archive");
   }
+}
+
+function catalogInstallAsset(catalogEntry) {
+  return catalogEntry?.install?.assets?.[nativeTargetLabel()];
+}
+
+function nativeTargetLabel() {
+  const arch =
+    process.arch === "x64"
+      ? "x86_64"
+      : process.arch === "arm64"
+        ? "aarch64"
+        : process.arch;
+  const platform = process.platform === "darwin" ? "macos" : process.platform;
+  return `${arch}-${platform}`;
 }
 
 function auditSharedPins(abiPins, failures) {
@@ -256,7 +271,7 @@ function hasPackageCommandInput(text) {
 }
 
 function parseDuckDbBackedFlag(text) {
-  const match = text.match(/^\s*duckdb-backed\s*:\s*(true|false)\s*$/im);
+  const match = text.match(/^\s*duckdb(?:-|_)backed\s*:\s*(true|false)\s*$/im);
   if (!match) {
     return null;
   }

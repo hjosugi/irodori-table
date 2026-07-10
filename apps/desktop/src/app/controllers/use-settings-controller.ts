@@ -109,6 +109,12 @@ export function useSettingsController({
   );
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
+  const updateCheckOnStartup = usePreferencesStore(
+    (state) => state.updateCheckOnStartup,
+  );
+  const setUpdateCheckOnStartup = usePreferencesStore(
+    (state) => state.setUpdateCheckOnStartup,
+  );
   const uiZoom = usePreferencesStore((state) => state.uiZoom);
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const setThemeKind = usePreferencesStore((state) => state.setThemeKind);
@@ -229,6 +235,9 @@ export function useSettingsController({
         security: {
           passkeyLockEnabled,
           passkeyCredential,
+        },
+        updates: {
+          checkOnStartup: updateCheckOnStartup,
         },
         layout: {
           uiZoom,
@@ -519,6 +528,11 @@ export function useSettingsController({
             parsed.security.passkeyLockEnabled && canEnable;
         }
       }
+      if (isRecord(parsed.updates)) {
+        if (typeof parsed.updates.checkOnStartup === "boolean") {
+          setUpdateCheckOnStartup(parsed.updates.checkOnStartup);
+        }
+      }
       if (isRecord(parsed.layout)) {
         const nextUiZoom = Number(parsed.layout.uiZoom);
         if (Number.isFinite(nextUiZoom)) {
@@ -661,6 +675,8 @@ export function useSettingsController({
     setAnimationsEnabled,
     autoCommit,
     setAutoCommit,
+    updateCheckOnStartup,
+    setUpdateCheckOnStartup,
     uiZoom,
     setUiZoom,
     formatter,

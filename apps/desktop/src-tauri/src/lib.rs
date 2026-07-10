@@ -301,6 +301,7 @@ mod typegen {
                     .arg(Arg::rust("object", TsType::string()).optional()),
             )
             .command(Command::new("ext_list", "Array<InstalledExtension>"))
+            .command(Command::new("ext_target", "string"))
             .command(
                 Command::new("ext_install", "InstalledExtension").arg(Arg::new(
                     "request",

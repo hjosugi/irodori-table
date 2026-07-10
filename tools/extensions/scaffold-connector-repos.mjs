@@ -313,6 +313,10 @@ function writeConnectorRepo(entry) {
   writeText(resolve(repoDir, "Makefile"), makefile(repoName, crateName, realDriverLinked));
   writeText(resolve(repoDir, ".gitignore"), gitignore());
   writeText(resolve(repoDir, ".github/workflows/ci.yml"), ciWorkflow(isDuckDbBackedConnector(engine)));
+  writeText(
+    resolve(repoDir, ".github/workflows/release.yml"),
+    releaseWorkflow(isDuckDbBackedConnector(engine)),
+  );
   writeText(resolve(repoDir, "dist/native/.gitkeep"), "");
   formatRustSources(repoDir);
   return "written";
@@ -3379,6 +3383,8 @@ function ciWorkflow(duckDbBacked) {
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -3386,11 +3392,39 @@ permissions:
 
 jobs:
   extension-ci:
-    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@v0.6.7
+    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@v0.6.8
     with:
       manifest-root: "."
       package-command: "make package"
       duckdb-backed: ${duckDbBacked}
+`;
+}
+
+function releaseWorkflow(duckDbBacked) {
+  return `name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing v* tag to rebuild and publish"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  extension-release:
+    uses: hjosugi/irodori-kit/.github/workflows/extension-release.yml@v0.6.8
+    with:
+      release_tag: \${{ inputs.release_tag || github.ref_name }}
+      duckdb_backed: ${duckDbBacked}
+    secrets:
+      catalog_token: \${{ secrets.IRODORI_CATALOG_TOKEN }}
 `;
 }
 

@@ -255,6 +255,7 @@ docs:
 
 docs-check:
 	node tools/docs/agent-workstreams.mjs
+	node tools/extensions/sync-release-catalog.mjs --check
 	node tools/docs/build-extension-catalog.mjs --check
 	node tools/docs/support-status.mjs
 	node tools/docs/db-feature-samples.mjs

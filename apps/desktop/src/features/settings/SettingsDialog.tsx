@@ -54,6 +54,8 @@ export interface SettingsDialogProps {
   setVimMode: (value: boolean) => void;
   autoCommit: boolean;
   setAutoCommit: (value: BooleanUpdater) => void;
+  updateCheckOnStartup: boolean;
+  setUpdateCheckOnStartup: (value: BooleanUpdater) => void;
   uiZoom: number;
   setUiZoom: (value: ValueUpdater<number>) => void;
   themePreference: ThemePreference;
@@ -130,6 +132,8 @@ export function SettingsDialog({
   setVimMode,
   autoCommit,
   setAutoCommit,
+  updateCheckOnStartup,
+  setUpdateCheckOnStartup,
   uiZoom,
   setUiZoom,
   themePreference,
@@ -294,6 +298,8 @@ export function SettingsDialog({
               setAnimationsEnabled={setAnimationsEnabled}
               autoCommit={autoCommit}
               setAutoCommit={setAutoCommit}
+              updateCheckOnStartup={updateCheckOnStartup}
+              setUpdateCheckOnStartup={setUpdateCheckOnStartup}
               formatter={formatter}
               setFormatter={setFormatter}
               sqlLinter={sqlLinter}

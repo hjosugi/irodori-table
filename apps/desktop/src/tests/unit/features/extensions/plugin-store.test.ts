@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   bundledPluginStoreCatalog,
+  compareExtensionVersions,
   defaultPluginStoreCatalogUrl,
   fetchPluginStoreCatalog,
+  resolvePluginStoreInstallAsset,
   type PluginStoreCatalog,
 } from "@/features/extensions/plugin-store";
 
@@ -26,11 +28,16 @@ describe("plugin store catalog", () => {
       expect(extension.install, extension.id).toBeDefined();
       expect(extension.install?.kind, extension.id).toBe("githubRelease");
       expect(extension.install?.url, extension.id).toMatch(
-        /^https:\/\/github\.com\/hjosugi\/irodori-extension-/,
+        /^https:\/\/github\.com\/hjosugi\/irodori-extension-.+\/releases\/tag\/v/,
       );
-      expect(extension.install?.assetName, extension.id).toMatch(
+      expect(extension.install?.tag, extension.id).toBe(
+        `v${extension.version}`,
+      );
+      const asset = resolvePluginStoreInstallAsset(extension, "x86_64-linux");
+      expect(asset?.name, extension.id).toMatch(
         /^irodori-extension-.+\.tar\.gz$/,
       );
+      expect(asset?.sha256, extension.id).toMatch(/^sha256:[a-f0-9]{64}$/);
       expect(extension.install?.manifestPath, extension.id).toBe(
         "irodori.extension.json",
       );
@@ -89,6 +96,7 @@ describe("plugin store catalog", () => {
     const loaded = await fetchPluginStoreCatalog();
 
     expect(fetch).toHaveBeenCalledWith(defaultPluginStoreCatalogUrl, {
+      cache: "no-store",
       headers: { accept: "application/json" },
     });
     expect(loaded.extensions[0].install).toEqual(catalog.extensions[0].install);
@@ -96,5 +104,12 @@ describe("plugin store catalog", () => {
     expect(loaded.extensions[0].contributes).toEqual(
       catalog.extensions[0].contributes,
     );
+  });
+
+  it("compares release versions for update decisions", () => {
+    expect(compareExtensionVersions("0.1.3", "0.1.2")).toBeGreaterThan(0);
+    expect(compareExtensionVersions("v1.0.0", "1.0.0")).toBe(0);
+    expect(compareExtensionVersions("1.0.0-rc.1", "1.0.0")).toBeLessThan(0);
+    expect(compareExtensionVersions("1.0.0", "1.0.0-rc.2")).toBeGreaterThan(0);
   });
 });
