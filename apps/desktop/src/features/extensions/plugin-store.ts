@@ -5,12 +5,17 @@ export const defaultPluginStoreCatalogUrl =
 
 export type PluginStoreInstallKind = "githubRelease" | "git";
 
+export type PluginStoreInstallAsset = {
+  name: string;
+  sha256: string;
+};
+
 export type PluginStoreInstallSource = {
   kind: PluginStoreInstallKind;
   url: string;
-  assetName?: string;
+  tag: string;
   manifestPath?: string;
-  sha256?: string;
+  assets: Record<string, PluginStoreInstallAsset>;
 };
 
 export type PluginStoreSourceTypeKind = "vector" | "lakehouse";
@@ -67,6 +72,7 @@ export async function fetchPluginStoreCatalog(
   url = defaultPluginStoreCatalogUrl,
 ): Promise<PluginStoreCatalog> {
   const response = await fetch(url, {
+    cache: "no-store",
     headers: {
       accept: "application/json",
     },
@@ -76,6 +82,65 @@ export async function fetchPluginStoreCatalog(
   }
   const parsed = (await response.json()) as unknown;
   return normalizePluginStoreCatalog(parsed, url);
+}
+
+export function resolvePluginStoreInstallAsset(
+  extension: PluginStoreExtension,
+  target: string,
+): PluginStoreInstallAsset | undefined {
+  return extension.install?.assets[target];
+}
+
+export function compareExtensionVersions(left: string, right: string): number {
+  const leftVersion = parseVersion(left);
+  const rightVersion = parseVersion(right);
+  const length = Math.max(leftVersion.core.length, rightVersion.core.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const difference =
+      (leftVersion.core[index] ?? 0) - (rightVersion.core[index] ?? 0);
+    if (difference !== 0) {
+      return Math.sign(difference);
+    }
+  }
+
+  if (leftVersion.prerelease.length === 0) {
+    return rightVersion.prerelease.length === 0 ? 0 : 1;
+  }
+  if (rightVersion.prerelease.length === 0) {
+    return -1;
+  }
+
+  const prereleaseLength = Math.max(
+    leftVersion.prerelease.length,
+    rightVersion.prerelease.length,
+  );
+  for (let index = 0; index < prereleaseLength; index += 1) {
+    const leftPart = leftVersion.prerelease[index];
+    const rightPart = rightVersion.prerelease[index];
+    if (leftPart === undefined) {
+      return -1;
+    }
+    if (rightPart === undefined) {
+      return 1;
+    }
+    if (leftPart === rightPart) {
+      continue;
+    }
+    const leftNumber = numericVersionPart(leftPart);
+    const rightNumber = numericVersionPart(rightPart);
+    if (leftNumber !== null && rightNumber !== null) {
+      return Math.sign(leftNumber - rightNumber);
+    }
+    if (leftNumber !== null) {
+      return -1;
+    }
+    if (rightNumber !== null) {
+      return 1;
+    }
+    return leftPart.localeCompare(rightPart);
+  }
+  return 0;
 }
 
 function normalizePluginStoreCatalog(
@@ -170,13 +235,64 @@ function normalizeInstallSource(value: unknown): PluginStoreInstallSource {
     throw new Error("extension install source must be an object");
   }
   const raw = value as Partial<PluginStoreInstallSource>;
+  const assets = normalizeInstallAssets(raw.assets);
+  if (Object.keys(assets).length === 0) {
+    throw new Error("install assets are required");
+  }
   return {
     kind: requiredString(raw.kind, "install kind") as PluginStoreInstallKind,
     url: requiredString(raw.url, "install url"),
-    assetName: optionalString(raw.assetName),
+    tag: requiredString(raw.tag, "install tag"),
     manifestPath: optionalString(raw.manifestPath),
-    sha256: optionalString(raw.sha256),
+    assets,
   };
+}
+
+function normalizeInstallAssets(
+  value: unknown,
+): Record<string, PluginStoreInstallAsset> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([target, asset]) => {
+      if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
+        throw new Error(`install asset ${target} must be an object`);
+      }
+      const raw = asset as Partial<PluginStoreInstallAsset>;
+      return [
+        requiredString(target, "install target"),
+        {
+          name: requiredString(raw.name, `install asset ${target} name`),
+          sha256: requiredSha256(raw.sha256, `install asset ${target} sha256`),
+        },
+      ];
+    }),
+  );
+}
+
+function requiredSha256(value: unknown, label: string): string {
+  const digest = requiredString(value, label).replace(/^sha256:/i, "");
+  if (!/^[a-f0-9]{64}$/i.test(digest)) {
+    throw new Error(`${label} must be a 64-character SHA-256 digest`);
+  }
+  return `sha256:${digest.toLowerCase()}`;
+}
+
+function parseVersion(value: string): {
+  core: number[];
+  prerelease: string[];
+} {
+  const normalized = value.trim().replace(/^v/i, "").split("+", 1)[0] ?? "";
+  const [core = "", prerelease = ""] = normalized.split("-", 2);
+  return {
+    core: core.split(".").map((part) => numericVersionPart(part) ?? 0),
+    prerelease: prerelease ? prerelease.split(".") : [],
+  };
+}
+
+function numericVersionPart(value: string): number | null {
+  return /^\d+$/.test(value) ? Number.parseInt(value, 10) : null;
 }
 
 function stringList(value: unknown): string[] {

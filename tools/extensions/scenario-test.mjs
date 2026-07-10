@@ -137,6 +137,7 @@ function validateStaticContract({ repo, manifest, config, cargoLibName, catalogE
   assertEqual(config.extensionId, repo.extensionId, "connector.config extensionId");
   assert(catalogEntry, `catalog index is missing ${repo.extensionId}`);
   assertEqual(catalogEntry.id, repo.extensionId, "catalog id");
+  assertEqual(catalogEntry.version, manifest.version, "catalog version");
   assertSameArray(catalogEntry.engines ?? [], repo.engines ?? [], "catalog engines");
 
   assertEqual(manifest.runtime, "native", "manifest runtime");
@@ -200,7 +201,7 @@ function validatePackage({ repoDir, config, cargoLibName, catalogEntry, warnings
     warnings.push(`${message}; rerun with --strict-package to gate this`);
   }
 
-  const assetName = catalogEntry?.install?.assetName;
+  const assetName = catalogInstallAsset(catalogEntry)?.name;
   if (assetName) {
     const archivePath = resolve(repoDir, "dist", assetName);
     if (!existsSync(archivePath)) {
@@ -214,6 +215,21 @@ function validatePackage({ repoDir, config, cargoLibName, catalogEntry, warnings
       validateArchiveInstall({ archivePath, expectedLibrary, runtimeLibraries, catalogEntry });
     }
   }
+}
+
+function catalogInstallAsset(catalogEntry) {
+  return catalogEntry?.install?.assets?.[nativeTargetLabel()];
+}
+
+function nativeTargetLabel() {
+  const arch =
+    process.arch === "x64"
+      ? "x86_64"
+      : process.arch === "arm64"
+        ? "aarch64"
+        : process.arch;
+  const platform = process.platform === "darwin" ? "macos" : process.platform;
+  return `${arch}-${platform}`;
 }
 
 function validateArchiveContents({ archivePath, expectedLibrary, runtimeLibraries, catalogEntry }) {

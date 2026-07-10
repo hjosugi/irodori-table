@@ -25,12 +25,19 @@ fn memgraph_profile() -> ConnectionProfile {
 fn memgraph_release_request() -> ExtensionInstallRequest {
     ExtensionInstallRequest {
         id: "irodori.memgraph".into(),
+        version: "0.1.3".into(),
         repository: "hjosugi/irodori-extension-memgraph".into(),
         asset_name: "irodori-extension-memgraph.tar.gz".into(),
-        tag: Some("v0.1.3".into()),
-        sha256: Some(
-            "sha256:dc6deb44e1ecb1d0a4153917cc809692e37d1a5d814be4752af60649c5595232".into(),
-        ),
+        tag: "v0.1.3".into(),
+        sha256: "sha256:dc6deb44e1ecb1d0a4153917cc809692e37d1a5d814be4752af60649c5595232".into(),
+        permissions: vec![
+            "connections:read".into(),
+            "connections:write".into(),
+            "queries:run".into(),
+            "metadata:read".into(),
+            "native".into(),
+            "connectors".into(),
+        ],
     }
 }
 

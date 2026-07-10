@@ -5,6 +5,8 @@ type WorkbenchCommandHandlerDeps = {
   openPalette: () => void;
   openSettings: () => void;
   openKeymap: () => void;
+  openExtensions: () => void;
+  checkForUpdates: () => void;
   openHistory: () => void;
   openGit: () => void;
   openHelp: () => void;
@@ -66,6 +68,8 @@ export function createWorkbenchCommandHandler({
   openPalette,
   openSettings,
   openKeymap,
+  openExtensions,
+  checkForUpdates,
   openHistory,
   openGit,
   openHelp,
@@ -131,6 +135,12 @@ export function createWorkbenchCommandHandler({
         break;
       case "settings.keymap":
         openKeymap();
+        break;
+      case "settings.extensions":
+        openExtensions();
+        break;
+      case "app.update.check":
+        checkForUpdates();
         break;
       case "theme.toggle":
         toggleTheme();

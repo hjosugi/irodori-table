@@ -205,7 +205,9 @@ jobs:
 
   publish-macos:
     name: Publish signed macOS app
-    needs: release-gates
+    needs:
+      - release-gates
+      - publish-linux
     if: needs.release-gates.outputs.channel == 'stable'
     runs-on: macos-latest
     steps:
@@ -284,7 +286,9 @@ jobs:
 
   publish-windows:
     name: Publish signed Windows app
-    needs: release-gates
+    needs:
+      - release-gates
+      - publish-macos
     if: needs.release-gates.outputs.channel == 'stable'
     runs-on: windows-latest
     steps:
@@ -349,3 +353,28 @@ jobs:
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
           args: --bundles nsis,msi --config src-tauri/tauri.updater.conf.json
+
+  verify-updater:
+    name: Verify stable updater manifest
+    needs:
+      - release-gates
+      - publish-windows
+    if: needs.release-gates.outputs.channel == 'stable'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and validate latest.json
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
+        run: |
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --pattern latest.json --dir "${RUNNER_TEMP}"
+          manifest="${RUNNER_TEMP}/latest.json"
+          test "$(jq -r .version "${manifest}")" = "${RELEASE_TAG#v}"
+          jq -e '
+            (.platforms | keys | any(startswith("linux-"))) and
+            (.platforms | keys | any(startswith("darwin-"))) and
+            (.platforms | keys | any(startswith("windows-"))) and
+            ([.platforms[] | select((.signature | type == "string") and (.signature | length > 0))] | length >= 3) and
+            ([.platforms[] | select(.url | startswith("https://"))] | length == (.platforms | length))
+          ' "${manifest}"

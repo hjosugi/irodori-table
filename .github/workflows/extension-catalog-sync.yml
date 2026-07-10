@@ -1,0 +1,52 @@
+name: Extension catalog sync
+
+on:
+  repository_dispatch:
+    types:
+      - extension-released
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: extension-catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout irodori-table
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Synchronize immutable release metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node tools/extensions/sync-release-catalog.mjs --write
+          node tools/docs/build-extension-catalog.mjs
+
+      - name: Commit catalog update
+        shell: bash
+        run: |
+          if git diff --quiet -- registry/catalog/index.json registry/catalog/catalog.json apps/desktop/src/features/extensions/bundled-catalog.json; then
+            echo "Catalog is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry/catalog/index.json registry/catalog/catalog.json apps/desktop/src/features/extensions/bundled-catalog.json
+          git commit -m "chore(extensions): sync release catalog"
+          git pull --rebase origin main
+          git push origin HEAD:main

@@ -58,6 +58,18 @@ const shellCommands: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "settings.extensions",
+    title: "Open Extensions",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
+    id: "app.update.check",
+    title: "Check for Updates",
+    category: "Preferences",
+    scope: "global",
+  },
+  {
     id: "app.exit",
     title: "Exit",
     category: "File",
@@ -383,8 +395,16 @@ const commandTranslationKeys: Partial<Record<string, CommandTranslationKeys>> =
       title: "commands.settings.keymap.title",
       category: "commands.category.preferences",
     },
+    "settings.extensions": {
+      title: "commands.settings.extensions.title",
+      category: "commands.category.preferences",
+    },
     "settings.open": {
       title: "commands.settings.open.title",
+      category: "commands.category.preferences",
+    },
+    "app.update.check": {
+      title: "commands.app.update.check.title",
       category: "commands.category.preferences",
     },
     "tab.close": {
@@ -538,6 +558,8 @@ export const workspaceMenuSections: AppMenuSection[] = [
     items: [
       { commandId: "settings.open" },
       { commandId: "settings.keymap" },
+      { commandId: "settings.extensions" },
+      { commandId: "app.update.check" },
       { commandId: "theme.toggle" },
     ],
   },
@@ -607,6 +629,8 @@ export const menuBarSections: AppMenuSection[] = [
       { commandId: "migration.studio" },
       { commandId: "editor.cleanup" },
       { commandId: "settings.keymap" },
+      { commandId: "settings.extensions" },
+      { commandId: "app.update.check" },
       { commandId: "theme.toggle" },
     ],
   },

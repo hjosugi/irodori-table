@@ -42,15 +42,24 @@ pub struct InstalledExtension {
 #[serde(rename_all = "camelCase")]
 pub struct ExtensionInstallRequest {
     pub id: String,
+    /// Version advertised by the signed marketplace entry.
+    pub version: String,
     /// `owner/repo` or full https URL of the GitHub repository.
     pub repository: String,
     /// Release-asset file name for the current platform, or a template
     /// containing `{target}` (e.g. `connector-{target}.tar.gz`).
     pub asset_name: String,
-    /// Pinned tag; `latest` resolves the newest release.
-    pub tag: Option<String>,
-    /// Expected sha256 of the asset. Verified when present.
-    pub sha256: Option<String>,
+    /// Immutable release tag selected by the marketplace catalog.
+    pub tag: String,
+    /// Required SHA-256 of the exact platform asset.
+    pub sha256: String,
+    /// Permissions shown to and approved by the user before installation.
+    pub permissions: Vec<String>,
+}
+
+#[tauri::command]
+pub fn ext_target() -> String {
+    store::native_target_label()
 }
 
 #[tauri::command]

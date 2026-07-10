@@ -50,6 +50,8 @@ export interface GeneralTabProps {
   setAnimationsEnabled: (value: BooleanUpdater) => void;
   autoCommit: boolean;
   setAutoCommit: (value: BooleanUpdater) => void;
+  updateCheckOnStartup: boolean;
+  setUpdateCheckOnStartup: (value: BooleanUpdater) => void;
   formatter: SqlFormatterId;
   setFormatter: (value: SqlFormatterId) => void;
   sqlLinter: SqlLinterId;
@@ -82,6 +84,8 @@ export function GeneralTab({
   setAnimationsEnabled,
   autoCommit,
   setAutoCommit,
+  updateCheckOnStartup,
+  setUpdateCheckOnStartup,
   formatter,
   setFormatter,
   sqlLinter,
@@ -114,6 +118,30 @@ export function GeneralTab({
 
   return (
     <div className="settings-stack">
+      <label className="settings-row">
+        <span>
+          <strong>{t("settings.general.updateCheckOnStartup.title")}</strong>
+          <small>
+            {t("settings.general.updateCheckOnStartup.description")}
+          </small>
+        </span>
+        <div className="segmented-control">
+          <button
+            type="button"
+            className={updateCheckOnStartup ? "active" : undefined}
+            onClick={() => setUpdateCheckOnStartup(true)}
+          >
+            {t("common.on")}
+          </button>
+          <button
+            type="button"
+            className={!updateCheckOnStartup ? "active" : undefined}
+            onClick={() => setUpdateCheckOnStartup(false)}
+          >
+            {t("common.off")}
+          </button>
+        </div>
+      </label>
       <label className="settings-row">
         <span>
           <strong>{t("settings.general.language.title")}</strong>

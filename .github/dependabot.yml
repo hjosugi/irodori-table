@@ -42,17 +42,3 @@ updates:
       rust:
         patterns:
           - "*"
-
-  - package-ecosystem: cargo
-    directory: /apps/desktop/src-tauri
-    schedule:
-      interval: weekly
-      day: monday
-      time: "10:15"
-      timezone: Asia/Tokyo
-    commit-message:
-      prefix: deps
-    groups:
-      desktop-tauri-rust:
-        patterns:
-          - "*"

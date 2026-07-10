@@ -113,6 +113,12 @@ export function WorkbenchDialogs() {
   );
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
+  const updateCheckOnStartup = usePreferencesStore(
+    (state) => state.updateCheckOnStartup,
+  );
+  const setUpdateCheckOnStartup = usePreferencesStore(
+    (state) => state.setUpdateCheckOnStartup,
+  );
   const uiZoom = usePreferencesStore((state) => state.uiZoom);
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
@@ -198,6 +204,8 @@ export function WorkbenchDialogs() {
           setAnimationsEnabled={setAnimationsEnabled}
           autoCommit={autoCommit}
           setAutoCommit={setAutoCommit}
+          updateCheckOnStartup={updateCheckOnStartup}
+          setUpdateCheckOnStartup={setUpdateCheckOnStartup}
           uiZoom={uiZoom}
           setUiZoom={setUiZoom}
           themePreference={themes.themePreference}

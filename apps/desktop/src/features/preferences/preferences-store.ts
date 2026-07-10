@@ -40,6 +40,7 @@ const editorBackgroundOpacityStorageKey = "irodori.editor.backgroundOpacity.v1";
 const animationsEnabledStorageKey = "irodori.ui.animationsEnabled.v1";
 const customPaletteStorageKey = "irodori.ui.customPalette.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
+const updateCheckOnStartupStorageKey = "irodori.updates.checkOnStartup.v1";
 const localeStorageKey = "irodori.locale.v1";
 const uiZoomStorageKey = "irodori.ui.zoom.v1";
 const passkeyLockEnabledStorageKey = "irodori.security.passkeyLockEnabled.v1";
@@ -70,6 +71,7 @@ type PreferencesState = {
   animationsEnabled: boolean;
   customPalette: string[];
   autoCommit: boolean;
+  updateCheckOnStartup: boolean;
   uiZoom: number;
   passkeyLockEnabled: boolean;
   passkeyCredential: PasskeyCredentialRecord | null;
@@ -90,6 +92,7 @@ type PreferencesState = {
   addCustomPaletteColor: (color: string) => void;
   removeCustomPaletteColor: (color: string) => void;
   setAutoCommit: (value: ValueUpdater<boolean>) => void;
+  setUpdateCheckOnStartup: (value: ValueUpdater<boolean>) => void;
   setUiZoom: (value: ValueUpdater<number>) => void;
   setPasskeyLockEnabled: (value: ValueUpdater<boolean>) => void;
   setPasskeyCredential: (
@@ -257,6 +260,10 @@ function loadAutoCommit() {
   return readStorage(autoCommitStorageKey) !== "false";
 }
 
+function loadUpdateCheckOnStartup() {
+  return readStorage(updateCheckOnStartupStorageKey) !== "false";
+}
+
 function loadAnimationsEnabled() {
   return readStorage(animationsEnabledStorageKey) !== "false";
 }
@@ -353,6 +360,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   animationsEnabled: loadAnimationsEnabled(),
   customPalette: loadCustomPalette(),
   autoCommit: loadAutoCommit(),
+  updateCheckOnStartup: loadUpdateCheckOnStartup(),
   uiZoom: loadUiZoom(),
   passkeyLockEnabled:
     readStorage(passkeyLockEnabledStorageKey) === "true" &&
@@ -452,6 +460,10 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     })),
   setAutoCommit: (value) =>
     set((state) => ({ autoCommit: resolveValue(state.autoCommit, value) })),
+  setUpdateCheckOnStartup: (value) =>
+    set((state) => ({
+      updateCheckOnStartup: resolveValue(state.updateCheckOnStartup, value),
+    })),
   setUiZoom: (value) =>
     set((state) => ({
       uiZoom: normalizeUiZoom(resolveValue(state.uiZoom, value)),
@@ -509,6 +521,10 @@ usePreferencesStore.subscribe((state) => {
     removeStorage(customPaletteStorageKey);
   }
   writeStorage(autoCommitStorageKey, String(state.autoCommit));
+  writeStorage(
+    updateCheckOnStartupStorageKey,
+    String(state.updateCheckOnStartup),
+  );
   writeStorage(uiZoomStorageKey, String(state.uiZoom));
   writeStorage(passkeyLockEnabledStorageKey, String(state.passkeyLockEnabled));
   if (state.passkeyCredential) {

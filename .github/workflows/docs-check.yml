@@ -2,7 +2,8 @@ name: Docs check
 
 # Fast, node-only guards for the generated/curated data-source docs. Keeps the
 # DbEngine registry, knowledge/engines.json, the support-status inventory, and the
-# per-engine cheatsheets from drifting apart. No Rust build, no network, no model.
+# per-engine cheatsheets and checksum-pinned extension release metadata from drifting apart.
+# No Rust build or model is used; release checks read GitHub's public API.
 
 on:
   pull_request:
@@ -14,6 +15,9 @@ on:
       - knowledge/cheatsheets/**
       - registry/data-source-support-status.md
       - registry/cheatsheets/**
+      - registry/catalog/**
+      - apps/desktop/src/features/extensions/bundled-catalog.json
+      - tools/extensions/sync-release-catalog.mjs
       - tools/docs/**
       - tools/knowledge/cheatsheet.mjs
       - .github/workflows/docs-check.yml
@@ -41,6 +45,13 @@ jobs:
 
       - name: Support-status registry guard
         run: node tools/docs/support-status.mjs
+
+      - name: Extension release catalog guard
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node tools/extensions/sync-release-catalog.mjs --check
+          node tools/docs/build-extension-catalog.mjs --check
 
       - name: DB feature-sample catalog guard
         run: node tools/docs/db-feature-samples.mjs

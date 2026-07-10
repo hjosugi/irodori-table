@@ -8,6 +8,8 @@ function createHandler(calls: string[]) {
     openPalette: () => calls.push("palette"),
     openSettings: () => calls.push("settings"),
     openKeymap: () => calls.push("keymap"),
+    openExtensions: () => calls.push("extensions"),
+    checkForUpdates: () => calls.push("updates"),
     openHistory: () => calls.push("history"),
     openGit: () => calls.push("git"),
     openHelp: () => calls.push("help"),
@@ -98,6 +100,8 @@ describe("createWorkbenchCommandHandler", () => {
     const runCommand = createHandler(calls);
 
     runCommand("settings.keymap");
+    runCommand("settings.extensions");
+    runCommand("app.update.check");
     runCommand("theme.toggle");
     runCommand("view.sidebar.toggle");
     runCommand("view.completion.toggle");
@@ -116,6 +120,8 @@ describe("createWorkbenchCommandHandler", () => {
 
     expect(calls).toEqual([
       "keymap",
+      "extensions",
+      "updates",
       "theme",
       "sidebar",
       "completion",

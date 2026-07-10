@@ -17,6 +17,7 @@ import { WorkbenchRoot } from "@/app/WorkbenchRoot";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { usePreferencesStore } from "@/features/preferences";
 import { useSchemaDesignerStore } from "@/features/schema-designer";
+import { useStartupUpdateCheck } from "@/features/updater/use-startup-update-check";
 import { createTranslator } from "@/i18n";
 import { cssVariables } from "@/theme";
 
@@ -58,6 +59,15 @@ function useWorkbench() {
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = useMemo(() => createTranslator(locale), [locale]);
   const uiZoom = usePreferencesStore((state) => state.uiZoom);
+  const updateCheckOnStartup = usePreferencesStore(
+    (state) => state.updateCheckOnStartup,
+  );
+
+  useStartupUpdateCheck({
+    enabled: updateCheckOnStartup,
+    showActionNotice,
+    t,
+  });
 
   // Domains with no dependencies on other controllers.
   const themes = useThemeManager();

@@ -151,16 +151,49 @@ function optionalInstallSource(value) {
   const install = {
     kind: requiredString(value.kind, "install kind"),
     url: requiredString(value.url, "install url"),
+    tag: requiredString(value.tag, "install tag"),
   };
-  const assetName = optionalString(value.assetName);
   const manifestPath = optionalString(value.manifestPath);
-  const sha256 = optionalString(value.sha256);
+  const assets = normalizedInstallAssets(value.assets);
+  if (Object.keys(assets).length === 0) {
+    throw new Error("install assets are required");
+  }
   return {
     ...install,
-    ...(assetName ? { assetName } : {}),
     ...(manifestPath ? { manifestPath } : {}),
-    ...(sha256 ? { sha256 } : {}),
+    assets,
   };
+}
+
+function normalizedInstallAssets(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([target, asset]) => {
+      if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
+        throw new Error(`install asset ${target} must be an object`);
+      }
+      return [
+        requiredString(target, "install target"),
+        {
+          name: requiredString(asset.name, `install asset ${target} name`),
+          sha256: requiredSha256(
+            asset.sha256,
+            `install asset ${target} sha256`,
+          ),
+        },
+      ];
+    }),
+  );
+}
+
+function requiredSha256(value, label) {
+  const digest = requiredString(value, label).replace(/^sha256:/i, "");
+  if (!/^[a-f0-9]{64}$/i.test(digest)) {
+    throw new Error(`${label} must be a 64-character SHA-256 digest`);
+  }
+  return `sha256:${digest.toLowerCase()}`;
 }
 
 function arrayOrEmpty(value) {

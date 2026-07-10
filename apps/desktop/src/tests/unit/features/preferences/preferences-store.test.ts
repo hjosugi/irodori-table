@@ -7,6 +7,7 @@ let normalizeUiZoom: (value: unknown) => number;
 
 const themeStorageKey = "irodori.theme.v1";
 const customPaletteStorageKey = "irodori.ui.customPalette.v1";
+const updateCheckOnStartupStorageKey = "irodori.updates.checkOnStartup.v1";
 
 function installLocalStorage(initialValues = new Map<string, string>()) {
   const values = new Map(initialValues);
@@ -201,5 +202,25 @@ describe("custom palette", () => {
     const store = await loadPreferencesStore();
 
     expect(store.getState().customPalette).toEqual(["#aabbcc"]);
+  });
+});
+
+describe("update preferences", () => {
+  it("checks for signed updates on startup by default", async () => {
+    installLocalStorage();
+    const store = await loadPreferencesStore();
+
+    expect(store.getState().updateCheckOnStartup).toBe(true);
+  });
+
+  it("loads and persists the startup update check toggle", async () => {
+    const values = installLocalStorage(
+      new Map([[updateCheckOnStartupStorageKey, "false"]]),
+    );
+    const store = await loadPreferencesStore();
+
+    expect(store.getState().updateCheckOnStartup).toBe(false);
+    store.getState().setUpdateCheckOnStartup(true);
+    expect(values.get(updateCheckOnStartupStorageKey)).toBe("true");
   });
 });

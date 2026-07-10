@@ -268,6 +268,10 @@ supportedCalls: Array<string>, };
 
 export type ExtensionInstallRequest = { id: string,
 /**
+ * Version advertised by the signed marketplace entry.
+ */
+version: string,
+/**
  * `owner/repo` or full https URL of the GitHub repository.
  */
 repository: string,
@@ -277,13 +281,17 @@ repository: string,
  */
 assetName: string,
 /**
- * Pinned tag; `latest` resolves the newest release.
+ * Immutable release tag selected by the marketplace catalog.
  */
-tag: string | null,
+tag: string,
 /**
- * Expected sha256 of the asset. Verified when present.
+ * Required SHA-256 of the exact platform asset.
  */
-sha256: string | null, };
+sha256: string,
+/**
+ * Permissions shown to and approved by the user before installation.
+ */
+permissions: Array<string>, };
 
 export type SchemaSearchHit = {
 /**
@@ -411,6 +419,10 @@ export function dbInvalidateCache(connectionId: string, schema?: string, object?
 
 export function extList(): Promise<Array<InstalledExtension>> {
   return invoke<Array<InstalledExtension>>("ext_list");
+}
+
+export function extTarget(): Promise<string> {
+  return invoke<string>("ext_target");
 }
 
 export function extInstall(request: ExtensionInstallRequest): Promise<InstalledExtension> {

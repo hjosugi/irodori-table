@@ -4,6 +4,7 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use flate2::read::GzDecoder;
+use futures_util::StreamExt;
 use irodori_error::{IrodoriError, Result as IrodoriResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,6 +19,7 @@ use super::{ExtensionInstallRequest, InstalledExtension};
 const REGISTRY_FILE: &str = "installed.json";
 const EXTENSIONS_DIR: &str = "extensions";
 const MANIFEST_FILE: &str = "irodori.extension.json";
+const MAX_ARCHIVE_BYTES: usize = 512 * 1024 * 1024;
 
 #[derive(Default)]
 pub struct ExtensionsState {
@@ -32,6 +34,8 @@ struct ManifestFile {
     version: String,
     runtime: String,
     entry: String,
+    #[serde(default)]
+    permissions: Vec<String>,
     contributes: ManifestContributions,
 }
 
@@ -72,15 +76,21 @@ pub(crate) async fn install(
     let _guard = state.install_lock.lock().await;
     let bytes = download_release_asset(&request).await?;
     let digest = sha256_hex(&bytes);
-    if let Some(expected) = request.sha256.as_deref().map(normalize_sha256) {
-        if digest != expected {
-            return Err(IrodoriError::validation(format!(
-                "extension archive sha256 mismatch: expected {expected}, got {digest}"
-            )));
-        }
+    let expected = validated_sha256(&request.sha256)?;
+    if digest != expected {
+        return Err(IrodoriError::validation(format!(
+            "extension archive sha256 mismatch: expected {expected}, got {digest}"
+        )));
     }
 
-    install_archive(app, &request.id, bytes, digest)
+    install_archive(
+        app,
+        &request.id,
+        &request.version,
+        &request.permissions,
+        bytes,
+        digest,
+    )
 }
 
 pub(crate) fn uninstall(
@@ -142,6 +152,8 @@ pub(crate) fn installed_by_id(
 fn install_archive(
     app: &AppHandle,
     requested_id: &str,
+    requested_version: &str,
+    approved_permissions: &[String],
     bytes: Vec<u8>,
     sha256: String,
 ) -> IrodoriResult<InstalledExtension> {
@@ -164,7 +176,12 @@ fn install_archive(
         let manifest: ManifestFile = serde_json::from_str(&manifest_json).map_err(|error| {
             IrodoriError::validation(format!("invalid extension manifest: {error}"))
         })?;
-        validate_manifest(requested_id, &manifest)?;
+        validate_manifest(
+            requested_id,
+            requested_version,
+            approved_permissions,
+            &manifest,
+        )?;
 
         let library_path = find_native_library(&staging, &manifest.entry)?;
         let library_rel = library_path
@@ -233,12 +250,34 @@ fn install_archive(
     install_result
 }
 
-fn validate_manifest(requested_id: &str, manifest: &ManifestFile) -> IrodoriResult<()> {
+fn validate_manifest(
+    requested_id: &str,
+    requested_version: &str,
+    approved_permissions: &[String],
+    manifest: &ManifestFile,
+) -> IrodoriResult<()> {
     if manifest.id != requested_id {
         return Err(IrodoriError::validation(format!(
             "extension id mismatch: requested {requested_id}, archive contains {}",
             manifest.id
         )));
+    }
+    if manifest.version != requested_version {
+        return Err(IrodoriError::validation(format!(
+            "extension version mismatch: catalog {requested_version}, archive contains {}",
+            manifest.version
+        )));
+    }
+    let mut approved_permissions = approved_permissions.to_vec();
+    let mut manifest_permissions = manifest.permissions.clone();
+    approved_permissions.sort();
+    approved_permissions.dedup();
+    manifest_permissions.sort();
+    manifest_permissions.dedup();
+    if manifest_permissions != approved_permissions {
+        return Err(IrodoriError::validation(
+            "extension permissions do not match the permissions approved by the user",
+        ));
     }
     if manifest.runtime != "native" {
         return Err(IrodoriError::validation(format!(
@@ -277,10 +316,30 @@ async fn download_release_asset(request: &ExtensionInstallRequest) -> IrodoriRes
             "failed to download extension archive: HTTP {status} ({url})"
         )));
     }
-    let bytes = response.bytes().await.map_err(|error| {
-        IrodoriError::transport(format!("failed to read extension archive: {error}"))
-    })?;
-    Ok(bytes.to_vec())
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_ARCHIVE_BYTES as u64)
+    {
+        return Err(IrodoriError::validation(format!(
+            "extension archive exceeds {} bytes",
+            MAX_ARCHIVE_BYTES
+        )));
+    }
+    let mut bytes = Vec::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| {
+            IrodoriError::transport(format!("failed to read extension archive: {error}"))
+        })?;
+        if bytes.len().saturating_add(chunk.len()) > MAX_ARCHIVE_BYTES {
+            return Err(IrodoriError::validation(format!(
+                "extension archive exceeds {} bytes",
+                MAX_ARCHIVE_BYTES
+            )));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }
 
 fn github_release_asset_url(request: &ExtensionInstallRequest) -> IrodoriResult<String> {
@@ -288,16 +347,18 @@ fn github_release_asset_url(request: &ExtensionInstallRequest) -> IrodoriResult<
     let asset = request
         .asset_name
         .replace("{target}", native_target_label().as_str());
-    let tag = request.tag.as_deref().unwrap_or("latest");
-    if tag == "latest" {
-        Ok(format!(
-            "https://github.com/{repo}/releases/latest/download/{asset}"
-        ))
-    } else {
-        Ok(format!(
-            "https://github.com/{repo}/releases/download/{tag}/{asset}"
-        ))
+    let tag = request.tag.trim();
+    if !is_safe_release_component(tag) {
+        return Err(IrodoriError::validation("extension release tag is invalid"));
     }
+    if !is_safe_release_component(&asset) {
+        return Err(IrodoriError::validation(
+            "extension release asset name is invalid",
+        ));
+    }
+    Ok(format!(
+        "https://github.com/{repo}/releases/download/{tag}/{asset}"
+    ))
 }
 
 fn normalize_github_repo(repository: &str) -> IrodoriResult<String> {
@@ -308,7 +369,7 @@ fn normalize_github_repo(repository: &str) -> IrodoriResult<String> {
         .unwrap_or(repository)
         .trim_matches('/');
     let parts: Vec<&str> = repository.split('/').collect();
-    if parts.len() == 2 && parts.iter().all(|part| !part.trim().is_empty()) {
+    if parts.len() == 2 && parts.iter().all(|part| is_safe_release_component(part)) {
         return Ok(format!("{}/{}", parts[0], parts[1]));
     }
     Err(IrodoriError::validation(format!(
@@ -359,13 +420,29 @@ fn find_native_library(root: &Path, entry: &str) -> IrodoriResult<PathBuf> {
     };
     let mut matches = Vec::new();
     collect_native_libraries(search_root, &mut matches).map_err(to_error)?;
-    matches.sort();
+    matches.sort_by(|left, right| {
+        native_library_priority(left)
+            .cmp(&native_library_priority(right))
+            .then_with(|| left.cmp(right))
+    });
     matches.into_iter().next().ok_or_else(|| {
         IrodoriError::validation(format!(
             "extension archive does not contain a native {} library",
             native_library_extension()
         ))
     })
+}
+
+fn native_library_priority(path: &Path) -> u8 {
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
+    if name.starts_with("libirodori_extension_") || name.starts_with("irodori_extension_") {
+        0
+    } else {
+        1
+    }
 }
 
 fn collect_native_libraries(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
@@ -445,12 +522,28 @@ fn sha256_hex(bytes: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-fn normalize_sha256(value: &str) -> String {
-    value
+fn validated_sha256(value: &str) -> IrodoriResult<String> {
+    let digest = value
         .trim()
         .strip_prefix("sha256:")
         .unwrap_or(value.trim())
-        .to_ascii_lowercase()
+        .to_ascii_lowercase();
+    if digest.len() != 64 || !digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(IrodoriError::validation(
+            "extension sha256 must be a 64-character hexadecimal digest",
+        ));
+    }
+    Ok(digest)
+}
+
+fn is_safe_release_component(value: &str) -> bool {
+    !value.is_empty()
+        && value != "."
+        && value != ".."
+        && !value.contains("..")
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b'+'))
 }
 
 fn safe_component(value: &str) -> String {
@@ -481,7 +574,7 @@ fn native_library_extension() -> &'static str {
     }
 }
 
-fn native_target_label() -> String {
+pub(super) fn native_target_label() -> String {
     format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
 }
 
@@ -515,26 +608,56 @@ mod tests {
     }
 
     #[test]
-    fn github_release_url_resolves_latest_and_tags() {
+    fn github_release_url_requires_pinned_tag() {
         let request = ExtensionInstallRequest {
             id: "irodori.memgraph".into(),
+            version: "0.1.3".into(),
             repository: "https://github.com/hjosugi/irodori-extension-memgraph".into(),
             asset_name: "irodori-extension-memgraph.tar.gz".into(),
-            tag: None,
-            sha256: None,
+            tag: "v0.1.3".into(),
+            sha256: "dc6deb44e1ecb1d0a4153917cc809692e37d1a5d814be4752af60649c5595232".into(),
+            permissions: vec!["native".into()],
         };
         assert_eq!(
             github_release_asset_url(&request).unwrap(),
-            "https://github.com/hjosugi/irodori-extension-memgraph/releases/latest/download/irodori-extension-memgraph.tar.gz"
+            "https://github.com/hjosugi/irodori-extension-memgraph/releases/download/v0.1.3/irodori-extension-memgraph.tar.gz"
         );
 
-        let tagged = ExtensionInstallRequest {
-            tag: Some("v0.1.2".into()),
+        let invalid = ExtensionInstallRequest {
+            tag: "../latest".into(),
+            ..request.clone()
+        };
+        assert!(github_release_asset_url(&invalid).is_err());
+
+        let invalid_asset = ExtensionInstallRequest {
+            asset_name: "archive.tar.gz?download=1".into(),
             ..request
         };
-        assert_eq!(
-            github_release_asset_url(&tagged).unwrap(),
-            "https://github.com/hjosugi/irodori-extension-memgraph/releases/download/v0.1.2/irodori-extension-memgraph.tar.gz"
+        assert!(github_release_asset_url(&invalid_asset).is_err());
+    }
+
+    #[test]
+    fn extension_library_is_preferred_over_bundled_dependency() {
+        assert!(
+            native_library_priority(Path::new("libirodori_extension_duckdb.so"))
+                < native_library_priority(Path::new("libduckdb.so"))
         );
+        assert!(
+            native_library_priority(Path::new("irodori_extension_duckdb.dll"))
+                < native_library_priority(Path::new("duckdb.dll"))
+        );
+    }
+
+    #[test]
+    fn sha256_is_required_and_normalized() {
+        assert_eq!(
+            validated_sha256(
+                "sha256:DC6DEB44E1ECB1D0A4153917CC809692E37D1A5D814BE4752AF60649C5595232"
+            )
+            .unwrap(),
+            "dc6deb44e1ecb1d0a4153917cc809692e37d1a5d814be4752af60649c5595232"
+        );
+        assert!(validated_sha256("").is_err());
+        assert!(validated_sha256("abc").is_err());
     }
 }
