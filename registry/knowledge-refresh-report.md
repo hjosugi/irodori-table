@@ -1,6 +1,6 @@
 # Knowledge Refresh Report
 
-Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
+Run started 2026-07-11T08:30:10.878Z, finished 2026-07-11T08:30:21.046Z (UTC).
 
 | Metric | Count |
 | --- | ---: |
@@ -8,14 +8,13 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | Changed (new snapshot) | 90 |
 | Unchanged | 0 |
 | Failed | 2 |
-| New facts | 430 |
+| New facts | 455 |
 
 ## Changed sources (90)
 
 | Source | Product | Latest title |
 | --- | --- | --- |
 | amazon-s3-docs | Amazon S3 | What is Amazon S3? |
-| arangodb-docs | ArangoDB | Just a moment... |
 | athena-docs | Amazon Athena | What is Amazon Athena? |
 | azure-blob-docs | Azure Blob Storage | Introduction to Azure Blob Storage |
 | bigquery-google-sql | BigQuery | Query syntax Stay organized with collections Save and categorize content based on your preferences. |
@@ -26,7 +25,7 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | cassandra-release-notes | Apache Cassandra | Downloading Cassandra |
 | clickhouse-changelog | ClickHouse | Changelog 2026 |
 | clickhouse-docs | ClickHouse | ClickHouse Docs \| ClickHouse Docs |
-| cloud-spanner-docs | Cloud Spanner | Spanner 說明文件 |
+| cloud-spanner-docs | Cloud Spanner | Spanner documentation |
 | cloud-spanner-release-notes | Cloud Spanner | Spanner release notes Stay organized with collections Save and categorize content based on your preferences. |
 | cockroachdb-release-notes | CockroachDB | CockroachDB Releases Overview |
 | couchbase-docs | Couchbase | For AI agents: |
@@ -38,13 +37,13 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | dbvisualizer-features | DbVisualizer | Features |
 | delta-lake-docs | Delta Lake | Welcome to the Delta Lake documentation |
 | duckdb-docs-stable | DuckDB | Redirecting&hellip; |
-| duckdb-release-notes | DuckDB | Page not found (404) |
+| duckdb-release-notes | DuckDB | Search code, repositories, users, issues, pull requests... |
 | dynamodb-docs | DynamoDB | What is Amazon DynamoDB? |
 | dynamodb-release-notes | DynamoDB | Document history for DynamoDB |
 | elasticsearch-docs | Elasticsearch | Elasticsearch documentation |
 | elasticsearch-release-notes | Elasticsearch | Elasticsearch release notes |
-| firebird-docs | Firebird | Just a moment... |
-| firebird-release-notes | Firebird | Just a moment... |
+| firebird-docs | Firebird | Firebird: Firebird RDBMS |
+| firebird-release-notes | Firebird | Firebird: Release Notes |
 | gcs-docs | Google Cloud Storage | Cloud Storage documentation |
 | github-copilot-mcp | GitHub Copilot | About Model Context Protocol (MCP) |
 | h2-docs | H2 | H2 Database Engine |
@@ -59,6 +58,7 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | mariadb-docs | MariaDB | MariaDB Server Documentation |
 | mariadb-release-notes | MariaDB | MariaDB Release Notes |
 | memgraph-docs | Memgraph | Memgraph Documentation |
+| milvus-docs | Milvus | Welcome to Milvus Docs! |
 | modelcontextprotocol-spec-2025-06-18 | Model Context Protocol | Specification |
 | mongodb-compass | MongoDB Compass | MongoDB Compass: The free GUI tool for data exploration. |
 | mongodb-manual | MongoDB | What is MongoDB? |
@@ -78,7 +78,6 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | pinecone-docs | Pinecone | Pinecone documentation |
 | postgres-docs-current | PostgreSQL | PostgreSQL 18.4 Documentation |
 | postgres-release-notes-current | PostgreSQL | PostgreSQL: Documentation: 18: Appendix E. Release Notes |
-| presto-docs | Presto | Just a moment... |
 | qdrant-docs | Qdrant | Qdrant Documentation |
 | questdb-docs | QuestDB | Introduction |
 | redis-commands | Redis | Commands |
@@ -104,18 +103,20 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | typeshare | Typeshare | Search code, repositories, users, issues, pull requests... |
 | yugabytedb-docs | YugabyteDB | YugabyteDB Documentation |
 | yugabytedb-release-notes | YugabyteDB | Releases |
+| yugabytedb-ysql-api | YugabyteDB | YSQL API reference |
 
 ## Failed sources (2)
 
 | Source | Product | Error |
 | --- | --- | --- |
-| milvus-docs | Milvus | fetch failed |
-| yugabytedb-ysql-api | YugabyteDB | fetch failed |
+| arangodb-docs | ArangoDB | HTTP 403 |
+| presto-docs | Presto | HTTP 403 |
 
-## New facts by product (430)
+## New facts by product (455)
 
 | Product | New facts |
 | --- | ---: |
+| YugabyteDB | 16 |
 | BigQuery | 12 |
 | Bigtable | 12 |
 | Cloud Spanner | 12 |
@@ -125,17 +126,16 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | InfluxDB | 12 |
 | Neo4j | 12 |
 | OpenSearch | 12 |
+| PostgreSQL | 12 |
 | Redshift | 12 |
 | SQLite | 12 |
 | Snowflake | 12 |
-| PostgreSQL | 11 |
 | MongoDB | 10 |
 | MySQL | 10 |
 | SQL Server | 10 |
-| YugabyteDB | 10 |
+| MariaDB | 9 |
 | ClickHouse | 8 |
 | Apache Cassandra | 7 |
-| MariaDB | 7 |
 | Redis | 7 |
 | Trino | 7 |
 | AWS S3 Tables | 6 |
@@ -148,10 +148,12 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | Databricks | 6 |
 | DbGate | 6 |
 | DbVisualizer | 6 |
+| DuckDB | 6 |
 | GitHub Copilot | 6 |
 | Google Cloud Storage | 6 |
 | Irodori Extensions | 6 |
 | Memgraph | 6 |
+| Milvus | 6 |
 | Model Context Protocol | 6 |
 | MongoDB Compass | 6 |
 | MotherDuck | 6 |
@@ -171,8 +173,9 @@ Run started 2026-07-11T08:01:15.937Z, finished 2026-07-11T08:01:30.553Z (UTC).
 | Oracle | 5 |
 | Pinecone | 5 |
 | Delta Lake | 4 |
+| Firebird | 3 |
+| TiDB | 3 |
 | Apache Hudi | 2 |
-| TiDB | 2 |
 | Apache IoTDB | 1 |
 | H2 | 1 |
 | QuestDB | 1 |
