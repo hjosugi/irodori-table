@@ -1,3 +1,6 @@
+<!-- i18n: language-switcher -->
+[English](README.md) | [日本語](README.ja.md)
+
 # Irodori Table
 
 Fast desktop database client for querying, browsing, editing, diagramming, and

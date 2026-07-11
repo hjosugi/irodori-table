@@ -1,3 +1,6 @@
+<!-- i18n: language-switcher -->
+[English](README.md) | [日本語](README.ja.md)
+
 # Desktop Tests
 
 This tree keeps test code out of production feature folders.

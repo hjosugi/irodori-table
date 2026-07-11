@@ -1,3 +1,6 @@
+<!-- i18n: language-switcher -->
+[English](README.md) | [日本語](README.ja.md)
+
 # Hot Surface Rendering Spike
 
 This local spike compares the repeated work on Irodori's editor and result-grid

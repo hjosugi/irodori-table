@@ -1,3 +1,6 @@
+<!-- i18n: language-switcher -->
+[English](README.md) | [日本語](README.ja.md)
+
 # Registry
 
 Generated or app-consumed reference data for Irodori Table.
