@@ -36,7 +36,7 @@ irodori-migration.workspace = true
 # external/subscription models work without the heavy embedded `llama` build.
 irodori-generate = { workspace = true, features = ["http"] }
 irodori-knowledge.workspace = true
-sql-dialect-fmt-formatter = { git = "https://github.com/hjosugi/sql-dialect-fmt", tag = "v1.0.0" }
+sql-dialect-fmt-formatter = { git = "https://github.com/hjosugi/sql-dialect-fmt", tag = "v1.11.0" }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util"] }

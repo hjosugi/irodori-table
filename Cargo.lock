@@ -1857,7 +1857,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2079,7 +2079,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3062,7 +3062,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -4094,9 +4094,9 @@ dependencies = [
 
 [[package]]
 name = "mongocrypt"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8da0cd419a51a5fb44819e290fbdb0665a54f21dead8923446a799c7f4d26ad9"
+checksum = "8426a875ded61430d4a811dbfda7633b6b8af0225c547fc6c28b8b0aa7d79a13"
 dependencies = [
  "bson",
  "mongocrypt-sys",
@@ -4106,15 +4106,15 @@ dependencies = [
 
 [[package]]
 name = "mongocrypt-sys"
-version = "0.1.5+1.15.1"
+version = "0.1.6+1.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "224484c5d09285a7b8cb0a0c117e847ebd14cb6e4470ecf68cdb89c503b0edb9"
+checksum = "851fac73f7fe22f6a3ab87f720ce509cae7c9fd08e7dd27866cc232dee07ccf4"
 
 [[package]]
 name = "mongodb"
-version = "3.7.0"
+version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276ba0cd571553d1f6936c6f180964776ece6ab7507dc8765f8a9c9c49d8cd00"
+checksum = "b814038f367d212f55de0a630cb35102a9b8ca23785a86955d62c0087c93846d"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.13.0",
@@ -4128,12 +4128,12 @@ dependencies = [
  "hickory-net",
  "hickory-proto",
  "hickory-resolver",
- "hmac 0.12.1",
+ "hmac 0.13.0",
  "macro_magic",
- "md-5 0.10.6",
+ "md-5 0.11.0",
  "mongocrypt",
  "mongodb-internal-macros",
- "pbkdf2",
+ "pbkdf2 0.13.0",
  "percent-encoding",
  "rand 0.9.4",
  "rustc_version_runtime",
@@ -4141,8 +4141,8 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_with",
- "sha1 0.10.6",
- "sha2 0.10.9",
+ "sha1 0.11.0",
+ "sha2 0.11.0",
  "socket2 0.6.4",
  "stringprep",
  "strsim",
@@ -4158,9 +4158,9 @@ dependencies = [
 
 [[package]]
 name = "mongodb-internal-macros"
-version = "3.7.0"
+version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99ceb1a9a1018e470077ec94cf3a8c2d0e6da542b2c05ea95a59a0a627147375"
+checksum = "f736d2fbc56e0011a341fbb9172bd822fda75c5f93b82fae1c7aab1e2613c810"
 dependencies = [
  "macro_magic",
  "proc-macro2",
@@ -4693,7 +4693,7 @@ dependencies = [
  "hostname",
  "indexmap 2.14.0",
  "md-5 0.10.6",
- "pbkdf2",
+ "pbkdf2 0.12.2",
  "pkcs8",
  "rand 0.8.6",
  "rustls",
@@ -4855,6 +4855,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pbkdf2"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "112d82ceb8c5bf524d9af484d4e4970c9fd5a0cc15ba14ad93dccd28873b0629"
+dependencies = [
+ "digest 0.11.3",
+]
+
+[[package]]
 name = "pem-rfc7468"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4986,7 +4995,7 @@ dependencies = [
  "aes",
  "cbc",
  "der",
- "pbkdf2",
+ "pbkdf2 0.12.2",
  "scrypt",
  "sha2 0.10.9",
  "spki",
@@ -5242,7 +5251,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.2",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -5280,9 +5289,9 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -5613,13 +5622,12 @@ dependencies = [
 
 [[package]]
 name = "rowan"
-version = "0.15.19"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2441aaccb50f4267d4f0f58b21e0138e96a449f361ed57a2673a83c9bca0772"
+checksum = "417a3a9f582e349834051b8a10c8d71ca88da4211e4093528e36b9845f6b5f21"
 dependencies = [
  "countme",
  "hashbrown 0.14.5",
- "memoffset 0.9.1",
  "rustc-hash 1.1.0",
  "text-size",
 ]
@@ -5912,7 +5920,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5993,7 +6001,7 @@ dependencies = [
  "security-framework 3.7.0",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6160,7 +6168,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0516a385866c09368f0b5bcd1caff3366aace790fcd46e2bb032697bb172fd1f"
 dependencies = [
- "pbkdf2",
+ "pbkdf2 0.12.2",
  "salsa20",
  "sha2 0.10.9",
 ]
@@ -6728,8 +6736,8 @@ dependencies = [
 
 [[package]]
 name = "sql-dialect-fmt-formatter"
-version = "1.0.0"
-source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.0.0#42c6f9b76871ae6fa9386a407b317c8cd379e0ef"
+version = "1.11.0"
+source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.11.0#0ddb878b274e0a1cb3ee9167b1c72cc9564902a4"
 dependencies = [
  "biome_console",
  "biome_deserialize",
@@ -6752,33 +6760,42 @@ dependencies = [
  "sql-dialect-fmt-lexer",
  "sql-dialect-fmt-parser",
  "sql-dialect-fmt-syntax",
+ "sql-dialect-fmt-text",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
 name = "sql-dialect-fmt-lexer"
-version = "1.0.0"
-source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.0.0#42c6f9b76871ae6fa9386a407b317c8cd379e0ef"
+version = "1.11.0"
+source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.11.0#0ddb878b274e0a1cb3ee9167b1c72cc9564902a4"
 dependencies = [
  "sql-dialect-fmt-syntax",
+ "sql-dialect-fmt-text",
 ]
 
 [[package]]
 name = "sql-dialect-fmt-parser"
-version = "1.0.0"
-source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.0.0#42c6f9b76871ae6fa9386a407b317c8cd379e0ef"
+version = "1.11.0"
+source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.11.0#0ddb878b274e0a1cb3ee9167b1c72cc9564902a4"
 dependencies = [
  "rowan",
  "sql-dialect-fmt-lexer",
  "sql-dialect-fmt-syntax",
+ "sql-dialect-fmt-text",
 ]
 
 [[package]]
 name = "sql-dialect-fmt-syntax"
-version = "1.0.0"
-source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.0.0#42c6f9b76871ae6fa9386a407b317c8cd379e0ef"
+version = "1.11.0"
+source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.11.0#0ddb878b274e0a1cb3ee9167b1c72cc9564902a4"
 dependencies = [
  "rowan",
 ]
+
+[[package]]
+name = "sql-dialect-fmt-text"
+version = "1.11.0"
+source = "git+https://github.com/hjosugi/sql-dialect-fmt?tag=v1.11.0#0ddb878b274e0a1cb3ee9167b1c72cc9564902a4"
 
 [[package]]
 name = "sqlx"
@@ -7548,7 +7565,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8607,7 +8624,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
