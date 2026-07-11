@@ -62,6 +62,9 @@ jobs:
       - name: Regenerate cheatsheets
         run: node tools/knowledge/cheatsheet.mjs
 
+      - name: Regenerate knowledge pack
+        run: node tools/knowledge/pack.mjs --from-db
+
       - name: Verify registry guards still pass
         run: node tools/docs/support-status.mjs
 
@@ -82,4 +85,7 @@ jobs:
           add-paths: |
             registry/cheatsheets/**
             registry/knowledge-refresh-report.md
+            registry/knowledge-pack.json
             knowledge/sources.json
+            knowledge/pack-facts.json
+            apps/desktop/src/features/knowledge/bundled-knowledge-pack.json
