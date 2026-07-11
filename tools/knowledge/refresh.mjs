@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -9,6 +9,7 @@ await main(process.argv.slice(2));
 async function main(argv) {
   const args = parseArgs(argv);
   const paths = resolveKnowledgePaths(args);
+  const startedAt = new Date().toISOString();
 
   mkdirSync(dirname(paths.dbPath), { recursive: true });
 
@@ -23,11 +24,18 @@ async function main(argv) {
     process.exit(0);
   }
 
-  await refreshSources(db, selectSourcesForRefresh(sources, args), {
+  const results = await refreshSources(db, selectSourcesForRefresh(sources, args), {
     concurrency: parseIntegerOption(args.concurrency, 6),
     force: Boolean(args.force),
     timeoutMs: parseIntegerOption(args["timeout-ms"], 20_000)
   });
+
+  if (args["report-json"]) {
+    writeFileSync(
+      resolve(args["report-json"]),
+      JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), results }, null, 2)
+    );
+  }
 
   printSummary(db, paths.dbPath);
 }
@@ -53,21 +61,25 @@ function selectSourcesForRefresh(sources, args) {
 
 async function refreshSources(database, sources, options) {
   const concurrency = Math.max(1, Math.min(options.concurrency, sources.length || 1));
+  const results = [];
   let cursor = 0;
   const workers = Array.from({ length: concurrency }, async () => {
     while (cursor < sources.length) {
       const source = sources[cursor];
       cursor += 1;
-      const line = await refreshSource(database, source, options);
-      console.log(line);
+      const result = await refreshSource(database, source, options);
+      console.log(result.line);
+      results.push(result);
     }
   });
   await Promise.all(workers);
+  return results;
 }
 
 async function refreshSource(database, source, options) {
   const checkedAt = new Date().toISOString();
   const prefix = `fetch ${source.id} ... `;
+  const base = { id: source.id, name: source.name, product: source.product };
 
   try {
     const controller = new AbortController();
@@ -122,18 +134,18 @@ async function refreshSource(database, source, options) {
           where id = ?
         `)
         .run(checkedAt, checkedAt, contentHash, source.id);
-      return `${prefix}stored ${response.status}`;
+      return { ...base, outcome: "stored", httpStatus: response.status, title, line: `${prefix}stored ${response.status}` };
     } else {
       database
         .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
         .run(checkedAt, source.id);
-      return `${prefix}unchanged ${response.status}`;
+      return { ...base, outcome: "unchanged", httpStatus: response.status, line: `${prefix}unchanged ${response.status}` };
     }
   } catch (error) {
     database
       .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
       .run(checkedAt, source.id);
-    return `${prefix}failed: ${error.message}`;
+    return { ...base, outcome: "failed", error: error.message, line: `${prefix}failed: ${error.message}` };
   }
 }
 
@@ -166,7 +178,7 @@ function upsertSources(database, items) {
         item.sourceType,
         item.url,
         item.official === false ? 0 : 1,
-        item.cadence ?? "weekly",
+        item.cadence ?? "monthly",
         item.enabled === false ? 0 : 1,
         item.notes ?? ""
       );

@@ -1,9 +1,10 @@
 name: Knowledge refresh
 
-# Scheduled "COLLECT" pipeline: pull official DB docs into the knowledge base,
-# extract facts, (optionally) run the ML cheatsheet extractor, regenerate the
-# cheatsheets, and open a PR with whatever changed. The knowledge SQLite DB itself
-# is gitignored and rebuilt each run; only generated docs land in the PR.
+# Scheduled "COLLECT" pipeline: once a month, pull ALL enabled official-doc
+# sources into the knowledge base, extract facts, (optionally) run the ML
+# cheatsheet extractor, regenerate the cheatsheets, and open one consolidated
+# PR with a run digest as its body. The knowledge SQLite DB itself is
+# gitignored and rebuilt each run; only generated docs land in the PR.
 #
 # ML extraction is optional. It runs only when the IRODORI_LLM_* secrets are set;
 # otherwise tools/knowledge/ml-extract.mjs is a safe no-op and the deterministic
@@ -11,12 +12,12 @@ name: Knowledge refresh
 
 on:
   schedule:
-    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+    - cron: "17 6 1 * *" # 1st of each month, 06:17 UTC
   workflow_dispatch:
     inputs:
       limit:
-        description: Max sources to fetch this run
-        default: "16"
+        description: Max sources to fetch this run (empty = all enabled sources)
+        default: ""
         required: false
 
 permissions:
@@ -39,7 +40,12 @@ jobs:
           node-version: 24
 
       - name: Fetch official docs into the knowledge base
-        run: node tools/knowledge/refresh.mjs --limit "${{ github.event.inputs.limit || '16' }}"
+        run: |
+          args=(--report-json "$RUNNER_TEMP/refresh-results.json")
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            args+=(--limit "${{ github.event.inputs.limit }}")
+          fi
+          node tools/knowledge/refresh.mjs "${args[@]}"
 
       - name: Extract facts (rule-based, deterministic)
         run: node tools/knowledge/analyze.mjs --changed-only
@@ -59,18 +65,21 @@ jobs:
       - name: Verify registry guards still pass
         run: node tools/docs/support-status.mjs
 
+      - name: Generate refresh report
+        run: node tools/knowledge/refresh-report.mjs --results "$RUNNER_TEMP/refresh-results.json" --out registry/knowledge-refresh-report.md
+
+      - name: Compute run month
+        id: run-date
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
       - name: Open pull request with regenerated docs
         uses: peter-evans/create-pull-request@v8
         with:
           branch: knowledge/auto-refresh
-          title: "chore(knowledge): scheduled docs refresh"
-          commit-message: "chore(knowledge): scheduled docs refresh"
-          body: |
-            Automated knowledge refresh: regenerated cheatsheets from the latest
-            official-doc snapshots and (when configured) ML cheatsheet extraction.
-
-            Review the cheatsheet diffs before merging. The knowledge SQLite DB is
-            gitignored, so only generated docs appear here.
+          title: "chore(knowledge): monthly refresh ${{ steps.run-date.outputs.month }}"
+          commit-message: "chore(knowledge): monthly refresh ${{ steps.run-date.outputs.month }}"
+          body-path: registry/knowledge-refresh-report.md
           add-paths: |
             registry/cheatsheets/**
+            registry/knowledge-refresh-report.md
             knowledge/sources.json
