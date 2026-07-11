@@ -18,6 +18,7 @@
     "sql-dialect-fmt-formatter": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
     "sql-dialect-fmt-lexer": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
     "sql-dialect-fmt-parser": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
-    "sql-dialect-fmt-syntax": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit."
+    "sql-dialect-fmt-syntax": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit.",
+    "sql-dialect-fmt-text": "Project-owned split crate from hjosugi/sql-dialect-fmt, pinned by tag and lockfile commit."
   }
 }
