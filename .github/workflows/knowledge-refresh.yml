@@ -41,11 +41,11 @@ jobs:
 
       - name: Fetch official docs into the knowledge base
         run: |
-          limit_arg=""
+          args=(--report-json "$RUNNER_TEMP/refresh-results.json")
           if [ -n "${{ github.event.inputs.limit }}" ]; then
-            limit_arg="--limit ${{ github.event.inputs.limit }}"
+            args+=(--limit "${{ github.event.inputs.limit }}")
           fi
-          node tools/knowledge/refresh.mjs --report-json "$RUNNER_TEMP/refresh-results.json" $limit_arg
+          node tools/knowledge/refresh.mjs "${args[@]}"
 
       - name: Extract facts (rule-based, deterministic)
         run: node tools/knowledge/analyze.mjs --changed-only
