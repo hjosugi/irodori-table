@@ -2,6 +2,7 @@ import { useWorkbenchContext } from "@/app/workbench-context";
 import { AiChatPanel } from "@/features/ai/chat/AiChatPanel";
 import { defaultConnectionColor } from "@/features/connections";
 import { GitPanel } from "@/features/git";
+import { KnowledgePanel } from "@/features/knowledge/KnowledgePanel";
 import { BiPanel, RowDetailSidebar } from "@/features/results";
 import { useSchemaDesignerStore } from "@/features/schema-designer";
 import { SearchReplacePanel } from "@/features/search/SearchReplacePanel";
@@ -168,6 +169,13 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
             grid.clearRowSelection();
             sidebars.closeSidebarView("rowDetail");
           }}
+        />
+      }
+      knowledgePanel={
+        <KnowledgePanel
+          editorEngine={editorEngine}
+          activeConnectionName={activeConnection.name}
+          onClose={() => sidebars.closeSidebarView("knowledge")}
         />
       }
       connections={connections.connections}

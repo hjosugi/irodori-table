@@ -17,10 +17,14 @@ on:
       - registry/data-source-support-status.md
       - registry/cheatsheets/**
       - registry/catalog/**
+      - registry/knowledge-pack.json
+      - knowledge/pack-facts.json
       - apps/desktop/src/features/extensions/bundled-catalog.json
+      - apps/desktop/src/features/knowledge/bundled-knowledge-pack.json
       - tools/extensions/sync-release-catalog.mjs
       - tools/docs/**
       - tools/knowledge/cheatsheet.mjs
+      - tools/knowledge/pack.mjs
       - .github/workflows/docs-check.yml
   push:
     branches:
@@ -61,3 +65,6 @@ jobs:
 
       - name: Cheatsheets up to date
         run: node tools/knowledge/cheatsheet.mjs --check
+
+      - name: Knowledge pack up to date
+        run: node tools/knowledge/pack.mjs --check

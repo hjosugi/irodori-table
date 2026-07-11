@@ -2835,3 +2835,229 @@ body.panel-resizing .result-grid {
   color: var(--text);
   font-size: var(--font-ui-sm);
 }
+
+.knowledge-panel {
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--font-ui-sm);
+}
+
+.knowledge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+  min-height: var(--bar-md);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.knowledge-header > div {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 1px;
+  min-width: 0;
+}
+
+.knowledge-header strong {
+  font-size: var(--font-ui-md);
+  line-height: var(--line-compact);
+  white-space: nowrap;
+}
+
+.knowledge-header span {
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+  line-height: var(--line-compact);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.knowledge-header button:hover,
+.knowledge-header button:focus-visible {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--hover);
+}
+
+.knowledge-toolbar {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.knowledge-toolbar input {
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: var(--font-ui-sm);
+}
+
+.knowledge-scope {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.knowledge-scope button {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: var(--font-ui-xs);
+  cursor: pointer;
+}
+
+.knowledge-scope button.active {
+  color: var(--text);
+  border-color: var(--accent, var(--text));
+  background: var(--hover);
+}
+
+.knowledge-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+}
+
+.knowledge-callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  margin: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.knowledge-callout.error {
+  grid-template-columns: minmax(0, 1fr);
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.knowledge-fact-list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  overflow: auto;
+}
+
+.knowledge-fact {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.knowledge-fact strong {
+  font-size: var(--font-ui-sm);
+  line-height: var(--line-compact);
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fact > span {
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+  line-height: var(--line-normal, 1.4);
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--font-ui-xs);
+  text-decoration: none;
+}
+
+.knowledge-fact a:hover,
+.knowledge-fact a:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.knowledge-fact a span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-fact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.knowledge-badge,
+.knowledge-tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: var(--font-ui-xs);
+  line-height: var(--line-compact);
+  white-space: nowrap;
+}
+
+.knowledge-tag {
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.knowledge-tag.product {
+  color: var(--text);
+}
+
+.knowledge-badge {
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.knowledge-badge.priority-high {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.knowledge-badge.priority-normal {
+  color: var(--text);
+}
