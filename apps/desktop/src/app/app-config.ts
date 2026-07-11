@@ -112,6 +112,12 @@ const shellCommands: CommandMeta[] = [
     scope: "global",
   },
   {
+    id: "view.knowledge.toggle",
+    title: "Toggle Knowledge Panel",
+    category: "View",
+    scope: "global",
+  },
+  {
     id: "view.zoomIn",
     title: "Zoom In",
     category: "View",
@@ -437,6 +443,10 @@ const commandTranslationKeys: Partial<Record<string, CommandTranslationKeys>> =
     },
     "view.history.toggle": {
       title: "commands.view.history.toggle.title",
+      category: "commands.category.view",
+    },
+    "view.knowledge.toggle": {
+      title: "commands.view.knowledge.toggle.title",
       category: "commands.category.view",
     },
     "view.plan.toggle": {

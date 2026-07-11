@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
+  BookOpen,
   Bot,
   Columns3,
   Flame,
@@ -144,6 +145,7 @@ type SidebarProps = {
   aiChatPanel: ReactNode;
   searchReplacePanel: ReactNode;
   rowDetailPanel: ReactNode;
+  knowledgePanel: ReactNode;
   connections: WorkspaceConnection[];
   profileById: ReadonlyMap<string, ConnectionDraft>;
   connectionColorFallback: string;
@@ -198,6 +200,7 @@ export function Sidebar({
   aiChatPanel,
   searchReplacePanel,
   rowDetailPanel,
+  knowledgePanel,
   connections,
   profileById,
   connectionColorFallback,
@@ -371,6 +374,8 @@ export function Sidebar({
         return searchReplacePanel;
       case "rowDetail":
         return rowDetailPanel;
+      case "knowledge":
+        return knowledgePanel;
       case "objectBrowser":
         return null;
     }
@@ -666,6 +671,20 @@ export function Sidebar({
               >
                 <TableProperties size={14} />
                 <span>{t("sidebar.view.rowDetail")}</span>
+              </button>
+            ) : null}
+            {isViewAvailable("knowledge") ? (
+              <button
+                type="button"
+                role="tab"
+                className={activeView === "knowledge" ? "active" : undefined}
+                aria-selected={activeView === "knowledge"}
+                title={t("sidebar.view.knowledge")}
+                aria-label={t("sidebar.view.knowledge")}
+                onClick={() => onSelectView("knowledge")}
+              >
+                <BookOpen size={14} />
+                <span>{t("sidebar.view.knowledge")}</span>
               </button>
             ) : null}
           </div>

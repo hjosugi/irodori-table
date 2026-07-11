@@ -183,6 +183,7 @@ export function useWorkbenchCommands({
     toggleTerminal: ui.toggleTerminal,
     toggleAiChat: () => sidebars.toggleSidebarView("aiChat"),
     toggleSearch: () => sidebars.toggleSidebarView("searchReplace"),
+    toggleKnowledge: () => sidebars.toggleSidebarView("knowledge"),
     searchInAllTabs: () => {
       const selection = activeEditorApi()?.getSelection();
       const selected =

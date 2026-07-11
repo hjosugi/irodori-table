@@ -90,6 +90,7 @@ function createHandler(calls: string[]) {
     toggleTerminal: () => calls.push("toggle-terminal"),
     toggleAiChat: () => calls.push("toggle-aichat"),
     toggleSearch: () => calls.push("toggle-search"),
+    toggleKnowledge: () => calls.push("toggle-knowledge"),
     searchInAllTabs: () => calls.push("search-all-tabs"),
   });
 }
@@ -107,6 +108,7 @@ describe("createWorkbenchCommandHandler", () => {
     runCommand("view.completion.toggle");
     runCommand("view.history.toggle");
     runCommand("view.bi.toggle");
+    runCommand("view.knowledge.toggle");
     runCommand("view.zoomIn");
     runCommand("view.zoomOut");
     runCommand("view.zoomReset");
@@ -127,6 +129,7 @@ describe("createWorkbenchCommandHandler", () => {
       "completion",
       "history-toggle",
       "bi-toggle",
+      "toggle-knowledge",
       "zoom-in",
       "zoom-out",
       "zoom-reset",

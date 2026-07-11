@@ -60,6 +60,7 @@ type WorkbenchCommandHandlerDeps = {
   toggleTerminal: () => void;
   toggleAiChat: () => void;
   toggleSearch: () => void;
+  toggleKnowledge: () => void;
   searchInAllTabs: () => void;
 };
 
@@ -123,6 +124,7 @@ export function createWorkbenchCommandHandler({
   toggleTerminal,
   toggleAiChat,
   toggleSearch,
+  toggleKnowledge,
   searchInAllTabs,
 }: WorkbenchCommandHandlerDeps) {
   return (id: string) => {
@@ -316,6 +318,9 @@ export function createWorkbenchCommandHandler({
         break;
       case "view.search.toggle":
         toggleSearch();
+        break;
+      case "view.knowledge.toggle":
+        toggleKnowledge();
         break;
       case "editor.searchInAllTabs":
         searchInAllTabs();
