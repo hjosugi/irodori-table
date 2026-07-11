@@ -1,7 +1,7 @@
 # Data Source Support Status
 
 Last generated: 2026-06-26 JST (hand-authored seed; target is auto-generation —
-see <https://hjosugi.github.io/irodori-docs/cheatsheet-autodoc-plan.html>).
+see <https://hjosugi.github.io/irodori-docs/knowledge-base.html>).
 
 This is the single inventory of **what Irodori connects to today vs. what is
 declared, planned, or not yet started**. The authoritative source of truth is the
@@ -146,4 +146,4 @@ surface beyond connection templates. They route through existing adapters:
 
 When section 1–4 membership changes, it should be regenerated from the registry,
 not hand-edited — see
-<https://hjosugi.github.io/irodori-docs/cheatsheet-autodoc-plan.html>.
+<https://hjosugi.github.io/irodori-docs/knowledge-base.html>.
