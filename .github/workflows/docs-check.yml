@@ -6,6 +6,7 @@ name: Docs check
 # No Rust build or model is used; release checks read GitHub's public API.
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - apps/desktop/src-tauri/src/db/engine.rs
