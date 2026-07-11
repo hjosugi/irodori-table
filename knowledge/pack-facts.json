@@ -3,7 +3,7 @@
     "description": "Curated knowledge facts extracted from the gitignored knowledge DB by tools/knowledge/pack.mjs --extract. Committed so the derived packs can be regenerated and checked without the DB. Do not hand-edit.",
     "generator": "knowledge-pack-v1"
   },
-  "updatedAt": "2026-07-11T07:09:36Z",
+  "updatedAt": "2026-07-11T08:01:31Z",
   "facts": [
     {
       "product": "AWS S3 Tables",
@@ -12,7 +12,7 @@
       "summary": "The latest Amazon S3 Tables documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html",
       "sourceId": "s3-tables-docs"
@@ -24,7 +24,7 @@
       "summary": "The latest Amazon S3 Tables documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html",
       "sourceId": "s3-tables-docs"
@@ -36,7 +36,7 @@
       "summary": "The latest Amazon S3 Tables documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html",
       "sourceId": "s3-tables-docs"
@@ -48,7 +48,7 @@
       "summary": "The latest Amazon S3 Tables documentation snapshot has catalog or schema metadata material matching information schema that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html",
       "sourceId": "s3-tables-docs"
@@ -60,7 +60,7 @@
       "summary": "The latest Amazon S3 Tables documentation snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html",
       "sourceId": "s3-tables-docs"
@@ -72,7 +72,7 @@
       "summary": "The latest Amazon Athena documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
       "sourceId": "athena-docs"
@@ -84,7 +84,7 @@
       "summary": "The latest Amazon Athena documentation snapshot has result grid or data browsing UI material matching results that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
       "sourceId": "athena-docs"
@@ -96,7 +96,7 @@
       "summary": "The latest Amazon Athena documentation snapshot has visualization or dashboard feature material matching notebook that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
       "sourceId": "athena-docs"
@@ -108,7 +108,7 @@
       "summary": "The latest Amazon S3 documentation snapshot has administration, monitoring, or cost feature material matching roles, cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
       "sourceId": "amazon-s3-docs"
@@ -120,7 +120,7 @@
       "summary": "The latest Amazon S3 documentation snapshot has connection, protocol, or session behavior material matching protocol, proxy that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
       "sourceId": "amazon-s3-docs"
@@ -132,7 +132,7 @@
       "summary": "The latest Amazon S3 documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
       "sourceId": "amazon-s3-docs"
@@ -144,7 +144,7 @@
       "summary": "The latest Apache Cassandra release notes snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://cassandra.apache.org/_/download.html",
       "sourceId": "cassandra-release-notes"
@@ -156,7 +156,7 @@
       "summary": "The latest Apache Cassandra documentation snapshot has DB client product capability material matching database client that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May update competitive parity notes or future UX backlog items.",
       "url": "https://cassandra.apache.org/doc/latest/",
       "sourceId": "cassandra-docs"
@@ -168,7 +168,7 @@
       "summary": "The latest Apache Cassandra documentation snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://cassandra.apache.org/doc/latest/",
       "sourceId": "cassandra-docs"
@@ -180,7 +180,7 @@
       "summary": "The latest Apache Cassandra documentation snapshot has catalog or schema metadata material matching indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://cassandra.apache.org/doc/latest/",
       "sourceId": "cassandra-docs"
@@ -192,22 +192,10 @@
       "summary": "The latest Apache Cassandra documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://cassandra.apache.org/doc/latest/",
       "sourceId": "cassandra-docs"
-    },
-    {
-      "product": "Apache Hive",
-      "area": "auth",
-      "title": "Apache Hive: authentication or secure connection detail",
-      "summary": "The latest Apache Hive documentation snapshot has authentication or secure connection material matching authentication, oauth, jwt that should be checked before related implementation work.",
-      "priority": "high",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Connection profiles, secret handling, or transport setup may need updates.",
-      "url": "https://hive.apache.org/docs/latest/",
-      "sourceId": "hive-docs"
     },
     {
       "product": "Apache Hive",
@@ -216,7 +204,7 @@
       "summary": "The latest Apache Hive documentation snapshot has compatibility, migration, or deprecation material matching removed, migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://hive.apache.org/docs/latest/",
       "sourceId": "hive-docs"
@@ -228,7 +216,7 @@
       "summary": "The latest Apache Hive documentation snapshot has compatibility, migration, or deprecation material matching deprecated, removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://hive.apache.org/docs/latest/",
       "sourceId": "hive-docs"
@@ -240,7 +228,7 @@
       "summary": "The latest Apache Hudi documentation snapshot has catalog or schema metadata material matching indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://hudi.apache.org/docs/overview/",
       "sourceId": "hudi-docs"
@@ -252,7 +240,7 @@
       "summary": "The latest Apache Hudi documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://hudi.apache.org/docs/overview/",
       "sourceId": "hudi-docs"
@@ -264,7 +252,7 @@
       "summary": "The latest Apache Iceberg documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://iceberg.apache.org/docs/latest/",
       "sourceId": "iceberg-docs"
@@ -276,7 +264,7 @@
       "summary": "The latest Apache Iceberg documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://iceberg.apache.org/docs/latest/",
       "sourceId": "iceberg-docs"
@@ -288,7 +276,7 @@
       "summary": "The latest Apache Iceberg documentation snapshot has result grid or data browsing UI material matching results that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://iceberg.apache.org/docs/latest/",
       "sourceId": "iceberg-docs"
@@ -300,7 +288,7 @@
       "summary": "The latest Apache Iceberg documentation snapshot has SQL dialect syntax or semantics material matching ddl, dml that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://iceberg.apache.org/docs/latest/",
       "sourceId": "iceberg-docs"
@@ -312,10 +300,22 @@
       "summary": "The latest Apache IoTDB documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://iotdb.apache.org/UserGuide/latest/",
       "sourceId": "iotdb-docs"
+    },
+    {
+      "product": "Azure Blob Storage",
+      "area": "admin_monitoring",
+      "title": "Azure Blob Storage: administration or monitoring capability",
+      "summary": "The latest Azure Blob Storage documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
+      "priority": "low",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
+      "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
+      "sourceId": "azure-blob-docs"
     },
     {
       "product": "Azure Blob Storage",
@@ -324,7 +324,7 @@
       "summary": "The latest Azure Blob Storage documentation snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
       "sourceId": "azure-blob-docs"
@@ -336,7 +336,7 @@
       "summary": "The latest Azure Blob Storage documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
       "sourceId": "azure-blob-docs"
@@ -348,7 +348,7 @@
       "summary": "The latest Azure Blob Storage documentation snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
       "sourceId": "azure-blob-docs"
@@ -360,7 +360,7 @@
       "summary": "The latest Azure Blob Storage documentation snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
       "sourceId": "azure-blob-docs"
@@ -372,7 +372,7 @@
       "summary": "The latest Azure Blob Storage documentation snapshot has connection, protocol, or session behavior material matching protocol, proxy that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction",
       "sourceId": "azure-blob-docs"
@@ -384,7 +384,7 @@
       "summary": "The latest BigQuery release notes snapshot has compatibility, migration, or deprecation material matching deprecated, removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
       "sourceId": "bigquery-release-notes"
@@ -396,22 +396,10 @@
       "summary": "The latest BigQuery GoogleSQL reference snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
       "sourceId": "bigquery-google-sql"
-    },
-    {
-      "product": "BigQuery",
-      "area": "metadata",
-      "title": "BigQuery: catalog or schema metadata detail",
-      "summary": "The latest BigQuery release notes snapshot has catalog or schema metadata material matching information schema, schema objects, indexes that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
-      "sourceId": "bigquery-release-notes"
     },
     {
       "product": "BigQuery",
@@ -420,19 +408,7 @@
       "summary": "The latest BigQuery GoogleSQL reference snapshot has SQL dialect syntax or semantics material matching syntax, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
-      "sourceId": "bigquery-google-sql"
-    },
-    {
-      "product": "BigQuery",
-      "area": "sql_dialect",
-      "title": "BigQuery: SQL dialect syntax detail",
-      "summary": "The latest BigQuery GoogleSQL reference snapshot has SQL dialect syntax or semantics material matching syntax, data types that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
       "sourceId": "bigquery-google-sql"
@@ -444,7 +420,7 @@
       "summary": "The latest BigQuery GoogleSQL reference snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
       "sourceId": "bigquery-google-sql"
@@ -456,7 +432,7 @@
       "summary": "The latest BigQuery GoogleSQL reference snapshot has SQL dialect syntax or semantics material matching syntax, dml, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
       "sourceId": "bigquery-google-sql"
@@ -465,10 +441,22 @@
       "product": "BigQuery",
       "area": "sql_dialect",
       "title": "BigQuery: SQL dialect syntax detail",
+      "summary": "The latest BigQuery release notes snapshot has SQL dialect syntax or semantics material matching syntax, dml, data types that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "high",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
+      "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
+      "sourceId": "bigquery-release-notes"
+    },
+    {
+      "product": "BigQuery",
+      "area": "sql_dialect",
+      "title": "BigQuery: SQL dialect syntax detail",
       "summary": "The latest BigQuery release notes snapshot has SQL dialect syntax or semantics material matching syntax, ddl, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
       "sourceId": "bigquery-release-notes"
@@ -480,7 +468,7 @@
       "summary": "The latest BigQuery release notes snapshot has SQL dialect syntax or semantics material matching syntax, dml, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
       "sourceId": "bigquery-release-notes"
@@ -492,7 +480,7 @@
       "summary": "The latest Cloud Bigtable documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.cloud.google.com/bigtable/docs",
       "sourceId": "bigtable-docs"
@@ -504,7 +492,7 @@
       "summary": "The latest Cloud Bigtable documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.cloud.google.com/bigtable/docs",
       "sourceId": "bigtable-docs"
@@ -516,7 +504,7 @@
       "summary": "The latest Cloud Bigtable documentation snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://docs.cloud.google.com/bigtable/docs",
       "sourceId": "bigtable-docs"
@@ -525,10 +513,10 @@
       "product": "Bigtable",
       "area": "compatibility",
       "title": "Bigtable: compatibility or deprecation note",
-      "summary": "The latest Cloud Bigtable release notes snapshot has compatibility, migration, or deprecation material matching removed, migration that should be checked before related implementation work.",
+      "summary": "The latest Cloud Bigtable release notes snapshot has compatibility, migration, or deprecation material matching deprecated that should be checked before related implementation work.",
       "priority": "high",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.cloud.google.com/bigtable/docs/release-notes",
       "sourceId": "bigtable-release-notes"
@@ -540,7 +528,7 @@
       "summary": "The latest Cloud Bigtable release notes snapshot has compatibility, migration, or deprecation material matching deprecated, removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.cloud.google.com/bigtable/docs/release-notes",
       "sourceId": "bigtable-release-notes"
@@ -552,7 +540,7 @@
       "summary": "The latest Cloud Bigtable release notes snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.cloud.google.com/bigtable/docs/release-notes",
       "sourceId": "bigtable-release-notes"
@@ -564,7 +552,7 @@
       "summary": "The latest Cloud Bigtable release notes snapshot has result grid or data browsing UI material matching results, export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://docs.cloud.google.com/bigtable/docs/release-notes",
       "sourceId": "bigtable-release-notes"
@@ -576,10 +564,22 @@
       "summary": "The latest Cloud Bigtable documentation snapshot has SQL dialect syntax or semantics material matching ddl, dml that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/bigtable/docs",
       "sourceId": "bigtable-docs"
+    },
+    {
+      "product": "Bigtable",
+      "area": "sql_dialect",
+      "title": "Bigtable: SQL dialect syntax detail",
+      "summary": "The latest Cloud Bigtable release notes snapshot has SQL dialect syntax or semantics material matching ddl, explain that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
+      "url": "https://docs.cloud.google.com/bigtable/docs/release-notes",
+      "sourceId": "bigtable-release-notes"
     },
     {
       "product": "Bigtable",
@@ -588,7 +588,7 @@
       "summary": "The latest Cloud Bigtable documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.cloud.google.com/bigtable/docs",
       "sourceId": "bigtable-docs"
@@ -600,7 +600,7 @@
       "summary": "The latest ClickHouse docs snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://clickhouse.com/docs",
       "sourceId": "clickhouse-docs"
@@ -612,10 +612,34 @@
       "summary": "The latest ClickHouse docs snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://clickhouse.com/docs",
       "sourceId": "clickhouse-docs"
+    },
+    {
+      "product": "ClickHouse",
+      "area": "metadata",
+      "title": "ClickHouse: catalog or schema metadata detail",
+      "summary": "The latest ClickHouse changelog snapshot has catalog or schema metadata material matching schema objects, constraints, indexes that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "high",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
+      "url": "https://clickhouse.com/docs/whats-new/changelog",
+      "sourceId": "clickhouse-changelog"
+    },
+    {
+      "product": "ClickHouse",
+      "area": "sql_dialect",
+      "title": "ClickHouse: SQL dialect syntax detail",
+      "summary": "The latest ClickHouse changelog snapshot has SQL dialect syntax or semantics material matching syntax, dml, functions that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "high",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
+      "url": "https://clickhouse.com/docs/whats-new/changelog",
+      "sourceId": "clickhouse-changelog"
     },
     {
       "product": "ClickHouse",
@@ -624,7 +648,7 @@
       "summary": "The latest ClickHouse changelog snapshot has SQL dialect syntax or semantics material matching dml, data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://clickhouse.com/docs/whats-new/changelog",
       "sourceId": "clickhouse-changelog"
@@ -636,7 +660,7 @@
       "summary": "The latest ClickHouse changelog snapshot has SQL dialect syntax or semantics material matching syntax, dml, explain that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://clickhouse.com/docs/whats-new/changelog",
       "sourceId": "clickhouse-changelog"
@@ -648,19 +672,7 @@
       "summary": "The latest ClickHouse changelog snapshot has SQL dialect syntax or semantics material matching syntax, functions, explain that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://clickhouse.com/docs/whats-new/changelog",
-      "sourceId": "clickhouse-changelog"
-    },
-    {
-      "product": "ClickHouse",
-      "area": "sql_dialect",
-      "title": "ClickHouse: SQL dialect syntax detail",
-      "summary": "The latest ClickHouse changelog snapshot has SQL dialect syntax or semantics material matching data types, functions, explain that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://clickhouse.com/docs/whats-new/changelog",
       "sourceId": "clickhouse-changelog"
@@ -672,68 +684,32 @@
       "summary": "The latest ClickHouse changelog snapshot has SQL dialect syntax or semantics material matching syntax, data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://clickhouse.com/docs/whats-new/changelog",
       "sourceId": "clickhouse-changelog"
     },
     {
       "product": "Cloud Spanner",
-      "area": "metadata",
-      "title": "Cloud Spanner: catalog or schema metadata detail",
-      "summary": "The latest Cloud Spanner documentation snapshot has catalog or schema metadata material matching information schema that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://docs.cloud.google.com/spanner/docs",
+      "area": "admin_monitoring",
+      "title": "Cloud Spanner: administration or monitoring capability",
+      "summary": "The latest Cloud Spanner documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
+      "priority": "low",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
+      "url": "https://docs.cloud.google.com/spanner/docs?hl=zh-tw",
       "sourceId": "cloud-spanner-docs"
     },
     {
       "product": "Cloud Spanner",
       "area": "result_ui",
       "title": "Cloud Spanner: result grid or data browsing behavior",
-      "summary": "The latest Cloud Spanner documentation snapshot has result grid or data browsing UI material matching export, filter that should be checked before related implementation work.",
+      "summary": "The latest Cloud Spanner release notes snapshot has result grid or data browsing UI material matching results, export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
-      "url": "https://docs.cloud.google.com/spanner/docs",
-      "sourceId": "cloud-spanner-docs"
-    },
-    {
-      "product": "Cloud Spanner",
-      "area": "sql_dialect",
-      "title": "Cloud Spanner: SQL dialect syntax detail",
-      "summary": "The latest Cloud Spanner documentation snapshot has SQL dialect syntax or semantics material matching ddl, data types that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://docs.cloud.google.com/spanner/docs",
-      "sourceId": "cloud-spanner-docs"
-    },
-    {
-      "product": "Cloud Spanner",
-      "area": "sql_dialect",
-      "title": "Cloud Spanner: SQL dialect syntax detail",
-      "summary": "The latest Cloud Spanner documentation snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://docs.cloud.google.com/spanner/docs",
-      "sourceId": "cloud-spanner-docs"
-    },
-    {
-      "product": "Cloud Spanner",
-      "area": "sql_dialect",
-      "title": "Cloud Spanner: SQL dialect syntax detail",
-      "summary": "The latest Cloud Spanner release notes snapshot has SQL dialect syntax or semantics material matching syntax, ddl, dml that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/spanner/docs/release-notes",
       "sourceId": "cloud-spanner-release-notes"
     },
@@ -741,10 +717,10 @@
       "product": "Cloud Spanner",
       "area": "sql_dialect",
       "title": "Cloud Spanner: SQL dialect syntax detail",
-      "summary": "The latest Cloud Spanner release notes snapshot has SQL dialect syntax or semantics material matching syntax, ddl, explain that should be checked before related implementation work.",
+      "summary": "The latest Cloud Spanner release notes snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
       "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/spanner/docs/release-notes",
       "sourceId": "cloud-spanner-release-notes"
@@ -756,19 +732,7 @@
       "summary": "The latest Cloud Spanner release notes snapshot has SQL dialect syntax or semantics material matching syntax, dml, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://docs.cloud.google.com/spanner/docs/release-notes",
-      "sourceId": "cloud-spanner-release-notes"
-    },
-    {
-      "product": "Cloud Spanner",
-      "area": "sql_dialect",
-      "title": "Cloud Spanner: SQL dialect syntax detail",
-      "summary": "The latest Cloud Spanner release notes snapshot has SQL dialect syntax or semantics material matching ddl, data types, functions that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/spanner/docs/release-notes",
       "sourceId": "cloud-spanner-release-notes"
@@ -780,10 +744,22 @@
       "summary": "The latest Cloud Spanner release notes snapshot has SQL dialect syntax or semantics material matching syntax, ddl, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.cloud.google.com/spanner/docs/release-notes",
       "sourceId": "cloud-spanner-release-notes"
+    },
+    {
+      "product": "Cloud Spanner",
+      "area": "sql_dialect",
+      "title": "Cloud Spanner: SQL dialect syntax detail",
+      "summary": "The latest Cloud Spanner documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
+      "url": "https://docs.cloud.google.com/spanner/docs?hl=zh-tw",
+      "sourceId": "cloud-spanner-docs"
     },
     {
       "product": "Cloud Spanner",
@@ -792,9 +768,9 @@
       "summary": "The latest Cloud Spanner documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
-      "url": "https://docs.cloud.google.com/spanner/docs",
+      "url": "https://docs.cloud.google.com/spanner/docs?hl=zh-tw",
       "sourceId": "cloud-spanner-docs"
     },
     {
@@ -804,7 +780,7 @@
       "summary": "The latest CockroachDB release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.cockroachlabs.com/docs/releases/",
       "sourceId": "cockroachdb-release-notes"
@@ -816,7 +792,7 @@
       "summary": "The latest CockroachDB release notes snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.cockroachlabs.com/docs/releases/",
       "sourceId": "cockroachdb-release-notes"
@@ -828,7 +804,7 @@
       "summary": "The latest Couchbase documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.couchbase.com/home/index.html",
       "sourceId": "couchbase-docs"
@@ -840,7 +816,7 @@
       "summary": "The latest Couchbase documentation snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://docs.couchbase.com/home/index.html",
       "sourceId": "couchbase-docs"
@@ -852,7 +828,7 @@
       "summary": "The latest Couchbase documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.couchbase.com/home/index.html",
       "sourceId": "couchbase-docs"
@@ -864,7 +840,7 @@
       "summary": "The latest DBeaver supported databases snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://dbeaver.com/databases/",
       "sourceId": "dbeaver-supported-databases"
@@ -876,7 +852,7 @@
       "summary": "The latest DBeaver SQL editor docs snapshot has completion or editor assistance material matching autocomplete that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://dbeaver.com/docs/dbeaver/SQL-Editor/",
       "sourceId": "dbeaver-sql-editor"
@@ -888,7 +864,7 @@
       "summary": "The latest DBeaver supported databases snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://dbeaver.com/databases/",
       "sourceId": "dbeaver-supported-databases"
@@ -900,7 +876,7 @@
       "summary": "The latest DBeaver SQL editor docs snapshot has connection, protocol, or session behavior material matching connection, session that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://dbeaver.com/docs/dbeaver/SQL-Editor/",
       "sourceId": "dbeaver-sql-editor"
@@ -912,7 +888,7 @@
       "summary": "The latest DBeaver SQL editor docs snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://dbeaver.com/docs/dbeaver/SQL-Editor/",
       "sourceId": "dbeaver-sql-editor"
@@ -924,7 +900,7 @@
       "summary": "The latest DBeaver supported databases snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://dbeaver.com/databases/",
       "sourceId": "dbeaver-supported-databases"
@@ -936,7 +912,7 @@
       "summary": "The latest DBeaver supported databases snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://dbeaver.com/databases/",
       "sourceId": "dbeaver-supported-databases"
@@ -948,7 +924,7 @@
       "summary": "The latest DBeaver SQL editor docs snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://dbeaver.com/docs/dbeaver/SQL-Editor/",
       "sourceId": "dbeaver-sql-editor"
@@ -960,7 +936,7 @@
       "summary": "The latest DataGrip feature reference snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.jetbrains.com/datagrip/features/",
       "sourceId": "datagrip-features"
@@ -972,7 +948,7 @@
       "summary": "The latest DataGrip feature reference snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.jetbrains.com/datagrip/features/",
       "sourceId": "datagrip-features"
@@ -984,20 +960,20 @@
       "summary": "The latest DataGrip feature reference snapshot has completion or editor assistance material matching autocomplete that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://www.jetbrains.com/datagrip/features/",
       "sourceId": "datagrip-features"
     },
     {
       "product": "DataGrip",
-      "area": "sql_dialect",
-      "title": "DataGrip: SQL dialect syntax detail",
-      "summary": "The latest DataGrip feature reference snapshot has SQL dialect syntax or semantics material matching ddl, data types that should be checked before related implementation work.",
+      "area": "result_ui",
+      "title": "DataGrip: result grid or data browsing behavior",
+      "summary": "The latest DataGrip feature reference snapshot has result grid or data browsing UI material matching export that should be checked before related implementation work.",
       "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://www.jetbrains.com/datagrip/features/",
       "sourceId": "datagrip-features"
     },
@@ -1008,7 +984,7 @@
       "summary": "The latest Databricks SQL documentation snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.databricks.com/aws/en/sql",
       "sourceId": "databricks-sql-docs"
@@ -1020,7 +996,7 @@
       "summary": "The latest Databricks SQL documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.databricks.com/aws/en/sql",
       "sourceId": "databricks-sql-docs"
@@ -1032,7 +1008,7 @@
       "summary": "The latest Databricks SQL documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.databricks.com/aws/en/sql",
       "sourceId": "databricks-sql-docs"
@@ -1044,7 +1020,7 @@
       "summary": "The latest Databricks SQL documentation snapshot has visualization or dashboard feature material matching dashboard, notebook that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.databricks.com/aws/en/sql",
       "sourceId": "databricks-sql-docs"
@@ -1056,7 +1032,7 @@
       "summary": "The latest DbGate product docs snapshot has completion or editor assistance material matching autocomplete, editor that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://www.dbgate.io/",
       "sourceId": "dbgate"
@@ -1068,7 +1044,7 @@
       "summary": "The latest DbGate product docs snapshot has result grid or data browsing UI material matching results, export, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://www.dbgate.io/",
       "sourceId": "dbgate"
@@ -1080,8 +1056,7 @@
       "summary": "The latest DbGate product docs snapshot has result grid or data browsing UI material matching results, export, edit data that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "version": "7.2.0",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://www.dbgate.io/",
       "sourceId": "dbgate"
@@ -1093,7 +1068,7 @@
       "summary": "The latest DbVisualizer feature overview snapshot has completion or editor assistance material matching autocomplete that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://www.dbvis.com/features/",
       "sourceId": "dbvisualizer-features"
@@ -1105,7 +1080,7 @@
       "summary": "The latest DbVisualizer feature overview snapshot has result grid or data browsing UI material matching results, export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://www.dbvis.com/features/",
       "sourceId": "dbvisualizer-features"
@@ -1117,7 +1092,7 @@
       "summary": "The latest DbVisualizer feature overview snapshot has SQL dialect syntax or semantics material matching ddl, explain that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.dbvis.com/features/",
       "sourceId": "dbvisualizer-features"
@@ -1129,7 +1104,7 @@
       "summary": "The latest DbVisualizer feature overview snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://www.dbvis.com/features/",
       "sourceId": "dbvisualizer-features"
@@ -1141,7 +1116,7 @@
       "summary": "The latest Delta Lake documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.delta.io/index.html",
       "sourceId": "delta-lake-docs"
@@ -1153,7 +1128,7 @@
       "summary": "The latest Delta Lake documentation snapshot has administration, monitoring, or cost feature material matching sharing that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.delta.io/index.html",
       "sourceId": "delta-lake-docs"
@@ -1165,7 +1140,7 @@
       "summary": "The latest Delta Lake documentation snapshot has compatibility, migration, or deprecation material matching deprecated that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.delta.io/index.html",
       "sourceId": "delta-lake-docs"
@@ -1177,7 +1152,7 @@
       "summary": "The latest Delta Lake documentation snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.delta.io/index.html",
       "sourceId": "delta-lake-docs"
@@ -1189,7 +1164,7 @@
       "summary": "The latest DynamoDB documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
       "sourceId": "dynamodb-docs"
@@ -1201,7 +1176,7 @@
       "summary": "The latest DynamoDB documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
       "sourceId": "dynamodb-docs"
@@ -1213,7 +1188,7 @@
       "summary": "The latest DynamoDB documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
       "sourceId": "dynamodb-docs"
@@ -1225,7 +1200,7 @@
       "summary": "The latest DynamoDB release notes snapshot has compatibility, migration, or deprecation material matching deprecated that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DocumentHistory.html",
       "sourceId": "dynamodb-release-notes"
@@ -1237,7 +1212,7 @@
       "summary": "The latest DynamoDB release notes snapshot has catalog or schema metadata material matching schema objects, constraints that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DocumentHistory.html",
       "sourceId": "dynamodb-release-notes"
@@ -1249,7 +1224,7 @@
       "summary": "The latest DynamoDB release notes snapshot has catalog or schema metadata material matching schema objects, indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DocumentHistory.html",
       "sourceId": "dynamodb-release-notes"
@@ -1261,7 +1236,7 @@
       "summary": "The latest DynamoDB documentation snapshot has catalog or schema metadata material matching schema objects, indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
       "sourceId": "dynamodb-docs"
@@ -1273,7 +1248,7 @@
       "summary": "The latest DynamoDB documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
       "sourceId": "dynamodb-docs"
@@ -1285,20 +1260,8 @@
       "summary": "The latest Elasticsearch documentation snapshot has administration, monitoring, or cost feature material matching roles, monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
-      "url": "https://www.elastic.co/docs",
-      "sourceId": "elasticsearch-docs"
-    },
-    {
-      "product": "Elasticsearch",
-      "area": "client_market",
-      "title": "Elasticsearch: DB client capability signal",
-      "summary": "The latest Elasticsearch documentation snapshot has DB client product capability material matching workspace, feature that should be checked before related implementation work.",
-      "priority": "low",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May update competitive parity notes or future UX backlog items.",
       "url": "https://www.elastic.co/docs",
       "sourceId": "elasticsearch-docs"
     },
@@ -1309,7 +1272,7 @@
       "summary": "The latest Elasticsearch release notes snapshot has compatibility, migration, or deprecation material matching deprecated, migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.elastic.co/docs/release-notes/elasticsearch",
       "sourceId": "elasticsearch-release-notes"
@@ -1321,7 +1284,7 @@
       "summary": "The latest Elasticsearch release notes snapshot has compatibility, migration, or deprecation material matching deprecated, removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.elastic.co/docs/release-notes/elasticsearch",
       "sourceId": "elasticsearch-release-notes"
@@ -1333,7 +1296,7 @@
       "summary": "The latest Elasticsearch release notes snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.elastic.co/docs/release-notes/elasticsearch",
       "sourceId": "elasticsearch-release-notes"
@@ -1345,7 +1308,7 @@
       "summary": "The latest Elasticsearch documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://www.elastic.co/docs",
       "sourceId": "elasticsearch-docs"
@@ -1357,7 +1320,7 @@
       "summary": "The latest Elasticsearch documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://www.elastic.co/docs",
       "sourceId": "elasticsearch-docs"
@@ -1369,46 +1332,10 @@
       "summary": "The latest Elasticsearch documentation snapshot has visualization or dashboard feature material matching chart, dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://www.elastic.co/docs",
       "sourceId": "elasticsearch-docs"
-    },
-    {
-      "product": "Firebird",
-      "area": "admin_monitoring",
-      "title": "Firebird: administration or monitoring capability",
-      "summary": "The latest Firebird documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
-      "priority": "low",
-      "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
-      "url": "https://firebirdsql.org/en/documentation/",
-      "sourceId": "firebird-docs"
-    },
-    {
-      "product": "Firebird",
-      "area": "compatibility",
-      "title": "Firebird: compatibility or deprecation note",
-      "summary": "The latest Firebird release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
-      "priority": "high",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
-      "url": "https://firebirdsql.org/en/release-notes/",
-      "sourceId": "firebird-release-notes"
-    },
-    {
-      "product": "GitHub Copilot",
-      "area": "client_market",
-      "title": "GitHub Copilot: DB client capability signal",
-      "summary": "The latest GitHub Copilot MCP docs snapshot has DB client product capability material matching database client, feature that should be checked before related implementation work.",
-      "priority": "low",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May update competitive parity notes or future UX backlog items.",
-      "url": "https://docs.github.com/en/copilot/concepts/context/mcp",
-      "sourceId": "github-copilot-mcp"
     },
     {
       "product": "GitHub Copilot",
@@ -1417,7 +1344,7 @@
       "summary": "The latest GitHub Copilot MCP docs snapshot has connection, protocol, or session behavior material matching session, protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://docs.github.com/en/copilot/concepts/context/mcp",
       "sourceId": "github-copilot-mcp"
@@ -1429,7 +1356,7 @@
       "summary": "The latest Google Cloud Storage documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.cloud.google.com/storage/docs",
       "sourceId": "gcs-docs"
@@ -1441,7 +1368,7 @@
       "summary": "The latest Google Cloud Storage documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.cloud.google.com/storage/docs",
       "sourceId": "gcs-docs"
@@ -1453,7 +1380,7 @@
       "summary": "The latest Google Cloud Storage documentation snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://docs.cloud.google.com/storage/docs",
       "sourceId": "gcs-docs"
@@ -1465,7 +1392,7 @@
       "summary": "The latest Google Cloud Storage documentation snapshot has DB client product capability material matching database client that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May update competitive parity notes or future UX backlog items.",
       "url": "https://docs.cloud.google.com/storage/docs",
       "sourceId": "gcs-docs"
@@ -1477,7 +1404,7 @@
       "summary": "The latest Google Cloud Storage documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.cloud.google.com/storage/docs",
       "sourceId": "gcs-docs"
@@ -1489,7 +1416,7 @@
       "summary": "The latest H2 database documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://h2database.com/html/main.html",
       "sourceId": "h2-docs"
@@ -1501,7 +1428,7 @@
       "summary": "The latest InfluxDB 3 client libraries snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "3",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/reference/client-libraries/v3/",
@@ -1514,7 +1441,7 @@
       "summary": "The latest InfluxDB 3 client libraries snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "3",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.influxdata.com/influxdb3/core/reference/client-libraries/v3/",
@@ -1527,7 +1454,7 @@
       "summary": "The latest InfluxDB 3 client libraries snapshot has compatibility, migration, or deprecation material matching breaking change that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "3",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.influxdata.com/influxdb3/core/reference/client-libraries/v3/",
@@ -1540,7 +1467,7 @@
       "summary": "The latest InfluxDB 3 client libraries snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "3",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://docs.influxdata.com/influxdb3/core/reference/client-libraries/v3/",
@@ -1553,7 +1480,7 @@
       "summary": "The latest InfluxDB 3 SQL query docs snapshot has catalog or schema metadata material matching information schema that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/",
       "sourceId": "influxdb3-sql"
@@ -1565,7 +1492,7 @@
       "summary": "The latest InfluxDB 3 SQL query docs snapshot has SQL dialect syntax or semantics material matching syntax, dml that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/",
       "sourceId": "influxdb3-sql"
@@ -1577,7 +1504,7 @@
       "summary": "The latest InfluxDB 3 SQL query docs snapshot has SQL dialect syntax or semantics material matching syntax, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/",
       "sourceId": "influxdb3-sql"
@@ -1589,7 +1516,7 @@
       "summary": "The latest InfluxDB 3 client libraries snapshot has SQL dialect syntax or semantics material matching syntax, dml that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "3",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/reference/client-libraries/v3/",
@@ -1602,7 +1529,7 @@
       "summary": "The latest InfluxDB 3 SQL query docs snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/",
       "sourceId": "influxdb3-sql"
@@ -1614,7 +1541,7 @@
       "summary": "The latest InfluxDB 3 SQL query docs snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.influxdata.com/influxdb3/core/query-data/sql/",
       "sourceId": "influxdb3-sql"
@@ -1626,7 +1553,7 @@
       "summary": "The latest Irodori extension marketplace catalog snapshot has catalog or schema metadata material matching information schema that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json",
       "sourceId": "irodori-extension-marketplace-catalog"
@@ -1638,7 +1565,7 @@
       "summary": "The latest Irodori extension marketplace catalog snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json",
       "sourceId": "irodori-extension-marketplace-catalog"
@@ -1650,7 +1577,7 @@
       "summary": "The latest Irodori extension marketplace catalog snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://raw.githubusercontent.com/hjosugi/irodori-table/main/registry/catalog/catalog.json",
       "sourceId": "irodori-extension-marketplace-catalog"
@@ -1662,7 +1589,7 @@
       "summary": "The latest MariaDB documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://mariadb.com/docs/server/",
       "sourceId": "mariadb-docs"
@@ -1674,7 +1601,7 @@
       "summary": "The latest MariaDB documentation snapshot has authentication or secure connection material matching authentication, tls that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://mariadb.com/docs/server/",
       "sourceId": "mariadb-docs"
@@ -1686,7 +1613,7 @@
       "summary": "The latest MariaDB release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://mariadb.com/docs/release-notes",
       "sourceId": "mariadb-release-notes"
@@ -1698,7 +1625,7 @@
       "summary": "The latest MariaDB release notes snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://mariadb.com/docs/release-notes",
       "sourceId": "mariadb-release-notes"
@@ -1710,7 +1637,7 @@
       "summary": "The latest MariaDB documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://mariadb.com/docs/server/",
       "sourceId": "mariadb-docs"
@@ -1722,7 +1649,7 @@
       "summary": "The latest MariaDB documentation snapshot has SQL dialect syntax or semantics material matching syntax, data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://mariadb.com/docs/server/",
       "sourceId": "mariadb-docs"
@@ -1734,7 +1661,7 @@
       "summary": "The latest Memgraph documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://memgraph.com/docs",
       "sourceId": "memgraph-docs"
@@ -1746,7 +1673,7 @@
       "summary": "The latest Model Context Protocol specification 2025-06-18 snapshot has DB client product capability material matching database client that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May update competitive parity notes or future UX backlog items.",
       "url": "https://modelcontextprotocol.io/specification/2025-06-18",
       "sourceId": "modelcontextprotocol-spec-2025-06-18"
@@ -1758,7 +1685,7 @@
       "summary": "The latest Model Context Protocol specification 2025-06-18 snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://modelcontextprotocol.io/specification/2025-06-18",
       "sourceId": "modelcontextprotocol-spec-2025-06-18"
@@ -1770,7 +1697,7 @@
       "summary": "The latest Model Context Protocol specification 2025-06-18 snapshot has connection, protocol, or session behavior material matching session, protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://modelcontextprotocol.io/specification/2025-06-18",
       "sourceId": "modelcontextprotocol-spec-2025-06-18"
@@ -1782,7 +1709,7 @@
       "summary": "The latest MongoDB manual snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://www.mongodb.com/docs/manual/",
       "sourceId": "mongodb-manual"
@@ -1794,7 +1721,7 @@
       "summary": "The latest MongoDB release notes snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://www.mongodb.com/docs/manual/release-notes/",
       "sourceId": "mongodb-release-notes"
@@ -1806,7 +1733,7 @@
       "summary": "The latest MongoDB manual snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.mongodb.com/docs/manual/",
       "sourceId": "mongodb-manual"
@@ -1818,7 +1745,7 @@
       "summary": "The latest MongoDB release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.mongodb.com/docs/manual/release-notes/",
       "sourceId": "mongodb-release-notes"
@@ -1830,7 +1757,7 @@
       "summary": "The latest MongoDB manual snapshot has result grid or data browsing UI material matching export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://www.mongodb.com/docs/manual/",
       "sourceId": "mongodb-manual"
@@ -1842,7 +1769,7 @@
       "summary": "The latest MongoDB manual snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.mongodb.com/docs/manual/",
       "sourceId": "mongodb-manual"
@@ -1854,7 +1781,7 @@
       "summary": "The latest MongoDB release notes snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.mongodb.com/docs/manual/release-notes/",
       "sourceId": "mongodb-release-notes"
@@ -1866,7 +1793,7 @@
       "summary": "The latest MongoDB Compass product docs snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://www.mongodb.com/products/tools/compass",
       "sourceId": "mongodb-compass"
@@ -1878,7 +1805,7 @@
       "summary": "The latest MongoDB Compass product docs snapshot has administration, monitoring, or cost feature material matching roles, monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://www.mongodb.com/products/tools/compass",
       "sourceId": "mongodb-compass"
@@ -1890,7 +1817,7 @@
       "summary": "The latest MongoDB Compass product docs snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.mongodb.com/products/tools/compass",
       "sourceId": "mongodb-compass"
@@ -1902,7 +1829,7 @@
       "summary": "The latest MongoDB Compass product docs snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.mongodb.com/products/tools/compass",
       "sourceId": "mongodb-compass"
@@ -1914,7 +1841,7 @@
       "summary": "The latest MongoDB Compass product docs snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://www.mongodb.com/products/tools/compass",
       "sourceId": "mongodb-compass"
@@ -1926,7 +1853,7 @@
       "summary": "The latest MongoDB Compass product docs snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.mongodb.com/products/tools/compass",
       "sourceId": "mongodb-compass"
@@ -1938,7 +1865,7 @@
       "summary": "The latest MotherDuck documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://motherduck.com/docs/getting-started/",
       "sourceId": "motherduck-docs"
@@ -1950,20 +1877,8 @@
       "summary": "The latest MotherDuck documentation snapshot has administration, monitoring, or cost feature material matching roles, cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
-      "url": "https://motherduck.com/docs/getting-started/",
-      "sourceId": "motherduck-docs"
-    },
-    {
-      "product": "MotherDuck",
-      "area": "completion",
-      "title": "MotherDuck: completion or editor assistance detail",
-      "summary": "The latest MotherDuck documentation snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://motherduck.com/docs/getting-started/",
       "sourceId": "motherduck-docs"
     },
@@ -1974,7 +1889,7 @@
       "summary": "The latest MotherDuck documentation snapshot has result grid or data browsing UI material matching results that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://motherduck.com/docs/getting-started/",
       "sourceId": "motherduck-docs"
@@ -1986,7 +1901,7 @@
       "summary": "The latest MotherDuck documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://motherduck.com/docs/getting-started/",
       "sourceId": "motherduck-docs"
@@ -1998,7 +1913,7 @@
       "summary": "The latest MySQL current release notes snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://dev.mysql.com/doc/relnotes/mysql/9.7/en/",
       "sourceId": "mysql-release-notes"
@@ -2010,7 +1925,7 @@
       "summary": "The latest MySQL current reference manual snapshot has compatibility, migration, or deprecation material matching deprecated, removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "9.7",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://dev.mysql.com/doc/refman/9.7/en/",
@@ -2023,21 +1938,21 @@
       "summary": "The latest MySQL current release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://dev.mysql.com/doc/relnotes/mysql/9.7/en/",
       "sourceId": "mysql-release-notes"
     },
     {
       "product": "MySQL",
-      "area": "metadata",
-      "title": "MySQL: catalog or schema metadata detail",
-      "summary": "The latest MySQL current reference manual snapshot has catalog or schema metadata material matching information schema, schema objects, constraints, indexes that should be checked before related implementation work.",
+      "area": "sql_dialect",
+      "title": "MySQL: SQL dialect syntax detail",
+      "summary": "The latest MySQL current reference manual snapshot has SQL dialect syntax or semantics material matching syntax, ddl, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "9.7",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
+      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://dev.mysql.com/doc/refman/9.7/en/",
       "sourceId": "mysql-reference"
     },
@@ -2048,7 +1963,7 @@
       "summary": "The latest MySQL current reference manual snapshot has SQL dialect syntax or semantics material matching syntax, ddl, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "9.7",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://dev.mysql.com/doc/refman/9.7/en/",
@@ -2061,20 +1976,7 @@
       "summary": "The latest MySQL current reference manual snapshot has SQL dialect syntax or semantics material matching ddl, data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "version": "9.7",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://dev.mysql.com/doc/refman/9.7/en/",
-      "sourceId": "mysql-reference"
-    },
-    {
-      "product": "MySQL",
-      "area": "sql_dialect",
-      "title": "MySQL: SQL dialect syntax detail",
-      "summary": "The latest MySQL current reference manual snapshot has SQL dialect syntax or semantics material matching syntax, ddl, data types, functions that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "version": "9.7",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://dev.mysql.com/doc/refman/9.7/en/",
@@ -2087,7 +1989,7 @@
       "summary": "The latest MySQL current release notes snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://dev.mysql.com/doc/relnotes/mysql/9.7/en/",
       "sourceId": "mysql-release-notes"
@@ -2099,7 +2001,7 @@
       "summary": "The latest Neo4j Browser documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://neo4j.com/docs/browser/",
       "sourceId": "neo4j-browser-docs"
@@ -2111,7 +2013,7 @@
       "summary": "The latest Neo4j Cypher manual snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
       "sourceId": "neo4j-cypher-manual"
@@ -2123,7 +2025,7 @@
       "summary": "The latest Neo4j Graph Data Science manual snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://neo4j.com/docs/graph-data-science/current/",
       "sourceId": "neo4j-graph-data-science"
@@ -2135,7 +2037,7 @@
       "summary": "The latest Neon documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://neon.com/docs/introduction",
       "sourceId": "neon-docs"
@@ -2147,7 +2049,7 @@
       "summary": "The latest Neon documentation snapshot has authentication or secure connection material matching authentication, oauth that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://neon.com/docs/introduction",
       "sourceId": "neon-docs"
@@ -2159,7 +2061,7 @@
       "summary": "The latest Neon documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://neon.com/docs/introduction",
       "sourceId": "neon-docs"
@@ -2171,7 +2073,7 @@
       "summary": "The latest Neon documentation snapshot has compatibility, migration, or deprecation material matching deprecated that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://neon.com/docs/introduction",
       "sourceId": "neon-docs"
@@ -2183,7 +2085,7 @@
       "summary": "The latest Neon documentation snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://neon.com/docs/introduction",
       "sourceId": "neon-docs"
@@ -2195,7 +2097,7 @@
       "summary": "The latest Neon documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://neon.com/docs/introduction",
       "sourceId": "neon-docs"
@@ -2207,7 +2109,7 @@
       "summary": "The latest OpenAI MCP and connectors guide snapshot has authentication or secure connection material matching authentication, oauth that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp",
       "sourceId": "openai-mcp-connectors"
@@ -2219,20 +2121,20 @@
       "summary": "The latest OpenAI MCP and connectors guide snapshot has connection, protocol, or session behavior material matching session, protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp",
       "sourceId": "openai-mcp-connectors"
     },
     {
       "product": "OpenAI API",
-      "area": "sql_dialect",
-      "title": "OpenAI API: SQL dialect syntax detail",
-      "summary": "The latest OpenAI MCP and connectors guide snapshot has SQL dialect syntax or semantics material matching ddl, data types that should be checked before related implementation work.",
+      "area": "result_ui",
+      "title": "OpenAI API: result grid or data browsing behavior",
+      "summary": "The latest OpenAI MCP and connectors guide snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp",
       "sourceId": "openai-mcp-connectors"
     },
@@ -2243,19 +2145,7 @@
       "summary": "The latest OpenSearch release notes snapshot has administration, monitoring, or cost feature material matching roles, sharing that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
-      "url": "https://docs.opensearch.org/latest/version-history/",
-      "sourceId": "opensearch-release-notes"
-    },
-    {
-      "product": "OpenSearch",
-      "area": "admin_monitoring",
-      "title": "OpenSearch: administration or monitoring capability",
-      "summary": "The latest OpenSearch release notes snapshot has administration, monitoring, or cost feature material matching monitoring, sharing that should be checked before related implementation work.",
-      "priority": "low",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.opensearch.org/latest/version-history/",
       "sourceId": "opensearch-release-notes"
@@ -2267,7 +2157,7 @@
       "summary": "The latest OpenSearch release notes snapshot has authentication or secure connection material matching authentication, tls that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://docs.opensearch.org/latest/version-history/",
       "sourceId": "opensearch-release-notes"
@@ -2279,7 +2169,7 @@
       "summary": "The latest OpenSearch documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.opensearch.org/latest/",
       "sourceId": "opensearch-docs"
@@ -2291,10 +2181,22 @@
       "summary": "The latest OpenSearch documentation snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://docs.opensearch.org/latest/",
       "sourceId": "opensearch-docs"
+    },
+    {
+      "product": "OpenSearch",
+      "area": "result_ui",
+      "title": "OpenSearch: result grid or data browsing behavior",
+      "summary": "The latest OpenSearch release notes snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
+      "url": "https://docs.opensearch.org/latest/version-history/",
+      "sourceId": "opensearch-release-notes"
     },
     {
       "product": "OpenSearch",
@@ -2303,22 +2205,10 @@
       "summary": "The latest OpenSearch documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.opensearch.org/latest/",
       "sourceId": "opensearch-docs"
-    },
-    {
-      "product": "OpenSearch",
-      "area": "sql_dialect",
-      "title": "OpenSearch: SQL dialect syntax detail",
-      "summary": "The latest OpenSearch release notes snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
-      "url": "https://docs.opensearch.org/latest/version-history/",
-      "sourceId": "opensearch-release-notes"
     },
     {
       "product": "OpenSearch",
@@ -2327,7 +2217,7 @@
       "summary": "The latest OpenSearch documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.opensearch.org/latest/",
       "sourceId": "opensearch-docs"
@@ -2339,7 +2229,7 @@
       "summary": "The latest OpenSearch release notes snapshot has visualization or dashboard feature material matching chart, dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.opensearch.org/latest/version-history/",
       "sourceId": "opensearch-release-notes"
@@ -2351,7 +2241,7 @@
       "summary": "The latest Oracle AI Database 26ai documentation snapshot has compatibility, migration, or deprecation material matching incompatible that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/",
       "sourceId": "oracle-26ai-docs"
@@ -2363,7 +2253,7 @@
       "summary": "The latest Oracle AI Database 26ai documentation snapshot has result grid or data browsing UI material matching export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/",
       "sourceId": "oracle-26ai-docs"
@@ -2375,7 +2265,7 @@
       "summary": "The latest Oracle AI Database 26ai documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/",
       "sourceId": "oracle-26ai-docs"
@@ -2387,7 +2277,7 @@
       "summary": "The latest Oracle AI Database 26ai documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/",
       "sourceId": "oracle-26ai-docs"
@@ -2399,7 +2289,7 @@
       "summary": "The latest Pinecone documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.pinecone.io/guides/get-started/overview",
       "sourceId": "pinecone-docs"
@@ -2411,7 +2301,7 @@
       "summary": "The latest Pinecone documentation snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://docs.pinecone.io/guides/get-started/overview",
       "sourceId": "pinecone-docs"
@@ -2423,7 +2313,7 @@
       "summary": "The latest Pinecone documentation snapshot has catalog or schema metadata material matching indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.pinecone.io/guides/get-started/overview",
       "sourceId": "pinecone-docs"
@@ -2435,7 +2325,7 @@
       "summary": "The latest Pinecone documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.pinecone.io/guides/get-started/overview",
       "sourceId": "pinecone-docs"
@@ -2447,7 +2337,7 @@
       "summary": "The latest Pinecone documentation snapshot has visualization or dashboard feature material matching notebook that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.pinecone.io/guides/get-started/overview",
       "sourceId": "pinecone-docs"
@@ -2459,34 +2349,34 @@
       "summary": "The latest PostgreSQL current documentation snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://www.postgresql.org/docs/current/",
       "sourceId": "postgres-docs-current"
     },
     {
       "product": "PostgreSQL",
-      "area": "auth",
-      "title": "PostgreSQL: authentication or secure connection detail",
-      "summary": "The latest PostgreSQL current documentation snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
-      "priority": "high",
+      "area": "admin_monitoring",
+      "title": "PostgreSQL: administration or monitoring capability",
+      "summary": "The latest PostgreSQL current release notes snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
+      "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Connection profiles, secret handling, or transport setup may need updates.",
-      "url": "https://www.postgresql.org/docs/current/",
-      "sourceId": "postgres-docs-current"
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
+      "url": "https://www.postgresql.org/docs/current/release.html",
+      "sourceId": "postgres-release-notes-current"
     },
     {
       "product": "PostgreSQL",
-      "area": "auth",
-      "title": "PostgreSQL: authentication or secure connection detail",
-      "summary": "The latest PostgreSQL current documentation snapshot has authentication or secure connection material matching oauth that should be checked before related implementation work.",
-      "priority": "high",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Connection profiles, secret handling, or transport setup may need updates.",
-      "url": "https://www.postgresql.org/docs/current/",
-      "sourceId": "postgres-docs-current"
+      "area": "admin_monitoring",
+      "title": "PostgreSQL: administration or monitoring capability",
+      "summary": "The latest PostgreSQL current release notes snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
+      "priority": "low",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
+      "url": "https://www.postgresql.org/docs/current/release.html",
+      "sourceId": "postgres-release-notes-current"
     },
     {
       "product": "PostgreSQL",
@@ -2495,10 +2385,22 @@
       "summary": "The latest PostgreSQL current release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.postgresql.org/docs/current/release.html",
       "sourceId": "postgres-release-notes-current"
+    },
+    {
+      "product": "PostgreSQL",
+      "area": "connection",
+      "title": "PostgreSQL: connection or protocol behavior",
+      "summary": "The latest PostgreSQL current documentation snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
+      "url": "https://www.postgresql.org/docs/current/",
+      "sourceId": "postgres-docs-current"
     },
     {
       "product": "PostgreSQL",
@@ -2507,20 +2409,8 @@
       "summary": "The latest PostgreSQL current documentation snapshot has catalog or schema metadata material matching information schema that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://www.postgresql.org/docs/current/",
-      "sourceId": "postgres-docs-current"
-    },
-    {
-      "product": "PostgreSQL",
-      "area": "sql_dialect",
-      "title": "PostgreSQL: SQL dialect syntax detail",
-      "summary": "The latest PostgreSQL current documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.postgresql.org/docs/current/",
       "sourceId": "postgres-docs-current"
     },
@@ -2531,10 +2421,22 @@
       "summary": "The latest PostgreSQL current documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://www.postgresql.org/docs/current/",
       "sourceId": "postgres-docs-current"
+    },
+    {
+      "product": "PostgreSQL",
+      "area": "visualization",
+      "title": "PostgreSQL: visualization or dashboard feature",
+      "summary": "The latest PostgreSQL current release notes snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
+      "url": "https://www.postgresql.org/docs/current/release.html",
+      "sourceId": "postgres-release-notes-current"
     },
     {
       "product": "Qdrant",
@@ -2543,7 +2445,7 @@
       "summary": "The latest Qdrant documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://qdrant.tech/documentation/",
       "sourceId": "qdrant-docs"
@@ -2555,7 +2457,7 @@
       "summary": "The latest Qdrant documentation snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://qdrant.tech/documentation/",
       "sourceId": "qdrant-docs"
@@ -2567,7 +2469,7 @@
       "summary": "The latest QuestDB documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://questdb.com/docs/",
       "sourceId": "questdb-docs"
@@ -2579,7 +2481,7 @@
       "summary": "The latest Redis release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://redis.io/docs/latest/operate/oss_and_stack/stack-with-enterprise/release-notes/",
       "sourceId": "redis-release-notes"
@@ -2591,7 +2493,7 @@
       "summary": "The latest Redis command reference snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://redis.io/docs/latest/commands/",
       "sourceId": "redis-commands"
@@ -2603,7 +2505,7 @@
       "summary": "The latest Redis command reference snapshot has SQL dialect syntax or semantics material matching dml, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://redis.io/docs/latest/commands/",
       "sourceId": "redis-commands"
@@ -2615,7 +2517,7 @@
       "summary": "The latest Redis command reference snapshot has SQL dialect syntax or semantics material matching ddl, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://redis.io/docs/latest/commands/",
       "sourceId": "redis-commands"
@@ -2627,7 +2529,7 @@
       "summary": "The latest Redis command reference snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://redis.io/docs/latest/commands/",
       "sourceId": "redis-commands"
@@ -2639,8 +2541,20 @@
       "summary": "The latest RedisInsight product page snapshot has DB client product capability material matching database client, feature that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May update competitive parity notes or future UX backlog items.",
+      "url": "https://redis.io/insight/",
+      "sourceId": "redisinsight"
+    },
+    {
+      "product": "RedisInsight",
+      "area": "completion",
+      "title": "RedisInsight: completion or editor assistance detail",
+      "summary": "The latest RedisInsight product page snapshot has completion or editor assistance material matching autocomplete that should be checked before related implementation work.",
+      "priority": "normal",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://redis.io/insight/",
       "sourceId": "redisinsight"
     },
@@ -2651,7 +2565,7 @@
       "summary": "The latest RedisInsight product page snapshot has completion or editor assistance material matching autocomplete, editor that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://redis.io/insight/",
       "sourceId": "redisinsight"
@@ -2663,7 +2577,7 @@
       "summary": "The latest RedisInsight product page snapshot has completion or editor assistance material matching autocomplete, assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://redis.io/insight/",
       "sourceId": "redisinsight"
@@ -2675,7 +2589,7 @@
       "summary": "The latest RedisInsight product page snapshot has SQL dialect syntax or semantics material matching syntax, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://redis.io/insight/",
       "sourceId": "redisinsight"
@@ -2687,7 +2601,7 @@
       "summary": "The latest Amazon Redshift documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.aws.amazon.com/redshift/latest/dg/welcome.html",
       "sourceId": "redshift-docs"
@@ -2699,7 +2613,7 @@
       "summary": "The latest Amazon Redshift documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.aws.amazon.com/redshift/latest/dg/welcome.html",
       "sourceId": "redshift-docs"
@@ -2711,22 +2625,10 @@
       "summary": "The latest Amazon Redshift documentation snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.aws.amazon.com/redshift/latest/dg/welcome.html",
       "sourceId": "redshift-docs"
-    },
-    {
-      "product": "Redshift",
-      "area": "compatibility",
-      "title": "Redshift: compatibility or deprecation note",
-      "summary": "The latest Amazon Redshift release notes snapshot has compatibility, migration, or deprecation material matching deprecated, migration that should be checked before related implementation work.",
-      "priority": "high",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
-      "url": "https://docs.aws.amazon.com/redshift/latest/mgmt/cluster-versions.html",
-      "sourceId": "redshift-release-notes"
     },
     {
       "product": "Redshift",
@@ -2735,7 +2637,7 @@
       "summary": "The latest Amazon Redshift release notes snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/redshift/latest/mgmt/cluster-versions.html",
       "sourceId": "redshift-release-notes"
@@ -2747,7 +2649,7 @@
       "summary": "The latest Amazon Redshift release notes snapshot has catalog or schema metadata material matching information schema, schema objects, describe that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://docs.aws.amazon.com/redshift/latest/mgmt/cluster-versions.html",
       "sourceId": "redshift-release-notes"
@@ -2759,7 +2661,7 @@
       "summary": "The latest Amazon Redshift release notes snapshot has SQL dialect syntax or semantics material matching syntax, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.aws.amazon.com/redshift/latest/mgmt/cluster-versions.html",
       "sourceId": "redshift-release-notes"
@@ -2771,7 +2673,7 @@
       "summary": "The latest Amazon Redshift release notes snapshot has SQL dialect syntax or semantics material matching syntax, ddl, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.aws.amazon.com/redshift/latest/mgmt/cluster-versions.html",
       "sourceId": "redshift-release-notes"
@@ -2783,7 +2685,7 @@
       "summary": "The latest Transact-SQL reference snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-reference?view=sql-server-ver17",
       "sourceId": "tsql-reference"
@@ -2795,7 +2697,7 @@
       "summary": "The latest Transact-SQL reference snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-reference?view=sql-server-ver17",
       "sourceId": "tsql-reference"
@@ -2807,7 +2709,7 @@
       "summary": "The latest SQL Server documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://learn.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver17",
       "sourceId": "sqlserver-docs"
@@ -2819,7 +2721,7 @@
       "summary": "The latest SQL Server documentation snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://learn.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver17",
       "sourceId": "sqlserver-docs"
@@ -2831,7 +2733,7 @@
       "summary": "The latest Transact-SQL reference snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-reference?view=sql-server-ver17",
       "sourceId": "tsql-reference"
@@ -2843,7 +2745,7 @@
       "summary": "The latest Transact-SQL reference snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-reference?view=sql-server-ver17",
       "sourceId": "tsql-reference"
@@ -2855,7 +2757,7 @@
       "summary": "The latest SQL Server documentation snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://learn.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver17",
       "sourceId": "sqlserver-docs"
@@ -2867,7 +2769,7 @@
       "summary": "The latest SQL Server documentation snapshot has connection, protocol, or session behavior material matching protocol that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Driver connection code may need option, timeout, protocol, or session handling changes.",
       "url": "https://learn.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver17",
       "sourceId": "sqlserver-docs"
@@ -2879,10 +2781,22 @@
       "summary": "The latest Transact-SQL reference snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-reference?view=sql-server-ver17",
       "sourceId": "tsql-reference"
+    },
+    {
+      "product": "SQLite",
+      "area": "compatibility",
+      "title": "SQLite: compatibility or deprecation note",
+      "summary": "The latest SQLite documentation index snapshot has compatibility, migration, or deprecation material matching deprecated that should be checked before related implementation work.",
+      "priority": "high",
+      "confidence": "medium",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
+      "url": "https://sqlite.org/docs.html",
+      "sourceId": "sqlite-docs"
     },
     {
       "product": "SQLite",
@@ -2891,7 +2805,7 @@
       "summary": "The latest SQLite documentation index snapshot has completion or editor assistance material matching autocomplete that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://sqlite.org/docs.html",
       "sourceId": "sqlite-docs"
@@ -2903,7 +2817,7 @@
       "summary": "The latest SQLite release history snapshot has catalog or schema metadata material matching schema objects, constraints, indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://sqlite.org/changes.html",
       "sourceId": "sqlite-changes"
@@ -2915,7 +2829,7 @@
       "summary": "The latest SQLite documentation index snapshot has catalog or schema metadata material matching schema objects, indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://sqlite.org/docs.html",
       "sourceId": "sqlite-docs"
@@ -2927,7 +2841,7 @@
       "summary": "The latest SQLite release history snapshot has SQL dialect syntax or semantics material matching syntax, dml, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://sqlite.org/changes.html",
       "sourceId": "sqlite-changes"
@@ -2939,7 +2853,7 @@
       "summary": "The latest SQLite documentation index snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://sqlite.org/docs.html",
       "sourceId": "sqlite-docs"
@@ -2951,7 +2865,7 @@
       "summary": "The latest SQLite documentation index snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://sqlite.org/docs.html",
       "sourceId": "sqlite-docs"
@@ -2963,7 +2877,7 @@
       "summary": "The latest Schemars JSON Schema generation snapshot has compatibility, migration, or deprecation material matching breaking change that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://github.com/GREsau/schemars",
       "sourceId": "schemars"
@@ -2975,7 +2889,7 @@
       "summary": "The latest Schemars JSON Schema generation snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://github.com/GREsau/schemars",
       "sourceId": "schemars"
@@ -2987,7 +2901,7 @@
       "summary": "The latest Schemars JSON Schema generation snapshot has compatibility, migration, or deprecation material matching removed, incompatible that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://github.com/GREsau/schemars",
       "sourceId": "schemars"
@@ -2999,7 +2913,7 @@
       "summary": "The latest Schemars JSON Schema generation snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://github.com/GREsau/schemars",
       "sourceId": "schemars"
@@ -3011,7 +2925,7 @@
       "summary": "The latest ScyllaDB documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://opensource.docs.scylladb.com/stable/",
       "sourceId": "scylladb-docs"
@@ -3023,7 +2937,7 @@
       "summary": "The latest ScyllaDB documentation snapshot has authentication or secure connection material matching authentication, tls that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://opensource.docs.scylladb.com/stable/",
       "sourceId": "scylladb-docs"
@@ -3035,7 +2949,7 @@
       "summary": "The latest ScyllaDB documentation snapshot has compatibility, migration, or deprecation material matching removed that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://opensource.docs.scylladb.com/stable/",
       "sourceId": "scylladb-docs"
@@ -3047,7 +2961,7 @@
       "summary": "The latest ScyllaDB documentation snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://opensource.docs.scylladb.com/stable/",
       "sourceId": "scylladb-docs"
@@ -3059,7 +2973,7 @@
       "summary": "The latest ScyllaDB documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://opensource.docs.scylladb.com/stable/",
       "sourceId": "scylladb-docs"
@@ -3071,7 +2985,7 @@
       "summary": "The latest Snowflake documentation snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.snowflake.com/en/",
       "sourceId": "snowflake-docs"
@@ -3083,7 +2997,7 @@
       "summary": "The latest Snowflake documentation snapshot has administration, monitoring, or cost feature material matching sharing that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.snowflake.com/en/",
       "sourceId": "snowflake-docs"
@@ -3095,7 +3009,7 @@
       "summary": "The latest Snowflake release notes snapshot has administration, monitoring, or cost feature material matching sharing that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.snowflake.com/en/release-notes/new-features",
       "sourceId": "snowflake-release-notes"
@@ -3107,7 +3021,7 @@
       "summary": "The latest Snowflake documentation snapshot has compatibility, migration, or deprecation material matching incompatible that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.snowflake.com/en/",
       "sourceId": "snowflake-docs"
@@ -3119,7 +3033,7 @@
       "summary": "The latest Snowflake release notes snapshot has compatibility, migration, or deprecation material matching incompatible that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.snowflake.com/en/release-notes/new-features",
       "sourceId": "snowflake-release-notes"
@@ -3131,7 +3045,7 @@
       "summary": "The latest Snowflake release notes snapshot has compatibility, migration, or deprecation material matching deprecated that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.snowflake.com/en/release-notes/new-features",
       "sourceId": "snowflake-release-notes"
@@ -3143,7 +3057,7 @@
       "summary": "The latest Snowflake documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.snowflake.com/en/",
       "sourceId": "snowflake-docs"
@@ -3155,7 +3069,7 @@
       "summary": "The latest Snowflake documentation snapshot has SQL dialect syntax or semantics material matching data types, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.snowflake.com/en/",
       "sourceId": "snowflake-docs"
@@ -3167,7 +3081,7 @@
       "summary": "The latest Snowflake release notes snapshot has SQL dialect syntax or semantics material matching data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.snowflake.com/en/release-notes/new-features",
       "sourceId": "snowflake-release-notes"
@@ -3179,7 +3093,7 @@
       "summary": "The latest Snowflake release notes snapshot has SQL dialect syntax or semantics material matching syntax, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.snowflake.com/en/release-notes/new-features",
       "sourceId": "snowflake-release-notes"
@@ -3191,7 +3105,7 @@
       "summary": "The latest Specta Rust type export snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://github.com/specta-rs/specta",
       "sourceId": "specta"
@@ -3203,7 +3117,7 @@
       "summary": "The latest Specta Rust type export snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://github.com/specta-rs/specta",
       "sourceId": "specta"
@@ -3215,7 +3129,7 @@
       "summary": "The latest Specta Rust type export snapshot has result grid or data browsing UI material matching export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://github.com/specta-rs/specta",
       "sourceId": "specta"
@@ -3227,7 +3141,7 @@
       "summary": "The latest Specta Rust type export snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://github.com/specta-rs/specta",
       "sourceId": "specta"
@@ -3239,20 +3153,8 @@
       "summary": "The latest TiDB documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
-      "url": "https://docs.pingcap.com/tidb/stable/",
-      "sourceId": "tidb-docs"
-    },
-    {
-      "product": "TiDB",
-      "area": "sql_dialect",
-      "title": "TiDB: SQL dialect syntax detail",
-      "summary": "The latest TiDB documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.pingcap.com/tidb/stable/",
       "sourceId": "tidb-docs"
     },
@@ -3263,7 +3165,7 @@
       "summary": "The latest TiDB documentation snapshot has visualization or dashboard feature material matching dashboard that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
       "url": "https://docs.pingcap.com/tidb/stable/",
       "sourceId": "tidb-docs"
@@ -3275,7 +3177,7 @@
       "summary": "The latest TimescaleDB documentation snapshot has authentication or secure connection material matching authentication, mfa that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://www.tigerdata.com/docs",
       "sourceId": "timescaledb-docs"
@@ -3287,7 +3189,7 @@
       "summary": "The latest TimescaleDB documentation snapshot has compatibility, migration, or deprecation material matching deprecated, migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://www.tigerdata.com/docs",
       "sourceId": "timescaledb-docs"
@@ -3299,7 +3201,7 @@
       "summary": "The latest TimescaleDB documentation snapshot has catalog or schema metadata material matching constraints, indexes that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
       "url": "https://www.tigerdata.com/docs",
       "sourceId": "timescaledb-docs"
@@ -3311,7 +3213,7 @@
       "summary": "The latest TimescaleDB documentation snapshot has SQL dialect syntax or semantics material matching ddl, dml that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.tigerdata.com/docs",
       "sourceId": "timescaledb-docs"
@@ -3323,7 +3225,7 @@
       "summary": "The latest TimescaleDB documentation snapshot has SQL dialect syntax or semantics material matching ddl, data types that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.tigerdata.com/docs",
       "sourceId": "timescaledb-docs"
@@ -3335,10 +3237,22 @@
       "summary": "The latest TimescaleDB documentation snapshot has SQL dialect syntax or semantics material matching syntax, functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://www.tigerdata.com/docs",
       "sourceId": "timescaledb-docs"
+    },
+    {
+      "product": "Trino",
+      "area": "admin_monitoring",
+      "title": "Trino: administration or monitoring capability",
+      "summary": "The latest Trino documentation snapshot has administration, monitoring, or cost feature material matching cost that should be checked before related implementation work.",
+      "priority": "low",
+      "confidence": "low",
+      "observedAt": "2026-07-11T08:01:31Z",
+      "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
+      "url": "https://trino.io/docs/current/",
+      "sourceId": "trino-docs"
     },
     {
       "product": "Trino",
@@ -3347,7 +3261,7 @@
       "summary": "The latest Trino documentation snapshot has authentication or secure connection material matching authentication that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://trino.io/docs/current/",
       "sourceId": "trino-docs"
@@ -3359,19 +3273,7 @@
       "summary": "The latest Trino documentation snapshot has authentication or secure connection material matching authentication, tls that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Connection profiles, secret handling, or transport setup may need updates.",
-      "url": "https://trino.io/docs/current/",
-      "sourceId": "trino-docs"
-    },
-    {
-      "product": "Trino",
-      "area": "auth",
-      "title": "Trino: authentication or secure connection detail",
-      "summary": "The latest Trino documentation snapshot has authentication or secure connection material matching authentication, oauth that should be checked before related implementation work.",
-      "priority": "high",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Connection profiles, secret handling, or transport setup may need updates.",
       "url": "https://trino.io/docs/current/",
       "sourceId": "trino-docs"
@@ -3383,7 +3285,7 @@
       "summary": "The latest Trino release notes snapshot has compatibility, migration, or deprecation material matching breaking change that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://trino.io/docs/current/release.html",
       "sourceId": "trino-release-notes"
@@ -3395,7 +3297,7 @@
       "summary": "The latest Trino documentation snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://trino.io/docs/current/",
       "sourceId": "trino-docs"
@@ -3407,7 +3309,7 @@
       "summary": "The latest Trino documentation snapshot has SQL dialect syntax or semantics material matching ddl, dml that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://trino.io/docs/current/",
       "sourceId": "trino-docs"
@@ -3419,7 +3321,7 @@
       "summary": "The latest Typeshare multi-language bindings snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://github.com/1Password/typeshare",
       "sourceId": "typeshare"
@@ -3431,7 +3333,7 @@
       "summary": "The latest Typeshare multi-language bindings snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://github.com/1Password/typeshare",
       "sourceId": "typeshare"
@@ -3443,7 +3345,7 @@
       "summary": "The latest Typeshare multi-language bindings snapshot has result grid or data browsing UI material matching export that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://github.com/1Password/typeshare",
       "sourceId": "typeshare"
@@ -3455,7 +3357,7 @@
       "summary": "The latest Typeshare multi-language bindings snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://github.com/1Password/typeshare",
       "sourceId": "typeshare"
@@ -3467,7 +3369,7 @@
       "summary": "The latest YugabyteDB release notes snapshot has administration, monitoring, or cost feature material matching monitoring that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://docs.yugabyte.com/stable/releases/",
       "sourceId": "yugabytedb-release-notes"
@@ -3479,7 +3381,7 @@
       "summary": "The latest YugabyteDB release notes snapshot has DB client product capability material matching workspace, feature that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May update competitive parity notes or future UX backlog items.",
       "url": "https://docs.yugabyte.com/stable/releases/",
       "sourceId": "yugabytedb-release-notes"
@@ -3491,7 +3393,7 @@
       "summary": "The latest YugabyteDB documentation snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.yugabyte.com/",
       "sourceId": "yugabytedb-docs"
@@ -3500,73 +3402,13 @@
       "product": "YugabyteDB",
       "area": "compatibility",
       "title": "YugabyteDB: compatibility or deprecation note",
-      "summary": "The latest YugabyteDB YSQL API reference snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
-      "priority": "high",
-      "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
-      "url": "https://docs.yugabyte.com/stable/api/ysql/",
-      "sourceId": "yugabytedb-ysql-api"
-    },
-    {
-      "product": "YugabyteDB",
-      "area": "compatibility",
-      "title": "YugabyteDB: compatibility or deprecation note",
       "summary": "The latest YugabyteDB release notes snapshot has compatibility, migration, or deprecation material matching migration that should be checked before related implementation work.",
       "priority": "high",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May require driver, dialect, or compatibility tests before upgrading supported behavior.",
       "url": "https://docs.yugabyte.com/stable/releases/",
       "sourceId": "yugabytedb-release-notes"
-    },
-    {
-      "product": "YugabyteDB",
-      "area": "metadata",
-      "title": "YugabyteDB: catalog or schema metadata detail",
-      "summary": "The latest YugabyteDB YSQL API reference snapshot has catalog or schema metadata material matching schema objects, indexes that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://docs.yugabyte.com/stable/api/ysql/",
-      "sourceId": "yugabytedb-ysql-api"
-    },
-    {
-      "product": "YugabyteDB",
-      "area": "metadata",
-      "title": "YugabyteDB: catalog or schema metadata detail",
-      "summary": "The latest YugabyteDB YSQL API reference snapshot has catalog or schema metadata material matching information schema, schema objects that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://docs.yugabyte.com/stable/api/ysql/",
-      "sourceId": "yugabytedb-ysql-api"
-    },
-    {
-      "product": "YugabyteDB",
-      "area": "metadata",
-      "title": "YugabyteDB: catalog or schema metadata detail",
-      "summary": "The latest YugabyteDB YSQL API reference snapshot has catalog or schema metadata material matching constraints, indexes that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://docs.yugabyte.com/stable/api/ysql/",
-      "sourceId": "yugabytedb-ysql-api"
-    },
-    {
-      "product": "YugabyteDB",
-      "area": "metadata",
-      "title": "YugabyteDB: catalog or schema metadata detail",
-      "summary": "The latest YugabyteDB YSQL API reference snapshot has catalog or schema metadata material matching schema objects, constraints, indexes that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "high",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Schema explorer, ERD, edit keys, and completion metadata may need introspection updates.",
-      "url": "https://docs.yugabyte.com/stable/api/ysql/",
-      "sourceId": "yugabytedb-ysql-api"
     },
     {
       "product": "YugabyteDB",
@@ -3575,22 +3417,10 @@
       "summary": "The latest YugabyteDB release notes snapshot has SQL dialect syntax or semantics material matching functions that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "SQL parsing, formatting, highlighting, snippets, and query generation may need updates.",
       "url": "https://docs.yugabyte.com/stable/releases/",
       "sourceId": "yugabytedb-release-notes"
-    },
-    {
-      "product": "YugabyteDB",
-      "area": "visualization",
-      "title": "YugabyteDB: visualization or dashboard feature",
-      "summary": "The latest YugabyteDB YSQL API reference snapshot has visualization or dashboard feature material matching chart that should be checked before related implementation work.",
-      "priority": "normal",
-      "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
-      "impact": "Charting, dashboard, and worksheet result visualization roadmap items may need updates.",
-      "url": "https://docs.yugabyte.com/stable/api/ysql/",
-      "sourceId": "yugabytedb-ysql-api"
     },
     {
       "product": "ts-rs",
@@ -3599,7 +3429,7 @@
       "summary": "The latest ts-rs Rust to TypeScript bindings snapshot has administration, monitoring, or cost feature material matching roles that should be checked before related implementation work.",
       "priority": "low",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "May inform roadmap scope, especially features that are platform-specific rather than core SQL client work.",
       "url": "https://github.com/Aleph-Alpha/ts-rs",
       "sourceId": "ts-rs"
@@ -3611,7 +3441,7 @@
       "summary": "The latest ts-rs Rust to TypeScript bindings snapshot has completion or editor assistance material matching assistant that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "low",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Completion ranking, snippets, or local knowledge prompts may need source-aware updates.",
       "url": "https://github.com/Aleph-Alpha/ts-rs",
       "sourceId": "ts-rs"
@@ -3623,7 +3453,7 @@
       "summary": "The latest ts-rs Rust to TypeScript bindings snapshot has result grid or data browsing UI material matching results, filter that should be checked before related implementation work.",
       "priority": "normal",
       "confidence": "medium",
-      "observedAt": "2026-07-11T07:09:36Z",
+      "observedAt": "2026-07-11T08:01:31Z",
       "impact": "Result grid, row detail, export, or object browsing UX may need parity work.",
       "url": "https://github.com/Aleph-Alpha/ts-rs",
       "sourceId": "ts-rs"
