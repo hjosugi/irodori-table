@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-04T15:44:49Z",
+  "updatedAt": "2026-07-11T00:50:34Z",
   "source": "prebuilt-extension-catalog",
   "extensions": [
     {
       "id": "irodori.duckdb",
       "name": "DuckDB Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds DuckDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -46,7 +46,7 @@
       },
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T14:22:21Z"
+      "publishedAt": "2026-07-11T00:30:03Z"
     },
     {
       "id": "irodori.motherduck",
@@ -222,7 +222,7 @@
       "id": "irodori.athena",
       "name": "Athena Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds Amazon Athena connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -256,7 +256,7 @@
       },
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T14:40:42Z"
+      "publishedAt": "2026-07-11T00:50:34Z"
     },
     {
       "id": "irodori.delta-lake",
@@ -454,7 +454,7 @@
       "id": "irodori.clickhouse",
       "name": "ClickHouse Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds ClickHouse connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -464,13 +464,13 @@
       "engines": ["clickhouse"],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T12:57:21Z"
+      "publishedAt": "2026-07-11T00:45:06Z"
     },
     {
       "id": "irodori.cassandra",
       "name": "Cassandra Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds Apache Cassandra connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -480,7 +480,7 @@
       "engines": ["cassandra"],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T13:27:07Z"
+      "publishedAt": "2026-07-11T00:43:52Z"
     },
     {
       "id": "irodori.scylladb",
@@ -518,7 +518,7 @@
       "id": "irodori.memgraph",
       "name": "Memgraph Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "apiVersion": "0.1",
       "summary": "Adds Memgraph connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -528,7 +528,7 @@
       "engines": ["memgraph"],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T15:44:49Z"
+      "publishedAt": "2026-07-11T00:27:00Z"
     },
     {
       "id": "irodori.elasticsearch",
@@ -652,7 +652,7 @@
       "id": "irodori.milvus",
       "name": "Milvus Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds Milvus vector database connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -684,7 +684,7 @@
       },
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T13:55:06Z"
+      "publishedAt": "2026-07-11T00:44:31Z"
     },
     {
       "id": "irodori.pinecone",
@@ -749,7 +749,7 @@
       "id": "irodori.arangodb",
       "name": "ArangoDB Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds ArangoDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -759,7 +759,7 @@
       "engines": ["arangodb"],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T13:55:19Z"
+      "publishedAt": "2026-07-11T00:39:25Z"
     },
     {
       "id": "irodori.questdb",
@@ -813,7 +813,7 @@
       "id": "irodori.firebird",
       "name": "Firebird Connector",
       "publisher": "irodori",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "apiVersion": "0.1",
       "summary": "Adds Firebird connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -823,7 +823,7 @@
       "engines": ["firebird"],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-04T13:45:02Z"
+      "publishedAt": "2026-07-11T00:46:40Z"
     },
     {
       "id": "irodori.databricks",
