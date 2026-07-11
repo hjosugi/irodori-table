@@ -3392,7 +3392,7 @@ permissions:
 
 jobs:
   extension-ci:
-    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@v0.6.8
+    uses: hjosugi/irodori-kit/.github/workflows/extension-ci.yml@v0.6.9
     with:
       manifest-root: "."
       package-command: "make package"
@@ -3419,7 +3419,7 @@ permissions:
 
 jobs:
   extension-release:
-    uses: hjosugi/irodori-kit/.github/workflows/extension-release.yml@v0.6.8
+    uses: hjosugi/irodori-kit/.github/workflows/extension-release.yml@v0.6.9
     with:
       release_tag: \${{ inputs.release_tag || github.ref_name }}
       duckdb_backed: ${duckDbBacked}
