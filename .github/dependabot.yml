@@ -14,6 +14,10 @@ updates:
       github-actions:
         patterns:
           - "*"
+    ignore:
+      # These refs select a Rust compiler release, not an action version.
+      # Keep the compiler pin aligned with the repository MSRV intentionally.
+      - dependency-name: dtolnay/rust-toolchain
 
   - package-ecosystem: npm
     directory: /apps/desktop
