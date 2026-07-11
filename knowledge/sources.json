@@ -125,7 +125,7 @@
     "product": "DuckDB",
     "category": "database",
     "sourceType": "release_notes",
-    "url": "https://duckdb.org/docs/stable/dev/release_calendar.html",
+    "url": "https://github.com/duckdb/duckdb/releases",
     "cadence": "weekly",
     "notes": "Track DuckDB release cadence and new local analytics features."
   },

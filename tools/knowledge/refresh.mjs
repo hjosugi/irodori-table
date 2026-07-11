@@ -4,6 +4,24 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+const maxRedirects = 10;
+const fetchAttempts = 3;
+const retryDelaysMs = [1_000, 3_000];
+
+// Lowercased fragments that identify anti-bot interstitials (Cloudflare and
+// similar). Storing those pages would poison snapshots and derived facts, so
+// the source is reported as failed instead (visible in the refresh digest).
+const challengeMarkers = [
+  "just a moment",
+  "attention required",
+  "checking your browser",
+  "verify you are human",
+  "verifying you are human",
+  "enable javascript and cookies to continue",
+  "cf-browser-verification",
+  "cf-chl"
+];
+
 await main(process.argv.slice(2));
 
 async function main(argv) {
@@ -80,28 +98,34 @@ async function refreshSource(database, source, options) {
   const checkedAt = new Date().toISOString();
   const prefix = `fetch ${source.id} ... `;
   const base = { id: source.id, name: source.name, product: source.product };
+  const markChecked = () =>
+    database
+      .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
+      .run(checkedAt, source.id);
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
-    let response;
-    let body;
-    try {
-      response = await fetch(source.url, {
-        redirect: "follow",
-        signal: controller.signal,
-        headers: {
-          "accept": "text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.8",
-          "user-agent": "IrodoriTableKnowledgeBot/0.1 (+https://irodori.dev)"
-        }
-      });
-      body = await response.text();
-    } finally {
-      clearTimeout(timeout);
+    const headers = {
+      "accept": "text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.8",
+      "accept-language": "en",
+      "user-agent": "IrodoriTableKnowledgeBot/0.1 (+https://irodori.dev)",
+      ...(source.fetchHeaders ?? {})
+    };
+    const { response, body, finalUrl, redirected } = await fetchDocumentWithRetry(
+      source.url,
+      headers,
+      options.timeoutMs
+    );
+    if (response.status >= 400) {
+      markChecked();
+      return { ...base, outcome: "failed", httpStatus: response.status, error: `HTTP ${response.status}`, line: `${prefix}failed: HTTP ${response.status}` };
     }
     const text = normalizeText(stripHtml(body));
     const title = extractTitle(body) ?? source.name;
-    const contentHash = hash(`${response.url}\n${text}`);
+    if (isChallengePage(title, text)) {
+      markChecked();
+      return { ...base, outcome: "failed", httpStatus: response.status, error: "bot challenge detected", line: `${prefix}failed: bot challenge detected` };
+    }
+    const contentHash = hash(`${finalUrl}\n${text}`);
     const existing = database
       .prepare("select id from source_snapshots where source_id = ? and content_hash = ?")
       .get(source.id, contentHash);
@@ -119,10 +143,10 @@ async function refreshSource(database, source, options) {
           response.status,
           contentHash,
           title,
-          response.url,
+          finalUrl,
           text.slice(0, 1_000_000),
           JSON.stringify({
-            redirected: response.redirected,
+            redirected,
             contentType: response.headers.get("content-type"),
             sourceUrl: source.url
           })
@@ -136,17 +160,94 @@ async function refreshSource(database, source, options) {
         .run(checkedAt, checkedAt, contentHash, source.id);
       return { ...base, outcome: "stored", httpStatus: response.status, title, line: `${prefix}stored ${response.status}` };
     } else {
-      database
-        .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
-        .run(checkedAt, source.id);
+      markChecked();
       return { ...base, outcome: "unchanged", httpStatus: response.status, line: `${prefix}unchanged ${response.status}` };
     }
   } catch (error) {
-    database
-      .prepare("update sources set last_checked_at = ?, updated_at = current_timestamp where id = ?")
-      .run(checkedAt, source.id);
+    markChecked();
     return { ...base, outcome: "failed", error: error.message, line: `${prefix}failed: ${error.message}` };
   }
+}
+
+// --- fetch helpers ------------------------------------------------------------
+
+function isChallengePage(title, text) {
+  const probe = `${title}\n${text.slice(0, 2_000)}`.toLowerCase();
+  return challengeMarkers.some((marker) => probe.includes(marker));
+}
+
+async function fetchDocumentWithRetry(url, headers, timeoutMs) {
+  let lastError;
+  for (let attempt = 0; attempt < fetchAttempts; attempt += 1) {
+    if (attempt > 0) {
+      await sleep(retryDelaysMs[attempt - 1] ?? retryDelaysMs.at(-1));
+    }
+    try {
+      const result = await fetchDocument(url, headers, timeoutMs);
+      const status = result.response.status;
+      if ((status === 429 || status >= 500) && attempt < fetchAttempts - 1) {
+        lastError = new Error(`HTTP ${status}`);
+        continue;
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+// Manual redirect loop with a per-request cookie jar. Some upstreams (e.g.
+// milvus.io) answer with a same-URL redirect plus a challenge cookie; the
+// built-in redirect follower drops cookies and loops until "fetch failed".
+async function fetchDocument(url, headers, timeoutMs) {
+  const cookies = new Map();
+  let currentUrl = url;
+  let redirected = false;
+
+  for (let hop = 0; hop <= maxRedirects; hop += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(currentUrl, {
+        redirect: "manual",
+        signal: controller.signal,
+        headers: cookies.size
+          ? { ...headers, cookie: [...cookies.entries()].map(([name, value]) => `${name}=${value}`).join("; ") }
+          : headers
+      });
+      if (response.status >= 300 && response.status < 400) {
+        rememberCookies(response, cookies);
+        const location = response.headers.get("location");
+        await response.body?.cancel();
+        if (!location) {
+          throw new Error(`redirect ${response.status} without location`);
+        }
+        currentUrl = new URL(location, currentUrl).toString();
+        redirected = true;
+        continue;
+      }
+      const body = await response.text();
+      return { response, body, finalUrl: currentUrl, redirected };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw new Error(`too many redirects (${maxRedirects})`);
+}
+
+function rememberCookies(response, cookies) {
+  for (const header of response.headers.getSetCookie()) {
+    const pair = header.split(";", 1)[0];
+    const eq = pair.indexOf("=");
+    if (eq > 0) {
+      cookies.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
+    }
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function upsertSources(database, items) {
