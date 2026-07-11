@@ -158,9 +158,8 @@ For coverage state, use:
 
 For public roadmap details, keep these docs aligned:
 
-- <https://hjosugi.github.io/irodori-docs/feature-matrix.html>
-- <https://hjosugi.github.io/irodori-docs/production-readiness.html>
-- <https://hjosugi.github.io/irodori-docs/implementation-backlog.html>
+- <https://hjosugi.github.io/irodori-docs/roadmap-1.0.html>
+- <https://hjosugi.github.io/irodori-docs/data-source-support-status.html>
 - <https://hjosugi.github.io/irodori-docs/repository-boundaries.html>
 
 ## Research Watchlist

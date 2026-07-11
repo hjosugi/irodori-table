@@ -12,7 +12,7 @@ Each cheatsheet is meant to be **generated** from the local knowledge base
 (`knowledge/irodori-knowledge.sqlite`) once the generator lands; until then a page
 may be hand-seeded (marked `<!-- seed -->`). The generation contract and the
 automatic data collection that feeds it are specified in
-<https://hjosugi.github.io/irodori-docs/cheatsheet-autodoc-plan.html>.
+<https://hjosugi.github.io/irodori-docs/knowledge-base.html>.
 
 ## Index
 
