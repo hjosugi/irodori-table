@@ -1,3 +1,6 @@
+<!-- i18n: language-switcher -->
+[English](README.md) | [日本語](README.ja.md)
+
 # `src/app` — Workbench architecture
 
 The workbench is built from three layers with one rule: **wiring happens in

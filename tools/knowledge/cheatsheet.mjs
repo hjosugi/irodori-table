@@ -115,7 +115,9 @@ function discoverTargets(engines, facts) {
   // seed pages already on disk
   if (existsSync(PAGES_DIR)) {
     for (const file of readdirSync(PAGES_DIR)) {
-      if (file.endsWith(".md") && file !== "README.md") ids.add(file.replace(/\.md$/, ""));
+      if (file.endsWith(".md") && file !== "README.md" && !file.endsWith(".ja.md")) {
+        ids.add(file.replace(/\.md$/, ""));
+      }
     }
   }
   // fixtures

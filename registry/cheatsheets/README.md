@@ -1,3 +1,6 @@
+<!-- i18n: language-switcher -->
+[English](README.md) | [日本語](README.ja.md)
+
 # Engine Cheatsheets
 
 One page per database that answers, fast: **how do I connect from Irodori, what is
