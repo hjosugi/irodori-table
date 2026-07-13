@@ -17,6 +17,7 @@ on:
         type: choice
         options:
           - lightweight
+          - preview
           - stable
 
 permissions:
@@ -70,6 +71,11 @@ jobs:
               upload_updater=false
               tauri_args="--bundles appimage"
               ;;
+            preview)
+              prerelease=true
+              upload_updater=false
+              tauri_args=""
+              ;;
             stable)
               missing=()
               for name in \
@@ -112,6 +118,8 @@ jobs:
             echo "release_body<<EOF_RELEASE_BODY"
             if [[ "${channel}" == "stable" ]]; then
               echo "Stable release with signed Tauri updater artifacts for the stable update channel, plus signed Windows and signed/notarized macOS artifacts."
+            elif [[ "${channel}" == "preview" ]]; then
+              echo "Unsigned macOS and Windows preview artifacts added to the existing lightweight Linux pre-release. These artifacts are not part of the stable updater channel and may trigger operating-system trust warnings."
             else
               echo "Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored. DuckDB is distributed through its installable connector extension."
             fi
@@ -121,6 +129,7 @@ jobs:
   publish-linux:
     name: Publish Linux AppImage
     needs: release-gates
+    if: needs.release-gates.outputs.channel != 'preview'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout irodori-table
@@ -204,11 +213,11 @@ jobs:
         run: npm run release:verify-linux
 
   publish-macos:
-    name: Publish signed macOS app
+    name: Publish macOS app
     needs:
       - release-gates
       - publish-linux
-    if: needs.release-gates.outputs.channel == 'stable'
+    if: always() && needs.release-gates.result == 'success' && (needs.release-gates.outputs.channel == 'preview' || (needs.release-gates.outputs.channel == 'stable' && needs.publish-linux.result == 'success'))
     runs-on: macos-latest
     steps:
       - name: Checkout irodori-table
@@ -239,6 +248,7 @@ jobs:
         run: npm ci
 
       - name: Prepare stable updater signing config
+        if: needs.release-gates.outputs.channel == 'stable'
         working-directory: apps/desktop
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
@@ -248,6 +258,7 @@ jobs:
         run: npm run release:prepare-updater
 
       - name: Prepare macOS signing and notarization
+        if: needs.release-gates.outputs.channel == 'stable'
         working-directory: apps/desktop
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -266,13 +277,13 @@ jobs:
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          APPLE_API_ISSUER: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_API_ISSUER || '' }}
+          APPLE_API_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_API_KEY || '' }}
+          APPLE_ID: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_TEAM_ID || '' }}
         with:
           tagName: ${{ needs.release-gates.outputs.release_tag }}
           releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
@@ -282,14 +293,14 @@ jobs:
           uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
-          args: --target universal-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json
+          args: ${{ needs.release-gates.outputs.channel == 'stable' && '--target universal-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json' || '--target universal-apple-darwin --bundles dmg,app' }}
 
   publish-windows:
-    name: Publish signed Windows app
+    name: Publish Windows app
     needs:
       - release-gates
       - publish-macos
-    if: needs.release-gates.outputs.channel == 'stable'
+    if: always() && needs.release-gates.result == 'success' && needs.publish-macos.result == 'success' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
     runs-on: windows-latest
     steps:
       - name: Checkout irodori-table
@@ -318,6 +329,7 @@ jobs:
         run: npm ci
 
       - name: Prepare stable updater signing config
+        if: needs.release-gates.outputs.channel == 'stable'
         working-directory: apps/desktop
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
@@ -327,6 +339,7 @@ jobs:
         run: npm run release:prepare-updater
 
       - name: Prepare Windows signing
+        if: needs.release-gates.outputs.channel == 'stable'
         working-directory: apps/desktop
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
@@ -341,8 +354,8 @@ jobs:
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
         with:
           tagName: ${{ needs.release-gates.outputs.release_tag }}
           releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
@@ -352,7 +365,7 @@ jobs:
           uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
-          args: --bundles nsis,msi --config src-tauri/tauri.updater.conf.json
+          args: ${{ needs.release-gates.outputs.channel == 'stable' && '--bundles nsis,msi --config src-tauri/tauri.updater.conf.json' || '--bundles nsis,msi' }}
 
   verify-updater:
     name: Verify stable updater manifest

@@ -79,9 +79,11 @@ bindings.
 2. Watch the release workflow in GitHub Actions.
 3. The tag workflow publishes a lightweight Linux AppImage pre-release
    with default features only. macOS, Windows, updater artifacts, legacy
-   connector bundles, deb packages, and rpm packages are intentionally omitted
-   until the full signed release lane is restored. DuckDB is distributed through
-   its installable connector extension instead of the core desktop build.
+   connector bundles, deb packages, and rpm packages are omitted from that
+   automatic lane. When explicitly requested, manually dispatch the `preview`
+   channel for the same tag to append unsigned macOS and Windows artifacts to
+   the existing pre-release. DuckDB is distributed through its installable
+   connector extension instead of the core desktop build.
 4. Confirm the packaged AppImage matches the lightweight connector feature set.
    Do not present legacy connector bundles, deb packages, or rpm packages as
    shipped in lightweight binaries.
@@ -95,8 +97,13 @@ bindings.
 The default tag workflow is intentionally unsigned and marked as a pre-release.
 It must not be used as the stable updater channel.
 
-The release workflow also has a manual `workflow_dispatch` channel named
-`stable`. That channel checks the updater, Windows, and macOS signing secrets;
+The release workflow also has two manual `workflow_dispatch` channels. The
+`preview` channel appends unsigned macOS and Windows artifacts to an existing
+lightweight tag release. It leaves the release marked as a pre-release, does
+not generate `latest.json`, and does not publish to the stable updater channel;
+the artifacts may trigger operating-system trust warnings.
+
+The `stable` channel checks the updater, Windows, and macOS signing secrets;
 generates the ignored `src-tauri/tauri.updater.conf.json` config through
 `npm run release:prepare-updater`; signs Tauri updater artifacts; publishes
 `latest.json` for the stable update channel; and publishes signed Windows and
