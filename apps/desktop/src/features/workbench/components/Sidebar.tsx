@@ -1,15 +1,18 @@
 import type {
+  DragEvent as ReactDragEvent,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   BarChart3,
   BookOpen,
   Bot,
+  Check,
   Columns3,
   Flame,
   Folder,
@@ -26,6 +29,7 @@ import {
   TableProperties,
   TerminalSquare,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { EngineIcon } from "@/components/EngineIcon";
 import { hasDiagram } from "@/features/erd";
@@ -38,13 +42,81 @@ import type {
   WorkspaceConnection,
 } from "@/lib/workspace-connection";
 import { usePreferencesStore } from "@/features/preferences";
-import { createTranslator } from "@/i18n";
+import { createTranslator, type TranslationKey } from "@/i18n";
+import { workbenchViewIds } from "../types";
 import type { WorkbenchViewId } from "../types";
 import type { WorkbenchSide } from "../types";
 
 type SnapshotObject = WorkspaceConnection["objects"][number];
 type ObjectActionMenuPosition = { key: string; x: number; y: number } | null;
 type SidebarViewId = WorkbenchViewId;
+
+type ViewTabMeta = {
+  icon: LucideIcon;
+  // Tooltip/aria text and the (usually shorter) tab label.
+  title: TranslationKey;
+  label: TranslationKey;
+};
+
+const viewTabMeta: Record<SidebarViewId, ViewTabMeta> = {
+  objectBrowser: {
+    icon: Table2,
+    title: "sidebar.view.tables",
+    label: "sidebar.view.tables",
+  },
+  completion: {
+    icon: ListPlus,
+    title: "sidebar.view.completion",
+    label: "sidebar.view.completion",
+  },
+  queryHistory: {
+    icon: History,
+    title: "sidebar.view.history",
+    label: "sidebar.view.history",
+  },
+  plan: { icon: Flame, title: "sidebar.view.plan", label: "sidebar.view.plan" },
+  lakehouse: {
+    icon: Layers3,
+    title: "sidebar.view.lakehouse",
+    label: "sidebar.view.lake",
+  },
+  bi: { icon: BarChart3, title: "sidebar.view.bi", label: "sidebar.view.bi" },
+  git: {
+    icon: GitBranch,
+    title: "sidebar.view.git",
+    label: "sidebar.view.git",
+  },
+  aiChat: { icon: Bot, title: "ai.chat.title", label: "sidebar.view.chat" },
+  searchReplace: {
+    icon: Search,
+    title: "sidebar.view.searchReplace",
+    label: "sidebar.view.find",
+  },
+  rowDetail: {
+    icon: TableProperties,
+    title: "sidebar.view.rowDetail",
+    label: "sidebar.view.rowDetail",
+  },
+  knowledge: {
+    icon: BookOpen,
+    title: "sidebar.view.knowledge",
+    label: "sidebar.view.knowledge",
+  },
+};
+
+// Menus in the sidebar are portaled to <body> and positioned with fixed
+// viewport coordinates: the sidebar lives inside scroll containers and
+// dockview panels whose overflow/stacking clips absolutely-positioned
+// popovers (menus silently appeared "not to open" near panel edges).
+function floatingMenuStyle(x: number, y: number) {
+  return {
+    position: "fixed",
+    left: x,
+    top: y,
+    right: "auto",
+    zIndex: 60,
+  } as const;
+}
 
 const TREE_ROW_SELECTOR =
   ".schema-tree > summary, .object-tree > summary, .metadata-row, .object-row";
@@ -135,6 +207,16 @@ type SidebarProps = {
   side: WorkbenchSide;
   activeView: SidebarViewId;
   availableViews?: readonly SidebarViewId[];
+  /** Every view assigned to this side (hidden ones included), in tab order. */
+  sideViews?: readonly SidebarViewId[];
+  hiddenViews?: Readonly<Partial<Record<SidebarViewId, boolean>>>;
+  onMoveView?: (viewId: SidebarViewId, side: WorkbenchSide) => void;
+  onSetViewHidden?: (viewId: SidebarViewId, hidden: boolean) => void;
+  onReorderView?: (
+    sourceId: SidebarViewId,
+    targetId: SidebarViewId,
+    position: "before" | "after",
+  ) => void;
   showConnectionRail?: boolean;
   completionPanel: ReactNode;
   historyPanel: ReactNode;
@@ -190,6 +272,11 @@ export function Sidebar({
   side,
   activeView,
   availableViews,
+  sideViews,
+  hiddenViews,
+  onMoveView,
+  onSetViewHidden,
+  onReorderView,
   showConnectionRail,
   completionPanel,
   historyPanel,
@@ -237,14 +324,29 @@ export function Sidebar({
   const [objectActionMenuPosition, setObjectActionMenuPosition] =
     useState<ObjectActionMenuPosition>(null);
   const objectActionMenuRef = useRef<HTMLDivElement | null>(null);
+  const createMenuAnchorRef = useRef<HTMLDivElement | null>(null);
   const createMenuRef = useRef<HTMLDivElement | null>(null);
-  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [createMenu, setCreateMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [connectionMenu, setConnectionMenu] = useState<{
     id: string;
     x: number;
     y: number;
   } | null>(null);
   const connectionMenuRef = useRef<HTMLDivElement | null>(null);
+  const [viewMenu, setViewMenu] = useState<{
+    id: SidebarViewId;
+    x: number;
+    y: number;
+  } | null>(null);
+  const viewMenuRef = useRef<HTMLDivElement | null>(null);
+  const draggedViewRef = useRef<SidebarViewId | null>(null);
+  const [viewDragOver, setViewDragOver] = useState<{
+    id: SidebarViewId;
+    position: "before" | "after";
+  } | null>(null);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
 
@@ -255,20 +357,24 @@ export function Sidebar({
   }, [objectActionMenu]);
 
   useEffect(() => {
-    if (!createMenuOpen) {
+    if (!createMenu) {
       return;
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setCreateMenuOpen(false);
+        setCreateMenu(null);
       }
     };
     const closeOnPointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && createMenuRef.current?.contains(target)) {
+      if (
+        target instanceof Node &&
+        (createMenuRef.current?.contains(target) ||
+          createMenuAnchorRef.current?.contains(target))
+      ) {
         return;
       }
-      setCreateMenuOpen(false);
+      setCreateMenu(null);
     };
     window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("pointerdown", closeOnPointerDown);
@@ -276,7 +382,34 @@ export function Sidebar({
       window.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("pointerdown", closeOnPointerDown);
     };
-  }, [createMenuOpen]);
+  }, [createMenu]);
+
+  useEffect(() => {
+    if (!viewMenu) {
+      return;
+    }
+    const close = () => setViewMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setViewMenu(null);
+      }
+    };
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && viewMenuRef.current?.contains(target)) {
+        return;
+      }
+      setViewMenu(null);
+    };
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", close);
+    };
+  }, [viewMenu]);
 
   useEffect(() => {
     if (!objectActionMenu) {
@@ -354,6 +487,88 @@ export function Sidebar({
     });
   }
 
+  // The `⋯` button variant of the object menu anchors below the button
+  // instead of at the pointer, but is otherwise the same portaled menu.
+  function toggleObjectActionMenu(
+    event: ReactMouseEvent<HTMLElement>,
+    objectKey: string,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const anchor = clampObjectMenuPosition(rect.right - 218, rect.bottom + 4);
+    onSetObjectActionMenu((current) =>
+      current === objectKey ? null : objectKey,
+    );
+    setObjectActionMenuPosition({ key: objectKey, ...anchor });
+  }
+
+  function openViewMenu(
+    event: ReactMouseEvent<HTMLElement>,
+    viewId: SidebarViewId,
+  ) {
+    if (!onSetViewHidden && !onMoveView) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setViewMenu({
+      id: viewId,
+      ...clampObjectMenuPosition(event.clientX, event.clientY),
+    });
+  }
+
+  function handleViewDragStart(
+    event: ReactDragEvent<HTMLButtonElement>,
+    viewId: SidebarViewId,
+  ) {
+    draggedViewRef.current = viewId;
+    event.dataTransfer.setData("text/plain", viewId);
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleViewDragOver(
+    event: ReactDragEvent<HTMLButtonElement>,
+    viewId: SidebarViewId,
+  ) {
+    const source = draggedViewRef.current;
+    if (!onReorderView || !source || source === viewId) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const rect = event.currentTarget.getBoundingClientRect();
+    const position =
+      event.clientX < rect.left + rect.width / 2 ? "before" : "after";
+    setViewDragOver((current) =>
+      current?.id === viewId && current.position === position
+        ? current
+        : { id: viewId, position },
+    );
+  }
+
+  function handleViewDrop(
+    event: ReactDragEvent<HTMLButtonElement>,
+    viewId: SidebarViewId,
+  ) {
+    const source = draggedViewRef.current;
+    if (!onReorderView || !source || source === viewId) {
+      return;
+    }
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const position =
+      event.clientX < rect.left + rect.width / 2 ? "before" : "after";
+    onReorderView(source, viewId, position);
+    draggedViewRef.current = null;
+    setViewDragOver(null);
+  }
+
+  function handleViewDragEnd() {
+    draggedViewRef.current = null;
+    setViewDragOver(null);
+  }
+
   function renderActivePanel() {
     switch (activeView) {
       case "completion":
@@ -381,9 +596,9 @@ export function Sidebar({
     }
   }
 
-  const availableViewSet = new Set(availableViews ?? []);
-  const isViewAvailable = (viewId: SidebarViewId) =>
-    !availableViews || availableViewSet.has(viewId);
+  const tabViews = availableViews ?? workbenchViewIds;
+  const manageableViews = sideViews ?? tabViews;
+  const canManageViews = Boolean(onSetViewHidden || onMoveView);
 
   return (
     <>
@@ -419,6 +634,9 @@ export function Sidebar({
                   onDoubleClick={onOpenConnectionManager}
                   onContextMenu={(event) => {
                     event.preventDefault();
+                    // Without this, the workbench shell's generic context
+                    // menu opens on top of this one from the same click.
+                    event.stopPropagation();
                     setConnectionMenu({
                       id: connection.id,
                       ...clampObjectMenuPosition(event.clientX, event.clientY),
@@ -453,12 +671,15 @@ export function Sidebar({
                 const connected = connectedIds.has(connection.id);
                 const isActive = connection.id === activeConnectionId;
                 const close = () => setConnectionMenu(null);
-                return (
+                return createPortal(
                   <div
                     ref={connectionMenuRef}
-                    className="object-action-menu object-action-menu-context"
+                    className="object-action-menu"
                     role="menu"
-                    style={{ left: connectionMenu.x, top: connectionMenu.y }}
+                    style={floatingMenuStyle(
+                      connectionMenu.x,
+                      connectionMenu.y,
+                    )}
                   >
                     <button
                       type="button"
@@ -516,7 +737,8 @@ export function Sidebar({
                         {t("sidebar.menu.copyConnectionString")}
                       </button>
                     ) : null}
-                  </div>
+                  </div>,
+                  document.body,
                 );
               })()
             : null}
@@ -529,165 +751,109 @@ export function Sidebar({
             role="tablist"
             aria-label={t("sidebar.views")}
           >
-            {isViewAvailable("objectBrowser") ? (
-              <button
-                type="button"
-                role="tab"
-                className={
-                  activeView === "objectBrowser" ? "active" : undefined
-                }
-                aria-selected={activeView === "objectBrowser"}
-                title={t("sidebar.view.tables")}
-                aria-label={t("sidebar.view.tables")}
-                onClick={() => onSelectView("objectBrowser")}
-              >
-                <Table2 size={14} />
-                <span>{t("sidebar.view.tables")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("completion") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "completion" ? "active" : undefined}
-                aria-selected={activeView === "completion"}
-                title={t("sidebar.view.completion")}
-                aria-label={t("sidebar.view.completion")}
-                onClick={() => onSelectView("completion")}
-              >
-                <ListPlus size={14} />
-                <span>{t("sidebar.view.completion")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("queryHistory") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "queryHistory" ? "active" : undefined}
-                aria-selected={activeView === "queryHistory"}
-                title={t("sidebar.view.history")}
-                aria-label={t("sidebar.view.history")}
-                onClick={() => onSelectView("queryHistory")}
-              >
-                <History size={14} />
-                <span>{t("sidebar.view.history")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("plan") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "plan" ? "active" : undefined}
-                aria-selected={activeView === "plan"}
-                title={t("sidebar.view.plan")}
-                aria-label={t("sidebar.view.plan")}
-                onClick={() => onSelectView("plan")}
-              >
-                <Flame size={14} />
-                <span>{t("sidebar.view.plan")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("lakehouse") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "lakehouse" ? "active" : undefined}
-                aria-selected={activeView === "lakehouse"}
-                title={t("sidebar.view.lakehouse")}
-                aria-label={t("sidebar.view.lakehouse")}
-                onClick={() => onSelectView("lakehouse")}
-              >
-                <Layers3 size={14} />
-                <span>{t("sidebar.view.lake")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("bi") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "bi" ? "active" : undefined}
-                aria-selected={activeView === "bi"}
-                title={t("sidebar.view.bi")}
-                aria-label={t("sidebar.view.bi")}
-                onClick={() => onSelectView("bi")}
-              >
-                <BarChart3 size={14} />
-                <span>{t("sidebar.view.bi")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("git") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "git" ? "active" : undefined}
-                aria-selected={activeView === "git"}
-                title={t("sidebar.view.git")}
-                aria-label={t("sidebar.view.git")}
-                onClick={() => onSelectView("git")}
-              >
-                <GitBranch size={14} />
-                <span>{t("sidebar.view.git")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("aiChat") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "aiChat" ? "active" : undefined}
-                aria-selected={activeView === "aiChat"}
-                title={t("ai.chat.title")}
-                aria-label={t("ai.chat.title")}
-                onClick={() => onSelectView("aiChat")}
-              >
-                <Bot size={14} />
-                <span>{t("sidebar.view.chat")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("searchReplace") ? (
-              <button
-                type="button"
-                role="tab"
-                className={
-                  activeView === "searchReplace" ? "active" : undefined
-                }
-                aria-selected={activeView === "searchReplace"}
-                title={t("sidebar.view.searchReplace")}
-                aria-label={t("sidebar.view.searchReplace")}
-                onClick={() => onSelectView("searchReplace")}
-              >
-                <Search size={14} />
-                <span>{t("sidebar.view.find")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("rowDetail") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "rowDetail" ? "active" : undefined}
-                aria-selected={activeView === "rowDetail"}
-                title={t("sidebar.view.rowDetail")}
-                aria-label={t("sidebar.view.rowDetail")}
-                onClick={() => onSelectView("rowDetail")}
-              >
-                <TableProperties size={14} />
-                <span>{t("sidebar.view.rowDetail")}</span>
-              </button>
-            ) : null}
-            {isViewAvailable("knowledge") ? (
-              <button
-                type="button"
-                role="tab"
-                className={activeView === "knowledge" ? "active" : undefined}
-                aria-selected={activeView === "knowledge"}
-                title={t("sidebar.view.knowledge")}
-                aria-label={t("sidebar.view.knowledge")}
-                onClick={() => onSelectView("knowledge")}
-              >
-                <BookOpen size={14} />
-                <span>{t("sidebar.view.knowledge")}</span>
-              </button>
-            ) : null}
+            {tabViews.map((viewId) => {
+              const meta = viewTabMeta[viewId];
+              const TabIcon = meta.icon;
+              const dragClass =
+                viewDragOver?.id === viewId
+                  ? ` drag-over-${viewDragOver.position}`
+                  : "";
+              return (
+                <button
+                  key={viewId}
+                  type="button"
+                  role="tab"
+                  className={
+                    `${activeView === viewId ? "active" : ""}${dragClass}`.trim() ||
+                    undefined
+                  }
+                  aria-selected={activeView === viewId}
+                  title={t(meta.title)}
+                  aria-label={t(meta.title)}
+                  draggable={Boolean(onReorderView)}
+                  onClick={() => onSelectView(viewId)}
+                  onContextMenu={(event) => openViewMenu(event, viewId)}
+                  onDragStart={(event) => handleViewDragStart(event, viewId)}
+                  onDragOver={(event) => handleViewDragOver(event, viewId)}
+                  onDrop={(event) => handleViewDrop(event, viewId)}
+                  onDragEnd={handleViewDragEnd}
+                >
+                  <TabIcon size={14} />
+                  <span>{t(meta.label)}</span>
+                </button>
+              );
+            })}
           </div>
+          {viewMenu && canManageViews
+            ? createPortal(
+                <div
+                  ref={viewMenuRef}
+                  className="object-action-menu"
+                  role="menu"
+                  aria-label={t("sidebar.viewMenu")}
+                  style={floatingMenuStyle(viewMenu.x, viewMenu.y)}
+                >
+                  {onMoveView ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={viewMenu.id === "objectBrowser"}
+                      onClick={() => {
+                        onMoveView(
+                          viewMenu.id,
+                          side === "left" ? "right" : "left",
+                        );
+                        setViewMenu(null);
+                      }}
+                    >
+                      {side === "left"
+                        ? t("sidebar.menu.moveToRightSidebar")
+                        : t("sidebar.menu.moveToLeftSidebar")}
+                    </button>
+                  ) : null}
+                  {onSetViewHidden ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={viewMenu.id === "objectBrowser"}
+                      onClick={() => {
+                        onSetViewHidden(viewMenu.id, true);
+                        setViewMenu(null);
+                      }}
+                    >
+                      {t("sidebar.menu.hideView", {
+                        name: t(viewTabMeta[viewMenu.id].title),
+                      })}
+                    </button>
+                  ) : null}
+                  {onSetViewHidden ? (
+                    <>
+                      <span className="menu-separator" aria-hidden="true" />
+                      {manageableViews.map((viewId) => {
+                        const visible = !hiddenViews?.[viewId];
+                        return (
+                          <button
+                            key={viewId}
+                            type="button"
+                            role="menuitemcheckbox"
+                            aria-checked={visible}
+                            disabled={viewId === "objectBrowser"}
+                            onClick={() => {
+                              onSetViewHidden(viewId, visible);
+                              setViewMenu(null);
+                            }}
+                          >
+                            <span>{t(viewTabMeta[viewId].title)}</span>
+                            {visible ? <Check size={13} /> : null}
+                          </button>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </div>,
+                document.body,
+              )
+            : null}
           {activeView === "objectBrowser" ? (
             <section className="sidebar-section browser-section">
               <div className="section-heading">
@@ -699,50 +865,75 @@ export function Sidebar({
                     : "public"}
                 </span>
                 <div className="section-heading-actions">
-                  <div className="schema-create-menu-wrap" ref={createMenuRef}>
+                  <div
+                    className="schema-create-menu-wrap"
+                    ref={createMenuAnchorRef}
+                  >
                     <button
                       type="button"
                       title={t("sidebar.newTable")}
                       aria-label={t("sidebar.newTable")}
-                      aria-expanded={createMenuOpen}
-                      onClick={() => setCreateMenuOpen((open) => !open)}
+                      aria-expanded={Boolean(createMenu)}
+                      onClick={(event) => {
+                        const rect =
+                          event.currentTarget.getBoundingClientRect();
+                        setCreateMenu((open) =>
+                          open
+                            ? null
+                            : clampObjectMenuPosition(
+                                rect.right - 190,
+                                rect.bottom + 4,
+                              ),
+                        );
+                      }}
                     >
                       <Plus size={14} />
                     </button>
-                    {createMenuOpen ? (
-                      <div className="schema-create-menu" role="menu">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setCreateMenuOpen(false);
-                            onOpenBlankSchemaDesigner();
-                          }}
-                        >
-                          {t("sidebar.menu.newTable")}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setCreateMenuOpen(false);
-                            onNewTableFromFile();
-                          }}
-                        >
-                          {t("sidebar.menu.newTableFromFile")}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setCreateMenuOpen(false);
-                            onOpenSchemaDiagram();
-                          }}
-                        >
-                          {t("sidebar.menu.designOnCanvas")}
-                        </button>
-                      </div>
-                    ) : null}
+                    {createMenu
+                      ? createPortal(
+                          <div
+                            ref={createMenuRef}
+                            className="schema-create-menu"
+                            role="menu"
+                            style={floatingMenuStyle(
+                              createMenu.x,
+                              createMenu.y,
+                            )}
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setCreateMenu(null);
+                                onOpenBlankSchemaDesigner();
+                              }}
+                            >
+                              {t("sidebar.menu.newTable")}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setCreateMenu(null);
+                                onNewTableFromFile();
+                              }}
+                            >
+                              {t("sidebar.menu.newTableFromFile")}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setCreateMenu(null);
+                                onOpenSchemaDiagram();
+                              }}
+                            >
+                              {t("sidebar.menu.designOnCanvas")}
+                            </button>
+                          </div>,
+                          document.body,
+                        )
+                      : null}
                   </div>
                   <button
                     type="button"
@@ -848,90 +1039,79 @@ export function Sidebar({
                                   aria-label={t("sidebar.objectActionsFor", {
                                     name: object.name,
                                   })}
-                                  onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    onSetObjectActionMenu((current) =>
-                                      current === objectKey ? null : objectKey,
-                                    );
-                                    setObjectActionMenuPosition(null);
-                                  }}
+                                  onClick={(event) =>
+                                    toggleObjectActionMenu(event, objectKey)
+                                  }
                                 >
                                   <MoreHorizontal size={14} />
                                 </button>
-                                {objectActionMenu === objectKey ? (
-                                  <div
-                                    ref={objectActionMenuRef}
-                                    className={
-                                      objectActionMenuPosition?.key ===
-                                      objectKey
-                                        ? "object-action-menu object-action-menu-context"
-                                        : "object-action-menu"
-                                    }
-                                    role="menu"
-                                    style={
-                                      objectActionMenuPosition?.key ===
-                                      objectKey
-                                        ? {
-                                            left: objectActionMenuPosition.x,
-                                            top: objectActionMenuPosition.y,
-                                          }
-                                        : undefined
-                                    }
-                                  >
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      disabled={!canOpenData}
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        onOpenTableData(object);
-                                      }}
-                                    >
-                                      {t("sidebar.menu.openData")}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      disabled={object.kind !== "table"}
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        onOpenObjectSchemaDesigner(object);
-                                        onSetObjectActionMenu(null);
-                                      }}
-                                    >
-                                      {t("sidebar.menu.structure")}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      disabled={!hasDiagram(activeMetadata)}
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        onShowObjectInDiagram(object);
-                                      }}
-                                    >
-                                      {t("sidebar.menu.showInErd")}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        void navigator.clipboard?.writeText(
-                                          formatObjectName(object),
-                                        );
-                                        onSetObjectActionMenu(null);
-                                      }}
-                                    >
-                                      {t("sidebar.menu.copyName")}
-                                    </button>
-                                  </div>
-                                ) : null}
+                                {objectActionMenu === objectKey &&
+                                objectActionMenuPosition?.key === objectKey
+                                  ? createPortal(
+                                      <div
+                                        ref={objectActionMenuRef}
+                                        className="object-action-menu"
+                                        role="menu"
+                                        style={floatingMenuStyle(
+                                          objectActionMenuPosition.x,
+                                          objectActionMenuPosition.y,
+                                        )}
+                                      >
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          disabled={!canOpenData}
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            onOpenTableData(object);
+                                          }}
+                                        >
+                                          {t("sidebar.menu.openData")}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          disabled={object.kind !== "table"}
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            onOpenObjectSchemaDesigner(object);
+                                            onSetObjectActionMenu(null);
+                                          }}
+                                        >
+                                          {t("sidebar.menu.structure")}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          disabled={!hasDiagram(activeMetadata)}
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            onShowObjectInDiagram(object);
+                                          }}
+                                        >
+                                          {t("sidebar.menu.showInErd")}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            void navigator.clipboard?.writeText(
+                                              formatObjectName(object),
+                                            );
+                                            onSetObjectActionMenu(null);
+                                          }}
+                                        >
+                                          {t("sidebar.menu.copyName")}
+                                        </button>
+                                      </div>,
+                                      document.body,
+                                    )
+                                  : null}
                               </summary>
                               <div className="metadata-children">
                                 {object.columns.length > 0 ? (

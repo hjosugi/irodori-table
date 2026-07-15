@@ -29,8 +29,24 @@
 }
 
 .git-panel-sidebar .git-drawer-header {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  /* Four children (title, view switch, refresh, close): a 3-column template
+     pushed the close button onto a broken second row in narrow sidebars. */
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   padding: 0 6px;
+}
+
+.git-panel-sidebar .git-drawer-header > span {
+  overflow: hidden;
+}
+
+.git-panel-sidebar .git-view-switch {
+  min-width: 0;
+}
+
+.git-panel-sidebar .git-view-switch button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .git-panel-sidebar .git-branch-card {
@@ -403,6 +419,8 @@
 
 .git-graph-toolbar {
   justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 
 .git-graph-controls {

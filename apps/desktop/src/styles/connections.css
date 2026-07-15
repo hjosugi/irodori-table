@@ -208,6 +208,12 @@
   background: var(--selected);
 }
 
+/* Rows in the shift/ctrl multi-selection used for bulk delete. */
+.connection-profile.selected {
+  background: var(--selected);
+  box-shadow: inset 2px 0 0 var(--focus);
+}
+
 .connection-profile strong,
 .connection-profile small {
   display: block;

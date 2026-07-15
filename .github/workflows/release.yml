@@ -303,7 +303,11 @@ jobs:
     needs:
       - release-gates
       - publish-macos
-    if: always() && needs.release-gates.result == 'success' && needs.publish-macos.result == 'success' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
+    # Still chained after macOS so the two lanes never race uploads to the
+    # same GitHub release, but a failed (not cancelled) macOS preview build
+    # must not take the unsigned Windows artifacts down with it. Stable keeps
+    # the strict all-platform gate.
+    if: always() && needs.release-gates.result == 'success' && ((needs.release-gates.outputs.channel == 'preview' && needs.publish-macos.result != 'cancelled') || (needs.release-gates.outputs.channel == 'stable' && needs.publish-macos.result == 'success'))
     runs-on: windows-latest
     steps:
       - name: Checkout irodori-table

@@ -101,7 +101,9 @@ The release workflow also has two manual `workflow_dispatch` channels. The
 `preview` channel appends unsigned macOS and Windows artifacts to an existing
 lightweight tag release. It leaves the release marked as a pre-release, does
 not generate `latest.json`, and does not publish to the stable updater channel;
-the artifacts may trigger operating-system trust warnings.
+the artifacts may trigger operating-system trust warnings. The preview lanes
+stay serialized (macOS, then Windows) to avoid concurrent uploads to the same
+release, but a failed macOS build does not skip the Windows lane.
 
 The `stable` channel checks the updater, Windows, and macOS signing secrets;
 generates the ignored `src-tauri/tauri.updater.conf.json` config through

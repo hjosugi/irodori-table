@@ -5,6 +5,8 @@ import {
   activeWorkbenchView,
   defaultWorkbenchViewPlacements,
   defaultWorkbenchViewVisibility,
+  workbenchViewIds,
+  workbenchViewsForSide,
   type WorkbenchViewPlacements,
   type WorkbenchViewVisibility,
 } from "@/features/workbench/types";
@@ -178,6 +180,52 @@ describe("workbench store view placements", () => {
         bi: true,
       }),
     ).toBe("bi");
+  });
+
+  it("sets and persists the sidebar tab order as a full permutation", async () => {
+    const store = await loadWorkbenchStore();
+
+    store.getState().setViewOrder(["git", "objectBrowser"]);
+
+    const order = store.getState().viewOrder;
+    expect(order.slice(0, 2)).toEqual(["git", "objectBrowser"]);
+    expect([...order].sort()).toEqual([...workbenchViewIds].sort());
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("irodori.workbench.viewOrder.v1") ?? "[]",
+      ),
+    ).toEqual(order);
+  });
+
+  it("drops unknown ids from a stored tab order and appends missing ones", async () => {
+    window.localStorage.setItem(
+      "irodori.workbench.viewOrder.v1",
+      JSON.stringify(["plan", "bogusView", "plan", "git"]),
+    );
+
+    const store = await loadWorkbenchStore();
+
+    const order = store.getState().viewOrder;
+    expect(order.slice(0, 2)).toEqual(["plan", "git"]);
+    expect(order).toHaveLength(workbenchViewIds.length);
+  });
+
+  it("hides views but never the object browser", async () => {
+    const store = await loadWorkbenchStore();
+
+    store.getState().setViewHidden("git", true);
+    store.getState().setViewHidden("objectBrowser", true);
+
+    expect(store.getState().viewHidden.git).toBe(true);
+    expect(store.getState().viewHidden.objectBrowser).toBe(false);
+    expect(
+      workbenchViewsForSide(
+        store.getState().viewPlacements,
+        "left",
+        store.getState().viewOrder,
+        store.getState().viewHidden,
+      ),
+    ).not.toContain("git");
   });
 
   it("defaults the sidebar to a compact working width", async () => {

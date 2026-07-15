@@ -68,23 +68,70 @@ export function activeWorkbenchView(
   );
 }
 
+export type WorkbenchViewHidden = Record<WorkbenchViewId, boolean>;
+
+export const defaultWorkbenchViewHidden: WorkbenchViewHidden = {
+  objectBrowser: false,
+  completion: false,
+  queryHistory: false,
+  plan: false,
+  lakehouse: false,
+  bi: false,
+  git: false,
+  aiChat: false,
+  searchReplace: false,
+  rowDetail: false,
+  knowledge: false,
+};
+
+function isWorkbenchViewId(value: unknown): value is WorkbenchViewId {
+  return workbenchViewIds.includes(value as WorkbenchViewId);
+}
+
+// Stored tab order for the sidebar view switchers. Unknown ids are dropped and
+// missing ids are appended in their default order, so the list always stays a
+// permutation of workbenchViewIds even across app versions.
+export function normalizeWorkbenchViewOrder(value: unknown): WorkbenchViewId[] {
+  const order: WorkbenchViewId[] = [];
+  const seen = new Set<WorkbenchViewId>();
+  if (Array.isArray(value)) {
+    for (const viewId of value) {
+      if (isWorkbenchViewId(viewId) && !seen.has(viewId)) {
+        seen.add(viewId);
+        order.push(viewId);
+      }
+    }
+  }
+  workbenchViewIds.forEach((viewId) => {
+    if (!seen.has(viewId)) {
+      order.push(viewId);
+    }
+  });
+  return order;
+}
+
 export function workbenchViewsForSide(
   placements: WorkbenchViewPlacements,
   side: WorkbenchSide,
+  order: readonly WorkbenchViewId[] = workbenchViewIds,
+  hidden?: Partial<WorkbenchViewHidden>,
 ): WorkbenchViewId[] {
-  return workbenchViewIds.filter((viewId) => placements[viewId] === side);
+  return order.filter(
+    (viewId) => placements[viewId] === side && !hidden?.[viewId],
+  );
 }
 
 export function activeWorkbenchViewForSide(
   visibility: WorkbenchViewVisibility,
   placements: WorkbenchViewPlacements,
   side: WorkbenchSide,
+  order: readonly WorkbenchViewId[] = workbenchViewIds,
+  hidden?: Partial<WorkbenchViewHidden>,
 ): WorkbenchViewId {
+  const views = workbenchViewsForSide(placements, side, order, hidden);
   return (
-    workbenchViewIds.find(
-      (viewId) => placements[viewId] === side && visibility[viewId],
-    ) ??
-    workbenchViewsForSide(placements, side)[0] ??
+    views.find((viewId) => visibility[viewId]) ??
+    views[0] ??
     (side === "left" ? "objectBrowser" : "plan")
   );
 }

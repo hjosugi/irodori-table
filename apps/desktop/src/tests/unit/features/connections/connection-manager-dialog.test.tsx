@@ -75,7 +75,7 @@ function renderDialog(
     onExportProfiles: vi.fn(),
     onSelectProfile: vi.fn(),
     onUpdateDraft: vi.fn(),
-    onDeleteProfile: vi.fn(),
+    onDeleteProfiles: vi.fn(),
     onDisconnect: vi.fn(),
     onSave: vi.fn(),
     onTest: vi.fn(),
@@ -168,7 +168,7 @@ describe("ConnectionManagerDialog", () => {
     expect(deleteButton).not.toBeUndefined();
     flushSync(() => deleteButton?.click());
 
-    expect(props.onDeleteProfile).not.toHaveBeenCalled();
+    expect(props.onDeleteProfiles).not.toHaveBeenCalled();
     expect(container.textContent).toContain("Delete connection?");
 
     const confirmButton = Array.from(
@@ -177,7 +177,57 @@ describe("ConnectionManagerDialog", () => {
     flushSync(() => confirmButton?.click());
     await Promise.resolve();
 
-    expect(props.onDeleteProfile).toHaveBeenCalledTimes(1);
+    expect(props.onDeleteProfiles).toHaveBeenCalledTimes(1);
+    expect(props.onDeleteProfiles).toHaveBeenCalledWith(["local-pg"]);
+  });
+
+  it("shift+click selects a range and deletes it together after confirming", async () => {
+    const profiles = [
+      draft(),
+      draft({ id: "local-mysql", name: "Local MySQL", engine: "mysql" }),
+      draft({ id: "local-duck", name: "Local Duck", engine: "duckdb" }),
+    ];
+    const props = renderDialog({ profiles });
+
+    const profileButton = (name: string) =>
+      Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          ".connection-profile strong",
+        ),
+      )
+        .find((label) => label.textContent === name)
+        ?.closest("button");
+
+    flushSync(() => profileButton("Local Postgres")?.click());
+    const rangeEnd = profileButton("Local Duck");
+    flushSync(() =>
+      rangeEnd?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, shiftKey: true }),
+      ),
+    );
+
+    expect(
+      container.querySelectorAll(".connection-profile.selected"),
+    ).toHaveLength(3);
+
+    const deleteButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent === "Delete (3)");
+    expect(deleteButton).not.toBeUndefined();
+    flushSync(() => deleteButton?.click());
+
+    expect(container.textContent).toContain("Delete 3 connections?");
+    const confirmButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".confirm-dialog button"),
+    ).find((button) => button.textContent === "Delete");
+    flushSync(() => confirmButton?.click());
+    await Promise.resolve();
+
+    expect(props.onDeleteProfiles).toHaveBeenCalledWith([
+      "local-pg",
+      "local-mysql",
+      "local-duck",
+    ]);
   });
 
   it("shows structured connection errors with raw details", () => {
