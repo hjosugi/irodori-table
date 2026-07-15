@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.37] - 2026-07-14
+
+### Fixed
+
+- Unsigned desktop builds no longer register the updater plugin without its
+  signed-release configuration, preventing an updater configuration panic from
+  aborting startup.
+
+### Changed
+
+- Lightweight releases now publish Linux AppImage, deb, and rpm packages. The
+  preview channel appends unsigned universal macOS app/dmg packages and
+  supports SignPath-signed Windows NSIS/MSI installers for a complete
+  pre-release asset set.
+
 ## [0.7.34] - 2026-07-08
 
 ### Fixed

@@ -77,16 +77,16 @@ bindings.
 
 1. Push the release commit and tag created by the release target.
 2. Watch the release workflow in GitHub Actions.
-3. The tag workflow publishes a lightweight Linux AppImage pre-release
-   with default features only. macOS, Windows, updater artifacts, legacy
-   connector bundles, deb packages, and rpm packages are omitted from that
-   automatic lane. When explicitly requested, manually dispatch the `preview`
-   channel for the same tag to append unsigned macOS and Windows artifacts to
-   the existing pre-release. DuckDB is distributed through its installable
-   connector extension instead of the core desktop build.
-4. Confirm the packaged AppImage matches the lightweight connector feature set.
-   Do not present legacy connector bundles, deb packages, or rpm packages as
-   shipped in lightweight binaries.
+3. The tag workflow publishes a lightweight Linux pre-release with AppImage,
+   deb, and rpm packages and default features only. When explicitly requested,
+   manually dispatch the `preview` channel for the same tag to append unsigned
+   universal macOS app/dmg packages and Windows NSIS/MSI installers. Select
+   `windows_signing=signpath` to replace the Windows assets with SignPath-signed
+   installers. Updater artifacts remain exclusive to the signed stable lane.
+   DuckDB is distributed through its installable connector extension instead
+   of the core desktop build.
+4. Confirm the packages match the lightweight connector feature set. Do not
+   present unsigned macOS preview packages as signed/notarized stable builds.
 5. Compare `registry/data-source-support-status.md` against shipped build
    behavior before publishing user-facing notes.
 6. Publish release notes that separate app changes from sibling-crate and
@@ -95,14 +95,19 @@ bindings.
 ## Signing, Notarization, And Updates
 
 The default tag workflow is intentionally unsigned and marked as a pre-release.
-It must not be used as the stable updater channel.
+It publishes Linux AppImage, deb, and rpm packages, but it must not be used as
+the stable updater channel. The updater plugin is compiled into the desktop
+shell only when the `updater` Cargo feature is explicitly enabled by the stable
+release workflow.
 
 The release workflow also has two manual `workflow_dispatch` channels. The
 `preview` channel appends unsigned macOS and Windows artifacts to an existing
-lightweight tag release. It leaves the release marked as a pre-release, does
-not generate `latest.json`, and does not publish to the stable updater channel;
-the artifacts may trigger operating-system trust warnings. The preview lanes
-stay serialized (macOS, then Windows) to avoid concurrent uploads to the same
+lightweight tag release by default. Selecting `windows_signing=signpath` keeps
+macOS unsigned but replaces the Windows NSIS/MSI assets with SignPath-signed
+installers. It leaves the release marked as a pre-release, does not generate
+`latest.json`, and does not publish to the stable updater channel; unsigned
+artifacts may trigger operating-system trust warnings. The preview lanes stay
+serialized (macOS, then Windows) to avoid concurrent uploads to the same
 release, but a failed macOS build does not skip the Windows lane.
 
 The `stable` channel checks the updater, Windows, and macOS signing secrets;
@@ -115,7 +120,9 @@ dispatching a stable release:
 ### Windows signing backend
 
 The stable channel signs Windows artifacts with one of three backends, selected
-by the `windows_signing` dispatch input (default `pfx`):
+by the `windows_signing` dispatch input (default `pfx`). The preview channel is
+unsigned by default but also supports `windows_signing=signpath` without the
+stable updater or Apple signing credentials:
 
 - **`pfx`** — a code-signing `.pfx` certificate you hold. `prepare-windows-signing.mjs`
   imports it into the runner's certificate store and points Tauri's
@@ -140,22 +147,32 @@ by the `windows_signing` dispatch input (default `pfx`):
   [`SignPath/github-action-submit-signing-request`](https://github.com/SignPath/github-action-submit-signing-request)
   action, and replaces the release assets with the signed versions. No
   certificate is held locally. The workflow grants the action read access to
-  GitHub Actions artifacts for provenance verification. Requires the
-  `SIGNPATH_*` secrets below.
+  GitHub Actions artifacts for provenance verification. It verifies the
+  returned Authenticode signatures before replacement, downloads the published
+  assets and verifies them again, and removes the Windows release assets if
+  signing or verification fails. Requires the `SIGNPATH_*` secrets below.
   **Limitation:** the auto-updater payload (`.nsis.zip`) is built before this
   post-publish signing step, so it is not code-signed by SignPath — use `pfx`
   or `azure` (build-time signing) if you need signed updater payloads.
 
   To enable it: apply to the SignPath Foundation with the project's public
   GitHub repository, then in the SignPath dashboard create a project, an
-  artifact configuration for the Tauri installers, and a signing policy, and
-  issue a CI API token. Feed those into the `SIGNPATH_*` secrets below.
+  artifact configuration with a root `<zip-file>` containing one NSIS `.exe`
+  and one MSI package, and a signing policy, and issue a CI API token. Enforce
+  the Irodori Table product name and matching version with file metadata
+  restrictions. Install the SignPath GitHub App, link the predefined GitHub.com
+  trusted build system, and feed the values into the `SIGNPATH_*` secrets
+  below. Foundation signing requests require manual approval.
 
-All backends are inert unless the stable channel is dispatched with the
-matching secrets present, so adding one never affects the lightweight or
-preview lanes.
+All backends are inert unless the matching dispatch option and secrets are
+present. Lightweight releases remain unsigned, and preview releases use
+SignPath only when explicitly selected.
 
-Configure these GitHub Actions secrets before dispatching a stable release:
+The repository home page contains the Foundation-required
+[code signing policy](README.md#code-signing-policy). Keep its team roles and
+privacy statement current when project ownership or network behavior changes.
+
+Configure the updater secrets before dispatching a stable release:
 
 | Secret | Used by | Notes |
 | --- | --- | --- |
@@ -172,7 +189,7 @@ generated `latest.json` have been reviewed.
 
 The stable workflow publishes Windows and macOS lanes only after the platform
 secrets below are present. The default tag workflow stays on the lightweight
-Linux AppImage lane, so missing platform credentials do not block prerelease
+Linux package lane, so missing platform credentials do not block prerelease
 checkpoints.
 
 | Secret | Used by | Notes |
@@ -191,6 +208,7 @@ checkpoints.
 | `SIGNPATH_ORGANIZATION_ID` | Windows signing (`signpath`) | SignPath organization ID (GUID). |
 | `SIGNPATH_PROJECT_SLUG` | Windows signing (`signpath`) | SignPath project slug for this repo. |
 | `SIGNPATH_SIGNING_POLICY_SLUG` | Windows signing (`signpath`) | Signing policy slug (e.g. `release-signing`). |
+| `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG` | Windows signing (`signpath`) | Artifact configuration that signs the root NSIS and MSI files. |
 | `APPLE_CERTIFICATE` | macOS signing | Base64-encoded `.p12` Developer ID Application certificate. |
 | `APPLE_CERTIFICATE_PASSWORD` | macOS signing | Export password for the `.p12`. |
 | `APPLE_SIGNING_IDENTITY` | macOS signing | Optional; discovered from the imported certificate when unset. |

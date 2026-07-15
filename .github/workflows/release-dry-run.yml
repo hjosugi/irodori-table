@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  linux-appimage:
-    name: Linux AppImage dry run
+  linux-packages:
+    name: Linux package dry run
     runs-on: ubuntu-latest
 
     steps:
@@ -53,17 +53,20 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
-      - name: Build debug AppImage
+      - name: Build Linux packages
         working-directory: apps/desktop
-        run: npm run release:appimage -- --debug
+        run: npm run release:linux
 
-      - name: Verify AppImage artifact
+      - name: Verify Linux package artifacts
         working-directory: apps/desktop
-        run: npm run release:verify-linux -- --debug
+        run: npm run release:verify-linux
 
-      - name: Upload AppImage artifact
+      - name: Upload Linux package artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: irodori-table-debug-appimage
-          path: .irodori-local/target/debug/bundle/appimage/*.AppImage
+          name: irodori-table-linux-packages
+          path: |
+            .irodori-local/target/release/bundle/appimage/*.AppImage
+            .irodori-local/target/release/bundle/deb/*.deb
+            .irodori-local/target/release/bundle/rpm/*.rpm
           if-no-files-found: error

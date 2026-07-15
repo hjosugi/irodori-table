@@ -20,7 +20,7 @@ on:
           - preview
           - stable
       windows_signing:
-        description: 'Windows signing backend (stable channel only)'
+        description: 'Windows signing backend (stable, or SignPath preview)'
         required: false
         default: pfx
         type: choice
@@ -42,7 +42,9 @@ jobs:
       release_tag: ${{ steps.resolve.outputs.release_tag }}
       prerelease: ${{ steps.resolve.outputs.prerelease }}
       upload_updater: ${{ steps.resolve.outputs.upload_updater }}
-      tauri_args: ${{ steps.resolve.outputs.tauri_args }}
+      linux_tauri_args: ${{ steps.resolve.outputs.linux_tauri_args }}
+      macos_tauri_args: ${{ steps.resolve.outputs.macos_tauri_args }}
+      windows_tauri_args: ${{ steps.resolve.outputs.windows_tauri_args }}
       release_body: ${{ steps.resolve.outputs.release_body }}
       windows_signing: ${{ steps.resolve.outputs.windows_signing }}
     env:
@@ -64,6 +66,7 @@ jobs:
       SIGNPATH_ORGANIZATION_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
       SIGNPATH_PROJECT_SLUG: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
       SIGNPATH_SIGNING_POLICY_SLUG: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+      SIGNPATH_ARTIFACT_CONFIGURATION_SLUG: ${{ secrets.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -100,12 +103,35 @@ jobs:
             lightweight)
               prerelease=true
               upload_updater=false
-              tauri_args="--bundles appimage"
+              linux_tauri_args="--bundles appimage,deb,rpm"
+              macos_tauri_args=""
+              windows_tauri_args=""
               ;;
             preview)
+              if [[ "${windows_signing}" == "signpath" ]]; then
+                required=(
+                  SIGNPATH_API_TOKEN
+                  SIGNPATH_ORGANIZATION_ID
+                  SIGNPATH_PROJECT_SLUG
+                  SIGNPATH_SIGNING_POLICY_SLUG
+                  SIGNPATH_ARTIFACT_CONFIGURATION_SLUG
+                )
+                missing=()
+                for name in "${required[@]}"; do
+                  if [[ -z "${!name:-}" ]]; then
+                    missing+=("${name}")
+                  fi
+                done
+                if (( ${#missing[@]} > 0 )); then
+                  printf '::error::preview SignPath signing requires missing secret(s): %s\n' "${missing[*]}"
+                  exit 1
+                fi
+              fi
               prerelease=true
               upload_updater=false
-              tauri_args=""
+              linux_tauri_args=""
+              macos_tauri_args="--target universal-apple-darwin --bundles dmg,app"
+              windows_tauri_args="--bundles nsis,msi"
               ;;
             stable)
               # Common stable secrets, then the Windows secrets for the chosen
@@ -133,6 +159,7 @@ jobs:
                   SIGNPATH_ORGANIZATION_ID
                   SIGNPATH_PROJECT_SLUG
                   SIGNPATH_SIGNING_POLICY_SLUG
+                  SIGNPATH_ARTIFACT_CONFIGURATION_SLUG
                 )
               else
                 required+=(
@@ -157,7 +184,9 @@ jobs:
               fi
               prerelease=false
               upload_updater=true
-              tauri_args="--bundles appimage --config src-tauri/tauri.updater.conf.json"
+              linux_tauri_args="--bundles appimage,deb,rpm --features updater --config src-tauri/tauri.updater.conf.json"
+              macos_tauri_args="--target universal-apple-darwin --bundles dmg,app --features updater --config src-tauri/tauri.updater.conf.json"
+              windows_tauri_args="--bundles nsis,msi --features updater --config src-tauri/tauri.updater.conf.json"
               ;;
             *)
               echo "::error::unknown release channel '${channel}'."
@@ -170,21 +199,25 @@ jobs:
             echo "release_tag=${release_tag}"
             echo "prerelease=${prerelease}"
             echo "upload_updater=${upload_updater}"
-            echo "tauri_args=${tauri_args}"
+            echo "linux_tauri_args=${linux_tauri_args}"
+            echo "macos_tauri_args=${macos_tauri_args}"
+            echo "windows_tauri_args=${windows_tauri_args}"
             echo "windows_signing=${windows_signing}"
             echo "release_body<<EOF_RELEASE_BODY"
             if [[ "${channel}" == "stable" ]]; then
               echo "Stable release with signed Tauri updater artifacts for the stable update channel, plus signed Windows and signed/notarized macOS artifacts."
+            elif [[ "${channel}" == "preview" && "${windows_signing}" == "signpath" ]]; then
+              echo "Unsigned universal macOS preview artifacts and SignPath-signed Windows NSIS/MSI installers added to the existing lightweight Linux pre-release. These artifacts are not part of the stable updater channel; macOS packages may trigger operating-system trust warnings."
             elif [[ "${channel}" == "preview" ]]; then
-              echo "Unsigned macOS and Windows preview artifacts added to the existing lightweight Linux pre-release. These artifacts are not part of the stable updater channel and may trigger operating-system trust warnings."
+              echo "Unsigned universal macOS and Windows preview artifacts added to the existing lightweight Linux pre-release. These artifacts are not part of the stable updater channel and may trigger operating-system trust warnings."
             else
-              echo "Lightweight Linux AppImage pre-release. Built with default features only; signed macOS, Windows, updater artifacts, legacy connector bundles, deb, and rpm packages are intentionally omitted until the full release lane is restored. DuckDB is distributed through its installable connector extension."
+              echo "Lightweight Linux pre-release with AppImage, deb, and rpm packages. Built with default features only; updater artifacts and platform signing are intentionally omitted. Use the preview channel to append universal macOS and Windows packages, optionally signing Windows through SignPath. DuckDB is distributed through its installable connector extension."
             fi
             echo "EOF_RELEASE_BODY"
           } >> "${GITHUB_OUTPUT}"
 
   publish-linux:
-    name: Publish Linux AppImage
+    name: Publish Linux packages
     needs: release-gates
     if: needs.release-gates.outputs.channel != 'preview'
     runs-on: ubuntu-latest
@@ -263,9 +296,9 @@ jobs:
           uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
-          args: ${{ needs.release-gates.outputs.tauri_args }}
+          args: ${{ needs.release-gates.outputs.linux_tauri_args }}
 
-      - name: Verify Linux AppImage artifact
+      - name: Verify Linux package artifacts
         working-directory: apps/desktop
         run: npm run release:verify-linux
 
@@ -353,7 +386,7 @@ jobs:
           uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
-          args: ${{ needs.release-gates.outputs.channel == 'stable' && '--target universal-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json' || '--target universal-apple-darwin --bundles dmg,app' }}
+          args: ${{ needs.release-gates.outputs.macos_tauri_args }}
 
   publish-windows:
     name: Publish Windows app
@@ -430,6 +463,7 @@ jobs:
         run: npm run release:prepare-windows-azure-signing
 
       - name: Build and Publish Tauri App
+        id: publish-tauri-windows
         uses: tauri-apps/tauri-action@v1
         env:
           CI: true
@@ -451,16 +485,16 @@ jobs:
           uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
-          args: ${{ needs.release-gates.outputs.channel == 'stable' && '--bundles nsis,msi --config src-tauri/tauri.updater.conf.json' || '--bundles nsis,msi' }}
+          args: ${{ needs.release-gates.outputs.windows_tauri_args }}
 
-      # SignPath (Foundation) is a cloud signing service, not a local signtool,
-      # so it signs the installers after tauri-action publishes them: download
-      # the unsigned .exe/.msi, submit them to SignPath, then replace the
-      # release assets with the signed versions. The auto-updater payload
-      # (.nsis.zip) is built before this step and is therefore not code-signed
-      # here; use the pfx or azure backend if you need signed updater payloads.
+      # SignPath (Foundation) is a cloud signing service, not a local signtool.
+      # For a SignPath preview or stable release, download the unsigned assets
+      # that tauri-action published, submit the same files as a workflow
+      # artifact, then replace them only after Authenticode verification.
+      # The stable auto-updater payload is built before this post-build signing
+      # step; use pfx or azure when it must also be code-signed.
       - name: Download unsigned Windows installers (SignPath)
-        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
+        if: needs.release-gates.outputs.windows_signing == 'signpath' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -470,49 +504,97 @@ jobs:
           mkdir -p signpath/unsigned
           gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
             --dir signpath/unsigned --pattern '*.exe' --pattern '*.msi'
-          ls -la signpath/unsigned
+          shopt -s nullglob
+          installers=(signpath/unsigned/*.exe signpath/unsigned/*.msi)
+          if (( ${#installers[@]} != 2 )); then
+            echo "::error::expected one NSIS installer and one MSI package; found ${#installers[@]}."
+            exit 1
+          fi
 
       - name: Stage unsigned installers as a workflow artifact (SignPath)
         id: signpath-unsigned
-        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
+        if: needs.release-gates.outputs.windows_signing == 'signpath' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
         uses: actions/upload-artifact@v7
         with:
-          name: irodori-windows-unsigned
-          path: signpath/unsigned
+          name: irodori-windows-unsigned-${{ needs.release-gates.outputs.release_tag }}
+          path: signpath/unsigned/*
           if-no-files-found: error
+          retention-days: 1
 
       - name: Sign Windows installers with SignPath
-        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
-        uses: SignPath/github-action-submit-signing-request@v2
+        if: needs.release-gates.outputs.windows_signing == 'signpath' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
+        uses: SignPath/github-action-submit-signing-request@b9d91eadd323de506c0c81cf0c7fe7438f3360fd # v2.2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ secrets.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
           github-artifact-id: ${{ steps.signpath-unsigned.outputs.artifact-id }}
           github-token: ${{ github.token }}
           wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
           output-artifact-directory: signpath/signed
 
-      - name: Publish signed Windows installers (SignPath)
-        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
-        shell: bash
+      - name: Verify and publish signed Windows installers (SignPath)
+        if: needs.release-gates.outputs.windows_signing == 'signpath' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
         run: |
-          set -euo pipefail
-          shopt -s nullglob
-          signed=(signpath/signed/*.exe signpath/signed/*.msi)
-          if (( ${#signed[@]} == 0 )); then
-            echo "::error::SignPath returned no signed installers."
-            exit 1
-          fi
-          for file in "${signed[@]}"; do
-            echo "Replacing release asset with signed: ${file}"
-            gh release upload "${RELEASE_TAG}" "${file}" --clobber \
-              --repo "${GITHUB_REPOSITORY}"
-          done
+          $signed = @(Get-ChildItem 'signpath/signed' -Recurse -File |
+            Where-Object { $_.Extension -in '.exe', '.msi' })
+          if ($signed.Count -ne 2) {
+            throw "Expected exactly two signed Windows installers; found $($signed.Count)."
+          }
+
+          foreach ($installer in $signed) {
+            $signature = Get-AuthenticodeSignature $installer.FullName
+            if ($signature.Status -ne 'Valid') {
+              throw "SignPath returned an invalid signature for $($installer.Name): $($signature.Status)."
+            }
+            & gh release upload $env:RELEASE_TAG $installer.FullName --repo $env:GITHUB_REPOSITORY --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to replace release asset $($installer.Name)."
+            }
+          }
+
+          $download = Join-Path $env:RUNNER_TEMP 'signed-release-assets'
+          New-Item -ItemType Directory -Path $download -Force | Out-Null
+          & gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern '*.exe' --pattern '*.msi' --dir $download
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Failed to download signed Windows release assets.'
+          }
+          $published = @(Get-ChildItem $download -File)
+          if ($published.Count -ne 2) {
+            throw "Expected exactly two published Windows installers; found $($published.Count)."
+          }
+          foreach ($installer in $published) {
+            $signature = Get-AuthenticodeSignature $installer.FullName
+            if ($signature.Status -ne 'Valid') {
+              throw "Published release asset has an invalid signature: $($installer.Name) ($($signature.Status))."
+            }
+          }
+
+      - name: Remove unsigned Windows assets after a SignPath failure
+        if: failure() && steps.publish-tauri-windows.outcome == 'success' && needs.release-gates.outputs.windows_signing == 'signpath' && (needs.release-gates.outputs.channel == 'preview' || needs.release-gates.outputs.channel == 'stable')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
+        run: |
+          $version = (Get-Content (Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/package.json') -Raw | ConvertFrom-Json).version
+          $assets = @(
+            "Irodori.Table_${version}_x64-setup.exe",
+            "Irodori.Table_${version}_x64_en-US.msi"
+          )
+          foreach ($asset in $assets) {
+            & gh release delete-asset $env:RELEASE_TAG $asset --repo $env:GITHUB_REPOSITORY --yes
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Release asset $asset was not present or could not be removed."
+            }
+          }
 
   verify-updater:
     name: Verify stable updater manifest

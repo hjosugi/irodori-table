@@ -99,6 +99,10 @@ tauri-plugin-updater = "^2"
 
 [features]
 default = []
+# The updater requires a signed-release config containing its public key.
+# Keep it out of unsigned/lightweight builds so a missing plugin config cannot
+# abort application startup before the main window is created.
+updater = []
 cassandra = ["dep:scylla"]
 mongo = ["dep:mongodb"]
 neo4j = ["dep:neo4rs"]

@@ -11,22 +11,36 @@ const profile = options.debug ? "debug" : "release";
 const cargoTargetDir = resolve(
   process.env.CARGO_TARGET_DIR ?? fromRepoRoot(".irodori-local/target"),
 );
-const bundleDir = resolve(cargoTargetDir, profile, "bundle/appimage");
-const appImage = await newestFileByExtension(bundleDir, ".AppImage");
-
-if (!appImage) {
-  fail(`No AppImage found under ${bundleDir}`);
-}
+const bundleRoot = resolve(cargoTargetDir, profile, "bundle");
+const appImage = await requiredBundle("appimage", ".AppImage");
+const deb = await requiredBundle("deb", ".deb");
+const rpm = await requiredBundle("rpm", ".rpm");
 
 const pkg = JSON.parse(await readFile(fromDesktopRoot("package.json"), "utf8"));
 await verifyAppImage(appImage, pkg.version);
-console.log(`linux-release: ok (${appImage})`);
+await verifyPackage(deb, pkg.version, "Debian", Buffer.from("!<arch>\n"));
+await verifyPackage(
+  rpm,
+  pkg.version,
+  "RPM",
+  Buffer.from([0xed, 0xab, 0xee, 0xdb]),
+);
+console.log(`linux-release: ok (${appImage}, ${deb}, ${rpm})`);
 
 function parseArgs(argv) {
   return {
     debug: argv.includes("--debug"),
     skipExec: argv.includes("--skip-exec"),
   };
+}
+
+async function requiredBundle(directory, extension) {
+  const bundleDir = resolve(bundleRoot, directory);
+  const file = await newestFileByExtension(bundleDir, extension);
+  if (!file) {
+    fail(`No ${extension} package found under ${bundleDir}`);
+  }
+  return file;
 }
 
 async function verifyAppImage(file, version) {
@@ -64,6 +78,34 @@ async function verifyAppImage(file, version) {
 
   if (!options.skipExec) {
     await runAppImageHelp(file);
+  }
+}
+
+async function verifyPackage(file, version, label, magic) {
+  const info = await stat(file);
+  if (!info.isFile()) {
+    fail(`${label} package path is not a file: ${file}`);
+  }
+  if (info.size < 1_000_000) {
+    fail(
+      `${label} package is suspiciously small (${info.size} bytes): ${file}`,
+    );
+  }
+  if (!file.includes(version)) {
+    fail(
+      `${label} package filename does not include version ${version}: ${file}`,
+    );
+  }
+
+  const handle = await open(file, "r");
+  const header = Buffer.alloc(magic.length);
+  try {
+    await handle.read(header, 0, header.length, 0);
+  } finally {
+    await handle.close();
+  }
+  if (!header.equals(magic)) {
+    fail(`${label} package has an invalid file signature: ${file}`);
   }
 }
 

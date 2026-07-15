@@ -21,6 +21,23 @@ Release assets are published from GitHub Releases:
 
 <https://github.com/hjosugi/irodori-table/releases>
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io/), certificate
+by [SignPath Foundation](https://signpath.org/). Windows installers using the
+SignPath release backend are built on GitHub-hosted runners from this
+repository, submitted to SignPath, and replaced in the GitHub Release with the
+signed NSIS and MSI artifacts.
+
+- Committer and reviewer: [@hjosugi](https://github.com/hjosugi)
+- Signing approver: [@hjosugi](https://github.com/hjosugi)
+
+Irodori Table does not upload telemetry or crash reports. It connects only to
+endpoints selected or configured by the user and to documented project
+endpoints needed for requested features, such as extension downloads and
+release update checks. See [SECURITY.md](SECURITY.md) for local crash-report
+handling and security scope.
+
 ## Develop
 
 ### 5-Minute Quickstart
