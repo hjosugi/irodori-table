@@ -19,6 +19,14 @@ on:
           - lightweight
           - preview
           - stable
+      windows_signing:
+        description: 'Windows signing backend (stable channel only)'
+        required: false
+        default: pfx
+        type: choice
+        options:
+          - pfx
+          - azure
 
 permissions:
   contents: write
@@ -34,14 +42,22 @@ jobs:
       upload_updater: ${{ steps.resolve.outputs.upload_updater }}
       tauri_args: ${{ steps.resolve.outputs.tauri_args }}
       release_body: ${{ steps.resolve.outputs.release_body }}
+      windows_signing: ${{ steps.resolve.outputs.windows_signing }}
     env:
       REQUESTED_CHANNEL: ${{ inputs.channel || 'lightweight' }}
       REQUESTED_TAG: ${{ inputs.release_tag || github.ref_name }}
+      REQUESTED_WINDOWS_SIGNING: ${{ inputs.windows_signing || 'pfx' }}
       TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
       WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
       WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+      AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+      AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -59,11 +75,20 @@ jobs:
 
           channel="${REQUESTED_CHANNEL}"
           release_tag="${REQUESTED_TAG}"
+          windows_signing="${REQUESTED_WINDOWS_SIGNING}"
 
           if [[ "${release_tag}" != v* ]]; then
             echo "::error::release_tag must be an existing v* tag; got '${release_tag}'."
             exit 1
           fi
+
+          case "${windows_signing}" in
+            pfx|azure) ;;
+            *)
+              echo "::error::unknown windows_signing '${windows_signing}'; expected pfx or azure."
+              exit 1
+              ;;
+          esac
 
           case "${channel}" in
             lightweight)
@@ -77,22 +102,39 @@ jobs:
               tauri_args=""
               ;;
             stable)
-              missing=()
-              for name in \
-                TAURI_UPDATER_PUBLIC_KEY \
-                TAURI_SIGNING_PRIVATE_KEY \
-                WINDOWS_CERTIFICATE \
-                WINDOWS_CERTIFICATE_PASSWORD \
-                WINDOWS_CERTIFICATE_THUMBPRINT \
-                APPLE_CERTIFICATE \
+              # Common stable secrets, then the Windows secrets for the chosen
+              # signing backend: a PFX certificate imported into the runner, or
+              # an Azure Trusted Signing service principal + account/profile.
+              required=(
+                TAURI_UPDATER_PUBLIC_KEY
+                TAURI_SIGNING_PRIVATE_KEY
+                APPLE_CERTIFICATE
                 APPLE_CERTIFICATE_PASSWORD
-              do
+              )
+              if [[ "${windows_signing}" == "azure" ]]; then
+                required+=(
+                  AZURE_TENANT_ID
+                  AZURE_CLIENT_ID
+                  AZURE_CLIENT_SECRET
+                  AZURE_TRUSTED_SIGNING_ENDPOINT
+                  AZURE_TRUSTED_SIGNING_ACCOUNT
+                  AZURE_TRUSTED_SIGNING_PROFILE
+                )
+              else
+                required+=(
+                  WINDOWS_CERTIFICATE
+                  WINDOWS_CERTIFICATE_PASSWORD
+                  WINDOWS_CERTIFICATE_THUMBPRINT
+                )
+              fi
+              missing=()
+              for name in "${required[@]}"; do
                 if [[ -z "${!name:-}" ]]; then
                   missing+=("${name}")
                 fi
               done
               if (( ${#missing[@]} > 0 )); then
-                printf '::error::stable releases require missing secret(s): %s\n' "${missing[*]}"
+                printf '::error::stable releases (windows_signing=%s) require missing secret(s): %s\n' "${windows_signing}" "${missing[*]}"
                 exit 1
               fi
               if [[ ! ( -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_KEY_P8:-}" ) && ! ( -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ) ]]; then
@@ -115,6 +157,7 @@ jobs:
             echo "prerelease=${prerelease}"
             echo "upload_updater=${upload_updater}"
             echo "tauri_args=${tauri_args}"
+            echo "windows_signing=${windows_signing}"
             echo "release_body<<EOF_RELEASE_BODY"
             if [[ "${channel}" == "stable" ]]; then
               echo "Stable release with signed Tauri updater artifacts for the stable update channel, plus signed Windows and signed/notarized macOS artifacts."
@@ -345,8 +388,8 @@ jobs:
           IRODORI_UPDATER_ENDPOINT: ${{ vars.IRODORI_UPDATER_ENDPOINT }}
         run: npm run release:prepare-updater
 
-      - name: Prepare Windows signing
-        if: needs.release-gates.outputs.channel == 'stable'
+      - name: Prepare Windows signing (PFX certificate)
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'pfx'
         working-directory: apps/desktop
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
@@ -356,6 +399,22 @@ jobs:
           WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
         run: npm run release:prepare-windows-signing
 
+      # Azure Trusted Signing path: install the signing CLI Tauri will invoke
+      # per artifact, then write the signCommand config. Credentials stay in the
+      # build step's env; this step only records the non-secret endpoint.
+      - name: Install Azure Trusted Signing CLI
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'azure'
+        run: cargo install trusted-signing-cli --locked
+
+      - name: Prepare Windows signing (Azure Trusted Signing)
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'azure'
+        working-directory: apps/desktop
+        env:
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+        run: npm run release:prepare-windows-azure-signing
+
       - name: Build and Publish Tauri App
         uses: tauri-apps/tauri-action@v1
         env:
@@ -363,6 +422,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          # Azure Trusted Signing credentials, read by trusted-signing-cli when
+          # Tauri runs the generated signCommand. Empty unless the stable Azure
+          # backend is selected, so other channels never see them.
+          AZURE_TENANT_ID: ${{ (needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'azure') && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ (needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'azure') && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ (needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'azure') && secrets.AZURE_CLIENT_SECRET || '' }}
         with:
           tagName: ${{ needs.release-gates.outputs.release_tag }}
           releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
