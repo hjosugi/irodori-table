@@ -27,6 +27,7 @@
     "release:prepare-macos-signing": "node tools/prepare-macos-signing.mjs",
     "release:prepare-updater": "node tools/prepare-updater-config.mjs",
     "release:prepare-windows-signing": "node tools/prepare-windows-signing.mjs",
+    "release:prepare-windows-azure-signing": "node tools/prepare-windows-azure-signing.mjs",
     "release:verify-linux": "node tools/verify-linux-release.mjs",
     "release:patch": "node tools/release.mjs patch",
     "release:minor": "node tools/release.mjs minor",
