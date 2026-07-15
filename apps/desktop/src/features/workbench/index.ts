@@ -49,8 +49,10 @@ export {
 export {
   activeWorkbenchView,
   activeWorkbenchViewForSide,
+  defaultWorkbenchViewHidden,
   defaultWorkbenchViewPlacements,
   defaultWorkbenchViewVisibility,
+  normalizeWorkbenchViewOrder,
   workbenchViewsForSide,
   workbenchViewIds,
 } from "./types";
@@ -58,6 +60,7 @@ export type {
   CompletionHint,
   WorkbenchKeyScope,
   WorkbenchSide,
+  WorkbenchViewHidden,
   WorkbenchViewId,
   WorkbenchViewPlacements,
   WorkbenchViewVisibility,

@@ -94,6 +94,13 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
       availableViews={
         right ? sidebars.rightSidebarViews : sidebars.leftSidebarViews
       }
+      sideViews={
+        right ? sidebars.rightSidebarAllViews : sidebars.leftSidebarAllViews
+      }
+      hiddenViews={sidebars.viewHidden}
+      onMoveView={sidebars.moveView}
+      onSetViewHidden={sidebars.setViewHidden}
+      onReorderView={sidebars.reorderView}
       showConnectionRail={false}
       completionPanel={inspectorPanel("completion")}
       historyPanel={inspectorPanel("history")}

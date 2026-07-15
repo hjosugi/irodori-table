@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, PanelLeft, PanelRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { AppMenuSection } from "@/app/app-config";
 import {
   formatKeySequence,
@@ -20,6 +20,7 @@ import {
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
 import type { ThemeKind } from "@/theme";
+import type { WorkbenchSide } from "../types";
 
 export type WorkbenchStatusBarItem = {
   id: string;
@@ -89,6 +90,49 @@ type WorkbenchContextMenu = {
   activatable: HTMLElement | null;
   editable: HTMLInputElement | HTMLTextAreaElement | null;
 };
+
+// VS Code-style layout toggle: an outlined window frame whose sidebar half
+// fills in while that sidebar is open. Lucide only ships the divider-line
+// variant, which can't show the open/closed state.
+function PanelSideIcon({
+  side,
+  open,
+  size = 15,
+}: {
+  side: WorkbenchSide;
+  open: boolean;
+  size?: number;
+}) {
+  const dividerX = side === "left" ? 9.75 : 14.25;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x={3} y={4.5} width={18} height={15} rx={2.2} />
+      {open ? (
+        <rect
+          x={side === "left" ? 3 : 14.25}
+          y={4.5}
+          width={6.75}
+          height={15}
+          rx={1.2}
+          fill="currentColor"
+          stroke="none"
+        />
+      ) : (
+        <line x1={dividerX} y1={4.5} x2={dividerX} y2={19.5} />
+      )}
+    </svg>
+  );
+}
 
 export function WorkbenchShell({
   appName,
@@ -483,9 +527,6 @@ export function WorkbenchShell({
     }
     void navigator.clipboard?.writeText(text);
   };
-  const LeftSidebarIcon = PanelLeft;
-  const RightSidebarIcon = PanelRight;
-
   const renderMenuButtons = (section: AppMenuSection) =>
     section.items.map((item) => {
       const command = commandById.get(item.commandId);
@@ -671,7 +712,7 @@ export function WorkbenchShell({
             data-sidebar-toggle="left"
             onClick={onToggleLeftSidebar}
           >
-            <LeftSidebarIcon size={15} />
+            <PanelSideIcon side="left" open={leftSidebarOpen} />
           </button>
           <button
             className={[
@@ -695,7 +736,7 @@ export function WorkbenchShell({
             data-sidebar-toggle="right"
             onClick={onToggleRightSidebar}
           >
-            <RightSidebarIcon size={15} />
+            <PanelSideIcon side="right" open={rightSidebarOpen} />
           </button>
         </div>
       </header>

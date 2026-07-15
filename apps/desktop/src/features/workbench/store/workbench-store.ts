@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import {
+  defaultWorkbenchViewHidden,
   defaultWorkbenchViewVisibility,
   defaultWorkbenchViewPlacements,
+  normalizeWorkbenchViewOrder,
   workbenchViewIds,
   type WorkbenchSide,
+  type WorkbenchViewHidden,
   type WorkbenchViewId,
   type WorkbenchViewPlacements,
   type WorkbenchViewVisibility,
@@ -21,6 +24,8 @@ type WorkbenchState = {
   sidebarSide: SidebarSide;
   viewPlacements: WorkbenchViewPlacements;
   viewVisibility: WorkbenchViewVisibility;
+  viewOrder: WorkbenchViewId[];
+  viewHidden: WorkbenchViewHidden;
   sidebarWidth: number;
   inspectorWidth: number;
   resultsHeight: number;
@@ -33,6 +38,11 @@ type WorkbenchState = {
   setViewPlacements: (value: ValueUpdater<WorkbenchViewPlacements>) => void;
   setViewOpen: (viewId: WorkbenchViewId, value: ValueUpdater<boolean>) => void;
   setViewVisibility: (value: ValueUpdater<WorkbenchViewVisibility>) => void;
+  setViewOrder: (value: ValueUpdater<WorkbenchViewId[]>) => void;
+  setViewHidden: (
+    viewId: WorkbenchViewId,
+    value: ValueUpdater<boolean>,
+  ) => void;
   setSidebarWidth: (value: ValueUpdater<number>) => void;
   setInspectorWidth: (value: ValueUpdater<number>) => void;
   setResultsHeight: (value: ValueUpdater<number>) => void;
@@ -45,6 +55,8 @@ const rightSidebarStorageKey = "irodori.sidebar.right.open.v1";
 const sidebarSideStorageKey = "irodori.sidebar.side.v1";
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
+const viewOrderStorageKey = "irodori.workbench.viewOrder.v1";
+const viewHiddenStorageKey = "irodori.workbench.viewHidden.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v2";
 const inspectorWidthStorageKey = "irodori.inspector.width.v1";
 const resultsHeightStorageKey = "irodori.results.height.v2";
@@ -173,6 +185,50 @@ function loadViewVisibility(): WorkbenchViewVisibility {
   }
 }
 
+// The object browser is the guaranteed fallback view on the left side, so it
+// can never be hidden.
+function normalizeViewHidden(value: unknown): WorkbenchViewHidden {
+  const next = { ...defaultWorkbenchViewHidden };
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return next;
+  }
+  const stored = value as Partial<Record<WorkbenchViewId, unknown>>;
+  workbenchViewIds.forEach((viewId) => {
+    if (viewId === "objectBrowser") {
+      return;
+    }
+    const hidden = stored[viewId];
+    if (typeof hidden === "boolean") {
+      next[viewId] = hidden;
+    }
+  });
+  return next;
+}
+
+function loadViewOrder(): WorkbenchViewId[] {
+  const stored = window.localStorage.getItem(viewOrderStorageKey);
+  if (!stored) {
+    return normalizeWorkbenchViewOrder(null);
+  }
+  try {
+    return normalizeWorkbenchViewOrder(JSON.parse(stored));
+  } catch {
+    return normalizeWorkbenchViewOrder(null);
+  }
+}
+
+function loadViewHidden(): WorkbenchViewHidden {
+  const stored = window.localStorage.getItem(viewHiddenStorageKey);
+  if (!stored) {
+    return { ...defaultWorkbenchViewHidden };
+  }
+  try {
+    return normalizeViewHidden(JSON.parse(stored));
+  } catch {
+    return { ...defaultWorkbenchViewHidden };
+  }
+}
+
 // Editor pane splitting has been removed; the editor is always a single pane
 // (open a second window to compare queries). We keep the state field so callers
 // still compile, but it is pinned to "single".
@@ -183,6 +239,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   sidebarSide: loadSidebarSide(),
   viewPlacements: loadViewPlacements(),
   viewVisibility: loadViewVisibility(),
+  viewOrder: loadViewOrder(),
+  viewHidden: loadViewHidden(),
   sidebarWidth: loadStoredNumber(
     sidebarWidthStorageKey,
     sidebarWidthDefault,
@@ -245,6 +303,19 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
         resolveValue(state.viewVisibility, value),
       ),
     })),
+  setViewOrder: (value) =>
+    set((state) => ({
+      viewOrder: normalizeWorkbenchViewOrder(
+        resolveValue(state.viewOrder, value),
+      ),
+    })),
+  setViewHidden: (viewId, value) =>
+    set((state) => ({
+      viewHidden: normalizeViewHidden({
+        ...state.viewHidden,
+        [viewId]: resolveValue(state.viewHidden[viewId], value),
+      }),
+    })),
   setSidebarWidth: (value) =>
     set((state) => ({
       sidebarWidth: clampNumber(
@@ -296,6 +367,14 @@ useWorkbenchStore.subscribe((state) => {
   window.localStorage.setItem(
     viewVisibilityStorageKey,
     JSON.stringify(state.viewVisibility),
+  );
+  window.localStorage.setItem(
+    viewOrderStorageKey,
+    JSON.stringify(state.viewOrder),
+  );
+  window.localStorage.setItem(
+    viewHiddenStorageKey,
+    JSON.stringify(state.viewHidden),
   );
   window.localStorage.setItem(
     sidebarWidthStorageKey,
