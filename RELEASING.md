@@ -139,7 +139,9 @@ by the `windows_signing` dispatch input (default `pfx`):
   the `.exe`/`.msi`, submits them through the
   [`SignPath/github-action-submit-signing-request`](https://github.com/SignPath/github-action-submit-signing-request)
   action, and replaces the release assets with the signed versions. No
-  certificate is held locally. Requires the `SIGNPATH_*` secrets below.
+  certificate is held locally. The workflow grants the action read access to
+  GitHub Actions artifacts for provenance verification. Requires the
+  `SIGNPATH_*` secrets below.
   **Limitation:** the auto-updater payload (`.nsis.zip`) is built before this
   post-publish signing step, so it is not code-signed by SignPath — use `pfx`
   or `azure` (build-time signing) if you need signed updater payloads.
