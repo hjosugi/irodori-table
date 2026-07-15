@@ -27,6 +27,7 @@ on:
         options:
           - pfx
           - azure
+          - signpath
 
 permissions:
   contents: write
@@ -58,6 +59,10 @@ jobs:
       AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
       AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
       AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+      SIGNPATH_ORGANIZATION_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+      SIGNPATH_PROJECT_SLUG: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -83,9 +88,9 @@ jobs:
           fi
 
           case "${windows_signing}" in
-            pfx|azure) ;;
+            pfx|azure|signpath) ;;
             *)
-              echo "::error::unknown windows_signing '${windows_signing}'; expected pfx or azure."
+              echo "::error::unknown windows_signing '${windows_signing}'; expected pfx, azure, or signpath."
               exit 1
               ;;
           esac
@@ -103,8 +108,9 @@ jobs:
               ;;
             stable)
               # Common stable secrets, then the Windows secrets for the chosen
-              # signing backend: a PFX certificate imported into the runner, or
-              # an Azure Trusted Signing service principal + account/profile.
+              # signing backend: a PFX certificate imported into the runner, an
+              # Azure Trusted Signing service principal + account/profile, or a
+              # SignPath (Foundation) cloud signing project.
               required=(
                 TAURI_UPDATER_PUBLIC_KEY
                 TAURI_SIGNING_PRIVATE_KEY
@@ -119,6 +125,13 @@ jobs:
                   AZURE_TRUSTED_SIGNING_ENDPOINT
                   AZURE_TRUSTED_SIGNING_ACCOUNT
                   AZURE_TRUSTED_SIGNING_PROFILE
+                )
+              elif [[ "${windows_signing}" == "signpath" ]]; then
+                required+=(
+                  SIGNPATH_API_TOKEN
+                  SIGNPATH_ORGANIZATION_ID
+                  SIGNPATH_PROJECT_SLUG
+                  SIGNPATH_SIGNING_POLICY_SLUG
                 )
               else
                 required+=(
@@ -438,6 +451,66 @@ jobs:
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
           projectPath: apps/desktop
           args: ${{ needs.release-gates.outputs.channel == 'stable' && '--bundles nsis,msi --config src-tauri/tauri.updater.conf.json' || '--bundles nsis,msi' }}
+
+      # SignPath (Foundation) is a cloud signing service, not a local signtool,
+      # so it signs the installers after tauri-action publishes them: download
+      # the unsigned .exe/.msi, submit them to SignPath, then replace the
+      # release assets with the signed versions. The auto-updater payload
+      # (.nsis.zip) is built before this step and is therefore not code-signed
+      # here; use the pfx or azure backend if you need signed updater payloads.
+      - name: Download unsigned Windows installers (SignPath)
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p signpath/unsigned
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
+            --dir signpath/unsigned --pattern '*.exe' --pattern '*.msi'
+          ls -la signpath/unsigned
+
+      - name: Stage unsigned installers as a workflow artifact (SignPath)
+        id: signpath-unsigned
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
+        uses: actions/upload-artifact@v4
+        with:
+          name: irodori-windows-unsigned
+          path: signpath/unsigned
+          if-no-files-found: error
+
+      - name: Sign Windows installers with SignPath
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
+        uses: SignPath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.signpath-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signpath/signed
+
+      - name: Publish signed Windows installers (SignPath)
+        if: needs.release-gates.outputs.channel == 'stable' && needs.release-gates.outputs.windows_signing == 'signpath'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          signed=(signpath/signed/*.exe signpath/signed/*.msi)
+          if (( ${#signed[@]} == 0 )); then
+            echo "::error::SignPath returned no signed installers."
+            exit 1
+          fi
+          for file in "${signed[@]}"; do
+            echo "Replacing release asset with signed: ${file}"
+            gh release upload "${RELEASE_TAG}" "${file}" --clobber \
+              --repo "${GITHUB_REPOSITORY}"
+          done
 
   verify-updater:
     name: Verify stable updater manifest

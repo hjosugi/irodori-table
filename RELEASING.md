@@ -114,7 +114,7 @@ dispatching a stable release:
 
 ### Windows signing backend
 
-The stable channel signs Windows artifacts with one of two backends, selected
+The stable channel signs Windows artifacts with one of three backends, selected
 by the `windows_signing` dispatch input (default `pfx`):
 
 - **`pfx`** — a code-signing `.pfx` certificate you hold. `prepare-windows-signing.mjs`
@@ -132,8 +132,24 @@ by the `windows_signing` dispatch input (default `pfx`):
   service. Certificates are managed by Azure and chain to a Microsoft root, so
   signed builds are trusted (SmartScreen reputation still builds over time).
   Requires the `AZURE_*` secrets below.
+- **`signpath`** — [SignPath](https://signpath.io/), whose
+  [Foundation](https://signpath.org/) program signs open-source releases for
+  **free**. SignPath is a cloud signing service rather than a local signtool, so
+  the Windows lane publishes the unsigned installers as usual, then downloads
+  the `.exe`/`.msi`, submits them through the
+  [`SignPath/github-action-submit-signing-request`](https://github.com/SignPath/github-action-submit-signing-request)
+  action, and replaces the release assets with the signed versions. No
+  certificate is held locally. Requires the `SIGNPATH_*` secrets below.
+  **Limitation:** the auto-updater payload (`.nsis.zip`) is built before this
+  post-publish signing step, so it is not code-signed by SignPath — use `pfx`
+  or `azure` (build-time signing) if you need signed updater payloads.
 
-Both backends are inert unless the stable channel is dispatched with the
+  To enable it: apply to the SignPath Foundation with the project's public
+  GitHub repository, then in the SignPath dashboard create a project, an
+  artifact configuration for the Tauri installers, and a signing policy, and
+  issue a CI API token. Feed those into the `SIGNPATH_*` secrets below.
+
+All backends are inert unless the stable channel is dispatched with the
 matching secrets present, so adding one never affects the lightweight or
 preview lanes.
 
@@ -169,6 +185,10 @@ checkpoints.
 | `AZURE_TRUSTED_SIGNING_ENDPOINT` | Windows signing (`azure`) | Region endpoint, e.g. `https://eus.codesigning.azure.net/`. |
 | `AZURE_TRUSTED_SIGNING_ACCOUNT` | Windows signing (`azure`) | Trusted Signing account name. |
 | `AZURE_TRUSTED_SIGNING_PROFILE` | Windows signing (`azure`) | Certificate profile name under that account. |
+| `SIGNPATH_API_TOKEN` | Windows signing (`signpath`) | SignPath CI user API token. |
+| `SIGNPATH_ORGANIZATION_ID` | Windows signing (`signpath`) | SignPath organization ID (GUID). |
+| `SIGNPATH_PROJECT_SLUG` | Windows signing (`signpath`) | SignPath project slug for this repo. |
+| `SIGNPATH_SIGNING_POLICY_SLUG` | Windows signing (`signpath`) | Signing policy slug (e.g. `release-signing`). |
 | `APPLE_CERTIFICATE` | macOS signing | Base64-encoded `.p12` Developer ID Application certificate. |
 | `APPLE_CERTIFICATE_PASSWORD` | macOS signing | Export password for the `.p12`. |
 | `APPLE_SIGNING_IDENTITY` | macOS signing | Optional; discovered from the imported certificate when unset. |
