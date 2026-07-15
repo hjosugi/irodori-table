@@ -746,6 +746,7 @@ export const ja = {
   "notice.connection.exportedSkippedSuffix": " · {count} 件スキップ",
   "notice.connection.exportFailed": "接続のエクスポートに失敗しました",
   "notice.connection.deleted": "接続を削除しました",
+  "notice.connection.deletedMany": "{count} 件の接続を削除しました",
   "notice.connection.testFailed": "接続テストに失敗しました",
   "notice.connection.testSucceeded": "接続テストに成功しました",
   "notice.connection.connectFailed": "接続に失敗しました",
@@ -982,6 +983,10 @@ export const ja = {
   "connection.confirmDelete.title": "接続を削除しますか？",
   "connection.confirmDelete.message":
     "「{name}」は保存済みの接続から削除されます。この操作は元に戻せません。",
+  "connection.confirmDelete.titleMany": "{count} 件の接続を削除しますか？",
+  "connection.confirmDelete.messageMany":
+    "選択中の {count} 件の接続が保存済みの接続から削除されます。この操作は元に戻せません。",
+  "connection.deleteSelected": "削除 ({count})",
   "connection.disconnect": "切断",
   "connection.test": "テスト",
   "connection.testing": "テスト中",
@@ -1115,4 +1120,8 @@ export const ja = {
   "sidebar.menu.switchToConnection": "この接続に切り替え",
   "sidebar.menu.editConnection": "接続を編集…",
   "sidebar.menu.copyConnectionString": "接続文字列をコピー",
+  "sidebar.viewMenu": "ビューの設定",
+  "sidebar.menu.moveToRightSidebar": "右サイドバーへ移動",
+  "sidebar.menu.moveToLeftSidebar": "左サイドバーへ移動",
+  "sidebar.menu.hideView": "「{name}」を非表示",
 } satisfies TranslationDictionary;

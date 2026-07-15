@@ -4,7 +4,10 @@ import {
   useRef,
   useState,
   type FormEventHandler,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Check,
@@ -289,7 +292,7 @@ export function ConnectionManagerDialog({
   onExportProfiles,
   onSelectProfile,
   onUpdateDraft,
-  onDeleteProfile,
+  onDeleteProfiles,
   onDisconnect,
   onSave,
   onTest,
@@ -311,7 +314,7 @@ export function ConnectionManagerDialog({
   onExportProfiles: (format: ConnectionTransferFormat) => void;
   onSelectProfile: (profile: ConnectionDraft) => void;
   onUpdateDraft: (patch: Partial<ConnectionDraft>) => void;
-  onDeleteProfile: () => void;
+  onDeleteProfiles: (ids: string[]) => void;
   onDisconnect: () => void;
   onSave: () => void;
   onTest: () => void;
@@ -319,14 +322,25 @@ export function ConnectionManagerDialog({
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const transferMenuRef = useRef<HTMLDivElement | null>(null);
+  const transferMenuAnchorRef = useRef<HTMLDivElement | null>(null);
   const engineSettings = engineConnectionSettings(draft.engine);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
   const { confirm, confirmElement } = useConfirm();
-  const [transferMenuOpen, setTransferMenuOpen] = useState(false);
+  // Anchored below the "…" button but portaled to <body>: the dialog clips
+  // overflowing children, which previously cut this menu off.
+  const [transferMenu, setTransferMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const transferMenuOpen = transferMenu !== null;
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
   );
+  // Multi-selection for bulk delete: shift+click selects a range, ctrl/cmd
+  // +click toggles, plain click collapses back to the single form target.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectionAnchorRef = useRef<string | null>(null);
   const [engineBuildSupport, setEngineBuildSupport] = useState(
     () => new Map<DbEngine, EngineBuildSupport>(),
   );
@@ -334,6 +348,26 @@ export function ConnectionManagerDialog({
     () => groupConnectionProfiles(profiles),
     [profiles],
   );
+  // Shift-ranges follow what the user can see: profiles in expanded groups,
+  // in rendered order.
+  const visibleProfileIds = useMemo(
+    () =>
+      groupedProfiles
+        .filter((group) => !collapsedGroups.has(group.id))
+        .flatMap((group) => group.profiles.map((profile) => profile.id)),
+    [collapsedGroups, groupedProfiles],
+  );
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      if (current.size === 0) {
+        return current;
+      }
+      const valid = new Set(profiles.map((profile) => profile.id));
+      const next = new Set(Array.from(current).filter((id) => valid.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [profiles]);
   const normalizedDraftColor = normalizeConnectionColor(draft.color);
   const socketSupported = supportsSocketTransport(draft.engine);
   const selectedEngineSupport = engineBuildSupport.get(draft.engine);
@@ -375,16 +409,20 @@ export function ConnectionManagerDialog({
         return;
       }
       event.preventDefault();
-      setTransferMenuOpen(false);
+      setTransferMenu(null);
     };
     const closeOnPointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && transferMenuRef.current?.contains(target)) {
+      if (
+        target instanceof Node &&
+        (transferMenuRef.current?.contains(target) ||
+          transferMenuAnchorRef.current?.contains(target))
+      ) {
         return;
       }
-      setTransferMenuOpen(false);
+      setTransferMenu(null);
     };
-    const closeOnBlur = () => setTransferMenuOpen(false);
+    const closeOnBlur = () => setTransferMenu(null);
     window.addEventListener("pointerdown", closeOnPointerDown);
     window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("blur", closeOnBlur);
@@ -407,18 +445,95 @@ export function ConnectionManagerDialog({
     });
   }
 
+  function handleProfileClick(
+    event: ReactMouseEvent<HTMLButtonElement>,
+    profile: ConnectionDraft,
+  ) {
+    if (event.shiftKey && selectionAnchorRef.current) {
+      const anchorIndex = visibleProfileIds.indexOf(selectionAnchorRef.current);
+      const targetIndex = visibleProfileIds.indexOf(profile.id);
+      if (anchorIndex !== -1 && targetIndex !== -1) {
+        const [start, end] =
+          anchorIndex <= targetIndex
+            ? [anchorIndex, targetIndex]
+            : [targetIndex, anchorIndex];
+        setSelectedIds(new Set(visibleProfileIds.slice(start, end + 1)));
+        onSelectProfile(profile);
+        return;
+      }
+    }
+    if (event.ctrlKey || event.metaKey) {
+      selectionAnchorRef.current = profile.id;
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        if (next.has(profile.id)) {
+          next.delete(profile.id);
+        } else {
+          next.add(profile.id);
+        }
+        return next;
+      });
+      onSelectProfile(profile);
+      return;
+    }
+    selectionAnchorRef.current = profile.id;
+    setSelectedIds(new Set());
+    onSelectProfile(profile);
+  }
+
+  // Delete the multi-selection when present, otherwise the profile loaded in
+  // the form. Always routed through the shared confirm dialog.
+  function requestDeleteSelected() {
+    const ids = selectedIds.size > 0 ? Array.from(selectedIds) : [draft.id];
+    const count = ids.length;
+    const singleProfile = profiles.find((profile) => profile.id === ids[0]);
+    const singleName =
+      ids[0] === draft.id
+        ? draft.name.trim() || draft.id
+        : singleProfile?.name.trim() || ids[0];
+    void confirm({
+      title:
+        count > 1
+          ? t("connection.confirmDelete.titleMany", { count })
+          : t("connection.confirmDelete.title"),
+      message:
+        count > 1
+          ? t("connection.confirmDelete.messageMany", { count })
+          : t("connection.confirmDelete.message", { name: singleName }),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    }).then((confirmed) => {
+      if (confirmed) {
+        setSelectedIds(new Set());
+        onDeleteProfiles(ids);
+      }
+    });
+  }
+
+  function handleProfileListKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key !== "Delete") {
+      return;
+    }
+    event.preventDefault();
+    requestDeleteSelected();
+  }
+
   function renderProfile(profile: ConnectionDraft) {
     const connected = connectedIds.has(profile.id);
+    const classNames = ["connection-profile"];
+    if (profile.id === selectedProfileId) {
+      classNames.push("active");
+    }
+    if (selectedIds.has(profile.id)) {
+      classNames.push("selected");
+    }
     return (
       <button
         key={profile.id}
-        className={
-          profile.id === selectedProfileId
-            ? "connection-profile active"
-            : "connection-profile"
-        }
+        className={classNames.join(" ")}
         type="button"
-        onClick={() => onSelectProfile(profile)}
+        aria-pressed={selectedIds.has(profile.id)}
+        onClick={(event) => handleProfileClick(event, profile)}
       >
         <span
           className="connection-color-dot"
@@ -502,7 +617,10 @@ export function ConnectionManagerDialog({
           >
             <Plus size={16} />
           </button>
-          <div className="connection-action-menu-wrap" ref={transferMenuRef}>
+          <div
+            className="connection-action-menu-wrap"
+            ref={transferMenuAnchorRef}
+          >
             <button
               className={
                 transferMenuOpen ? "icon-button active" : "icon-button"
@@ -511,43 +629,64 @@ export function ConnectionManagerDialog({
               title={t("connection.importExport")}
               aria-label={t("connection.importExport")}
               aria-expanded={transferMenuOpen}
-              onClick={() => setTransferMenuOpen((open) => !open)}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setTransferMenu((open) =>
+                  open ? null : { x: rect.left, y: rect.bottom + 4 },
+                );
+              }}
             >
               <MoreHorizontal size={16} />
             </button>
-            {transferMenuOpen ? (
-              <div className="connection-action-menu" role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setTransferMenuOpen(false);
-                    importInputRef.current?.click();
-                  }}
-                >
-                  <span>{t("connection.importConnections")}</span>
-                  <Upload size={13} />
-                </button>
-                <span className="connection-action-menu-separator" />
-                {connectionTransferFormatOptions.map((format) => (
-                  <button
-                    key={format.value}
-                    type="button"
-                    role="menuitem"
-                    disabled={profiles.length === 0}
-                    onClick={() => {
-                      setTransferMenuOpen(false);
-                      onExportProfiles(format.value);
+            {transferMenu
+              ? createPortal(
+                  <div
+                    ref={transferMenuRef}
+                    className="connection-action-menu"
+                    role="menu"
+                    style={{
+                      position: "fixed",
+                      left: transferMenu.x,
+                      top: transferMenu.y,
+                      right: "auto",
+                      zIndex: 60,
                     }}
                   >
-                    <span>
-                      {t("connection.exportFormat", { format: format.label })}
-                    </span>
-                    <small>{t("connection.noPasswords")}</small>
-                  </button>
-                ))}
-              </div>
-            ) : null}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setTransferMenu(null);
+                        importInputRef.current?.click();
+                      }}
+                    >
+                      <span>{t("connection.importConnections")}</span>
+                      <Upload size={13} />
+                    </button>
+                    <span className="connection-action-menu-separator" />
+                    {connectionTransferFormatOptions.map((format) => (
+                      <button
+                        key={format.value}
+                        type="button"
+                        role="menuitem"
+                        disabled={profiles.length === 0}
+                        onClick={() => {
+                          setTransferMenu(null);
+                          onExportProfiles(format.value);
+                        }}
+                      >
+                        <span>
+                          {t("connection.exportFormat", {
+                            format: format.label,
+                          })}
+                        </span>
+                        <small>{t("connection.noPasswords")}</small>
+                      </button>
+                    ))}
+                  </div>,
+                  document.body,
+                )
+              : null}
           </div>
           <label className="connection-search">
             <Search size={15} />
@@ -572,7 +711,10 @@ export function ConnectionManagerDialog({
             }}
           />
         </div>
-        <div className="connection-profile-list">
+        <div
+          className="connection-profile-list"
+          onKeyDown={handleProfileListKeyDown}
+        >
           {groupedProfiles.map(renderGroup)}
         </div>
         <div className="connection-picker-empty">
@@ -827,22 +969,11 @@ export function ConnectionManagerDialog({
           <button
             className="text-button danger"
             type="button"
-            onClick={() => {
-              void confirm({
-                title: t("connection.confirmDelete.title"),
-                message: t("connection.confirmDelete.message", {
-                  name: draft.name.trim() || draft.id,
-                }),
-                confirmLabel: t("common.delete"),
-                tone: "danger",
-              }).then((confirmed) => {
-                if (confirmed) {
-                  onDeleteProfile();
-                }
-              });
-            }}
+            onClick={requestDeleteSelected}
           >
-            {t("common.delete")}
+            {selectedIds.size > 1
+              ? t("connection.deleteSelected", { count: selectedIds.size })
+              : t("common.delete")}
           </button>
           <button
             className="text-button"

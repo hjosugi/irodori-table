@@ -267,24 +267,36 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     }
   }
 
-  async function deleteProfile() {
-    const id = draft.id;
-    if (connectedIds.has(id)) {
-      await queryService.disconnect(id).catch(() => undefined);
+  async function deleteProfiles(ids: string[]) {
+    const targets = Array.from(new Set(ids));
+    if (targets.length === 0) {
+      return;
+    }
+    for (const id of targets) {
+      if (connectedIds.has(id)) {
+        await queryService.disconnect(id).catch(() => undefined);
+      }
     }
     setConnectedIds((current) => {
       const next = new Set(current);
-      next.delete(id);
+      targets.forEach((id) => next.delete(id));
       return next;
     });
     setProfiles((current) => {
-      const next = current.filter((profile) => profile.id !== id);
+      const removed = new Set(targets);
+      const next = current.filter((profile) => !removed.has(profile.id));
       const fallback = next[0] ?? newDraft(1);
       setSelectedProfileId(fallback.id);
       setDraft(fallback);
       return next.length > 0 ? next : [sanitizedProfile(fallback)];
     });
-    showActionNotice("success", t("notice.connection.deleted"), id);
+    showActionNotice(
+      "success",
+      targets.length > 1
+        ? t("notice.connection.deletedMany", { count: targets.length })
+        : t("notice.connection.deleted"),
+      targets.join(", "),
+    );
   }
 
   async function testActiveProfile() {
@@ -543,7 +555,7 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     prunePristineDrafts,
     importConnectionFile,
     exportConnectionFile,
-    deleteProfile,
+    deleteProfiles,
     testActiveProfile,
     connectActiveProfile,
     openSqliteSample,

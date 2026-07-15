@@ -735,6 +735,7 @@ export const en = {
   "notice.connection.exportedSkippedSuffix": " · {count} skipped",
   "notice.connection.exportFailed": "Connection export failed",
   "notice.connection.deleted": "Connection deleted",
+  "notice.connection.deletedMany": "{count} connections deleted",
   "notice.connection.testFailed": "Connection test failed",
   "notice.connection.testSucceeded": "Connection test succeeded",
   "notice.connection.connectFailed": "Connect failed",
@@ -962,6 +963,10 @@ export const en = {
   "connection.confirmDelete.title": "Delete connection?",
   "connection.confirmDelete.message":
     '"{name}" will be removed from your saved connections. This can\'t be undone.',
+  "connection.confirmDelete.titleMany": "Delete {count} connections?",
+  "connection.confirmDelete.messageMany":
+    "The {count} selected connections will be removed from your saved connections. This can't be undone.",
+  "connection.deleteSelected": "Delete ({count})",
   "connection.disconnect": "Disconnect",
   "connection.test": "Test",
   "connection.testing": "Testing",
@@ -1094,6 +1099,10 @@ export const en = {
   "sidebar.menu.switchToConnection": "Switch to connection",
   "sidebar.menu.editConnection": "Edit connection…",
   "sidebar.menu.copyConnectionString": "Copy connection string",
+  "sidebar.viewMenu": "Configure views",
+  "sidebar.menu.moveToRightSidebar": "Move to Right Sidebar",
+  "sidebar.menu.moveToLeftSidebar": "Move to Left Sidebar",
+  "sidebar.menu.hideView": "Hide '{name}'",
 } as const;
 
 export type TranslationKey = keyof typeof en;
