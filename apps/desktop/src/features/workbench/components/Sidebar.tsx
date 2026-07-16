@@ -12,6 +12,7 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  Boxes,
   Check,
   Columns3,
   Flame,
@@ -35,8 +36,10 @@ import { EngineIcon } from "@/components/EngineIcon";
 import { hasDiagram } from "@/features/erd";
 import type {
   DatabaseMetadata,
+  DbEngine,
   DbObjectMetadata,
 } from "@/generated/irodori-api";
+import { isLakehouseEngine } from "./LakehousePanel";
 import type {
   ConnectionDraft,
   WorkspaceConnection,
@@ -102,6 +105,26 @@ const viewTabMeta: Record<SidebarViewId, ViewTabMeta> = {
     title: "sidebar.view.knowledge",
     label: "sidebar.view.knowledge",
   },
+};
+
+/**
+ * Engines whose lakehouse source-type contract (knowledge/engines.json) names
+ * the level between connection and table something other than "schema", keyed
+ * by `DbEngine` id.
+ *
+ * The object browser renders one tree for every engine, so only the vocabulary
+ * and the container icon follow the contract; engines absent here stay on
+ * schemas.
+ */
+const containerLabelKeyByEngine: Record<string, TranslationKey> = {
+  duckdb: "sidebar.namespacesCount",
+  motherduck: "sidebar.namespacesCount",
+  iceberg: "sidebar.namespacesCount",
+  s3Tables: "sidebar.namespacesCount",
+  deltaLake: "sidebar.namespacesCount",
+  hudi: "sidebar.namespacesCount",
+  hive: "sidebar.databasesCount",
+  athena: "sidebar.databasesCount",
 };
 
 // Menus in the sidebar are portaled to <body> and positioned with fixed
@@ -349,6 +372,12 @@ export function Sidebar({
   } | null>(null);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
+  const lakehouseConnection = isLakehouseEngine(
+    activeConnection.engine as DbEngine,
+  );
+  const containerLabelKey =
+    containerLabelKeyByEngine[activeConnection.engine] ??
+    "sidebar.schemasCount";
 
   useEffect(() => {
     if (!objectActionMenu) {
@@ -859,7 +888,7 @@ export function Sidebar({
               <div className="section-heading">
                 <span>
                   {activeMetadata
-                    ? t("sidebar.schemasCount", {
+                    ? t(containerLabelKey, {
                         count: activeMetadata.schemas.length,
                       })
                     : "public"}
@@ -988,7 +1017,11 @@ export function Sidebar({
                     activeMetadata.schemas.map((schema) => (
                       <details className="schema-tree" key={schema.name} open>
                         <summary>
-                          <Folder size={14} />
+                          {lakehouseConnection ? (
+                            <Boxes size={14} />
+                          ) : (
+                            <Folder size={14} />
+                          )}
                           <span>{schema.name}</span>
                           <small>{schema.objects.length}</small>
                         </summary>

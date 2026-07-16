@@ -1087,6 +1087,8 @@ export const ja = {
   "sidebar.view.rowDetail": "行詳細",
   "sidebar.view.knowledge": "ナレッジ",
   "sidebar.schemasCount": "{count} スキーマ",
+  "sidebar.namespacesCount": "{count} 名前空間",
+  "sidebar.databasesCount": "{count} データベース",
   "knowledge.title": "ナレッジ",
   "knowledge.close": "ナレッジを閉じる",
   "knowledge.refresh": "公開ナレッジパックから更新",
