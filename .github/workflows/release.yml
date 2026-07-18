@@ -149,11 +149,24 @@ jobs:
               # without it there is no key to sign the update manifest with, so
               # the updater lane switches off instead of producing artifacts
               # clients would reject.
+              # Presence is not enough: v0.7.39 had both secrets set but the
+              # private key was not valid base64, so the release compiled for
+              # ten minutes, bundled every package, and only then died in the
+              # signing step. Validate the key here, where failing is free.
+              # Never echo the value — only whether it decodes.
+              updater_key_ok=false
               if [[ -n "${TAURI_UPDATER_PUBLIC_KEY:-}" && -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+                if printf '%s' "${TAURI_SIGNING_PRIVATE_KEY}" | tr -d '[:space:]' | base64 -d >/dev/null 2>&1; then
+                  updater_key_ok=true
+                else
+                  echo "::warning::TAURI_SIGNING_PRIVATE_KEY is set but is not valid base64, so it cannot sign update manifests. Re-set it to the key contents (not a path to the key file)."
+                fi
+              fi
+              if [[ "${updater_key_ok}" == "true" ]]; then
                 upload_updater=true
               else
                 upload_updater=false
-                echo "::warning::stable updater artifacts omitted: TAURI_UPDATER_PUBLIC_KEY + TAURI_SIGNING_PRIVATE_KEY are required to sign update manifests."
+                echo "::warning::stable updater artifacts omitted: TAURI_UPDATER_PUBLIC_KEY + a base64-decodable TAURI_SIGNING_PRIVATE_KEY are required to sign update manifests."
               fi
 
               # macOS needs both halves to be useful: the certificate signs the
@@ -294,15 +307,19 @@ jobs:
             mold \
             wget
 
+      # No npm cache here on purpose. The release bump rewrites the version in
+      # package-lock.json, so setup-node's hashFiles() key is new on every
+      # release and the cache could never hit — it only wrote ~760MB of dead
+      # entries that pushed the repo over its 10GB cache quota and evicted the
+      # far more expensive Rust caches. `npm ci` costs 7-29s uncached.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
 
+      # Pinned to match rust-toolchain.toml; see the macOS lane for why.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.0
 
       # Cache the Cargo registry and workspace target dir so external deps
       # don't recompile from scratch every run. Keep this aligned with
@@ -311,7 +328,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: release-linux
+          shared-key: release-${{ runner.os }}
 
       - name: Cache AppImage runtime
         uses: actions/cache@v6
@@ -360,33 +377,38 @@ jobs:
       - release-gates
       - publish-linux
     if: always() && needs.release-gates.result == 'success' && (needs.release-gates.outputs.channel == 'preview' || (needs.release-gates.outputs.channel == 'stable' && needs.publish-linux.result == 'success'))
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Checkout irodori-table
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-gates.outputs.release_tag }}
 
+      # No npm cache here on purpose. The release bump rewrites the version in
+      # package-lock.json, so setup-node's hashFiles() key is new on every
+      # release and the cache could never hit — it only wrote ~760MB of dead
+      # entries that pushed the repo over its 10GB cache quota and evicted the
+      # far more expensive Rust caches. `npm ci` costs 7-29s uncached.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
 
+      # Pinned to match rust-toolchain.toml. With @stable the runner installed
+      # a newer toolchain that rust-toolchain.toml then overrode, so the
+      # download was discarded — and because rust-cache hashes every installed
+      # toolchain into its key, each new Rust stable silently invalidated the
+      # release caches.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.0
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - name: Ensure universal macOS Rust targets
-        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: release-macos
+          shared-key: release-${{ runner.os }}
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
@@ -457,21 +479,25 @@ jobs:
         with:
           ref: ${{ needs.release-gates.outputs.release_tag }}
 
+      # No npm cache here on purpose. The release bump rewrites the version in
+      # package-lock.json, so setup-node's hashFiles() key is new on every
+      # release and the cache could never hit — it only wrote ~760MB of dead
+      # entries that pushed the repo over its 10GB cache quota and evicted the
+      # far more expensive Rust caches. `npm ci` costs 7-29s uncached.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
 
+      # Pinned to match rust-toolchain.toml; see the macOS lane for why.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.0
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: release-windows
+          shared-key: release-${{ runner.os }}
 
       - name: Install frontend dependencies
         working-directory: apps/desktop

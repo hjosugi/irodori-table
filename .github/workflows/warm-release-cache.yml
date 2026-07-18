@@ -1,0 +1,127 @@
+name: Warm release cache
+
+# Release runs never restored their Rust dependency cache, so every release
+# paid a full cold compile (~43 of the ~54 minute release wall clock).
+#
+# The cause is cache scope, not the cache key. Tag-triggered release runs write
+# under `refs/tags/vX.Y.Z`, and GitHub cannot restore a cache created for a
+# different tag name — so each release wrote an entry that no later run could
+# ever read. Proof: the v0.7.39 run computed byte-identically the same key that
+# v0.7.38's entry already held, and still logged "No cache found."
+#
+# A run can restore caches from its own ref *and* from the default branch, so
+# warming on main gives every release lane something reachable to restore.
+# Building here only when the inputs to that cache actually change keeps this
+# cheap: rust-cache keys on the lockfile, the manifests, the toolchain, and the
+# cargo config, so those paths are exactly the right invalidation trigger.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - apps/desktop/src-tauri/Cargo.toml
+      - rust-toolchain.toml
+      - .cargo/config.toml
+      - .github/workflows/warm-release-cache.yml
+  workflow_dispatch:
+
+# A newer dependency set makes an in-flight warm run obsolete.
+concurrency:
+  group: warm-release-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    name: Warm ${{ matrix.label }} release cache
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            targets: ''
+          - os: macos-15
+            label: macOS
+            # The release lane builds universal-apple-darwin, which compiles
+            # every dependency twice. Warm both arches or the macOS lane — the
+            # slowest of the three — still pays one of them cold.
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - os: windows-latest
+            label: Windows
+            targets: ''
+    steps:
+      - name: Checkout irodori-table
+        uses: actions/checkout@v7
+
+      - name: Install Linux build dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            mold \
+            wget
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      # Must match the release lanes exactly: rust-cache hashes every installed
+      # toolchain into the key, so a different toolchain here warms a cache the
+      # release can never restore.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          targets: ${{ matrix.targets }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> .irodori-local/target'
+          # Same shared-key as the release lanes — this is what makes the
+          # warmed cache reachable from a release run.
+          shared-key: release-${{ runner.os }}
+          # Warm even when a later step fails; the dependency artifacts are
+          # still valid and are the whole point of this workflow.
+          cache-on-failure: true
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      # The Tauri crate embeds ../dist, so the frontend must exist before cargo
+      # can build the desktop crate.
+      - name: Build frontend
+        working-directory: apps/desktop
+        run: npm run build
+
+      - name: Build release dependencies
+        working-directory: apps/desktop/src-tauri
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ matrix.targets }}" ]]; then
+            IFS=',' read -ra targets <<< "${{ matrix.targets }}"
+            for target in "${targets[@]}"; do
+              echo "::group::cargo build --release --target ${target}"
+              cargo build --release --target "${target}"
+              echo "::endgroup::"
+            done
+          else
+            cargo build --release
+          fi
