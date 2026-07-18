@@ -1,5 +1,6 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { ChevronDown, Play } from "lucide-react";
+import { createPortal } from "react-dom";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator, type Translator } from "@/i18n";
 
@@ -40,6 +41,33 @@ export function RunControl({
 }: RunControlProps) {
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
+  // The menu is portaled to <body> because the run control sits inside
+  // .workbench-dock-panel.editor, which is overflow:hidden. Rendered in place
+  // the menu opened correctly — aria-expanded went true, opacity 1, z-index 25 —
+  // but its box started 3px below the panel's bottom edge, so the panel clipped
+  // every pixel of it and the button looked dead. Anchor coordinates have to be
+  // measured, since a portaled node no longer inherits the control's position.
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  useEffect(() => {
+    if (!runMenuOpen) {
+      setAnchorRect(null);
+      return;
+    }
+    const measure = () => {
+      const node = runControlRef.current;
+      if (node) {
+        setAnchorRect(node.getBoundingClientRect());
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [runControlRef, runMenuOpen]);
+
   useEffect(() => {
     if (!runMenuOpen) {
       return;
@@ -91,22 +119,37 @@ export function RunControl({
         >
           <ChevronDown size={14} />
         </button>
-        {runMenuOpen ? (
-          <RunOptionsMenu
-            t={t}
-            runPrimaryLabel={runPrimaryLabel}
-            runShortcutLabel={runShortcutLabel}
-            runCurrentShortcutLabel={runCurrentShortcutLabel}
-            runFromStartShortcutLabel={runFromStartShortcutLabel}
-            runAllShortcutLabel={runAllShortcutLabel}
-            hasSelectedEditorSql={hasSelectedEditorSql}
-            runQuery={runQuery}
-            runSelectionQuery={runSelectionQuery}
-            runCurrentQuery={runCurrentQuery}
-            runFromStartQuery={runFromStartQuery}
-            runAllQuery={runAllQuery}
-          />
-        ) : null}
+        {runMenuOpen && anchorRect
+          ? createPortal(
+              <div
+                className="run-menu-portal"
+                style={{
+                  position: "fixed",
+                  // Open upward: the control is pinned to the bottom of the
+                  // editor pane, so downward would run off-screen.
+                  bottom: `${Math.round(window.innerHeight - anchorRect.top + 6)}px`,
+                  right: `${Math.round(window.innerWidth - anchorRect.right)}px`,
+                  zIndex: 60,
+                }}
+              >
+                <RunOptionsMenu
+                  t={t}
+                  runPrimaryLabel={runPrimaryLabel}
+                  runShortcutLabel={runShortcutLabel}
+                  runCurrentShortcutLabel={runCurrentShortcutLabel}
+                  runFromStartShortcutLabel={runFromStartShortcutLabel}
+                  runAllShortcutLabel={runAllShortcutLabel}
+                  hasSelectedEditorSql={hasSelectedEditorSql}
+                  runQuery={runQuery}
+                  runSelectionQuery={runSelectionQuery}
+                  runCurrentQuery={runCurrentQuery}
+                  runFromStartQuery={runFromStartQuery}
+                  runAllQuery={runAllQuery}
+                />
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     </div>
   );

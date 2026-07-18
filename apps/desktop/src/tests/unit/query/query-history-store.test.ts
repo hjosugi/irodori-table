@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createQueryHistoryResultSnapshot,
   useQueryHistoryStore,
@@ -77,5 +77,33 @@ describe("query history result retention", () => {
     store.append(historyItem("one", 3));
 
     expect(useQueryHistoryStore.getState().items[0].result).toBeUndefined();
+  });
+});
+
+// The suite above calls setMaxItems(200) in beforeEach, so it never exercises
+// the load path — which is why this survived. getItem returns null for an
+// absent key and Number(null) is 0, which is finite, so the stored branch was
+// taken on a profile that had never written the key and maxItems came out 0.
+// append() discards everything at 0, so history silently recorded nothing.
+describe("query history defaults on a profile that has never saved settings", () => {
+  beforeEach(() => {
+    window.localStorage?.clear();
+    vi.resetModules();
+  });
+
+  it("uses the default retention, not zero, when nothing is stored", async () => {
+    const mod = await import("@/features/query-history/query-history-store");
+    const state = mod.useQueryHistoryStore.getState();
+
+    expect(state.maxItems).toBe(mod.queryHistoryMaxItemsDefault);
+    expect(state.maxItems).toBeGreaterThan(0);
+    expect(state.resultRowLimit).toBeGreaterThan(0);
+  });
+
+  it("still honours a stored value", async () => {
+    window.localStorage.setItem("irodori.queryHistory.maxItems.v1", "25");
+    const mod = await import("@/features/query-history/query-history-store");
+
+    expect(mod.useQueryHistoryStore.getState().maxItems).toBe(25);
   });
 });

@@ -119,18 +119,33 @@ function rowArray(value: unknown): unknown[][] {
     : [];
 }
 
+// getItem returns null for an absent key, and Number(null) is 0, which is
+// finite — so a bare Number() guard took the stored branch on a profile that
+// had never written the key and produced 0 rather than the default. append()
+// discards everything when maxItems is 0, so history silently recorded nothing
+// until the user happened to change the setting. preferences-store.ts already
+// guards nullish separately; match it.
+function storedNumber(key: string) {
+  const raw = storage()?.getItem(key);
+  if (raw === null || raw === undefined || raw === "") {
+    return null;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function loadQueryHistoryMaxItems() {
-  const stored = Number(storage()?.getItem(queryHistoryMaxItemsStorageKey));
-  return Number.isFinite(stored)
-    ? clampQueryHistoryMaxItems(stored)
-    : queryHistoryMaxItemsDefault;
+  const stored = storedNumber(queryHistoryMaxItemsStorageKey);
+  return stored === null
+    ? queryHistoryMaxItemsDefault
+    : clampQueryHistoryMaxItems(stored);
 }
 
 function loadQueryHistoryResultRows() {
-  const stored = Number(storage()?.getItem(queryHistoryResultRowsStorageKey));
-  return Number.isFinite(stored)
-    ? clampQueryHistoryResultRows(stored)
-    : queryHistoryResultRowsDefault;
+  const stored = storedNumber(queryHistoryResultRowsStorageKey);
+  return stored === null
+    ? queryHistoryResultRowsDefault
+    : clampQueryHistoryResultRows(stored);
 }
 
 type QueryResultSetLike = {
