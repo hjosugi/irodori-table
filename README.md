@@ -42,12 +42,21 @@ handling and security scope.
 
 ### 5-Minute Quickstart
 
-1. Install the platform prerequisites for your OS:
+1. Get a toolchain. On Linux with Nix, the repository ships a dev shell that
+   pins everything `make doctor` checks — the exact Rust from
+   `rust-toolchain.toml`, Node 24, mold, and the WebKitGTK/GTK libraries:
+
+   ```sh
+   nix develop        # or `direnv allow` to enter it automatically
+   ```
+
+   Without Nix, install the platform prerequisites for your OS:
    [Windows](https://hjosugi.github.io/irodori-docs/windows-development.html),
    [macOS](https://hjosugi.github.io/irodori-docs/macos-development.html), or
    [Linux](https://hjosugi.github.io/irodori-docs/linux-development.html).
    Linux users should install the WebKitGTK and linker packages from that guide
-   before running the desktop app.
+   before running the desktop app. `mold` in particular is required:
+   `.cargo/config.toml` links through it, and without it every link fails.
 2. From the repository root, install dependencies and check the local setup:
 
    ```sh

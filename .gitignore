@@ -34,3 +34,6 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+
+# direnv cache for the Nix dev shell.
+.direnv/
