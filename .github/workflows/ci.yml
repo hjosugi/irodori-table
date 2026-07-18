@@ -164,7 +164,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: typegen-${{ runner.os }}
+          # shared-key (not key) replaces the per-job segment, so every job on
+          # this OS shares one dependency cache instead of each keeping its own
+          # ~1.1GB copy of the same build. Three copies put the repo over its
+          # 10GB quota, which LRU-evicted the release caches.
+          shared-key: rust-${{ runner.os }}
 
       - name: Check generated TypeScript bindings
         run: node apps/desktop/tools/typegen.mjs --check
@@ -211,7 +215,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: ${{ matrix.os }}
+          shared-key: rust-${{ runner.os }}
 
       - name: Run Rust clippy
         run: make rust-clippy
@@ -288,7 +292,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: db-integration-${{ runner.os }}
+          shared-key: rust-${{ runner.os }}
 
       - name: Seed Postgres sample database
         shell: bash
