@@ -4,9 +4,13 @@
 [build]
 target-dir = ".irodori-local/target"
 
-# mold is a much faster linker than the default bfd/gold, and linking dominates
-# incremental Tauri rebuilds — this is the single biggest local-build win.
-# mold ships on CachyOS by default and the CI Ubuntu jobs apt-install it.
+# mold links faster than the alternatives and linking dominates incremental
+# Tauri rebuilds, so this is the biggest local-build win. Note the baseline it
+# improves on is rust-lld, not bfd/gold: rustc has defaulted to lld on this
+# target since 1.90, so the gain here is mold-over-lld, not mold-over-bfd.
+# mold does NOT ship with the OS on any supported dev platform — the flake
+# provides it, and the CI Ubuntu jobs apt-install it. Without one of those,
+# every link fails with "collect2: fatal error: cannot find 'ld'".
 # gcc >= 12.1 understands -fuse-ld=mold (dev boxes and CI runners are newer).
 [target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
