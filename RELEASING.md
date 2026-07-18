@@ -94,6 +94,22 @@ bindings.
 
 ## Signing, Notarization, And Updates
 
+### Build cache ordering
+
+`warm-release-cache.yml` is the only workflow that writes the Rust dependency
+cache; the release lanes restore but never save (`save-if: false`). rust-cache
+skips saving when a key already exists, so allowing two writers meant whichever
+ran first owned the key until the dependency set changed — and a release lane's
+target dir is not the full dependency set, which left macOS recompiling 81
+crates on every release behind a `full match: true` log line.
+
+The consequence is an ordering rule: **after anything that changes `Cargo.lock`,
+let the warm run finish before cutting the release.** It triggers automatically
+on pushes to `main` that touch the lockfile, manifests, `rust-toolchain.toml`,
+or `.cargo/config.toml`, and takes roughly 10-15 minutes. Releasing before it
+finishes is not harmful, only slow: the lanes fall back to a prefix match
+against the previous dependency set and recompile what changed.
+
 The default tag workflow is intentionally unsigned and marked as a pre-release.
 It publishes Linux AppImage, deb, and rpm packages, but it must not be used as
 the stable updater channel. The updater plugin is compiled into the desktop

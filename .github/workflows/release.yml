@@ -366,6 +366,15 @@ jobs:
         with:
           workspaces: '. -> .irodori-local/target'
           shared-key: release-${{ runner.os }}
+          # Restore only. rust-cache skips saving when the key already exists,
+          # so whichever workflow writes first owns that key until the
+          # dependency set changes — and a release lane's target dir is not the
+          # complete dependency set the warm workflow builds. When a release
+          # won the race the warm run could only restore its partial entry,
+          # rebuild two crates, and decline to save, leaving macOS recompiling
+          # 81 crates on every release behind a "full match: true" log line.
+          # warm-release-cache.yml is the single writer.
+          save-if: false
 
       - name: Cache AppImage runtime
         uses: actions/cache@v6
@@ -449,6 +458,15 @@ jobs:
         with:
           workspaces: '. -> .irodori-local/target'
           shared-key: release-${{ runner.os }}
+          # Restore only. rust-cache skips saving when the key already exists,
+          # so whichever workflow writes first owns that key until the
+          # dependency set changes — and a release lane's target dir is not the
+          # complete dependency set the warm workflow builds. When a release
+          # won the race the warm run could only restore its partial entry,
+          # rebuild two crates, and decline to save, leaving macOS recompiling
+          # 81 crates on every release behind a "full match: true" log line.
+          # warm-release-cache.yml is the single writer.
+          save-if: false
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
@@ -537,6 +555,15 @@ jobs:
         with:
           workspaces: '. -> .irodori-local/target'
           shared-key: release-${{ runner.os }}
+          # Restore only. rust-cache skips saving when the key already exists,
+          # so whichever workflow writes first owns that key until the
+          # dependency set changes — and a release lane's target dir is not the
+          # complete dependency set the warm workflow builds. When a release
+          # won the race the warm run could only restore its partial entry,
+          # rebuild two crates, and decline to save, leaving macOS recompiling
+          # 81 crates on every release behind a "full match: true" log line.
+          # warm-release-cache.yml is the single writer.
+          save-if: false
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
