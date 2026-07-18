@@ -95,10 +95,14 @@ jobs:
           workspaces: '. -> .irodori-local/target'
           # Same shared-key as the release lanes — this is what makes the
           # warmed cache reachable from a release run.
+          #
+          # Deliberately no cache-on-failure: a failed warm run saves a PARTIAL
+          # cache under the same key, and rust-cache skips saving when the key
+          # already exists, so the partial entry sticks until the dependency
+          # set changes. That is exactly what happened here — the Windows lane
+          # restored "full match: true" and still rebuilt ~140 crates. Saving
+          # nothing is better than poisoning the key.
           shared-key: release-${{ runner.os }}
-          # Warm even when a later step fails; the dependency artifacts are
-          # still valid and are the whole point of this workflow.
-          cache-on-failure: true
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
@@ -110,18 +114,29 @@ jobs:
         working-directory: apps/desktop
         run: npm run build
 
+      # Split by platform rather than branching inside one step. Forcing
+      # `shell: bash` on Windows put MSYS perl on PATH, and its perl lacks
+      # Locale::Maketext::Simple, so openssl-sys could not configure its
+      # vendored OpenSSL and this job failed on every run — silently leaving
+      # Windows releases to rebuild ~140 crates from cold. The release lane
+      # never hit this because it uses the default shell, which finds
+      # Strawberry Perl.
       - name: Build release dependencies
+        if: matrix.targets == ''
+        working-directory: apps/desktop/src-tauri
+        run: cargo build --release
+
+      # Only macOS builds more than one target: the release lane bundles a
+      # universal binary, so both arches have to be warmed or it pays one cold.
+      - name: Build release dependencies (per target)
+        if: matrix.targets != ''
         working-directory: apps/desktop/src-tauri
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -n "${{ matrix.targets }}" ]]; then
-            IFS=',' read -ra targets <<< "${{ matrix.targets }}"
-            for target in "${targets[@]}"; do
-              echo "::group::cargo build --release --target ${target}"
-              cargo build --release --target "${target}"
-              echo "::endgroup::"
-            done
-          else
-            cargo build --release
-          fi
+          IFS=',' read -ra targets <<< "${{ matrix.targets }}"
+          for target in "${targets[@]}"; do
+            echo "::group::cargo build --release --target ${target}"
+            cargo build --release --target "${target}"
+            echo "::endgroup::"
+          done
