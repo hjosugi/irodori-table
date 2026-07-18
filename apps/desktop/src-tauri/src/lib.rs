@@ -9,8 +9,23 @@ pub mod jobs;
 pub mod pty;
 pub mod security;
 
+/// Install the TLS backend before anything can build an HTTPS client.
+///
+/// reqwest is compiled without a default crypto provider so the binary does not
+/// carry a second C crypto stack beside the ring that tauri-plugin-updater
+/// needs. That makes reqwest's `default_rustls_crypto_provider()` a `panic!`
+/// until a provider is installed, and the db connectors, the extension store,
+/// and the updater plugin all build clients independently of irodori-generate,
+/// so installing it inside that crate is not enough. Ignoring the `Err` is
+/// deliberate: it only reports that a provider was already installed.
+fn install_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    install_crypto_provider();
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -452,5 +467,31 @@ mod typegen {
             }
             fs::write(path, normalized).expect("write generated bindings");
         }
+    }
+}
+
+#[cfg(test)]
+mod crypto_provider_tests {
+    /// The db connectors and the extension store build reqwest clients, and
+    /// reqwest is compiled without a default crypto provider, so its
+    /// `default_rustls_crypto_provider()` is a `panic!` until one is installed.
+    /// `Client::new()` panics on builder failure rather than returning an
+    /// error, so losing the install would surface as a crash on the user's
+    /// first connection attempt, not as a compile error. This test fails
+    /// instead.
+    #[test]
+    fn client_construction_does_not_panic_without_a_provider() {
+        super::install_crypto_provider();
+        let client = reqwest::Client::builder().build();
+        assert!(client.is_ok(), "reqwest client failed to build: {client:?}");
+    }
+
+    /// run() installs the provider on every launch, and irodori-generate
+    /// installs its own, so a second install must be harmless.
+    #[test]
+    fn installing_the_provider_twice_is_harmless() {
+        super::install_crypto_provider();
+        super::install_crypto_provider();
+        assert!(reqwest::Client::builder().build().is_ok());
     }
 }

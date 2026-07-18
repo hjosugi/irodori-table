@@ -1135,12 +1135,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
-name = "cfg_aliases"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
-
-[[package]]
 name = "chacha20"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3312,8 +3306,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-completion"
-version = "0.6.5"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.5#8fb3ce69cee988ccbeebc96c165aefd10b6914f5"
+version = "0.7.0"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.7.0#86a07213263fed055e189d4fcc67bb549b6b4f06"
 dependencies = [
  "irodori-sql",
  "serde",
@@ -3322,8 +3316,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-connection"
-version = "0.6.5"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.5#8fb3ce69cee988ccbeebc96c165aefd10b6914f5"
+version = "0.7.0"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.7.0#86a07213263fed055e189d4fcc67bb549b6b4f06"
 dependencies = [
  "irodori-error",
  "serde",
@@ -3341,13 +3335,14 @@ dependencies = [
 
 [[package]]
 name = "irodori-generate"
-version = "0.6.5"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.5#8fb3ce69cee988ccbeebc96c165aefd10b6914f5"
+version = "0.7.0"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.7.0#86a07213263fed055e189d4fcc67bb549b6b4f06"
 dependencies = [
  "irodori-error",
  "irodori-sql",
  "llama-cpp-2",
  "reqwest",
+ "rustls",
  "serde_json",
 ]
 
@@ -3387,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-proxy"
-version = "0.6.5"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.5#8fb3ce69cee988ccbeebc96c165aefd10b6914f5"
+version = "0.7.0"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.7.0#86a07213263fed055e189d4fcc67bb549b6b4f06"
 dependencies = [
  "irodori-connection",
  "irodori-error",
@@ -3403,8 +3398,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-secure-store"
-version = "0.6.5"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.5#8fb3ce69cee988ccbeebc96c165aefd10b6914f5"
+version = "0.7.0"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.7.0#86a07213263fed055e189d4fcc67bb549b6b4f06"
 dependencies = [
  "irodori-connection",
  "irodori-error",
@@ -3413,8 +3408,8 @@ dependencies = [
 
 [[package]]
 name = "irodori-security"
-version = "0.6.5"
-source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.6.5#8fb3ce69cee988ccbeebc96c165aefd10b6914f5"
+version = "0.7.0"
+source = "git+https://github.com/hjosugi/irodori-kit?tag=v0.7.0#86a07213263fed055e189d4fcc67bb549b6b4f06"
 dependencies = [
  "serde",
  "ts-rs",
@@ -3456,6 +3451,7 @@ dependencies = [
  "portable-pty",
  "redis",
  "reqwest",
+ "rustls",
  "scylla",
  "serde",
  "serde_json",
@@ -3890,12 +3886,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
-name = "lru-slab"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
-
-[[package]]
 name = "lz4_flex"
 version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4288,7 +4278,7 @@ checksum = "ab2156c4fce2f8df6c499cc1c763e4394b7482525bf2a9701c9d79d215f519e4"
 dependencies = [
  "bitflags 2.13.0",
  "cfg-if",
- "cfg_aliases 0.1.1",
+ "cfg_aliases",
  "libc",
 ]
 
@@ -5239,62 +5229,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quinn"
-version = "0.11.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c1a41e437b6bbd489372cd4971de128e85c855f56c57f283d20ff016cf7c0a8"
-dependencies = [
- "bytes",
- "cfg_aliases 0.2.1",
- "pin-project-lite",
- "quinn-proto",
- "quinn-udp",
- "rustc-hash 2.1.2",
- "rustls",
- "socket2 0.6.4",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "web-time",
-]
-
-[[package]]
-name = "quinn-proto"
-version = "0.11.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fcb935c5bec503c2f0e306bdd3e58bb9029dcb14fa8d9ac76e3a5256ac0763e"
-dependencies = [
- "aws-lc-rs",
- "bytes",
- "getrandom 0.3.4",
- "lru-slab",
- "rand 0.9.4",
- "ring",
- "rustc-hash 2.1.2",
- "rustls",
- "rustls-pki-types",
- "slab",
- "thiserror 2.0.18",
- "tinyvec",
- "tracing",
- "web-time",
-]
-
-[[package]]
-name = "quinn-udp"
-version = "0.5.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "addec6a0dcad8a8d96a771f815f0eaf55f9d1805756410b39f5fa81332574cbd"
-dependencies = [
- "cfg_aliases 0.2.1",
- "libc",
- "once_cell",
- "socket2 0.6.4",
- "tracing",
- "windows-sys 0.52.0",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5550,7 +5484,6 @@ dependencies = [
  "mime",
  "percent-encoding",
  "pin-project-lite",
- "quinn",
  "rustls",
  "rustls-pki-types",
  "rustls-platform-verifier",
@@ -5979,7 +5912,6 @@ version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "764899a24af3980067ee14bc143654f297b22eaebfe3c7b6b211920a5a59b046"
 dependencies = [
- "web-time",
  "zeroize",
 ]
 
