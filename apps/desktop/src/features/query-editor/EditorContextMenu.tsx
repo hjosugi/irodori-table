@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator, type TranslationKey } from "@/i18n";
 import {
   editorContextCommandGroups,
   type EditorContextCommand,
@@ -28,6 +30,19 @@ export function EditorContextMenu({
   onClose,
 }: EditorContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
+
+  // Every command in editor-commands.ts carries an English `label` for code
+  // that has no translator to hand, but each one also already has a
+  // commands.<id>.title key in both locales — the menu just never used them, so
+  // 15 of its 16 items stayed English under any locale. EditorCommandBar
+  // resolves its own labels the same way.
+  const commandLabel = (commandId: string, fallback: string) => {
+    const key = `commands.${commandId}.title` as TranslationKey;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
 
   useEffect(() => {
     // The menu is portaled outside the React root, so a pointerdown inside it no
@@ -61,7 +76,9 @@ export function EditorContextMenu({
 
   const renderContextCommand = (command: EditorContextCommand) => {
     const label =
-      command.commandId === "query.run" ? runPrimaryLabel : command.label;
+      command.commandId === "query.run"
+        ? runPrimaryLabel
+        : commandLabel(command.commandId, command.label);
     const shortcut =
       command.commandId === "query.run" ? runShortcutLabel : null;
     return (
@@ -105,7 +122,7 @@ export function EditorContextMenu({
         disabled={!resultActionsAvailable}
         onClick={() => onCommand("result.copySqlInserts")}
       >
-        <span>Copy result as INSERT SQL</span>
+        <span>{t("commands.result.copySqlInserts.title")}</span>
       </button>
       <button
         type="button"
@@ -113,7 +130,7 @@ export function EditorContextMenu({
         disabled={!resultActionsAvailable}
         onClick={() => onCommand("result.exportSqlInserts")}
       >
-        <span>Download result as INSERT SQL</span>
+        <span>{t("commands.result.exportSqlInserts.title")}</span>
       </button>
     </div>,
     document.body,
