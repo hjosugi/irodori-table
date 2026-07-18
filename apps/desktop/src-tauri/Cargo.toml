@@ -82,7 +82,26 @@ tiberius = { version = "0.12", optional = true, default-features = false, featur
 ] }
 tokio-util = { version = "0.7", features = ["compat"] }
 oracle-rs = { version = "0.1.7", optional = true }
-reqwest = { version = "0.13.4", features = ["json", "stream"] }
+# default-features would pull aws-lc-rs, a second C crypto stack alongside the
+# ring that tauri-plugin-updater already requires. charset/http2/system-proxy
+# are reqwest defaults re-listed on purpose — losing system-proxy would break
+# users behind a corporate proxy.
+reqwest = { version = "0.13.4", default-features = false, features = [
+    "json",
+    "stream",
+    "rustls-no-provider",
+    "charset",
+    "http2",
+    "system-proxy",
+] }
+# With no provider compiled into reqwest, its default_rustls_crypto_provider()
+# is a literal panic!. lib.rs installs this one before anything builds a client.
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+    "std",
+    "tls12",
+    "logging",
+] }
 # Native connector-extension host: dynamic loading of installed connector
 # cdylibs plus download integrity + archive unpacking for the install pipeline.
 libloading = "0.9"
