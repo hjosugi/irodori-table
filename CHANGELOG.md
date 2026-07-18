@@ -16,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.40] - 2026-07-19
+
+### Changed
+
+- TLS now runs on a single crypto backend. The desktop build previously
+  compiled both `aws-lc-rs` and `ring`; it now uses `ring` alone, which the
+  updater already required. Certificate verification is unchanged and still
+  uses the operating system trust store. Connections lose the post-quantum
+  hybrid X25519MLKEM768 key exchange and fall back to classical key exchange.
+- Foundation crates move to irodori-kit v0.7.0, which also carries the 0BSD
+  license metadata repair, cross-platform extension release automation, and the
+  Windows extension packaging fix.
+
+### Added
+
+- A Nix dev shell (`flake.nix`) pinning the exact Rust from
+  `rust-toolchain.toml`, Node 24, mold, and the Linux desktop libraries, so a
+  local checkout gets the same toolchain CI uses.
+
 ## [0.7.39] - 2026-07-18
 
 ### Changed
