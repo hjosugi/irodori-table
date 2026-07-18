@@ -48,6 +48,7 @@ jobs:
       release_body: ${{ steps.resolve.outputs.release_body }}
       windows_signing: ${{ steps.resolve.outputs.windows_signing }}
       macos_signing: ${{ steps.resolve.outputs.macos_signing }}
+      release_id: ${{ steps.create_release.outputs.release_id }}
     env:
       REQUESTED_CHANNEL: ${{ inputs.channel || 'lightweight' }}
       REQUESTED_TAG: ${{ inputs.release_tag || github.ref_name }}
@@ -281,10 +282,42 @@ jobs:
             echo "EOF_RELEASE_BODY"
           } >> "${GITHUB_OUTPUT}"
 
+      # Create the release once, here, so the platform lanes can run in
+      # parallel and only ever add assets to it. Previously they were chained
+      # Linux -> macOS -> Windows purely so they would not race each other
+      # creating the same release (tauri-action#914), which cost ~31 minutes of
+      # wall clock to avoid a problem that a single up-front create removes.
+      - name: Create or reuse the GitHub release
+        id: create_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.resolve.outputs.release_tag }}
+          RELEASE_NAME: Irodori Table ${{ steps.resolve.outputs.release_tag }}
+          RELEASE_BODY: ${{ steps.resolve.outputs.release_body }}
+          PRERELEASE: ${{ steps.resolve.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          # Re-dispatching a channel against an existing tag is a supported
+          # workflow (lightweight first, then stable), so adopt the existing
+          # release rather than failing or duplicating it.
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Reusing existing release ${RELEASE_TAG}"
+            gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
+              --notes "${RELEASE_BODY}" --prerelease="${PRERELEASE}"
+          else
+            echo "Creating release ${RELEASE_TAG}"
+            gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
+              --title "${RELEASE_NAME}" --notes "${RELEASE_BODY}" \
+              --verify-tag --prerelease="${PRERELEASE}"
+          fi
+          release_id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .id)
+          echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
+
   publish-linux:
     name: Publish Linux packages
     needs: release-gates
-    if: needs.release-gates.outputs.channel != 'preview'
+    if: needs.release-gates.outputs.linux_tauri_args != ''
     runs-on: ubuntu-latest
     steps:
       - name: Checkout irodori-table
@@ -362,8 +395,13 @@ jobs:
           releaseBody: ${{ needs.release-gates.outputs.release_body }}
           releaseDraft: false
           prerelease: ${{ needs.release-gates.outputs.prerelease }}
-          uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
+          releaseId: ${{ needs.release-gates.outputs.release_id }}
+          # latest.json is assembled once in publish-updater. Letting each lane
+          # merge it concurrently loses platforms (tauri-action#1197).
+          uploadUpdaterJson: false
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
+          # Default is 0; asset uploads to a shared release are worth retrying.
+          retryAttempts: 3
           projectPath: apps/desktop
           args: ${{ needs.release-gates.outputs.linux_tauri_args }}
 
@@ -373,10 +411,8 @@ jobs:
 
   publish-macos:
     name: Publish macOS app
-    needs:
-      - release-gates
-      - publish-linux
-    if: always() && needs.release-gates.result == 'success' && (needs.release-gates.outputs.channel == 'preview' || (needs.release-gates.outputs.channel == 'stable' && needs.publish-linux.result == 'success'))
+    needs: release-gates
+    if: needs.release-gates.outputs.macos_tauri_args != ''
     runs-on: macos-15
     steps:
       - name: Checkout irodori-table
@@ -457,21 +493,20 @@ jobs:
           releaseBody: ${{ needs.release-gates.outputs.release_body }}
           releaseDraft: false
           prerelease: ${{ needs.release-gates.outputs.prerelease }}
-          uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
+          releaseId: ${{ needs.release-gates.outputs.release_id }}
+          # latest.json is assembled once in publish-updater. Letting each lane
+          # merge it concurrently loses platforms (tauri-action#1197).
+          uploadUpdaterJson: false
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
+          # Default is 0; asset uploads to a shared release are worth retrying.
+          retryAttempts: 3
           projectPath: apps/desktop
           args: ${{ needs.release-gates.outputs.macos_tauri_args }}
 
   publish-windows:
     name: Publish Windows app
-    needs:
-      - release-gates
-      - publish-macos
-    # Still chained after macOS so the two lanes never race uploads to the
-    # same GitHub release, but a failed (not cancelled) macOS preview build
-    # must not take the unsigned Windows artifacts down with it. Stable keeps
-    # the strict all-platform gate.
-    if: always() && needs.release-gates.result == 'success' && ((needs.release-gates.outputs.channel == 'preview' && needs.publish-macos.result != 'cancelled') || (needs.release-gates.outputs.channel == 'stable' && needs.publish-macos.result == 'success'))
+    needs: release-gates
+    if: needs.release-gates.outputs.windows_tauri_args != ''
     runs-on: windows-latest
     steps:
       - name: Checkout irodori-table
@@ -560,8 +595,13 @@ jobs:
           releaseBody: ${{ needs.release-gates.outputs.release_body }}
           releaseDraft: false
           prerelease: ${{ needs.release-gates.outputs.prerelease }}
-          uploadUpdaterJson: ${{ needs.release-gates.outputs.upload_updater }}
+          releaseId: ${{ needs.release-gates.outputs.release_id }}
+          # latest.json is assembled once in publish-updater. Letting each lane
+          # merge it concurrently loses platforms (tauri-action#1197).
+          uploadUpdaterJson: false
           uploadUpdaterSignatures: ${{ needs.release-gates.outputs.upload_updater }}
+          # Default is 0; asset uploads to a shared release are worth retrying.
+          retryAttempts: 3
           projectPath: apps/desktop
           args: ${{ needs.release-gates.outputs.windows_tauri_args }}
 
@@ -674,29 +714,74 @@ jobs:
             }
           }
 
-  verify-updater:
-    name: Verify stable updater manifest
+  publish-updater:
+    name: Publish and verify updater manifest
     needs:
       - release-gates
+      - publish-linux
+      - publish-macos
       - publish-windows
-    # Only meaningful when the updater lane actually ran: an unsigned stable
-    # release publishes no latest.json for this job to validate.
-    if: needs.release-gates.outputs.upload_updater == 'true'
+    # The manifest must describe every platform, so require all three lanes.
+    # Skipped lanes (a channel that does not build them) also fail this guard,
+    # which is correct: a partial manifest would strand those users on an
+    # update check that never resolves.
+    if: |
+      needs.release-gates.outputs.upload_updater == 'true'
+      && needs.publish-linux.result == 'success'
+      && needs.publish-macos.result == 'success'
+      && needs.publish-windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Download and validate latest.json
+      - name: Checkout irodori-table
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-gates.outputs.release_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      # Built here, once, from the signatures the lanes uploaded. tauri-action
+      # merges latest.json non-atomically, so three parallel lanes writing it
+      # can silently drop a platform (tauri-action#1197).
+      - name: Build updater manifest
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
+        run: node tools/build-updater-manifest.mjs "${RUNNER_TEMP}/latest.json"
+
+      - name: Publish updater manifest
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
         run: |
-          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --pattern latest.json --dir "${RUNNER_TEMP}"
-          manifest="${RUNNER_TEMP}/latest.json"
+          gh release upload "${RELEASE_TAG}" "${RUNNER_TEMP}/latest.json" \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
+      - name: Verify published manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-gates.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          # Re-download rather than checking the local copy, so this asserts
+          # what clients will actually fetch.
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
+            --pattern latest.json --dir "${RUNNER_TEMP}/verify"
+          manifest="${RUNNER_TEMP}/verify/latest.json"
           test "$(jq -r .version "${manifest}")" = "${RELEASE_TAG#v}"
+          # The url check compares two counts rooted at the document. Piping the
+          # filtered array into `length == (.platforms | length)` would evaluate
+          # .platforms against that array and error out, which is why this never
+          # caught anything before.
           jq -e '
             (.platforms | keys | any(startswith("linux-"))) and
             (.platforms | keys | any(startswith("darwin-"))) and
             (.platforms | keys | any(startswith("windows-"))) and
-            ([.platforms[] | select((.signature | type == "string") and (.signature | length > 0))] | length >= 3) and
-            ([.platforms[] | select(.url | startswith("https://"))] | length == (.platforms | length))
+            (([.platforms[] | select((.signature | type == "string") and (.signature | length > 0))] | length) >= 3) and
+            (([.platforms[] | select(.url | startswith("https://"))] | length) == (.platforms | length))
           ' "${manifest}"

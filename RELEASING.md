@@ -106,9 +106,15 @@ lightweight tag release by default. Selecting `windows_signing=signpath` keeps
 macOS unsigned but replaces the Windows NSIS/MSI assets with SignPath-signed
 installers. It leaves the release marked as a pre-release, does not generate
 `latest.json`, and does not publish to the stable updater channel; unsigned
-artifacts may trigger operating-system trust warnings. The preview lanes stay
-serialized (macOS, then Windows) to avoid concurrent uploads to the same
-release, but a failed macOS build does not skip the Windows lane.
+artifacts may trigger operating-system trust warnings.
+
+All platform lanes run in parallel. The `release-gates` job creates (or adopts)
+the GitHub release up front and passes its `release_id` to each lane, so the
+lanes only ever add assets and never race each other creating the same release.
+Bundle filenames are distinct per platform, so concurrent asset uploads do not
+collide. The one genuinely shared write is `latest.json`, which no lane touches:
+`publish-updater` assembles it once, after every lane has finished, from the
+uploaded signature assets.
 
 The `stable` channel is the only one that publishes as a full release rather
 than a pre-release, so it is what GitHub surfaces as **Latest** on the
