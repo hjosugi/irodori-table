@@ -891,7 +891,7 @@ export function Sidebar({
                     ? t(containerLabelKey, {
                         count: activeMetadata.schemas.length,
                       })
-                    : "public"}
+                    : t("sidebar.databaseObjects")}
                 </span>
                 <div className="section-heading-actions">
                   <div

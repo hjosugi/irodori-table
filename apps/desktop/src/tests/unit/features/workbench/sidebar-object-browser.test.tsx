@@ -32,7 +32,10 @@ function connectionWith(engine: string): WorkspaceConnection {
   };
 }
 
-function renderSidebar(engine: string) {
+function renderSidebar(
+  engine: string,
+  overrides: Partial<Parameters<typeof Sidebar>[0]> = {},
+) {
   const activeConnection = connectionWith(engine);
   const props: Parameters<typeof Sidebar>[0] = {
     sidebarOpen: true,
@@ -84,6 +87,7 @@ function renderSidebar(engine: string) {
     onCloseSidebar: vi.fn(),
     onBeginResize: vi.fn(),
     onResizeKey: vi.fn(),
+    ...overrides,
   };
   flushSync(() => root.render(<Sidebar {...props} />));
   return props;
@@ -133,5 +137,24 @@ describe("Sidebar object browser container vocabulary", () => {
     renderSidebar("deltaLake");
 
     expect(containerIconClass()).toContain("lucide-boxes");
+  });
+
+  // Before metadata arrives the heading has no count to show. It used to fall
+  // back to the literal "public", which is a Postgres schema name rather than
+  // a container count, is wrong for engines that have no public schema, and
+  // never went through t() so it stayed English under any locale.
+  it("falls back to a translated label when metadata has not loaded", () => {
+    renderSidebar("sqlite", {
+      activeMetadata: undefined,
+      activeConnectionOpen: false,
+    });
+
+    expect(headingText()).toBe("Database objects");
+  });
+
+  it("uses the same fallback for engines that do have a public schema", () => {
+    renderSidebar("postgres", { activeMetadata: undefined });
+
+    expect(headingText()).toBe("Database objects");
   });
 });
