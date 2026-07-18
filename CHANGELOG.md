@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.41] - 2026-07-19
+
+### Fixed
+
+- Release infrastructure only; the application is unchanged from 0.7.40. The
+  cache-warming workflow failed on Windows on every run since it was added, so
+  Windows release builds recompiled their dependencies from cold each time and
+  a partial cache entry kept the correct one from ever being saved.
+
 ## [0.7.40] - 2026-07-19
 
 ### Changed
