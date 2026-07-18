@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.38] - 2026-07-18
+
+### Changed
+
+- The sidebar object browser names lakehouse containers per each engine's
+  source-type contract: namespaces for DuckDB, MotherDuck, Iceberg, S3 Tables,
+  Delta Lake, and Hudi; databases for Hive and Athena. Lakehouse containers
+  render a dedicated icon distinct from schema folders.
+
 ## [0.7.37] - 2026-07-14
 
 ### Fixed
