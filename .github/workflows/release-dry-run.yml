@@ -27,21 +27,29 @@ jobs:
             mold \
             wget
 
+      # No npm cache: the release bump rewrites package-lock.json's version,
+      # so setup-node's hashFiles() key is new every release and never hits.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
 
+      # Pinned to rust-toolchain.toml. @stable installed a toolchain that was
+      # then overridden and discarded, and rust-cache hashes every installed
+      # toolchain into its key, so each new Rust stable invalidated this cache.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.0
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> .irodori-local/target'
-          key: release-dry-run-linux
+          # Share the release lanes' cache instead of keeping a third ~800MB
+          # copy of the same dependency build. Restore only: warm-release-cache
+          # is the single writer, because rust-cache will not overwrite an
+          # existing key and a second writer strands whatever it wrote there.
+          shared-key: release-${{ runner.os }}
+          save-if: false
 
       - name: Cache AppImage runtime
         uses: actions/cache@v6
