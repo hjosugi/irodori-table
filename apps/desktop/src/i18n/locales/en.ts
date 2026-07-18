@@ -1066,6 +1066,8 @@ export const en = {
   "sidebar.view.rowDetail": "Row detail",
   "sidebar.view.knowledge": "Knowledge",
   "sidebar.schemasCount": "{count} schemas",
+  "sidebar.namespacesCount": "{count} namespaces",
+  "sidebar.databasesCount": "{count} databases",
   "knowledge.title": "Knowledge",
   "knowledge.close": "Close Knowledge",
   "knowledge.refresh": "Refresh from the published knowledge pack",
