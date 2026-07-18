@@ -296,6 +296,9 @@ jobs:
           RELEASE_NAME: Irodori Table ${{ steps.resolve.outputs.release_tag }}
           RELEASE_BODY: ${{ steps.resolve.outputs.release_body }}
           PRERELEASE: ${{ steps.resolve.outputs.prerelease }}
+          # Only a stable release should claim the Latest badge; prerelease
+          # channels must never displace the current stable on the home page.
+          MAKE_LATEST: ${{ steps.resolve.outputs.prerelease == 'false' }}
         run: |
           set -euo pipefail
           # Re-dispatching a channel against an existing tag is a supported
@@ -304,12 +307,13 @@ jobs:
           if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             echo "Reusing existing release ${RELEASE_TAG}"
             gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
-              --notes "${RELEASE_BODY}" --prerelease="${PRERELEASE}"
+              --notes "${RELEASE_BODY}" --prerelease="${PRERELEASE}" \
+              --latest="${MAKE_LATEST}"
           else
             echo "Creating release ${RELEASE_TAG}"
             gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
               --title "${RELEASE_NAME}" --notes "${RELEASE_BODY}" \
-              --verify-tag --prerelease="${PRERELEASE}"
+              --verify-tag --prerelease="${PRERELEASE}" --latest="${MAKE_LATEST}"
           fi
           release_id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .id)
           echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
@@ -732,10 +736,13 @@ jobs:
       && needs.publish-windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      # Deliberately NOT the release tag. The platform lanes build the tagged
+      # source, but this job only needs the manifest tool, which ships with the
+      # workflow — checking out the tag broke v0.7.39, whose tag predates the
+      # tool. Default checkout tracks the ref the workflow was launched from,
+      # so the tool always matches the workflow definition running it.
       - name: Checkout irodori-table
         uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-gates.outputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
