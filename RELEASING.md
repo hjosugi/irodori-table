@@ -110,12 +110,28 @@ artifacts may trigger operating-system trust warnings. The preview lanes stay
 serialized (macOS, then Windows) to avoid concurrent uploads to the same
 release, but a failed macOS build does not skip the Windows lane.
 
-The `stable` channel checks the updater, Windows, and macOS signing secrets;
-generates the ignored `src-tauri/tauri.updater.conf.json` config through
-`npm run release:prepare-updater`; signs Tauri updater artifacts; publishes
-`latest.json` for the stable update channel; and publishes signed Windows and
-signed/notarized macOS artifacts. Configure these GitHub Actions secrets before
-dispatching a stable release:
+The `stable` channel is the only one that publishes as a full release rather
+than a pre-release, so it is what GitHub surfaces as **Latest** on the
+repository home page. It builds the complete Linux + universal macOS + Windows
+set and, when the corresponding secrets are configured, generates the ignored
+`src-tauri/tauri.updater.conf.json` config through
+`npm run release:prepare-updater`, signs Tauri updater artifacts, publishes
+`latest.json` for the stable update channel, and signs/notarizes the macOS and
+Windows artifacts.
+
+Signing is **best-effort, not required**. Each lane detects its own secrets and
+turns itself off when they are absent, so a stable release still ships all
+three platforms — unsigned — instead of failing the dispatch:
+
+| Missing secrets | Effect |
+| --- | --- |
+| `TAURI_UPDATER_PUBLIC_KEY` / `TAURI_SIGNING_PRIVATE_KEY` | Updater artifacts and `latest.json` are omitted; the updater manifest check is skipped. Users must reinstall to upgrade. |
+| Apple certificate or notarization credentials | macOS packages ship unsigned and may trigger Gatekeeper warnings. |
+| The selected `windows_signing` backend's secrets | Windows installers ship unsigned and may trigger SmartScreen warnings. |
+
+Each degraded lane emits a `::warning::` in the run log and the generated
+release notes state exactly which artifacts are unsigned. Configure these
+GitHub Actions secrets to get a fully signed stable release:
 
 ### Windows signing backend
 
@@ -187,10 +203,10 @@ Override it only for a deliberate channel split by setting the
 to the updater; publish the GitHub Release only after the artifacts and
 generated `latest.json` have been reviewed.
 
-The stable workflow publishes Windows and macOS lanes only after the platform
-secrets below are present. The default tag workflow stays on the lightweight
-Linux package lane, so missing platform credentials do not block prerelease
-checkpoints.
+The stable workflow signs the Windows and macOS lanes when the platform secrets
+below are present, and publishes them unsigned when they are not. The default
+tag workflow stays on the lightweight Linux package lane, so missing platform
+credentials block neither prerelease checkpoints nor stable releases.
 
 | Secret | Used by | Notes |
 | --- | --- | --- |

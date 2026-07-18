@@ -47,6 +47,7 @@ jobs:
       windows_tauri_args: ${{ steps.resolve.outputs.windows_tauri_args }}
       release_body: ${{ steps.resolve.outputs.release_body }}
       windows_signing: ${{ steps.resolve.outputs.windows_signing }}
+      macos_signing: ${{ steps.resolve.outputs.macos_signing }}
     env:
       REQUESTED_CHANNEL: ${{ inputs.channel || 'lightweight' }}
       REQUESTED_TAG: ${{ inputs.release_tag || github.ref_name }}
@@ -85,6 +86,9 @@ jobs:
           channel="${REQUESTED_CHANNEL}"
           release_tag="${REQUESTED_TAG}"
           windows_signing="${REQUESTED_WINDOWS_SIGNING}"
+          # Only the stable channel ever signs macOS; the other channels
+          # publish unsigned preview artifacts by design.
+          macos_signing=false
 
           if [[ "${release_tag}" != v* ]]; then
             echo "::error::release_tag must be an existing v* tag; got '${release_tag}'."
@@ -134,59 +138,89 @@ jobs:
               windows_tauri_args="--bundles nsis,msi"
               ;;
             stable)
-              # Common stable secrets, then the Windows secrets for the chosen
-              # signing backend: a PFX certificate imported into the runner, an
-              # Azure Trusted Signing service principal + account/profile, or a
-              # SignPath (Foundation) cloud signing project.
-              required=(
-                TAURI_UPDATER_PUBLIC_KEY
-                TAURI_SIGNING_PRIVATE_KEY
-                APPLE_CERTIFICATE
-                APPLE_CERTIFICATE_PASSWORD
-              )
-              if [[ "${windows_signing}" == "azure" ]]; then
-                required+=(
-                  AZURE_TENANT_ID
-                  AZURE_CLIENT_ID
-                  AZURE_CLIENT_SECRET
-                  AZURE_TRUSTED_SIGNING_ENDPOINT
-                  AZURE_TRUSTED_SIGNING_ACCOUNT
-                  AZURE_TRUSTED_SIGNING_PROFILE
-                )
-              elif [[ "${windows_signing}" == "signpath" ]]; then
-                required+=(
-                  SIGNPATH_API_TOKEN
-                  SIGNPATH_ORGANIZATION_ID
-                  SIGNPATH_PROJECT_SLUG
-                  SIGNPATH_SIGNING_POLICY_SLUG
-                  SIGNPATH_ARTIFACT_CONFIGURATION_SLUG
-                )
+              # Signing is best-effort rather than required: stable is the only
+              # channel that publishes as Latest (prerelease=false), so missing
+              # signing material must not block the release. Each lane below
+              # detects its own secrets and turns itself off when they are
+              # absent, so an unsigned stable release still ships the full
+              # Linux + macOS + Windows set.
+
+              # The updater is cryptographically bound to the updater keypair:
+              # without it there is no key to sign the update manifest with, so
+              # the updater lane switches off instead of producing artifacts
+              # clients would reject.
+              if [[ -n "${TAURI_UPDATER_PUBLIC_KEY:-}" && -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+                upload_updater=true
               else
-                required+=(
-                  WINDOWS_CERTIFICATE
-                  WINDOWS_CERTIFICATE_PASSWORD
-                  WINDOWS_CERTIFICATE_THUMBPRINT
-                )
+                upload_updater=false
+                echo "::warning::stable updater artifacts omitted: TAURI_UPDATER_PUBLIC_KEY + TAURI_SIGNING_PRIVATE_KEY are required to sign update manifests."
               fi
+
+              # macOS needs both halves to be useful: the certificate signs the
+              # bundle, the notarization credentials clear Gatekeeper. Partial
+              # credentials would fail mid-build, so treat them as all-or-nothing.
+              if [[ -n "${APPLE_CERTIFICATE:-}" && -n "${APPLE_CERTIFICATE_PASSWORD:-}" ]] \
+                && { [[ -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_KEY_P8:-}" ]] \
+                  || [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; }; then
+                macos_signing=true
+              else
+                macos_signing=false
+                echo "::warning::stable macOS artifacts will be unsigned: needs APPLE_CERTIFICATE + APPLE_CERTIFICATE_PASSWORD, plus APPLE_API_ISSUER + APPLE_API_KEY + APPLE_API_KEY_P8 or APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID."
+              fi
+
+              # Windows secrets for the chosen signing backend: a PFX certificate
+              # imported into the runner, an Azure Trusted Signing service
+              # principal + account/profile, or a SignPath (Foundation) cloud
+              # signing project. Falling back to 'none' switches off every
+              # downstream signing step, which all key off windows_signing.
+              case "${windows_signing}" in
+                azure)
+                  windows_required=(
+                    AZURE_TENANT_ID
+                    AZURE_CLIENT_ID
+                    AZURE_CLIENT_SECRET
+                    AZURE_TRUSTED_SIGNING_ENDPOINT
+                    AZURE_TRUSTED_SIGNING_ACCOUNT
+                    AZURE_TRUSTED_SIGNING_PROFILE
+                  )
+                  ;;
+                signpath)
+                  windows_required=(
+                    SIGNPATH_API_TOKEN
+                    SIGNPATH_ORGANIZATION_ID
+                    SIGNPATH_PROJECT_SLUG
+                    SIGNPATH_SIGNING_POLICY_SLUG
+                    SIGNPATH_ARTIFACT_CONFIGURATION_SLUG
+                  )
+                  ;;
+                *)
+                  windows_required=(
+                    WINDOWS_CERTIFICATE
+                    WINDOWS_CERTIFICATE_PASSWORD
+                    WINDOWS_CERTIFICATE_THUMBPRINT
+                  )
+                  ;;
+              esac
               missing=()
-              for name in "${required[@]}"; do
+              for name in "${windows_required[@]}"; do
                 if [[ -z "${!name:-}" ]]; then
                   missing+=("${name}")
                 fi
               done
               if (( ${#missing[@]} > 0 )); then
-                printf '::error::stable releases (windows_signing=%s) require missing secret(s): %s\n' "${windows_signing}" "${missing[*]}"
-                exit 1
+                printf '::warning::stable Windows artifacts will be unsigned (windows_signing=%s); missing secret(s): %s\n' "${windows_signing}" "${missing[*]}"
+                windows_signing=none
               fi
-              if [[ ! ( -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_KEY_P8:-}" ) && ! ( -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ) ]]; then
-                echo "::error::stable macOS notarization requires APPLE_API_ISSUER + APPLE_API_KEY + APPLE_API_KEY_P8 or APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID."
-                exit 1
-              fi
+
               prerelease=false
-              upload_updater=true
-              linux_tauri_args="--bundles appimage,deb,rpm --features updater --config src-tauri/tauri.updater.conf.json"
-              macos_tauri_args="--target universal-apple-darwin --bundles dmg,app --features updater --config src-tauri/tauri.updater.conf.json"
-              windows_tauri_args="--bundles nsis,msi --features updater --config src-tauri/tauri.updater.conf.json"
+              if [[ "${upload_updater}" == "true" ]]; then
+                updater_args=" --features updater --config src-tauri/tauri.updater.conf.json"
+              else
+                updater_args=""
+              fi
+              linux_tauri_args="--bundles appimage,deb,rpm${updater_args}"
+              macos_tauri_args="--target universal-apple-darwin --bundles dmg,app${updater_args}"
+              windows_tauri_args="--bundles nsis,msi${updater_args}"
               ;;
             *)
               echo "::error::unknown release channel '${channel}'."
@@ -203,9 +237,27 @@ jobs:
             echo "macos_tauri_args=${macos_tauri_args}"
             echo "windows_tauri_args=${windows_tauri_args}"
             echo "windows_signing=${windows_signing}"
+            echo "macos_signing=${macos_signing}"
             echo "release_body<<EOF_RELEASE_BODY"
             if [[ "${channel}" == "stable" ]]; then
-              echo "Stable release with signed Tauri updater artifacts for the stable update channel, plus signed Windows and signed/notarized macOS artifacts."
+              # Describe what actually shipped: signing is best-effort, so the
+              # notes must not promise signatures this run could not produce.
+              echo "Stable release with Linux, universal macOS, and Windows packages."
+              if [[ "${upload_updater}" == "true" ]]; then
+                echo "Includes signed Tauri updater artifacts for the stable update channel."
+              else
+                echo "Updater artifacts are omitted from this release; update in place is unavailable and the app must be reinstalled to upgrade."
+              fi
+              if [[ "${macos_signing}" == "true" ]]; then
+                echo "macOS packages are signed and notarized."
+              else
+                echo "macOS packages are unsigned and may trigger Gatekeeper trust warnings."
+              fi
+              if [[ "${windows_signing}" == "none" ]]; then
+                echo "Windows installers are unsigned and may trigger SmartScreen warnings."
+              else
+                echo "Windows installers are signed (${windows_signing})."
+              fi
             elif [[ "${channel}" == "preview" && "${windows_signing}" == "signpath" ]]; then
               echo "Unsigned universal macOS preview artifacts and SignPath-signed Windows NSIS/MSI installers added to the existing lightweight Linux pre-release. These artifacts are not part of the stable updater channel; macOS packages may trigger operating-system trust warnings."
             elif [[ "${channel}" == "preview" ]]; then
@@ -272,7 +324,7 @@ jobs:
         run: npm ci
 
       - name: Prepare stable updater signing config
-        if: needs.release-gates.outputs.channel == 'stable'
+        if: needs.release-gates.outputs.upload_updater == 'true'
         working-directory: apps/desktop
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
@@ -285,8 +337,8 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.upload_updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.upload_updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
         with:
           tagName: ${{ needs.release-gates.outputs.release_tag }}
           releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
@@ -341,7 +393,7 @@ jobs:
         run: npm ci
 
       - name: Prepare stable updater signing config
-        if: needs.release-gates.outputs.channel == 'stable'
+        if: needs.release-gates.outputs.upload_updater == 'true'
         working-directory: apps/desktop
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
@@ -351,7 +403,7 @@ jobs:
         run: npm run release:prepare-updater
 
       - name: Prepare macOS signing and notarization
-        if: needs.release-gates.outputs.channel == 'stable'
+        if: needs.release-gates.outputs.macos_signing == 'true'
         working-directory: apps/desktop
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -370,13 +422,13 @@ jobs:
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-          APPLE_API_ISSUER: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_API_ISSUER || '' }}
-          APPLE_API_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_API_KEY || '' }}
-          APPLE_ID: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_ID || '' }}
-          APPLE_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.APPLE_TEAM_ID || '' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.upload_updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.upload_updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          APPLE_API_ISSUER: ${{ needs.release-gates.outputs.macos_signing == 'true' && secrets.APPLE_API_ISSUER || '' }}
+          APPLE_API_KEY: ${{ needs.release-gates.outputs.macos_signing == 'true' && secrets.APPLE_API_KEY || '' }}
+          APPLE_ID: ${{ needs.release-gates.outputs.macos_signing == 'true' && secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ needs.release-gates.outputs.macos_signing == 'true' && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ needs.release-gates.outputs.macos_signing == 'true' && secrets.APPLE_TEAM_ID || '' }}
         with:
           tagName: ${{ needs.release-gates.outputs.release_tag }}
           releaseName: 'Irodori Table ${{ needs.release-gates.outputs.release_tag }}'
@@ -426,7 +478,7 @@ jobs:
         run: npm ci
 
       - name: Prepare stable updater signing config
-        if: needs.release-gates.outputs.channel == 'stable'
+        if: needs.release-gates.outputs.upload_updater == 'true'
         working-directory: apps/desktop
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
@@ -468,8 +520,8 @@ jobs:
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.channel == 'stable' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ needs.release-gates.outputs.upload_updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ needs.release-gates.outputs.upload_updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           # Azure Trusted Signing credentials, read by trusted-signing-cli when
           # Tauri runs the generated signCommand. Empty unless the stable Azure
           # backend is selected, so other channels never see them.
@@ -601,7 +653,9 @@ jobs:
     needs:
       - release-gates
       - publish-windows
-    if: needs.release-gates.outputs.channel == 'stable'
+    # Only meaningful when the updater lane actually ran: an unsigned stable
+    # release publishes no latest.json for this job to validate.
+    if: needs.release-gates.outputs.upload_updater == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Download and validate latest.json
