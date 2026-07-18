@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.39] - 2026-07-18
+
+### Changed
+
+- Stable releases no longer require platform signing credentials. Each signing
+  lane detects its own secrets and turns itself off when they are absent, so a
+  stable release publishes the full Linux, universal macOS, and Windows set —
+  unsigned — instead of failing the dispatch. Release notes state which
+  artifacts are unsigned, and unsigned macOS and Windows packages may trigger
+  Gatekeeper and SmartScreen warnings.
+- Updater artifacts are no longer exclusive to fully signed builds. They are
+  published whenever the updater signing keys are configured, independent of
+  Apple and Windows code signing, so the stable auto-update channel works for
+  unsigned releases. Releases without updater keys omit `latest.json` and must
+  be upgraded by reinstalling.
+
 ## [0.7.38] - 2026-07-18
 
 ### Changed
