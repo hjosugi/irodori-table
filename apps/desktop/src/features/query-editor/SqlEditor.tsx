@@ -221,7 +221,6 @@ function createSqlEditorState({
         highlightActiveBlock: true,
         hideFirstIndent: false,
       }),
-      rainbowBrackets(),
       search({ top: true }),
       highlightSelectionMatches(),
       Prec.highest(keymap.of(searchKeymap)),
@@ -433,6 +432,9 @@ function buildLanguageLintExtensions(
   return language === "sql" ? buildSqlLintExtensions(engine, linterId) : [];
 }
 
+// Rainbow bracket-pair colouring is a code affordance and rides along with the
+// SQL branch only: in csv/tsv/log buffers brackets are field content or
+// section markers, and the depth colours would fight the language highlighter.
 function contentHighlightExtensions(
   language: EditorLanguage,
   engine: DbEngine,
@@ -448,7 +450,10 @@ function contentHighlightExtensions(
     case "text":
       return [];
     case "sql":
-      return sqlHighlightingExtensions(engine, theme.syntax);
+      return [
+        sqlHighlightingExtensions(engine, theme.syntax),
+        rainbowBrackets(),
+      ];
   }
 }
 
