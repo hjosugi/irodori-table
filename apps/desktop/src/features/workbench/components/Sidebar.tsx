@@ -141,6 +141,14 @@ function floatingMenuStyle(x: number, y: number) {
   } as const;
 }
 
+// A custom drag payload type carries the dragged view id across the two
+// Sidebar instances (left and right). `text/plain` is also set for legacy
+// reorder/accessibility, but this typed entry is what the opposite side reads
+// to recognise a view being docked onto it — and its mere presence in
+// `dataTransfer.types` is readable mid-drag (unlike the value), so the drop
+// target can light up before the drop lands.
+const VIEW_DND_MIME = "application/x-irodori-view";
+
 const TREE_ROW_SELECTOR =
   ".schema-tree > summary, .object-tree > summary, .metadata-row, .object-row";
 
@@ -370,6 +378,9 @@ export function Sidebar({
     id: SidebarViewId;
     position: "before" | "after";
   } | null>(null);
+  // True while a view dragged from the *other* side hovers this side's tab
+  // strip: the strip is a drop zone that docks that view here.
+  const [sideDropActive, setSideDropActive] = useState(false);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
   const lakehouseConnection = isLakehouseEngine(
@@ -553,6 +564,8 @@ export function Sidebar({
   ) {
     draggedViewRef.current = viewId;
     event.dataTransfer.setData("text/plain", viewId);
+    // The typed payload is what the opposite side reads to dock the view.
+    event.dataTransfer.setData(VIEW_DND_MIME, viewId);
     event.dataTransfer.effectAllowed = "move";
   }
 
@@ -582,9 +595,14 @@ export function Sidebar({
   ) {
     const source = draggedViewRef.current;
     if (!onReorderView || !source || source === viewId) {
+      // Not a same-side reorder (e.g. a view dragged in from the other side):
+      // let it bubble to the strip drop zone, which docks it here.
       return;
     }
     event.preventDefault();
+    // A handled same-side reorder must not also reach the strip's cross-side
+    // drop handler.
+    event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
     const position =
       event.clientX < rect.left + rect.width / 2 ? "before" : "after";
@@ -596,6 +614,52 @@ export function Sidebar({
   function handleViewDragEnd() {
     draggedViewRef.current = null;
     setViewDragOver(null);
+    setSideDropActive(false);
+  }
+
+  // The tab strip is a drop zone for a view dragged in from the *other* side.
+  // A drag that started on this side (our ref is set) is a reorder, handled per
+  // tab; only a drag with our typed payload and no local source is a cross-side
+  // dock move.
+  function isForeignViewDrag(event: ReactDragEvent<HTMLDivElement>) {
+    return (
+      Boolean(onMoveView) &&
+      draggedViewRef.current === null &&
+      Array.from(event.dataTransfer.types).includes(VIEW_DND_MIME)
+    );
+  }
+
+  function handleStripDragOver(event: ReactDragEvent<HTMLDivElement>) {
+    if (!isForeignViewDrag(event)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setSideDropActive(true);
+  }
+
+  function handleStripDragLeave(event: ReactDragEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && event.currentTarget.contains(next)) {
+      return;
+    }
+    setSideDropActive(false);
+  }
+
+  function handleStripDrop(event: ReactDragEvent<HTMLDivElement>) {
+    if (draggedViewRef.current !== null || !onMoveView) {
+      setSideDropActive(false);
+      return;
+    }
+    const dropped = event.dataTransfer.getData(VIEW_DND_MIME);
+    setSideDropActive(false);
+    if (!workbenchViewIds.includes(dropped as SidebarViewId)) {
+      return;
+    }
+    event.preventDefault();
+    // moveView no-ops when the view is already on this side or is pinned
+    // (object browser), so no extra guard is needed here.
+    onMoveView(dropped as SidebarViewId, side);
   }
 
   function renderActivePanel() {
@@ -776,9 +840,14 @@ export function Sidebar({
       {sidebarOpen ? (
         <aside className={`sidebar sidebar-${side}`}>
           <div
-            className="sidebar-view-switcher"
+            className={`sidebar-view-switcher${
+              sideDropActive ? " side-drop-active" : ""
+            }`}
             role="tablist"
             aria-label={t("sidebar.views")}
+            onDragOver={onMoveView ? handleStripDragOver : undefined}
+            onDragLeave={onMoveView ? handleStripDragLeave : undefined}
+            onDrop={onMoveView ? handleStripDrop : undefined}
           >
             {tabViews.map((viewId) => {
               const meta = viewTabMeta[viewId];
