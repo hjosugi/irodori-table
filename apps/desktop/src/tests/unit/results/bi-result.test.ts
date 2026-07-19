@@ -40,6 +40,14 @@ describe("BI result summary", () => {
     ]);
   });
 
+  it("formats summary numbers in the requested app locale", () => {
+    const result = { ...resultSet(), rowCount: 1234567n, elapsedMs: 1500n };
+    const summary = buildBiResultSummary(result, null, "de-DE");
+
+    expect(summary?.rowCountLabel).toBe("1.234.567 rows");
+    expect(summary?.elapsedLabel).toBe("1,5 s");
+  });
+
   it("keeps raw field profiles when no chart model exists", () => {
     const summary = buildBiResultSummary(resultSet(), null);
 

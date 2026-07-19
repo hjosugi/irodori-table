@@ -572,3 +572,13 @@ if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
     media.addListener?.(onSystemThemeChange);
   }
 }
+
+/**
+ * The active app locale for code that runs outside React rendering
+ * (formatters, notification builders, DOM tooltips). Components should
+ * subscribe with `usePreferencesStore((state) => state.locale)` instead so
+ * they re-render when the language changes.
+ */
+export function currentAppLocale(): Locale {
+  return usePreferencesStore.getState().locale;
+}

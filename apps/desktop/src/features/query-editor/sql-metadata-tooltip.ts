@@ -1,3 +1,4 @@
+import { currentAppLocale } from "@/features/preferences";
 import {
   sqlColumnDefinitionPreview,
   sqlColumnSampleValues,
@@ -42,7 +43,8 @@ export function renderSqlMetadataTooltip(
     root,
     "div",
     "sql-metadata-subtitle",
-    sqlMetadataTargetSubtitle(target),
+    // Rendered at hover time, so reading the store here stays fresh.
+    sqlMetadataTargetSubtitle(target, currentAppLocale()),
   );
 
   if (target.kind === "column") {

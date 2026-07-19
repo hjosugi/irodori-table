@@ -1,3 +1,4 @@
+import { currentAppLocale } from "@/features/preferences";
 import type {
   QueryPlanAnalysis,
   QueryPlanCopyFormat,
@@ -79,18 +80,25 @@ export function sourceLabel(source: QueryPlanAnalysis["source"]) {
   }
 }
 
-export function formatMaybe(value: number | undefined) {
+/** Format a plan metric in the app locale (not the OS locale). */
+export function formatMaybe(
+  value: number | undefined,
+  locale: string = currentAppLocale(),
+) {
   if (value === undefined || Number.isNaN(value)) {
     return "";
   }
   if (Math.abs(value) >= 1000) {
-    return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    return value.toLocaleString(locale, { maximumFractionDigits: 1 });
   }
-  return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  return value.toLocaleString(locale, { maximumFractionDigits: 3 });
 }
 
-export function formatMs(value: number | undefined) {
-  const formatted = formatMaybe(value);
+export function formatMs(
+  value: number | undefined,
+  locale: string = currentAppLocale(),
+) {
+  const formatted = formatMaybe(value, locale);
   return formatted ? `${formatted} ms` : "";
 }
 

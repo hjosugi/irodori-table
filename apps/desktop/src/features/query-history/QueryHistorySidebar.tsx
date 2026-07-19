@@ -58,7 +58,7 @@ export function QueryHistorySidebar({
       <div className="section-heading">
         <span>{t("history.titleShort")}</span>
         <div className="section-heading-actions">
-          <small>{toCount(activeHistoryCount)}</small>
+          <small>{toCount(activeHistoryCount, locale)}</small>
           <button
             type="button"
             aria-label={t("history.open")}
@@ -113,7 +113,7 @@ export function QueryHistorySidebar({
               <strong>{compactSql(item.sql)}</strong>
               <small>
                 <span>{formatHistoryTime(item.ranAt, locale)}</span>
-                <span>{formatHistoryOutcome(item)}</span>
+                <span>{formatHistoryOutcome(item, locale)}</span>
               </small>
             </button>
           ))

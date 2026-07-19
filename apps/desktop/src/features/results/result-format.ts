@@ -1,36 +1,44 @@
 import type { QueryHistoryResultSnapshot } from "@/features/query-history";
+import { currentAppLocale } from "@/features/preferences";
 import type { QueryResult } from "@/generated/irodori-api";
 import type { ResultSelectionSummary } from "./result-selection";
 
-export function toCount(value: bigint | number) {
-  return Number(value).toLocaleString();
+/** Format a count in the app locale (not the OS locale). */
+export function toCount(
+  value: bigint | number,
+  locale: string = currentAppLocale(),
+) {
+  return Number(value).toLocaleString(locale);
 }
 
-function formatSelectionNumber(value: number) {
-  return value.toLocaleString(undefined, {
+function formatSelectionNumber(value: number, locale: string) {
+  return value.toLocaleString(locale, {
     maximumFractionDigits: Number.isInteger(value) ? 0 : 6,
   });
 }
 
-export function formatResultSelectionStatus(summary: ResultSelectionSummary) {
+export function formatResultSelectionStatus(
+  summary: ResultSelectionSummary,
+  locale: string = currentAppLocale(),
+) {
   const parts = [
-    `${toCount(summary.cellCount)} cells`,
-    `${toCount(summary.rowCount)}x${toCount(summary.columnCount)}`,
+    `${toCount(summary.cellCount, locale)} cells`,
+    `${toCount(summary.rowCount, locale)}x${toCount(summary.columnCount, locale)}`,
   ];
   if (summary.numericCount > 0) {
-    parts.push(`sum ${formatSelectionNumber(summary.sum ?? 0)}`);
-    parts.push(`avg ${formatSelectionNumber(summary.average ?? 0)}`);
-    parts.push(`min ${formatSelectionNumber(summary.min ?? 0)}`);
-    parts.push(`max ${formatSelectionNumber(summary.max ?? 0)}`);
+    parts.push(`sum ${formatSelectionNumber(summary.sum ?? 0, locale)}`);
+    parts.push(`avg ${formatSelectionNumber(summary.average ?? 0, locale)}`);
+    parts.push(`min ${formatSelectionNumber(summary.min ?? 0, locale)}`);
+    parts.push(`max ${formatSelectionNumber(summary.max ?? 0, locale)}`);
   }
   if (summary.nullCount > 0) {
-    parts.push(`null ${toCount(summary.nullCount)}`);
+    parts.push(`null ${toCount(summary.nullCount, locale)}`);
   }
   if (summary.textCount > 0 && summary.numericCount === 0) {
-    parts.push(`text ${toCount(summary.textCount)}`);
+    parts.push(`text ${toCount(summary.textCount, locale)}`);
   }
   if (summary.truncated) {
-    parts.push(`sampled ${toCount(summary.sampledCellCount)}`);
+    parts.push(`sampled ${toCount(summary.sampledCellCount, locale)}`);
   }
   return parts.join(" · ");
 }
