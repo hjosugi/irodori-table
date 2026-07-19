@@ -48,6 +48,7 @@ function renderGraph() {
         commit("a111111", ["HEAD -> main", "origin/main", "feature/login"]),
       ]}
       currentBranch="main"
+      locale="en"
       query=""
       refFilter="all"
       remotes={[origin]}

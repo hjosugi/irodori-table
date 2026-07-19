@@ -28,12 +28,21 @@ export function changeLabel(kind: GitChangeKind) {
   }
 }
 
-export function formatCommitTime(value: bigint) {
+/**
+ * Format a commit timestamp in the app locale (not the OS locale). Commits
+ * from a previous year carry the year, the usual git-UI convention.
+ */
+export function formatCommitTime(
+  value: bigint,
+  locale?: string,
+  now = new Date(),
+) {
   const date = new Date(Number(value) * 1000);
   if (Number.isNaN(date.getTime())) {
     return "-";
   }
-  return date.toLocaleString([], {
+  return date.toLocaleString(locale, {
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

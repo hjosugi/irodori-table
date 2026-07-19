@@ -7,6 +7,7 @@ import {
   parseCommitFileSummary,
 } from "@/features/git/git-graph";
 import {
+  formatCommitTime,
   gitAccentColor,
   localBranchNameFromRef,
   normalizeHexColor,
@@ -198,6 +199,31 @@ describe("git commit detail helpers", () => {
     expect(
       remoteCommitUrl({ provider: "generic", webUrl: undefined }, "abc123"),
     ).toBeNull();
+  });
+});
+
+describe("commit time formatting", () => {
+  // Midday UTC so no timezone can shift the calendar date across a year edge.
+  const march2023 = BigInt(Date.UTC(2023, 2, 5, 12, 0, 0) / 1000);
+
+  it("adds the year to commits from previous years", () => {
+    expect(
+      formatCommitTime(march2023, "en", new Date(Date.UTC(2026, 6, 1, 12))),
+    ).toContain("2023");
+    expect(
+      formatCommitTime(march2023, "en", new Date(Date.UTC(2023, 6, 1, 12))),
+    ).not.toContain("2023");
+  });
+
+  it("formats in the app locale rather than the OS locale", () => {
+    const now = new Date(Date.UTC(2026, 6, 1, 12));
+    expect(formatCommitTime(march2023, "ja", now)).not.toBe(
+      formatCommitTime(march2023, "en-US", now),
+    );
+  });
+
+  it("keeps the invalid-timestamp fallback", () => {
+    expect(formatCommitTime(BigInt("9999999999999999"), "en")).toBe("-");
   });
 });
 

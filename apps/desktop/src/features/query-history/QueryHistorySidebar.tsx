@@ -112,7 +112,7 @@ export function QueryHistorySidebar({
             >
               <strong>{compactSql(item.sql)}</strong>
               <small>
-                <span>{formatHistoryTime(item.ranAt)}</span>
+                <span>{formatHistoryTime(item.ranAt, locale)}</span>
                 <span>{formatHistoryOutcome(item)}</span>
               </small>
             </button>

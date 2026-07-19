@@ -157,6 +157,7 @@ const GraphCommitRow = memo(function GraphCommitRow({
   selected,
   showRemoteRefs,
   remoteNames,
+  locale,
   onSelect,
 }: {
   row: GitGraphRow;
@@ -165,6 +166,7 @@ const GraphCommitRow = memo(function GraphCommitRow({
   selected: boolean;
   showRemoteRefs: boolean;
   remoteNames: RemoteNames;
+  locale: Translator["locale"];
   onSelect: () => void;
 }) {
   const { commit } = row;
@@ -204,7 +206,7 @@ const GraphCommitRow = memo(function GraphCommitRow({
         </span>
       </span>
       <span className="git-graph-date">
-        {formatCommitTime(commit.timestampSeconds)}
+        {formatCommitTime(commit.timestampSeconds, locale)}
       </span>
       <span className="git-graph-author">{commit.author}</span>
       <code className="git-graph-hash">{commit.shortHash}</code>
@@ -218,6 +220,7 @@ function CommitDetail({
   commitDiff,
   commitDiffLoading,
   currentBranch,
+  locale,
   remotes,
   selectedCommitPath,
   showRemoteRefs,
@@ -232,6 +235,7 @@ function CommitDetail({
   commitDiff: GitDiffResult | null;
   commitDiffLoading: boolean;
   currentBranch: string | null;
+  locale: Translator["locale"];
   remotes: GitRemoteSummary[];
   selectedCommitPath: string | null;
   showRemoteRefs: boolean;
@@ -432,7 +436,7 @@ function CommitDetail({
         </div>
         <div>
           <dt>{t("git.date")}</dt>
-          <dd>{formatCommitTime(commit.timestampSeconds)}</dd>
+          <dd>{formatCommitTime(commit.timestampSeconds, locale)}</dd>
         </div>
         <div>
           <dt>{t("git.parents")}</dt>
@@ -531,6 +535,7 @@ export function GitGraphView({
   commitDiffLoading,
   commits,
   currentBranch,
+  locale,
   query,
   refFilter,
   remotes,
@@ -551,6 +556,7 @@ export function GitGraphView({
   commitDiffLoading: boolean;
   commits: GitCommitSummary[];
   currentBranch: string | null;
+  locale: Translator["locale"];
   query: string;
   refFilter: GitGraphRefFilter;
   remotes: GitRemoteSummary[];
@@ -798,6 +804,7 @@ export function GitGraphView({
                         selected={activeCommitHash === row.commit.hash}
                         showRemoteRefs={showRemoteRefs}
                         remoteNames={remoteNames}
+                        locale={locale}
                         onSelect={() => onSelectCommit(row.commit.hash)}
                       />
                     );
@@ -817,6 +824,7 @@ export function GitGraphView({
           commitDiff={commitDiff}
           commitDiffLoading={commitDiffLoading}
           currentBranch={currentBranch}
+          locale={locale}
           remotes={remotes}
           selectedCommitPath={selectedCommitPath}
           showRemoteRefs={showRemoteRefs}
