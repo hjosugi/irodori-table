@@ -123,6 +123,7 @@ export function WorkbenchDialogs() {
   const setUiZoom = usePreferencesStore((state) => state.setUiZoom);
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen);
+  const resetLayout = useWorkbenchStore((state) => state.resetLayout);
   const resultOffloadEnabled = useResultsStore(
     (state) => state.resultOffloadEnabled,
   );
@@ -242,6 +243,7 @@ export function WorkbenchDialogs() {
           setQueryHistoryResultRows={settings.setQueryHistoryResultRows}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
+          resetLayout={resetLayout}
           commandCatalog={localizedAppCommandCatalog}
           keymap={keybindings.keymap}
           keymapOverrides={keybindings.keymapOverrides}

@@ -10,6 +10,10 @@ export interface SqlSnippetDefinition {
   scope: SqlSnippetScope;
   rank?: number;
   engines?: readonly DbEngine[];
+  // Free-form grouping labels. Optional and additive: a snippet saved or
+  // imported before tags existed simply has no `tags` key, which is why this
+  // stayed on schemaVersion 1 instead of needing a migration.
+  tags?: readonly string[];
 }
 
 export type SqlSnippetImportFormat = "json" | "yaml";
@@ -23,6 +27,8 @@ export interface SqlSnippetImportResult {
 const SNIPPET_LABEL_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
 
 export const SQL_SNIPPETS_SCHEMA_VERSION = 1;
+
+export const SNIPPET_TAG_MAX_LENGTH = 32;
 
 export const DEFAULT_SNIPPET_RANK = 500;
 
@@ -247,6 +253,7 @@ function sqlSnippetFromJson(
     throw new Error(`editor.snippets[${index}].rank must be a number`);
   }
   const engines = sqlSnippetEnginesFromJson(value.engines, index);
+  const tags = sqlSnippetTagsFromJson(value.tags, index);
   return {
     label,
     detail,
@@ -254,7 +261,100 @@ function sqlSnippetFromJson(
     scope,
     ...(typeof rank === "number" && Number.isFinite(rank) ? { rank } : {}),
     ...(engines.length > 0 ? { engines } : {}),
+    ...(tags.length > 0 ? { tags } : {}),
   };
+}
+
+function sqlSnippetTagsFromJson(value: unknown, index: number): string[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`editor.snippets[${index}].tags must be an array`);
+  }
+  for (const tag of value) {
+    if (typeof tag !== "string") {
+      throw new Error(`editor.snippets[${index}].tags must contain strings`);
+    }
+  }
+  return normalizeSnippetTags(value as string[]);
+}
+
+// Tags are compared and grouped case-insensitively, so "DDL" and "ddl" are one
+// group rather than two. Blank entries are dropped rather than rejected, so a
+// trailing comma in the tag field is not an error.
+export function normalizeSnippetTags(tags: readonly string[]): string[] {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const tag of tags) {
+    const value = tag.trim().toLowerCase().slice(0, SNIPPET_TAG_MAX_LENGTH);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    normalized.push(value);
+  }
+  return normalized;
+}
+
+export function parseSnippetTagInput(value: string): string[] {
+  return normalizeSnippetTags(value.split(","));
+}
+
+export function formatSnippetTagInput(tags: readonly string[] | undefined) {
+  return (tags ?? []).join(", ");
+}
+
+// Every tag in use, sorted, for the Settings tag filter.
+export function collectSqlSnippetTags(
+  snippets: readonly SqlSnippetDefinition[],
+): string[] {
+  const seen = new Set<string>();
+  for (const snippet of snippets) {
+    for (const tag of snippet.tags ?? []) {
+      seen.add(tag);
+    }
+  }
+  return [...seen].sort();
+}
+
+// Free-text search over everything a user might remember about a snippet: its
+// trigger, its description, the SQL body itself, and its tags.
+export function snippetMatchesSearch(
+  snippet: SqlSnippetDefinition,
+  query: string,
+): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) {
+    return true;
+  }
+  return (
+    snippet.label.toLowerCase().includes(needle) ||
+    snippet.detail.toLowerCase().includes(needle) ||
+    snippet.template.toLowerCase().includes(needle) ||
+    (snippet.tags ?? []).some((tag) => tag.includes(needle))
+  );
+}
+
+// Selected tags widen rather than narrow (match any), so picking a second tag
+// never empties the list the way "must have every tag" would.
+export function snippetMatchesTags(
+  snippet: SqlSnippetDefinition,
+  tags: readonly string[],
+): boolean {
+  if (tags.length === 0) {
+    return true;
+  }
+  const snippetTags = snippet.tags ?? [];
+  return tags.some((tag) => snippetTags.includes(tag));
+}
+
+export function snippetMatchesFilter(
+  snippet: SqlSnippetDefinition,
+  query: string,
+  tags: readonly string[],
+): boolean {
+  return (
+    snippetMatchesSearch(snippet, query) && snippetMatchesTags(snippet, tags)
+  );
 }
 
 function inferSnippetImportFormat(
@@ -412,6 +512,7 @@ function cloneSnippet(
     ...(snippetDefinition.engines
       ? { engines: [...snippetDefinition.engines] }
       : {}),
+    ...(snippetDefinition.tags ? { tags: [...snippetDefinition.tags] } : {}),
   };
 }
 

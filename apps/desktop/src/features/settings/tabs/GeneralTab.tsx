@@ -66,6 +66,7 @@ export interface GeneralTabProps {
   setQueryHistoryResultRows: (value: number) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (value: BooleanUpdater) => void;
+  resetLayout: () => void;
 }
 
 export function GeneralTab({
@@ -100,6 +101,7 @@ export function GeneralTab({
   setQueryHistoryResultRows,
   sidebarOpen,
   setSidebarOpen,
+  resetLayout,
 }: GeneralTabProps) {
   const uiZoomPercent = `${Math.round(uiZoom * 100)}%`;
 
@@ -456,6 +458,19 @@ export function GeneralTab({
           onClick={() => setSidebarOpen((open) => !open)}
         >
           {sidebarOpen ? t("common.hide") : t("common.show")}
+        </button>
+      </label>
+      {/* Panel order, widths, sides and hidden views are all reorderable and
+          all persisted, with no way back once scrambled. They read as one
+          "layout" to the user, so one button restores the whole set. */}
+      <label className="settings-row">
+        <span>
+          <strong>{t("settings.general.resetLayout.title")}</strong>
+          <small>{t("settings.general.resetLayout.description")}</small>
+        </span>
+        <button className="text-button" type="button" onClick={resetLayout}>
+          <RotateCcw size={14} />
+          <span>{t("settings.general.resetLayout.action")}</span>
         </button>
       </label>
     </div>

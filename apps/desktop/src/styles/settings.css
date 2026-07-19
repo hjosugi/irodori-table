@@ -716,18 +716,155 @@
   font-size: var(--font-ui-md);
 }
 
+/* Search + tag filter above the snippet list. */
+.snippet-filter-bar {
+  display: grid;
+  gap: 8px;
+}
+
+.snippet-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-sm);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--muted);
+}
+
+.snippet-search:focus-within {
+  border-color: var(--focus);
+}
+
+.snippet-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.snippet-search-clear {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.snippet-search-clear:hover,
+.snippet-search-clear:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.snippet-tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.snippet-tag {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-transform: none;
+}
+
+button.snippet-tag {
+  cursor: pointer;
+}
+
+button.snippet-tag:hover,
+button.snippet-tag:focus-visible {
+  color: var(--text);
+  border-color: var(--focus);
+}
+
+button.snippet-tag.active {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.snippet-filter-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .snippet-editor-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .snippet-editor-item {
-  display: grid;
-  gap: 10px;
-  padding: 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
+}
+
+/* Collapsed header: click to expand the full editor. */
+.snippet-editor-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.snippet-editor-summary:hover,
+.snippet-editor-summary:focus-visible {
+  background: var(--hover);
+}
+
+.snippet-editor-item.expanded .snippet-editor-summary {
+  border-radius: 6px 6px 0 0;
+}
+
+.snippet-summary-label {
+  flex: 0 0 auto;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.snippet-summary-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snippet-editor-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 10px;
 }
 
 .snippet-editor-grid {
@@ -740,7 +877,8 @@
 }
 
 .snippet-editor-grid label,
-.snippet-template-field {
+.snippet-template-field,
+.snippet-tags-field {
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -752,6 +890,7 @@
 
 .snippet-editor-grid input,
 .snippet-editor-grid select,
+.snippet-tags-field input,
 .snippet-template-field textarea {
   min-width: 0;
   border: 1px solid var(--border);
@@ -763,9 +902,17 @@
 }
 
 .snippet-editor-grid input,
-.snippet-editor-grid select {
+.snippet-editor-grid select,
+.snippet-tags-field input {
   height: var(--control-sm);
   padding: 0 8px;
+}
+
+.snippet-field-hint {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: none;
 }
 
 .snippet-template-field textarea {

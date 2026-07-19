@@ -549,6 +549,10 @@ export const en = {
   "settings.general.sidebar.title": "Sidebar",
   "settings.general.sidebar.description":
     "Object browser and connection switcher.",
+  "settings.general.resetLayout.title": "Panel layout",
+  "settings.general.resetLayout.description":
+    "Restore panel order, sizes, sides, and hidden panels to their defaults.",
+  "settings.general.resetLayout.action": "Reset layout",
   "settings.general.sidebarSide.title": "Sidebar position",
   "settings.general.sidebarSide.description":
     "Choose the side used by the primary database sidebar.",
@@ -580,13 +584,17 @@ export const en = {
   "settings.theme.importThemes.description":
     "Paste an Irodori or VS Code theme in the JSON section to save it here.",
   "settings.theme.importThemes.openJson": "Open JSON",
+  "settings.keymap.hint":
+    "Select a shortcut to record a new key combination. Press Esc to cancel.",
   "settings.keymap.runTitle": "Run: {title}",
   "settings.keymap.recordingTitle":
     "Press one or two chords for the new shortcut",
   "settings.keymap.conflictTitle": "Shortcut conflict - click to rebind",
   "settings.keymap.rebindTitle": "Click to rebind",
+  "settings.keymap.rebindLabel": "Change shortcut for {title}",
   "settings.keymap.recordingLabel": "Press keys...",
   "settings.keymap.unset": "unset",
+  "settings.keymap.setShortcut": "Set shortcut",
   "settings.keymap.resetTitle": "Reset to default",
   "settings.keymap.vim.title": "Vim shortcut adjustments",
   "settings.keymap.vim.clipboard":
@@ -617,8 +625,18 @@ export const en = {
   "settings.snippets.rank": "Rank",
   "settings.snippets.detail": "Detail",
   "settings.snippets.template": "Template",
+  "settings.snippets.tags": "Tags",
+  "settings.snippets.tagsPlaceholder": "e.g. ddl, reporting",
+  "settings.snippets.tagsHint": "Comma-separated. Used for filtering.",
   "settings.snippets.remove": "Remove",
   "settings.snippets.empty": "No snippets configured",
+  "settings.snippets.search": "Search snippets",
+  "settings.snippets.searchPlaceholder": "Search trigger, detail, or template",
+  "settings.snippets.clearSearch": "Clear search",
+  "settings.snippets.filterByTag": "Filter by tag",
+  "settings.snippets.clearFilters": "Clear filters",
+  "settings.snippets.matchCount": "{visible} of {total}",
+  "settings.snippets.noMatches": "No snippets match your search",
   "settings.security.passkey.status.title": "Passkey",
   "settings.security.passkey.status.checking": "Checking this runtime.",
   "settings.security.passkey.status.available":

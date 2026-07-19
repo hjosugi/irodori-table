@@ -556,6 +556,10 @@ export const ja = {
   "settings.general.sidebar.title": "サイドバー",
   "settings.general.sidebar.description":
     "オブジェクトブラウザと接続切り替えです。",
+  "settings.general.resetLayout.title": "パネルレイアウト",
+  "settings.general.resetLayout.description":
+    "パネルの並び順・サイズ・配置・非表示状態を初期設定に戻します。",
+  "settings.general.resetLayout.action": "レイアウトをリセット",
   "settings.general.sidebarSide.title": "サイドバー位置",
   "settings.general.sidebarSide.description":
     "主要なデータベースサイドバーを置く側を選びます。",
@@ -588,14 +592,18 @@ export const ja = {
   "settings.theme.importThemes.description":
     "Irodori または VS Code テーマを JSON セクションへ貼り付けると保存できます。",
   "settings.theme.importThemes.openJson": "JSON を開く",
+  "settings.keymap.hint":
+    "ショートカットを選ぶと新しいキーの組み合わせを記録します。Esc で取り消します。",
   "settings.keymap.runTitle": "実行: {title}",
   "settings.keymap.recordingTitle":
     "新しいショートカットを 1 つまたは 2 つ入力",
   "settings.keymap.conflictTitle":
     "ショートカットが競合しています - クリックして再割り当て",
   "settings.keymap.rebindTitle": "クリックして再割り当て",
+  "settings.keymap.rebindLabel": "{title} のショートカットを変更",
   "settings.keymap.recordingLabel": "キーを入力...",
   "settings.keymap.unset": "未設定",
+  "settings.keymap.setShortcut": "ショートカットを設定",
   "settings.keymap.resetTitle": "デフォルトに戻す",
   "settings.keymap.vim.title": "Vim ショートカット調整",
   "settings.keymap.vim.clipboard":
@@ -628,8 +636,18 @@ export const ja = {
   "settings.snippets.rank": "順位",
   "settings.snippets.detail": "詳細",
   "settings.snippets.template": "テンプレート",
+  "settings.snippets.tags": "タグ",
+  "settings.snippets.tagsPlaceholder": "例: ddl, reporting",
+  "settings.snippets.tagsHint": "カンマ区切り。絞り込みに使います。",
   "settings.snippets.remove": "削除",
   "settings.snippets.empty": "スニペットは未設定です",
+  "settings.snippets.search": "スニペットを検索",
+  "settings.snippets.searchPlaceholder": "トリガー・詳細・テンプレートを検索",
+  "settings.snippets.clearSearch": "検索をクリア",
+  "settings.snippets.filterByTag": "タグで絞り込み",
+  "settings.snippets.clearFilters": "絞り込みを解除",
+  "settings.snippets.matchCount": "{total} 件中 {visible} 件",
+  "settings.snippets.noMatches": "検索に一致するスニペットはありません",
   "settings.security.passkey.status.title": "Passkey",
   "settings.security.passkey.status.checking": "この実行環境を確認中です。",
   "settings.security.passkey.status.available":
