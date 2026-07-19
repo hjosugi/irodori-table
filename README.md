@@ -50,6 +50,11 @@ handling and security scope.
    nix develop        # or `direnv allow` to enter it automatically
    ```
 
+   Inside that shell, start the app with `make run-dev` rather than
+   `make desktop-dev`. WebKit from the Nix store cannot use a non-NixOS host's
+   GL drivers and aborts before a window appears; `run-dev` wraps the launch in
+   nixGL to supply matching ones. Set `IRODORI_NO_NIXGL=1` to opt out.
+
    Without Nix, install the platform prerequisites for your OS:
    [Windows](https://hjosugi.github.io/irodori-docs/windows-development.html),
    [macOS](https://hjosugi.github.io/irodori-docs/macos-development.html), or

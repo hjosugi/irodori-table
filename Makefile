@@ -13,7 +13,7 @@ EXTENSION_SDK_DIR ?= $(firstword $(wildcard ../irodori-kit/packages/extension-sd
         rust-clippy cargo-deny workflow-lint \
         check security security-strict extension-manifests kit-link kit-unlink kit-patch-check foundation-release foundation-release-check db db-verify db-all db-up db-down \
         extension-scenarios extension-fleet-audit \
-        release release-patch release-minor release-major run-linux run-linux-release \
+        release release-patch release-minor release-major run-dev run-linux run-linux-release \
         knowledge-refresh knowledge-analyze ml-extract perf-hot-surfaces docs docs-check
 
 ifneq ($(filter $(JS_PM),npm bun),$(JS_PM))
@@ -101,6 +101,13 @@ doctor:
 
 desktop-dev:
 	$(call js-run,apps/desktop,tauri dev)
+
+# Same thing, but survives the Nix dev shell: WebKit from the Nix store cannot
+# use a non-NixOS host's GL drivers and aborts at EGL display creation, so this
+# wraps the launch in nixGL when that is the situation and is a plain passthrough
+# otherwise. Set IRODORI_NO_NIXGL=1 to force the passthrough.
+run-dev:
+	scripts/run-desktop-dev.sh
 
 desktop-vite:
 	$(call js-run,apps/desktop,dev)
