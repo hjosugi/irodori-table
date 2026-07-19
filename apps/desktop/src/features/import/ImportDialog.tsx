@@ -1,11 +1,22 @@
 import type { Dispatch, SetStateAction } from "react";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import type { ImportTextFormat, ParsedImport } from "./importers";
+
+/**
+ * "create" emits `CREATE TABLE ... ; INSERT ...`, "append" emits only the
+ * INSERT so rows can be loaded into a table that already exists (#164). In
+ * append mode the typed table name designates the existing target table;
+ * whether it actually exists is only known at execution time.
+ */
+export type ImportMode = "create" | "append";
 
 export type ImportPreview = ParsedImport & {
   fileName: string;
   format: ImportTextFormat;
   tableName: string;
+  mode: ImportMode;
 };
 
 export function ImportDialog({
@@ -26,6 +37,11 @@ export function ImportDialog({
   formatCell: (value: unknown) => string;
   formatCount: (value: bigint | number) => string;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
+  const setMode = (mode: ImportMode) =>
+    onPreviewChange((current) => (current ? { ...current, mode } : current));
+
   return (
     <DialogShell
       className="data-dialog import-dialog"
@@ -62,6 +78,35 @@ export function ImportDialog({
             {formatCount(preview.totalRows)} rows
             {preview.truncated ? " capped" : ""}
           </span>
+        </div>
+        <div
+          className="dialog-form-row import-mode-row"
+          role="radiogroup"
+          aria-label={t("import.mode.label")}
+        >
+          <label className="import-mode-option">
+            <input
+              type="radio"
+              name="import-mode"
+              checked={preview.mode !== "append"}
+              onChange={() => setMode("create")}
+            />
+            <span>{t("import.mode.create")}</span>
+          </label>
+          <label className="import-mode-option">
+            <input
+              type="radio"
+              name="import-mode"
+              checked={preview.mode === "append"}
+              onChange={() => setMode("append")}
+            />
+            <span>{t("import.mode.append")}</span>
+          </label>
+          {preview.mode === "append" ? (
+            <span className="import-mode-hint">
+              {t("import.mode.appendHint")}
+            </span>
+          ) : null}
         </div>
         <div className="preview-table-wrap">
           <table className="preview-table">

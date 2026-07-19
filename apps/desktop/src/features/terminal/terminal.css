@@ -25,19 +25,39 @@
   overflow-x: auto;
 }
 
+.terminal-tablist {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .terminal-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-size: var(--font-ui-md);
+  gap: 2px;
+  padding-right: 4px;
   border-radius: 6px 6px 0 0;
-  cursor: pointer;
   color: var(--muted);
   white-space: nowrap;
 }
 .terminal-tab.is-active {
   background: var(--editor-bg);
+  color: var(--text);
+}
+
+.terminal-tab-select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--font-ui-md);
+  line-height: 1.4;
+  padding: 4px 4px 4px 8px;
+  white-space: nowrap;
+}
+.terminal-tab-select:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -2px;
   color: var(--text);
 }
 
