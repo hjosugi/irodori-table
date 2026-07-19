@@ -82,6 +82,7 @@ Irodori Table はテレメトリーやクラッシュレポートをアップロ
 
 ## リンク
 
+- ユーザーガイド: [docs/README.ja.md](docs/README.ja.md)
 - ドキュメント: <https://hjosugi.github.io/irodori-docs/>
 - インストールガイド: <https://hjosugi.github.io/irodori-docs/install-guide.html>
 - ロードマップ: [ROADMAP.md](ROADMAP.md)
