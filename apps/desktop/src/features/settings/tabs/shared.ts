@@ -9,8 +9,21 @@ export function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function openExternalUrl(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
+/**
+ * Open an external URL in the user's default browser through the Tauri opener
+ * plugin (the window capability grants `opener:default`, which covers
+ * `open_url`). `window.open` from inside a Tauri WebView is not a reliable way
+ * to reach the system browser — depending on the platform it can be swallowed
+ * or open a child WebView instead — so it only serves as the fallback when the
+ * Tauri runtime is absent (browser preview, Playwright harness).
+ */
+export async function openExternalUrl(url: string): Promise<void> {
+  try {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 }
 
 /**
