@@ -16,6 +16,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.44] - 2026-07-20
+
+### Added
+
+- CSV, TSV, and log files are syntax-highlighted in the editor: rainbow
+  columns with a distinct header row for delimited files (quote-aware, so
+  embedded delimiters parse correctly), and severity/timestamp/section
+  highlighting for logs, all in theme colours. Non-SQL buffers drop SQL
+  completion, linting, and formatting.
+- Import can append to an existing table instead of always creating a new one.
+- The extension marketplace hides entries that cannot be installed on the
+  current platform, with a note to reveal them.
+
+### Fixed
+
+- Terminal tabs are reachable by keyboard and announced as real tabs; the
+  panel's strings are translated.
+- External links in settings open through the system opener, so they work in
+  the packaged app.
+- The AI settings no longer render glued text ("withclaude / codexfrom a
+  terminal"), and the local-model install hint only shows for providers that
+  install local models.
+- Dates and numbers follow the app language in the remaining places that used
+  the OS locale.
+- The stale "held in memory only" description of AI provider keys now says
+  they are saved to the OS keychain, matching what the app does.
+- Internal cleanup: dead menu config and unreachable strings removed, platform
+  detection modernised, duplicated primitives consolidated.
+
 ## [0.7.43] - 2026-07-19
 
 ### Fixed
