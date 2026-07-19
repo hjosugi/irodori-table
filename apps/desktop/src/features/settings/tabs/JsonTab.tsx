@@ -45,6 +45,7 @@ export function JsonTab({
       <textarea
         value={settingsJsonDraft}
         spellCheck={false}
+        aria-label={t("settings.json.title")}
         onChange={(event) => {
           setSettingsJsonDraft(event.currentTarget.value);
           setSettingsJsonError(null);

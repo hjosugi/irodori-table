@@ -209,6 +209,79 @@ describe("ConnectionManagerDialog", () => {
     );
   });
 
+  describe("accessible names", () => {
+    // #139: aria-label sat on roleless <div>s, which assistive tech ignores.
+    // The color picker at the top of the form already does this right with
+    // role="group"; these two toggles now match it.
+    it("exposes the input-mode and transport toggles as named groups", () => {
+      renderDialog();
+
+      const modeToggle = screen.getByRole("group", {
+        name: "Connection input mode",
+      });
+      expect(
+        within(modeToggle).getByRole("button", { name: "URL" }),
+      ).toBeVisible();
+
+      const transportToggle = screen.getByRole("group", {
+        name: "Connection transport",
+      });
+      expect(
+        within(transportToggle).getByRole("button", { name: "Unix socket" }),
+      ).toBeVisible();
+    });
+
+    // #140: the search input was named only by its placeholder — the weakest
+    // fallback in the accname computation. ExtensionsTab already pairs the
+    // placeholder with an explicit aria-label; this control now does too.
+    it("gives the connection search an explicit accessible name", () => {
+      renderDialog();
+
+      const search = screen.getByRole("textbox", {
+        name: "Search connections",
+      });
+      expect(search).toHaveAttribute("aria-label", "Search connections");
+    });
+  });
+
+  describe("empty picker", () => {
+    // #143: with zero saved connections Delete was still enabled and walked
+    // straight into confirming the deletion of a connection that does not
+    // exist.
+    it("disables Delete when there are no saved connections", () => {
+      renderDialog({ profiles: [] });
+
+      expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    });
+
+    it("disables Delete while the draft is an unsaved new connection", () => {
+      const saved = draft({ id: "saved-pg", name: "Saved Postgres" });
+      renderDialog({ profiles: [saved], draft: draft({ id: "brand-new" }) });
+
+      expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    });
+
+    // #144: a first run showed "No matching connections" although nothing had
+    // been searched — the message must depend on whether a search is active.
+    it("shows a first-run hint instead of 'no matches' when nothing is saved", () => {
+      renderDialog({ profiles: [] });
+
+      expect(
+        screen.getByText("No saved connections yet. Select + to add one."),
+      ).toBeVisible();
+      expect(screen.queryByText("No matching connections")).toBeNull();
+    });
+
+    it("keeps the no-matches message for searches that find nothing", () => {
+      renderDialog({ profiles: [], search: "prod" });
+
+      expect(screen.getByText("No matching connections")).toBeVisible();
+      expect(
+        screen.queryByText("No saved connections yet. Select + to add one."),
+      ).toBeNull();
+    });
+  });
+
   describe("connector settings", () => {
     it("renders the option fields an engine declares", () => {
       renderDialog({
