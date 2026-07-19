@@ -180,7 +180,9 @@ test("the row detail panel closes when no row is selected", async ({
   page,
 }) => {
   await openWorkbench(page);
-  await openRightSidebarView(page, "Row detail");
+  // The tab is labelled "Row" — #113 shortened it from "Row detail" to match
+  // its single-word siblings (Plan, Lake, BI, Chat).
+  await openRightSidebarView(page, "Row");
 
   const panel = page.locator(".row-detail");
   await expect(panel).toBeVisible();
