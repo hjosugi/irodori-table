@@ -128,4 +128,33 @@ describe("ProviderPicker", () => {
       }),
     );
   });
+
+  it("shows the local-model install hint for Ollama, not for CLI providers", async () => {
+    renderPicker();
+    await flushEffects();
+
+    const presetSelect = container.querySelector<HTMLSelectElement>(
+      ".aichat-provider-select select",
+    );
+    expect(presetSelect).not.toBeNull();
+
+    // CLI presets (Claude Code / Codex / Copilot) are cloud-backed agents;
+    // they do not install local models, so the hint must stay hidden.
+    flushSync(() => {
+      presetSelect!.value = "claude";
+      presetSelect!.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(container.textContent).not.toContain("Install local models");
+
+    // Ollama does pull models from a terminal. The full-sentence assertion is
+    // also the whitespace regression guard: the copy used to render glued as
+    // "withclaude / codexfrom a terminal.".
+    flushSync(() => {
+      presetSelect!.value = "ollama";
+      presetSelect!.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(container.textContent).toContain(
+      "Install local models with ollama pull from a terminal.",
+    );
+  });
 });

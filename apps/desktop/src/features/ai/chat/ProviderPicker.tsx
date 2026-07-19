@@ -11,7 +11,7 @@ import { aiDeleteLocalModel, aiUnloadLocal } from "./chat-bridge";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { errorMessage } from "@/core/errors";
 import { usePreferencesStore } from "@/features/preferences";
-import { createTranslator } from "@/i18n";
+import { createTranslator, splitTranslation } from "@/i18n";
 import {
   hasCloudProviderConsent,
   isCloudProvider,
@@ -246,6 +246,14 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
   const needsKey = config.kind === "openaiCompat";
   const isHttp = config.kind === "ollama" || config.kind === "openaiCompat";
   const isCommand = config.kind === "command";
+  const isOllama = config.kind === "ollama";
+  // Split so the command renders as a styled <code> element while the locale
+  // still controls the sentence around it.
+  const [ollamaInstallHintBefore, ollamaInstallHintAfter] = splitTranslation(
+    t,
+    "ai.provider.ollamaInstallHint",
+    "command",
+  );
   const cloudProviderSelected = isCloudProvider(config);
   const cloudProviderHost = providerHostLabel(
     config,
@@ -303,11 +311,11 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           />
         </label>
       ) : null}
-      {isCommand ? (
+      {isOllama ? (
         <p className="aichat-provider-hint">
-          {t("ai.provider.commandHintBefore")}
-          <code>claude</code> / <code>codex</code>
-          {t("ai.provider.commandHintAfter")}
+          {ollamaInstallHintBefore}
+          <code>ollama pull</code>
+          {ollamaInstallHintAfter}
         </p>
       ) : null}
       {cloudProviderSelected ? (

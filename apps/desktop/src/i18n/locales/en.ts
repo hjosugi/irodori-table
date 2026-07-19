@@ -340,8 +340,8 @@ export const en = {
   "ai.generate.title": "Generate SQL",
   "ai.generate.label": "AI SQL generator",
   "ai.generate.placeholder": "Describe the SQL you want",
-  "ai.generate.notCompiledBefore": "AI generation is not compiled into this",
-  "ai.generate.notCompiledAfter": "build.",
+  "ai.generate.notCompiled":
+    "AI generation is not compiled into this {flag} build.",
   "ai.generate.modelMissing": "Choose a model before generating SQL.",
   "ai.generate.generate": "Generate",
   "ai.generate.generating": "Generating",
@@ -364,8 +364,8 @@ export const en = {
   "ai.provider.local.loaded": "Loaded",
   "ai.provider.local.notInstalled": "Not installed",
   "ai.provider.local.notCompiled": "Local model support is not compiled in",
-  "ai.provider.commandHintBefore": "Install local models with",
-  "ai.provider.commandHintAfter": "from a terminal.",
+  "ai.provider.ollamaInstallHint":
+    "Install local models with {command} from a terminal.",
   "ai.provider.confirmDeleteLocal.title": "Delete local model?",
   "ai.provider.confirmDeleteLocal.message":
     "The model file will be removed from disk.",

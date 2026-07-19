@@ -344,8 +344,8 @@ export const ja = {
   "ai.generate.title": "SQL 生成",
   "ai.generate.label": "AI SQL 生成",
   "ai.generate.placeholder": "生成したい SQL を説明してください",
-  "ai.generate.notCompiledBefore": "AI 生成はこの",
-  "ai.generate.notCompiledAfter": "ビルドに組み込まれていません。",
+  "ai.generate.notCompiled":
+    "AI 生成はこの {flag} ビルドに組み込まれていません。",
   "ai.generate.modelMissing": "生成前にモデルを選択してください。",
   "ai.generate.generate": "生成",
   "ai.generate.generating": "生成中",
@@ -368,8 +368,8 @@ export const ja = {
   "ai.provider.local.loaded": "読み込み済み",
   "ai.provider.local.notInstalled": "未インストール",
   "ai.provider.local.notCompiled": "ローカルモデル対応は組み込まれていません",
-  "ai.provider.commandHintBefore": "ローカルモデルはターミナルで",
-  "ai.provider.commandHintAfter": "を使ってインストールします。",
+  "ai.provider.ollamaInstallHint":
+    "ローカルモデルはターミナルで {command} を使ってインストールします。",
   "ai.provider.confirmDeleteLocal.title": "ローカルモデルを削除しますか？",
   "ai.provider.confirmDeleteLocal.message":
     "モデルファイルをディスクから削除します。",

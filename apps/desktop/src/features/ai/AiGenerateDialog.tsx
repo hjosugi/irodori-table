@@ -12,7 +12,7 @@ import {
 import { errorMessage, isIrodoriError } from "@/core/errors";
 import { DialogShell } from "@/components/DialogShell";
 import { usePreferencesStore } from "@/features/preferences";
-import { createTranslator } from "@/i18n";
+import { createTranslator, splitTranslation } from "@/i18n";
 import {
   hasCloudProviderConsent,
   isCloudProvider,
@@ -163,6 +163,13 @@ export function AiGenerateDialog({
       : false;
   const notCompiled =
     provider.kind === "local" && status ? !status.compiled : false;
+  // Split so the flag renders as a styled <code> element while the locale
+  // still controls the sentence around it.
+  const [notCompiledBefore, notCompiledAfter] = splitTranslation(
+    t,
+    "ai.generate.notCompiled",
+    "flag",
+  );
   const cloudProviderSelected = isCloudProvider(provider);
   const cloudProviderHost = providerHostLabel(
     provider,
@@ -212,9 +219,9 @@ export function AiGenerateDialog({
 
       {notCompiled && (
         <p className="ai-generate-note">
-          {t("ai.generate.notCompiledBefore")}
+          {notCompiledBefore}
           <code>--features llama</code>
-          {t("ai.generate.notCompiledAfter")}
+          {notCompiledAfter}
         </p>
       )}
       {modelMissing && (
