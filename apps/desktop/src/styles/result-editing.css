@@ -20,7 +20,7 @@
   border: none;
   background: transparent;
   color: var(--muted);
-  font-size: 15px;
+  font-size: var(--font-ui-xl);
   line-height: 1;
   cursor: pointer;
 }

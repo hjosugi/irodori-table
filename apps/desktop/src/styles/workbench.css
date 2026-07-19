@@ -126,7 +126,7 @@
 
 .dockview-theme-irodori {
   --dv-paneview-active-outline-color: var(--focus);
-  --dv-tabs-and-actions-container-font-size: var(--font-ui-sm);
+  --dv-tabs-and-actions-container-font-size: var(--font-ui-md);
   --dv-tabs-and-actions-container-height: var(--bar-md);
   --dv-drag-over-background-color: color-mix(
     in srgb,
@@ -139,7 +139,7 @@
   --dv-floating-box-shadow: var(--elevation-3);
   --dv-floating-border: 1px solid var(--border);
   --dv-overlay-z-index: 30;
-  --dv-tab-font-size: var(--font-ui-sm);
+  --dv-tab-font-size: var(--font-ui-md);
   --dv-border-radius: 0;
   --dv-tab-margin: 0;
   --dv-sash-color: transparent;
@@ -227,7 +227,7 @@
   padding: 0 10px;
   overflow: hidden;
   color: inherit;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   font-weight: 650;
   line-height: var(--line-compact);
   text-overflow: ellipsis;
@@ -323,9 +323,13 @@
   container-type: inline-size;
   position: relative;
   display: grid;
-  /* auto, not a fixed 30px: the view switcher wraps to extra rows when many
-     views share a narrow sidebar instead of overflowing the row. */
-  grid-template-rows: auto minmax(0, 1fr);
+  /* The view switcher is a fixed --bar-md row so it lines up with the editor
+     tab strip and the opposite sidebar across the top band. The single column
+     is minmax(0, 1fr), not the implicit auto: an auto column cannot go below
+     its content's min-content width, so one nowrap button label was enough to
+     push the whole sidebar wider than the width the user dragged it to. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--bar-md) minmax(0, 1fr);
   min-width: 0;
   border-right: 1px solid var(--border);
   background: var(--surface);
@@ -337,17 +341,27 @@
 }
 
 .sidebar-view-switcher {
-  /* Wrapping flex instead of a hardcoded 7-column grid: views can be added,
-     hidden, or moved between sides, so the tab count per side is dynamic. */
+  /* Single row, always: it shares the top band with the editor tab strip and
+     the opposite sidebar's switcher, so wrapping to a second row made the whole
+     row ragged. Views can be added, hidden, or moved between sides, so the tab
+     count per side is dynamic -- the switcher degrades by dropping labels (see
+     the container queries below) and finally by scrolling. */
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 1px;
   min-width: 0;
-  min-height: 30px;
+  height: var(--bar-md);
   padding: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
+  scrollbar-width: none;
+}
+
+.sidebar-view-switcher::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar-view-switcher button {
@@ -363,7 +377,7 @@
   border-radius: 3px;
   color: var(--muted);
   background: transparent;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   line-height: var(--line-compact);
   white-space: nowrap;
   cursor: pointer;
@@ -382,16 +396,60 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@container (min-width: 280px) {
+.sidebar-view-switcher button > svg {
+  flex: 0 0 auto;
+}
+
+/* Labels turn on once the sidebar is wide enough to hold them, and truncate
+ * with an ellipsis inside that band rather than being dropped at the first
+ * pixel of pressure. Each extra view on a side needs roughly another 70px
+ * before its label still fits on the single row, so the threshold steps up
+ * with the tab count; below it the tabs fall back to icons, whose title and
+ * aria-label still carry the name. */
+@container (min-width: 250px) {
   .sidebar-view-switcher button {
     gap: 4px;
-    padding: 0 4px;
+    padding: 0 5px;
   }
 
   .sidebar-view-switcher button span {
     display: inline;
+  }
+}
+
+@container (max-width: 329px) {
+  .sidebar-view-switcher:has(> button:nth-child(4)) button {
+    gap: 0;
+    padding: 0;
+  }
+
+  .sidebar-view-switcher:has(> button:nth-child(4)) button span {
+    display: none;
+  }
+}
+
+@container (max-width: 399px) {
+  .sidebar-view-switcher:has(> button:nth-child(5)) button {
+    gap: 0;
+    padding: 0;
+  }
+
+  .sidebar-view-switcher:has(> button:nth-child(5)) button span {
+    display: none;
+  }
+}
+
+@container (max-width: 469px) {
+  .sidebar-view-switcher:has(> button:nth-child(6)) button {
+    gap: 0;
+    padding: 0;
+  }
+
+  .sidebar-view-switcher:has(> button:nth-child(6)) button span {
+    display: none;
   }
 }
 
@@ -437,12 +495,37 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
   height: var(--bar-md);
   padding: 0 6px;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+/* In a narrow sidebar the title gives up its width to the row's actions: the
+   buttons are the affordances, the heading is a label the user can still read
+   from its ellipsis. */
+.section-heading > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-heading-actions {
+  flex: 0 0 auto;
+}
+
+/* Past this the actions have taken the row and the title is down to a letter
+   and an ellipsis, which reads as damage rather than as a label. Drop it and
+   let the header be its buttons, matching the icon-only view tabs. */
+@container (max-width: 175px) {
+  .section-heading > span {
+    display: none;
+  }
 }
 
 .plan-panel {
@@ -514,7 +597,7 @@
 
 .plan-panel-header span {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   white-space: nowrap;
 }
 
@@ -567,7 +650,7 @@
   min-width: 0;
   height: 28px;
   padding: 0 8px;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-ai-explain-button {
@@ -578,7 +661,7 @@
 
 .plan-ai-narration {
   margin: 8px 0 0;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   line-height: 1.5;
   color: var(--text);
 }
@@ -626,7 +709,7 @@
   min-height: 72px;
   padding: 10px;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-error {
@@ -653,7 +736,7 @@
 .plan-summary span,
 .plan-summary p {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-summary p {
@@ -711,7 +794,7 @@
 .plan-section-title {
   justify-content: flex-start;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -746,7 +829,7 @@
 
 .plan-empty-card {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-finding,
@@ -816,7 +899,7 @@
 .plan-diagram-node strong,
 .plan-node-detail-header strong,
 .plan-node-block strong {
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-finding span,
@@ -828,7 +911,7 @@
 .plan-node-detail-header span,
 .plan-node-block span {
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-finding small,
@@ -840,7 +923,7 @@
 .plan-edge-list b,
 .plan-flame-row small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   line-height: var(--line-normal);
 }
 
@@ -878,7 +961,7 @@
   border-radius: 999px;
   color: var(--muted);
   background: var(--surface-muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
 }
 
 .plan-hot-node span {
@@ -911,7 +994,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -972,7 +1055,7 @@
   width: 100%;
   min-width: 520px;
   border-collapse: collapse;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .plan-table th,
@@ -1018,7 +1101,7 @@
   border-radius: 4px;
   color: var(--muted);
   background: var(--surface-muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   line-height: var(--line-normal);
   white-space: pre-wrap;
 }
@@ -1093,7 +1176,7 @@
 
 .section-heading-actions small {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   font-weight: 800;
 }
 
@@ -1145,7 +1228,7 @@
   padding: 0 9px;
   border: 0;
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   font-weight: 500;
   text-align: left;
 }
@@ -1200,7 +1283,7 @@
   color: var(--muted);
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 800;
 }
 
@@ -1276,7 +1359,7 @@
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1336,7 +1419,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .empty-browser {
@@ -1348,7 +1431,7 @@
   border: 1px dashed transparent;
   border-radius: 5px;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .empty-browser-cta {
@@ -1356,13 +1439,30 @@
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
+  min-width: 0;
   margin: 8px;
   padding: 12px 10px;
   border: 1px dashed var(--border);
   border-radius: 6px;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   text-align: center;
+}
+
+/* The card has to survive the sidebar's narrowest state: its buttons carry
+   nowrap labels, so without this they set a min-content floor wider than the
+   sidebar and spill out of it. Block rather than the inherited inline-flex,
+   because ellipsis applies to a block's own text but not to a flex item. */
+.empty-browser-cta > button {
+  display: block;
+  min-width: 0;
+  height: var(--control-md);
+  padding: 0 8px;
+  overflow: hidden;
+  line-height: calc(var(--control-md) - 2px);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .empty-browser-cta p {
@@ -1372,7 +1472,7 @@
 
 .empty-browser-cta small {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: 1.4;
 }
 
@@ -1427,7 +1527,7 @@
   overflow: auto;
   background: var(--surface);
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .lakehouse-header {
@@ -1468,7 +1568,7 @@
 
 .lakehouse-header span {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: var(--line-compact);
   white-space: nowrap;
 }
@@ -1569,7 +1669,7 @@
 
 .lakehouse-action strong {
   display: block;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   line-height: var(--line-compact);
   white-space: nowrap;
 }
@@ -1630,7 +1730,7 @@
 
 .lakehouse-catalog > strong {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   text-transform: uppercase;
 }
 
@@ -1654,7 +1754,7 @@
 
 .lakehouse-catalog-row small {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
 }
 
 .lakehouse-context-menu {
@@ -1813,7 +1913,7 @@
   min-height: 23px;
   padding: 3px 6px 3px 21px;
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
 }
 
 .schema-tree summary span,
@@ -1824,7 +1924,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .schema-tree summary small,
@@ -1833,7 +1933,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1847,17 +1947,37 @@
   min-height: 0;
 }
 
+/* The strip itself does not scroll: its tabs do, inside .tab-strip-scroll, so
+ * that the new-tab and tab-actions buttons stay pinned at the right edge
+ * instead of being carried off with the tabs once the row overflows. */
 .tab-strip {
   display: flex;
   align-items: center;
   gap: 0;
   min-width: 0;
   padding: 0 7px 0 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+.tab-strip-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: thin;
+}
+
+.tab-strip-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  padding-left: 4px;
 }
 
 .tab {
@@ -1871,9 +1991,12 @@
   line-height: var(--line-compact);
 }
 
+/* Tabs shrink from their natural width down to a legible floor and no further:
+ * past that the strip scrolls (issue #130). Shrinking to ~one character made
+ * the strip useless as navigation at an ordinary working set of ~19 tabs. */
 .tab {
   flex: 0 1 180px;
-  min-width: 54px;
+  min-width: var(--tab-min-width);
   max-width: 180px;
   position: relative;
   padding: 0 13px;
@@ -2021,7 +2144,7 @@
   padding: 0 8px;
   border-bottom: 1px solid var(--border);
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   background: var(--surface);
 }
 
@@ -2067,7 +2190,7 @@
 .editor-command-bar .editor-toolbar-button span {
   min-width: 0;
   overflow: hidden;
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   text-overflow: ellipsis;
 }
 
@@ -2514,7 +2637,7 @@ body.panel-resizing .result-grid {
   border-radius: 3px;
   color: var(--text);
   background: transparent;
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: 1;
   cursor: pointer;
 }
@@ -2685,7 +2808,7 @@ body.panel-resizing .result-grid {
 
 .metadata-usage-row span {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
 }
 
 .metadata-usage-row code {
@@ -2798,7 +2921,7 @@ body.panel-resizing .result-grid {
   color: var(--text);
   background: transparent;
   font: inherit;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .history-search button {
@@ -2846,7 +2969,7 @@ body.panel-resizing .result-grid {
   min-height: 30px;
   padding: 0 9px;
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .knowledge-panel {
@@ -2858,7 +2981,7 @@ body.panel-resizing .result-grid {
   overflow: hidden;
   background: var(--surface);
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .knowledge-header {
@@ -2888,7 +3011,7 @@ body.panel-resizing .result-grid {
 
 .knowledge-header span {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: var(--line-compact);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2931,7 +3054,7 @@ body.panel-resizing .result-grid {
   border-radius: 4px;
   color: var(--text);
   background: var(--surface);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .knowledge-scope {
@@ -2945,7 +3068,7 @@ body.panel-resizing .result-grid {
   border-radius: 999px;
   color: var(--muted);
   background: transparent;
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   cursor: pointer;
 }
 
@@ -2961,7 +3084,7 @@ body.panel-resizing .result-grid {
   gap: 8px;
   padding: 4px 8px;
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
 }
 
 .knowledge-callout {
@@ -3002,14 +3125,14 @@ body.panel-resizing .result-grid {
 }
 
 .knowledge-fact strong {
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   line-height: var(--line-compact);
   overflow-wrap: anywhere;
 }
 
 .knowledge-fact > span {
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: var(--line-normal, 1.4);
   overflow-wrap: anywhere;
 }
@@ -3020,7 +3143,7 @@ body.panel-resizing .result-grid {
   gap: 4px;
   min-width: 0;
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   text-decoration: none;
 }
 
@@ -3047,7 +3170,7 @@ body.panel-resizing .result-grid {
 .knowledge-tag {
   padding: 1px 6px;
   border-radius: 999px;
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: var(--line-compact);
   white-space: nowrap;
 }

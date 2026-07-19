@@ -112,7 +112,7 @@
 
 .git-branch-card small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .git-clean-badge {
@@ -125,7 +125,7 @@
   border-radius: 999px;
   color: var(--muted);
   background: var(--surface-raised);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -163,7 +163,7 @@
   border-radius: 999px;
   color: var(--muted);
   background: var(--surface-raised);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
 }
 
@@ -196,7 +196,7 @@
   gap: 5px;
   height: 24px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
 }
 
@@ -218,7 +218,7 @@
   border-radius: 5px;
   color: var(--text);
   background: var(--input-bg);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .git-repo-row input {
@@ -263,7 +263,7 @@
   border-radius: 999px;
   color: var(--text);
   background: color-mix(in srgb, var(--git-accent) 10%, var(--surface-raised));
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
 }
 
@@ -279,7 +279,7 @@
   min-width: auto;
   overflow: visible;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   text-overflow: clip;
   white-space: nowrap;
 }
@@ -294,7 +294,7 @@
   align-items: center;
   gap: 5px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 700;
 }
 
@@ -317,7 +317,7 @@
   border-radius: 5px;
   color: var(--text);
   background: var(--input-bg);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .git-repo-row input {
@@ -367,7 +367,7 @@
   gap: 8px;
   min-width: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -433,7 +433,7 @@
   gap: 6px;
   min-width: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
 }
 
@@ -446,7 +446,7 @@
   border-radius: 5px;
   color: var(--text);
   background: var(--input-bg);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .git-graph-remote-toggle {
@@ -455,7 +455,7 @@
   gap: 6px;
   height: var(--control-sm);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -487,7 +487,7 @@
   outline: 0;
   color: var(--text);
   background: transparent;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .git-graph-search button {
@@ -536,7 +536,7 @@
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 900;
 }
 
@@ -655,7 +655,7 @@
 .git-graph-author,
 .git-graph-hash {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .git-graph-hash {
@@ -672,7 +672,7 @@
 .git-graph-subject strong {
   min-width: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -701,7 +701,7 @@
   border-radius: 999px;
   color: var(--git-accent);
   background: color-mix(in srgb, var(--git-accent) 12%, transparent);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-style: normal;
   font-weight: 800;
   line-height: 1;
@@ -742,7 +742,7 @@
 .git-commit-detail > strong {
   display: block;
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
   line-height: 1.35;
 }
 
@@ -761,7 +761,7 @@
 
 .git-commit-detail dt {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -771,7 +771,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   line-height: 1.45;
 }
 
@@ -811,7 +811,7 @@
   border-radius: 4px;
   color: var(--git-accent);
   background: var(--surface-muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 900;
   font-family: "SFMono-Regular", Consolas, monospace;
 }
@@ -837,13 +837,13 @@
 .git-file-path {
   display: grid;
   gap: 1px;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .git-file-path small,
 .git-file-row > small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
 }
 
 .git-diff pre,
@@ -857,7 +857,7 @@
   border-radius: 5px;
   color: var(--text);
   background: var(--editor-bg);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   line-height: 1.45;
   white-space: pre-wrap;
 }
@@ -911,7 +911,7 @@
 
 .git-commit-row small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 @media (max-width: 900px) {

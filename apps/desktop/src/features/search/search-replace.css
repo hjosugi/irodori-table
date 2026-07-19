@@ -21,7 +21,7 @@
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .search-header > button {
@@ -82,7 +82,7 @@
   flex: 1;
   min-width: 0;
   padding: 5px 7px;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   background: transparent;
   color: var(--text);
@@ -98,7 +98,7 @@
 .search-toggles button {
   width: 22px;
   height: 22px;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-family: ui-monospace, monospace;
   color: var(--muted);
   background: transparent;
@@ -122,7 +122,7 @@
   align-items: center;
   gap: 3px;
   padding: 3px 7px;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   color: var(--text);
   background: transparent;
   border: 1px solid var(--border);
@@ -142,7 +142,7 @@
 /* Summary + results ------------------------------------------------------ */
 .search-summary {
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   color: var(--muted);
   border-bottom: 1px solid var(--border);
 }
@@ -174,7 +174,7 @@
   background: transparent;
   border: none;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   cursor: pointer;
 }
 
@@ -187,7 +187,7 @@
 
 .search-file-count {
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: var(--font-ui-xs);
 }
 
 .search-file-replace {
@@ -225,7 +225,7 @@
   background: transparent;
   border: none;
   color: var(--text);
-  font-size: 11.5px;
+  font-size: var(--font-ui-sm);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   cursor: pointer;
   text-align: left;

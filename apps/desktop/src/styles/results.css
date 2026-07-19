@@ -52,7 +52,7 @@
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   cursor: pointer;
 }
 
@@ -80,7 +80,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -143,7 +143,7 @@
 
 .action-menu small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .hidden-file-input {
@@ -171,7 +171,7 @@
   color: var(--text);
   background: transparent;
   font: inherit;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .result-quick-filter button {
@@ -235,7 +235,7 @@
 .graph-result-toolbar span,
 .graph-result-empty {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .graph-result-canvas {
@@ -278,7 +278,7 @@
   stroke: var(--surface);
   stroke-width: 4px;
   fill: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   text-anchor: middle;
 }
 
@@ -295,13 +295,13 @@
 
 .graph-result-node-label {
   fill: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 800;
 }
 
 .graph-result-node-type {
   fill: var(--muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 700;
 }
 
@@ -340,7 +340,7 @@
   gap: 5px;
   min-width: 0;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .chart-result-toolbar select {
@@ -351,13 +351,13 @@
   border-radius: 3px;
   color: var(--text);
   background: var(--input-bg);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .chart-result-toolbar > span,
 .chart-result-empty {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .chart-result-toolbar > span {
@@ -400,7 +400,7 @@
 
 .chart-result-axes text {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   text-anchor: end;
 }
 
@@ -410,7 +410,7 @@
 
 .chart-result-axes .chart-result-axis-title {
   fill: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 700;
 }
 
@@ -481,7 +481,7 @@
 .bi-panel-header span {
   overflow: hidden;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -543,12 +543,12 @@
 
 .bi-summary strong {
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .bi-summary span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .bi-panel .chart-result-view {
@@ -586,7 +586,7 @@
 
 .bi-field-list > strong {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   text-transform: uppercase;
 }
 
@@ -616,21 +616,21 @@
 
 .bi-field-row small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   text-transform: uppercase;
 }
 
 .bi-field-row em {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-style: normal;
 }
 
 .bi-field-more {
   padding: 4px 7px;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .bi-panel-empty {
@@ -678,7 +678,7 @@
 .result-filter-toolbar > span {
   min-width: 98px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   white-space: nowrap;
 }
 
@@ -703,7 +703,7 @@
   color: var(--muted);
   background: transparent;
   font: inherit;
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   font-weight: 700;
   cursor: pointer;
 }
@@ -737,7 +737,7 @@
   color: var(--text);
   background: var(--input-bg);
   font: inherit;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .filter-value-placeholder {
@@ -762,7 +762,7 @@
   overflow: auto;
   background: var(--editor-bg);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .result-body {
@@ -784,7 +784,7 @@
   overflow: auto;
   background: var(--editor-bg);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .webgl-result-space {
@@ -832,7 +832,7 @@
   min-height: var(--bar-md);
   padding: 5px 8px 5px 10px;
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -850,7 +850,7 @@
 }
 
 .row-detail-title span:last-child {
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -912,7 +912,7 @@
   border-right: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -943,7 +943,7 @@
   border-radius: 5px;
   background: var(--surface-raised);
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -993,7 +993,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .row-detail-search input::placeholder {
@@ -1013,7 +1013,7 @@
   min-height: 220px;
   height: 100%;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 600;
   text-align: center;
 }
@@ -1040,14 +1040,14 @@
 }
 
 .detail-col {
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 600;
   color: var(--text);
   word-break: break-word;
 }
 
 .detail-type {
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -1055,7 +1055,7 @@
 .detail-value {
   margin: 0;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   color: var(--text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1074,7 +1074,7 @@
   border-radius: 3px;
   background: var(--editor-bg);
   border: 1px solid var(--cell-border);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   line-height: 1.45;
 }
 
@@ -1102,7 +1102,7 @@
   border-radius: 3px;
   background: var(--surface-muted);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .detail-filter-status.is-empty {
@@ -1113,7 +1113,7 @@
   display: grid;
   gap: 2px;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   color: var(--text);
 }
 
@@ -1166,7 +1166,7 @@
 .json-tree-type {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
 }
 
 .json-tree-preview {
@@ -1207,18 +1207,18 @@
 }
 
 .detail-ref-head {
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 600;
   color: var(--muted);
 }
 
 .detail-ref-status {
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   color: var(--muted);
 }
 
 .detail-ref-error {
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   color: var(--red);
 }
 
@@ -1276,7 +1276,7 @@
   margin-left: auto;
   color: var(--blue);
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   line-height: 1;
 }
 
@@ -1289,7 +1289,7 @@
   border-radius: 999px;
   color: var(--accent-text);
   background: var(--blue);
-  font-size: 9px;
+  font-size: var(--font-ui-xs);
 }
 
 /* Staged-edit highlighting. */
@@ -1357,7 +1357,7 @@
   border-radius: 2px;
   background: var(--surface-muted);
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 800;
   letter-spacing: 0;
 }
@@ -1389,7 +1389,7 @@
   color: var(--muted);
   background: var(--surface-raised);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 800;
   cursor: pointer;
 }
@@ -1440,7 +1440,7 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .grid-state:not(.loading) {
@@ -1523,12 +1523,12 @@
 
 .structure-section header strong {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .structure-section header span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .structure-table-wrap {
@@ -1543,7 +1543,7 @@
   min-width: 100%;
   border-collapse: collapse;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .structure-table th,
@@ -1582,13 +1582,13 @@
 }
 
 .structure-card strong {
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .structure-card span {
   color: var(--muted);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   line-height: 1.4;
 }
 
@@ -1601,7 +1601,7 @@
   flex: 0 0 auto;
   padding: 8px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--red) 32%, var(--border));
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   line-height: 1.35;
 }
 
@@ -1627,7 +1627,7 @@
   border-top: 1px solid var(--border);
   border-bottom: 0;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .statusbar-group {

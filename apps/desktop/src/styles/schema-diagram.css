@@ -7,7 +7,7 @@
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--danger, #d9534f) 14%, var(--surface));
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .diagram-designer-scale {
@@ -67,7 +67,7 @@
   background: transparent;
   color: var(--text);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 700;
 }
 
@@ -110,7 +110,7 @@
   background: transparent;
   color: var(--text);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .diagram-designer-column-name:focus,
@@ -144,7 +144,7 @@
   align-items: center;
   gap: 2px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--font-ui-xs);
 }
 
 .diagram-designer-flag input {
@@ -175,13 +175,13 @@
   border-radius: 3px;
   background: var(--input-bg);
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
 }
 
 .diagram-designer-relation-arrow {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .diagram-designer-table-actions {
@@ -192,5 +192,5 @@
 }
 
 .diagram-designer-table-actions .text-button {
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
