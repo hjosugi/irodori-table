@@ -96,6 +96,7 @@ export interface SettingsDialogProps {
   setQueryHistoryResultRows: (value: number) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (value: BooleanUpdater) => void;
+  resetLayout: () => void;
   commandCatalog: CommandMeta[];
   keymap: Keymap;
   keymapOverrides: Keymap;
@@ -174,6 +175,7 @@ export function SettingsDialog({
   setQueryHistoryResultRows,
   sidebarOpen,
   setSidebarOpen,
+  resetLayout,
   commandCatalog,
   keymap,
   keymapOverrides,
@@ -314,6 +316,7 @@ export function SettingsDialog({
               setQueryHistoryResultRows={setQueryHistoryResultRows}
               sidebarOpen={sidebarOpen}
               setSidebarOpen={setSidebarOpen}
+              resetLayout={resetLayout}
             />
           ) : settingsTab === "theme" ? (
             <ThemeTab

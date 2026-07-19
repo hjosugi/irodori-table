@@ -33,19 +33,55 @@
 }
 
 .command-chord {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex: 0 0 auto;
-  max-width: 118px;
+  max-width: 148px;
   overflow: hidden;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface-raised);
   color: var(--muted);
   font-size: 11px;
   font-family: "SFMono-Regular", Consolas, monospace;
+  cursor: pointer;
+}
+
+.command-chord-value {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
+}
+
+/* The pencil is the standing "this is editable" cue; it firms up on hover. */
+.command-chord-edit {
+  flex: 0 0 auto;
+  opacity: 0.5;
+}
+
+.command-chord:hover,
+.command-chord:focus-visible {
+  border-color: var(--focus);
+  color: var(--text);
+  background: var(--hover);
+}
+
+.command-chord:hover .command-chord-edit,
+.command-chord:focus-visible .command-chord-edit {
+  opacity: 1;
+}
+
+/* "Set shortcut" rows are unbound; italic reads as a prompt, not a value. */
+.command-chord.unset .command-chord-value {
+  font-style: italic;
+}
+
+.command-chord.recording {
+  border-color: var(--focus);
+  color: var(--text);
+  background: var(--accent-soft);
 }
 
 .command-chord.conflict {
@@ -67,6 +103,24 @@
 .command-reset:focus-visible {
   color: var(--text);
   background: var(--hover);
+}
+
+/* One-line instruction above the keymap list so the rows read as editable. */
+.keymap-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.keymap-hint svg {
+  flex: 0 0 auto;
 }
 
 /* Command palette (Ctrl/Cmd+Shift+P). */

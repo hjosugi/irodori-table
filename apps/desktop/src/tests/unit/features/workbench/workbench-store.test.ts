@@ -13,6 +13,7 @@ import {
 
 const viewPlacementsStorageKey = "irodori.workbench.viewPlacements.v1";
 const viewVisibilityStorageKey = "irodori.workbench.viewVisibility.v1";
+const viewHiddenStorageKey = "irodori.workbench.viewHidden.v1";
 const sidebarSideStorageKey = "irodori.sidebar.side.v1";
 const sidebarWidthStorageKey = "irodori.sidebar.width.v2";
 const resultsHeightStorageKey = "irodori.results.height.v2";
@@ -273,5 +274,46 @@ describe("workbench store view placements", () => {
     store.getState().setResultsHeight(900);
     expect(store.getState().resultsHeight).toBe(560);
     expect(window.localStorage.getItem(resultsHeightStorageKey)).toBe("560");
+  });
+
+  it("resets a scrambled layout back to defaults and clears its storage", async () => {
+    // Scramble the layout: reorder panels, resize, flip the side, hide a view.
+    window.localStorage.setItem(
+      "irodori.workbench.viewOrder.v1",
+      JSON.stringify(["git", "plan", "objectBrowser"]),
+    );
+    window.localStorage.setItem(sidebarWidthStorageKey, "600");
+    window.localStorage.setItem(sidebarSideStorageKey, "right");
+    window.localStorage.setItem(resultsHeightStorageKey, "520");
+    window.localStorage.setItem(
+      viewHiddenStorageKey,
+      JSON.stringify({ git: true }),
+    );
+
+    const store = await loadWorkbenchStore();
+    // The scrambled values loaded, so this is a real reset, not a no-op.
+    expect(store.getState().viewOrder.slice(0, 2)).toEqual(["git", "plan"]);
+    expect(store.getState().sidebarWidth).toBe(600);
+    expect(store.getState().sidebarSide).toBe("right");
+    expect(store.getState().viewHidden.git).toBe(true);
+
+    store.getState().resetLayout();
+
+    const state = store.getState();
+    expect(state.viewOrder).toEqual(workbenchViewIds);
+    expect(state.sidebarWidth).toBe(200);
+    expect(state.sidebarSide).toBe("left");
+    expect(state.resultsHeight).toBe(340);
+    expect(state.viewHidden.git).toBe(false);
+    expect(state.viewPlacements).toEqual(defaultWorkbenchViewPlacements);
+
+    // The subscriber writes defaults back to storage, so a reload stays reset.
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("irodori.workbench.viewOrder.v1") ?? "[]",
+      ),
+    ).toEqual(workbenchViewIds);
+    expect(window.localStorage.getItem(sidebarWidthStorageKey)).toBe("200");
+    expect(window.localStorage.getItem(sidebarSideStorageKey)).toBe("left");
   });
 });

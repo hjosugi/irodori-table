@@ -48,6 +48,7 @@ type WorkbenchState = {
   setResultsHeight: (value: ValueUpdater<number>) => void;
   setEditorSplitMode: (value: ValueUpdater<EditorSplitMode>) => void;
   setEditorSplitPercent: (value: ValueUpdater<number>) => void;
+  resetLayout: () => void;
 };
 
 const sidebarStorageKey = "irodori.sidebar.open.v1";
@@ -229,6 +230,27 @@ function loadViewHidden(): WorkbenchViewHidden {
   }
 }
 
+// Every piece of layout the user can rearrange, at its shipped value. Panel
+// order, sizes, sides, and which views are hidden are one concept to a user
+// ("my layout"), and they get scrambled together, so they reset together —
+// eight separate reset buttons would be worse than one.
+function defaultLayoutState() {
+  return {
+    sidebarOpen: true,
+    rightSidebarOpen: false,
+    sidebarSide: "left" as SidebarSide,
+    viewPlacements: defaultViewPlacements(),
+    viewVisibility: defaultViewVisibility(),
+    viewOrder: normalizeWorkbenchViewOrder(null),
+    viewHidden: { ...defaultWorkbenchViewHidden },
+    sidebarWidth: sidebarWidthDefault,
+    inspectorWidth: inspectorWidthDefault,
+    resultsHeight: resultsHeightDefault,
+    editorSplitMode: "single" as EditorSplitMode,
+    editorSplitPercent: editorSplitPercentDefault,
+  };
+}
+
 // Editor pane splitting has been removed; the editor is always a single pane
 // (open a second window to compare queries). We keep the state field so callers
 // still compile, but it is pinned to "single".
@@ -340,6 +362,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
         resultsHeightMax,
       ),
     })),
+  // The store's subscriber writes every layout key on any change, so setting
+  // the defaults here also overwrites the persisted values.
+  resetLayout: () => set(() => defaultLayoutState()),
   // Splitting is disabled; keep the setter as a no-op so existing callers
   // continue to type-check while the editor stays a single pane.
   setEditorSplitMode: () => set(() => ({ editorSplitMode: "single" })),

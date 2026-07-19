@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Keyboard, Pencil } from "lucide-react";
 import {
   commandHasConflict,
   defaultVimKeybindingResolutions,
@@ -48,6 +49,13 @@ export function KeymapTab({
 }: KeymapTabProps) {
   return (
     <div className="settings-stack">
+      {/* Rebinding always worked, but the chord read as a value in a table
+          rather than a control, so nothing said the list was editable. */}
+      <p className="keymap-hint">
+        <Keyboard size={14} />
+        <span>{t("settings.keymap.hint")}</span>
+      </p>
+
       {vimMode ? (
         <VimKeymapPanel
           t={t}
@@ -86,7 +94,9 @@ export function KeymapTab({
                 {command.scope}
               </small>
               <button
-                className={`command-chord${conflicted ? " conflict" : ""}`}
+                className={`command-chord${conflicted ? " conflict" : ""}${
+                  recording ? " recording" : ""
+                }${chord ? "" : " unset"}`}
                 type="button"
                 title={
                   recording
@@ -95,13 +105,25 @@ export function KeymapTab({
                       ? t("settings.keymap.conflictTitle")
                       : t("settings.keymap.rebindTitle")
                 }
+                // The visible text is a key combination, so it makes a poor
+                // accessible name on its own — say what the button does.
+                aria-label={
+                  recording
+                    ? t("settings.keymap.recordingTitle")
+                    : t("settings.keymap.rebindLabel", { title: command.title })
+                }
                 onClick={() => beginRecording(command.id)}
               >
-                {recording
-                  ? recordingLabel
-                  : chord
-                    ? formatKeySequence(chord)
-                    : t("settings.keymap.unset")}
+                <span className="command-chord-value">
+                  {recording
+                    ? recordingLabel
+                    : chord
+                      ? formatKeySequence(chord)
+                      : t("settings.keymap.setShortcut")}
+                </span>
+                {recording ? null : (
+                  <Pencil className="command-chord-edit" size={11} />
+                )}
               </button>
               {overridden ? (
                 <button
