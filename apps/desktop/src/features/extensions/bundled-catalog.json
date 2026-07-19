@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-11T01:12:48Z",
+  "updatedAt": "2026-07-19T08:17:22Z",
   "source": "bundled-extension-catalog",
   "extensions": [
     {
@@ -257,7 +257,7 @@
       "id": "irodori.iceberg",
       "name": "Iceberg Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "apiVersion": "0.1",
       "summary": "Adds Apache Iceberg REST, Glue, and Hive catalog workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -299,36 +299,36 @@
       ],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T01:07:05Z",
+      "publishedAt": "2026-07-19T08:17:22Z",
       "install": {
         "kind": "githubRelease",
-        "url": "https://github.com/hjosugi/irodori-extension-iceberg/releases/tag/v0.1.3",
-        "tag": "v0.1.3",
+        "url": "https://github.com/hjosugi/irodori-extension-iceberg/releases/tag/v0.2.0",
+        "tag": "v0.2.0",
         "manifestPath": "irodori.extension.json",
         "assets": {
           "aarch64-linux": {
             "name": "irodori-extension-iceberg-aarch64-linux.tar.gz",
-            "sha256": "sha256:20aa861612677474b365a458d6f29d2753a8d107e7dbc3dc9e0cf0abdcb611ff"
+            "sha256": "sha256:5a6ec7cba56782a2e93f8d24ff13feaa470d61f7de8d044aff77061cbc8c06fe"
           },
           "aarch64-macos": {
             "name": "irodori-extension-iceberg-aarch64-macos.tar.gz",
-            "sha256": "sha256:0d3306d4b0038dfde43c3559bbac562b8f3b1c0f85e24d6d5fe4dc1b35d8f48e"
+            "sha256": "sha256:9f9f532b0c76e3972aeba044eac73618a5f84630c8fb2673e49d7c3ad40278e7"
           },
           "aarch64-windows": {
             "name": "irodori-extension-iceberg-aarch64-windows.tar.gz",
-            "sha256": "sha256:e50323fe863a5db6a31d03178b53f7a05a3476733de3d0c6c63c6c556ca9fa0d"
+            "sha256": "sha256:30d4ac65a5bf16a617c96b98d011ec0bcd146853c90fef9f10bf002382b4eb83"
           },
           "x86_64-linux": {
             "name": "irodori-extension-iceberg.tar.gz",
-            "sha256": "sha256:4a1f0ddf35bae0e91275caa21c9c3456eeeef00663b72f5788e4aa9a60101394"
+            "sha256": "sha256:2859185a903c6ebcf9eda232902567a4e6a6cd93b3b28b41a64fcd2ce00bb7db"
           },
           "x86_64-macos": {
             "name": "irodori-extension-iceberg-x86_64-macos.tar.gz",
-            "sha256": "sha256:52ebd97db84a7b82f133ef6f9731d236c97644dc24f5fea22731523fa7ff5f83"
+            "sha256": "sha256:0f721b1046934a0672c8e353bd225d708e5b78a41b68719d7e123e186af99728"
           },
           "x86_64-windows": {
             "name": "irodori-extension-iceberg-x86_64-windows.tar.gz",
-            "sha256": "sha256:5ff7f02f220df91d64c93c85b196fe2ff80f4f42b1c697d7eeecfed758320508"
+            "sha256": "sha256:2ff3d686f80eeb714dade94f265ac624cc3083d50975cfd8eceaee1ac80af968"
           }
         }
       }
@@ -582,7 +582,7 @@
       "id": "irodori.hudi",
       "name": "Hudi Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "apiVersion": "0.1",
       "summary": "Adds Apache Hudi table discovery and query workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -624,36 +624,36 @@
       ],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T01:10:28Z",
+      "publishedAt": "2026-07-19T08:17:20Z",
       "install": {
         "kind": "githubRelease",
-        "url": "https://github.com/hjosugi/irodori-extension-hudi/releases/tag/v0.1.3",
-        "tag": "v0.1.3",
+        "url": "https://github.com/hjosugi/irodori-extension-hudi/releases/tag/v0.2.0",
+        "tag": "v0.2.0",
         "manifestPath": "irodori.extension.json",
         "assets": {
           "aarch64-linux": {
             "name": "irodori-extension-hudi-aarch64-linux.tar.gz",
-            "sha256": "sha256:03f92f4a0036e7deb0a0419a9b699d37f80b97ccb1c6a2dc5fc77a1f7bb0879a"
+            "sha256": "sha256:93dde54cfd9f573609e631d5a75dbdfbfcf25e2c54ce85b91ab91af482a3f8ac"
           },
           "aarch64-macos": {
             "name": "irodori-extension-hudi-aarch64-macos.tar.gz",
-            "sha256": "sha256:14bf978dee73091967b1949d81c93c34186b141b737dc17d376178ff8273e9dc"
+            "sha256": "sha256:f0c7dd14d031867e0b77580c646e1d8e783931d5c81351e5d9ca9f00b0a7dceb"
           },
           "aarch64-windows": {
             "name": "irodori-extension-hudi-aarch64-windows.tar.gz",
-            "sha256": "sha256:facaa76696f94f49a77d062fb064253a63085154b71a2407f089fb2220e1be34"
+            "sha256": "sha256:52f281221c9c05c919a6695a5d57a1a9829b26cd9f416f24bb5941ad808c7aa6"
           },
           "x86_64-linux": {
             "name": "irodori-extension-hudi.tar.gz",
-            "sha256": "sha256:e6f59b6ef48709e5d26d4270b60e7141ecc03242fd14689f0ecabf9caf26101b"
+            "sha256": "sha256:1a7123186cdf53a90df46fed3394488db95376d48a9352b039a420390bfd90c7"
           },
           "x86_64-macos": {
             "name": "irodori-extension-hudi-x86_64-macos.tar.gz",
-            "sha256": "sha256:0eb54572947f1033d9ee59d7481a14dc840cb9ae247f1d75ef8753394eb7a0a3"
+            "sha256": "sha256:77860aa044aeee6d56d5c06adef145324461eff0cdf63c4e92b1df52d41ec443"
           },
           "x86_64-windows": {
             "name": "irodori-extension-hudi-x86_64-windows.tar.gz",
-            "sha256": "sha256:5887ba8ec45f806b4715cbd4b0e69f6be639a4c8310b13025abf442f47379616"
+            "sha256": "sha256:b9c79091b9f7ef53144148b1ed6d560d9ad4cd9cf4d3b6dd22652316e4b215d5"
           }
         }
       }

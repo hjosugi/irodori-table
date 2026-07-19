@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-11T01:12:48Z",
+  "updatedAt": "2026-07-19T08:17:22Z",
   "source": "prebuilt-extension-catalog",
   "extensions": [
     {
@@ -137,7 +137,7 @@
       "id": "irodori.iceberg",
       "name": "Iceberg Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "apiVersion": "0.1",
       "summary": "Adds Apache Iceberg REST, Glue, and Hive catalog workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -171,7 +171,7 @@
       },
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T01:07:05Z"
+      "publishedAt": "2026-07-19T08:17:22Z"
     },
     {
       "id": "irodori.s3-tables",
@@ -302,7 +302,7 @@
       "id": "irodori.hudi",
       "name": "Hudi Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "apiVersion": "0.1",
       "summary": "Adds Apache Hudi table discovery and query workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -336,7 +336,7 @@
       },
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T01:10:28Z"
+      "publishedAt": "2026-07-19T08:17:20Z"
     },
     {
       "id": "irodori.cloud-spanner",
