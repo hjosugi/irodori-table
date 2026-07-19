@@ -92,6 +92,17 @@ lockfiles as the reproducible path.
 - If a required check is too slow, unavailable, or blocked, state that clearly
   with the reason.
 
+## Collaboration Conventions
+
+- Write pull requests, issues, and review comments in English. This applies to
+  what you author; never correct or pressure outside contributors about the
+  language they write in.
+- Human contributors take priority. Before starting work on an issue, read its
+  thread: if a person has claimed it ("I'd like to work on this"), leave it to
+  them and coordinate in the thread instead of shipping past them.
+- Automated or agent-driven work must not close over a human contributor's
+  in-flight claim or open PR without discussing it in the thread first.
+
 ## Frontend Conventions
 
 - Prefer existing components, state patterns, CSS structure, and i18n wiring.
