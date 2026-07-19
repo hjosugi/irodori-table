@@ -932,6 +932,11 @@ export const ja = {
   "notice.workbench.importPreviewReady": "インポートプレビューを作成しました",
   "notice.workbench.importPreviewReadyDetail": "{name} · {count} 行",
   "notice.workbench.importSqlGenerated": "インポート SQL を生成しました",
+  "import.mode.label": "インポートモード",
+  "import.mode.create": "新しいテーブルを作成",
+  "import.mode.append": "既存のテーブルに追記",
+  "import.mode.appendHint":
+    "INSERT 文のみを生成します。テーブルは事前に存在している必要があります。",
   "notice.workbench.migrationOutputLoaded":
     "マイグレーション出力を読み込みました",
   "notice.workbench.labelCopied": "{label} をコピーしました",

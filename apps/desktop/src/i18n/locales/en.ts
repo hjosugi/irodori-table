@@ -910,6 +910,11 @@ export const en = {
   "notice.workbench.importPreviewReady": "Import preview ready",
   "notice.workbench.importPreviewReadyDetail": "{name} · {count} rows",
   "notice.workbench.importSqlGenerated": "Import SQL generated",
+  "import.mode.label": "Import mode",
+  "import.mode.create": "Create new table",
+  "import.mode.append": "Append to existing table",
+  "import.mode.appendHint":
+    "Only INSERT statements are generated; the table must already exist.",
   "notice.workbench.migrationOutputLoaded": "Migration output loaded",
   "notice.workbench.labelCopied": "{label} copied",
   "notice.workbench.querySaved": "Query saved",
