@@ -225,8 +225,10 @@ export function WorkbenchDockLayout({
       addLeftSidebarPanel,
       addResultsPanel,
       addRightSidebarPanel,
+      inspectorWidth,
       leftSidebarOpen,
       rightSidebarOpen,
+      sidebarWidth,
     ],
   );
 
@@ -241,11 +243,29 @@ export function WorkbenchDockLayout({
       addEditorPanel(api);
       addResultsPanel(api);
 
+      // Removing a root-edge panel makes dockview redistribute the freed space
+      // proportionally, which stretches the surviving sidebar — closing one at
+      // 320px grew the other from 260 to 618, and reopening it then restored
+      // 258 instead of its stored 320, so the width was lost for good. The
+      // insert path already pins widths for the mirror-image reason; the
+      // removal path did not. Same trick: pin now, and again next frame,
+      // because the rescale lands after this tick.
+      const pinSurvivor = (id: string, width: number) => {
+        const survivor = api.getPanel(id);
+        if (!survivor) {
+          return;
+        }
+        const pin = () => survivor.api.setSize({ width });
+        pin();
+        requestAnimationFrame(pin);
+      };
+
       const leftPanel = api.getPanel("leftSidebar");
       if (leftSidebarOpen) {
         addLeftSidebarPanel(api);
       } else if (leftPanel) {
         api.removePanel(leftPanel);
+        pinSurvivor("rightSidebar", inspectorWidth);
       }
 
       const rightPanel = api.getPanel("rightSidebar");
@@ -253,6 +273,7 @@ export function WorkbenchDockLayout({
         addRightSidebarPanel(api);
       } else if (rightPanel) {
         api.removePanel(rightPanel);
+        pinSurvivor("leftSidebar", sidebarWidth);
       }
     },
     [
