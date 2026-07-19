@@ -10,6 +10,7 @@ type WorkbenchCommandHandlerDeps = {
   openHistory: () => void;
   openGit: () => void;
   openHelp: () => void;
+  openAbout: () => void;
   openDeveloperTools: () => void;
   openConnectionManager: () => void;
   openMigrationStudio: () => void;
@@ -74,6 +75,7 @@ export function createWorkbenchCommandHandler({
   openHistory,
   openGit,
   openHelp,
+  openAbout,
   openDeveloperTools,
   openConnectionManager,
   openMigrationStudio,
@@ -178,8 +180,10 @@ export function createWorkbenchCommandHandler({
         openGit();
         break;
       case "help.open":
-      case "about.open":
         openHelp();
+        break;
+      case "about.open":
+        openAbout();
         break;
       case "developer.openDevtools":
         openDeveloperTools();

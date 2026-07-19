@@ -5,6 +5,8 @@ import type { WorkspaceSnapshot } from "../generated/irodori-api";
 export const APP_NAME = "Irodori Table";
 export const APP_VERSION = "0.7.41";
 export const APP_IDENTIFIER = "dev.irodori.table";
+/** Published user documentation; the target of Help ▸ Open Help. */
+export const DOCS_URL = "https://hjosugi.github.io/irodori-docs/";
 
 const resultCopyCommands: CommandMeta[] = [
   {

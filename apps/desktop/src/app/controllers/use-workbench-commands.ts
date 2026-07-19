@@ -1,4 +1,5 @@
 import type { ShowActionNotice } from "@/app/ActionToast";
+import { DOCS_URL } from "@/app/app-config";
 import { formatUiZoom } from "@/app/app-workbench-utils";
 import type { useEditorCommands } from "@/app/controllers/use-editor-commands";
 import type { useEditorGroups } from "@/app/controllers/use-editor-groups";
@@ -18,6 +19,7 @@ import {
 } from "@/features/preferences";
 import type { SqlEditorHandle } from "@/features/query-editor";
 import { useSearchStore } from "@/features/search/search-store";
+import { openExternalUrl } from "@/features/settings/tabs/shared";
 import { checkAndOfferAppUpdate } from "@/features/updater/use-startup-update-check";
 import { createWorkbenchCommandHandler } from "@/features/workbench";
 import type { Translator } from "@/i18n";
@@ -129,7 +131,11 @@ export function useWorkbenchCommands({
     checkForUpdates: () => void checkAndOfferAppUpdate(showActionNotice, t),
     openHistory: openQueryHistoryDialog,
     openGit: sidebars.openGitPanel,
-    openHelp: ui.openAbout,
+    // There is no in-app help dialog; "Open Help" goes to the published docs,
+    // the same target as About ▸ Documentation. It used to open About, which
+    // made the Help menu's two entries do the same thing.
+    openHelp: () => openExternalUrl(DOCS_URL),
+    openAbout: ui.openAbout,
     openDeveloperTools: () => void workspace.openAppDeveloperTools(),
     openConnectionManager: () => connections.setConnectionManagerOpen(true),
     openMigrationStudio: ui.openMigrationStudio,

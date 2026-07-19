@@ -1,17 +1,42 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Bug, Copy, ExternalLink, Info } from "lucide-react";
+import {
+  BookOpen,
+  Bug,
+  Copy,
+  ExternalLink,
+  FolderOpen,
+  Info,
+} from "lucide-react";
 import { DialogShell } from "@/components/DialogShell";
+import { DOCS_URL } from "@/app/app-config";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
-import { openExternalUrl } from "@/features/settings/tabs/shared";
+import {
+  openExternalUrl,
+  revealLocalPath,
+} from "@/features/settings/tabs/shared";
 import {
   crashReportStatus,
   type CrashReportStatus,
 } from "@/generated/irodori-api";
 
-const DOCS_URL = "https://hjosugi.github.io/irodori-docs/";
 const REPO_URL = "https://github.com/hjosugi/irodori-table";
 const ISSUES_URL = "https://github.com/hjosugi/irodori-table/issues";
+
+type TransientStatus = "idle" | "copied" | "failed";
+
+/** Shows action feedback briefly, then returns the control to its resting label. */
+function useTransientStatus() {
+  const [status, setStatus] = useState<TransientStatus>("idle");
+  useEffect(() => {
+    if (status === "idle") {
+      return;
+    }
+    const handle = window.setTimeout(() => setStatus("idle"), 2000);
+    return () => window.clearTimeout(handle);
+  }, [status]);
+  return [status, setStatus] as const;
+}
 
 export function AboutDialog({
   appName,
@@ -35,21 +60,8 @@ export function AboutDialog({
   const [crashReport, setCrashReport] = useState<CrashReportStatus | null>(
     null,
   );
-  const [crashPathCopyStatus, setCrashPathCopyStatus] = useState<
-    "idle" | "copied" | "failed"
-  >("idle");
-
-  // Show copy feedback briefly, then return the button to its resting label.
-  useEffect(() => {
-    if (crashPathCopyStatus === "idle") {
-      return;
-    }
-    const handle = window.setTimeout(
-      () => setCrashPathCopyStatus("idle"),
-      2000,
-    );
-    return () => window.clearTimeout(handle);
-  }, [crashPathCopyStatus]);
+  const [crashPathCopyStatus, setCrashPathCopyStatus] = useTransientStatus();
+  const [logDirStatus, setLogDirStatus] = useTransientStatus();
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +91,25 @@ export function AboutDialog({
       setCrashPathCopyStatus("copied");
     } catch {
       setCrashPathCopyStatus("failed");
+    }
+  }
+
+  // Outside the Tauri shell there is no file manager to hand the path to, so
+  // fall back to the clipboard: the path stays useful either way.
+  async function openLogDirectory() {
+    const path = crashReport?.logDir;
+    if (!path) {
+      return;
+    }
+    if (await revealLocalPath(path)) {
+      setLogDirStatus("idle");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(path);
+      setLogDirStatus("copied");
+    } catch {
+      setLogDirStatus("failed");
     }
   }
 
@@ -123,8 +154,24 @@ export function AboutDialog({
           {crashReport ? (
             <div>
               <dt>{t("about.logDirectory")}</dt>
-              <dd className="about-path" title={crashReport.logDir}>
-                {crashReport.logDir}
+              <dd className="about-path">
+                <button
+                  className="about-path-button"
+                  type="button"
+                  title={t("about.openLogDirectory")}
+                  aria-label={t("about.openLogDirectory")}
+                  onClick={() => void openLogDirectory()}
+                >
+                  <FolderOpen size={13} aria-hidden="true" />
+                  <span>{crashReport.logDir}</span>
+                </button>
+                {logDirStatus === "idle" ? null : (
+                  <small className="about-path-status">
+                    {logDirStatus === "copied"
+                      ? t("about.logDirectoryCopied")
+                      : t("about.copyFailed")}
+                  </small>
+                )}
               </dd>
             </div>
           ) : null}

@@ -709,6 +709,12 @@ textarea:disabled {
   border-radius: 999px;
 }
 
+/* Status-light semantics: a coloured dot beside "Disconnected" reads as
+   connected, so drop back to the neutral dot until the connection is open. */
+.connection-color-dot[data-connected="false"] {
+  background: var(--neutral-dot);
+}
+
 .connection-select small {
   margin-left: auto;
   color: var(--muted);

@@ -471,7 +471,7 @@ export const ja = {
   "rowDetail.title": "行詳細",
   "rowDetail.fieldsCount": "{count} フィールド",
   "rowDetail.noRowSelected": "行が選択されていません",
-  "rowDetail.clearSelection": "行選択をクリア",
+  "rowDetail.close": "行詳細を閉じる",
   "rowDetail.view": "行詳細表示",
   "rowDetail.mode.fields": "フィールド",
   "rowDetail.mode.json": "JSON",
@@ -945,6 +945,8 @@ export const ja = {
   "about.runtime": "ランタイム",
   "about.activeConnection": "アクティブな接続",
   "about.logDirectory": "ログディレクトリ",
+  "about.openLogDirectory": "ログディレクトリをファイルマネージャーで表示",
+  "about.logDirectoryCopied": "ログディレクトリのパスをコピーしました",
   "about.previousCrash": "前回のクラッシュ",
   "about.crashHelp":
     "前回起動時のクラッシュレポートがローカルに保存されています。共有する前に内容を確認し、必要に応じて編集してください。Irodori がクラッシュレポートを自動送信することはありません。",

@@ -82,6 +82,7 @@ export function WorkbenchRoot() {
         activeConnectionEngine={connections.activeConnection.engine}
         activeConnectionColor={connections.activeConnectionColor}
         activeConnectionStatus={connections.activeConnectionStatus}
+        activeConnectionOpen={connections.activeConnectionOpen}
         activeTransportLabel={connections.activeTransportLabel}
         vimMode={vimMode}
         queryLineCount={editor.query.split("\n").length}
