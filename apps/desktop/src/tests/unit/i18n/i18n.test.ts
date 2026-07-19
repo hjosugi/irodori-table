@@ -73,6 +73,12 @@ describe("i18n core", () => {
       }),
     ).toBe("orders から 2 行を削除しますか？");
     expect(translator.t("rowDetail.mode.tree")).toBe("ツリー");
+    expect(translator.t("settings.general.autoCommit.title")).toBe(
+      "自動コミット",
+    );
+    expect(translator.t("settings.extensions.marketplace")).toBe(
+      "マーケットプレイス",
+    );
   });
 
   it("splits a template around a placeholder for JSX interpolation", () => {
