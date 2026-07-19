@@ -1,23 +1,20 @@
 {
   "defaultSettings": {
     "preferredMode": "fields",
-    "urlLabel": "URL / DSN",
+    "urlLabelKey": "connection.field.urlDsn",
     "urlPlaceholder": "driver://user:password@host:port/database",
-    "fieldsLabel": "Fields",
-    "hostLabel": "Host",
+    "fieldsLabelKey": "connection.field.fields",
+    "hostLabelKey": "connection.field.host",
     "hostPlaceholder": "localhost",
-    "portLabel": "Port",
-    "userLabel": "User",
-    "userPlaceholder": "username",
-    "passwordLabel": "Password",
-    "passwordPlaceholder": "Session only",
-    "databaseLabel": "Database",
-    "databasePlaceholder": "database name",
+    "portLabelKey": "connection.field.port",
+    "userLabelKey": "connection.field.user",
+    "passwordLabelKey": "connection.field.password",
+    "databaseLabelKey": "connection.field.database",
     "showHost": true,
     "showPort": true,
     "showUser": true,
     "showPassword": true,
-    "transportLabel": "Direct TCP"
+    "transportLabelKey": "connection.transportTcp"
   },
   "engineSettings": [
     {
@@ -31,8 +28,7 @@
       ],
       "settings": {
         "urlPlaceholder": "postgres://user:password@host:5432/database",
-        "databaseLabel": "Database",
-        "databasePlaceholder": "database name"
+        "databaseLabelKey": "connection.field.database"
       }
     },
     {
@@ -46,16 +42,16 @@
       "settings": {
         "preferredMode": "fields",
         "urlPlaceholder": "sqlite:///absolute/path/to/database.sqlite",
-        "fieldsLabel": "File",
-        "hostLabel": "File",
+        "fieldsLabelKey": "connection.field.file",
+        "hostLabelKey": "connection.field.file",
         "hostPlaceholder": "",
-        "databaseLabel": "SQLite file / :memory:",
+        "databaseLabelKey": "connection.field.sqliteFileMemory",
         "databasePlaceholder": "/path/to/database.sqlite or :memory:",
         "showHost": false,
         "showPort": false,
         "showUser": false,
         "showPassword": false,
-        "transportLabel": "Local file"
+        "transportLabelKey": "connection.transport.localFile"
       }
     },
     {
@@ -63,40 +59,39 @@
       "settings": {
         "preferredMode": "fields",
         "urlPlaceholder": ":memory: or /absolute/path/to/database.duckdb",
-        "fieldsLabel": "File",
-        "databaseLabel": "DuckDB file / :memory:",
+        "fieldsLabelKey": "connection.field.file",
+        "databaseLabelKey": "connection.field.duckdbFileMemory",
         "databasePlaceholder": "/path/to/database.duckdb or :memory:",
         "showHost": false,
         "showPort": false,
         "showUser": false,
         "showPassword": false,
-        "transportLabel": "Local file"
+        "transportLabelKey": "connection.transport.localFile"
       }
     },
     {
       "engines": ["motherduck"],
       "settings": {
         "preferredMode": "url",
-        "urlLabel": "MotherDuck DSN",
+        "urlLabelKey": "connection.field.motherduckDsn",
         "urlPlaceholder": "md: or motherduck://token@md/database",
-        "fieldsLabel": "MotherDuck",
-        "hostLabel": "Account",
+        "fieldsLabelKey": "connection.field.motherduck",
+        "hostLabelKey": "connection.field.account",
         "hostPlaceholder": "md",
-        "portLabel": "API port",
-        "userLabel": "Token user",
+        "portLabelKey": "connection.field.apiPort",
+        "userLabelKey": "connection.field.tokenUser",
         "userPlaceholder": "token",
-        "passwordLabel": "MotherDuck token",
-        "databaseLabel": "Database",
-        "databasePlaceholder": "database name",
+        "passwordLabelKey": "connection.field.motherduckToken",
+        "databaseLabelKey": "connection.field.database",
         "showPort": false,
-        "transportLabel": "DuckDB extension"
+        "transportLabelKey": "connection.transport.duckdbExtension"
       }
     },
     {
       "engines": ["oracle"],
       "settings": {
         "urlPlaceholder": "oracle://user:password@host:1521/service",
-        "databaseLabel": "Service name / SID",
+        "databaseLabelKey": "connection.field.serviceNameSid",
         "databasePlaceholder": "ORCLPDB1"
       }
     },
@@ -104,167 +99,167 @@
       "engines": ["sqlserver"],
       "settings": {
         "urlPlaceholder": "sqlserver://user:password@host:1433;databaseName=database",
-        "hostLabel": "Server"
+        "hostLabelKey": "connection.field.server"
       }
     },
     {
       "engines": ["h2"],
       "settings": {
         "urlPlaceholder": "jdbc:h2:tcp://host:5435/~/database or jdbc:h2:file:./database",
-        "databaseLabel": "Database path / name",
+        "databaseLabelKey": "connection.field.databasePathName",
         "databasePlaceholder": "~/database",
-        "transportLabel": "JDBC / TCP"
+        "transportLabelKey": "connection.transport.jdbcTcp"
       }
     },
     {
       "engines": ["mongodb"],
       "settings": {
         "urlPlaceholder": "mongodb://user:password@host:27017/database",
-        "databaseLabel": "Database / auth source"
+        "databaseLabelKey": "connection.field.databaseAuthSource"
       }
     },
     {
       "engines": ["redis"],
       "settings": {
         "urlPlaceholder": "redis://:password@host:6379/0",
-        "userLabel": "Username",
+        "userLabelKey": "connection.field.username",
         "userPlaceholder": "default",
-        "databaseLabel": "Database index",
+        "databaseLabelKey": "connection.field.databaseIndex",
         "databasePlaceholder": "0"
       }
     },
     {
       "engines": ["snowflake"],
       "settings": {
-        "urlLabel": "Base URL",
+        "urlLabelKey": "connection.field.baseUrl",
         "urlPlaceholder": "https://org-account.snowflakecomputing.com",
-        "hostLabel": "Account / host",
+        "hostLabelKey": "connection.field.accountHost",
         "hostPlaceholder": "org-account or org-account.region.snowflakecomputing.com",
-        "userLabel": "Login name",
-        "passwordLabel": "Password",
-        "databaseLabel": "Database / schema",
+        "userLabelKey": "connection.field.loginName",
+        "passwordLabelKey": "connection.field.password",
+        "databaseLabelKey": "connection.field.databaseSchema",
         "databasePlaceholder": "DATABASE/SCHEMA",
         "showPort": false,
-        "transportLabel": "Snowflake HTTPS API"
+        "transportLabelKey": "connection.transport.snowflakeHttpsApi"
       }
     },
     {
       "engines": ["bigquery"],
       "settings": {
         "preferredMode": "url",
-        "urlLabel": "Project / credentials JSON / DSN",
+        "urlLabelKey": "connection.field.projectCredentialsJsonDsn",
         "urlPlaceholder": "bigquery://project/dataset or credentials JSON path",
-        "hostLabel": "Project",
+        "hostLabelKey": "connection.field.project",
         "hostPlaceholder": "project-id",
-        "portLabel": "API port",
-        "userLabel": "Service account",
-        "passwordLabel": "Token / key",
-        "databaseLabel": "Dataset",
+        "portLabelKey": "connection.field.apiPort",
+        "userLabelKey": "connection.field.serviceAccount",
+        "passwordLabelKey": "connection.field.tokenKey",
+        "databaseLabelKey": "connection.field.dataset",
         "showPort": false,
-        "transportLabel": "Google API"
+        "transportLabelKey": "connection.transport.googleApi"
       }
     },
     {
       "engines": ["athena"],
       "settings": {
         "preferredMode": "url",
-        "urlLabel": "Athena DSN / AWS profile",
+        "urlLabelKey": "connection.field.athenaDsnAwsProfile",
         "urlPlaceholder": "athena://profile@us-east-1/AwsDataCatalog/default?workgroup=primary&output=s3://bucket/query-results/",
-        "fieldsLabel": "AWS",
-        "hostLabel": "Region",
+        "fieldsLabelKey": "connection.field.aws",
+        "hostLabelKey": "connection.field.region",
         "hostPlaceholder": "us-east-1",
-        "portLabel": "API port",
-        "userLabel": "AWS profile / access key",
+        "portLabelKey": "connection.field.apiPort",
+        "userLabelKey": "connection.field.awsProfileAccessKey",
         "userPlaceholder": "default",
-        "passwordLabel": "Secret / session token",
-        "databaseLabel": "Catalog / database",
+        "passwordLabelKey": "connection.field.secretSessionToken",
+        "databaseLabelKey": "connection.field.catalogDatabase",
         "databasePlaceholder": "AwsDataCatalog/default",
         "showPort": false,
-        "transportLabel": "AWS Athena API"
+        "transportLabelKey": "connection.transport.awsAthenaApi"
       }
     },
     {
       "engines": ["bigtable"],
       "settings": {
         "preferredMode": "url",
-        "urlLabel": "Project / instance / credentials",
+        "urlLabelKey": "connection.field.projectInstanceCredentials",
         "urlPlaceholder": "bigtable://project/instance or credentials JSON path",
-        "hostLabel": "Project / instance",
+        "hostLabelKey": "connection.field.projectInstance",
         "hostPlaceholder": "project/instance",
-        "userLabel": "Service account",
-        "passwordLabel": "Token / key",
-        "databaseLabel": "Table / app profile",
+        "userLabelKey": "connection.field.serviceAccount",
+        "passwordLabelKey": "connection.field.tokenKey",
+        "databaseLabelKey": "connection.field.tableAppProfile",
         "showPort": false,
-        "transportLabel": "Google API"
+        "transportLabelKey": "connection.transport.googleApi"
       }
     },
     {
       "engines": ["cloudSpanner"],
       "settings": {
         "preferredMode": "url",
-        "urlLabel": "Project / instance / credentials",
+        "urlLabelKey": "connection.field.projectInstanceCredentials",
         "urlPlaceholder": "spanner://project/instance/database or credentials JSON path",
-        "hostLabel": "Project / instance",
+        "hostLabelKey": "connection.field.projectInstance",
         "hostPlaceholder": "project/instance",
-        "userLabel": "Service account",
-        "passwordLabel": "Token / key",
-        "databaseLabel": "Database",
+        "userLabelKey": "connection.field.serviceAccount",
+        "passwordLabelKey": "connection.field.tokenKey",
+        "databaseLabelKey": "connection.field.database",
         "showPort": false,
-        "transportLabel": "Google API"
+        "transportLabelKey": "connection.transport.googleApi"
       }
     },
     {
       "engines": ["databricks"],
       "settings": {
         "urlPlaceholder": "databricks://token@workspace-host/sql/warehouse",
-        "hostLabel": "Workspace host",
-        "userLabel": "Token user",
-        "passwordLabel": "Access token",
-        "databaseLabel": "Catalog / schema",
-        "transportLabel": "HTTPS"
+        "hostLabelKey": "connection.field.workspaceHost",
+        "userLabelKey": "connection.field.tokenUser",
+        "passwordLabelKey": "connection.field.accessToken",
+        "databaseLabelKey": "connection.field.catalogSchema",
+        "transportLabelKey": "connection.transport.https"
       }
     },
     {
       "engines": ["clickhouse"],
       "settings": {
         "urlPlaceholder": "clickhouse://user:password@host:8123/database",
-        "transportLabel": "HTTP / Native"
+        "transportLabelKey": "connection.transport.httpNative"
       }
     },
     {
       "engines": ["questdb"],
       "settings": {
         "urlPlaceholder": "postgres://user:password@host:8812/qdb",
-        "databaseLabel": "Database",
-        "transportLabel": "PostgreSQL wire / HTTP"
+        "databaseLabelKey": "connection.field.database",
+        "transportLabelKey": "connection.transport.postgresqlWireHttp"
       }
     },
     {
       "engines": ["iotdb"],
       "settings": {
         "urlPlaceholder": "iotdb://user:password@host:6667/root",
-        "databaseLabel": "Storage group / database",
+        "databaseLabelKey": "connection.field.storageGroupDatabase",
         "databasePlaceholder": "root",
-        "transportLabel": "IoTDB native"
+        "transportLabelKey": "connection.transport.iotdbNative"
       }
     },
     {
       "engines": ["neo4j", "memgraph"],
       "settings": {
         "urlPlaceholder": "bolt://user:password@host:7687",
-        "databaseLabel": "Graph database",
+        "databaseLabelKey": "connection.field.graphDatabase",
         "databasePlaceholder": "neo4j",
-        "transportLabel": "Bolt"
+        "transportLabelKey": "connection.transport.bolt"
       }
     },
     {
       "engines": ["influxdb"],
       "settings": {
         "urlPlaceholder": "http://host:8086?org=...&bucket=...",
-        "userLabel": "Org",
-        "passwordLabel": "Token",
-        "databaseLabel": "Bucket / database",
-        "transportLabel": "HTTP API"
+        "userLabelKey": "connection.field.org",
+        "passwordLabelKey": "connection.field.token",
+        "databaseLabelKey": "connection.field.bucketDatabase",
+        "transportLabelKey": "connection.transport.httpApi"
       }
     },
     {
@@ -272,10 +267,10 @@
       "settings": {
         "preferredMode": "url",
         "urlPlaceholder": "qdrant://host",
-        "userLabel": "Project / user",
-        "passwordLabel": "API key / token",
-        "databaseLabel": "Collection / namespace",
-        "transportLabel": "Vector API"
+        "userLabelKey": "connection.field.projectUser",
+        "passwordLabelKey": "connection.field.apiKeyToken",
+        "databaseLabelKey": "connection.field.collectionNamespace",
+        "transportLabelKey": "connection.transport.vectorApi"
       }
     },
     {
@@ -283,10 +278,10 @@
       "settings": {
         "preferredMode": "url",
         "urlPlaceholder": "milvus://host",
-        "userLabel": "Project / user",
-        "passwordLabel": "API key / token",
-        "databaseLabel": "Collection / namespace",
-        "transportLabel": "Vector API"
+        "userLabelKey": "connection.field.projectUser",
+        "passwordLabelKey": "connection.field.apiKeyToken",
+        "databaseLabelKey": "connection.field.collectionNamespace",
+        "transportLabelKey": "connection.transport.vectorApi"
       }
     },
     {
@@ -294,18 +289,18 @@
       "settings": {
         "preferredMode": "url",
         "urlPlaceholder": "pinecone://host",
-        "userLabel": "Project / user",
-        "passwordLabel": "API key / token",
-        "databaseLabel": "Collection / namespace",
-        "transportLabel": "Vector API"
+        "userLabelKey": "connection.field.projectUser",
+        "passwordLabelKey": "connection.field.apiKeyToken",
+        "databaseLabelKey": "connection.field.collectionNamespace",
+        "transportLabelKey": "connection.transport.vectorApi"
       }
     },
     {
       "engines": ["elasticsearch", "openSearch", "couchbase", "arangodb"],
       "settings": {
         "urlPlaceholder": "https://user:password@host:port",
-        "databaseLabel": "Index / bucket / database",
-        "transportLabel": "HTTP API"
+        "databaseLabelKey": "connection.field.indexBucketDatabase",
+        "transportLabelKey": "connection.transport.httpApi"
       }
     },
     {
@@ -313,55 +308,55 @@
       "settings": {
         "preferredMode": "url",
         "urlPlaceholder": "aws://profile/region/resource",
-        "hostLabel": "Region",
+        "hostLabelKey": "connection.field.region",
         "hostPlaceholder": "us-east-1",
-        "userLabel": "Access key",
-        "passwordLabel": "Secret / token",
-        "databaseLabel": "Table / bucket",
+        "userLabelKey": "connection.field.accessKey",
+        "passwordLabelKey": "connection.field.secretToken",
+        "databaseLabelKey": "connection.field.tableBucket",
         "showPort": false,
-        "transportLabel": "Cloud API"
+        "transportLabelKey": "connection.transport.cloudApi"
       }
     },
     {
       "engines": ["trinoPresto", "hive"],
       "settings": {
         "urlPlaceholder": "trino://user@host:8080/catalog/schema",
-        "databaseLabel": "Catalog / schema"
+        "databaseLabelKey": "connection.field.catalogSchema"
       }
     },
     {
       "engines": ["cassandra", "scylladb"],
       "settings": {
         "urlPlaceholder": "cassandra://user:password@host:9042/keyspace",
-        "databaseLabel": "Keyspace"
+        "databaseLabelKey": "connection.field.keyspace"
       }
     },
     {
       "engines": ["firebird"],
       "settings": {
         "urlPlaceholder": "firebird://user:password@host:3050/path/to/database.fdb",
-        "databaseLabel": "Database path"
+        "databaseLabelKey": "connection.field.databasePath"
       }
     },
     {
       "engines": ["deltaLake", "hudi", "iceberg"],
       "settings": {
         "preferredMode": "fields",
-        "urlLabel": "Table path",
+        "urlLabelKey": "connection.field.tablePath",
         "urlPlaceholder": "s3://bucket/warehouse/namespace/table",
-        "fieldsLabel": "Catalog",
-        "hostLabel": "Catalog endpoint / region",
+        "fieldsLabelKey": "connection.field.catalog",
+        "hostLabelKey": "connection.field.catalogEndpointRegion",
         "hostPlaceholder": "catalog.example.com or us-east-1",
-        "userLabel": "Access key ID / client ID",
+        "userLabelKey": "connection.field.accessKeyIdClientId",
         "userPlaceholder": "AKIAIOSFODNN7EXAMPLE",
-        "passwordLabel": "Secret access key / token",
-        "databaseLabel": "Namespace / table",
+        "passwordLabelKey": "connection.field.secretAccessKeyToken",
+        "databaseLabelKey": "connection.field.namespaceTable",
         "databasePlaceholder": "namespace.table",
         "showHost": false,
         "showPort": false,
         "showUser": true,
         "showPassword": true,
-        "transportLabel": "Lakehouse catalog"
+        "transportLabelKey": "connection.transport.lakehouseCatalog"
       }
     }
   ],
@@ -371,12 +366,12 @@
       "fields": [
         {
           "key": "catalogUri",
-          "label": "Catalog URI",
+          "labelKey": "connection.field.catalogUri",
           "placeholder": "https://catalog.example.com/v1"
         },
         {
           "key": "warehouse",
-          "label": "Warehouse path",
+          "labelKey": "connection.field.warehousePath",
           "placeholder": "s3://bucket/warehouse"
         }
       ]
@@ -386,7 +381,7 @@
       "fields": [
         {
           "key": "region",
-          "label": "AWS region",
+          "labelKey": "connection.field.awsRegion",
           "placeholder": "us-east-1",
           "required": true
         }
@@ -397,11 +392,19 @@
       "fields": [
         {
           "key": "warehouse",
-          "label": "Warehouse",
+          "labelKey": "connection.field.warehouse",
           "placeholder": "COMPUTE_WH"
         },
-        { "key": "role", "label": "Role", "placeholder": "ACCOUNTADMIN" },
-        { "key": "schema", "label": "Schema", "placeholder": "PUBLIC" }
+        {
+          "key": "role",
+          "labelKey": "connection.field.role",
+          "placeholder": "ACCOUNTADMIN"
+        },
+        {
+          "key": "schema",
+          "labelKey": "connection.field.schema",
+          "placeholder": "PUBLIC"
+        }
       ]
     }
   ],

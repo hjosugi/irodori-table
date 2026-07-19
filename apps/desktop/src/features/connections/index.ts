@@ -28,7 +28,9 @@ export {
 } from "./connection-profiles";
 export {
   defaultPort,
+  engineConnectionLayout,
   engineConnectionSettings,
+  type EngineConnectionLayout,
   type EngineConnectionSettings,
   type EngineConnectionInputMode,
 } from "./engine-connection-settings";

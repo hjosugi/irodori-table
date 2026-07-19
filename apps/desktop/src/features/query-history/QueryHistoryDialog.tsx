@@ -164,7 +164,9 @@ export function QueryHistoryDialog({
         <div
           className="history-results"
           role="listbox"
-          aria-label={t("history.entries")}
+          aria-label={t("history.entries", {
+            count: toCount(historyDialogItems.length),
+          })}
         >
           {historyDialogItems.length > 0 ? (
             historyDialogItems.map((item) => {

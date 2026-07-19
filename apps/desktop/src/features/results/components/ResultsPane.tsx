@@ -473,7 +473,9 @@ export function ResultsPane({
             <div
               className="result-tabs"
               role="tablist"
-              aria-label={t("results.resultSets")}
+              aria-label={t("results.resultSets", {
+                count: resultSets.length,
+              })}
             >
               {resultSets.map((set, index) => (
                 <button
@@ -544,7 +546,7 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              title={t("results.exportAs", { format: exportFormatLabel })}
+              title={t("results.exportFormat", { format: exportFormatLabel })}
               disabled={!copyExportAvailable}
               onClick={() => onExportActiveResult(exportFormat)}
             >
@@ -592,7 +594,7 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              title={t("results.copyAs", { format: copyFormatLabel })}
+              title={t("results.copyFormat", { format: copyFormatLabel })}
               disabled={!copyExportAvailable}
               onClick={() => copyInFormat(copyFormat)}
             >
