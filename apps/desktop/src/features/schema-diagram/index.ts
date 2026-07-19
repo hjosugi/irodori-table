@@ -17,5 +17,6 @@ export {
   type DiagramColumn,
   type DiagramDocument,
   type DiagramForeignKey,
+  type DiagramIndex,
   type DiagramTable,
 } from "./schema-diagram";
