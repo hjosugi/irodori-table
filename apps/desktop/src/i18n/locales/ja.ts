@@ -233,6 +233,7 @@ export const ja = {
   "git.refFilter.branches": "ブランチ",
   "git.refFilter.remotes": "リモート",
   "git.refFilter.tags": "タグ",
+  "git.repoPathLabel": "リポジトリのパス",
   "git.actions.use": "使用",
   "git.actions.browse": "参照",
   "git.actions.create": "作成",

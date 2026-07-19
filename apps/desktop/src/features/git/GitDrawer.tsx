@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import type { CSSProperties } from "react";
+import { useEffect } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { usePreferencesStore } from "@/features/preferences";
@@ -46,6 +47,18 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
   const { confirm, confirmElement } = useConfirm();
+
+  // Clicking the sidebar Git tab mounts this panel directly - it does not go
+  // through openDrawer()/openGitPanel(), which were the only callers of
+  // refresh(). Without this a cold start showed "No commits" with no error and
+  // no sign that nothing had even been attempted (#123). Read the store
+  // imperatively so a re-mount with data already loaded stays quiet.
+  useEffect(() => {
+    const { status: current, loading: busy } = useGitStore.getState();
+    if (!current && !busy) {
+      void useGitStore.getState().refresh();
+    }
+  }, []);
   const view = useGitStore((state) => state.view);
   const repoPath = useGitStore((state) => state.repoPath);
   const repoPathDraft = useGitStore((state) => state.repoPathDraft);
@@ -302,6 +315,32 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
         </button>
       </div>
 
+      {/* Kept outside the status guard: when no repository resolves, status is
+          null, and hiding the path controls inside it left no way to point the
+          panel anywhere (#123). */}
+      <div className="git-repo-row">
+        <input
+          value={repoPathDraft}
+          aria-label={t("git.repoPathLabel")}
+          placeholder={repoPath || status?.repoRoot || ""}
+          onChange={(event) => setRepoPathDraft(event.currentTarget.value)}
+        />
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => setRepoPath(repoPathDraft)}
+        >
+          {t("git.actions.use")}
+        </button>
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => void onBrowseRepo()}
+        >
+          {t("git.actions.browse")}
+        </button>
+      </div>
+
       {status ? (
         <div className="git-branch-card">
           <span>
@@ -365,27 +404,6 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
                 }
               />
             </label>
-          </div>
-          <div className="git-repo-row">
-            <input
-              value={repoPathDraft}
-              placeholder={repoPath || status.repoRoot}
-              onChange={(event) => setRepoPathDraft(event.currentTarget.value)}
-            />
-            <button
-              className="text-button"
-              type="button"
-              onClick={() => setRepoPath(repoPathDraft)}
-            >
-              {t("git.actions.use")}
-            </button>
-            <button
-              className="text-button"
-              type="button"
-              onClick={() => void onBrowseRepo()}
-            >
-              {t("git.actions.browse")}
-            </button>
           </div>
           <div className="git-branch-row">
             <select

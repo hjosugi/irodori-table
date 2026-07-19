@@ -1,9 +1,11 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { Cloud, Copy, Database, FileText, Play, Wrench, X } from "lucide-react";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 
@@ -179,23 +181,34 @@ export function LakehousePanel({
     ) ?? 0;
   const lakehouseEngine = isLakehouseEngine(editorEngine);
   const contextAction = contextMenu?.action;
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!contextMenu) {
       return undefined;
     }
     const close = () => setContextMenu(null);
+    // The menu is portaled to <body>, outside the React root, so a pointerdown
+    // inside it reaches this document listener without React's stopPropagation
+    // ever running — guard by containment instead, as EditorContextMenu does.
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && contextMenuRef.current?.contains(target)) {
+        return;
+      }
+      close();
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         close();
       }
     };
-    document.addEventListener("pointerdown", close);
+    document.addEventListener("pointerdown", closeOnOutsidePointerDown);
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", close);
     window.addEventListener("scroll", close, true);
     return () => {
-      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("pointerdown", closeOnOutsidePointerDown);
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", close, true);
@@ -332,41 +345,56 @@ export function LakehousePanel({
         </div>
       ) : null}
 
-      {contextAction ? (
-        <div
-          className="app-menu-popover lakehouse-context-menu"
-          role="menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onPointerDown={(event) => event.stopPropagation()}
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => loadSql(contextAction.sql)}
-          >
-            <span>Load {contextAction.title} SQL</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => insertSql(contextAction.sql)}
-          >
-            <span>Insert {contextAction.title} SQL</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => copySql(contextAction.sql)}
-          >
-            <span>Copy {contextAction.title} SQL</span>
-          </button>
-          <span className="menu-separator" aria-hidden="true" />
-          <button type="button" role="menuitem" onClick={onClose}>
-            <span>Close Lakehouse</span>
-          </button>
-        </div>
-      ) : null}
+      {/*
+        Portaled to <body>: dockview's .dv-render-overlay ancestor sets
+        transform/contain/will-change, becoming the containing block for fixed
+        descendants. Rendered inline, the menu's viewport coordinates resolved
+        against the dock panel — the clamp ran first, in viewport space, and
+        the dock offset landed after it, putting the menu at x=2654 on a
+        1600px-wide window (#124). Same fix as the tab menu in #115.
+      */}
+      {contextAction
+        ? createPortal(
+            <div
+              ref={contextMenuRef}
+              className="app-menu-popover lakehouse-context-menu"
+              role="menu"
+              style={{
+                position: "fixed",
+                left: contextMenu.x,
+                top: contextMenu.y,
+              }}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => loadSql(contextAction.sql)}
+              >
+                <span>Load {contextAction.title} SQL</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => insertSql(contextAction.sql)}
+              >
+                <span>Insert {contextAction.title} SQL</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => copySql(contextAction.sql)}
+              >
+                <span>Copy {contextAction.title} SQL</span>
+              </button>
+              <span className="menu-separator" aria-hidden="true" />
+              <button type="button" role="menuitem" onClick={onClose}>
+                <span>Close Lakehouse</span>
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   );
 }
