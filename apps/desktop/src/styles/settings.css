@@ -612,6 +612,17 @@
   font-weight: 600;
 }
 
+.extension-section-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.extension-hidden-toggle {
+  font-weight: 500;
+  color: var(--muted);
+}
+
 .extension-section-header small {
   min-width: 24px;
   padding: 1px 7px;

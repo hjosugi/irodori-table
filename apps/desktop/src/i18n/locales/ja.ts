@@ -164,6 +164,11 @@ export const ja = {
   "editorTabs.closeTab": "タブを閉じる",
   "editorTabs.closeOtherTabs": "他のタブを閉じる",
   "editorTabs.reopenClosedTab": "閉じたタブを開き直す",
+  "terminal.tabs": "ターミナルのタブ",
+  "terminal.tabLabel": "ターミナル {index}",
+  "terminal.closeTab": "{label} を閉じる",
+  "terminal.newTerminal": "新しいターミナル",
+  "terminal.closePanel": "パネルを閉じる",
   "shortcuts.showCommands": "コマンド表示",
   "shortcuts.newTab": "新規タブ",
   "shortcuts.copyTsv": "TSV コピー",
@@ -703,6 +708,9 @@ export const ja = {
   "settings.extensions.working": "処理中...",
   "settings.extensions.installedAction": "インストール済み",
   "settings.extensions.unsupported": "利用不可",
+  "settings.extensions.hiddenForPlatform":
+    "このプラットフォームでは {count} 件非表示",
+  "settings.extensions.hideUnavailable": "利用不可の拡張を隠す",
   "settings.extensions.currentVersion": "インストール済み {version}",
   "settings.extensions.verifiedDigest": "SHA-256 {digest}…",
   "settings.extensions.targetUnavailable":
@@ -924,6 +932,11 @@ export const ja = {
   "notice.workbench.importPreviewReady": "インポートプレビューを作成しました",
   "notice.workbench.importPreviewReadyDetail": "{name} · {count} 行",
   "notice.workbench.importSqlGenerated": "インポート SQL を生成しました",
+  "import.mode.label": "インポートモード",
+  "import.mode.create": "新しいテーブルを作成",
+  "import.mode.append": "既存のテーブルに追記",
+  "import.mode.appendHint":
+    "INSERT 文のみを生成します。テーブルは事前に存在している必要があります。",
   "notice.workbench.migrationOutputLoaded":
     "マイグレーション出力を読み込みました",
   "notice.workbench.labelCopied": "{label} をコピーしました",

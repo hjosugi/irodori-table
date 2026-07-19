@@ -1,4 +1,8 @@
-export { ImportDialog, type ImportPreview } from "./ImportDialog";
+export {
+  ImportDialog,
+  type ImportMode,
+  type ImportPreview,
+} from "./ImportDialog";
 export {
   detectImportFileKind,
   generateImportSql,

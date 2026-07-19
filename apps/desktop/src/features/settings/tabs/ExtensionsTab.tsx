@@ -36,8 +36,10 @@ function MarketplaceSection({
   installedById,
   nativeTarget,
   operationId,
+  showUnavailable,
   t,
   onInstall,
+  onToggleUnavailable,
 }: {
   title: string;
   empty: string;
@@ -45,20 +47,52 @@ function MarketplaceSection({
   installedById: ReadonlyMap<string, InstalledExtension>;
   nativeTarget: string | null;
   operationId: string | null;
+  showUnavailable: boolean;
   t: TranslateFn;
   onInstall: (extension: PluginStoreExtension) => void;
+  onToggleUnavailable: () => void;
 }) {
+  // An entry with no release asset for this platform only dead-ends in a
+  // disabled Install button, so it is hidden by default (#131). Installed
+  // entries always stay visible: their state ("Installed") is still useful.
+  // Without a runtime target (browser preview, e2e harness) nothing is
+  // resolvable, so treat "no target" as "no filtering" instead of rendering
+  // an empty marketplace.
+  const isUnavailable = (extension: PluginStoreExtension) =>
+    nativeTarget !== null &&
+    !installedById.has(extension.id) &&
+    !resolvePluginStoreInstallAsset(extension, nativeTarget);
+  const hiddenCount = extensions.filter(isUnavailable).length;
+  const visibleExtensions = showUnavailable
+    ? extensions
+    : extensions.filter((extension) => !isUnavailable(extension));
+
   return (
     <section className="extension-section">
       <div className="extension-section-header">
         <span>{title}</span>
-        <small>{extensions.length}</small>
+        <span className="extension-section-tools">
+          {hiddenCount > 0 ? (
+            <button
+              type="button"
+              className="text-button extension-hidden-toggle"
+              onClick={onToggleUnavailable}
+            >
+              {showUnavailable
+                ? t("settings.extensions.hideUnavailable")
+                : t("settings.extensions.hiddenForPlatform", {
+                    count: hiddenCount,
+                  })}
+            </button>
+          ) : null}
+          <small>{visibleExtensions.length}</small>
+        </span>
       </div>
-      {extensions.length === 0 ? (
+      {visibleExtensions.length === 0 ? (
         <div className="extension-empty">{empty}</div>
       ) : (
         <div className="extension-list">
-          {extensions.map((extension) => {
+          {visibleExtensions.map((extension) => {
             const installed = installedById.get(extension.id);
             const asset = nativeTarget
               ? resolvePluginStoreInstallAsset(extension, nativeTarget)
@@ -266,6 +300,7 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [operationId, setOperationId] = useState<string | null>(null);
   const [pluginSearch, setPluginSearch] = useState("");
+  const [showUnavailable, setShowUnavailable] = useState(false);
 
   const catalogById = useMemo(
     () =>
@@ -510,8 +545,10 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
         installedById={installedById}
         nativeTarget={nativeTarget}
         operationId={operationId}
+        showUnavailable={showUnavailable}
         t={t}
         onInstall={(extension) => void installOrUpdate(extension)}
+        onToggleUnavailable={() => setShowUnavailable((value) => !value)}
       />
       <MarketplaceSection
         title={t("settings.extensions.recommended")}
@@ -520,8 +557,10 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
         installedById={installedById}
         nativeTarget={nativeTarget}
         operationId={operationId}
+        showUnavailable={showUnavailable}
         t={t}
         onInstall={(extension) => void installOrUpdate(extension)}
+        onToggleUnavailable={() => setShowUnavailable((value) => !value)}
       />
       {confirmElement}
     </div>

@@ -104,6 +104,8 @@ export function useWorkspaceActions({
             importPreview.tableName,
             importPreview.columns,
             importPreview.rows,
+            // Append mode targets an existing table, so no CREATE TABLE (#164).
+            importPreview.mode !== "append",
           )
         : "",
     [importPreview],
@@ -145,6 +147,7 @@ export function useWorkspaceActions({
         fileName: file.name,
         format: kind,
         tableName: inferImportTableName(file.name),
+        mode: "create",
       });
       showActionNotice(
         "success",
@@ -172,6 +175,7 @@ export function useWorkspaceActions({
         importPreview.tableName,
         importPreview.columns,
         importPreview.rows,
+        importPreview.mode !== "append",
       ),
     );
     setImportPreview(null);

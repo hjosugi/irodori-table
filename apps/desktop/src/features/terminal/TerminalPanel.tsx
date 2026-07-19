@@ -1,27 +1,28 @@
 import { useCallback, useRef, useState } from "react";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import { TerminalView } from "./TerminalView";
 import "./terminal.css";
 
-type Tab = { id: string; label: string };
+// The label is derived from the index at render time (not stored) so tab
+// names follow the active locale.
+type Tab = { id: string; index: number };
 
 /**
  * VSCode-style bottom terminal panel with tabs. Each tab owns a PTY-backed
  * [`TerminalView`]; inactive tabs stay mounted (hidden) so their sessions persist.
  */
 export function TerminalPanel({ onClose }: { onClose: () => void }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
   const counter = useRef(1);
-  const [tabs, setTabs] = useState<Tab[]>([
-    { id: "term-1", label: "Terminal 1" },
-  ]);
+  const [tabs, setTabs] = useState<Tab[]>([{ id: "term-1", index: 1 }]);
   const [activeId, setActiveId] = useState("term-1");
 
   const addTab = useCallback(() => {
     counter.current += 1;
     const id = `term-${counter.current}`;
-    setTabs((current) => [
-      ...current,
-      { id, label: `Terminal ${counter.current}` },
-    ]);
+    setTabs((current) => [...current, { id, index: counter.current }]);
     setActiveId(id);
   }, []);
 
@@ -46,30 +47,50 @@ export function TerminalPanel({ onClose }: { onClose: () => void }) {
     <div className="terminal-panel">
       <div className="terminal-tabbar">
         <div className="terminal-tabs">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`terminal-tab${tab.id === activeId ? " is-active" : ""}`}
-              onClick={() => setActiveId(tab.id)}
-            >
-              <span>{tab.label}</span>
-              <button
-                type="button"
-                className="terminal-tab-close"
-                aria-label={`Close ${tab.label}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  closeTab(tab.id);
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {/* Real role="tab" buttons: a keyboard user could previously reach
+              only the (destructive) close button on a background terminal but
+              had no way to switch to it (#134). The close control is a sibling
+              of the tab button, never nested inside it — nested interactive
+              elements are invalid. Only tabs live inside the tablist; the
+              "new terminal" action stays outside it. */}
+          <div
+            className="terminal-tablist"
+            role="tablist"
+            aria-label={t("terminal.tabs")}
+          >
+            {tabs.map((tab) => {
+              const label = t("terminal.tabLabel", { index: tab.index });
+              return (
+                <div
+                  key={tab.id}
+                  role="presentation"
+                  className={`terminal-tab${tab.id === activeId ? " is-active" : ""}`}
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    className="terminal-tab-select"
+                    aria-selected={tab.id === activeId}
+                    onClick={() => setActiveId(tab.id)}
+                  >
+                    {label}
+                  </button>
+                  <button
+                    type="button"
+                    className="terminal-tab-close"
+                    aria-label={t("terminal.closeTab", { label })}
+                    onClick={() => closeTab(tab.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
           <button
             type="button"
             className="terminal-action"
-            aria-label="New terminal"
+            aria-label={t("terminal.newTerminal")}
             onClick={addTab}
           >
             +
@@ -78,7 +99,7 @@ export function TerminalPanel({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           className="terminal-action"
-          aria-label="Close panel"
+          aria-label={t("terminal.closePanel")}
           onClick={onClose}
         >
           ⨯
