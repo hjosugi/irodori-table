@@ -86,6 +86,8 @@ export interface SettingsDialogProps {
   setEditorBackgroundOpacity: (value: number) => void;
   animationsEnabled: boolean;
   setAnimationsEnabled: (value: BooleanUpdater) => void;
+  sidebarViewLabels: boolean;
+  setSidebarViewLabels: (value: BooleanUpdater) => void;
   resultOffloadEnabled: boolean;
   setResultOffloadEnabled: (value: boolean) => void;
   resultMemoryBudget: number;
@@ -165,6 +167,8 @@ export function SettingsDialog({
   setEditorBackgroundOpacity,
   animationsEnabled,
   setAnimationsEnabled,
+  sidebarViewLabels,
+  setSidebarViewLabels,
   resultOffloadEnabled,
   setResultOffloadEnabled,
   resultMemoryBudget,
@@ -296,6 +300,8 @@ export function SettingsDialog({
               setEditorBackgroundImage={setEditorBackgroundImage}
               editorBackgroundOpacity={editorBackgroundOpacity}
               setEditorBackgroundOpacity={setEditorBackgroundOpacity}
+              sidebarViewLabels={sidebarViewLabels}
+              setSidebarViewLabels={setSidebarViewLabels}
               animationsEnabled={animationsEnabled}
               setAnimationsEnabled={setAnimationsEnabled}
               autoCommit={autoCommit}

@@ -23,6 +23,8 @@ const renderTab = componentRenderer(
       setEditorBackgroundOpacity: vi.fn(),
       animationsEnabled: true,
       setAnimationsEnabled: vi.fn(),
+      sidebarViewLabels: false,
+      setSidebarViewLabels: vi.fn(),
       autoCommit: true,
       setAutoCommit: vi.fn(),
       updateCheckOnStartup: true,

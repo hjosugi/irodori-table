@@ -38,6 +38,7 @@ const snippetsStorageKey = "irodori.editor.snippets.v1";
 const editorBackgroundImageStorageKey = "irodori.editor.backgroundImage.v1";
 const editorBackgroundOpacityStorageKey = "irodori.editor.backgroundOpacity.v1";
 const animationsEnabledStorageKey = "irodori.ui.animationsEnabled.v1";
+const sidebarViewLabelsStorageKey = "irodori.ui.sidebarViewLabels.v1";
 const customPaletteStorageKey = "irodori.ui.customPalette.v1";
 const autoCommitStorageKey = "irodori.query.autoCommit.v1";
 const updateCheckOnStartupStorageKey = "irodori.updates.checkOnStartup.v1";
@@ -69,6 +70,7 @@ type PreferencesState = {
   editorBackgroundImage: string;
   editorBackgroundOpacity: number;
   animationsEnabled: boolean;
+  sidebarViewLabels: boolean;
   customPalette: string[];
   autoCommit: boolean;
   updateCheckOnStartup: boolean;
@@ -88,6 +90,7 @@ type PreferencesState = {
   setEditorBackgroundImage: (value: ValueUpdater<string>) => void;
   setEditorBackgroundOpacity: (value: ValueUpdater<number>) => void;
   setAnimationsEnabled: (value: ValueUpdater<boolean>) => void;
+  setSidebarViewLabels: (value: ValueUpdater<boolean>) => void;
   setCustomPalette: (value: ValueUpdater<string[]>) => void;
   addCustomPaletteColor: (color: string) => void;
   removeCustomPaletteColor: (color: string) => void;
@@ -268,6 +271,11 @@ function loadAnimationsEnabled() {
   return readStorage(animationsEnabledStorageKey) !== "false";
 }
 
+function loadSidebarViewLabels() {
+  // Icons only by default; text labels are opt-in.
+  return readStorage(sidebarViewLabelsStorageKey) === "true";
+}
+
 function loadCustomPalette(): string[] {
   const stored = readStorage(customPaletteStorageKey);
   if (!stored) {
@@ -358,6 +366,7 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
   editorBackgroundImage: loadEditorBackgroundImage(),
   editorBackgroundOpacity: loadEditorBackgroundOpacity(),
   animationsEnabled: loadAnimationsEnabled(),
+  sidebarViewLabels: loadSidebarViewLabels(),
   customPalette: loadCustomPalette(),
   autoCommit: loadAutoCommit(),
   updateCheckOnStartup: loadUpdateCheckOnStartup(),
@@ -442,6 +451,10 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set((state) => ({
       animationsEnabled: resolveValue(state.animationsEnabled, value),
     })),
+  setSidebarViewLabels: (value) =>
+    set((state) => ({
+      sidebarViewLabels: resolveValue(state.sidebarViewLabels, value),
+    })),
   setCustomPalette: (value) =>
     set((state) => ({
       customPalette: normalizeCustomPalette(
@@ -515,6 +528,7 @@ usePreferencesStore.subscribe((state) => {
     String(state.editorBackgroundOpacity),
   );
   writeStorage(animationsEnabledStorageKey, String(state.animationsEnabled));
+  writeStorage(sidebarViewLabelsStorageKey, String(state.sidebarViewLabels));
   if (state.customPalette.length > 0) {
     writeStorage(customPaletteStorageKey, JSON.stringify(state.customPalette));
   } else {

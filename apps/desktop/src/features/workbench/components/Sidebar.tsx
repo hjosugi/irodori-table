@@ -382,6 +382,9 @@ export function Sidebar({
   // strip: the strip is a drop zone that docks that view here.
   const [sideDropActive, setSideDropActive] = useState(false);
   const locale = usePreferencesStore((state) => state.locale);
+  const sidebarViewLabels = usePreferencesStore(
+    (state) => state.sidebarViewLabels,
+  );
   const { t } = createTranslator(locale);
   const lakehouseConnection = isLakehouseEngine(
     activeConnection.engine as DbEngine,
@@ -877,7 +880,10 @@ export function Sidebar({
                   onDragEnd={handleViewDragEnd}
                 >
                   <TabIcon size={14} />
-                  <span>{t(meta.label)}</span>
+                  {/* Icons only by default - the labelled variant wrapped the
+                      switcher to a second row. title/aria-label above keep the
+                      name available either way; showing text is a setting. */}
+                  {sidebarViewLabels ? <span>{t(meta.label)}</span> : null}
                 </button>
               );
             })}
