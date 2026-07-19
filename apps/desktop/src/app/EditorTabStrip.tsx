@@ -1,4 +1,5 @@
 import { MoreHorizontal, Plus, X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 import {
   openTabsForEditorGroup,
@@ -23,6 +24,28 @@ export type EditorTabStripProps = {
   onCloseOtherTabs: (group: EditorGroup, tabId: string) => void;
   onReopenClosedTab: (group: EditorGroup) => void;
 };
+
+// Keep the popover inside the window. Without this a "..." button near the
+// right edge — which is where it ends up once several tabs are open — opens a
+// menu that runs off-screen.
+const menuWidth = 220;
+const menuHeight = 240;
+const menuMargin = 8;
+
+function clampMenuToViewport(x: number, y: number) {
+  if (typeof window === "undefined") {
+    return { position: "fixed" as const, left: x, top: y };
+  }
+  const left = Math.max(
+    menuMargin,
+    Math.min(x, window.innerWidth - menuWidth - menuMargin),
+  );
+  const top = Math.max(
+    menuMargin,
+    Math.min(y, window.innerHeight - menuHeight - menuMargin),
+  );
+  return { position: "fixed" as const, left, top };
+}
 
 export function EditorTabStrip({
   group,
@@ -130,85 +153,99 @@ export function EditorTabStrip({
       >
         <MoreHorizontal size={14} />
       </button>
-      {menuOpenForGroup && menu ? (
-        <div
-          className="app-menu-popover editor-tab-menu"
-          role="menu"
-          style={{ left: menu.x, top: menu.y }}
-          onContextMenu={(event) => event.preventDefault()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              const { group } = menu;
-              onCloseMenu();
-              onNewTab(group);
-            }}
-          >
-            <span>{t("editorTabs.newSqlTab")}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              const { group, tabId } = menu;
-              onCloseMenu();
-              onRenameTab(group, tabId);
-            }}
-          >
-            <span>{t("editorTabs.renameTab")}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              const { group, tabId } = menu;
-              onCloseMenu();
-              onDuplicateTab(group, tabId);
-            }}
-          >
-            <span>{t("editorTabs.duplicateTab")}</span>
-          </button>
-          <span className="menu-separator" aria-hidden="true" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              const { group, tabId } = menu;
-              onCloseMenu();
-              onCloseTab(group, tabId);
-            }}
-          >
-            <span>{t("editorTabs.closeTab")}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={openTabs.length <= 1}
-            onClick={() => {
-              const { group, tabId } = menu;
-              onCloseMenu();
-              onCloseOtherTabs(group, tabId);
-            }}
-          >
-            <span>{t("editorTabs.closeOtherTabs")}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!closedTabsAvailable}
-            onClick={() => {
-              const { group } = menu;
-              onCloseMenu();
-              onReopenClosedTab(group);
-            }}
-          >
-            <span>{t("editorTabs.reopenClosedTab")}</span>
-          </button>
-        </div>
-      ) : null}
+      {/*
+        Portaled to <body>. The menu is position:fixed, but dockview's
+        .dv-render-overlay ancestor sets transform/contain/will-change, which
+        makes it the containing block for fixed descendants — so the viewport
+        coordinates measured from the button resolved against the dock panel
+        instead of the window. The menu appeared offset by the panel's left edge
+        (244px with the sidebar open, 44px without), and with enough tabs open
+        the button sits far enough right that the menu landed past the window
+        edge entirely and nothing showed at all. EditorContextMenu already
+        portals for the same reason.
+      */}
+      {menuOpenForGroup && menu
+        ? createPortal(
+            <div
+              className="app-menu-popover editor-tab-menu"
+              role="menu"
+              style={clampMenuToViewport(menu.x, menu.y)}
+              onContextMenu={(event) => event.preventDefault()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const { group } = menu;
+                  onCloseMenu();
+                  onNewTab(group);
+                }}
+              >
+                <span>{t("editorTabs.newSqlTab")}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const { group, tabId } = menu;
+                  onCloseMenu();
+                  onRenameTab(group, tabId);
+                }}
+              >
+                <span>{t("editorTabs.renameTab")}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const { group, tabId } = menu;
+                  onCloseMenu();
+                  onDuplicateTab(group, tabId);
+                }}
+              >
+                <span>{t("editorTabs.duplicateTab")}</span>
+              </button>
+              <span className="menu-separator" aria-hidden="true" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const { group, tabId } = menu;
+                  onCloseMenu();
+                  onCloseTab(group, tabId);
+                }}
+              >
+                <span>{t("editorTabs.closeTab")}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={openTabs.length <= 1}
+                onClick={() => {
+                  const { group, tabId } = menu;
+                  onCloseMenu();
+                  onCloseOtherTabs(group, tabId);
+                }}
+              >
+                <span>{t("editorTabs.closeOtherTabs")}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!closedTabsAvailable}
+                onClick={() => {
+                  const { group } = menu;
+                  onCloseMenu();
+                  onReopenClosedTab(group);
+                }}
+              >
+                <span>{t("editorTabs.reopenClosedTab")}</span>
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

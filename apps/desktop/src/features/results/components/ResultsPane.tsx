@@ -322,8 +322,12 @@ export function ResultsPane({
     "tsv",
   );
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
+  // Exclude xlsx, not excel. xlsx is the binary workbook whose serializer is
+  // `() => ""` because its bytes come from buildXlsxBlob, so copying it put an
+  // empty string on the clipboard and still reported success. `excel` is the
+  // HTML-table serializer, which is exactly the one that works on a clipboard.
   const copyFormats = resultExportFormats.filter(
-    (format) => format.id !== "excel",
+    (format) => format.id !== "xlsx",
   );
   const exportFormatLabel =
     resultExportFormats.find((format) => format.id === exportFormat)?.label ??

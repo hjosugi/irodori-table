@@ -164,3 +164,29 @@ describe("result exports", () => {
     ).toBe("irodori-local-2026-06-25T00-00-00-000Z.xls");
   });
 });
+
+// The copy menu offered `xlsx`, whose serializer is `() => ""` because its
+// bytes come from buildXlsxBlob — so Copy as Excel put an empty string on the
+// clipboard and still showed a success toast. Copying a format is only
+// meaningful if its serializer produces text, so assert that directly rather
+// than pinning the one id that happened to be wrong.
+describe("clipboard-capable export formats", () => {
+  it("produces non-empty text for every format except the binary workbook", () => {
+    for (const format of resultExportFormats) {
+      const { content } = buildResultExport(result, format.id);
+      if (format.id === "xlsx") {
+        expect(content).toBe("");
+      } else {
+        expect(content.length, `${format.id} serialized empty`).toBeGreaterThan(
+          0,
+        );
+      }
+    }
+  });
+
+  it("keeps excel serializing real content, since it is the copyable one", () => {
+    const { content } = buildResultExport(result, "excel");
+    expect(content).toContain("<table");
+    expect(content).toContain("id");
+  });
+});
