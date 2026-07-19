@@ -59,7 +59,7 @@
   color: var(--text);
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   text-align: left;
   cursor: pointer;
 }
@@ -77,7 +77,7 @@
 
 .connection-action-menu small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .connection-action-menu span,
@@ -168,13 +168,13 @@
 
 .connection-profile-group-header strong {
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   text-transform: uppercase;
   letter-spacing: 0;
 }
 
 .connection-profile-group-header small {
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .connection-profile-group-items {
@@ -224,13 +224,13 @@
 }
 
 .connection-profile strong {
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .connection-profile small,
 .connection-picker-empty {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .connection-profile i {
@@ -277,7 +277,7 @@
   display: grid;
   gap: 5px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -412,7 +412,7 @@
 .connection-color-hex {
   width: 92px;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   text-transform: uppercase;
 }
 
@@ -428,7 +428,7 @@
   list-style: none;
   cursor: pointer;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 700;
   text-transform: none;
   user-select: none;
@@ -505,14 +505,14 @@
 
 .connection-readonly-toggle strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .connector-options-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -528,7 +528,7 @@
   border-radius: 5px;
   color: var(--muted);
   background: var(--surface-muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .connection-transport strong {

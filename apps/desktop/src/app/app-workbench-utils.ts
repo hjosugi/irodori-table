@@ -35,10 +35,14 @@ export function uiZoomStyleVariables(zoom: number): Record<string, string> {
   const normalized = normalizeUiZoom(zoom);
   return {
     "--ui-zoom": normalized.toFixed(2),
-    "--font-ui-xs": scaledUiFont(11, normalized),
-    "--font-ui-sm": scaledUiFont(12, normalized),
-    "--font-ui-md": scaledUiFont(13, normalized),
-    "--font-ui-lg": scaledUiFont(14, normalized),
+    // Keep in step with the UI type scale defined in styles/base.css: these
+    // inline values win over the stylesheet, so the two have to agree or the
+    // whole app renders a step off. `md` is the default/body size.
+    "--font-ui-xs": scaledUiFont(10, normalized),
+    "--font-ui-sm": scaledUiFont(11, normalized),
+    "--font-ui-md": scaledUiFont(12, normalized),
+    "--font-ui-lg": scaledUiFont(13, normalized),
+    "--font-ui-xl": scaledUiFont(15, normalized),
     // The code font stays integer-px: fractional sizes make glyph advances
     // round differently between CodeMirror's measurements and the renderer,
     // drifting the caret off the character it edits.
@@ -51,6 +55,7 @@ export function uiZoomStyleVariables(zoom: number): Record<string, string> {
     "--bar-sm": `${scaledUiPixels(31, normalized)}px`,
     "--bar-md": `${scaledUiPixels(33, normalized)}px`,
     "--status-height": `${scaledUiPixels(22, normalized)}px`,
+    "--tab-min-width": `${scaledUiPixels(120, normalized)}px`,
   };
 }
 

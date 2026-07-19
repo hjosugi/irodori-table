@@ -1,7 +1,7 @@
 .data-dialog.settings-dialog {
-  width: min(920px, 94vw);
-  height: min(720px, 82vh);
-  max-height: min(720px, 82vh);
+  width: min(1160px, 92vw);
+  height: min(800px, 86vh);
+  max-height: min(800px, 86vh);
 }
 
 .settings-body {
@@ -40,10 +40,13 @@
 }
 
 .settings-panel {
+  /* Rows respond to the panel, not the viewport: the dialog is a fraction of
+     the window, so a viewport media query stacks them at the wrong moment. */
+  container-type: inline-size;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 12px;
+  padding: 16px 18px;
 }
 
 .settings-stack {
@@ -53,14 +56,33 @@
 
 .settings-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* The description keeps a readable column of its own instead of being
+     squeezed to a couple of words by whatever control shares the row. */
+  grid-template-columns: minmax(260px, 1fr) minmax(0, auto);
   align-items: center;
-  gap: 16px;
+  gap: 24px;
   min-height: 48px;
-  padding: 10px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
+}
+
+/* Below this the description and its control genuinely cannot share a line, so
+   stack them rather than letting both shrink into unreadability. */
+@container (max-width: 540px) {
+  .settings-row,
+  .settings-row-wide {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+
+  .settings-row select,
+  .settings-row input[type="checkbox"],
+  .settings-row > :last-child {
+    justify-self: start;
+  }
 }
 
 .settings-row strong,
@@ -69,13 +91,13 @@
 }
 
 .settings-row strong {
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .settings-row small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .settings-row input,
@@ -110,7 +132,7 @@
 }
 
 .settings-row-wide {
-  grid-template-columns: minmax(0, 0.8fr) minmax(280px, 1.2fr);
+  grid-template-columns: minmax(240px, 0.8fr) minmax(360px, 1.2fr);
 }
 
 .settings-security-actions {
@@ -132,7 +154,7 @@
   border-radius: 999px;
   color: var(--muted);
   background: var(--surface-muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
 }
 
 .security-status-pill.ready {
@@ -175,12 +197,12 @@
 }
 
 .passkey-lock-panel strong {
-  font-size: 18px;
+  font-size: var(--font-ui-xl);
 }
 
 .passkey-lock-panel > span {
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .passkey-lock-error {
@@ -207,17 +229,30 @@
 
 .ui-zoom-control output {
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
+/* Five controls on one line only while they all fit. Under pressure the URL
+ * field gives up width first and the opacity slider drops to a second line;
+ * the two labelled buttons never shrink, because a "Choose"/"Reset" clipped to
+ * one character is not a control any more. */
 .editor-background-control {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto minmax(90px, 130px) 42px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   min-width: 0;
+}
+
+.editor-background-control > .editor-background-input {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.editor-background-control > .text-button {
+  flex: 0 0 auto;
 }
 
 .editor-background-input {
@@ -258,15 +293,20 @@
 }
 
 .editor-background-control input[type="range"] {
-  width: 100%;
+  flex: 1 1 100px;
+  width: auto;
+  min-width: 90px;
+  max-width: 150px;
   height: var(--control-sm);
   padding: 0;
   accent-color: var(--blue);
 }
 
 .editor-background-control output {
+  flex: 0 0 auto;
+  min-width: 34px;
   color: var(--text);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -307,14 +347,14 @@
 
 .vim-keymap-header strong,
 .vim-keymap-command strong {
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .vim-keymap-header small,
 .vim-keymap-command small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .vim-keymap-conflicts {
@@ -349,7 +389,7 @@
 .settings-empty {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .settings-json {
@@ -382,13 +422,13 @@
 }
 
 .settings-json-toolbar strong {
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .settings-json-toolbar small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .settings-json textarea {
@@ -403,7 +443,7 @@
   color: var(--text);
   background: var(--editor-bg);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   line-height: 1.45;
 }
 
@@ -449,13 +489,13 @@
 
 .snippet-import-header strong {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .snippet-import-header small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .snippet-import-panel textarea {
@@ -468,7 +508,7 @@
   color: var(--text);
   background: var(--input-bg);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   line-height: 1.45;
 }
 
@@ -527,7 +567,7 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .extension-runtime-notice {
@@ -544,7 +584,7 @@
     var(--yellow, #b58900) 8%,
     var(--surface-muted)
   );
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   line-height: 1.45;
 }
 
@@ -634,7 +674,7 @@
 .extension-title-row strong {
   overflow: hidden;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -642,14 +682,14 @@
 .extension-title-row span,
 .extension-meta {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .extension-main p {
   margin: 2px 0 4px;
   overflow: hidden;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -673,7 +713,7 @@
   border-radius: 0 0 4px 4px;
   color: var(--muted);
   background: var(--surface);
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 
 .snippet-editor-list {
@@ -705,7 +745,7 @@
   gap: 4px;
   min-width: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -734,7 +774,7 @@
   resize: vertical;
   padding: 8px;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   line-height: 1.45;
 }
 
@@ -813,7 +853,7 @@
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -856,13 +896,13 @@
 }
 
 .job-main strong {
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .job-main small,
 .job-meta small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .job-meta {

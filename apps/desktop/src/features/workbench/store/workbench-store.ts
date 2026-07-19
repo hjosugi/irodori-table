@@ -64,10 +64,13 @@ const editorSplitModeStorageKey = "irodori.editor.splitMode.v1";
 const editorSplitSizeStorageKey = "irodori.editor.splitSize.v1";
 
 const sidebarWidthDefault = 200;
-const sidebarWidthMin = 180;
+// Floors match the dock panel minimums in WorkbenchDockLayout: narrow enough to
+// be a real compact state (icon view tabs, truncated rows) rather than a point
+// at which the panel is taken away.
+const sidebarWidthMin = 132;
 const sidebarWidthMax = 640;
 const inspectorWidthDefault = 300;
-const inspectorWidthMin = 220;
+const inspectorWidthMin = 168;
 const inspectorWidthMax = 640;
 const resultsHeightDefault = 340;
 const resultsHeightMin = 220;

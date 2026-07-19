@@ -30,7 +30,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   border-radius: 6px 6px 0 0;
   cursor: pointer;
   color: var(--muted);

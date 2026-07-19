@@ -54,6 +54,13 @@ const dockPanelIds: readonly WorkbenchDockPanelId[] = [
   "rightSidebar",
 ];
 
+// Dragging a sidebar narrow should compact it, not take it away: these floors
+// are the width at which the panel is still usable -- view tabs fall back to
+// icons and rows truncate -- rather than a threshold to disappear at. Full
+// collapse stays on the explicit toggle, which is reversible from the titlebar.
+const LEFT_SIDEBAR_MIN_WIDTH = 132;
+const RIGHT_SIDEBAR_MIN_WIDTH = 168;
+
 const DockPanelContentContext = createContext<WorkbenchDockPanelContent | null>(
   null,
 );
@@ -151,7 +158,7 @@ export function WorkbenchDockLayout({
         title: t("dock.explorer"),
         renderer: "always",
         initialWidth: sidebarWidth,
-        minimumWidth: 180,
+        minimumWidth: LEFT_SIDEBAR_MIN_WIDTH,
         // Dock at the root edge (no reference panel) so the sidebar spans
         // the full workspace height with the editor/results split inside.
         position: {
@@ -188,7 +195,7 @@ export function WorkbenchDockLayout({
         title: t("dock.inspector"),
         renderer: "always",
         initialWidth: inspectorWidth,
-        minimumWidth: 220,
+        minimumWidth: RIGHT_SIDEBAR_MIN_WIDTH,
         // Root-edge dock, same reason as the left sidebar.
         position: {
           direction: "right",

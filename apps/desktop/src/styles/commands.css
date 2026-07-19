@@ -26,7 +26,7 @@
   border-radius: 4px;
   color: var(--muted);
   background: var(--surface-muted);
-  font-size: 10px;
+  font-size: var(--font-ui-xs);
   font-weight: 800;
   line-height: 16px;
   text-transform: uppercase;
@@ -41,7 +41,7 @@
   border-radius: 4px;
   background: var(--surface-raised);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-family: "SFMono-Regular", Consolas, monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -108,7 +108,7 @@
   padding: 11px 14px;
   border: none;
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
+  font-size: var(--font-ui-lg);
   outline: none;
   background: transparent;
 }
@@ -142,12 +142,12 @@
 .palette-item span {
   flex: 1;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-ui-md);
 }
 
 .palette-item small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .palette-item kbd {
@@ -156,14 +156,14 @@
   border-radius: 4px;
   background: var(--surface-muted);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
   font-family: "SFMono-Regular", Consolas, monospace;
 }
 
 .palette-empty {
   padding: 14px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--font-ui-md);
   text-align: center;
 }
 
@@ -182,14 +182,14 @@
 }
 
 .parameter-header strong {
-  font-size: 13px;
+  font-size: var(--font-ui-lg);
 }
 
 .parameter-header span {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -222,12 +222,12 @@
 
 .parameter-row strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-ui-md);
 }
 
 .parameter-row small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-ui-sm);
 }
 
 .parameter-row input {
@@ -239,7 +239,7 @@
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-ui-md);
   outline: none;
 }
 

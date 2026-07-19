@@ -38,7 +38,7 @@
   border: none;
   background: transparent;
   color: var(--muted);
-  font-size: 20px;
+  font-size: var(--font-ui-xl);
   line-height: 1;
   cursor: pointer;
   border-radius: 4px;
@@ -70,7 +70,7 @@
 
 .ai-generate-note {
   margin: 0;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   color: var(--muted);
 }
 .ai-generate-note code {
@@ -82,7 +82,7 @@
 
 .ai-generate-error {
   margin: 0;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   color: var(--red);
 }
 
@@ -119,7 +119,7 @@
 .ai-generate-provider-hint {
   margin: 0;
   color: var(--muted);
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: 1.4;
 }
 
@@ -130,7 +130,7 @@
   border: 1px solid color-mix(in srgb, var(--focus) 38%, var(--border));
   border-radius: 6px;
   background: color-mix(in srgb, var(--focus) 8%, var(--surface));
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   line-height: 1.45;
 }
 
@@ -161,7 +161,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
 }
 .ai-generate-field > span {
   width: 72px;
@@ -193,7 +193,7 @@
 }
 
 .ai-generate-hint {
-  font-size: var(--font-ui-xs);
+  font-size: var(--font-ui-sm);
   color: var(--muted);
 }
 
@@ -206,7 +206,7 @@
   padding: 6px 14px;
   border-radius: 6px;
   font: inherit;
-  font-size: var(--font-ui-sm);
+  font-size: var(--font-ui-md);
   cursor: pointer;
   color: var(--text);
   background: var(--hover);

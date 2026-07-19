@@ -1,4 +1,5 @@
 import { MoreHorizontal, Plus, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -69,6 +70,18 @@ export function EditorTabStrip({
   );
   const menuOpenForGroup = menu?.group === group;
 
+  // Tabs keep a legible width and the strip scrolls past it, so the active tab
+  // can sit outside the scrollport -- opening a new tab would otherwise look
+  // like nothing happened. Follow it whenever it changes, including when it is
+  // activated from the tab menu or a keybinding rather than by clicking it.
+  const activeTabRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [state.activeTabId]);
+
   return (
     <div
       className="tab-strip editor-tab-strip"
@@ -76,83 +89,90 @@ export function EditorTabStrip({
       aria-label={t("editorTabs.strip")}
       onContextMenu={(event) => event.stopPropagation()}
     >
-      {openTabs.map((tab) => (
-        <div
-          className={tab.id === state.activeTabId ? "tab active" : "tab"}
-          key={tab.id}
-        >
-          <button
-            className="tab-select"
-            type="button"
-            role="tab"
-            aria-selected={tab.id === state.activeTabId}
-            aria-haspopup="menu"
-            title={tab.label}
-            onClick={() => onSelectTab(group, tab.id)}
-            onMouseDown={(event) => {
-              // Middle-click closes; stop the browser's autoscroll gesture.
-              if (event.button === 1) {
+      {/* Presentational so the tabs stay owned by the tablist above, while the
+          scrolling lives here and the actions below stay pinned. */}
+      <div className="tab-strip-scroll" role="presentation">
+        {openTabs.map((tab) => (
+          <div
+            className={tab.id === state.activeTabId ? "tab active" : "tab"}
+            key={tab.id}
+            ref={tab.id === state.activeTabId ? activeTabRef : undefined}
+          >
+            <button
+              className="tab-select"
+              type="button"
+              role="tab"
+              aria-selected={tab.id === state.activeTabId}
+              aria-haspopup="menu"
+              title={tab.label}
+              onClick={() => onSelectTab(group, tab.id)}
+              onMouseDown={(event) => {
+                // Middle-click closes; stop the browser's autoscroll gesture.
+                if (event.button === 1) {
+                  event.preventDefault();
+                }
+              }}
+              onAuxClick={(event) => {
+                if (event.button === 1) {
+                  onCloseTab(group, tab.id);
+                }
+              }}
+              onContextMenu={(event) => {
                 event.preventDefault();
-              }
-            }}
-            onAuxClick={(event) => {
-              if (event.button === 1) {
-                onCloseTab(group, tab.id);
-              }
-            }}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onSelectTab(group, tab.id);
-              onOpenMenu({
-                x: event.clientX,
-                y: event.clientY,
-                group,
-                tabId: tab.id,
-              });
-            }}
-          >
-            {tab.label}
-          </button>
-          <button
-            className="tab-close"
-            type="button"
-            title={t("editorTabs.closeTabNamed", { label: tab.label })}
-            aria-label={t("editorTabs.closeTabNamed", { label: tab.label })}
-            onClick={() => onCloseTab(group, tab.id)}
-          >
-            <X size={12} />
-          </button>
-        </div>
-      ))}
-      <button
-        className="mini-button"
-        type="button"
-        title={t("editorTabs.newSqlTab")}
-        aria-label={t("editorTabs.newSqlTab")}
-        onClick={() => onNewTab(group)}
-      >
-        <Plus size={14} />
-      </button>
-      <button
-        className="mini-button"
-        type="button"
-        title={t("editorTabs.tabActions")}
-        aria-label={t("editorTabs.tabActions")}
-        aria-haspopup="menu"
-        aria-expanded={menuOpenForGroup}
-        onClick={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          onOpenMenu({
-            x: rect.left,
-            y: rect.bottom + 4,
-            group,
-            tabId: state.activeTabId,
-          });
-        }}
-      >
-        <MoreHorizontal size={14} />
-      </button>
+                event.stopPropagation();
+                onSelectTab(group, tab.id);
+                onOpenMenu({
+                  x: event.clientX,
+                  y: event.clientY,
+                  group,
+                  tabId: tab.id,
+                });
+              }}
+            >
+              {tab.label}
+            </button>
+            <button
+              className="tab-close"
+              type="button"
+              title={t("editorTabs.closeTabNamed", { label: tab.label })}
+              aria-label={t("editorTabs.closeTabNamed", { label: tab.label })}
+              onClick={() => onCloseTab(group, tab.id)}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="tab-strip-actions" role="presentation">
+        <button
+          className="mini-button"
+          type="button"
+          title={t("editorTabs.newSqlTab")}
+          aria-label={t("editorTabs.newSqlTab")}
+          onClick={() => onNewTab(group)}
+        >
+          <Plus size={14} />
+        </button>
+        <button
+          className="mini-button"
+          type="button"
+          title={t("editorTabs.tabActions")}
+          aria-label={t("editorTabs.tabActions")}
+          aria-haspopup="menu"
+          aria-expanded={menuOpenForGroup}
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            onOpenMenu({
+              x: rect.left,
+              y: rect.bottom + 4,
+              group,
+              tabId: state.activeTabId,
+            });
+          }}
+        >
+          <MoreHorizontal size={14} />
+        </button>
+      </div>
       {/*
         Portaled to <body>. The menu is position:fixed, but dockview's
         .dv-render-overlay ancestor sets transform/contain/will-change, which
