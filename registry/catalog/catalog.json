@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-19T08:17:22Z",
+  "updatedAt": "2026-07-19T20:45:11Z",
   "source": "prebuilt-extension-catalog",
   "extensions": [
     {
@@ -137,7 +137,7 @@
       "id": "irodori.iceberg",
       "name": "Iceberg Connector",
       "publisher": "irodori",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "apiVersion": "0.1",
       "summary": "Adds Apache Iceberg REST, Glue, and Hive catalog workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -171,7 +171,7 @@
       },
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-19T08:17:22Z"
+      "publishedAt": "2026-07-19T20:45:11Z"
     },
     {
       "id": "irodori.s3-tables",

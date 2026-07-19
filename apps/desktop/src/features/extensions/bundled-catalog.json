@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-19T08:17:22Z",
+  "updatedAt": "2026-07-19T20:45:11Z",
   "source": "bundled-extension-catalog",
   "extensions": [
     {
@@ -257,7 +257,7 @@
       "id": "irodori.iceberg",
       "name": "Iceberg Connector",
       "publisher": "irodori",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "apiVersion": "0.1",
       "summary": "Adds Apache Iceberg REST, Glue, and Hive catalog workflows as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -299,36 +299,36 @@
       ],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-19T08:17:22Z",
+      "publishedAt": "2026-07-19T20:45:11Z",
       "install": {
         "kind": "githubRelease",
-        "url": "https://github.com/hjosugi/irodori-extension-iceberg/releases/tag/v0.2.0",
-        "tag": "v0.2.0",
+        "url": "https://github.com/hjosugi/irodori-extension-iceberg/releases/tag/v0.3.0",
+        "tag": "v0.3.0",
         "manifestPath": "irodori.extension.json",
         "assets": {
           "aarch64-linux": {
             "name": "irodori-extension-iceberg-aarch64-linux.tar.gz",
-            "sha256": "sha256:5a6ec7cba56782a2e93f8d24ff13feaa470d61f7de8d044aff77061cbc8c06fe"
+            "sha256": "sha256:4a360b3288bd3190546d3d2b016517f4920f98721abe7efd00d240c7f59a7fb0"
           },
           "aarch64-macos": {
             "name": "irodori-extension-iceberg-aarch64-macos.tar.gz",
-            "sha256": "sha256:9f9f532b0c76e3972aeba044eac73618a5f84630c8fb2673e49d7c3ad40278e7"
+            "sha256": "sha256:97fb135877752e98d77991d6c30d02ad8f62ba7635717660a6620bd39f406d2a"
           },
           "aarch64-windows": {
             "name": "irodori-extension-iceberg-aarch64-windows.tar.gz",
-            "sha256": "sha256:30d4ac65a5bf16a617c96b98d011ec0bcd146853c90fef9f10bf002382b4eb83"
+            "sha256": "sha256:be50cc90cbc356db5a688c6872505744d8c1889ae57c306406101ab31d2003f5"
           },
           "x86_64-linux": {
             "name": "irodori-extension-iceberg.tar.gz",
-            "sha256": "sha256:2859185a903c6ebcf9eda232902567a4e6a6cd93b3b28b41a64fcd2ce00bb7db"
+            "sha256": "sha256:99224b54178a63a19fb43d8da1b25f987383138caba5f321117b753207b9f404"
           },
           "x86_64-macos": {
             "name": "irodori-extension-iceberg-x86_64-macos.tar.gz",
-            "sha256": "sha256:0f721b1046934a0672c8e353bd225d708e5b78a41b68719d7e123e186af99728"
+            "sha256": "sha256:16111139ee24e7e3474219426798a482c32c73d12cbf389cda9ebe2fe01df91c"
           },
           "x86_64-windows": {
             "name": "irodori-extension-iceberg-x86_64-windows.tar.gz",
-            "sha256": "sha256:2ff3d686f80eeb714dade94f265ac624cc3083d50975cfd8eceaee1ac80af968"
+            "sha256": "sha256:067db1ecd345b895854beacdec239f4c334ab4b38029bf1ea06bd24f5d174ee3"
           }
         }
       }
