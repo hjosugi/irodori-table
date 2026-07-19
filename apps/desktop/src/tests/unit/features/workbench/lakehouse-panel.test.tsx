@@ -123,4 +123,3 @@ describe("LakehousePanel context menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 });
-
