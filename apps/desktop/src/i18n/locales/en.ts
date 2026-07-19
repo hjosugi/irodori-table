@@ -351,6 +351,7 @@ export const en = {
   "ai.provider.model": "Model",
   "ai.provider.settings": "Provider settings",
   "ai.provider.apiKey": "API key",
+  "ai.provider.apiKeyPlaceholder": "sk-… (saved to your OS keychain)",
   "ai.provider.kind": "Kind",
   "ai.provider.endpoint": "Endpoint",
   "ai.provider.program": "Program",

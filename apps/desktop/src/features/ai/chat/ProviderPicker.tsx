@@ -298,7 +298,7 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           <input
             type="password"
             value={apiKey}
-            placeholder="sk-… (kept in memory only)"
+            placeholder={t("ai.provider.apiKeyPlaceholder")}
             onChange={(e) => setApiKey(e.target.value)}
           />
         </label>

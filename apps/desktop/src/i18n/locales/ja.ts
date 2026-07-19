@@ -355,6 +355,7 @@ export const ja = {
   "ai.provider.model": "モデル",
   "ai.provider.settings": "プロバイダ設定",
   "ai.provider.apiKey": "API キー",
+  "ai.provider.apiKeyPlaceholder": "sk-…（OS のキーチェーンに保存されます）",
   "ai.provider.kind": "種別",
   "ai.provider.endpoint": "エンドポイント",
   "ai.provider.program": "プログラム",
