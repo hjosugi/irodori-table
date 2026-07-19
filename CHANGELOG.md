@@ -16,6 +16,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.42] - 2026-07-19
+
+### Fixed
+
+- Replace All no longer corrupts documents: an out-of-range `$n` group
+  reference spliced the entire buffer into every match, across every open tab.
+- Backend errors show their real message instead of `[object Object]` —
+  extension installs, plan explanations, row-detail queries, migration studio,
+  snippets import, security settings, schema diagram, and knowledge refresh
+  were all affected.
+- Query history records again on fresh profiles, and the result memory budget
+  starts at its intended 10,000 rows instead of 1,000. Both were the same
+  absent-key-read-as-zero defect, now fixed once in a shared parser.
+- Primary buttons are readable in every dark theme; contrast was as low as
+  1.5:1. The light default's line-number gutter also now meets WCAG AA.
+- The Run options menu, the editor tab "..." menu, and the Lakehouse context
+  menu render on screen; each was clipped or displaced by a dock container.
+- Copy as Excel copies the HTML table instead of an empty string.
+- Closing one sidebar no longer resizes the other or loses its stored width.
+- The Git panel loads when opened from the sidebar tab, and its repository
+  path controls stay visible when no repository has resolved.
+- The Structure view renders its separators instead of literal `\u00b7` text.
+- The editor context menu is translated (15 of 16 items stayed English).
+
+### Changed
+
+- New default themes, Irodori Bloom and Bloom Paper, built from the app icon's
+  palette with a real accent hue and verified WCAG AA contrast.
+- One typographic scale anchored on the menu bar size; 182 hardcoded font
+  sizes migrated to tokens.
+- Sidebar view tabs default to icons only on a single row; text labels are a
+  new setting under Settings > General.
+- The transport toggle renders as a proper segmented control with a visible
+  active state.
+- Editor tabs keep a readable minimum width and scroll instead of shrinking to
+  one character; the new-tab and tab-actions buttons gained separation and a
+  larger hit target.
+- The settings dialog is wider, and narrowed sidebars collapse to a compact
+  state instead of hiding their content.
+
+### Added
+
+- Lakehouse connections are configured in the connection form: catalog,
+  warehouse, region, and credential fields per engine.
+- View tabs can be dragged between the left and right sidebars.
+- SQL snippets are searchable and taggable, and collapse to summaries.
+- Keyboard shortcuts are visibly editable in the keymap settings.
+- Settings > General > Reset layout restores the default panel arrangement.
+- A user guide in docs/ covering every feature area, with a lakehouse
+  zero-to-connection walkthrough and Git panel setup.
+- Japanese translations for the connection form (86 field labels) and other
+  previously untranslated surfaces.
+
 ## [0.7.41] - 2026-07-19
 
 ### Fixed
