@@ -5,7 +5,6 @@ export const queryHistoryMaxItemsDefault = 200;
 export const queryHistoryMaxItemsHardLimit = 500;
 export const queryHistoryResultRowsDefault = 50;
 export const queryHistoryResultRowsHardLimit = 500;
-export const maxQueryHistoryItems = queryHistoryMaxItemsHardLimit;
 export const queryHistoryDisplayLimit = 25;
 const queryHistoryStorageKey = "irodori.queryHistory.v1";
 const queryHistoryMaxItemsStorageKey = "irodori.queryHistory.maxItems.v1";

@@ -1,4 +1,5 @@
 import { BarChart3, X } from "lucide-react";
+import { usePreferencesStore } from "@/features/preferences";
 import type { QueryResultSet } from "@/generated/irodori-api";
 import { buildBiResultSummary } from "../bi-result";
 import type { ChartResultModel } from "../chart-result";
@@ -19,7 +20,8 @@ export function BiPanel({
   onOpenChartMode,
   onClose,
 }: BiPanelProps) {
-  const summary = buildBiResultSummary(result, chartModel);
+  const locale = usePreferencesStore((state) => state.locale);
+  const summary = buildBiResultSummary(result, chartModel, locale);
   const visibleProfiles = summary?.profiles.slice(0, 12) ?? [];
   const hiddenProfileCount = summary
     ? Math.max(0, summary.profiles.length - visibleProfiles.length)
@@ -76,7 +78,7 @@ export function BiPanel({
               ))}
               {hiddenProfileCount > 0 ? (
                 <div className="bi-field-more">
-                  +{hiddenProfileCount.toLocaleString()} more fields
+                  +{hiddenProfileCount.toLocaleString(locale)} more fields
                 </div>
               ) : null}
             </div>

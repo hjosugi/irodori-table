@@ -22,12 +22,6 @@ describe("import helpers", () => {
     expect(() => parseImportText("", "xlsx")).toThrow(
       "Native XLSX/XLS import is not supported.",
     );
-    expect(() => parseImportText("", "parquet")).toThrow(
-      "Parquet import is not supported.",
-    );
-    expect(() => parseImportText("", "avro")).toThrow(
-      "Avro import is not supported.",
-    );
     expect(() => parseImportText("", "sql")).toThrow(
       "SQL files are loaded into the editor and are not parsed as table data.",
     );

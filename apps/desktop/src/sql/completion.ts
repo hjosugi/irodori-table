@@ -755,6 +755,10 @@ function defaultSqlSnippetVariables(
 ): Readonly<Record<string, string | undefined>> {
   const now = new Date();
   const random = Math.floor(Math.random() * 1_000_000);
+  // The day/month names below deliberately use the OS locale (no explicit
+  // locale tag): these variables expand into SQL document text, mirroring
+  // VS Code's snippet variables, so they follow the user's system conventions
+  // rather than the app UI language. See #169.
   return {
     CURRENT_DATE: padDatePart(now.getDate()),
     CURRENT_DAY_NAME: now.toLocaleDateString(undefined, { weekday: "long" }),

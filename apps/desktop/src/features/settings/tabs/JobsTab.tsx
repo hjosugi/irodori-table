@@ -1,9 +1,11 @@
 import { AlertTriangle, XCircle } from "lucide-react";
+import { usePreferencesStore } from "@/features/preferences";
 import type { JobList, JobSummary } from "../../../generated/irodori-api";
 import type { TranslateFn } from "./shared";
 
-function toCount(value: bigint | number) {
-  return Number(value).toLocaleString();
+/** Format in the app locale (not the OS locale). */
+function toCount(value: bigint | number, locale: string) {
+  return Number(value).toLocaleString(locale);
 }
 
 function formatJobKind(kind: JobSummary["kind"]) {
@@ -23,7 +25,7 @@ function formatJobKind(kind: JobSummary["kind"]) {
   }
 }
 
-function formatJobTime(value?: bigint) {
+function formatJobTime(value: bigint | undefined, locale: string) {
   if (value === undefined) {
     return "-";
   }
@@ -31,7 +33,7 @@ function formatJobTime(value?: bigint) {
   if (Number.isNaN(date.getTime())) {
     return "-";
   }
-  return date.toLocaleString([], {
+  return date.toLocaleString(locale, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -39,13 +41,13 @@ function formatJobTime(value?: bigint) {
   });
 }
 
-function formatJobProgress(job: JobSummary) {
+function formatJobProgress(job: JobSummary, locale: string) {
   const progress = job.progress;
   if (progress.total !== undefined) {
-    return `${toCount(progress.completed)} / ${toCount(progress.total)} ${progress.unit}`;
+    return `${toCount(progress.completed, locale)} / ${toCount(progress.total, locale)} ${progress.unit}`;
   }
   if (progress.completed > 0n) {
-    return `${toCount(progress.completed)} ${progress.unit}`;
+    return `${toCount(progress.completed, locale)} ${progress.unit}`;
   }
   return progress.message ?? "Waiting";
 }
@@ -67,6 +69,7 @@ export function JobsTab({
   refreshJobs,
   cancelJob,
 }: JobsTabProps) {
+  const locale = usePreferencesStore((state) => state.locale);
   return (
     <div className="settings-jobs">
       <div className="settings-json-toolbar">
@@ -102,7 +105,7 @@ export function JobsTab({
                   <strong>{job.title}</strong>
                   <small>
                     {formatJobKind(job.kind)} · {job.status} ·{" "}
-                    {formatJobProgress(job)}
+                    {formatJobProgress(job, locale)}
                   </small>
                   {job.progress.percent !== undefined ? (
                     <div className="job-progress">
@@ -149,7 +152,7 @@ export function JobsTab({
                   <strong>{job.title}</strong>
                   <small>
                     {formatJobKind(job.kind)} · {job.status} ·{" "}
-                    {formatJobTime(job.finishedAtMs ?? job.updatedAtMs)}
+                    {formatJobTime(job.finishedAtMs ?? job.updatedAtMs, locale)}
                   </small>
                   {job.error ? (
                     <small className="job-error">{job.error.message}</small>

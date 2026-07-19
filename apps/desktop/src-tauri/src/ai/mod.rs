@@ -73,8 +73,11 @@ pub enum AiProviderKind {
     Command,
 }
 
-/// Provider selection. `apiKey` is held in memory only and never returned by
-/// `ai_get_provider`; persist it via the OS keychain (`security_store_secret`).
+/// Provider selection. `apiKey` is write-only from the frontend's point of
+/// view: `ai_set_provider` persists it to the OS keychain itself (the JSON
+/// config on disk never contains it), `ai_get_provider` always returns the
+/// config with the key stripped, and a blank key on save leaves the stored key
+/// untouched. Callers must not persist the key separately.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]

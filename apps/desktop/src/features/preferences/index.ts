@@ -7,6 +7,7 @@ export {
   UI_ZOOM_MAX,
   UI_ZOOM_MIN,
   UI_ZOOM_STEP,
+  currentAppLocale,
   normalizeEditorBackgroundOpacity,
   normalizeUiZoom,
   usePreferencesStore,

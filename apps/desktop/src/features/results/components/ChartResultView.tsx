@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import { ColorPickerButton } from "@/components/ColorPicker";
+import { usePreferencesStore } from "@/features/preferences";
 import {
   buildChartResultSeries,
   chartSelectionIsValid,
@@ -164,6 +165,7 @@ function ChartToolbar({
   onOpenWindow?: () => void;
   onCloseWindow?: () => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
   return (
     <div
       className={
@@ -312,9 +314,9 @@ function ChartToolbar({
         </select>
       </label>
       <span>
-        {model.sampledRows.toLocaleString()} rows
+        {model.sampledRows.toLocaleString(locale)} rows
         {model.truncated
-          ? ` sampled of ${model.sourceRows.toLocaleString()}`
+          ? ` sampled of ${model.sourceRows.toLocaleString(locale)}`
           : ""}
         {series.truncated ? " · series limited" : ""}
       </span>

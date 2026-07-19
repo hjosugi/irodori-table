@@ -135,7 +135,15 @@ export function sqlMetadataTargetTitle(target: SqlMetadataTarget): string {
   return qualifiedObjectName(target.object);
 }
 
-export function sqlMetadataTargetSubtitle(target: SqlMetadataTarget): string {
+/**
+ * One-line hover subtitle. `locale` selects the number formatting for the row
+ * estimate (pass the app locale; the OS locale is the `undefined` default of
+ * `toLocaleString`, which is not what the UI language promises).
+ */
+export function sqlMetadataTargetSubtitle(
+  target: SqlMetadataTarget,
+  locale?: string,
+): string {
   if (target.kind === "column") {
     const flags = [
       target.column.dataType,
@@ -153,7 +161,7 @@ export function sqlMetadataTargetSubtitle(target: SqlMetadataTarget): string {
   const rowEstimate =
     target.object.rowEstimate === undefined
       ? null
-      : `~${target.object.rowEstimate.toLocaleString()} rows`;
+      : `~${target.object.rowEstimate.toLocaleString(locale)} rows`;
   return [target.object.kind, rowEstimate].filter(Boolean).join(" · ");
 }
 

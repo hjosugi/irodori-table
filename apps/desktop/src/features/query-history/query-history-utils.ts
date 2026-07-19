@@ -47,17 +47,18 @@ export function formatHistoryDateTime(
   });
 }
 
-export function toCount(value: bigint | number) {
-  return Number(value).toLocaleString();
+/** Format a count in the app locale (not the OS locale). */
+export function toCount(value: bigint | number, locale?: string) {
+  return Number(value).toLocaleString(locale);
 }
 
-export function formatHistoryOutcome(item: QueryHistoryItem) {
+export function formatHistoryOutcome(item: QueryHistoryItem, locale?: string) {
   if (item.status === "error") {
     return item.error ? compactSql(item.error, 72) : "failed";
   }
-  return `${toCount(item.rowCount)} rows${
+  return `${toCount(item.rowCount, locale)} rows${
     item.truncated ? " capped" : ""
-  } · ${toCount(item.elapsedMs)} ms`;
+  } · ${toCount(item.elapsedMs, locale)} ms`;
 }
 
 export function historySearchText(

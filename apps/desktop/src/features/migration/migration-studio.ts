@@ -75,13 +75,12 @@ export const migrationEngineOptions: Array<{
 
 export const migrationOutputTabs: Array<{
   value: MigrationOutputKind;
-  label: string;
 }> = [
-  { value: "overview", label: "Plan" },
-  { value: "source", label: "Source SQL" },
-  { value: "target", label: "Target SQL" },
-  { value: "diff", label: "Diff SQL" },
-  { value: "runbook", label: "Runbook" },
+  { value: "overview" },
+  { value: "source" },
+  { value: "target" },
+  { value: "diff" },
+  { value: "runbook" },
 ];
 
 export const defaultMigrationDraft: MigrationDraft = {

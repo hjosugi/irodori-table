@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { ActionNotice } from "@/app/ActionToast";
+import { isMac } from "@/core/platform";
 import type { ConfirmOptions } from "@/components/ConfirmDialog";
 import { queryService } from "@/features/workbench";
 import type { WindowedRows } from "@/features/results";
@@ -10,10 +11,7 @@ function isPrimaryRefreshShortcut(event: KeyboardEvent) {
   if (!isRKey || event.altKey || event.shiftKey) {
     return false;
   }
-  const mac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-  return mac
+  return isMac
     ? event.metaKey && !event.ctrlKey
     : event.ctrlKey && !event.metaKey;
 }

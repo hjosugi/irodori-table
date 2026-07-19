@@ -3,6 +3,7 @@ import {
   createTranslator,
   interpolate,
   normalizeLocale,
+  splitTranslation,
   translate,
 } from "@/i18n";
 
@@ -72,6 +73,17 @@ describe("i18n core", () => {
       }),
     ).toBe("orders から 2 行を削除しますか？");
     expect(translator.t("rowDetail.mode.tree")).toBe("ツリー");
+  });
+
+  it("splits a template around a placeholder for JSX interpolation", () => {
+    const { t } = createTranslator("en");
+
+    expect(splitTranslation(t, "ai.generate.notCompiled", "flag")).toEqual([
+      "AI generation is not compiled into this ",
+      " build.",
+    ]);
+    // A template without the slot keeps the whole sentence readable.
+    expect(splitTranslation(t, "common.save", "flag")).toEqual(["Save", ""]);
   });
 
   it("interpolates Japanese translations", () => {

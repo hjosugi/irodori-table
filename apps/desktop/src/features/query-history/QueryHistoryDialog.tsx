@@ -78,7 +78,9 @@ export function QueryHistoryDialog({
     const count = historyDialogItems.length;
     if (
       !(await confirm({
-        title: t("history.confirmClear.title", { count: toCount(count) }),
+        title: t("history.confirmClear.title", {
+          count: toCount(count, locale),
+        }),
         message: t("confirm.cannotUndo"),
         confirmLabel: t("common.delete"),
         tone: "danger",
@@ -100,8 +102,8 @@ export function QueryHistoryDialog({
         <strong>{t("history.title")}</strong>
         <span>
           {t("history.visibleSaved", {
-            saved: toCount(items.length),
-            visible: toCount(historyDialogItems.length),
+            saved: toCount(items.length, locale),
+            visible: toCount(historyDialogItems.length, locale),
           })}
         </span>
         <button className="text-button" type="button" onClick={closeDialog}>
@@ -165,7 +167,7 @@ export function QueryHistoryDialog({
           className="history-results"
           role="listbox"
           aria-label={t("history.entries", {
-            count: toCount(historyDialogItems.length),
+            count: toCount(historyDialogItems.length, locale),
           })}
         >
           {historyDialogItems.length > 0 ? (
@@ -191,7 +193,7 @@ export function QueryHistoryDialog({
                   </span>
                   <span className="history-row-meta">
                     <span>{formatHistoryDateTime(item.ranAt, locale)}</span>
-                    <span>{formatHistoryOutcome(item)}</span>
+                    <span>{formatHistoryOutcome(item, locale)}</span>
                   </span>
                 </button>
               );
@@ -224,7 +226,7 @@ export function QueryHistoryDialog({
                     {formatHistoryDateTime(selectedHistoryItem.ranAt, locale)}
                   </span>
                   <span className="history-chip">
-                    {formatHistoryOutcome(selectedHistoryItem)}
+                    {formatHistoryOutcome(selectedHistoryItem, locale)}
                   </span>
                 </div>
                 <div className="history-detail-actions">
@@ -313,6 +315,7 @@ function HistoryResultPreview({
   item: QueryHistoryItem;
   t: Translator["t"];
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
   const result = item.result;
   if (!result) {
     return null;
@@ -327,8 +330,8 @@ function HistoryResultPreview({
         <strong>{t("history.savedResult")}</strong>
         <span>
           {t("history.retainedRows", {
-            retained: toCount(result.retainedRows),
-            rows: toCount(result.rowCount),
+            retained: toCount(result.retainedRows, locale),
+            rows: toCount(result.rowCount, locale),
           })}
           {result.retentionTruncated ? ` ${t("history.retained")}` : ""}
         </span>
@@ -358,7 +361,7 @@ function HistoryResultPreview({
       {result.retainedRows > displayRows.length ? (
         <small>
           {t("history.showingRetainedRows", {
-            count: toCount(displayRows.length),
+            count: toCount(displayRows.length, locale),
           })}
         </small>
       ) : null}

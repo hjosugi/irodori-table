@@ -148,6 +148,29 @@ export interface Translator {
   t: (key: TranslationKey, values?: InterpolationValues) => string;
 }
 
+/**
+ * Resolve a template and split it around its `{placeholder}` slot so a caller
+ * can render a JSX element (e.g. `<code>`) in the middle of a translated
+ * sentence — `interpolate` can only splice strings. This keeps word order
+ * under the locale's control instead of gluing hardcoded `before`/`after` key
+ * fragments around the element (the pattern that both dropped whitespace and
+ * broke Japanese word order). If the template lacks the slot, the whole
+ * sentence lands in `before`.
+ */
+export function splitTranslation(
+  t: Translator["t"],
+  key: TranslationKey,
+  placeholder: string,
+): [before: string, after: string] {
+  const template = t(key);
+  const token = `{${placeholder}}`;
+  const index = template.indexOf(token);
+  if (index === -1) {
+    return [template, ""];
+  }
+  return [template.slice(0, index), template.slice(index + token.length)];
+}
+
 export function createTranslator(
   locale: LocaleInput = defaultLocale,
   fallbackLocale: SupportedLocale = defaultLocale,

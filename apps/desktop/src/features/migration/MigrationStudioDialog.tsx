@@ -83,11 +83,7 @@ export function MigrationStudioDialog({
 
   const plan = planState.plan;
   const outputText = migrationOutputText(plan, activeOutput, t);
-  const outputLabel = t(
-    migrationOutputTabs.some((tab) => tab.value === activeOutput)
-      ? migrationOutputTabKeys[activeOutput]
-      : "migration.output.default",
-  );
+  const outputLabel = t(migrationOutputTabKeys[activeOutput]);
   const editorButtonLabel =
     activeOutput === "overview" || activeOutput === "runbook"
       ? t("migration.actions.putText")

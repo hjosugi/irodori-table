@@ -5,6 +5,10 @@
 // default map feels native on both. User overrides are stored per command id in
 // localStorage and merged over the defaults.
 
+import { isMac } from "./platform";
+
+export { isMac } from "./platform";
+
 export type Keymap = Record<string, string>;
 export type KeybindingScope = "global" | "editor" | "grid";
 export type VimKeybindingConflictResolution = "suggested" | "unset" | "keep";
@@ -22,10 +26,6 @@ export const keybindingScopes: readonly KeybindingScope[] = [
 export const KEY_SEQUENCE_TIMEOUT_MS = 1200;
 
 const STORAGE_KEY = "irodori.keymap.overrides";
-
-export const isMac =
-  typeof navigator !== "undefined" &&
-  /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 
 /** Command ids the app knows how to run, paired with a human label + category. */
 export interface CommandMeta {

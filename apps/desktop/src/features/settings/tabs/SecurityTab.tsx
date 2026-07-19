@@ -13,6 +13,7 @@ import {
   type PasskeyAvailability,
   type PasskeyCredentialRecord,
 } from "@/features/security";
+import { usePreferencesStore } from "@/features/preferences";
 import type { BooleanUpdater, TranslateFn } from "./shared";
 import { errorMessage } from "@/core";
 
@@ -37,13 +38,14 @@ export function SecurityTab({
   const [busy, setBusy] = useState<"setup" | "verify" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const locale = usePreferencesStore((state) => state.locale);
   const passkeyReady = availability?.supported === true;
   const createdAt = passkeyCredential
     ? new Date(passkeyCredential.createdAt)
     : null;
   const createdLabel =
     createdAt && Number.isFinite(createdAt.getTime())
-      ? createdAt.toLocaleString()
+      ? createdAt.toLocaleString(locale)
       : null;
 
   useEffect(() => {
