@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { parseStoredNumber } from "@/core";
 import {
   defaultWorkbenchViewHidden,
   defaultWorkbenchViewVisibility,
@@ -95,12 +96,10 @@ function loadStoredNumber(
   min: number,
   max: number,
 ) {
-  const raw = window.localStorage.getItem(key);
-  if (raw === null) {
-    return fallback;
-  }
-  const stored = Number(raw);
-  return Number.isFinite(stored) ? clampNumber(stored, min, max) : fallback;
+  // parseStoredNumber also treats "" as absent, which the raw === null guard
+  // here missed - Number("") is 0, the same trap as Number(null) (#166).
+  const stored = parseStoredNumber(window.localStorage.getItem(key));
+  return stored === null ? fallback : clampNumber(stored, min, max);
 }
 
 function loadSidebarOpen() {

@@ -28,3 +28,4 @@ export {
   isIrodoriError,
   isRetryableError,
 } from "./errors";
+export { parseStoredNumber } from "./storage";
