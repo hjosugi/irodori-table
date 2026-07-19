@@ -47,7 +47,6 @@ type WorkbenchShellProps = {
   editorSplitPercent: number;
   workspaceMenuOpen?: boolean;
   menuBarSections: readonly AppMenuSection[];
-  workspaceMenuSections?: readonly AppMenuSection[];
   commandCatalog: readonly CommandMeta[];
   keymap: Keymap;
   activeConnectionName: string;

@@ -529,58 +529,6 @@ export function localizeMenuSections(
   });
 }
 
-export const workspaceMenuSections: AppMenuSection[] = [
-  {
-    label: "Workspace",
-    items: [
-      { commandId: "palette.open" },
-      { commandId: "connection.manager" },
-      { commandId: "migration.studio" },
-      { commandId: "git.open" },
-    ],
-  },
-  {
-    label: "Edit",
-    items: [
-      { commandId: "editor.quickFix" },
-      { commandId: "editor.cleanup" },
-      { commandId: "editor.format" },
-      { commandId: "editor.transform.unformat" },
-      { commandId: "editor.comment.toggle" },
-      { commandId: "editor.indent" },
-      { commandId: "editor.outdent" },
-    ],
-  },
-  {
-    label: "View",
-    items: [
-      { commandId: "editor.quickDefinition" },
-      { commandId: "view.sidebar.toggle" },
-      { commandId: "view.completion.toggle" },
-      { commandId: "view.history.toggle" },
-      { commandId: "view.plan.toggle" },
-      { commandId: "view.bi.toggle" },
-      { commandId: "view.zoomIn" },
-      { commandId: "view.zoomOut" },
-      { commandId: "view.zoomReset" },
-    ],
-  },
-  {
-    label: "Preferences",
-    items: [
-      { commandId: "settings.open" },
-      { commandId: "settings.keymap" },
-      { commandId: "settings.extensions" },
-      { commandId: "app.update.check" },
-      { commandId: "theme.toggle" },
-    ],
-  },
-  {
-    label: "Help",
-    items: [{ commandId: "help.open" }, { commandId: "about.open" }],
-  },
-];
-
 export const menuBarSections: AppMenuSection[] = [
   {
     label: "File",

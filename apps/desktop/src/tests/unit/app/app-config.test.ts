@@ -5,9 +5,9 @@ import {
   fallbackSnapshot,
   initialQuery,
   loadSavedQuery,
+  menuBarSections,
   resultCopyDefaultKeymap,
   savedQueryStorageKey,
-  workspaceMenuSections,
 } from "@/app/app-config";
 import { defaultKeymap } from "@/core/keybindings";
 
@@ -61,12 +61,12 @@ describe("app command config", () => {
     }
   });
 
-  it("only references known commands from the workspace menu", () => {
+  it("only references known commands from the menu bar", () => {
     const catalogIds = new Set(
       appMenuCommandCatalog.map((command) => command.id),
     );
 
-    for (const section of workspaceMenuSections) {
+    for (const section of menuBarSections) {
       expect(section.items.length, section.label).toBeGreaterThan(0);
       for (const item of section.items) {
         expect(catalogIds.has(item.commandId), item.commandId).toBe(true);
