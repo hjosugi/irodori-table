@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.43] - 2026-07-19
+
+### Fixed
+
+- The schema diagram's "Create DB SQL" emits indexes again; they were silently
+  dropped from the generated script while the equivalent table-spec path kept
+  them.
+- Local branches containing a slash (feature/login) are no longer classified as
+  remote: they stay visible with "Show remote branches" unchecked, filter as
+  branches, and lose the remote badge styling.
+- The primary-key checkbox in the schema designer's Alter mode is disabled with
+  an explanation instead of silently doing nothing.
+- Commit dates in the Git graph and query history show the year for entries
+  from previous years, and follow the app language instead of the OS locale.
+- CSV import keeps leading zeros: zero-padded values such as postal codes are
+  typed as text instead of being coerced to integers.
+
+### Accessibility
+
+- The settings JSON editor, snippet import box, connection search, Git branch
+  controls, and both connection-form toggles have real accessible names; the
+  editor tab list no longer announces the new-tab and menu buttons as tabs.
+- The connection dialog's Delete button is disabled when there is nothing to
+  delete, and a first run shows "No saved connections yet" instead of "No
+  matching connections".
+
 ## [0.7.42] - 2026-07-19
 
 ### Fixed
