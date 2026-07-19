@@ -489,9 +489,19 @@ export function ConnectionManagerDialog({
     onSelectProfile(profile);
   }
 
+  // Something must actually be deletable: either a multi-selection (pruned to
+  // saved profiles by the effect above) or a draft that matches a saved
+  // profile. Without this the footer's Delete asked to remove a connection
+  // that did not exist yet (#143).
+  const deleteTargetExists =
+    selectedIds.size > 0 || profiles.some((profile) => profile.id === draft.id);
+
   // Delete the multi-selection when present, otherwise the profile loaded in
   // the form. Always routed through the shared confirm dialog.
   function requestDeleteSelected() {
+    if (!deleteTargetExists) {
+      return;
+    }
     const ids = selectedIds.size > 0 ? Array.from(selectedIds) : [draft.id];
     const count = ids.length;
     const singleProfile = profiles.find((profile) => profile.id === ids[0]);
@@ -702,6 +712,7 @@ export function ConnectionManagerDialog({
               autoFocus
               value={search}
               placeholder={t("connection.searchPlaceholder")}
+              aria-label={t("connection.searchPlaceholder")}
               onChange={(event) => onSearchChange(event.currentTarget.value)}
             />
           </label>
@@ -726,7 +737,11 @@ export function ConnectionManagerDialog({
           {groupedProfiles.map(renderGroup)}
         </div>
         <div className="connection-picker-empty">
-          {profiles.length === 0 ? t("connection.noMatches") : null}
+          {profiles.length === 0
+            ? search.trim().length > 0
+              ? t("connection.noMatches")
+              : t("connection.emptyState")
+            : null}
         </div>
       </aside>
       <form className="connection-form" onSubmit={handleConnect}>
@@ -809,6 +824,7 @@ export function ConnectionManagerDialog({
             </label>
             <div
               className="mode-toggle form-toggle"
+              role="group"
               aria-label={t("connection.inputMode")}
             >
               <button
@@ -843,6 +859,7 @@ export function ConnectionManagerDialog({
               {socketSupported ? (
                 <div
                   className="connection-transport-toggle form-toggle"
+                  role="group"
                   aria-label={t("connection.transportMode")}
                 >
                   <button
@@ -998,6 +1015,7 @@ export function ConnectionManagerDialog({
           <button
             className="text-button danger"
             type="button"
+            disabled={!deleteTargetExists}
             onClick={requestDeleteSelected}
           >
             {selectedIds.size > 1

@@ -234,6 +234,8 @@ export const ja = {
   "git.refFilter.remotes": "リモート",
   "git.refFilter.tags": "タグ",
   "git.repoPathLabel": "リポジトリのパス",
+  "git.branchSelectLabel": "ブランチを切り替え",
+  "git.newBranchLabel": "新しいブランチ名",
   "git.actions.use": "使用",
   "git.actions.browse": "参照",
   "git.actions.create": "作成",
@@ -990,6 +992,8 @@ export const ja = {
   "connection.noPasswords": "パスワードは含まれません",
   "connection.searchPlaceholder": "接続を検索",
   "connection.noMatches": "一致する接続がありません",
+  "connection.emptyState":
+    "保存済みの接続はまだありません。「+」で追加できます。",
   "connection.newConnectionName": "新しい接続",
   "connection.name": "接続名",
   "connection.namePlaceholder": "接続の名前",

@@ -95,4 +95,14 @@ describe("SnippetsTab discoverability", () => {
     expect(screen.getByText("No snippets match your search")).toBeVisible();
     expect(openEditorCount()).toBe(0);
   });
+
+  // #138: the import box had only a placeholder, so its accessible name was
+  // the whole multi-line paste hint instead of what the control is for.
+  it("names the snippet import box after its heading, not its placeholder", () => {
+    renderTab();
+
+    expect(
+      screen.getByRole("textbox", { name: "Import snippets" }),
+    ).toBeVisible();
+  });
 });

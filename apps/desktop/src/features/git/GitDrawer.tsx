@@ -408,6 +408,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
           <div className="git-branch-row">
             <select
               value={status.branch}
+              aria-label={t("git.branchSelectLabel")}
               onChange={(event) =>
                 void onCheckoutBranch(event.currentTarget.value)
               }
@@ -422,6 +423,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
             <input
               value={branchDraft}
               placeholder="new-branch"
+              aria-label={t("git.newBranchLabel")}
               onChange={(event) => setBranchDraft(event.currentTarget.value)}
             />
             <button

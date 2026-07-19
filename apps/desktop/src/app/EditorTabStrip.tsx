@@ -85,17 +85,21 @@ export function EditorTabStrip({
   return (
     <div
       className="tab-strip editor-tab-strip"
-      role="tablist"
-      aria-label={t("editorTabs.strip")}
       onContextMenu={(event) => event.stopPropagation()}
     >
-      {/* Presentational so the tabs stay owned by the tablist above, while the
-          scrolling lives here and the actions below stay pinned. */}
-      <div className="tab-strip-scroll" role="presentation">
+      {/* The tablist is the scroll container: it holds exactly the tabs, so
+          the "+" and "..." action buttons below stay outside it — a tablist
+          may only expose tabs to assistive tech (#142). */}
+      <div
+        className="tab-strip-scroll"
+        role="tablist"
+        aria-label={t("editorTabs.strip")}
+      >
         {openTabs.map((tab) => (
           <div
             className={tab.id === state.activeTabId ? "tab active" : "tab"}
             key={tab.id}
+            role="presentation"
             ref={tab.id === state.activeTabId ? activeTabRef : undefined}
           >
             <button
@@ -143,7 +147,7 @@ export function EditorTabStrip({
           </div>
         ))}
       </div>
-      <div className="tab-strip-actions" role="presentation">
+      <div className="tab-strip-actions">
         <button
           className="mini-button"
           type="button"

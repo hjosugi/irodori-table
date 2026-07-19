@@ -286,6 +286,7 @@ export function SnippetsTab({
           value={importDraft}
           spellCheck={false}
           placeholder={t("settings.snippets.importPlaceholder")}
+          aria-label={t("settings.snippets.importTitle")}
           onChange={(event) => {
             setImportDraft(event.currentTarget.value);
             setImportSourceName("");
