@@ -96,13 +96,15 @@ export function RowDetailSidebar(props: RowDetailSidebarProps) {
               : t("rowDetail.noRowSelected")}
           </span>
         </div>
+        {/* Always enabled: `onClose` dismisses the panel as well as clearing
+            the selection, so gating it on a selected row left the panel with
+            no way out once it was opened without one. */}
         <button
           type="button"
           className="row-detail-close"
           onClick={props.onClose}
-          aria-label={t("rowDetail.clearSelection")}
-          title={t("rowDetail.clearSelection")}
-          disabled={!rowSelected}
+          aria-label={t("rowDetail.close")}
+          title={t("rowDetail.close")}
         >
           <X size={14} />
         </button>

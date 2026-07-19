@@ -112,6 +112,38 @@
   white-space: normal;
 }
 
+/* A link-shaped affordance rather than a boxed control: the path stays the
+   readable content of the row, it just becomes clickable. */
+.about-path-button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  background: none;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.about-path-button svg {
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+.about-path-button:hover,
+.about-path-button:focus-visible {
+  text-decoration: underline;
+}
+
+.about-path-status {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
 .about-help {
   display: flex;
   align-items: flex-start;

@@ -54,6 +54,7 @@ type WorkbenchShellProps = {
   activeConnectionEngine: string;
   activeConnectionColor: string;
   activeConnectionStatus: string;
+  activeConnectionOpen: boolean;
   activeTransportLabel: string;
   vimMode: boolean;
   queryLineCount: number;
@@ -154,6 +155,7 @@ export function WorkbenchShell({
   activeConnectionEngine,
   activeConnectionColor,
   activeConnectionStatus,
+  activeConnectionOpen,
   activeTransportLabel,
   vimMode,
   queryLineCount,
@@ -790,9 +792,18 @@ export function WorkbenchShell({
       <footer className="statusbar">
         <div className="statusbar-group statusbar-left">
           <span className="statusbar-item statusbar-connection">
+            {/* Next to the connection state this dot reads as a status light,
+                not as the profile's color tag, so it only carries the profile
+                color while the connection is actually open; CSS greys it out
+                otherwise. */}
             <span
               className="connection-color-dot"
-              style={{ background: activeConnectionColor }}
+              data-connected={activeConnectionOpen ? "true" : "false"}
+              style={
+                activeConnectionOpen
+                  ? { background: activeConnectionColor }
+                  : undefined
+              }
               aria-hidden="true"
             />
             {activeConnectionStatus}

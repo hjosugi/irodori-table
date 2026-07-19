@@ -465,7 +465,7 @@ export const en = {
   "rowDetail.title": "Row Detail",
   "rowDetail.fieldsCount": "{count} fields",
   "rowDetail.noRowSelected": "No row selected",
-  "rowDetail.clearSelection": "Clear row selection",
+  "rowDetail.close": "Close row detail",
   "rowDetail.view": "Row detail view",
   "rowDetail.mode.fields": "Fields",
   "rowDetail.mode.json": "JSON",
@@ -924,6 +924,8 @@ export const en = {
   "about.runtime": "Runtime",
   "about.activeConnection": "Active connection",
   "about.logDirectory": "Log directory",
+  "about.openLogDirectory": "Show log directory in file manager",
+  "about.logDirectoryCopied": "Log directory path copied",
   "about.previousCrash": "Previous crash",
   "about.crashHelp":
     "A local crash report from the previous launch is staged on disk. Review and redact it before sharing; Irodori does not upload crash reports automatically.",

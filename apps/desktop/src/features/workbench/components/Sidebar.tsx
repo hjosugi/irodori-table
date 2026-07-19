@@ -22,10 +22,10 @@ import {
   Layers3,
   ListPlus,
   MoreHorizontal,
+  Network,
   Plus,
   RefreshCw,
   Search,
-  Share2,
   Table2,
   TableProperties,
   TerminalSquare,
@@ -971,7 +971,10 @@ export function Sidebar({
                     disabled={!hasDiagram(activeMetadata)}
                     onClick={onOpenDiagram}
                   >
-                    <Share2 size={14} />
+                    {/* Linked rectangles, not linked circles: the Share2 glyph
+                        this replaces was indistinguishable from the GitBranch
+                        icon on the view switcher right above it. */}
+                    <Network size={14} />
                   </button>
                   <button
                     type="button"

@@ -283,6 +283,9 @@ export function ProviderPicker({ notify }: ProviderPickerProps) {
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
           title={t("ai.provider.settings")}
+          // Without this the accessible name is the bare glyph, because text
+          // content outranks `title`.
+          aria-label={t("ai.provider.settings")}
         >
           {expanded ? "▾" : "⚙"}
         </button>

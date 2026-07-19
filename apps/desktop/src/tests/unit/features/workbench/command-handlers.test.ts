@@ -13,6 +13,7 @@ function createHandler(calls: string[]) {
     openHistory: () => calls.push("history"),
     openGit: () => calls.push("git"),
     openHelp: () => calls.push("help"),
+    openAbout: () => calls.push("about"),
     openDeveloperTools: () => calls.push("devtools"),
     openConnectionManager: () => calls.push("connections"),
     openMigrationStudio: () => calls.push("migration"),
@@ -141,6 +142,16 @@ describe("createWorkbenchCommandHandler", () => {
       "migration",
       "query-cancel",
     ]);
+  });
+
+  it("keeps Help and About on separate handlers", () => {
+    const calls: string[] = [];
+    const runCommand = createHandler(calls);
+
+    runCommand("help.open");
+    runCommand("about.open");
+
+    expect(calls).toEqual(["help", "about"]);
   });
 
   it("routes editor transform commands", () => {

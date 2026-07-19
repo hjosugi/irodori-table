@@ -485,16 +485,31 @@
 }
 
 .extension-search {
+  /* Three cells for three children. With only two columns declared the refresh
+     button wrapped into an implicit second row and, because the field height is
+     fixed, spilled over the marketplace source line below it. */
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   height: var(--control-md);
-  padding: 0 10px;
+  padding: 0 3px 0 10px;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   color: var(--muted);
   background: var(--input-bg);
+}
+
+/* Sits flush inside the field, so it stays clear of the field's own border. */
+.extension-search .icon-button {
+  width: calc(var(--control-md) - 6px);
+  height: calc(var(--control-md) - 6px);
+  border: 0;
+  background: transparent;
+}
+
+.extension-search .icon-button:hover:not(:disabled) {
+  background: var(--hover);
 }
 
 .extension-search input {

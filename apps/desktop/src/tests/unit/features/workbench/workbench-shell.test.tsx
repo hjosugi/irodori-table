@@ -40,6 +40,7 @@ function renderShell(
     activeConnectionEngine: "PostgreSQL",
     activeConnectionColor: "#8ac7a3",
     activeConnectionStatus: "connected",
+    activeConnectionOpen: true,
     activeTransportLabel: "Direct connection",
     vimMode: false,
     queryLineCount: 1,
@@ -87,6 +88,38 @@ describe("WorkbenchShell", () => {
     expect(shell?.style.getPropertyValue("--right-sidebar-width")).toBe(
       "420px",
     );
+  });
+
+  it("drops the connection colour from the status dot while disconnected", () => {
+    renderShell({
+      activeConnectionOpen: false,
+      activeConnectionColor: "#2e7a56",
+      activeConnectionStatus: "Disconnected",
+    });
+
+    const dot = container.querySelector<HTMLElement>(
+      ".statusbar-connection .connection-color-dot",
+    );
+
+    // A green dot next to "Disconnected" reads as connected. The neutral
+    // colour comes from CSS keyed on this attribute, so the inline profile
+    // colour has to be absent for it to apply.
+    expect(dot?.dataset.connected).toBe("false");
+    expect(dot?.style.background).toBe("");
+  });
+
+  it("keeps the connection colour on the status dot while connected", () => {
+    renderShell({
+      activeConnectionOpen: true,
+      activeConnectionColor: "#2e7a56",
+    });
+
+    const dot = container.querySelector<HTMLElement>(
+      ".statusbar-connection .connection-color-dot",
+    );
+
+    expect(dot?.dataset.connected).toBe("true");
+    expect(dot?.style.background).not.toBe("");
   });
 
   it("opens a fallback context menu from empty workbench space", () => {
