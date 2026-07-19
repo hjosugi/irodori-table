@@ -282,13 +282,17 @@ function nextSqlTabLabel(state: EditorGroupState) {
 }
 
 function nextDuplicateLabel(state: EditorGroupState, label: string) {
-  const base = label.replace(/\.sql$/i, "") || "query";
+  // Keep the source tab's extension: labels route the buffer language
+  // (EDITOR-178), so duplicating `data.csv` must stay a `.csv` tab.
+  const match = /^(.*?)(\.[a-z0-9]+)?$/i.exec(label.trim());
+  const base = match?.[1] || "query";
+  const extension = match?.[2] ?? ".sql";
   const labels = new Set(state.tabs.map((tab) => tab.label));
   let index = 1;
-  let next = `${base}-copy.sql`;
+  let next = `${base}-copy${extension}`;
   while (labels.has(next)) {
     index += 1;
-    next = `${base}-copy-${index}.sql`;
+    next = `${base}-copy-${index}${extension}`;
   }
   return next;
 }

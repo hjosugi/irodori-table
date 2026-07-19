@@ -36,6 +36,9 @@ export type { EditorGroup, EditorSelection, EditorSelections };
 
 export interface QueryEditorPaneProps {
   activeTabLabel: string;
+  /** Per-group active tab labels; each routes its buffer's language (EDITOR-178). */
+  primaryTabLabel: string;
+  secondaryTabLabel: string;
   running: boolean;
   formatter: SqlFormatterId;
   primaryQuery: string;
@@ -85,6 +88,8 @@ export interface QueryEditorPaneProps {
 
 export function QueryEditorPane({
   activeTabLabel,
+  primaryTabLabel,
+  secondaryTabLabel,
   running,
   formatter,
   primaryQuery,
@@ -196,11 +201,13 @@ export function QueryEditorPane({
           activeEditorGroup={activeEditorGroup}
           primary={{
             query: primaryQuery,
+            tabLabel: primaryTabLabel,
             apiRef: editorApiRef,
             onQueryChange: onPrimaryQueryChange,
           }}
           secondary={{
             query: secondaryQuery,
+            tabLabel: secondaryTabLabel,
             apiRef: secondaryEditorApiRef,
             onQueryChange: onSecondaryQueryChange,
           }}

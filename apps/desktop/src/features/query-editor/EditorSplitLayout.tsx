@@ -22,6 +22,8 @@ import type { EditorGroup, EditorSelections } from "./query-editor-pane-types";
 
 type EditorGroupState = {
   query: string;
+  /** Active tab's file-style label; routes the buffer language (EDITOR-178). */
+  tabLabel: string;
   apiRef: RefObject<SqlEditorHandle | null>;
   onQueryChange: (next: string) => void;
 };
@@ -85,6 +87,7 @@ export function EditorSplitLayout({
       group={group}
       active={activeEditorGroup === group}
       query={state.query}
+      tabLabel={state.tabLabel}
       apiRef={state.apiRef}
       formatter={formatter}
       editorEngine={editorEngine}

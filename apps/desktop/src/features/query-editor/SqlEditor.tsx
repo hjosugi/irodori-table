@@ -8,6 +8,11 @@
 // deliberately light: local metadata plus shallow current-statement context.
 // The formatter defaults to `sql-formatter`, dialect-mapped per engine, behind
 // a configurable hook.
+//
+// Buffers are not always SQL: the tab's file-style label routes the language
+// (EDITOR-178), so `.csv`/`.tsv` tabs get rainbow columns, `.log` tabs get
+// severity/timestamp highlighting, `.txt` stays plain, and everything else
+// keeps the SQL pipeline (dialect, completion, lint, metadata insight).
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
@@ -47,6 +52,12 @@ import { basicSetup } from "codemirror";
 import { indentOnInput } from "@codemirror/language";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
 import { rainbowBrackets } from "./editor-rainbow-brackets";
+import { delimitedHighlighting } from "./editor-csv-highlight";
+import { logHighlighting } from "./editor-log-highlight";
+import {
+  editorLanguageForTabLabel,
+  type EditorLanguage,
+} from "@/lib/editor-language";
 import type { DatabaseMetadata, DbEngine } from "@/generated/irodori-api";
 import type { SqlSnippetDefinition } from "@/sql/completion";
 import { buildSqlExtensions } from "@/sql/dialect";
@@ -112,6 +123,11 @@ interface SqlEditorProps {
   value: string;
   onChange: (next: string) => void;
   onSelectionChange?: (selection: SqlEditorSelection[]) => void;
+  /**
+   * File-style tab label ("scratch.sql", "orders.csv"); routes the buffer's
+   * language. Missing/unknown extensions keep the historical SQL behavior.
+   */
+  tabLabel?: string;
   engine: DbEngine;
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
@@ -140,6 +156,7 @@ interface CreateSqlEditorViewOptions {
   onSelectionChangeRef: {
     current: ((selection: SqlEditorSelection[]) => void) | undefined;
   };
+  language: EditorLanguage;
   engine: DbEngine;
   metadata: DatabaseMetadata | undefined;
   snippets: readonly SqlSnippetDefinition[];
@@ -181,6 +198,7 @@ function createSqlEditorState({
   value,
   onChangeRef,
   onSelectionChangeRef,
+  language,
   engine,
   metadata,
   snippets,
@@ -203,7 +221,6 @@ function createSqlEditorState({
         highlightActiveBlock: true,
         hideFirstIndent: false,
       }),
-      rainbowBrackets(),
       search({ top: true }),
       highlightSelectionMatches(),
       Prec.highest(keymap.of(searchKeymap)),
@@ -215,7 +232,8 @@ function createSqlEditorState({
         { key: "Mod-l", run: selectLine, preventDefault: true },
       ]),
       compartments.sql.of(
-        buildEditorSqlExtensions(
+        buildLanguageSqlExtensions(
+          language,
           engine,
           metadata,
           snippets,
@@ -223,10 +241,12 @@ function createSqlEditorState({
           onMetadataToolWindow,
         ),
       ),
-      compartments.lint.of(buildSqlLintExtensions(engine, linterId)),
+      compartments.lint.of(
+        buildLanguageLintExtensions(language, engine, linterId),
+      ),
       compartments.theme.of(editorThemeExtensions(theme)),
       compartments.highlight.of(
-        sqlHighlightingExtensions(engine, theme.syntax),
+        contentHighlightExtensions(language, engine, theme),
       ),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
@@ -380,6 +400,63 @@ function visibleDiagnosticMarkers(
   );
 }
 
+// Non-SQL buffers (csv/tsv/log/text) get lexical highlighting only: no SQL
+// parser, completion, metadata insight, or diagnostics.
+function buildLanguageSqlExtensions(
+  language: EditorLanguage,
+  engine: DbEngine,
+  metadata: DatabaseMetadata | undefined,
+  snippets: readonly SqlSnippetDefinition[],
+  onMetadataJump: ((target: SqlMetadataTarget) => void) | undefined,
+  onMetadataToolWindow:
+    | ((request: SqlMetadataToolWindowRequest) => void)
+    | undefined,
+): Extension {
+  if (language !== "sql") {
+    return [];
+  }
+  return buildEditorSqlExtensions(
+    engine,
+    metadata,
+    snippets,
+    onMetadataJump,
+    onMetadataToolWindow,
+  );
+}
+
+function buildLanguageLintExtensions(
+  language: EditorLanguage,
+  engine: DbEngine,
+  linterId: SqlLinterId,
+): Extension[] {
+  return language === "sql" ? buildSqlLintExtensions(engine, linterId) : [];
+}
+
+// Rainbow bracket-pair colouring is a code affordance and rides along with the
+// SQL branch only: in csv/tsv/log buffers brackets are field content or
+// section markers, and the depth colours would fight the language highlighter.
+function contentHighlightExtensions(
+  language: EditorLanguage,
+  engine: DbEngine,
+  theme: IrodoriTheme,
+): Extension {
+  switch (language) {
+    case "csv":
+      return delimitedHighlighting(",", theme.ui);
+    case "tsv":
+      return delimitedHighlighting("\t", theme.ui);
+    case "log":
+      return logHighlighting(theme.ui);
+    case "text":
+      return [];
+    case "sql":
+      return [
+        sqlHighlightingExtensions(engine, theme.syntax),
+        rainbowBrackets(),
+      ];
+  }
+}
+
 function buildSqlLintExtensions(
   engine: DbEngine,
   linterId: SqlLinterId,
@@ -454,6 +531,7 @@ function replaceEditorDocument(
 function reconfigureSqlExtensions(
   view: EditorView | null,
   compartments: SqlEditorCompartments,
+  language: EditorLanguage,
   engine: DbEngine,
   metadata: DatabaseMetadata | undefined,
   snippets: readonly SqlSnippetDefinition[],
@@ -464,7 +542,8 @@ function reconfigureSqlExtensions(
 ) {
   view?.dispatch({
     effects: compartments.sql.reconfigure(
-      buildEditorSqlExtensions(
+      buildLanguageSqlExtensions(
+        language,
         engine,
         metadata,
         snippets,
@@ -478,12 +557,13 @@ function reconfigureSqlExtensions(
 function reconfigureLintExtensions(
   view: EditorView | null,
   compartments: SqlEditorCompartments,
+  language: EditorLanguage,
   engine: DbEngine,
   linterId: SqlLinterId,
 ) {
   view?.dispatch({
     effects: compartments.lint.reconfigure(
-      buildSqlLintExtensions(engine, linterId),
+      buildLanguageLintExtensions(language, engine, linterId),
     ),
   });
 }
@@ -491,6 +571,7 @@ function reconfigureLintExtensions(
 function reconfigureThemeExtensions(
   view: EditorView | null,
   compartments: SqlEditorCompartments,
+  language: EditorLanguage,
   engine: DbEngine,
   theme: IrodoriTheme,
 ) {
@@ -498,7 +579,7 @@ function reconfigureThemeExtensions(
     effects: [
       compartments.theme.reconfigure(editorThemeExtensions(theme)),
       compartments.highlight.reconfigure(
-        sqlHighlightingExtensions(engine, theme.syntax),
+        contentHighlightExtensions(language, engine, theme),
       ),
     ],
   });
@@ -642,6 +723,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
       value,
       onChange,
       onSelectionChange,
+      tabLabel,
       engine,
       metadata,
       snippets,
@@ -654,6 +736,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
     },
     ref,
   ) {
+    const language = editorLanguageForTabLabel(tabLabel ?? "");
     const hostRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
@@ -676,6 +759,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
         value,
         onChangeRef,
         onSelectionChangeRef,
+        language,
         engine,
         metadata,
         snippets,
@@ -725,11 +809,13 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
       syncEditorDocument(viewRef.current, value);
     }, [value]);
 
-    // Reconfigure dialect + metadata completion when the engine or metadata changes.
+    // Reconfigure dialect + metadata completion when the buffer language,
+    // engine, or metadata changes.
     useEffect(() => {
       reconfigureSqlExtensions(
         viewRef.current,
         compartments,
+        language,
         engine,
         metadata,
         snippets,
@@ -737,6 +823,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
         onMetadataToolWindow,
       );
     }, [
+      language,
       engine,
       metadata,
       snippets,
@@ -747,13 +834,26 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
 
     // Reconfigure the gentle SQL diagnostics without remounting the editor.
     useEffect(() => {
-      reconfigureLintExtensions(viewRef.current, compartments, engine, linter);
-    }, [engine, linter, compartments]);
+      reconfigureLintExtensions(
+        viewRef.current,
+        compartments,
+        language,
+        engine,
+        linter,
+      );
+    }, [language, engine, linter, compartments]);
 
-    // Reconfigure editor chrome + syntax highlight when the theme or engine changes.
+    // Reconfigure editor chrome + syntax highlight when the theme, language,
+    // or engine changes.
     useEffect(() => {
-      reconfigureThemeExtensions(viewRef.current, compartments, engine, theme);
-    }, [engine, theme, compartments]);
+      reconfigureThemeExtensions(
+        viewRef.current,
+        compartments,
+        language,
+        engine,
+        theme,
+      );
+    }, [language, engine, theme, compartments]);
 
     useImperativeHandle(
       ref,
@@ -793,6 +893,11 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
           if (!view) {
             return { error: "editor is not ready", changed: false };
           }
+          if (language !== "sql") {
+            // Running the SQL formatter over csv/tsv/log content would mangle
+            // it; report a no-op instead.
+            return { error: null, changed: false, skipped: "unchanged" };
+          }
           const result = await formatEditorDocument(view, engine, formatter);
           if (result.formatted !== undefined) {
             onChangeRef.current(result.formatted);
@@ -803,6 +908,9 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
           const view = viewRef.current;
           if (!view) {
             return { error: "editor is not ready", changed: false };
+          }
+          if (language !== "sql") {
+            return { error: null, changed: false, skipped: "unchanged" };
           }
           const result = await cleanupEditorDocument(view, engine, formatter);
           if (result.formatted !== undefined) {
@@ -840,7 +948,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
           viewRef.current?.focus();
         },
       }),
-      [engine, formatter],
+      [language, engine, formatter],
     );
 
     return <div className="cm-host" ref={hostRef} />;
