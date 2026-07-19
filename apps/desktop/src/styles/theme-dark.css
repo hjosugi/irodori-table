@@ -1,10 +1,18 @@
+/*
+ * Dark themes resolve --accent (color-mix of --teal and --blue) to a light
+ * tint: across all 22 built-in dark themes it lands at L* 67-84, where a white
+ * label scores only 1.5-2.5:1. Ink scores 7.1-11.7:1 on every one of them, so
+ * the label flips here rather than in each theme.
+ */
 :root[data-theme="dark"],
 .app-root[data-theme="dark"] {
   color-scheme: dark;
+  --accent-text: #0e1a17;
 }
 
 .app-shell[data-theme="dark"] {
   color-scheme: dark;
+  --accent-text: #0e1a17;
   background: var(--editor-bg);
 }
 

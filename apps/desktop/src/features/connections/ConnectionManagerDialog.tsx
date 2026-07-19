@@ -324,10 +324,10 @@ export function ConnectionManagerDialog({
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const transferMenuRef = useRef<HTMLDivElement | null>(null);
   const transferMenuAnchorRef = useRef<HTMLDivElement | null>(null);
-  const engineSettings = engineConnectionSettings(draft.engine);
-  const optionFields = engineOptionFields(draft.engine);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
+  const engineSettings = engineConnectionSettings(draft.engine, t);
+  const optionFields = engineOptionFields(draft.engine);
   const { confirm, confirmElement } = useConfirm();
   // Anchored below the "…" button but portaled to <body>: the dialog clips
   // overflowing children, which previously cut this menu off.
@@ -951,7 +951,7 @@ export function ConnectionManagerDialog({
               <div className="connection-form-grid">
                 {optionFields.map((field) => (
                   <label key={field.key}>
-                    <span>{field.label}</span>
+                    <span>{t(field.labelKey)}</span>
                     <input
                       value={draft.options?.[field.key] ?? ""}
                       placeholder={field.placeholder}

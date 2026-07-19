@@ -3,10 +3,11 @@ import type {
   ConnectionProfile,
   DbEngine,
 } from "../../generated/irodori-api";
+import { translate } from "@/i18n";
 import connectionDefaults from "./connection-defaults.json";
 import {
   defaultPort,
-  engineConnectionSettings,
+  engineConnectionLayout,
   engineOptionFields,
 } from "./engine-connection-settings";
 import type {
@@ -16,8 +17,10 @@ import type {
 } from "@/lib/workspace-connection";
 export {
   defaultPort,
+  engineConnectionLayout,
   engineConnectionSettings,
   engineOptionFields,
+  type EngineConnectionLayout,
   type EngineConnectionSettings,
   type EngineOptionField,
 } from "./engine-connection-settings";
@@ -121,7 +124,7 @@ export function describeConnection(
 }
 
 export function memoryDefaults(engine: DbEngine): Partial<ConnectionDraft> {
-  const settings = engineConnectionSettings(engine);
+  const settings = engineConnectionLayout(engine);
   if (engine === "sqlite") {
     return {
       mode: settings.preferredMode,
@@ -579,9 +582,14 @@ export function withUniqueProfileIds(profiles: ConnectionDraft[]) {
   });
 }
 
+/**
+ * Returns an English message; the caller shows it verbatim. Localising these is
+ * tracked separately with the other non-component modules that bypass `t()`,
+ * so the field names interpolated below stay English on purpose for now.
+ */
 export function validateDraft(draft: ConnectionDraft): string | null {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
-  const settings = engineConnectionSettings(resolvedDraft.engine);
+  const settings = engineConnectionLayout(resolvedDraft.engine);
   if (!resolvedDraft.id.trim()) {
     return "connection id is required";
   }
@@ -617,7 +625,7 @@ export function validateDraft(draft: ConnectionDraft): string | null {
       return "socket path is required";
     }
     if (settings.showHost && !useSocket && !resolvedDraft.host.trim()) {
-      return `${settings.hostLabel.toLowerCase()} is required`;
+      return `${translate(settings.hostLabelKey).toLowerCase()} is required`;
     }
   }
   if (
@@ -628,7 +636,7 @@ export function validateDraft(draft: ConnectionDraft): string | null {
   }
   for (const field of engineOptionFields(resolvedDraft.engine)) {
     if (field.required && !resolvedDraft.options?.[field.key]?.trim()) {
-      return `${field.label.toLowerCase()} is required`;
+      return `${translate(field.labelKey).toLowerCase()} is required`;
     }
   }
   return null;

@@ -546,7 +546,7 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              title={t("results.exportAs", { format: exportFormatLabel })}
+              title={t("results.exportFormat", { format: exportFormatLabel })}
               disabled={!copyExportAvailable}
               onClick={() => onExportActiveResult(exportFormat)}
             >
@@ -594,7 +594,7 @@ export function ResultsPane({
             <button
               className="text-button"
               type="button"
-              title={t("results.copyAs", { format: copyFormatLabel })}
+              title={t("results.copyFormat", { format: copyFormatLabel })}
               disabled={!copyExportAvailable}
               onClick={() => copyInFormat(copyFormat)}
             >

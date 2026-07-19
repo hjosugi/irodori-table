@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTranslator } from "@/i18n";
 import {
   connectionCustomColorOptions,
   defaultConnectionColor,
+  engineConnectionSettings,
   engineOptionFields,
   engineOptions,
   loadProfiles,
@@ -17,6 +19,9 @@ import {
   withUniqueProfileIds,
   type ConnectionDraft,
 } from "@/features/connections/connection-profiles";
+
+const englishTranslator = createTranslator("en");
+const japaneseTranslator = createTranslator("ja");
 
 function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
   return {
@@ -405,6 +410,55 @@ describe("connector options", () => {
     expect(declared.length).toBeGreaterThan(0);
     for (const key of declared) {
       expect(key.toLowerCase().replace(/[_-]/g, "")).not.toMatch(secretish);
+    }
+  });
+
+  it("resolves every engine's form labels in both locales", () => {
+    // engine-connection-config.json holds translation keys that TypeScript
+    // cannot check (JSON imports widen to `string`), and `translate` throws on
+    // an unknown key. Resolving every engine proves each key really exists.
+    for (const locale of ["en", "ja"] as const) {
+      const { t } = createTranslator(locale);
+      for (const engine of engineOptions) {
+        const settings = engineConnectionSettings(engine.value, t);
+        for (const [field, value] of Object.entries(settings)) {
+          if (!field.endsWith("Label")) {
+            continue;
+          }
+          expect(value, `${engine.value}.${field} in ${locale}`).not.toBe("");
+        }
+        for (const field of engineOptionFields(engine.value)) {
+          expect(t(field.labelKey), `${field.key} in ${locale}`).not.toBe("");
+        }
+      }
+    }
+  });
+
+  it("localises the connection form instead of leaking English", () => {
+    const english = engineConnectionSettings("postgres", englishTranslator.t);
+    const japanese = engineConnectionSettings("postgres", japaneseTranslator.t);
+
+    expect(english.hostLabel).toBe("Host");
+    expect(english.passwordPlaceholder).toBe("Session only");
+    expect(japanese.hostLabel).toBe("ホスト");
+    expect(japanese.userLabel).toBe("ユーザー");
+    expect(japanese.databaseLabel).toBe("データベース");
+    // The prose placeholders live in code, not the config, so they translate
+    // while example values like `postgres://…` stay verbatim.
+    expect(japanese.passwordPlaceholder).toBe("セッションのみ");
+    expect(japanese.urlPlaceholder).toBe(
+      "postgres://user:password@host:5432/database",
+    );
+  });
+
+  it("spells the transport the same way in the toggle and the summary", () => {
+    // Regression: the toggle rendered t("connection.transportTcp") while the
+    // summary row rendered a second English copy from the JSON, so one dialog
+    // showed "直接 TCP" and "Direct TCP" at once.
+    for (const translator of [englishTranslator, japaneseTranslator]) {
+      expect(
+        engineConnectionSettings("postgres", translator.t).transportLabel,
+      ).toBe(translator.t("connection.transportTcp"));
     }
   });
 

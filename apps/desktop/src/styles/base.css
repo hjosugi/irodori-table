@@ -152,39 +152,49 @@ textarea:disabled {
   --bar-sm: 31px;
   --bar-md: 33px;
   --status-height: 22px;
-  --border: #d3d8d2;
-  --border-strong: #b8c1b5;
-  --surface: #f7f8f4;
+  /*
+   * Pre-hydration fallback: Irodori Bloom Paper, the shipping light default.
+   * AppWorkbench overwrites these from the active theme, so they only show for
+   * the first paint -- but they must match, or the app flashes another palette.
+   */
+  --border: #cad4d0;
+  --border-strong: #7f8a86;
+  --surface: #eaf0ed;
   --surface-raised: #ffffff;
-  --surface-muted: #edf0ea;
-  --chrome: #fbfcf7;
-  --editor-bg: #fffef9;
-  --text: #20242a;
-  --muted: #687064;
-  --green: #2e7a56;
-  --teal: #157f85;
-  --blue: #3367a5;
+  --surface-muted: #d7dfdb;
+  --chrome: #dfe6e3;
+  --editor-bg: #fbfefd;
+  --text: #2b3531;
+  --muted: #55635f;
+  --green: #3e774c;
+  --teal: #00767d;
+  --blue: #0271ae;
   --accent: color-mix(in srgb, var(--teal) 68%, var(--blue));
   --accent-hover: color-mix(in srgb, var(--teal) 58%, var(--green));
   --accent-soft: color-mix(in srgb, var(--accent) 13%, var(--surface-raised));
-  --amber: #b56b1d;
-  --red: #bd4b4b;
-  --purple: #6c5cae;
-  --hover: #eaeef2;
-  --selected: #dbeafe;
-  --selected-strong: #c8e1ff;
-  --focus: #0969da;
+  --amber: #985e11;
+  --red: #bc3d4e;
+  --purple: #6b61ad;
+  --hover: #d3e4e5;
+  --selected: #b9dcde;
+  --selected-strong: #9eced0;
+  --focus: #00777d;
   --input-bg: #ffffff;
-  --grid-header: #f6f8fa;
-  --grid-row-alt: #fafbfc;
-  --cell-border: #d8dee4;
-  --danger-bg: #fff1f1;
-  --warning-bg: #fff8c5;
-  --selection: #add6ff;
-  --active-line: #f6f8fa;
-  --caret: #0969da;
-  --gutter-bg: #f6f8fa;
-  --gutter-text: #6e7781;
+  --grid-header: #e5ebe9;
+  --grid-row-alt: #f4f9f7;
+  --cell-border: #d4dcd8;
+  --danger-bg: #ffeaea;
+  --warning-bg: #ffebd6;
+  --selection: #a7d3d5;
+  --active-line: #ecfafa;
+  --caret: #00777d;
+  --gutter-bg: #f4f9f7;
+  --gutter-text: #66736f;
+  /*
+   * Label on an --accent fill. Light themes resolve --accent dark (L* ~46), so
+   * white reads; dark themes resolve it light (L* 67-84), where white drops to
+   * 1.5-2.5:1. theme-dark.css swaps this for ink -- see the override there.
+   */
   --accent-text: #ffffff;
   --neutral-dot: color-mix(in srgb, var(--muted) 62%, var(--surface-raised));
   --shadow-color: color-mix(in srgb, var(--text) 20%, transparent);
