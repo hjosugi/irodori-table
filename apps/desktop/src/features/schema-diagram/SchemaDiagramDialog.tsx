@@ -31,6 +31,7 @@ import {
   type DiagramTable,
 } from "./schema-diagram";
 import { useSchemaDiagramStore } from "./schema-diagram-store";
+import { errorMessage } from "@/core";
 
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 1.6;
@@ -174,7 +175,7 @@ export function SchemaDiagramDialog({
       setDocument(parseDiagramDocument(await file.text()));
       setImportError(null);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : String(error));
+      setImportError(errorMessage(error));
     }
   }
 

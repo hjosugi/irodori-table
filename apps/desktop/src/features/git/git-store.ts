@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { errorMessage } from "@/core";
 import {
   gitCheckoutBranch,
   gitCommitAll,
@@ -76,21 +77,6 @@ type GitState = {
   createBranch: (branch: string, startPoint?: string) => Promise<boolean>;
   deleteBranch: (branch: string, force?: boolean) => Promise<boolean>;
 };
-
-function errorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-  return String(error);
-}
 
 function loadRepoPath() {
   return window.localStorage.getItem(repoPathStorageKey) ?? "";

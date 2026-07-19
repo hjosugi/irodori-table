@@ -63,6 +63,7 @@ import {
   openQuickDefinitionAtSelection,
   sqlMetadataInsightExtensions,
 } from "./sql-editor-metadata";
+import { errorMessage } from "@/core";
 
 export type SqlEditorSelection = { from: number; to: number };
 export type SqlMetadataToolWindowMode = "definition" | "usages";
@@ -519,7 +520,7 @@ async function formatEditorDocument(
     return { error: null, skipped: "unchanged" };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     };
   }
 }
