@@ -111,6 +111,12 @@ export function WorkbenchDialogs() {
   const setAnimationsEnabled = usePreferencesStore(
     (state) => state.setAnimationsEnabled,
   );
+  const sidebarViewLabels = usePreferencesStore(
+    (state) => state.sidebarViewLabels,
+  );
+  const setSidebarViewLabels = usePreferencesStore(
+    (state) => state.setSidebarViewLabels,
+  );
   const autoCommit = usePreferencesStore((state) => state.autoCommit);
   const setAutoCommit = usePreferencesStore((state) => state.setAutoCommit);
   const updateCheckOnStartup = usePreferencesStore(
@@ -203,6 +209,8 @@ export function WorkbenchDialogs() {
           setEditorBackgroundOpacity={setEditorBackgroundOpacity}
           animationsEnabled={animationsEnabled}
           setAnimationsEnabled={setAnimationsEnabled}
+          sidebarViewLabels={sidebarViewLabels}
+          setSidebarViewLabels={setSidebarViewLabels}
           autoCommit={autoCommit}
           setAutoCommit={setAutoCommit}
           updateCheckOnStartup={updateCheckOnStartup}

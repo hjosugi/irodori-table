@@ -48,6 +48,8 @@ export interface GeneralTabProps {
   setEditorBackgroundOpacity: (value: number) => void;
   animationsEnabled: boolean;
   setAnimationsEnabled: (value: BooleanUpdater) => void;
+  sidebarViewLabels: boolean;
+  setSidebarViewLabels: (value: BooleanUpdater) => void;
   autoCommit: boolean;
   setAutoCommit: (value: BooleanUpdater) => void;
   updateCheckOnStartup: boolean;
@@ -83,6 +85,8 @@ export function GeneralTab({
   setEditorBackgroundOpacity,
   animationsEnabled,
   setAnimationsEnabled,
+  sidebarViewLabels,
+  setSidebarViewLabels,
   autoCommit,
   setAutoCommit,
   updateCheckOnStartup,
@@ -283,6 +287,28 @@ export function GeneralTab({
             }
           />
           <output>{Math.round(editorBackgroundOpacity * 100)}%</output>
+        </div>
+      </label>
+      <label className="settings-row">
+        <span>
+          <strong>{t("settings.general.sidebarLabels.title")}</strong>
+          <small>{t("settings.general.sidebarLabels.description")}</small>
+        </span>
+        <div className="segmented-control">
+          <button
+            type="button"
+            className={sidebarViewLabels ? "active" : undefined}
+            onClick={() => setSidebarViewLabels(true)}
+          >
+            {t("common.on")}
+          </button>
+          <button
+            type="button"
+            className={!sidebarViewLabels ? "active" : undefined}
+            onClick={() => setSidebarViewLabels(false)}
+          >
+            {t("common.off")}
+          </button>
         </div>
       </label>
       <label className="settings-row">

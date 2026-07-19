@@ -519,6 +519,9 @@ export const en = {
   "settings.general.editorBackground.placeholder": "Image URL or data URL",
   "settings.general.editorBackground.choose": "Choose",
   "settings.general.editorBackground.opacity": "Background image opacity",
+  "settings.general.sidebarLabels.title": "Sidebar tab labels",
+  "settings.general.sidebarLabels.description":
+    "Show text next to the sidebar view icons. Off keeps the tabs to icons on a single row.",
   "settings.general.animations.title": "Animations",
   "settings.general.animations.description":
     "Use short transitions for menus, panes, and controls. Reduced-motion system settings are still respected.",

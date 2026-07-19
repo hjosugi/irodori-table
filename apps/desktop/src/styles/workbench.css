@@ -1277,7 +1277,7 @@
   box-shadow: var(--focus-ring);
 }
 
-.mode-toggle {
+.form-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
   height: 29px;
@@ -1287,7 +1287,7 @@
   background: var(--input-bg);
 }
 
-.mode-toggle button {
+.form-toggle button {
   color: var(--muted);
   background: transparent;
   cursor: pointer;
@@ -1295,17 +1295,17 @@
   font-weight: 800;
 }
 
-.mode-toggle:focus-within {
+.form-toggle:focus-within {
   border-color: var(--focus);
   box-shadow: var(--focus-ring);
 }
 
-.mode-toggle button:hover:not(.active):not(:disabled) {
+.form-toggle button:hover:not(.active):not(:disabled) {
   color: var(--text);
   background: var(--hover);
 }
 
-.mode-toggle button.active {
+.form-toggle button.active {
   color: var(--blue);
   background: var(--selected);
 }
@@ -1967,6 +1967,24 @@
   overflow: hidden;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+/* The control cluster (new tab, tab actions) sat flush against the last tab's
+   close button at the smallest control size, reading as one cramped blob.
+   Give it separation from the scrolling tabs, air between the two buttons,
+   and the regular small-control hit target. */
+.editor-tab-strip > .mini-button {
+  width: 28px;
+  height: var(--control-xs);
+  flex: none;
+}
+
+.editor-tab-strip > .tab-strip-scroll + .mini-button {
+  margin-left: 6px;
+}
+
+.editor-tab-strip > .mini-button + .mini-button {
+  margin-left: 4px;
 }
 
 .tab-strip-scroll {
