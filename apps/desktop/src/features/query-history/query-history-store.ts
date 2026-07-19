@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { parseStoredNumber } from "@/core";
 
 export const queryHistoryMaxItemsDefault = 200;
 export const queryHistoryMaxItemsHardLimit = 500;
@@ -126,12 +127,7 @@ function rowArray(value: unknown): unknown[][] {
 // until the user happened to change the setting. preferences-store.ts already
 // guards nullish separately; match it.
 function storedNumber(key: string) {
-  const raw = storage()?.getItem(key);
-  if (raw === null || raw === undefined || raw === "") {
-    return null;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseStoredNumber(storage()?.getItem(key));
 }
 
 function loadQueryHistoryMaxItems() {

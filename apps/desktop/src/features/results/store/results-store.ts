@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { parseStoredNumber } from "@/core";
 
 type ValueUpdater<T> = T | ((current: T) => T);
 
@@ -30,12 +31,15 @@ function loadResultOffload() {
 }
 
 function loadResultMemoryBudget() {
-  const stored = Number(
+  // Number(null) is 0, so the old bare-Number guard turned an absent key into
+  // a stored zero and clamped it to the 1,000 minimum - every fresh profile
+  // started at a tenth of the intended 10,000 default (#166).
+  const stored = parseStoredNumber(
     window.localStorage.getItem(resultMemoryBudgetStorageKey),
   );
-  return Number.isFinite(stored)
-    ? clampNumber(stored, resultMemoryBudgetMin, resultMemoryBudgetMax)
-    : resultMemoryBudgetDefault;
+  return stored === null
+    ? resultMemoryBudgetDefault
+    : clampNumber(stored, resultMemoryBudgetMin, resultMemoryBudgetMax);
 }
 
 export const useResultsStore = create<ResultsState>((set) => ({
