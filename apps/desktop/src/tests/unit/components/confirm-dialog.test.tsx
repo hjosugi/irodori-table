@@ -1,35 +1,28 @@
-import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfirmDialog, useConfirm } from "@/components/ConfirmDialog";
+import { usePreferencesStore } from "@/features/preferences";
+import { renderUi } from "@/tests/helpers/render";
 
-let container: HTMLDivElement;
-let root: Root;
+function ConfirmHost({
+  onReady,
+}: {
+  onReady: (confirm: ReturnType<typeof useConfirm>["confirm"]) => void;
+}) {
+  const { confirm, confirmElement } = useConfirm();
+  onReady(confirm);
+  return <>{confirmElement}</>;
+}
 
+// Default button labels come from t("common.confirm"/"common.cancel"), so the
+// locale has to be pinned or the queries below depend on machine settings.
 beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
+  usePreferencesStore.setState({ locale: "en" });
 });
-
-afterEach(() => {
-  flushSync(() => root.unmount());
-  container.remove();
-});
-
-function render(node: React.ReactNode) {
-  flushSync(() => root.render(node));
-}
-
-function buttonByText(text: string): HTMLButtonElement | undefined {
-  return [...container.querySelectorAll("button")].find(
-    (button) => button.textContent === text,
-  ) as HTMLButtonElement | undefined;
-}
 
 describe("ConfirmDialog", () => {
   it("renders nothing when closed", () => {
-    render(
+    renderUi(
       <ConfirmDialog
         open={false}
         title="Delete connection?"
@@ -37,13 +30,14 @@ describe("ConfirmDialog", () => {
         onCancel={() => {}}
       />,
     );
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("shows the title and message and routes confirm/cancel callbacks", () => {
+  it("shows the title and message and routes confirm/cancel callbacks", async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
-    render(
+    const { user } = renderUi(
       <ConfirmDialog
         open
         title="Delete connection?"
@@ -55,61 +49,76 @@ describe("ConfirmDialog", () => {
       />,
     );
 
-    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
-    expect(container.textContent).toContain("Delete connection?");
-    expect(container.textContent).toContain("This can't be undone.");
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeVisible();
+    expect(dialog).toHaveAccessibleName("Delete connection?");
+    expect(screen.getByText("This can't be undone.")).toBeVisible();
 
-    flushSync(() => buttonByText("Delete")?.click());
+    await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
 
-    flushSync(() => buttonByText("Cancel")?.click());
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  // Cancel must be the first focusable control so a stray Enter cannot confirm
+  // a destructive action. Nothing checked that before.
+  it("focuses cancel rather than confirm when it opens", () => {
+    renderUi(
+      <ConfirmDialog
+        open
+        title="Delete connection?"
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+  });
+
   it("useConfirm resolves true on confirm", async () => {
-    let confirmFn: ReturnType<typeof useConfirm>["confirm"] | undefined;
-    function Host() {
-      const { confirm, confirmElement } = useConfirm();
-      confirmFn = confirm;
-      return <>{confirmElement}</>;
-    }
-    render(<Host />);
+    let confirm!: ReturnType<typeof useConfirm>["confirm"];
+    const { user } = renderUi(
+      <ConfirmHost
+        onReady={(value) => {
+          confirm = value;
+        }}
+      />,
+    );
 
-    let resolved: boolean | undefined;
-    let pending: Promise<void> | undefined;
-    flushSync(() => {
-      pending = confirmFn!({ title: "Proceed?" }).then((value) => {
-        resolved = value;
-      });
+    let pending!: Promise<boolean>;
+    act(() => {
+      pending = confirm({ title: "Proceed?" });
     });
-    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(screen.getByRole("dialog")).toBeVisible();
 
-    flushSync(() => buttonByText("Confirm")?.click());
-    await pending;
-    expect(resolved).toBe(true);
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await expect(pending).resolves.toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("useConfirm resolves false on cancel", async () => {
-    let confirmFn: ReturnType<typeof useConfirm>["confirm"] | undefined;
-    function Host() {
-      const { confirm, confirmElement } = useConfirm();
-      confirmFn = confirm;
-      return <>{confirmElement}</>;
-    }
-    render(<Host />);
+    let confirm!: ReturnType<typeof useConfirm>["confirm"];
+    const { user } = renderUi(
+      <ConfirmHost
+        onReady={(value) => {
+          confirm = value;
+        }}
+      />,
+    );
 
-    let resolved: boolean | undefined;
-    let pending: Promise<void> | undefined;
-    flushSync(() => {
-      pending = confirmFn!({ title: "Proceed?" }).then((value) => {
-        resolved = value;
-      });
+    let pending!: Promise<boolean>;
+    act(() => {
+      pending = confirm({ title: "Proceed?" });
     });
 
-    flushSync(() => buttonByText("Cancel")?.click());
-    await pending;
-    expect(resolved).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await expect(pending).resolves.toBe(false);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

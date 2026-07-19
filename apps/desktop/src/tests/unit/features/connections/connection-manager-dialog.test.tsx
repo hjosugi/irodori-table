@@ -1,7 +1,5 @@
-import { act } from "react";
-import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   dbEngineBuildSupport,
   type EngineBuildSupport,
@@ -11,15 +9,14 @@ import {
   connectionColorOptions,
   type ConnectionDraft,
 } from "@/features/connections/connection-profiles";
+import { usePreferencesStore } from "@/features/preferences";
+import { componentRenderer } from "@/tests/helpers/render";
 
 vi.mock("@/generated/irodori-api", () => ({
   dbEngineBuildSupport: vi.fn(),
 }));
 
 const mockDbEngineBuildSupport = vi.mocked(dbEngineBuildSupport);
-
-let container: HTMLDivElement;
-let root: Root;
 
 function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
   return {
@@ -41,68 +38,68 @@ function draft(patch: Partial<ConnectionDraft> = {}): ConnectionDraft {
   };
 }
 
-beforeEach(() => {
-  mockDbEngineBuildSupport.mockReset();
-  mockDbEngineBuildSupport.mockResolvedValue([]);
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-});
+const baseDraft = draft();
 
-afterEach(() => {
-  flushSync(() => root.unmount());
-  container.remove();
-});
+const render = componentRenderer(ConnectionManagerDialog, () => ({
+  profiles: [baseDraft],
+  connectedIds: new Set<string>(),
+  selectedProfileId: baseDraft.id,
+  draft: baseDraft,
+  search: "",
+  error: null,
+  activeConnectionOpen: false,
+  testing: false,
+  connecting: false,
+  onClose: vi.fn(),
+  onSearchChange: vi.fn(),
+  onAddProfile: vi.fn(),
+  onImportProfiles: vi.fn(),
+  onExportProfiles: vi.fn(),
+  onSelectProfile: vi.fn(),
+  onUpdateDraft: vi.fn(),
+  onDeleteProfiles: vi.fn(),
+  onDisconnect: vi.fn(),
+  onSave: vi.fn(),
+  onTest: vi.fn(),
+  onConnect: vi.fn((event) => event.preventDefault()),
+}));
 
+/** Keep `draft` and `profiles` consistent when a test overrides the draft. */
 function renderDialog(
   overrides: Partial<Parameters<typeof ConnectionManagerDialog>[0]> = {},
 ) {
-  const selectedDraft = draft(overrides.draft);
-  const props: Parameters<typeof ConnectionManagerDialog>[0] = {
-    profiles: [selectedDraft],
-    connectedIds: new Set(),
+  const selectedDraft = overrides.draft ?? baseDraft;
+  return render({
+    profiles: overrides.profiles ?? [selectedDraft],
     selectedProfileId: selectedDraft.id,
-    draft: selectedDraft,
-    search: "",
-    error: null,
-    activeConnectionOpen: false,
-    testing: false,
-    connecting: false,
-    onClose: vi.fn(),
-    onSearchChange: vi.fn(),
-    onAddProfile: vi.fn(),
-    onImportProfiles: vi.fn(),
-    onExportProfiles: vi.fn(),
-    onSelectProfile: vi.fn(),
-    onUpdateDraft: vi.fn(),
-    onDeleteProfiles: vi.fn(),
-    onDisconnect: vi.fn(),
-    onSave: vi.fn(),
-    onTest: vi.fn(),
-    onConnect: vi.fn((event) => event.preventDefault()),
     ...overrides,
-  };
-  flushSync(() => root.render(<ConnectionManagerDialog {...props} />));
-  return props;
-}
-
-async function flushEffects() {
-  await act(async () => {
-    await Promise.resolve();
+    draft: selectedDraft,
   });
 }
 
+beforeEach(() => {
+  usePreferencesStore.setState({ locale: "en" });
+  mockDbEngineBuildSupport.mockReset();
+  mockDbEngineBuildSupport.mockResolvedValue([]);
+});
+
+/**
+ * Several presets also appear in the "More colors" palette, so `Use color #hex`
+ * is ambiguous document-wide. The old querySelector-based test silently took
+ * whichever came first; scope to the compact picker instead.
+ */
+function colorSwatch(color: string) {
+  return within(
+    screen.getByRole("group", { name: "Connection color" }),
+  ).getByRole("button", { name: `Use color ${color}` });
+}
+
 describe("ConnectionManagerDialog", () => {
-  it("selects preset colors from the compact color picker", () => {
+  it("selects preset colors from the compact color picker", async () => {
     const nextColor = connectionColorOptions[1];
-    const props = renderDialog();
+    const { props, user } = renderDialog();
 
-    const button = container.querySelector<HTMLButtonElement>(
-      `button[aria-label="Use color ${nextColor}"]`,
-    );
-    expect(button).not.toBeNull();
-
-    flushSync(() => button?.click());
+    await user.click(colorSwatch(nextColor));
 
     expect(props.onUpdateDraft).toHaveBeenCalledWith({ color: nextColor });
   });
@@ -111,12 +108,11 @@ describe("ConnectionManagerDialog", () => {
     const activeColor = connectionColorOptions[2];
     renderDialog({ draft: draft({ color: activeColor }) });
 
-    const button = container.querySelector<HTMLButtonElement>(
-      `button[aria-label="Use color ${activeColor}"]`,
-    );
+    const button = colorSwatch(activeColor);
 
-    expect(button?.getAttribute("aria-pressed")).toBe("true");
-    expect(button?.querySelector("svg")).not.toBeNull();
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    // The tick is the only visible cue that this swatch is the active one.
+    expect(button.querySelector("svg")).not.toBeNull();
   });
 
   it("marks feature-gated engines missing from the current build", async () => {
@@ -130,52 +126,32 @@ describe("ConnectionManagerDialog", () => {
     mockDbEngineBuildSupport.mockResolvedValue(buildSupport);
 
     renderDialog({
-      draft: draft({
-        engine: "duckdb",
-        database: ":memory:",
-        port: "",
-      }),
+      draft: draft({ engine: "duckdb", database: ":memory:", port: "" }),
     });
 
-    await flushEffects();
+    const duckOption = await screen.findByRole("option", {
+      name: /not in this build/,
+    });
+    expect(duckOption).toHaveValue("duckdb");
+    expect(duckOption).toBeDisabled();
+    expect(
+      screen.getByText(/DuckDB is not available in this desktop build/),
+    ).toBeVisible();
 
-    const duckOption = Array.from(
-      container.querySelectorAll<HTMLOptionElement>("option"),
-    ).find((option) => option.value === "duckdb");
-    expect(duckOption?.disabled).toBe(true);
-    expect(duckOption?.textContent).toContain("not in this build");
-    expect(container.textContent).toContain(
-      "DuckDB is not available in this desktop build",
-    );
-
-    const testButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button"),
-    ).find((button) => button.textContent === "Test");
-    const connectButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button"),
-    ).find((button) => button.textContent === "Connect");
-
-    expect(testButton?.disabled).toBe(true);
-    expect(connectButton?.disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Test" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
   });
 
   it("requires confirmation before deleting a connection", async () => {
-    const props = renderDialog();
-    const deleteButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button"),
-    ).find((button) => button.textContent === "Delete");
+    const { props, user } = renderDialog();
 
-    expect(deleteButton).not.toBeUndefined();
-    flushSync(() => deleteButton?.click());
+    await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(props.onDeleteProfiles).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Delete connection?");
+    const confirm = screen.getByRole("dialog", { name: "Delete connection?" });
+    expect(confirm).toBeVisible();
 
-    const confirmButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>(".confirm-dialog button"),
-    ).find((button) => button.textContent === "Delete");
-    flushSync(() => confirmButton?.click());
-    await Promise.resolve();
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 
     expect(props.onDeleteProfiles).toHaveBeenCalledTimes(1);
     expect(props.onDeleteProfiles).toHaveBeenCalledWith(["local-pg"]);
@@ -187,41 +163,24 @@ describe("ConnectionManagerDialog", () => {
       draft({ id: "local-mysql", name: "Local MySQL", engine: "mysql" }),
       draft({ id: "local-duck", name: "Local Duck", engine: "duckdb" }),
     ];
-    const props = renderDialog({ profiles });
+    const { props, user, container } = renderDialog({ profiles });
 
-    const profileButton = (name: string) =>
-      Array.from(
-        container.querySelectorAll<HTMLButtonElement>(
-          ".connection-profile strong",
-        ),
-      )
-        .find((label) => label.textContent === name)
-        ?.closest("button");
+    await user.click(screen.getByRole("button", { name: /Local Postgres/ }));
+    await user.keyboard("{Shift>}");
+    await user.click(screen.getByRole("button", { name: /Local Duck/ }));
+    await user.keyboard("{/Shift}");
 
-    flushSync(() => profileButton("Local Postgres")?.click());
-    const rangeEnd = profileButton("Local Duck");
-    flushSync(() =>
-      rangeEnd?.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, shiftKey: true }),
-      ),
-    );
-
+    // Selection is a purely visual state with no ARIA surface on these rows.
     expect(
       container.querySelectorAll(".connection-profile.selected"),
     ).toHaveLength(3);
 
-    const deleteButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button"),
-    ).find((button) => button.textContent === "Delete (3)");
-    expect(deleteButton).not.toBeUndefined();
-    flushSync(() => deleteButton?.click());
+    await user.click(screen.getByRole("button", { name: "Delete (3)" }));
 
-    expect(container.textContent).toContain("Delete 3 connections?");
-    const confirmButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>(".confirm-dialog button"),
-    ).find((button) => button.textContent === "Delete");
-    flushSync(() => confirmButton?.click());
-    await Promise.resolve();
+    const confirm = screen.getByRole("dialog", {
+      name: "Delete 3 connections?",
+    });
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 
     expect(props.onDeleteProfiles).toHaveBeenCalledWith([
       "local-pg",
@@ -231,7 +190,7 @@ describe("ConnectionManagerDialog", () => {
   });
 
   it("shows structured connection errors with raw details", () => {
-    renderDialog({
+    const { container } = renderDialog({
       error: {
         kind: "connection",
         message: "password authentication failed",
@@ -240,37 +199,17 @@ describe("ConnectionManagerDialog", () => {
       },
     });
 
-    expect(container.textContent).toContain("Connection failed");
-    expect(container.textContent).toContain("password authentication failed");
-    expect(
-      container.querySelector(".error-callout-details summary")?.textContent,
-    ).toBe("Details");
+    expect(screen.getByText("Connection failed")).toBeVisible();
+    expect(screen.getByText("password authentication failed")).toBeVisible();
+    expect(screen.getByText("Details")).toBeVisible();
+    // The raw payload lives in a collapsed <details>, so it is deliberately
+    // not asserted as visible.
     expect(container.querySelector("pre")?.textContent).toContain(
       '"code": "28P01"',
     );
   });
 
   describe("connector settings", () => {
-    function optionInput(label: string) {
-      const field = Array.from(
-        container.querySelectorAll<HTMLLabelElement>(
-          ".connector-options label",
-        ),
-      ).find((item) => item.querySelector("span")?.textContent === label);
-      return field?.querySelector<HTMLInputElement>("input") ?? null;
-    }
-
-    function type(input: HTMLInputElement, value: string) {
-      const setter = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )?.set;
-      setter?.call(input, value);
-      flushSync(() => {
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-      });
-    }
-
     it("renders the option fields an engine declares", () => {
       renderDialog({
         draft: draft({
@@ -279,23 +218,28 @@ describe("ConnectionManagerDialog", () => {
         }),
       });
 
-      expect(optionInput("Catalog URI")?.value).toBe("");
-      expect(optionInput("Warehouse path")?.value).toBe(
+      // getByLabelText also proves the <label> is wired to the input, which a
+      // querySelector walk from the label span never checked.
+      expect(screen.getByLabelText("Catalog URI")).toHaveValue("");
+      expect(screen.getByLabelText("Warehouse path")).toHaveValue(
         "s3://bucket/warehouse",
       );
     });
 
     it("writes typed option values into the draft without dropping siblings", () => {
-      const props = renderDialog({
+      const { props } = renderDialog({
         draft: draft({
           engine: "iceberg",
           options: { warehouse: "s3://bucket/warehouse" },
         }),
       });
 
-      const input = optionInput("Catalog URI");
-      expect(input).not.toBeNull();
-      type(input!, "https://catalog.example.com/v1");
+      // fireEvent.change rather than user.type: the input is controlled by the
+      // `draft` prop, and onUpdateDraft is a spy that never feeds a new draft
+      // back, so per-keystroke typing would only ever report one character.
+      fireEvent.change(screen.getByLabelText("Catalog URI"), {
+        target: { value: "https://catalog.example.com/v1" },
+      });
 
       expect(props.onUpdateDraft).toHaveBeenCalledWith({
         options: {
@@ -308,21 +252,16 @@ describe("ConnectionManagerDialog", () => {
     it("offers credential fields for lakehouse connections", () => {
       renderDialog({ draft: draft({ engine: "iceberg", mode: "fields" }) });
 
-      const labels = Array.from(
-        container.querySelectorAll(".connection-form-body label span"),
-      ).map((item) => item.textContent);
-
-      expect(labels).toContain("Access key ID / client ID");
-      expect(labels).toContain("Secret access key / token");
+      expect(screen.getByLabelText("Access key ID / client ID")).toBeVisible();
       expect(
-        container.querySelector<HTMLInputElement>(
-          '.connection-form-body input[type="password"]',
-        ),
-      ).not.toBeNull();
+        screen.getByLabelText("Secret access key / token"),
+      ).toHaveAttribute("type", "password");
     });
 
     it("stays out of the way for engines that declare no options", () => {
-      renderDialog({ draft: draft({ engine: "postgres" }) });
+      const { container } = renderDialog({
+        draft: draft({ engine: "postgres" }),
+      });
 
       expect(container.querySelector(".connector-options")).toBeNull();
     });
