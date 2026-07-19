@@ -404,7 +404,11 @@ function isIntegerLike(value: unknown) {
   if (typeof value === "bigint") {
     return true;
   }
-  return typeof value === "string" && /^-?\d+$/.test(value.trim());
+  return (
+    typeof value === "string" &&
+    /^-?\d+$/.test(value.trim()) &&
+    !isZeroPaddedNumeric(value.trim())
+  );
 }
 
 function isNumberLike(value: unknown) {
@@ -416,8 +420,19 @@ function isNumberLike(value: unknown) {
   }
   return (
     typeof value === "string" &&
-    /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())
+    /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim()) &&
+    !isZeroPaddedNumeric(value.trim())
   );
+}
+
+/**
+ * `01234` is a code (zip, phone, account number), not a number. Typing its
+ * column INTEGER/REAL would make the engine coerce the quoted literal and
+ * destroy the leading zero, so zero-padded digit strings must stay TEXT.
+ * A decimal point exempts the value: `0.5` and friends are ordinary numbers.
+ */
+function isZeroPaddedNumeric(text: string) {
+  return /^-?0\d/.test(text) && !text.includes(".");
 }
 
 function sqlLiteral(value: unknown): string {
