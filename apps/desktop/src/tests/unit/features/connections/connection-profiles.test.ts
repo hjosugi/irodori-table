@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   connectionCustomColorOptions,
   defaultConnectionColor,
+  engineOptionFields,
+  engineOptions,
   loadProfiles,
   normalizeConnectionColor,
   portableProfile,
@@ -296,5 +298,120 @@ describe("connection profiles", () => {
         }),
       ),
     ).toBe("socket path is required");
+  });
+});
+
+describe("connector options", () => {
+  function lakehouseDraft(patch: Partial<ConnectionDraft> = {}) {
+    return draft({
+      id: "lake",
+      engine: "iceberg",
+      mode: "fields",
+      host: "",
+      port: "",
+      user: "AKIAIOSFODNN7EXAMPLE",
+      database: "sales.orders",
+      ...patch,
+    });
+  }
+
+  it("carries declared connector options through to the API profile", () => {
+    const profile = profileFromDraft(
+      lakehouseDraft({
+        options: {
+          catalogUri: "https://catalog.example.com/v1",
+          warehouse: "s3://bucket/warehouse",
+        },
+      }),
+    );
+
+    expect(profile.options).toEqual({
+      catalogUri: "https://catalog.example.com/v1",
+      warehouse: "s3://bucket/warehouse",
+    });
+    // Credentials stay on the profile columns, never in options.
+    expect(profile.user).toBe("AKIAIOSFODNN7EXAMPLE");
+    expect(profile.password).toBe("secret");
+  });
+
+  it("carries connector options in URL mode too", () => {
+    const profile = profileFromDraft(
+      lakehouseDraft({
+        mode: "url",
+        url: "s3://bucket/warehouse/sales/orders",
+        options: { catalogUri: "https://catalog.example.com/v1" },
+      }),
+    );
+
+    expect(profile.options).toEqual({
+      catalogUri: "https://catalog.example.com/v1",
+    });
+  });
+
+  it("omits options entirely when nothing is set", () => {
+    expect(profileFromDraft(lakehouseDraft()).options).toBeUndefined();
+    expect(
+      profileFromDraft(lakehouseDraft({ options: { catalogUri: "  " } }))
+        .options,
+    ).toBeUndefined();
+  });
+
+  it("drops options that the selected engine does not declare", () => {
+    // Left behind after switching engines in the form: `role` is Snowflake's,
+    // and must not reach the Iceberg connector.
+    const profile = profileFromDraft(
+      lakehouseDraft({
+        options: { warehouse: "s3://bucket/warehouse", role: "ACCOUNTADMIN" },
+      }),
+    );
+
+    expect(profile.options).toEqual({ warehouse: "s3://bucket/warehouse" });
+  });
+
+  it("requires options marked required", () => {
+    const athena = draft({ engine: "athena", mode: "url", url: "athena://db" });
+
+    expect(validateDraft(athena)).toBe("aws region is required");
+    expect(
+      validateDraft({ ...athena, options: { region: "us-east-1" } }),
+    ).toBeNull();
+  });
+
+  it("keeps connector options when importing a settings file", () => {
+    const imported = settingsProfileFromJson(
+      {
+        id: "lake",
+        engine: "iceberg",
+        options: { catalogUri: "https://catalog.example.com/v1", empty: "  " },
+      },
+      0,
+    );
+
+    expect(imported.options).toEqual({
+      catalogUri: "https://catalog.example.com/v1",
+    });
+  });
+
+  it("declares no secret-valued option keys", () => {
+    // Options are persisted to localStorage in the clear, and upstream
+    // irodori-connection rejects these keys outright ("must be stored as a
+    // secret handle"). Secrets belong in `password`, which is session-only.
+    const secretish =
+      /^(password|passwd|pwd|secret|token|privatekey|passphrase)$/;
+    const declared = engineOptions.flatMap((engine) =>
+      engineOptionFields(engine.value).map((field) => field.key),
+    );
+
+    expect(declared.length).toBeGreaterThan(0);
+    for (const key of declared) {
+      expect(key.toLowerCase().replace(/[_-]/g, "")).not.toMatch(secretish);
+    }
+  });
+
+  it("keeps options out of engines that declare none", () => {
+    expect(engineOptionFields("postgres")).toEqual([]);
+    expect(
+      profileFromDraft(draft({ options: { warehouse: "nope" } })).options,
+    ).toBeUndefined();
   });
 });

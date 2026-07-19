@@ -37,6 +37,7 @@ import {
   connectionColorOptions,
   engineConnectionSettings,
   engineLabel,
+  engineOptionFields,
   engineOptions,
   normalizeConnectionColor,
   supportsSocketTransport,
@@ -324,6 +325,7 @@ export function ConnectionManagerDialog({
   const transferMenuRef = useRef<HTMLDivElement | null>(null);
   const transferMenuAnchorRef = useRef<HTMLDivElement | null>(null);
   const engineSettings = engineConnectionSettings(draft.engine);
+  const optionFields = engineOptionFields(draft.engine);
   const locale = usePreferencesStore((state) => state.locale);
   const { t } = createTranslator(locale);
   const { confirm, confirmElement } = useConfirm();
@@ -432,6 +434,12 @@ export function ConnectionManagerDialog({
       window.removeEventListener("blur", closeOnBlur);
     };
   }, [transferMenuOpen]);
+
+  // Connector settings ride along in profile.options; the Rust side forwards the
+  // whole map to the connector untouched.
+  function updateOption(key: string, value: string) {
+    onUpdateDraft({ options: { ...draft.options, [key]: value } });
+  }
 
   function toggleGroup(groupId: string) {
     setCollapsedGroups((current) => {
@@ -935,6 +943,27 @@ export function ConnectionManagerDialog({
               </div>
             </div>
           )}
+          {optionFields.length > 0 ? (
+            <div className="connection-form-stack connector-options full-row">
+              <span className="connector-options-label">
+                {t("connection.connectorSettings")}
+              </span>
+              <div className="connection-form-grid">
+                {optionFields.map((field) => (
+                  <label key={field.key}>
+                    <span>{field.label}</span>
+                    <input
+                      value={draft.options?.[field.key] ?? ""}
+                      placeholder={field.placeholder}
+                      onChange={(event) =>
+                        updateOption(field.key, event.currentTarget.value)
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <label className="connection-readonly-toggle full-row">
             <input
               type="checkbox"
