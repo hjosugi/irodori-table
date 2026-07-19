@@ -327,7 +327,8 @@ function HistoryResultPreview({
         <strong>{t("history.savedResult")}</strong>
         <span>
           {t("history.retainedRows", {
-            count: toCount(result.retainedRows),
+            retained: toCount(result.retainedRows),
+            rows: toCount(result.rowCount),
           })}
           {result.retentionTruncated ? ` ${t("history.retained")}` : ""}
         </span>
