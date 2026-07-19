@@ -16,6 +16,7 @@ import {
   type MigrationOutputKind,
   type MigrationPlan,
 } from "./migration-studio";
+import { errorMessage } from "@/core";
 
 type MigrationStudioDialogProps = {
   onClose: () => void;
@@ -67,8 +68,7 @@ export function MigrationStudioDialog({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          const message =
-            error instanceof Error ? error.message : String(error);
+          const message = errorMessage(error);
           setPlanState({
             status: "error",
             plan: createMigrationPlanPlaceholder(draft, message, t),

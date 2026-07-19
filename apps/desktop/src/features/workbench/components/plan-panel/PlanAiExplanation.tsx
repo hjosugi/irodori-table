@@ -6,6 +6,7 @@ import {
   aiGetProvider,
   type QueryPlanAnalysis,
 } from "@/generated/irodori-api";
+import { errorMessage } from "@/core";
 
 export const PlanAiExplanation = memo(function PlanAiExplanation({
   plan,
@@ -51,7 +52,7 @@ export const PlanAiExplanation = memo(function PlanAiExplanation({
       const text = await aiExplainPlan(plan);
       setNarration(text);
     } catch (err) {
-      setNarrationError(err instanceof Error ? err.message : String(err));
+      setNarrationError(errorMessage(err));
     } finally {
       setNarrating(false);
     }

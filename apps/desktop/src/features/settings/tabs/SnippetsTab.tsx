@@ -18,6 +18,7 @@ import {
   type SqlSnippetScope,
 } from "../../../sql/completion";
 import { clampNumber, type TranslateFn, type ValueUpdater } from "./shared";
+import { errorMessage } from "@/core";
 
 const snippetScopeOptions: SqlSnippetScope[] = [
   "statement",
@@ -98,7 +99,7 @@ export function SnippetsTab({
       );
     } catch (error) {
       setImportNotice(null);
-      setImportError(error instanceof Error ? error.message : String(error));
+      setImportError(errorMessage(error));
     }
   }
 
@@ -115,7 +116,7 @@ export function SnippetsTab({
       );
     } catch (error) {
       setImportNotice(null);
-      setImportError(error instanceof Error ? error.message : String(error));
+      setImportError(errorMessage(error));
     }
   }
 

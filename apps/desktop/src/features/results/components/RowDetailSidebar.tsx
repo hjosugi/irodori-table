@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowRight, Copy, Search, X } from "lucide-react";
+import { errorMessage } from "@/core";
 
 import { usePreferencesStore } from "@/features/preferences";
 import {
@@ -278,7 +279,7 @@ function RowDetailFields(props: RowDetailFieldsProps) {
         ),
       });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
+      setError(errorMessage(caught));
     } finally {
       setLoading(false);
     }

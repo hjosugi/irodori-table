@@ -27,6 +27,7 @@ import {
   type InstalledExtension,
 } from "@/generated/irodori-api";
 import { openExternalUrl, type TranslateFn } from "./shared";
+import { errorMessage } from "@/core";
 
 function MarketplaceSection({
   title,
@@ -525,8 +526,4 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
       {confirmElement}
     </div>
   );
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
