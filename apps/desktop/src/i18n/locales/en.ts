@@ -230,6 +230,7 @@ export const en = {
   "git.refFilter.branches": "Branches",
   "git.refFilter.remotes": "Remotes",
   "git.refFilter.tags": "Tags",
+  "git.repoPathLabel": "Repository path",
   "git.actions.use": "Use",
   "git.actions.browse": "Browse",
   "git.actions.create": "Create",

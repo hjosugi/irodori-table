@@ -79,3 +79,47 @@ describe("LakehousePanel", () => {
     expect(props.onLoadSql).toHaveBeenCalledTimes(1);
   });
 });
+
+// Right-clicking the panel opens its context menu. Rendered inline it sat
+// inside dockview's transformed subtree, which becomes the containing block
+// for position:fixed — so the clamp ran in viewport space and the dock offset
+// was applied after it, landing the menu at x=2654 on a 1600px window (#124).
+// jsdom does no layout, so the guard asserts the two properties that made the
+// bug possible: where the node lives and what its declared position is.
+describe("LakehousePanel context menu", () => {
+  it("portals the menu to <body>, position fixed, clamped to the viewport", () => {
+    const { container } = renderPanel();
+
+    fireEvent.contextMenu(
+      container.querySelector(".lakehouse-panel") as HTMLElement,
+      { clientX: 5000, clientY: 5000 },
+    );
+
+    const menu = screen.getByRole("menu");
+    // Outside the component subtree — a child of body, beyond any transformed
+    // or overflow-clipped dock ancestor.
+    expect(container.contains(menu)).toBe(false);
+    expect(menu.parentElement).toBe(document.body);
+    expect(menu.style.position).toBe("fixed");
+    // Clamped: 5000 is far past jsdom's 1024x768 viewport.
+    expect(Number.parseFloat(menu.style.left)).toBeLessThan(1024);
+    expect(Number.parseFloat(menu.style.top)).toBeLessThan(768);
+  });
+
+  it("stays open when clicked, closes on outside pointerdown", () => {
+    const { container } = renderPanel();
+    fireEvent.contextMenu(
+      container.querySelector(".lakehouse-panel") as HTMLElement,
+      { clientX: 40, clientY: 40 },
+    );
+
+    const menu = screen.getByRole("menu");
+    // Portaled outside the React root, the menu no longer shields itself via
+    // stopPropagation; the containment guard has to do it.
+    fireEvent.pointerDown(within(menu).getAllByRole("menuitem")[0]);
+    expect(screen.queryByRole("menu")).not.toBeNull();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
