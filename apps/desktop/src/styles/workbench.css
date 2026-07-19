@@ -369,6 +369,14 @@
   cursor: pointer;
 }
 
+/* A view dragged in from the opposite side hovers this strip: highlight it as
+   the dock target. */
+.sidebar-view-switcher.side-drop-active {
+  outline: 2px dashed var(--focus);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--focus) 12%, var(--surface-muted));
+}
+
 .sidebar-view-switcher button.drag-over-before {
   box-shadow: inset 2px 0 0 var(--focus);
 }
