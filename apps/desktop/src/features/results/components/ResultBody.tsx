@@ -523,11 +523,13 @@ function StructureView({
           {object.indexes.length > 0 ? (
             object.indexes.map((index) => (
               <span key={index.name}>
-                {index.name || "(unnamed)"} \u00b7{" "}
+                {index.name || t("results.structure.unnamedIndex")}
+                {" \u00b7 "}
                 {index.unique
                   ? t("results.structure.unique")
-                  : t("results.structure.index")}{" "}
-                \u00b7 {index.columns.join(", ")}
+                  : t("results.structure.index")}
+                {" \u00b7 "}
+                {index.columns.join(", ")}
               </span>
             ))
           ) : (

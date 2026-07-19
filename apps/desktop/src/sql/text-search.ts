@@ -182,8 +182,15 @@ export function replaceMatchAt(
 function expandGroups(
   replacement: string,
   matched: string,
-  groups: unknown[],
+  rest: unknown[],
 ): string {
+  // String.replace calls a replacer as (match, p1..pN, offset, string), and
+  // with named groups appends a final object. Everything from the numeric
+  // offset onward is not a capture group, and treating it as one made an
+  // out-of-range $n resolve to the whole subject text — so a single Replace All
+  // spliced the entire document into every match. Cut at the offset.
+  const offsetAt = rest.findIndex((value) => typeof value === "number");
+  const groups = offsetAt === -1 ? rest : rest.slice(0, offsetAt);
   return replacement.replace(/\$(\$|&|\d{1,2})/g, (_token, ref: string) => {
     if (ref === "$") return "$";
     if (ref === "&") return matched;
