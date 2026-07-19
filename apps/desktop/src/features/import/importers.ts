@@ -76,10 +76,6 @@ export function unsupportedImportFormatMessage(format: string): string {
     case "xls":
     case "xlsx":
       return `Native XLSX/XLS import is not supported. Import ${supported}, or load a SQL file instead.`;
-    case "parquet":
-      return `Parquet import is not supported. Import ${supported}, or load a SQL file instead.`;
-    case "avro":
-      return `Avro import is not supported. Import ${supported}, or load a SQL file instead.`;
     default:
       return `Unsupported import format "${format}". Supported text import formats: ${supported}.`;
   }
