@@ -37,6 +37,13 @@ export type DiagramForeignKey = {
   referencesColumns: string[];
 };
 
+export type DiagramIndex = {
+  id: string;
+  name: string;
+  columns: string[];
+  unique: boolean;
+};
+
 export type DiagramTable = {
   id: string;
   schema: string;
@@ -44,6 +51,7 @@ export type DiagramTable = {
   x: number;
   y: number;
   columns: DiagramColumn[];
+  indexes: DiagramIndex[];
   foreignKeys: DiagramForeignKey[];
 };
 
@@ -123,6 +131,7 @@ export function blankDiagramDocument(): DiagramDocument {
             defaultValue: "",
           },
         ],
+        indexes: [],
         foreignKeys: [],
       },
     ],
@@ -171,6 +180,12 @@ function diagramTableFromSpec(
       primaryKey: primaryKey.has(column.name),
       defaultValue: column.defaultValue ?? "",
     })),
+    indexes: table.indexes.map((index, itemIndex) => ({
+      id: `${id}:idx:${itemIndex}`,
+      name: index.name,
+      columns: index.columns,
+      unique: index.unique,
+    })),
     foreignKeys: table.foreignKeys.map((foreignKey, index) => ({
       id: `${id}:fk:${index}`,
       columns: foreignKey.columns,
@@ -192,6 +207,11 @@ export function diagramToTableSpec(
 
   for (const table of document.tables) {
     const list = schemas.get(table.schema) ?? [];
+    const columnNames = new Set(
+      table.columns
+        .filter((column) => column.name.trim() !== "")
+        .map((column) => column.name),
+    );
     list.push({
       name: table.name,
       columns: table.columns
@@ -205,7 +225,17 @@ export function diagramToTableSpec(
       primaryKey: table.columns
         .filter((column) => column.primaryKey && column.name.trim() !== "")
         .map((column) => column.name),
-      indexes: [],
+      indexes: table.indexes
+        .filter(
+          (index) =>
+            index.columns.length > 0 &&
+            index.columns.every((column) => columnNames.has(column)),
+        )
+        .map((index) => ({
+          name: index.name,
+          columns: index.columns,
+          unique: index.unique,
+        })),
       foreignKeys: table.foreignKeys.flatMap((foreignKey) =>
         foreignKeyToSpec(foreignKey, tablesById),
       ),
@@ -283,6 +313,11 @@ function parseDiagramTable(value: unknown): DiagramTable {
           parseDiagramColumn(column, `${id}:col:${index}`),
         )
       : [],
+    indexes: Array.isArray(value.indexes)
+      ? value.indexes.map((index, itemIndex) =>
+          parseDiagramIndex(index, `${id}:idx:${itemIndex}`),
+        )
+      : [],
     foreignKeys: Array.isArray(value.foreignKeys)
       ? value.foreignKeys.map((foreignKey, index) =>
           parseDiagramForeignKey(foreignKey, `${id}:fk:${index}`),
@@ -302,6 +337,18 @@ function parseDiagramColumn(value: unknown, fallbackId: string): DiagramColumn {
     nullable: value.nullable !== false,
     primaryKey: value.primaryKey === true,
     defaultValue: stringValue(value.defaultValue),
+  };
+}
+
+function parseDiagramIndex(value: unknown, fallbackId: string): DiagramIndex {
+  if (!isRecord(value)) {
+    throw new Error("Invalid index entry in schema diagram.");
+  }
+  return {
+    id: stringValue(value.id) || fallbackId,
+    name: stringValue(value.name),
+    columns: stringArray(value.columns),
+    unique: value.unique === true,
   };
 }
 

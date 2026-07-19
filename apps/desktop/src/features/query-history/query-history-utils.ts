@@ -13,23 +13,32 @@ export function compactSql(sql: string, maxLength = 92) {
   return `${compact.slice(0, maxLength - 3)}...`;
 }
 
-export function formatHistoryTime(value: string) {
+export function formatHistoryTime(value: string, locale?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "--:--";
   }
-  return date.toLocaleTimeString([], {
+  return date.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-export function formatHistoryDateTime(value: string) {
+/**
+ * Format a history timestamp in the app locale (not the OS locale). Entries
+ * from a previous year carry the year so old history stays unambiguous.
+ */
+export function formatHistoryDateTime(
+  value: string,
+  locale?: string,
+  now = new Date(),
+) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "Unknown time";
   }
-  return date.toLocaleString([], {
+  return date.toLocaleString(locale, {
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
     month: "short",
     day: "2-digit",
     hour: "2-digit",

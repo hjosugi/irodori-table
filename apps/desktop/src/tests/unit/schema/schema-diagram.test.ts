@@ -23,6 +23,7 @@ function table(
   name: string,
   columns: Array<[string, string, boolean?]>,
   foreignKeys: DbObjectMetadata["foreignKeys"] = [],
+  indexes: DbObjectMetadata["indexes"] = [],
 ): DbObjectMetadata {
   return {
     schema,
@@ -34,7 +35,7 @@ function table(
       nullable: nullable ?? column !== "id",
       ordinal: index + 1,
     })),
-    indexes: [],
+    indexes,
     primaryKey: ["id"],
     foreignKeys,
   };
@@ -62,10 +63,16 @@ const metadata: DatabaseMetadata = {
             },
           ],
         ),
-        table("sales", "customers", [
-          ["id", "INTEGER", false],
-          ["name", "TEXT", false],
-        ]),
+        table(
+          "sales",
+          "customers",
+          [
+            ["id", "INTEGER", false],
+            ["name", "TEXT", false],
+          ],
+          [],
+          [{ name: "idx_customers_name", columns: ["name"], unique: true }],
+        ),
       ],
     },
   ],
@@ -90,6 +97,11 @@ describe("schema diagram model", () => {
       referencesTableId: tableNodeId("sales", "customers"),
       referencesColumns: ["id"],
     });
+    expect(
+      document.tables.find((item) => item.name === "customers")?.indexes,
+    ).toMatchObject([
+      { name: "idx_customers_name", columns: ["name"], unique: true },
+    ]);
   });
 
   it("forward-engineers FK-ordered DDL from the diagram", () => {
@@ -101,6 +113,31 @@ describe("schema diagram model", () => {
     expect(sql).toContain(
       'FOREIGN KEY ("customer_id") REFERENCES "sales"."customers" ("id")',
     );
+  });
+
+  it("keeps table indexes in the generated CREATE script", () => {
+    const sql = diagramToCreateSql(diagramFromMetadata(metadata));
+
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "idx_customers_name" ON "sales"."customers" ("name");',
+    );
+  });
+
+  it("drops indexes whose columns no longer exist in the diagram", () => {
+    const document = diagramFromMetadata(metadata);
+    const customers = document.tables.find((item) => item.name === "customers");
+    if (!customers) {
+      throw new Error("customers table missing from diagram");
+    }
+    customers.columns = customers.columns.filter(
+      (column) => column.name !== "name",
+    );
+
+    const spec = diagramToTableSpec(document);
+    const specCustomers = spec.schemas
+      .flatMap((schema) => schema.tables)
+      .find((item) => item.name === "customers");
+    expect(specCustomers?.indexes).toEqual([]);
   });
 
   it("drops incomplete columns and unresolved relationships when converting", () => {
@@ -131,6 +168,7 @@ describe("schema diagram model", () => {
               defaultValue: "",
             },
           ],
+          indexes: [],
           foreignKeys: [
             {
               id: "fk1",

@@ -458,6 +458,7 @@ export function GitPanel({ variant = "drawer", onClose }: GitPanelProps) {
         {view === "graph" ? (
           <GitGraphView
             commits={graphCommits}
+            locale={locale}
             query={graphQuery}
             refFilter={graphRefFilter}
             selectedCommitHash={selectedCommitHash}

@@ -7,11 +7,13 @@ import {
   parseCommitFileSummary,
 } from "@/features/git/git-graph";
 import {
+  formatCommitTime,
   gitAccentColor,
   localBranchNameFromRef,
   normalizeHexColor,
   providerDefaultColor,
   providerLabel,
+  refKind,
   remoteBranchInfoFromRef,
   remoteCommitUrl,
 } from "@/features/git/git-format";
@@ -69,21 +71,30 @@ describe("git graph lane layout", () => {
   });
 
   it("filters by branch remote and tag refs", () => {
+    const remoteNames = new Set(["origin"]);
     const commits = [
       commit("a111111", [], "Main tip", ["HEAD -> main", "origin/main"]),
-      commit("b222222", [], "Feature tip", ["feature"]),
+      // A local branch whose name contains a slash must count as a branch,
+      // not a remote (#119).
+      commit("b222222", [], "Feature tip", ["feature/login"]),
       commit("c333333", [], "Release", ["tag: v1.0.0"]),
       commit("d444444", [], "Plain"),
     ];
 
     expect(
-      filterGraphCommits(commits, "", "branches").map((item) => item.hash),
+      filterGraphCommits(commits, "", "branches", remoteNames).map(
+        (item) => item.hash,
+      ),
     ).toEqual(["a111111", "b222222"]);
     expect(
-      filterGraphCommits(commits, "", "remotes").map((item) => item.hash),
+      filterGraphCommits(commits, "", "remotes", remoteNames).map(
+        (item) => item.hash,
+      ),
     ).toEqual(["a111111"]);
     expect(
-      filterGraphCommits(commits, "", "tags").map((item) => item.hash),
+      filterGraphCommits(commits, "", "tags", remoteNames).map(
+        (item) => item.hash,
+      ),
     ).toEqual(["c333333"]);
   });
 
@@ -133,18 +144,43 @@ describe("git commit detail helpers", () => {
     ]);
   });
 
+  it("classifies refs as remote only when the first segment names a remote", () => {
+    const remoteNames = new Set(["origin", "upstream"]);
+    expect(refKind("origin/main", remoteNames)).toBe("remote");
+    expect(refKind("upstream/feature/login", remoteNames)).toBe("remote");
+    // Bare local branches may contain slashes; `%D` never prefixes them.
+    expect(refKind("feature/login", remoteNames)).toBe("branch");
+    expect(refKind("main", remoteNames)).toBe("branch");
+    expect(refKind("tag: v1.0.0", remoteNames)).toBe("tag");
+    expect(refKind("HEAD -> main", remoteNames)).toBe("head");
+    // Without a known remote set nothing is guessed from the slash alone.
+    expect(refKind("origin/main")).toBe("branch");
+  });
+
   it("derives local and remote branch actions from graph refs", () => {
+    const remoteNames = new Set(["origin"]);
     expect(localBranchNameFromRef("HEAD -> main")).toBe("main");
     expect(
       localBranchNameFromRef("feature/git-actions", ["feature/git-actions"]),
     ).toBe("feature/git-actions");
-    expect(remoteBranchInfoFromRef("origin/feature/git-actions")).toEqual({
+    // A slash-named local branch resolves even when the local-branch list
+    // has not loaded, as long as its first segment is not a remote (#119).
+    expect(localBranchNameFromRef("feature/login", [], remoteNames)).toBe(
+      "feature/login",
+    );
+    expect(localBranchNameFromRef("origin/main", [], remoteNames)).toBeNull();
+    expect(
+      remoteBranchInfoFromRef("origin/feature/git-actions", remoteNames),
+    ).toEqual({
       branchName: "feature/git-actions",
       localBranchName: "feature/git-actions",
       remoteName: "origin",
       startPoint: "origin/feature/git-actions",
     });
-    expect(remoteBranchInfoFromRef("origin/HEAD -> origin/main")).toBeNull();
+    expect(
+      remoteBranchInfoFromRef("origin/HEAD -> origin/main", remoteNames),
+    ).toBeNull();
+    expect(remoteBranchInfoFromRef("feature/login", remoteNames)).toBeNull();
   });
 
   it("builds provider-specific remote commit URLs", () => {
@@ -163,6 +199,31 @@ describe("git commit detail helpers", () => {
     expect(
       remoteCommitUrl({ provider: "generic", webUrl: undefined }, "abc123"),
     ).toBeNull();
+  });
+});
+
+describe("commit time formatting", () => {
+  // Midday UTC so no timezone can shift the calendar date across a year edge.
+  const march2023 = BigInt(Date.UTC(2023, 2, 5, 12, 0, 0) / 1000);
+
+  it("adds the year to commits from previous years", () => {
+    expect(
+      formatCommitTime(march2023, "en", new Date(Date.UTC(2026, 6, 1, 12))),
+    ).toContain("2023");
+    expect(
+      formatCommitTime(march2023, "en", new Date(Date.UTC(2023, 6, 1, 12))),
+    ).not.toContain("2023");
+  });
+
+  it("formats in the app locale rather than the OS locale", () => {
+    const now = new Date(Date.UTC(2026, 6, 1, 12));
+    expect(formatCommitTime(march2023, "ja", now)).not.toBe(
+      formatCommitTime(march2023, "en-US", now),
+    );
+  });
+
+  it("keeps the invalid-timestamp fallback", () => {
+    expect(formatCommitTime(BigInt("9999999999999999"), "en")).toBe("-");
   });
 });
 

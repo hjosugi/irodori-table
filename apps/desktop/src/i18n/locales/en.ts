@@ -1134,6 +1134,8 @@ export const en = {
   "erd.schemas": "Schemas",
   "erd.loadingMetadata": "Loading schema metadata…",
   "erd.noTablesMatch": "No tables match the current diagram filters",
+  "schemaDesigner.alterPrimaryKeyUnavailable":
+    "Primary keys can't be changed in Alter mode - the generated ALTER TABLE SQL never includes a PRIMARY KEY constraint. Use Create mode or write the constraint by hand.",
   "run.options": "Run options",
   "run.selection": "Run Selection",
   "run.current": "Run Current",

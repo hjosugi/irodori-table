@@ -2,7 +2,7 @@ import type {
   GitChangeKind,
   GitCommitSummary,
 } from "../../generated/irodori-api";
-import { refKind } from "./git-format";
+import { refKind, type RemoteNames } from "./git-format";
 
 export type GitGraphRefFilter = "all" | "branches" | "remotes" | "tags";
 
@@ -74,11 +74,12 @@ export function filterGraphCommits(
   commits: GitCommitSummary[],
   query: string,
   refFilter: GitGraphRefFilter = "all",
+  remoteNames: RemoteNames = [],
 ): GitCommitSummary[] {
   const normalized = query.trim().toLowerCase();
   return commits.filter(
     (commit) =>
-      matchesRefFilter(commit, refFilter) &&
+      matchesRefFilter(commit, refFilter, remoteNames) &&
       (!normalized || searchableCommitText(commit).includes(normalized)),
   );
 }
@@ -187,12 +188,13 @@ function searchableCommitText(commit: GitCommitSummary): string {
 function matchesRefFilter(
   commit: GitCommitSummary,
   refFilter: GitGraphRefFilter,
+  remoteNames: RemoteNames,
 ): boolean {
   if (refFilter === "all") {
     return true;
   }
 
-  const kinds = (commit.refs ?? []).map(refKind);
+  const kinds = (commit.refs ?? []).map((ref) => refKind(ref, remoteNames));
   if (refFilter === "branches") {
     return kinds.some((kind) => kind === "head" || kind === "branch");
   }

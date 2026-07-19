@@ -28,12 +28,21 @@ export function changeLabel(kind: GitChangeKind) {
   }
 }
 
-export function formatCommitTime(value: bigint) {
+/**
+ * Format a commit timestamp in the app locale (not the OS locale). Commits
+ * from a previous year carry the year, the usual git-UI convention.
+ */
+export function formatCommitTime(
+  value: bigint,
+  locale?: string,
+  now = new Date(),
+) {
   const date = new Date(Number(value) * 1000);
   if (Number.isNaN(date.getTime())) {
     return "-";
   }
-  return date.toLocaleString([], {
+  return date.toLocaleString(locale, {
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -60,14 +69,23 @@ export function commitRefs(commit: GitCommitSummary) {
   return commit.refs ?? [];
 }
 
-export function refKind(ref: string) {
+export type RemoteNames = ReadonlySet<string> | readonly string[];
+
+/**
+ * Classify a `%D` decoration ref. Local branches are emitted bare (including
+ * names containing `/`, e.g. `feature/login`), while remote-tracking refs are
+ * prefixed with the remote name (`origin/main`) — so a ref is remote iff its
+ * first path segment is a known remote name, not merely because it has a `/`.
+ */
+export function refKind(ref: string, remoteNames: RemoteNames = []) {
   if (ref.startsWith("tag: ")) {
     return "tag";
   }
   if (ref.startsWith("HEAD -> ")) {
     return "head";
   }
-  if (ref.includes("/")) {
+  const separator = ref.indexOf("/");
+  if (separator > 0 && hasName(remoteNames, ref.slice(0, separator))) {
     return "remote";
   }
   return "branch";
@@ -79,21 +97,25 @@ export function refLabel(ref: string) {
 
 export function localBranchNameFromRef(
   ref: string,
-  localBranches: ReadonlySet<string> | string[] = [],
+  localBranches: ReadonlySet<string> | readonly string[] = [],
+  remoteNames: RemoteNames = [],
 ) {
   const label = refLabel(ref).trim();
-  if (label && hasKnownBranch(localBranches, label)) {
+  if (label && hasName(localBranches, label)) {
     return label;
   }
-  const kind = refKind(ref);
+  const kind = refKind(ref, remoteNames);
   if (kind !== "head" && kind !== "branch") {
     return null;
   }
   return label && !label.includes(" -> ") ? label : null;
 }
 
-export function remoteBranchInfoFromRef(ref: string) {
-  if (refKind(ref) !== "remote") {
+export function remoteBranchInfoFromRef(
+  ref: string,
+  remoteNames: RemoteNames = [],
+) {
+  if (refKind(ref, remoteNames) !== "remote") {
     return null;
   }
   const label = refLabel(ref).trim();
@@ -153,14 +175,11 @@ function appendRemotePath(webUrl: string, suffix: string) {
   }
 }
 
-function hasKnownBranch(
-  localBranches: ReadonlySet<string> | string[],
-  branch: string,
-) {
-  if ("has" in localBranches) {
-    return localBranches.has(branch);
+function hasName(names: ReadonlySet<string> | readonly string[], name: string) {
+  if ("has" in names) {
+    return names.has(name);
   }
-  return localBranches.includes(branch);
+  return names.includes(name);
 }
 
 export function providerLabel(provider: GitRemoteProvider | undefined) {

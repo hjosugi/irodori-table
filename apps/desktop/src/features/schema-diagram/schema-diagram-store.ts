@@ -152,6 +152,7 @@ export const useSchemaDiagramStore = create<SchemaDiagramState>((set) => ({
             defaultValue: "",
           },
         ],
+        indexes: [],
         foreignKeys: [],
       };
       return {

@@ -40,6 +40,7 @@ import {
   refLabel,
   remoteBranchInfoFromRef,
   remoteCommitUrl,
+  type RemoteNames,
 } from "./git-format";
 
 const graphLaneColors = [
@@ -135,9 +136,17 @@ function GraphSvg({ row }: { row: GitGraphRow }) {
   );
 }
 
-function RefBadge({ refName }: { refName: string }) {
+function RefBadge({
+  refName,
+  remoteNames,
+}: {
+  refName: string;
+  remoteNames: RemoteNames;
+}) {
   return (
-    <em className={`git-ref-badge ${refKind(refName)}`}>{refLabel(refName)}</em>
+    <em className={`git-ref-badge ${refKind(refName, remoteNames)}`}>
+      {refLabel(refName)}
+    </em>
   );
 }
 
@@ -147,6 +156,8 @@ const GraphCommitRow = memo(function GraphCommitRow({
   rowCount,
   selected,
   showRemoteRefs,
+  remoteNames,
+  locale,
   onSelect,
 }: {
   row: GitGraphRow;
@@ -154,10 +165,15 @@ const GraphCommitRow = memo(function GraphCommitRow({
   rowCount: number;
   selected: boolean;
   showRemoteRefs: boolean;
+  remoteNames: RemoteNames;
+  locale: Translator["locale"];
   onSelect: () => void;
 }) {
   const { commit } = row;
-  const refs = visibleCommitRefs(commit, showRemoteRefs).slice(0, 5);
+  const refs = visibleCommitRefs(commit, showRemoteRefs, remoteNames).slice(
+    0,
+    5,
+  );
   return (
     <button
       id={`git-commit-${commit.hash}`}
@@ -179,14 +195,18 @@ const GraphCommitRow = memo(function GraphCommitRow({
           {refs.length ? (
             <span className="git-ref-list">
               {refs.map((refName) => (
-                <RefBadge key={refName} refName={refName} />
+                <RefBadge
+                  key={refName}
+                  refName={refName}
+                  remoteNames={remoteNames}
+                />
               ))}
             </span>
           ) : null}
         </span>
       </span>
       <span className="git-graph-date">
-        {formatCommitTime(commit.timestampSeconds)}
+        {formatCommitTime(commit.timestampSeconds, locale)}
       </span>
       <span className="git-graph-author">{commit.author}</span>
       <code className="git-graph-hash">{commit.shortHash}</code>
@@ -200,6 +220,7 @@ function CommitDetail({
   commitDiff,
   commitDiffLoading,
   currentBranch,
+  locale,
   remotes,
   selectedCommitPath,
   showRemoteRefs,
@@ -214,6 +235,7 @@ function CommitDetail({
   commitDiff: GitDiffResult | null;
   commitDiffLoading: boolean;
   currentBranch: string | null;
+  locale: Translator["locale"];
   remotes: GitRemoteSummary[];
   selectedCommitPath: string | null;
   showRemoteRefs: boolean;
@@ -227,14 +249,19 @@ function CommitDetail({
   if (!commit) {
     return <div className="empty-browser">{t("git.selectCommit")}</div>;
   }
-  const refs = visibleCommitRefs(commit, showRemoteRefs);
+  const remoteNames = new Set(remotes.map((item) => item.name));
+  const refs = visibleCommitRefs(commit, showRemoteRefs, remoteNames);
   const remote = remotes.find((item) => item.webUrl);
   const commitUrl = remoteCommitUrl(remote, commit.hash);
   const commitFiles = parseCommitFileSummary(commitDiff?.staged ?? "");
   const localBranches = new Set(branches.map((branch) => branch.name));
   const branchActions: BranchRefAction[] = [];
   for (const refName of refs) {
-    const localBranch = localBranchNameFromRef(refName, localBranches);
+    const localBranch = localBranchNameFromRef(
+      refName,
+      localBranches,
+      remoteNames,
+    );
     if (localBranch) {
       branchActions.push({
         branchName: localBranch,
@@ -244,7 +271,7 @@ function CommitDetail({
       });
       continue;
     }
-    const remoteBranch = remoteBranchInfoFromRef(refName);
+    const remoteBranch = remoteBranchInfoFromRef(refName, remoteNames);
     if (!remoteBranch) {
       continue;
     }
@@ -320,7 +347,11 @@ function CommitDetail({
       {refs.length ? (
         <div className="git-ref-list detail">
           {refs.map((refName) => (
-            <RefBadge key={refName} refName={refName} />
+            <RefBadge
+              key={refName}
+              refName={refName}
+              remoteNames={remoteNames}
+            />
           ))}
         </div>
       ) : null}
@@ -331,7 +362,7 @@ function CommitDetail({
               className="git-branch-row"
               key={`${action.kind}-${action.refName}`}
             >
-              <RefBadge refName={action.refName} />
+              <RefBadge refName={action.refName} remoteNames={remoteNames} />
               {action.kind === "local" ? (
                 <>
                   <button
@@ -405,7 +436,7 @@ function CommitDetail({
         </div>
         <div>
           <dt>{t("git.date")}</dt>
-          <dd>{formatCommitTime(commit.timestampSeconds)}</dd>
+          <dd>{formatCommitTime(commit.timestampSeconds, locale)}</dd>
         </div>
         <div>
           <dt>{t("git.parents")}</dt>
@@ -467,12 +498,16 @@ function CommitDetail({
   );
 }
 
-function visibleCommitRefs(commit: GitCommitSummary, showRemoteRefs: boolean) {
+function visibleCommitRefs(
+  commit: GitCommitSummary,
+  showRemoteRefs: boolean,
+  remoteNames: RemoteNames,
+) {
   const refs = commitRefs(commit);
   if (showRemoteRefs) {
     return refs;
   }
-  return refs.filter((refName) => refKind(refName) !== "remote");
+  return refs.filter((refName) => refKind(refName, remoteNames) !== "remote");
 }
 
 const refFilterOptions: Array<{
@@ -500,6 +535,7 @@ export function GitGraphView({
   commitDiffLoading,
   commits,
   currentBranch,
+  locale,
   query,
   refFilter,
   remotes,
@@ -520,6 +556,7 @@ export function GitGraphView({
   commitDiffLoading: boolean;
   commits: GitCommitSummary[];
   currentBranch: string | null;
+  locale: Translator["locale"];
   query: string;
   refFilter: GitGraphRefFilter;
   remotes: GitRemoteSummary[];
@@ -539,9 +576,13 @@ export function GitGraphView({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const remoteNames = useMemo(
+    () => new Set(remotes.map((remote) => remote.name)),
+    [remotes],
+  );
   const filteredCommits = useMemo(
-    () => filterGraphCommits(commits, query, refFilter),
-    [commits, query, refFilter],
+    () => filterGraphCommits(commits, query, refFilter, remoteNames),
+    [commits, query, refFilter, remoteNames],
   );
   const graphRows = useMemo(
     () => buildGitGraphRows(filteredCommits),
@@ -762,6 +803,8 @@ export function GitGraphView({
                         rowCount={graphRows.length}
                         selected={activeCommitHash === row.commit.hash}
                         showRemoteRefs={showRemoteRefs}
+                        remoteNames={remoteNames}
+                        locale={locale}
                         onSelect={() => onSelectCommit(row.commit.hash)}
                       />
                     );
@@ -781,6 +824,7 @@ export function GitGraphView({
           commitDiff={commitDiff}
           commitDiffLoading={commitDiffLoading}
           currentBranch={currentBranch}
+          locale={locale}
           remotes={remotes}
           selectedCommitPath={selectedCommitPath}
           showRemoteRefs={showRemoteRefs}

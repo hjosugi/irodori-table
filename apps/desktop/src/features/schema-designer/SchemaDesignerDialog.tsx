@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { DialogShell } from "@/components/DialogShell";
+import { usePreferencesStore } from "@/features/preferences";
+import { createTranslator } from "@/i18n";
 import {
   schemaDraftId,
   type SchemaColumnDraft,
@@ -24,6 +26,9 @@ export function SchemaDesignerDialog({
   onCopySql: () => void;
   onPutSqlInEditor: () => void;
 }) {
+  const locale = usePreferencesStore((state) => state.locale);
+  const { t } = createTranslator(locale);
+
   function updateColumn(id: string, patch: Partial<SchemaColumnDraft>) {
     onDraftChange((current) => ({
       ...current,
@@ -174,11 +179,22 @@ export function SchemaDesignerDialog({
                     />
                     <span>NN</span>
                   </label>
-                  <label className="check-cell">
+                  <label
+                    className="check-cell"
+                    title={
+                      draft.mode === "alter"
+                        ? t("schemaDesigner.alterPrimaryKeyUnavailable")
+                        : undefined
+                    }
+                  >
                     <input
                       type="checkbox"
                       checked={column.primaryKey}
-                      disabled={locked}
+                      // The generated ALTER TABLE ... ADD COLUMN never emits a
+                      // PRIMARY KEY constraint (SQLite forbids it outright and
+                      // the altered table usually has a key already), so the
+                      // checkbox must not pretend otherwise (#120).
+                      disabled={locked || draft.mode === "alter"}
                       onChange={(event) =>
                         updateColumn(column.id, {
                           primaryKey: event.currentTarget.checked,

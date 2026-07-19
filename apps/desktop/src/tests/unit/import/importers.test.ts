@@ -126,6 +126,25 @@ describe("import helpers", () => {
     expect(sql).toContain("('1', '12.5', 'true')");
   });
 
+  it("keeps leading zeros by typing zero-padded numeric strings as TEXT", () => {
+    // `01234` is a code, not a number: an INTEGER/REAL column would make the
+    // engine coerce the quoted literal and drop the zero (#122).
+    const sql = generateImportSql(
+      "addresses",
+      ["zip", "houses", "ratio", "delta"],
+      [
+        ["01234", "3", "0.5", "0123e2"],
+        ["94103", "12", "01.5", "1e3"],
+      ],
+    );
+
+    expect(sql).toContain('"zip" TEXT');
+    expect(sql).toContain('"houses" INTEGER');
+    expect(sql).toContain('"ratio" REAL');
+    expect(sql).toContain('"delta" TEXT');
+    expect(sql).toContain("('01234', '3', '0.5', '0123e2')");
+  });
+
   it("can generate insert-only SQL", () => {
     const sql = generateImportSql("people", ["name"], [["O'Hara"]], false);
     expect(sql).not.toContain("CREATE TABLE");
