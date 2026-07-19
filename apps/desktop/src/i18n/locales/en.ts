@@ -958,6 +958,7 @@ export const en = {
   "connection.transportSocket": "Unix socket",
   "connection.socketFile": "Socket file",
   "connection.socketDirectory": "Socket directory",
+  "connection.connectorSettings": "Connector settings",
   "connection.readOnly": "Read-only mode",
   "connection.readOnlyBadge": "read-only",
   "connection.transport": "Transport",

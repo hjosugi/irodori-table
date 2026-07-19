@@ -249,4 +249,82 @@ describe("ConnectionManagerDialog", () => {
       '"code": "28P01"',
     );
   });
+
+  describe("connector settings", () => {
+    function optionInput(label: string) {
+      const field = Array.from(
+        container.querySelectorAll<HTMLLabelElement>(
+          ".connector-options label",
+        ),
+      ).find((item) => item.querySelector("span")?.textContent === label);
+      return field?.querySelector<HTMLInputElement>("input") ?? null;
+    }
+
+    function type(input: HTMLInputElement, value: string) {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(input, value);
+      flushSync(() => {
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+
+    it("renders the option fields an engine declares", () => {
+      renderDialog({
+        draft: draft({
+          engine: "iceberg",
+          options: { warehouse: "s3://bucket/warehouse" },
+        }),
+      });
+
+      expect(optionInput("Catalog URI")?.value).toBe("");
+      expect(optionInput("Warehouse path")?.value).toBe(
+        "s3://bucket/warehouse",
+      );
+    });
+
+    it("writes typed option values into the draft without dropping siblings", () => {
+      const props = renderDialog({
+        draft: draft({
+          engine: "iceberg",
+          options: { warehouse: "s3://bucket/warehouse" },
+        }),
+      });
+
+      const input = optionInput("Catalog URI");
+      expect(input).not.toBeNull();
+      type(input!, "https://catalog.example.com/v1");
+
+      expect(props.onUpdateDraft).toHaveBeenCalledWith({
+        options: {
+          warehouse: "s3://bucket/warehouse",
+          catalogUri: "https://catalog.example.com/v1",
+        },
+      });
+    });
+
+    it("offers credential fields for lakehouse connections", () => {
+      renderDialog({ draft: draft({ engine: "iceberg", mode: "fields" }) });
+
+      const labels = Array.from(
+        container.querySelectorAll(".connection-form-body label span"),
+      ).map((item) => item.textContent);
+
+      expect(labels).toContain("Access key ID / client ID");
+      expect(labels).toContain("Secret access key / token");
+      expect(
+        container.querySelector<HTMLInputElement>(
+          '.connection-form-body input[type="password"]',
+        ),
+      ).not.toBeNull();
+    });
+
+    it("stays out of the way for engines that declare no options", () => {
+      renderDialog({ draft: draft({ engine: "postgres" }) });
+
+      expect(container.querySelector(".connector-options")).toBeNull();
+    });
+  });
 });

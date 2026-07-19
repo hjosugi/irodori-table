@@ -31,6 +31,40 @@ type EngineConnectionSettingsGroup = {
   settings: EngineConnectionSettingsPatch;
 };
 
+/**
+ * One connector setting carried in `ConnectionProfile.options` rather than in a
+ * dedicated profile column. The Rust side forwards the whole options map to the
+ * connector verbatim (extensions/connection.rs `connect_request`), so `key` has
+ * to match what the connector reads.
+ *
+ * Keys mirror the connector manifest model in
+ * tools/extensions/scaffold-connector-repos.mjs, where these same settings are
+ * declared as `option:`-bound endpoint fields. Keep the two in step.
+ */
+export type EngineOptionField = {
+  key: string;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+};
+
+type EngineOptionFieldGroup = {
+  engines: DbEngine[];
+  fields: EngineOptionField[];
+};
+
+const configuredOptionFields = new Map<DbEngine, EngineOptionField[]>(
+  (engineConnectionConfig.optionFields as EngineOptionFieldGroup[]).flatMap(
+    (group) => group.engines.map((engine) => [engine, group.fields]),
+  ),
+);
+
+const noOptionFields: EngineOptionField[] = [];
+
+export function engineOptionFields(engine: DbEngine): EngineOptionField[] {
+  return configuredOptionFields.get(engine) ?? noOptionFields;
+}
+
 const tcpDatabaseSettings =
   engineConnectionConfig.defaultSettings as EngineConnectionSettings;
 

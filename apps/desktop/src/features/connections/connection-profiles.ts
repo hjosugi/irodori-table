@@ -7,6 +7,7 @@ import connectionDefaults from "./connection-defaults.json";
 import {
   defaultPort,
   engineConnectionSettings,
+  engineOptionFields,
 } from "./engine-connection-settings";
 import type {
   ConnectionDraft,
@@ -16,7 +17,9 @@ import type {
 export {
   defaultPort,
   engineConnectionSettings,
+  engineOptionFields,
   type EngineConnectionSettings,
+  type EngineOptionField,
 } from "./engine-connection-settings";
 export type {
   ConnectionDraft,
@@ -492,6 +495,21 @@ function nonEmptyJsonString(value: unknown, fallback: string) {
   return jsonString(value, fallback).trim() || fallback;
 }
 
+/** Keeps only string-valued entries; imported files are untrusted shapes. */
+function jsonOptions(value: unknown) {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const options: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    const text = jsonString(entry, "").trim();
+    if (text) {
+      options[key] = text;
+    }
+  }
+  return Object.keys(options).length > 0 ? options : undefined;
+}
+
 export function settingsProfileFromJson(
   value: unknown,
   index: number,
@@ -526,6 +544,7 @@ export function settingsProfileFromJson(
       database: jsonString(value.database, defaults.database),
       socketPath: jsonString(value.socketPath, defaults.socketPath),
       readOnly: value.readOnly === true,
+      options: jsonOptions(value.options),
     }),
   );
 }
@@ -607,7 +626,32 @@ export function validateDraft(draft: ConnectionDraft): string | null {
   ) {
     return "port must be a number";
   }
+  for (const field of engineOptionFields(resolvedDraft.engine)) {
+    if (field.required && !resolvedDraft.options?.[field.key]?.trim()) {
+      return `${field.label.toLowerCase()} is required`;
+    }
+  }
   return null;
+}
+
+/**
+ * Connector settings for the wire, keyed by the option names the engine's
+ * connector actually reads. Only keys declared for this engine are emitted, so
+ * switching engines in the form cannot leak a previous engine's settings into
+ * the request — the draft keeps them, the profile does not.
+ *
+ * Omitted entirely when empty, matching the Rust profile's
+ * `skip_serializing_if = "BTreeMap::is_empty"`.
+ */
+function draftOptions(draft: ConnectionDraft) {
+  const options: Record<string, string> = {};
+  for (const field of engineOptionFields(draft.engine)) {
+    const value = draft.options?.[field.key]?.trim();
+    if (value) {
+      options[field.key] = value;
+    }
+  }
+  return Object.keys(options).length > 0 ? { options } : {};
 }
 
 export function profileFromDraft(
@@ -615,6 +659,9 @@ export function profileFromDraft(
 ): ConnectionProfile<DbEngine> {
   const resolvedDraft = repairBuiltinSampleProfile(draft);
   const readOnly = resolvedDraft.readOnly ? { readOnly: true } : {};
+  // Options are profile-level connector config, not mode-specific: snowflake.rs
+  // reads them whether the user typed a URL or filled the fields.
+  const options = draftOptions(resolvedDraft);
   const socketPath =
     supportsSocketTransport(resolvedDraft.engine) &&
     resolvedDraft.connectionTransport === "socket"
@@ -625,6 +672,7 @@ export function profileFromDraft(
       id: resolvedDraft.id.trim(),
       engine: resolvedDraft.engine,
       url: resolvedDraft.url.trim(),
+      ...options,
       ...readOnly,
     };
   }
@@ -638,6 +686,7 @@ export function profileFromDraft(
     database: resolvedDraft.database.trim() || undefined,
     socketPath,
     transport: socketPath ? { kind: "localFile", path: socketPath } : undefined,
+    ...options,
     ...readOnly,
   };
 }

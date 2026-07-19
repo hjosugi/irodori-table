@@ -978,6 +978,7 @@ export const ja = {
   "connection.transportSocket": "Unix ソケット",
   "connection.socketFile": "ソケットファイル",
   "connection.socketDirectory": "ソケットディレクトリ",
+  "connection.connectorSettings": "コネクタ設定",
   "connection.readOnly": "読み取り専用モード",
   "connection.readOnlyBadge": "読み取り専用",
   "connection.transport": "トランスポート",

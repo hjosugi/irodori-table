@@ -346,22 +346,63 @@
     {
       "engines": ["deltaLake", "hudi", "iceberg"],
       "settings": {
-        "preferredMode": "url",
-        "urlLabel": "Catalog URI / table path",
-        "urlPlaceholder": "iceberg+rest://catalog.example.com/warehouse/namespace or s3://bucket/table",
+        "preferredMode": "fields",
+        "urlLabel": "Table path",
+        "urlPlaceholder": "s3://bucket/warehouse/namespace/table",
         "fieldsLabel": "Catalog",
         "hostLabel": "Catalog endpoint / region",
         "hostPlaceholder": "catalog.example.com or us-east-1",
-        "userLabel": "Credential / profile",
-        "passwordLabel": "Secret / token",
-        "databaseLabel": "Warehouse / namespace / table path",
-        "databasePlaceholder": "warehouse.namespace.table or s3://bucket/table",
+        "userLabel": "Access key ID / client ID",
+        "userPlaceholder": "AKIAIOSFODNN7EXAMPLE",
+        "passwordLabel": "Secret access key / token",
+        "databaseLabel": "Namespace / table",
+        "databasePlaceholder": "namespace.table",
         "showHost": false,
         "showPort": false,
-        "showUser": false,
-        "showPassword": false,
+        "showUser": true,
+        "showPassword": true,
         "transportLabel": "Lakehouse catalog"
       }
+    }
+  ],
+  "optionFields": [
+    {
+      "engines": ["iceberg", "deltaLake", "hudi", "hive"],
+      "fields": [
+        {
+          "key": "catalogUri",
+          "label": "Catalog URI",
+          "placeholder": "https://catalog.example.com/v1"
+        },
+        {
+          "key": "warehouse",
+          "label": "Warehouse path",
+          "placeholder": "s3://bucket/warehouse"
+        }
+      ]
+    },
+    {
+      "engines": ["athena", "s3Tables", "dynamodb"],
+      "fields": [
+        {
+          "key": "region",
+          "label": "AWS region",
+          "placeholder": "us-east-1",
+          "required": true
+        }
+      ]
+    },
+    {
+      "engines": ["snowflake"],
+      "fields": [
+        {
+          "key": "warehouse",
+          "label": "Warehouse",
+          "placeholder": "COMPUTE_WH"
+        },
+        { "key": "role", "label": "Role", "placeholder": "ACCOUNTADMIN" },
+        { "key": "schema", "label": "Schema", "placeholder": "PUBLIC" }
+      ]
     }
   ],
   "defaultPorts": {
