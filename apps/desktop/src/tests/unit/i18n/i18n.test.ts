@@ -22,13 +22,30 @@ describe("i18n core", () => {
     expect(translate("common.save", { locale: "fr-FR" })).toBe("Save");
   });
 
-  it("interpolates values and leaves missing placeholders intact", () => {
+  it("interpolates values", () => {
     expect(interpolate("Hello {name}", { name: "Ada" })).toBe("Hello Ada");
     expect(interpolate("{count} rows returned", { count: 12 })).toBe(
       "12 rows returned",
     );
-    expect(interpolate("Missing {name}")).toBe("Missing {name}");
     expect(interpolate("Value: {value}", { value: null })).toBe("Value: ");
+  });
+
+  /**
+   * Leaving an unmatched placeholder alone is a fallback, not a feature: a
+   * caller that forgets a value ships a literal `{count}` to the user, and
+   * three call sites did exactly that until i18n-call-sites.test.ts caught
+   * them.
+   *
+   * It stays non-throwing because strings that are not templates rely on it —
+   * `settings.snippets.importPlaceholder` carries CodeMirror snippet syntax
+   * (`${0}`) that has to reach the editor untouched. Missing values are caught
+   * statically instead, at the call site, where the mistake actually is.
+   */
+  it("leaves a placeholder it has no value for untouched", () => {
+    expect(interpolate("Missing {name}")).toBe("Missing {name}");
+    expect(interpolate("tab stop ${0} survives")).toBe(
+      "tab stop ${0} survives",
+    );
   });
 
   it("translates Japanese labels", () => {

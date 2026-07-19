@@ -1,24 +1,9 @@
-import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePreferencesStore } from "@/features/preferences";
 import { Sidebar } from "@/features/workbench/components/Sidebar";
 import type { WorkspaceConnection } from "@/lib/workspace-connection";
-
-let container: HTMLDivElement;
-let root: Root;
-
-beforeEach(() => {
-  usePreferencesStore.setState({ locale: "en" });
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-});
-
-afterEach(() => {
-  flushSync(() => root.unmount());
-  container.remove();
-});
+import { componentRenderer } from "@/tests/helpers/render";
 
 function connectionWith(engine: string): WorkspaceConnection {
   return {
@@ -32,15 +17,12 @@ function connectionWith(engine: string): WorkspaceConnection {
   };
 }
 
-function renderSidebar(
-  engine: string,
-  overrides: Partial<Parameters<typeof Sidebar>[0]> = {},
-) {
-  const activeConnection = connectionWith(engine);
-  const props: Parameters<typeof Sidebar>[0] = {
+const renderSidebar = componentRenderer(Sidebar, () => {
+  const activeConnection = connectionWith("postgres");
+  return {
     sidebarOpen: true,
-    side: "left",
-    activeView: "objectBrowser",
+    side: "left" as const,
+    activeView: "objectBrowser" as const,
     completionPanel: null,
     historyPanel: null,
     planPanel: null,
@@ -87,56 +69,74 @@ function renderSidebar(
     onCloseSidebar: vi.fn(),
     onBeginResize: vi.fn(),
     onResizeKey: vi.fn(),
+  } satisfies Parameters<typeof Sidebar>[0];
+});
+
+/** Render for `engine`, keeping the connection fields consistent. */
+function renderForEngine(
+  engine: string,
+  overrides: Partial<Parameters<typeof Sidebar>[0]> = {},
+) {
+  const activeConnection = connectionWith(engine);
+  return renderSidebar({
+    connections: [activeConnection],
+    activeConnection,
+    activeConnectionId: activeConnection.id,
+    connectedIds: new Set([activeConnection.id]),
     ...overrides,
-  };
-  flushSync(() => root.render(<Sidebar {...props} />));
-  return props;
+  });
 }
 
-function headingText() {
+// The container heading and the tree icon are styling-level details with no
+// accessible name of their own, so they stay on CSS selectors.
+function headingText(container: HTMLElement) {
   return container.querySelector(".browser-section .section-heading span")
     ?.textContent;
 }
 
-function containerIconClass() {
+function containerIconClass(container: HTMLElement) {
   return container
     .querySelector(".schema-tree > summary > svg")
     ?.getAttribute("class");
 }
 
+beforeEach(() => {
+  usePreferencesStore.setState({ locale: "en" });
+});
+
 describe("Sidebar object browser container vocabulary", () => {
   it("keeps schema wording for engines outside the lakehouse contract", () => {
-    renderSidebar("postgres");
+    const { container } = renderForEngine("postgres");
 
-    expect(headingText()).toBe("2 schemas");
-    expect(containerIconClass()).toContain("lucide-folder");
+    expect(headingText(container)).toBe("2 schemas");
+    expect(containerIconClass(container)).toContain("lucide-folder");
   });
 
   it("names Iceberg containers namespaces", () => {
-    renderSidebar("iceberg");
+    const { container } = renderForEngine("iceberg");
 
-    expect(headingText()).toBe("2 namespaces");
+    expect(headingText(container)).toBe("2 namespaces");
   });
 
   it("names Hive containers databases", () => {
-    renderSidebar("hive");
+    const { container } = renderForEngine("hive");
 
-    expect(headingText()).toBe("2 databases");
+    expect(headingText(container)).toBe("2 databases");
   });
 
   // databricks is a lakehouse engine whose contract still calls the level
   // schemas, so vocabulary and icon deliberately disagree here.
   it("keeps schema wording for Databricks but marks it as a lakehouse", () => {
-    renderSidebar("databricks");
+    const { container } = renderForEngine("databricks");
 
-    expect(headingText()).toBe("2 schemas");
-    expect(containerIconClass()).toContain("lucide-boxes");
+    expect(headingText(container)).toBe("2 schemas");
+    expect(containerIconClass(container)).toContain("lucide-boxes");
   });
 
   it("marks lakehouse containers with the lakehouse icon", () => {
-    renderSidebar("deltaLake");
+    const { container } = renderForEngine("deltaLake");
 
-    expect(containerIconClass()).toContain("lucide-boxes");
+    expect(containerIconClass(container)).toContain("lucide-boxes");
   });
 
   // Before metadata arrives the heading has no count to show. It used to fall
@@ -144,17 +144,28 @@ describe("Sidebar object browser container vocabulary", () => {
   // a container count, is wrong for engines that have no public schema, and
   // never went through t() so it stayed English under any locale.
   it("falls back to a translated label when metadata has not loaded", () => {
-    renderSidebar("sqlite", {
+    const { container } = renderForEngine("sqlite", {
       activeMetadata: undefined,
       activeConnectionOpen: false,
     });
 
-    expect(headingText()).toBe("Database objects");
+    expect(headingText(container)).toBe("Database objects");
   });
 
   it("uses the same fallback for engines that do have a public schema", () => {
-    renderSidebar("postgres", { activeMetadata: undefined });
+    const { container } = renderForEngine("postgres", {
+      activeMetadata: undefined,
+    });
 
-    expect(headingText()).toBe("Database objects");
+    expect(headingText(container)).toBe("Database objects");
+  });
+
+  // textContent alone would also pass on a tree collapsed to zero height; this
+  // at least holds the schema rows to being rendered and not hidden.
+  it("shows a row for every schema", () => {
+    renderForEngine("postgres");
+
+    expect(screen.getByText("sales")).toBeVisible();
+    expect(screen.getByText("ops")).toBeVisible();
   });
 });

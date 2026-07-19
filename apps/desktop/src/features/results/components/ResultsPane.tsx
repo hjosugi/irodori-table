@@ -473,7 +473,9 @@ export function ResultsPane({
             <div
               className="result-tabs"
               role="tablist"
-              aria-label={t("results.resultSets")}
+              aria-label={t("results.resultSets", {
+                count: resultSets.length,
+              })}
             >
               {resultSets.map((set, index) => (
                 <button

@@ -164,7 +164,9 @@ export function QueryHistoryDialog({
         <div
           className="history-results"
           role="listbox"
-          aria-label={t("history.entries")}
+          aria-label={t("history.entries", {
+            count: toCount(historyDialogItems.length),
+          })}
         >
           {historyDialogItems.length > 0 ? (
             historyDialogItems.map((item) => {
@@ -325,8 +327,7 @@ function HistoryResultPreview({
         <strong>{t("history.savedResult")}</strong>
         <span>
           {t("history.retainedRows", {
-            retained: toCount(result.retainedRows),
-            rows: toCount(result.rowCount),
+            count: toCount(result.retainedRows),
           })}
           {result.retentionTruncated ? ` ${t("history.retained")}` : ""}
         </span>

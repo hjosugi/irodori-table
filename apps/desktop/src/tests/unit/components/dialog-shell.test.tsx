@@ -1,29 +1,11 @@
-import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { DialogShell } from "@/components/DialogShell";
-
-let container: HTMLDivElement;
-let root: Root;
-
-beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-});
-
-afterEach(() => {
-  flushSync(() => root.unmount());
-  container.remove();
-});
-
-function render(node: React.ReactNode) {
-  flushSync(() => root.render(node));
-}
+import { renderUi } from "@/tests/helpers/render";
 
 describe("DialogShell", () => {
   it("renders an accessible dialog with the supplied label", () => {
-    render(
+    renderUi(
       <DialogShell
         className="data-dialog"
         label="Test dialog"
@@ -32,53 +14,56 @@ describe("DialogShell", () => {
         <button type="button">Inside</button>
       </DialogShell>,
     );
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog).not.toBeNull();
-    expect(dialog?.getAttribute("aria-modal")).toBe("true");
-    expect(dialog?.getAttribute("aria-label")).toBe("Test dialog");
-    expect(dialog?.classList.contains("data-dialog")).toBe(true);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeVisible();
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAccessibleName("Test dialog");
+    expect(dialog).toHaveClass("data-dialog");
+    expect(screen.getByRole("button", { name: "Inside" })).toBeVisible();
   });
 
   it("prefers aria-labelledby over aria-label when provided", () => {
-    render(
+    renderUi(
       <DialogShell labelledBy="heading-1" onClose={() => {}}>
         <h2 id="heading-1">Heading</h2>
       </DialogShell>,
     );
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog?.getAttribute("aria-labelledby")).toBe("heading-1");
-    expect(dialog?.getAttribute("aria-label")).toBeNull();
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAccessibleName("Heading");
+    expect(dialog).not.toHaveAttribute("aria-label");
   });
 
-  it("closes on Escape", () => {
+  it("closes on Escape", async () => {
     const onClose = vi.fn();
-    render(
+    const { user } = renderUi(
       <DialogShell label="x" onClose={onClose}>
         <button type="button">Inside</button>
       </DialogShell>,
     );
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
+
+    await user.keyboard("{Escape}");
+
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("does not close on Escape when closeOnEscape is false", () => {
+  it("does not close on Escape when closeOnEscape is false", async () => {
     const onClose = vi.fn();
-    render(
+    const { user } = renderUi(
       <DialogShell label="x" onClose={onClose} closeOnEscape={false}>
         <button type="button">Inside</button>
       </DialogShell>,
     );
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
+
+    await user.keyboard("{Escape}");
+
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("closes on overlay click but not on dialog-body click", () => {
+  it("closes on overlay click but not on dialog-body click", async () => {
     const onClose = vi.fn();
-    render(
+    const { user, container } = renderUi(
       <DialogShell
         className="data-dialog"
         overlayClassName="modal-overlay"
@@ -88,11 +73,15 @@ describe("DialogShell", () => {
         <button type="button">Inside</button>
       </DialogShell>,
     );
-    const overlay = container.querySelector<HTMLElement>(".modal-overlay");
-    const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
-    dialog?.click();
+
+    await user.click(screen.getByRole("dialog"));
     expect(onClose).not.toHaveBeenCalled();
-    overlay?.click();
+
+    // The scrim behind the dialog is presentational, so it has no role to
+    // query by; it is the one place here a class selector is the honest tool.
+    const overlay = container.querySelector<HTMLElement>(".modal-overlay");
+    expect(overlay).not.toBeNull();
+    await user.click(overlay as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -101,20 +90,27 @@ describe("DialogShell", () => {
     trigger.textContent = "Trigger";
     document.body.appendChild(trigger);
     trigger.focus();
-    expect(document.activeElement).toBe(trigger);
+    expect(trigger).toHaveFocus();
 
-    render(
+    const { unmount } = renderUi(
       <DialogShell label="x" onClose={() => {}}>
-        <button type="button" id="first">
-          First
-        </button>
+        <button type="button">First</button>
         <button type="button">Second</button>
       </DialogShell>,
     );
-    expect(document.activeElement?.id).toBe("first");
+    expect(screen.getByRole("button", { name: "First" })).toHaveFocus();
 
-    flushSync(() => root.render(null));
-    expect(document.activeElement).toBe(trigger);
+    unmount();
+    expect(trigger).toHaveFocus();
     trigger.remove();
   });
+
+  // Not covered here: the Tab focus trap, which is the reason this shell
+  // exists rather than a bare div. Its candidate list is filtered by
+  // `el.offsetParent !== null` (DialogShell.tsx:126), and jsdom does no layout,
+  // so `offsetParent` is null for every element and the list collapses to
+  // whatever already has focus. Any assertion about Tab wrapping would pass or
+  // fail for reasons unrelated to the trap. Sidebar.tsx:165 filters tree rows
+  // the same way, so its arrow-key navigation is unreachable here too; both
+  // belong in the browser suite (vitest.browser.config.ts).
 });
