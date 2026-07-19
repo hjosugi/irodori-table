@@ -1,6 +1,7 @@
 import { createElement, useRef, useState } from "react";
 import type { ShowActionNotice } from "@/app/ActionToast";
 import { loadSavedQuery } from "@/app/app-config";
+import { activeTabLabelForEditorGroup } from "@/app/editor-tabs";
 import { selectedSqlFromSelections } from "@/app/app-workbench-utils";
 import { EditorTabStrip } from "@/app/EditorTabStrip";
 import type { QueryEditorController } from "@/app/controllers/workbench-controllers";
@@ -173,6 +174,10 @@ export function useEditorWorkspace({
   }): QueryEditorController {
     return {
       activeTabLabel,
+      primaryTabLabel: activeTabLabelForEditorGroup(editorGroupStates.primary),
+      secondaryTabLabel: activeTabLabelForEditorGroup(
+        editorGroupStates.secondary,
+      ),
       running: extra.running,
       formatter,
       primaryQuery,

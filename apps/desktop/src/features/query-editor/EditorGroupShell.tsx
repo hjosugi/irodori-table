@@ -20,6 +20,8 @@ export type EditorGroupShellProps = {
   group: EditorGroup;
   active: boolean;
   query: string;
+  /** Active tab's file-style label; routes the buffer language (EDITOR-178). */
+  tabLabel: string;
   apiRef: RefObject<SqlEditorHandle | null>;
   formatter: SqlFormatterId;
   editorEngine: DbEngine;
@@ -45,6 +47,7 @@ export function EditorGroupShell({
   group,
   active,
   query,
+  tabLabel,
   apiRef,
   formatter,
   editorEngine,
@@ -82,6 +85,7 @@ export function EditorGroupShell({
         <SqlEditor
           ref={apiRef}
           value={query}
+          tabLabel={tabLabel}
           onChange={onQueryChange}
           onSelectionChange={(selection) => {
             setActiveEditorGroup(group);

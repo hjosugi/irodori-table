@@ -54,6 +54,24 @@ describe("editor tab state", () => {
     expect(state.tabs.map((tab) => tab.label)).toContain("scratch-copy.sql");
   });
 
+  it("keeps the source extension when duplicating non-SQL tabs", () => {
+    let state = createEditorGroupState("");
+    state = addSqlTabToEditorGroup(state, {
+      id: "orders",
+      label: "orders.csv",
+      query: "id,name",
+    });
+    state = duplicateSqlTabInEditorGroup(state, "orders", {
+      id: "orders-copy",
+    });
+    expect(state.tabs.map((tab) => tab.label)).toContain("orders-copy.csv");
+
+    state = duplicateSqlTabInEditorGroup(state, "orders", {
+      id: "orders-copy-2",
+    });
+    expect(state.tabs.map((tab) => tab.label)).toContain("orders-copy-2.csv");
+  });
+
   it("keeps the last tab open and reopens closed tabs inside the same group", () => {
     let state = createEditorGroupState("");
     state = closeOtherSqlTabsInEditorGroup(state, "explain");
