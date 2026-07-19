@@ -691,6 +691,8 @@ export const en = {
   "settings.extensions.working": "Working...",
   "settings.extensions.installedAction": "Installed",
   "settings.extensions.unsupported": "Unavailable",
+  "settings.extensions.hiddenForPlatform": "{count} hidden for this platform",
+  "settings.extensions.hideUnavailable": "Hide unavailable",
   "settings.extensions.currentVersion": "Installed {version}",
   "settings.extensions.verifiedDigest": "SHA-256 {digest}…",
   "settings.extensions.targetUnavailable":

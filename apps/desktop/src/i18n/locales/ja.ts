@@ -703,6 +703,9 @@ export const ja = {
   "settings.extensions.working": "処理中...",
   "settings.extensions.installedAction": "インストール済み",
   "settings.extensions.unsupported": "利用不可",
+  "settings.extensions.hiddenForPlatform":
+    "このプラットフォームでは {count} 件非表示",
+  "settings.extensions.hideUnavailable": "利用不可の拡張を隠す",
   "settings.extensions.currentVersion": "インストール済み {version}",
   "settings.extensions.verifiedDigest": "SHA-256 {digest}…",
   "settings.extensions.targetUnavailable":
