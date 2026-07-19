@@ -186,8 +186,11 @@ test("selecting a result row opens Row Detail as a full-height right sidebar", a
   });
   expect(clipped).toEqual([]);
 
-  // Closing the panel clears the selection and the sidebar.
-  await detail.getByRole("button", { name: "Clear row selection" }).click();
+  // Closing the panel clears the selection and the sidebar. The control was
+  // renamed in #149, where it also stopped being disabled with no row selected
+  // — its handler always closed the view, so disabling it left the panel stuck
+  // open.
+  await detail.getByRole("button", { name: "Close row detail" }).click();
   await expect(page.locator(".row-detail")).toHaveCount(0);
   await expect(page.locator(".grid-row.row-selected")).toHaveCount(0);
 
