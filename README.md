@@ -100,6 +100,7 @@ project docs:
 
 ## Links
 
+- User guide: [docs/README.md](docs/README.md)
 - Docs: <https://hjosugi.github.io/irodori-docs/>
 - Install guide: <https://hjosugi.github.io/irodori-docs/install-guide.html>
 - Roadmap: [ROADMAP.md](ROADMAP.md)

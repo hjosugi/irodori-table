@@ -50,9 +50,9 @@ describe("theme model", () => {
   });
 
   it("loads curated default themes from JSON", () => {
-    expect(defaultThemeEntries).toHaveLength(44);
-    expect(defaultThemeEntriesByKind.dark).toHaveLength(22);
-    expect(defaultThemeEntriesByKind.light).toHaveLength(22);
+    expect(defaultThemeEntries).toHaveLength(46);
+    expect(defaultThemeEntriesByKind.dark).toHaveLength(23);
+    expect(defaultThemeEntriesByKind.light).toHaveLength(23);
     expect(new Set(defaultThemeEntries.map((theme) => theme.id)).size).toBe(
       defaultThemeEntries.length,
     );
@@ -69,6 +69,118 @@ describe("theme model", () => {
         contrastRatio(entry.theme.syntax.comment, entry.theme.ui.editorBg),
       ).toBeGreaterThanOrEqual(3.5);
     }
+  });
+
+  // The shipping default is whichever entry sorts first for its kind. It was
+  // reworked away from a single-hue wash (every plane and the accent sat within
+  // ~4 degrees of the same violet), so these gates pin the properties that fix
+  // was made of: separated planes, readable text, and an accent that is
+  // actually a different hue from the chrome it sits on.
+  describe.each([
+    ["light", "irodori-bloom-paper"],
+    ["dark", "irodori-bloom"],
+  ] as const)("%s default (%s)", (kind, id) => {
+    const theme = defaultThemeEntriesByKind[kind][0];
+
+    it("is the icon-derived Irodori Bloom theme", () => {
+      expect(theme.id).toBe(id);
+      expect(defaultThemeForKind(kind)).toBe(theme.theme);
+    });
+
+    it("separates every adjacent workbench plane", () => {
+      const { ui } = theme.theme;
+      // .titlebar/.statusbar -> chrome, .sidebar/.query-toolbar -> surface,
+      // .editor-pane -> editorBg, .results-pane -> surfaceRaised.
+      for (const [a, b] of [
+        ["chrome", "surface"],
+        ["surface", "editorBg"],
+        ["surface", "surfaceRaised"],
+        ["surfaceMuted", "surface"],
+      ] as const) {
+        expect(contrastRatio(ui[a], ui[b]), `${a} vs ${b}`).toBeGreaterThan(
+          1.06,
+        );
+      }
+      // Borders carry the structure between planes (GitHub's method).
+      expect(contrastRatio(ui.border, ui.editorBg)).toBeGreaterThan(1.3);
+    });
+
+    it("keeps body and secondary text at WCAG AA on every surface", () => {
+      const { ui } = theme.theme;
+      const surfaces = [
+        "editorBg",
+        "surface",
+        "surfaceRaised",
+        "chrome",
+        "surfaceMuted",
+        "inputBg",
+        "gridHeader",
+        "gridRowAlt",
+        "hover",
+        "selected",
+        "selectedStrong",
+        "activeLine",
+        "dangerBg",
+        "warningBg",
+      ] as const;
+      for (const surface of surfaces) {
+        expect(
+          contrastRatio(ui.text, ui[surface]),
+          `text on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const surface of [
+        "editorBg",
+        "surface",
+        "surfaceRaised",
+        "chrome",
+        "surfaceMuted",
+      ] as const) {
+        expect(
+          contrastRatio(ui.muted, ui[surface]),
+          `muted on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(ui.gutterText, ui.gutterBg)).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    });
+
+    it("keeps every syntax token at WCAG AA on the editor background", () => {
+      const { ui, syntax } = theme.theme;
+      for (const [role, color] of Object.entries(syntax)) {
+        expect(contrastRatio(color, ui.editorBg), role).toBeGreaterThanOrEqual(
+          4.5,
+        );
+      }
+    });
+
+    it("spends the accent on a hue the chrome does not already use", () => {
+      const { ui } = theme.theme;
+      const hue = (color: string) => {
+        const [r, g, b] = [0, 2, 4].map(
+          (offset) =>
+            Number.parseInt(color.slice(1 + offset, 3 + offset), 16) / 255,
+        );
+        const [max, min] = [Math.max(r, g, b), Math.min(r, g, b)];
+        if (max === min) return 0;
+        const d = max - min;
+        const h =
+          max === r
+            ? ((g - b) / d) % 6
+            : max === g
+              ? (b - r) / d + 2
+              : (r - g) / d + 4;
+        return (((h * 60) % 360) + 360) % 360;
+      };
+      const delta = Math.abs(hue(ui.focus) - hue(ui.chrome));
+      expect(Math.min(delta, 360 - delta)).toBeGreaterThan(15);
+      // Non-text UI boundaries.
+      expect(contrastRatio(ui.focus, ui.surface)).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(ui.borderStrong, ui.inputBg)).toBeGreaterThanOrEqual(
+        3,
+      );
+    });
   });
 
   it("resolves default themes by id and kind", () => {
