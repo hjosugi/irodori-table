@@ -19,7 +19,10 @@ import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
 
 type WorkbenchDockPanelId =
-  "leftSidebar" | "editor" | "results" | "rightSidebar";
+  | "leftSidebar"
+  | "editor"
+  | "results"
+  | "rightSidebar";
 
 type WorkbenchDockPanelContent = Record<WorkbenchDockPanelId, ReactNode>;
 
