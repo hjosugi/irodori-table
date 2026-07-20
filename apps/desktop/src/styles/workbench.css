@@ -2368,6 +2368,81 @@
   overflow: hidden;
 }
 
+/* Log buffers get a filter bar row between the tab strip and the editor
+   (issue #177). The bar is always present for `.log` tabs so toggling a
+   filter never shifts the editor. */
+.editor-shell-with-log-filter {
+  grid-template-rows: var(--bar-md) auto minmax(0, 1fr);
+}
+
+.log-filter-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--bar-sm);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.log-filter-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: clamp(150px, 18vw, 250px);
+  height: var(--control-sm);
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-raised);
+}
+
+.log-filter-text.active {
+  border-color: var(--blue);
+  color: var(--text);
+}
+
+.log-filter-text input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-ui-md);
+}
+
+.log-filter-text button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.log-filter-text button:hover,
+.log-filter-text button:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.log-filter-status {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+  white-space: nowrap;
+}
+
 .editor-group {
   position: relative;
 }
