@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use desktop_lib::db::{self, ConnectionProfile, DbEngine};
-use desktop_lib::extensions::{self, ExtensionInstallRequest};
+use desktop_lib::extensions::{self, ExtensionInstallKind, ExtensionInstallRequest};
 use desktop_lib::security::SecurityState;
 use tauri::Manager;
 
@@ -26,6 +26,7 @@ fn memgraph_release_request() -> ExtensionInstallRequest {
     ExtensionInstallRequest {
         id: "irodori.memgraph".into(),
         version: "0.1.3".into(),
+        kind: ExtensionInstallKind::GithubRelease,
         repository: "hjosugi/irodori-extension-memgraph".into(),
         asset_name: "irodori-extension-memgraph.tar.gz".into(),
         tag: "v0.1.3".into(),
@@ -38,6 +39,7 @@ fn memgraph_release_request() -> ExtensionInstallRequest {
             "native".into(),
             "connectors".into(),
         ],
+        manifest_path: None,
     }
 }
 

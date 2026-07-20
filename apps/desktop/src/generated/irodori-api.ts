@@ -266,11 +266,18 @@ libraryPath: string, sha256: string, enabled: boolean, installedAt: string, abiV
  */
 supportedCalls: Array<string>, };
 
+export type ExtensionInstallKind = "githubRelease" | "git";
+
 export type ExtensionInstallRequest = { id: string,
 /**
  * Version advertised by the signed marketplace entry.
  */
 version: string,
+/**
+ * Delivery mechanism declared by the catalog entry (`install.kind`).
+ * Anything other than `githubRelease` is rejected before any download.
+ */
+kind: ExtensionInstallKind,
 /**
  * `owner/repo` or full https URL of the GitHub repository.
  */
@@ -291,7 +298,13 @@ sha256: string,
 /**
  * Permissions shown to and approved by the user before installation.
  */
-permissions: Array<string>, };
+permissions: Array<string>,
+/**
+ * Archive-relative path of the extension manifest declared by the catalog
+ * (`install.manifestPath`); defaults to `irodori.extension.json` at the
+ * archive root when absent.
+ */
+manifestPath?: string, };
 
 export type SchemaSearchHit = {
 /**

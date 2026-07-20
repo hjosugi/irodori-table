@@ -1,8 +1,11 @@
 import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ExtensionsTab } from "@/features/settings/tabs/ExtensionsTab";
-import { fetchPluginStoreCatalog } from "@/features/extensions/plugin-store";
-import { extList, extTarget } from "@/generated/irodori-api";
+import {
+  fetchPluginStoreCatalog,
+  type PluginStoreInstallKind,
+} from "@/features/extensions/plugin-store";
+import { extInstall, extList, extTarget } from "@/generated/irodori-api";
 import { createTranslator } from "@/i18n";
 import { componentRenderer } from "@/tests/helpers/render";
 
@@ -26,7 +29,11 @@ const mockFetchCatalog = vi.mocked(fetchPluginStoreCatalog);
 
 const sha256 = `sha256:${"a".repeat(64)}`;
 
-function catalogExtension(id: string, targets: readonly string[]) {
+function catalogExtension(
+  id: string,
+  targets: readonly string[],
+  kind: PluginStoreInstallKind = "githubRelease",
+) {
   return {
     id,
     name: id,
@@ -46,7 +53,7 @@ function catalogExtension(id: string, targets: readonly string[]) {
     verified: true,
     publishedAt: "2026-01-01T00:00:00Z",
     install: {
-      kind: "githubRelease" as const,
+      kind,
       url: `https://github.com/hjosugi/${id}/releases`,
       tag: "v1.0.0",
       assets: Object.fromEntries(
@@ -107,6 +114,26 @@ describe("ExtensionsTab marketplace availability filter (#131)", () => {
     // The note flips into an explicit way back to the filtered view.
     await user.click(screen.getByRole("button", { name: "Hide unavailable" }));
     expect(screen.queryByText("elsewhere-only")).toBeNull();
+  });
+
+  it("rejects a non-githubRelease install kind before confirming or calling the backend (#160)", async () => {
+    mockExtTarget.mockResolvedValue("x86_64-linux");
+    mockFetchCatalog.mockResolvedValue({
+      ...catalog(),
+      extensions: [catalogExtension("git-only", ["x86_64-linux"], "git")],
+    });
+    const { user } = renderTab();
+
+    await screen.findByText("git-only");
+    await user.click(screen.getByRole("button", { name: "Install" }));
+
+    // The unsupported kind fails early with a clear message…
+    expect(
+      await screen.findByText(/install kind .*git.* is not supported/i),
+    ).toBeInTheDocument();
+    // …before the permission prompt and before any backend install call.
+    expect(screen.queryByText("Install git-only?")).toBeNull();
+    expect(extInstall).not.toHaveBeenCalled();
   });
 
   it("shows every entry when no runtime target exists (browser harness)", async () => {

@@ -91,6 +91,35 @@ export function resolvePluginStoreInstallAsset(
   return extension.install?.assets[target];
 }
 
+/**
+ * Typed early failure for a catalog entry whose `install.kind` the installer
+ * cannot handle (#160). Only pinned GitHub release archives are installable
+ * today; a git installer is deliberately out of scope until the registry
+ * actually ships such an entry. Failing here — before the permission prompt
+ * and before any IPC — replaces the misleading download/manifest errors that
+ * mishandling the entry as a GitHub release would produce.
+ */
+export class UnsupportedInstallKindError extends Error {
+  readonly kind: PluginStoreInstallKind;
+
+  constructor(kind: PluginStoreInstallKind) {
+    super(
+      `extension install kind \`${kind}\` is not supported yet; only pinned GitHub release archives (\`githubRelease\`) can be installed`,
+    );
+    this.name = "UnsupportedInstallKindError";
+    this.kind = kind;
+  }
+}
+
+/** Throw {@link UnsupportedInstallKindError} unless the source is installable. */
+export function assertSupportedInstallKind(
+  install: PluginStoreInstallSource,
+): void {
+  if (install.kind !== "githubRelease") {
+    throw new UnsupportedInstallKindError(install.kind);
+  }
+}
+
 export function compareExtensionVersions(left: string, right: string): number {
   const leftVersion = parseVersion(left);
   const rightVersion = parseVersion(right);

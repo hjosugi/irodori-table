@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
-use irodori_error::{IrodoriError, Result as IrodoriResult};
+use irodori_error::{IrodoriError, IrodoriErrorKind, Result as IrodoriResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -14,7 +14,7 @@ use tauri::{AppHandle, Manager};
 use tokio::sync::Mutex;
 
 use super::abi::{probe_library, ABI_VERSION};
-use super::{ExtensionInstallRequest, InstalledExtension};
+use super::{ExtensionInstallKind, ExtensionInstallRequest, InstalledExtension};
 
 const REGISTRY_FILE: &str = "installed.json";
 const EXTENSIONS_DIR: &str = "extensions";
@@ -74,6 +74,11 @@ pub(crate) async fn install(
     request: ExtensionInstallRequest,
 ) -> IrodoriResult<InstalledExtension> {
     let _guard = state.install_lock.lock().await;
+    // Fail fast on anything but a GitHub release: mishandling another kind as
+    // a release download would only surface later as a misleading fetch or
+    // manifest-validation error (#160).
+    ensure_supported_install_kind(request.kind)?;
+    let manifest_file = validated_manifest_path(request.manifest_path.as_deref())?;
     let bytes = download_release_asset(&request).await?;
     let digest = sha256_hex(&bytes);
     let expected = validated_sha256(&request.sha256)?;
@@ -88,9 +93,38 @@ pub(crate) async fn install(
         &request.id,
         &request.version,
         &request.permissions,
+        &manifest_file,
         bytes,
         digest,
     )
+}
+
+/// Only pinned GitHub release archives are installable. A `git` (or any
+/// future) source must be rejected up front — implementing a git installer is
+/// deliberately out of scope until the registry actually ships such an entry.
+fn ensure_supported_install_kind(kind: ExtensionInstallKind) -> IrodoriResult<()> {
+    match kind {
+        ExtensionInstallKind::GithubRelease => Ok(()),
+        ExtensionInstallKind::Git => Err(IrodoriError::new(
+            IrodoriErrorKind::Unsupported,
+            "extension install kind `git` is not supported yet; only pinned GitHub release archives (`githubRelease`) can be installed",
+        )),
+    }
+}
+
+/// Resolve the archive-relative manifest location from the catalog's
+/// `install.manifestPath`, defaulting to `irodori.extension.json` at the
+/// archive root, and reject paths that would escape the staging directory.
+fn validated_manifest_path(manifest_path: Option<&str>) -> IrodoriResult<PathBuf> {
+    let raw = match manifest_path.map(str::trim) {
+        None | Some("") => MANIFEST_FILE,
+        Some(path) => path,
+    };
+    safe_archive_path(Path::new(raw)).ok_or_else(|| {
+        IrodoriError::validation(format!(
+            "extension manifest path must stay inside the archive: {raw}"
+        ))
+    })
 }
 
 pub(crate) fn uninstall(
@@ -154,6 +188,7 @@ fn install_archive(
     requested_id: &str,
     requested_version: &str,
     approved_permissions: &[String],
+    manifest_file: &Path,
     bytes: Vec<u8>,
     sha256: String,
 ) -> IrodoriResult<InstalledExtension> {
@@ -171,7 +206,7 @@ fn install_archive(
 
     let install_result = (|| {
         unpack_archive(&bytes, &staging)?;
-        let manifest_path = staging.join(MANIFEST_FILE);
+        let manifest_path = staging.join(manifest_file);
         let manifest_json = fs::read_to_string(&manifest_path).map_err(to_error)?;
         let manifest: ManifestFile = serde_json::from_str(&manifest_json).map_err(|error| {
             IrodoriError::validation(format!("invalid extension manifest: {error}"))
@@ -612,11 +647,13 @@ mod tests {
         let request = ExtensionInstallRequest {
             id: "irodori.memgraph".into(),
             version: "0.1.3".into(),
+            kind: ExtensionInstallKind::GithubRelease,
             repository: "https://github.com/hjosugi/irodori-extension-memgraph".into(),
             asset_name: "irodori-extension-memgraph.tar.gz".into(),
             tag: "v0.1.3".into(),
             sha256: "dc6deb44e1ecb1d0a4153917cc809692e37d1a5d814be4752af60649c5595232".into(),
             permissions: vec!["native".into()],
+            manifest_path: None,
         };
         assert_eq!(
             github_release_asset_url(&request).unwrap(),
@@ -646,6 +683,46 @@ mod tests {
             native_library_priority(Path::new("irodori_extension_duckdb.dll"))
                 < native_library_priority(Path::new("duckdb.dll"))
         );
+    }
+
+    #[test]
+    fn non_github_release_install_kind_is_rejected_up_front() {
+        // #160: a `git` catalog entry must fail with a clear typed error
+        // before any download, not be mishandled as a release archive.
+        assert!(ensure_supported_install_kind(ExtensionInstallKind::GithubRelease).is_ok());
+
+        let error = ensure_supported_install_kind(ExtensionInstallKind::Git).unwrap_err();
+        assert_eq!(error.kind, IrodoriErrorKind::Unsupported);
+        assert!(
+            error.message.contains("`git`"),
+            "message: {}",
+            error.message
+        );
+        assert!(
+            error.message.contains("githubRelease"),
+            "message: {}",
+            error.message
+        );
+    }
+
+    #[test]
+    fn manifest_path_is_threaded_with_default_and_traversal_guard() {
+        // #160: the catalog's `install.manifestPath` must reach the installer
+        // instead of the hardcoded manifest filename.
+        assert_eq!(
+            validated_manifest_path(None).unwrap(),
+            PathBuf::from(MANIFEST_FILE)
+        );
+        assert_eq!(
+            validated_manifest_path(Some("  ")).unwrap(),
+            PathBuf::from(MANIFEST_FILE)
+        );
+        assert_eq!(
+            validated_manifest_path(Some("dist/irodori.extension.json")).unwrap(),
+            PathBuf::from("dist/irodori.extension.json")
+        );
+        assert!(validated_manifest_path(Some("../outside.json")).is_err());
+        assert!(validated_manifest_path(Some("/etc/passwd")).is_err());
     }
 
     #[test]
