@@ -197,9 +197,9 @@ export function buildLogFilterDecorations(state: EditorState): DecorationSet {
     return Decoration.none;
   }
   const doc = state.doc;
-  const lines: string[] = new Array(doc.lines);
+  const lines: string[] = [];
   for (let number = 1; number <= doc.lines; number++) {
-    lines[number - 1] = doc.line(number).text;
+    lines.push(doc.line(number).text);
   }
   const { hiddenRanges } = computeLogFilterRanges(lines, spec);
   const builder = new RangeSetBuilder<Decoration>();
