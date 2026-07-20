@@ -339,7 +339,7 @@
       }
     },
     {
-      "engines": ["deltaLake", "hudi", "iceberg"],
+      "engines": ["deltaLake", "hudi"],
       "settings": {
         "preferredMode": "fields",
         "urlLabelKey": "connection.field.tablePath",
@@ -358,11 +358,32 @@
         "showPassword": true,
         "transportLabelKey": "connection.transport.lakehouseCatalog"
       }
+    },
+    {
+      "engines": ["iceberg"],
+      "settings": {
+        "preferredMode": "fields",
+        "urlLabelKey": "connection.field.tablePath",
+        "urlPlaceholder": "s3://bucket/warehouse/namespace/table",
+        "fieldsLabelKey": "connection.field.catalog",
+        "hostLabelKey": "connection.field.catalogEndpointRegion",
+        "hostPlaceholder": "catalog.example.com or us-east-1",
+        "userLabelKey": "connection.field.accessKeyIdOauth2ClientId",
+        "userPlaceholder": "AKIAIOSFODNN7EXAMPLE",
+        "passwordLabelKey": "connection.field.secretAccessKeyOauth2ClientSecret",
+        "databaseLabelKey": "connection.field.namespaceTable",
+        "databasePlaceholder": "namespace.table",
+        "showHost": false,
+        "showPort": false,
+        "showUser": true,
+        "showPassword": true,
+        "transportLabelKey": "connection.transport.lakehouseCatalog"
+      }
     }
   ],
   "optionFields": [
     {
-      "engines": ["iceberg", "deltaLake", "hudi", "hive"],
+      "engines": ["deltaLake", "hudi", "hive"],
       "fields": [
         {
           "key": "catalogUri",
@@ -373,6 +394,36 @@
           "key": "warehouse",
           "labelKey": "connection.field.warehousePath",
           "placeholder": "s3://bucket/warehouse"
+        }
+      ]
+    },
+    {
+      "engines": ["iceberg"],
+      "fields": [
+        {
+          "key": "catalogUri",
+          "labelKey": "connection.field.catalogUri",
+          "placeholder": "https://catalog.example.com/v1"
+        },
+        {
+          "key": "warehouse",
+          "labelKey": "connection.field.warehousePath",
+          "placeholder": "s3://bucket/warehouse"
+        },
+        {
+          "key": "oauth2ServerUri",
+          "labelKey": "connection.field.oauth2TokenEndpoint",
+          "placeholder": "https://catalog.example.com/v1/oauth/tokens"
+        },
+        {
+          "key": "oauth2ClientId",
+          "labelKey": "connection.field.oauth2ClientId",
+          "placeholder": "client-id"
+        },
+        {
+          "key": "scope",
+          "labelKey": "connection.field.oauth2Scope",
+          "placeholder": "catalog"
         }
       ]
     },

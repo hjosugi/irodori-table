@@ -59,6 +59,16 @@ The form re-shapes itself per engine. For **Iceberg**, **Delta Lake**, and
 | **Catalog URI** | Under **Connector settings**, e.g. `https://catalog.example.com/v1` |
 | **Warehouse path** | Under **Connector settings**, e.g. `s3://bucket/warehouse` |
 
+**Iceberg** additionally carries OAuth2 client-credentials settings for REST
+catalogs: **OAuth2 token endpoint** (`oauth2ServerUri`, defaults to the
+catalog's `/v1/oauth/tokens`), **OAuth2 client ID** (`oauth2ClientId`), and
+**OAuth2 scope** (`scope`, default `catalog`). Its credential pair is labeled
+**Access key ID / OAuth2 client ID** and **Secret access key / OAuth2 client
+secret**: once any OAuth2 setting is present the connector falls back to these
+profile fields for the client id and secret. The client secret is deliberately
+not a connector setting — options are persisted in the clear, while the
+password column stays session-only.
+
 Host and port are hidden for these engines — the catalog endpoint goes in
 **Catalog URI**, not in a host field. The **Transport** readout says **Lakehouse
 catalog**.

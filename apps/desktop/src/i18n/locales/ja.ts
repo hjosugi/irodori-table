@@ -177,6 +177,8 @@ export const ja = {
   "terminal.closeTab": "{label} を閉じる",
   "terminal.newTerminal": "新しいターミナル",
   "terminal.closePanel": "パネルを閉じる",
+  "terminal.requiresDesktop":
+    "ターミナルはデスクトップアプリでのみ利用できます。ブラウザープレビューでは利用できません。",
   "shortcuts.showCommands": "コマンド表示",
   "shortcuts.newTab": "新規タブ",
   "shortcuts.copyTsv": "TSV コピー",
@@ -1066,6 +1068,8 @@ export const ja = {
   "connection.build.availability": "ビルドの対応状況: {url}",
   "connection.field.accessKey": "アクセスキー",
   "connection.field.accessKeyIdClientId": "アクセスキー ID / クライアント ID",
+  "connection.field.accessKeyIdOauth2ClientId":
+    "アクセスキー ID / OAuth2 クライアント ID",
   "connection.field.accessToken": "アクセストークン",
   "connection.field.account": "アカウント",
   "connection.field.accountHost": "アカウント / ホスト",
@@ -1104,6 +1108,9 @@ export const ja = {
   "connection.field.motherduckDsn": "MotherDuck DSN",
   "connection.field.motherduckToken": "MotherDuck トークン",
   "connection.field.namespaceTable": "名前空間 / テーブル",
+  "connection.field.oauth2ClientId": "OAuth2 クライアント ID",
+  "connection.field.oauth2Scope": "OAuth2 スコープ",
+  "connection.field.oauth2TokenEndpoint": "OAuth2 トークンエンドポイント",
   "connection.field.org": "組織",
   "connection.field.password": "パスワード",
   "connection.field.port": "ポート",
@@ -1118,6 +1125,8 @@ export const ja = {
   "connection.field.region": "リージョン",
   "connection.field.role": "ロール",
   "connection.field.schema": "スキーマ",
+  "connection.field.secretAccessKeyOauth2ClientSecret":
+    "シークレットアクセスキー / OAuth2 クライアントシークレット",
   "connection.field.secretAccessKeyToken":
     "シークレットアクセスキー / トークン",
   "connection.field.secretSessionToken": "シークレット / セッショントークン",

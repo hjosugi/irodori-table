@@ -9,6 +9,7 @@ import {
 } from "@/app/app-config";
 import { tauriRuntimeError } from "@/app/app-workbench-utils";
 import { CommandPalette } from "@/app/CommandPalette";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkbenchContext } from "@/app/workbench-context";
 import { ConnectionManagerDialog } from "@/features/connections";
 import { ErdDialog, hasDiagram } from "@/features/erd";
@@ -190,7 +191,11 @@ export function WorkbenchDialogs() {
 
       {overlays.terminalOpen && (
         <div className="terminal-dock">
-          <TerminalPanel onClose={overlays.closeTerminal} />
+          {/* Defence in depth for #186: a terminal failure must never take
+              the whole workbench down to the app-root boundary. */}
+          <ErrorBoundary region="terminal">
+            <TerminalPanel onClose={overlays.closeTerminal} />
+          </ErrorBoundary>
         </div>
       )}
 

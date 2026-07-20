@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { usePreferencesStore } from "@/features/preferences";
 import { createTranslator } from "@/i18n";
+import { isPtyRuntimeAvailable } from "@/lib/tauri/pty";
 import { TerminalView } from "./TerminalView";
 import "./terminal.css";
 
@@ -42,6 +43,31 @@ export function TerminalPanel({ onClose }: { onClose: () => void }) {
     },
     [onClose],
   );
+
+  // A plain browser (vite preview, Playwright harness) has no Tauri runtime,
+  // so no PTY can ever spawn; degrade to a clear notice instead of mounting
+  // terminal views (#186). Availability cannot change within a page load, so
+  // branching after the hooks is stable.
+  if (!isPtyRuntimeAvailable()) {
+    return (
+      <div className="terminal-panel">
+        <div className="terminal-tabbar">
+          <div className="terminal-tabs" />
+          <button
+            type="button"
+            className="terminal-action"
+            aria-label={t("terminal.closePanel")}
+            onClick={onClose}
+          >
+            ⨯
+          </button>
+        </div>
+        <div className="terminal-unavailable" role="status">
+          {t("terminal.requiresDesktop")}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="terminal-panel">

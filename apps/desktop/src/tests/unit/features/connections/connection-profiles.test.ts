@@ -397,6 +397,44 @@ describe("connector options", () => {
     });
   });
 
+  it("exposes the Iceberg OAuth2 client-credentials options (#184)", () => {
+    // Keys must match what irodori-extension-iceberg's rest_catalog.rs reads
+    // from the connect request: oauth2ServerUri, oauth2ClientId, scope.
+    const keys = engineOptionFields("iceberg").map((field) => field.key);
+    expect(keys).toEqual([
+      "catalogUri",
+      "warehouse",
+      "oauth2ServerUri",
+      "oauth2ClientId",
+      "scope",
+    ]);
+
+    // The other lakehouse engines keep the shared catalog fields only —
+    // their connectors do not read the OAuth2 options.
+    for (const engine of ["deltaLake", "hudi", "hive"] as const) {
+      expect(engineOptionFields(engine).map((field) => field.key)).toEqual([
+        "catalogUri",
+        "warehouse",
+      ]);
+    }
+  });
+
+  it("routes the OAuth2 client secret through the password field (#184)", () => {
+    // The connector falls back to the profile's session-only user/password
+    // for clientId/clientSecret; the iceberg labels must say so. The secret
+    // itself must never become an option (options persist to localStorage).
+    const iceberg = engineConnectionSettings("iceberg", englishTranslator.t);
+    expect(iceberg.userLabel).toBe("Access key ID / OAuth2 client ID");
+    expect(iceberg.passwordLabel).toBe(
+      "Secret access key / OAuth2 client secret",
+    );
+
+    // deltaLake/hudi keep the generic lakehouse credential labels.
+    const delta = engineConnectionSettings("deltaLake", englishTranslator.t);
+    expect(delta.userLabel).toBe("Access key ID / client ID");
+    expect(delta.passwordLabel).toBe("Secret access key / token");
+  });
+
   it("declares no secret-valued option keys", () => {
     // Options are persisted to localStorage in the clear, and upstream
     // irodori-connection rejects these keys outright ("must be stored as a

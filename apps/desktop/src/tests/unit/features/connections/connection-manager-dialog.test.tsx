@@ -325,9 +325,15 @@ describe("ConnectionManagerDialog", () => {
     it("offers credential fields for lakehouse connections", () => {
       renderDialog({ draft: draft({ engine: "iceberg", mode: "fields" }) });
 
-      expect(screen.getByLabelText("Access key ID / client ID")).toBeVisible();
+      // Iceberg's credential labels advertise the OAuth2 client-credentials
+      // fallback (#184): the session-only password field doubles as the
+      // OAuth2 client secret, so it must never appear under connector
+      // settings.
       expect(
-        screen.getByLabelText("Secret access key / token"),
+        screen.getByLabelText("Access key ID / OAuth2 client ID"),
+      ).toBeVisible();
+      expect(
+        screen.getByLabelText("Secret access key / OAuth2 client secret"),
       ).toHaveAttribute("type", "password");
     });
 

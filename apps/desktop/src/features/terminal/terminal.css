@@ -89,6 +89,18 @@
   min-height: 0;
   position: relative;
 }
+
+/* Shown instead of terminal views when the Tauri runtime is absent (#186). */
+.terminal-unavailable {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: var(--muted);
+  font-size: var(--font-ui-md);
+  text-align: center;
+}
 .terminal-body {
   height: 100%;
 }
