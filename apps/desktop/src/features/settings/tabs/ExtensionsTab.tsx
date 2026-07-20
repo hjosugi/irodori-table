@@ -10,11 +10,13 @@ import {
 } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
+  assertSupportedInstallKind,
   compareExtensionVersions,
   bundledPluginStoreCatalog,
   defaultPluginStoreCatalogUrl,
   fetchPluginStoreCatalog,
   resolvePluginStoreInstallAsset,
+  UnsupportedInstallKindError,
   type PluginStoreCatalog,
   type PluginStoreExtension,
 } from "@/features/extensions/plugin-store";
@@ -387,6 +389,20 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
         setRuntimeError(t("settings.extensions.targetUnavailable"));
         return;
       }
+      // Fail early on an install source the backend cannot handle (#160):
+      // before the permission prompt and before any install IPC.
+      try {
+        assertSupportedInstallKind(install);
+      } catch (error) {
+        setRuntimeError(
+          error instanceof UnsupportedInstallKindError
+            ? t("settings.extensions.unsupportedInstallKind", {
+                kind: error.kind,
+              })
+            : errorMessage(error),
+        );
+        return;
+      }
       const existing = installedById.get(extension.id);
       const confirmed = await confirm({
         title: existing
@@ -413,11 +429,13 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
         await extInstall({
           id: extension.id,
           version: extension.version,
+          kind: install.kind,
           repository: extension.repository,
           assetName: asset.name,
           tag: install.tag,
           sha256: asset.sha256,
           permissions: extension.permissions,
+          manifestPath: install.manifestPath,
         });
         setInstalledExtensions(await extList());
       } catch (error) {

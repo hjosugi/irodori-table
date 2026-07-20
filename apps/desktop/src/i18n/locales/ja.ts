@@ -722,6 +722,8 @@ export const ja = {
   "settings.extensions.verifiedDigest": "SHA-256 {digest}…",
   "settings.extensions.targetUnavailable":
     "現在のプラットフォーム向けに検証済みのリリースassetがありません。",
+  "settings.extensions.unsupportedInstallKind":
+    "この拡張のinstall kind ({kind}) は未対応です。固定済みGitHub releaseアーカイブのみインストールできます。",
   "settings.extensions.confirmInstallTitle": "{name} をインストールしますか？",
   "settings.extensions.confirmUpdateTitle": "{name} を更新しますか？",
   "settings.extensions.confirmInstallMessage":

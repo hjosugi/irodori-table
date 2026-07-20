@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  assertSupportedInstallKind,
   bundledPluginStoreCatalog,
   compareExtensionVersions,
   defaultPluginStoreCatalogUrl,
   fetchPluginStoreCatalog,
   resolvePluginStoreInstallAsset,
+  UnsupportedInstallKindError,
   type PluginStoreCatalog,
+  type PluginStoreInstallSource,
 } from "@/features/extensions/plugin-store";
 
 afterEach(() => {
@@ -111,5 +114,38 @@ describe("plugin store catalog", () => {
     expect(compareExtensionVersions("v1.0.0", "1.0.0")).toBe(0);
     expect(compareExtensionVersions("1.0.0-rc.1", "1.0.0")).toBeLessThan(0);
     expect(compareExtensionVersions("1.0.0", "1.0.0-rc.2")).toBeGreaterThan(0);
+  });
+});
+
+describe("assertSupportedInstallKind (#160)", () => {
+  const install: PluginStoreInstallSource = {
+    kind: "githubRelease",
+    url: "https://github.com/hjosugi/irodori-extension-demo/releases",
+    tag: "v1.0.0",
+    manifestPath: "irodori.extension.json",
+    assets: {
+      "x86_64-linux": {
+        name: "irodori-extension-demo.tar.gz",
+        sha256: `sha256:${"a".repeat(64)}`,
+      },
+    },
+  };
+
+  it("accepts a githubRelease source", () => {
+    expect(() => assertSupportedInstallKind(install)).not.toThrow();
+  });
+
+  it("rejects any other kind with a typed, self-explanatory error", () => {
+    let thrown: unknown;
+    try {
+      assertSupportedInstallKind({ ...install, kind: "git" });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(UnsupportedInstallKindError);
+    const error = thrown as UnsupportedInstallKindError;
+    expect(error.kind).toBe("git");
+    expect(error.message).toContain("`git`");
+    expect(error.message).toContain("githubRelease");
   });
 });

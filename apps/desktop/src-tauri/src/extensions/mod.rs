@@ -37,6 +37,20 @@ pub struct InstalledExtension {
     pub supported_calls: Vec<String>,
 }
 
+/// How a catalog entry's payload is delivered (the catalog's `install.kind`).
+///
+/// Only pinned GitHub release archives are installable today. Other kinds are
+/// rejected up front with a typed `Unsupported` error instead of being
+/// mishandled as a release download and failing later with a misleading
+/// fetch/validation message (#160).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ExtensionInstallKind {
+    #[default]
+    GithubRelease,
+    Git,
+}
+
 /// Install request resolved by the frontend from the marketplace catalog.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +58,10 @@ pub struct ExtensionInstallRequest {
     pub id: String,
     /// Version advertised by the signed marketplace entry.
     pub version: String,
+    /// Delivery mechanism declared by the catalog entry (`install.kind`).
+    /// Anything other than `githubRelease` is rejected before any download.
+    #[serde(default)]
+    pub kind: ExtensionInstallKind,
     /// `owner/repo` or full https URL of the GitHub repository.
     pub repository: String,
     /// Release-asset file name for the current platform, or a template
@@ -55,6 +73,12 @@ pub struct ExtensionInstallRequest {
     pub sha256: String,
     /// Permissions shown to and approved by the user before installation.
     pub permissions: Vec<String>,
+    /// Archive-relative path of the extension manifest declared by the catalog
+    /// (`install.manifestPath`); defaults to `irodori.extension.json` at the
+    /// archive root when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub manifest_path: Option<String>,
 }
 
 #[tauri::command]

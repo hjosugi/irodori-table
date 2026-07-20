@@ -3,12 +3,14 @@
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::time::SystemTime;
 
 use super::{
-    ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind, DbResult,
-    RowSet,
+    gcp_auth, ColumnMetadata, ConnectionProfile, DatabaseMetadata, DbError, DbObjectMetadataKind,
+    DbResult, RowSet,
 };
+
+/// OAuth scope requested for service-account tokens (BigQuery jobs + data).
+const OAUTH_SCOPE: &str = "https://www.googleapis.com/auth/bigquery";
 
 pub struct BigQueryConn {
     client: Client,
@@ -28,29 +30,32 @@ pub async fn connect(profile: &ConnectionProfile) -> DbResult<BigQueryConn> {
     let password = profile.password.clone().unwrap_or_default();
 
     // 1. Resolve GCP Auth and Project ID
-    let (project_id, access_token) =
-        if password.trim().starts_with('{') && password.trim().ends_with('}') {
-            // Parse Service Account JSON key
-            let key: GcpServiceAccountKey = serde_json::from_str(&password).map_err(|e| {
-                DbError::connection(format!("Invalid Google Service Account JSON: {e}"))
-            })?;
+    let (project_id, access_token) = if password.trim().starts_with('{')
+        && password.trim().ends_with('}')
+    {
+        // Parse Service Account JSON key
+        let key: GcpServiceAccountKey = serde_json::from_str(&password).map_err(|e| {
+            DbError::connection(format!("Invalid Google Service Account JSON: {e}"))
+        })?;
 
-            let token = fetch_oauth2_token(&client, &key.client_email, &key.private_key).await?;
-            (key.project_id, token)
-        } else {
-            // Direct OAuth Access Token
-            let project = profile
-                .database
-                .clone()
-                .or_else(|| profile.host.clone())
-                .unwrap_or_default();
-            if project.is_empty() {
-                return Err(DbError::connection(
-                    "GCP Project ID must be specified (set database or host to Project ID)",
-                ));
-            }
-            (project, password)
-        };
+        let token =
+            gcp_auth::fetch_oauth2_token(&client, &key.client_email, &key.private_key, OAUTH_SCOPE)
+                .await?;
+        (key.project_id, token)
+    } else {
+        // Direct OAuth Access Token
+        let project = profile
+            .database
+            .clone()
+            .or_else(|| profile.host.clone())
+            .unwrap_or_default();
+        if project.is_empty() {
+            return Err(DbError::connection(
+                "GCP Project ID must be specified (set database or host to Project ID)",
+            ));
+        }
+        (project, password)
+    };
 
     Ok(BigQueryConn {
         client,
@@ -246,111 +251,4 @@ pub async fn metadata(conn: &BigQueryConn) -> DbResult<DatabaseMetadata> {
     }
 
     Ok(builder.finish())
-}
-
-// ---- GCP OAuth2 Service Account Token Signing helper ----
-
-async fn fetch_oauth2_token(client: &Client, email: &str, private_key: &str) -> DbResult<String> {
-    use openssl::hash::MessageDigest;
-    use openssl::pkey::PKey;
-    use openssl::sign::Signer;
-
-    let now = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    let exp = now + 3600;
-
-    let header = r#"{"alg":"RS256","typ":"JWT"}"#;
-    let claims = format!(
-        r#"{{"iss":"{}","scope":"https://www.googleapis.com/auth/bigquery","aud":"https://oauth2.googleapis.com/token","exp":{},"iat":{}}}"#,
-        email, exp, now
-    );
-
-    let header_b64 = base64_url_encode(header.as_bytes());
-    let claims_b64 = base64_url_encode(claims.as_bytes());
-    let payload = format!("{header_b64}.{claims_b64}");
-
-    let pkey = PKey::private_key_from_pem(private_key.as_bytes()).map_err(|e| {
-        DbError::connection(format!(
-            "Invalid private key in Google Service Account: {e}"
-        ))
-    })?;
-
-    let mut signer = Signer::new(MessageDigest::sha256(), &pkey)
-        .map_err(|e| DbError::connection(format!("Failed to initialize signer: {e}")))?;
-    signer
-        .update(payload.as_bytes())
-        .map_err(|e| DbError::connection(format!("Signer failed payload update: {e}")))?;
-    let signature = signer
-        .sign_to_vec()
-        .map_err(|e| DbError::connection(format!("Failed to sign JWT assertion: {e}")))?;
-    let signature_b64 = base64_url_encode(&signature);
-
-    let assertion = format!("{payload}.{signature_b64}");
-
-    let body = format!(
-        "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion={}",
-        assertion
-    );
-
-    let res = client
-        .post("https://oauth2.googleapis.com/token")
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| DbError::connection(format!("GCP token request failed: {e}")))?;
-
-    if !res.status().is_success() {
-        let status = res.status();
-        let err_text = res.text().await.unwrap_or_default();
-        return Err(DbError::connection(format!(
-            "GCP OAuth token request failed with HTTP {status}: {err_text}"
-        )));
-    }
-
-    let val: Value = res.json().await.unwrap_or(Value::Null);
-    let access_token = val
-        .get("access_token")
-        .and_then(|t| t.as_str())
-        .ok_or_else(|| DbError::connection("GCP OAuth token response missing access_token"))?
-        .to_string();
-
-    Ok(access_token)
-}
-
-fn base64_url_encode(input: &[u8]) -> String {
-    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let mut out = String::new();
-    let mut i = 0;
-    while i < input.len() {
-        let b0 = input[i] as usize;
-        let b1 = if i + 1 < input.len() {
-            input[i + 1] as usize
-        } else {
-            0
-        };
-        let b2 = if i + 2 < input.len() {
-            input[i + 2] as usize
-        } else {
-            0
-        };
-
-        let enc0 = b0 >> 2;
-        let enc1 = ((b0 & 3) << 4) | (b1 >> 4);
-        let enc2 = ((b1 & 15) << 2) | (b2 >> 6);
-        let enc3 = b2 & 63;
-
-        out.push(CHARS[enc0] as char);
-        out.push(CHARS[enc1] as char);
-        if i + 1 < input.len() {
-            out.push(CHARS[enc2] as char);
-        }
-        if i + 2 < input.len() {
-            out.push(CHARS[enc3] as char);
-        }
-        i += 3;
-    }
-    out
 }

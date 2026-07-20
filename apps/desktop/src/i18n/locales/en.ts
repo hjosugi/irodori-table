@@ -709,6 +709,8 @@ export const en = {
   "settings.extensions.verifiedDigest": "SHA-256 {digest}…",
   "settings.extensions.targetUnavailable":
     "This extension has no verified release asset for the current platform.",
+  "settings.extensions.unsupportedInstallKind":
+    "This extension's install kind ({kind}) is not supported yet. Only pinned GitHub release archives can be installed.",
   "settings.extensions.confirmInstallTitle": "Install {name}?",
   "settings.extensions.confirmUpdateTitle": "Update {name}?",
   "settings.extensions.confirmInstallMessage":

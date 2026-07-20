@@ -11,7 +11,7 @@ pub mod chat;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
@@ -30,6 +30,20 @@ use crate::db::{DbEngine, DbState, QueryPlanAnalysis};
 use crate::security::SecurityState;
 
 pub use chat::{ai_chat, ai_chat_cancel};
+
+/// Lock a mutex, recovering the guarded state if a previous holder panicked.
+///
+/// A `std::sync::Mutex` poisons itself when a thread panics while holding it,
+/// and `.lock().unwrap()` then panics on **every** later access — one panic in
+/// a chat turn would permanently kill the chat feature for the rest of the
+/// process (#171). Recovery is safe for the state guarded this way here:
+/// `ChatHandle::query_id` is a plain `Option<String>` cancellation hint with no
+/// cross-field invariant (a stale id at worst makes cancel a no-op), and the
+/// `AiState::chats` registry is a `HashMap` of independent `Arc` handles that
+/// std leaves structurally valid even if an insert/remove panics.
+pub(crate) fn lock_unpoisoned<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// Default local model: small, strong at text-to-SQL, CPU-friendly (~0.4 GB).
 const DEFAULT_MODEL_FILE: &str = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf";
@@ -637,22 +651,18 @@ pub(crate) fn build_chat_provider(
 /// Register a chat session so it can be cancelled; returns its cancellation handle.
 pub(crate) fn register_chat(ai: &AiState, session_id: &str) -> Arc<chat::ChatHandle> {
     let handle = Arc::new(chat::ChatHandle::default());
-    if let Ok(mut chats) = ai.chats.lock() {
-        chats.insert(session_id.to_string(), Arc::clone(&handle));
-    }
+    lock_unpoisoned(&ai.chats).insert(session_id.to_string(), Arc::clone(&handle));
     handle
 }
 
 /// Drop a finished chat session from the cancellation registry.
 pub(crate) fn unregister_chat(ai: &AiState, session_id: &str) {
-    if let Ok(mut chats) = ai.chats.lock() {
-        chats.remove(session_id);
-    }
+    lock_unpoisoned(&ai.chats).remove(session_id);
 }
 
 /// Look up a live chat session's cancellation handle.
 pub(crate) fn chat_handle(ai: &AiState, session_id: &str) -> Option<Arc<chat::ChatHandle>> {
-    ai.chats.lock().ok()?.get(session_id).cloned()
+    lock_unpoisoned(&ai.chats).get(session_id).cloned()
 }
 
 /// Convert the completion metadata snapshot into the engine's schema shape.

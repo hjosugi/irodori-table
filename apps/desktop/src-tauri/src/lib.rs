@@ -190,6 +190,7 @@ mod typegen {
             .decl(&decl::<db::DbColumnInspection>())
             .decl(&decl::<db::DbColumnReference>())
             .decl(&decl::<extensions::InstalledExtension>())
+            .decl(&decl::<extensions::ExtensionInstallKind>())
             .decl(&decl::<extensions::ExtensionInstallRequest>())
             .decl(&decl::<indexing::SchemaSearchHit>())
             .decl(&decl::<git::GitChangeKind>())
