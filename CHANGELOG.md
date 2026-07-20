@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.46] - 2026-07-20
+
+### Added
+
+- Log files gain level and text filtering: pick a minimum severity and/or type
+  a pattern, and non-matching entries fold away without touching the document.
+  Stack-trace lines follow their parent entry, so a filtered ERROR keeps its
+  trace. Filters are per-tab and reset when the tab changes language.
+- The Iceberg connection form exposes the OAuth2 catalog fields
+  (server URI, client ID, scope); the client secret travels in the
+  session-only credential field and is never persisted in options.
+
+### Fixed
+
+- Opening the terminal without the desktop runtime no longer crashes the whole
+  workbench; it shows a clear notice instead, and the panel is isolated behind
+  an error boundary.
+- A panic during an AI chat no longer permanently breaks every subsequent chat
+  command, and cancelling a chat during such a failure actually cancels the
+  running query instead of silently doing nothing.
+- The extension installer honours a catalog entry's manifest path and rejects
+  unsupported install kinds up front instead of mishandling them as GitHub
+  releases.
+- BigQuery and Bigtable share one GCP token implementation instead of two
+  divergent copies.
+
 ## [0.7.45] - 2026-07-20
 
 ### Changed
