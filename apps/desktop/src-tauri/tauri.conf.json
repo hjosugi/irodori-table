@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Irodori Table",
-  "version": "0.7.44",
+  "version": "0.7.45",
   "identifier": "dev.irodori.table",
   "build": {
     "beforeDevCommand": "npm run dev",
