@@ -55,6 +55,14 @@ import { rainbowBrackets } from "./editor-rainbow-brackets";
 import { delimitedHighlighting } from "./editor-csv-highlight";
 import { logHighlighting } from "./editor-log-highlight";
 import {
+  currentLogFilter,
+  emptyLogFilter,
+  logFilterSpecsEqual,
+  logLineFilter,
+  setLogFilterEffect,
+  type LogFilterSpec,
+} from "./editor-log-filter";
+import {
   editorLanguageForTabLabel,
   type EditorLanguage,
 } from "@/lib/editor-language";
@@ -129,6 +137,8 @@ interface SqlEditorProps {
    */
   tabLabel?: string;
   engine: DbEngine;
+  /** View-level log filter for `.log` buffers (issue #177); never edits the doc. */
+  logFilter?: LogFilterSpec;
   /** Introspection metadata for the active connection (drives table/column completion). */
   metadata?: DatabaseMetadata;
   snippets: readonly SqlSnippetDefinition[];
@@ -446,7 +456,7 @@ function contentHighlightExtensions(
     case "tsv":
       return delimitedHighlighting("\t", theme.ui);
     case "log":
-      return logHighlighting(theme.ui);
+      return [logHighlighting(theme.ui), logLineFilter];
     case "text":
       return [];
     case "sql":
@@ -725,6 +735,7 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
       onSelectionChange,
       tabLabel,
       engine,
+      logFilter,
       metadata,
       snippets,
       theme,
@@ -854,6 +865,20 @@ const SqlEditor = forwardRef<SqlEditorHandle, SqlEditorProps>(
         theme,
       );
     }, [language, engine, theme, compartments]);
+
+    // Push the log filter into the view (issue #177). The filter field rides
+    // in the highlight compartment's log branch, so after a language flip it
+    // reappears empty and this effect re-applies the bar's state; for non-log
+    // buffers the field is absent and the dispatch is skipped.
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      const next =
+        language === "log" ? (logFilter ?? emptyLogFilter) : emptyLogFilter;
+      if (!logFilterSpecsEqual(currentLogFilter(view.state), next)) {
+        view.dispatch({ effects: setLogFilterEffect.of(next) });
+      }
+    }, [language, logFilter]);
 
     useImperativeHandle(
       ref,

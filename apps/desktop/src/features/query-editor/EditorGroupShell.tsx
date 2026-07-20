@@ -1,13 +1,25 @@
-import type {
-  CSSProperties,
-  MouseEvent as ReactMouseEvent,
-  ReactNode,
-  RefObject,
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
 } from "react";
 import SqlEditor, {
   type SqlEditorHandle,
   type SqlMetadataToolWindowRequest,
 } from "./SqlEditor";
+import { LogFilterBar } from "./LogFilterBar";
+import {
+  computeLogFilterRanges,
+  emptyLogFilter,
+  isLogFilterActive,
+  splitLogFilterLines,
+  type LogFilterSpec,
+} from "./editor-log-filter";
+import { editorLanguageForTabLabel } from "@/lib/editor-language";
 import type { DatabaseMetadata, DbEngine } from "../../generated/irodori-api";
 import type { SqlSnippetDefinition } from "../../sql/completion";
 import type { SqlFormatterId } from "../../sql/formatter";
@@ -65,9 +77,30 @@ export function EditorGroupShell({
   onMetadataJump,
   onMetadataToolWindow,
 }: EditorGroupShellProps) {
+  const language = editorLanguageForTabLabel(tabLabel);
+
+  // Log filter state (issue #177). It belongs to the shell, not the editor,
+  // so the bar and the CodeMirror view share one source of truth. A filter
+  // tuned for one file must not silently hide lines in another, so switching
+  // tabs resets it (render-time reset keeps the editor and bar in step).
+  const [logFilter, setLogFilter] = useState<LogFilterSpec>(emptyLogFilter);
+  const lastTabLabel = useRef(tabLabel);
+  if (lastTabLabel.current !== tabLabel) {
+    lastTabLabel.current = tabLabel;
+    if (isLogFilterActive(logFilter)) {
+      setLogFilter(emptyLogFilter);
+    }
+  }
+  const logFilterStats = useMemo(() => {
+    if (language !== "log" || !isLogFilterActive(logFilter)) {
+      return null;
+    }
+    return computeLogFilterRanges(splitLogFilterLines(query), logFilter);
+  }, [language, query, logFilter]);
+
   const className = `editor-shell editor-group${active ? " active" : ""}${
     editorBackgroundStyle ? " editor-shell-has-background" : ""
-  }`;
+  }${language === "log" ? " editor-shell-with-log-filter" : ""}`;
 
   return (
     <div
@@ -81,11 +114,19 @@ export function EditorGroupShell({
         <div className="editor-background-image" aria-hidden="true" />
       ) : null}
       {renderEditorTabStrip(group)}
+      {language === "log" ? (
+        <LogFilterBar
+          filter={logFilter}
+          hiddenLineCount={logFilterStats?.hiddenLineCount ?? 0}
+          onFilterChange={setLogFilter}
+        />
+      ) : null}
       <div className="editor-buffer">
         <SqlEditor
           ref={apiRef}
           value={query}
           tabLabel={tabLabel}
+          logFilter={language === "log" ? logFilter : undefined}
           onChange={onQueryChange}
           onSelectionChange={(selection) => {
             setActiveEditorGroup(group);
