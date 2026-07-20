@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TerminalPanel } from "@/features/terminal/TerminalPanel";
 import { usePreferencesStore } from "@/features/preferences";
 import { componentRenderer } from "@/tests/helpers/render";
@@ -12,12 +12,23 @@ vi.mock("@/features/terminal/TerminalView", () => ({
   ),
 }));
 
+type TauriWindow = Window & { __TAURI_INTERNALS__?: { invoke?: unknown } };
+
 const renderPanel = componentRenderer(TerminalPanel, () => ({
   onClose: vi.fn(),
 }));
 
 beforeEach(() => {
   usePreferencesStore.setState({ locale: "en" });
+  // The panel guards on the Tauri runtime (#186); pretend it is present so
+  // the tab tests keep exercising the real terminal chrome.
+  (window as TauriWindow).__TAURI_INTERNALS__ = {
+    invoke: () => Promise.resolve(),
+  };
+});
+
+afterEach(() => {
+  delete (window as TauriWindow).__TAURI_INTERNALS__;
 });
 
 describe("TerminalPanel tab accessibility (#134)", () => {
@@ -87,5 +98,40 @@ describe("TerminalPanel tab accessibility (#134)", () => {
     expect(
       screen.getByRole("button", { name: "パネルを閉じる" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("TerminalPanel without the Tauri runtime (#186)", () => {
+  // A plain browser (Playwright harness, vite preview) has no Tauri runtime,
+  // so no PTY can ever spawn. Pre-fix the panel mounted TerminalView anyway,
+  // whose unconditional Channel construction threw and took the whole
+  // workbench down. It must degrade to a clear notice instead.
+  it("degrades to a desktop-app notice instead of mounting terminals", () => {
+    delete (window as TauriWindow).__TAURI_INTERNALS__;
+    renderPanel();
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "The terminal requires the desktop app",
+    );
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByTestId("terminal-view")).toBeNull();
+  });
+
+  it("still lets the user close the panel", async () => {
+    delete (window as TauriWindow).__TAURI_INTERNALS__;
+    const { user, props } = renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Close panel" }));
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("localizes the notice", () => {
+    delete (window as TauriWindow).__TAURI_INTERNALS__;
+    usePreferencesStore.setState({ locale: "ja" });
+    renderPanel();
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "ターミナルはデスクトップアプリでのみ利用できます",
+    );
   });
 });

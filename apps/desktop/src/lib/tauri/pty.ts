@@ -12,11 +12,37 @@ export type PtySpawnOptions = {
   rows: number;
 };
 
+/**
+ * True when the Tauri runtime is reachable from this window. Constructing a
+ * `Channel` without it throws synchronously (`__TAURI_INTERNALS__` has no
+ * `transformCallback`), unlike `invoke`, which merely rejects — so `ptySpawn`
+ * must guard on this before touching `Channel` (#186). Detection mirrors
+ * `hasTauriRuntime` in erd-export.ts and `tauriRuntimeError` in
+ * app-workbench-utils.ts.
+ */
+export function isPtyRuntimeAvailable(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const internals = (
+    window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }
+  ).__TAURI_INTERNALS__;
+  return typeof internals?.invoke === "function";
+}
+
 /** Spawn a shell in a PTY; `onEvent` receives output/exit. Resolves to the id. */
 export function ptySpawn(
   options: PtySpawnOptions,
   onEvent: (event: PtyEvent) => void,
 ): Promise<string> {
+  if (!isPtyRuntimeAvailable()) {
+    // Reject instead of letting the Channel constructor throw synchronously:
+    // in a plain browser (vite preview, Playwright harness) the throw used to
+    // escape the terminal panel and take the whole workbench down (#186).
+    return Promise.reject(
+      new Error("The terminal requires the Tauri desktop runtime."),
+    );
+  }
   const channel = new Channel<PtyEvent>();
   channel.onmessage = onEvent;
   return invoke<string>("pty_spawn", {

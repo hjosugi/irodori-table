@@ -175,6 +175,8 @@ export const en = {
   "terminal.closeTab": "Close {label}",
   "terminal.newTerminal": "New terminal",
   "terminal.closePanel": "Close panel",
+  "terminal.requiresDesktop":
+    "The terminal requires the desktop app. It is not available in the browser preview.",
   "shortcuts.showCommands": "Show Commands",
   "shortcuts.newTab": "New Tab",
   "shortcuts.copyTsv": "Copy TSV",

@@ -177,6 +177,8 @@ export const ja = {
   "terminal.closeTab": "{label} を閉じる",
   "terminal.newTerminal": "新しいターミナル",
   "terminal.closePanel": "パネルを閉じる",
+  "terminal.requiresDesktop":
+    "ターミナルはデスクトップアプリでのみ利用できます。ブラウザープレビューでは利用できません。",
   "shortcuts.showCommands": "コマンド表示",
   "shortcuts.newTab": "新規タブ",
   "shortcuts.copyTsv": "TSV コピー",
