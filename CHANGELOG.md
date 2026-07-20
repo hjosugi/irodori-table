@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.45] - 2026-07-20
+
+### Changed
+
+- Dependency updates: the Rust group (8 crates), the desktop npm group
+  (6 packages), and the GitHub Actions group (2 actions).
+
+### Added
+
+- Regression tests pinning the Japanese settings translations — the
+  repository's first external contribution (thanks @MFA-G, #151).
+
 ## [0.7.44] - 2026-07-20
 
 ### Added
