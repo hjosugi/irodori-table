@@ -48,13 +48,28 @@ test("an Iceberg connection can be given catalog settings and credentials", asyn
   await catalogUri.fill("https://catalog.example.com/v1");
   await warehouse.fill("s3://bucket/warehouse");
 
+  // OAuth2 client-credentials settings for REST catalogs (#184). The client
+  // secret is deliberately NOT among them — it rides the session-only
+  // password field below.
+  const oauth2ServerUri = optionField(page, "OAuth2 token endpoint");
+  const oauth2ClientId = optionField(page, "OAuth2 client ID");
+  const scope = optionField(page, "OAuth2 scope");
+  await expect(oauth2ServerUri).toBeVisible();
+  await expect(oauth2ClientId).toBeVisible();
+  await expect(scope).toHaveAttribute("placeholder", "catalog");
+
+  await oauth2ServerUri.fill("https://catalog.example.com/v1/oauth/tokens");
+  await oauth2ClientId.fill("workbench-client");
+  await scope.fill("catalog");
+
   // Credentials ride the ordinary profile columns, which the lakehouse preset
-  // used to hide outright.
+  // used to hide outright. For iceberg the labels advertise the OAuth2
+  // client-credentials fallback (#184).
   const user = page.locator(
-    '.connection-form-body label:has(> span:text-is("Access key ID / client ID")) input',
+    '.connection-form-body label:has(> span:text-is("Access key ID / OAuth2 client ID")) input',
   );
   const password = page.locator(
-    '.connection-form-body label:has(> span:text-is("Secret access key / token")) input',
+    '.connection-form-body label:has(> span:text-is("Secret access key / OAuth2 client secret")) input',
   );
   await expect(user).toBeVisible();
   await expect(password).toHaveAttribute("type", "password");
@@ -69,6 +84,10 @@ test("an Iceberg connection can be given catalog settings and credentials", asyn
 
   await expect(catalogUri).toHaveValue("https://catalog.example.com/v1");
   await expect(warehouse).toHaveValue("s3://bucket/warehouse");
+  await expect(oauth2ServerUri).toHaveValue(
+    "https://catalog.example.com/v1/oauth/tokens",
+  );
+  await expect(oauth2ClientId).toHaveValue("workbench-client");
   await expect(user).toHaveValue("AKIAIOSFODNN7EXAMPLE");
 
   await page.locator(".connection-dialog").screenshot({

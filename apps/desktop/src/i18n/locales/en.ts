@@ -1040,6 +1040,8 @@ export const en = {
   "connection.build.availability": "Build availability: {url}.",
   "connection.field.accessKey": "Access key",
   "connection.field.accessKeyIdClientId": "Access key ID / client ID",
+  "connection.field.accessKeyIdOauth2ClientId":
+    "Access key ID / OAuth2 client ID",
   "connection.field.accessToken": "Access token",
   "connection.field.account": "Account",
   "connection.field.accountHost": "Account / host",
@@ -1076,6 +1078,9 @@ export const en = {
   "connection.field.motherduckDsn": "MotherDuck DSN",
   "connection.field.motherduckToken": "MotherDuck token",
   "connection.field.namespaceTable": "Namespace / table",
+  "connection.field.oauth2ClientId": "OAuth2 client ID",
+  "connection.field.oauth2Scope": "OAuth2 scope",
+  "connection.field.oauth2TokenEndpoint": "OAuth2 token endpoint",
   "connection.field.org": "Org",
   "connection.field.password": "Password",
   "connection.field.port": "Port",
@@ -1090,6 +1095,8 @@ export const en = {
   "connection.field.region": "Region",
   "connection.field.role": "Role",
   "connection.field.schema": "Schema",
+  "connection.field.secretAccessKeyOauth2ClientSecret":
+    "Secret access key / OAuth2 client secret",
   "connection.field.secretAccessKeyToken": "Secret access key / token",
   "connection.field.secretSessionToken": "Secret / session token",
   "connection.field.secretToken": "Secret / token",
