@@ -34,6 +34,10 @@ mod edit;
 mod engine;
 mod error;
 mod explain;
+// Shared GCP service-account signing; compiled whenever either Google
+// connector is enabled, so each feature also builds standalone.
+#[cfg(any(feature = "bigquery", feature = "bigtable"))]
+mod gcp_auth;
 mod influx;
 mod meta;
 mod metadata_manager;

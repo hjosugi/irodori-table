@@ -31,8 +31,8 @@ use irodori_generate::{ChatMessage, ChatRole, DecodeOptions};
 use crate::db::{DbEngine, DbState, QueryResult};
 
 use super::{
-    build_chat_provider, chat_handle, register_chat, snapshot_to_gen_schema, unregister_chat,
-    AiState,
+    build_chat_provider, chat_handle, lock_unpoisoned, register_chat, snapshot_to_gen_schema,
+    unregister_chat, AiState,
 };
 
 /// Most agent turns before we stop looping, regardless of what the model asks.
@@ -49,7 +49,10 @@ const AGENT_QUERY_TIMEOUT_MS: u64 = 30_000;
 pub(crate) struct ChatHandle {
     /// Set by `ai_chat_cancel` to stop the agent loop at the next boundary.
     pub stop: AtomicBool,
-    /// The `query_id` of the agent query currently running, if any.
+    /// The `query_id` of the agent query currently running, if any. Always
+    /// accessed through [`lock_unpoisoned`]: this is a best-effort cancellation
+    /// hint with no invariant a panic could corrupt, so a poisoned lock must
+    /// never take the whole chat feature down with it (#171).
     pub query_id: Mutex<Option<String>>,
 }
 
@@ -233,7 +236,7 @@ async fn run_chat(
 
         // Run it safely: bounded rows, a timeout, and a cancellable query_id.
         let query_id = format!("aichat-{session_id}-{}", short_id(&sql));
-        *handle.query_id.lock().unwrap() = Some(query_id.clone());
+        *lock_unpoisoned(&handle.query_id) = Some(query_id.clone());
         let _ = on_event.send(ChatEvent::QueryStart {
             sql: sql.clone(),
             query_id: query_id.clone(),
@@ -251,7 +254,7 @@ async fn run_chat(
             Some(query_id.clone()),
         )
         .await;
-        *handle.query_id.lock().unwrap() = None;
+        *lock_unpoisoned(&handle.query_id) = None;
 
         match run {
             Ok(result) => {
@@ -300,7 +303,10 @@ pub async fn ai_chat_cancel(
 ) -> IrodoriResult<()> {
     if let Some(handle) = chat_handle(&ai, &session_id) {
         handle.stop.store(true, Ordering::SeqCst);
-        let query_id = handle.query_id.lock().ok().and_then(|q| q.clone());
+        // Recover a poisoned lock here too: after a panic the stored id is at
+        // worst stale, and cancelling an unknown/finished query is a no-op —
+        // silently skipping the cancel would leave the statement running.
+        let query_id = lock_unpoisoned(&handle.query_id).clone();
         if let Some(query_id) = query_id {
             crate::db::cancel_query_impl(&db, query_id).await;
         }
