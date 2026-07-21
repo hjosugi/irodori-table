@@ -11,6 +11,7 @@ import {
   DockviewReact,
   type DockviewApi,
   type DockviewReadyEvent,
+  type DockviewTheme,
   type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
   type SerializedDockview,
@@ -60,6 +61,24 @@ const dockPanelIds: readonly WorkbenchDockPanelId[] = [
 // collapse stays on the explicit toggle, which is reversible from the titlebar.
 const LEFT_SIDEBAR_MIN_WIDTH = 132;
 const RIGHT_SIDEBAR_MIN_WIDTH = 168;
+
+// dockview v7 stamps a theme's `className` onto its inner `.dv-shell`, and every
+// `--dv-*` variable the dock reads is resolved there. Without an explicit theme it
+// falls back to the built-in dark `themeAbyss`, whose values then shadow our
+// `.dockview-theme-irodori` overrides for all dock content -- most visibly turning
+// the panel separators into a heavy near-black line (--dv-separator-border: #2b2b4a)
+// instead of the app's soft `--border`. Pointing the theme's className back at our
+// own class makes the shell pick up the light Irodori variables again. The palette
+// itself lives in workbench.css and is theme-adaptive (light/dark), so `colorScheme`
+// -- unused by dockview 7.0.2 anyway -- stays a static hint; `tabGroupIndicator:
+// "none"` preserves the abyss default we were implicitly relying on (the group tab
+// strip is hidden via CSS).
+const IRODORI_DOCKVIEW_THEME: DockviewTheme = {
+  name: "irodori",
+  className: "dockview-theme-irodori",
+  colorScheme: "light",
+  tabGroupIndicator: "none",
+};
 
 const DockPanelContentContext = createContext<WorkbenchDockPanelContent | null>(
   null,
@@ -362,6 +381,7 @@ export function WorkbenchDockLayout({
           dndStrategy="pointer"
           getTabContextMenuItems={() => []}
           keyboardNavigation
+          theme={IRODORI_DOCKVIEW_THEME}
           onReady={handleReady}
         />
       </div>
