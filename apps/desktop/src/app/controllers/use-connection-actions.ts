@@ -285,10 +285,14 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     setProfiles((current) => {
       const removed = new Set(targets);
       const next = current.filter((profile) => !removed.has(profile.id));
+      // Deleting the last profile must leave the saved list empty (the empty
+      // state takes over); the form just falls back to a fresh unsaved draft.
+      // Re-seeding the list with that draft made the deleted connection look
+      // like it never went away.
       const fallback = next[0] ?? newDraft(1);
       setSelectedProfileId(fallback.id);
       setDraft(fallback);
-      return next.length > 0 ? next : [sanitizedProfile(fallback)];
+      return next;
     });
     showActionNotice(
       "success",
