@@ -16,6 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.7.47] - 2026-07-21
+
+### Changed
+
+- The connection manager moves bulk deletion into row context menus, removes
+  the redundant Disconnect and Profile ID controls, and simplifies export
+  password notices.
+- The Lakehouse sidebar entry stays hidden until its datalake workflows are
+  production-ready.
+
+### Fixed
+
+- The workbench dock divider now uses the light Irodori theme instead of the
+  dark Dockview fallback.
+- Deleting the final saved connection leaves the list empty instead of
+  recreating a placeholder profile.
+- Knowledge pack update timestamps render as local calendar dates.
+
 ## [0.7.46] - 2026-07-20
 
 ### Added
