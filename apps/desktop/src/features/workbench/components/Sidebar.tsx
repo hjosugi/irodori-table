@@ -1308,7 +1308,6 @@ export function Sidebar({
                     >
                       {t("sidebar.empty.addConnection")}
                     </button>
-                    <small>{t("sidebar.empty.sampleHint")}</small>
                   </div>
                 ) : (
                   <div className="empty-browser">

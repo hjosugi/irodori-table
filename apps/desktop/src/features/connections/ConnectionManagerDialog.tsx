@@ -17,7 +17,6 @@ import {
   LockKeyhole,
   MoreHorizontal,
   Plus,
-  Power,
   Search,
   ShieldCheck,
   Upload,
@@ -283,7 +282,6 @@ export function ConnectionManagerDialog({
   draft,
   search,
   error,
-  activeConnectionOpen,
   testing,
   connecting,
   onClose,
@@ -294,7 +292,6 @@ export function ConnectionManagerDialog({
   onSelectProfile,
   onUpdateDraft,
   onDeleteProfiles,
-  onDisconnect,
   onSave,
   onTest,
   onConnect,
@@ -305,7 +302,6 @@ export function ConnectionManagerDialog({
   draft: ConnectionDraft;
   search: string;
   error: unknown | null;
-  activeConnectionOpen: boolean;
   testing: boolean;
   connecting: boolean;
   onClose: () => void;
@@ -316,7 +312,6 @@ export function ConnectionManagerDialog({
   onSelectProfile: (profile: ConnectionDraft) => void;
   onUpdateDraft: (patch: Partial<ConnectionDraft>) => void;
   onDeleteProfiles: (ids: string[]) => void;
-  onDisconnect: () => void;
   onSave: () => void;
   onTest: () => void;
   onConnect: FormEventHandler<HTMLFormElement>;
@@ -872,15 +867,6 @@ export function ConnectionManagerDialog({
                 <span>{selectedEngineMessage}</span>
               </p>
             ) : null}
-            <label>
-              <span>{t("connection.profileId")}</span>
-              <input
-                value={draft.id}
-                onChange={(event) =>
-                  onUpdateDraft({ id: event.currentTarget.value })
-                }
-              />
-            </label>
             <div
               className="mode-toggle form-toggle"
               role="group"
@@ -1078,15 +1064,6 @@ export function ConnectionManagerDialog({
             onClick={requestDeleteSelected}
           >
             {t("common.delete")}
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            disabled={!activeConnectionOpen}
-            onClick={onDisconnect}
-          >
-            <Power size={13} />
-            {t("connection.disconnect")}
           </button>
           <button className="text-button" type="button" onClick={onSave}>
             {t("common.save")}

@@ -212,7 +212,6 @@ export function useWorkbenchConnections({
     deleteProfiles,
     testActiveProfile,
     connectActiveProfile,
-    disconnectActiveProfile,
     refreshObjects,
   } = connectionActions;
 
@@ -248,7 +247,6 @@ export function useWorkbenchConnections({
         draft,
         search: connectionSearch,
         error: connectionError,
-        activeConnectionOpen,
         testing: testingConnection,
         connecting,
         onClose: () => {
@@ -262,7 +260,6 @@ export function useWorkbenchConnections({
         onSelectProfile: selectProfile,
         onUpdateDraft: updateDraft,
         onDeleteProfiles: (ids) => void deleteProfiles(ids),
-        onDisconnect: () => void disconnectActiveProfile(),
         onSave: () => saveDraft(),
         onTest: () => void testActiveProfile(),
         onConnect: connectActiveProfile,
