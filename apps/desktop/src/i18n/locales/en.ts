@@ -1018,6 +1018,7 @@ export const en = {
   "connection.confirmDelete.messageMany":
     "The {count} selected connections will be removed from your saved connections. This can't be undone.",
   "connection.deleteSelected": "Delete ({count})",
+  "connection.editConnection": "Edit",
   "connection.disconnect": "Disconnect",
   "connection.test": "Test",
   "connection.testing": "Testing",

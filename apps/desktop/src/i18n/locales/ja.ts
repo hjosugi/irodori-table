@@ -1042,6 +1042,7 @@ export const ja = {
   "connection.confirmDelete.messageMany":
     "選択中の {count} 件の接続が保存済みの接続から削除されます。この操作は元に戻せません。",
   "connection.deleteSelected": "削除 ({count})",
+  "connection.editConnection": "編集",
   "connection.disconnect": "切断",
   "connection.test": "テスト",
   "connection.testing": "テスト中",
