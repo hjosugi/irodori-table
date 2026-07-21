@@ -943,8 +943,6 @@ export const en = {
   "rail.connections": "Connections",
   "rail.connected": "Connected",
   "rail.addConnection": "Add a connection",
-  "sidebar.empty.sampleHint":
-    "The sample is an in-memory database with demo tables — no setup needed.",
   "sidebar.empty.databaseEmpty": "This database is empty.",
   "sidebar.empty.createTable": "Create a table",
   "sidebar.empty.importFromFile": "Import from file",
@@ -1000,7 +998,6 @@ export const en = {
   "connection.colorTag": "Color tag",
   "connection.engine": "Engine",
   "connection.notInBuild": "(not in this build)",
-  "connection.profileId": "Profile ID",
   "connection.inputMode": "Connection input mode",
   "connection.transportMode": "Connection transport",
   "connection.transportTcp": "Direct TCP",
@@ -1018,7 +1015,7 @@ export const en = {
   "connection.confirmDelete.messageMany":
     "The {count} selected connections will be removed from your saved connections. This can't be undone.",
   "connection.deleteSelected": "Delete ({count})",
-  "connection.disconnect": "Disconnect",
+  "connection.editConnection": "Edit",
   "connection.test": "Test",
   "connection.testing": "Testing",
   "connection.connect": "Connect",

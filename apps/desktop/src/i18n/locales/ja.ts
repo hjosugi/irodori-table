@@ -966,8 +966,6 @@ export const ja = {
   "rail.connections": "接続",
   "rail.connected": "接続中",
   "rail.addConnection": "接続を追加",
-  "sidebar.empty.sampleHint":
-    "サンプルはデモテーブル入りのインメモリデータベースで、セットアップ不要です。",
   "sidebar.empty.databaseEmpty": "このデータベースは空です。",
   "sidebar.empty.createTable": "テーブルを作成",
   "sidebar.empty.importFromFile": "ファイルからインポート",
@@ -1024,7 +1022,6 @@ export const ja = {
   "connection.colorTag": "カラータグ",
   "connection.engine": "エンジン",
   "connection.notInBuild": "（このビルドには含まれません）",
-  "connection.profileId": "プロファイル ID",
   "connection.inputMode": "接続の入力モード",
   "connection.transportMode": "接続トランスポート",
   "connection.transportTcp": "直接 TCP",
@@ -1042,7 +1039,7 @@ export const ja = {
   "connection.confirmDelete.messageMany":
     "選択中の {count} 件の接続が保存済みの接続から削除されます。この操作は元に戻せません。",
   "connection.deleteSelected": "削除 ({count})",
-  "connection.disconnect": "切断",
+  "connection.editConnection": "編集",
   "connection.test": "テスト",
   "connection.testing": "テスト中",
   "connection.connect": "接続",

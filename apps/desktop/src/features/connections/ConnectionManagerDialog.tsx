@@ -17,7 +17,6 @@ import {
   LockKeyhole,
   MoreHorizontal,
   Plus,
-  Power,
   Search,
   ShieldCheck,
   Upload,
@@ -283,7 +282,6 @@ export function ConnectionManagerDialog({
   draft,
   search,
   error,
-  activeConnectionOpen,
   testing,
   connecting,
   onClose,
@@ -294,7 +292,6 @@ export function ConnectionManagerDialog({
   onSelectProfile,
   onUpdateDraft,
   onDeleteProfiles,
-  onDisconnect,
   onSave,
   onTest,
   onConnect,
@@ -305,7 +302,6 @@ export function ConnectionManagerDialog({
   draft: ConnectionDraft;
   search: string;
   error: unknown | null;
-  activeConnectionOpen: boolean;
   testing: boolean;
   connecting: boolean;
   onClose: () => void;
@@ -316,7 +312,6 @@ export function ConnectionManagerDialog({
   onSelectProfile: (profile: ConnectionDraft) => void;
   onUpdateDraft: (patch: Partial<ConnectionDraft>) => void;
   onDeleteProfiles: (ids: string[]) => void;
-  onDisconnect: () => void;
   onSave: () => void;
   onTest: () => void;
   onConnect: FormEventHandler<HTMLFormElement>;
@@ -336,6 +331,15 @@ export function ConnectionManagerDialog({
     y: number;
   } | null>(null);
   const transferMenuOpen = transferMenu !== null;
+  // Right-click menu for the profile list: bulk actions live here rather than in
+  // a footer button whose "(14)" count read as noise. Anchored at the cursor and
+  // portaled to <body> for the same overflow-clipping reason as the transfer menu.
+  const [rowMenu, setRowMenu] = useState<{
+    x: number;
+    y: number;
+    profileId: string;
+  } | null>(null);
+  const rowMenuRef = useRef<HTMLDivElement | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
   );
@@ -434,6 +438,35 @@ export function ConnectionManagerDialog({
       window.removeEventListener("blur", closeOnBlur);
     };
   }, [transferMenuOpen]);
+
+  useEffect(() => {
+    if (!rowMenu) {
+      return;
+    }
+    const close = () => setRowMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setRowMenu(null);
+    };
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && rowMenuRef.current?.contains(target)) {
+        return;
+      }
+      setRowMenu(null);
+    };
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("blur", close);
+    };
+  }, [rowMenu]);
 
   // Connector settings ride along in profile.options; the Rust side forwards the
   // whole map to the connector untouched.
@@ -552,6 +585,22 @@ export function ConnectionManagerDialog({
         type="button"
         aria-pressed={selectedIds.has(profile.id)}
         onClick={(event) => handleProfileClick(event, profile)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          // Right-clicking outside the current selection retargets to just
+          // this row; right-clicking within a multi-selection keeps it so the
+          // menu can act on the whole set.
+          if (!selectedIds.has(profile.id)) {
+            selectionAnchorRef.current = profile.id;
+            setSelectedIds(new Set([profile.id]));
+          }
+          setRowMenu({
+            x: event.clientX,
+            y: event.clientY,
+            profileId: profile.id,
+          });
+        }}
       >
         <span
           className="connection-color-dot"
@@ -688,6 +737,7 @@ export function ConnectionManagerDialog({
                         type="button"
                         role="menuitem"
                         disabled={profiles.length === 0}
+                        title={t("connection.noPasswords")}
                         onClick={() => {
                           setTransferMenu(null);
                           onExportProfiles(format.value);
@@ -698,9 +748,13 @@ export function ConnectionManagerDialog({
                             format: format.label,
                           })}
                         </span>
-                        <small>{t("connection.noPasswords")}</small>
                       </button>
                     ))}
+                    {/* One quiet note for the whole export list instead of
+                        stamping "no passwords" onto every row. */}
+                    <span className="connection-action-menu-note">
+                      {t("connection.noPasswords")}
+                    </span>
                   </div>,
                   document.body,
                 )
@@ -813,15 +867,6 @@ export function ConnectionManagerDialog({
                 <span>{selectedEngineMessage}</span>
               </p>
             ) : null}
-            <label>
-              <span>{t("connection.profileId")}</span>
-              <input
-                value={draft.id}
-                onChange={(event) =>
-                  onUpdateDraft({ id: event.currentTarget.value })
-                }
-              />
-            </label>
             <div
               className="mode-toggle form-toggle"
               role="group"
@@ -1018,18 +1063,7 @@ export function ConnectionManagerDialog({
             disabled={!deleteTargetExists}
             onClick={requestDeleteSelected}
           >
-            {selectedIds.size > 1
-              ? t("connection.deleteSelected", { count: selectedIds.size })
-              : t("common.delete")}
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            disabled={!activeConnectionOpen}
-            onClick={onDisconnect}
-          >
-            <Power size={13} />
-            {t("connection.disconnect")}
+            {t("common.delete")}
           </button>
           <button className="text-button" type="button" onClick={onSave}>
             {t("common.save")}
@@ -1052,6 +1086,70 @@ export function ConnectionManagerDialog({
           </button>
         </div>
       </form>
+      {rowMenu
+        ? createPortal(
+            <div
+              ref={rowMenuRef}
+              className="connection-action-menu"
+              role="menu"
+              style={{
+                position: "fixed",
+                left: rowMenu.x,
+                top: rowMenu.y,
+                right: "auto",
+                zIndex: 60,
+              }}
+            >
+              {selectedIds.size > 1 ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="danger"
+                  onClick={() => {
+                    setRowMenu(null);
+                    requestDeleteSelected();
+                  }}
+                >
+                  <span>
+                    {t("connection.deleteSelected", {
+                      count: selectedIds.size,
+                    })}
+                  </span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      const profile = profiles.find(
+                        (item) => item.id === rowMenu.profileId,
+                      );
+                      setRowMenu(null);
+                      if (profile) {
+                        onSelectProfile(profile);
+                      }
+                    }}
+                  >
+                    <span>{t("connection.editConnection")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="danger"
+                    onClick={() => {
+                      setRowMenu(null);
+                      requestDeleteSelected();
+                    }}
+                  >
+                    <span>{t("common.delete")}</span>
+                  </button>
+                </>
+              )}
+            </div>,
+            document.body,
+          )
+        : null}
       {confirmElement}
     </DialogShell>
   );

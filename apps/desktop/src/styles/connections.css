@@ -94,6 +94,21 @@
   background: var(--border);
 }
 
+/* A single quiet footnote for the export list (replaces the per-row repeat). */
+.connection-action-menu-note {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 11px 2px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+  white-space: normal;
+}
+
+.connection-action-menu button.danger span {
+  color: var(--red);
+}
+
 .connection-search {
   display: flex;
   align-items: center;

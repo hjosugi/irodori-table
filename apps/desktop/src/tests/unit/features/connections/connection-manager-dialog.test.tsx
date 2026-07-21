@@ -175,7 +175,10 @@ describe("ConnectionManagerDialog", () => {
       container.querySelectorAll(".connection-profile.selected"),
     ).toHaveLength(3);
 
-    await user.click(screen.getByRole("button", { name: "Delete (3)" }));
+    // Bulk delete lives in the row right-click menu now, not a counted footer
+    // button. Right-clicking a row that is part of the selection keeps the set.
+    fireEvent.contextMenu(screen.getByRole("button", { name: /Local Duck/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete (3)" }));
 
     const confirm = screen.getByRole("dialog", {
       name: "Delete 3 connections?",
@@ -187,6 +190,26 @@ describe("ConnectionManagerDialog", () => {
       "local-mysql",
       "local-duck",
     ]);
+  });
+
+  it("right-clicking a single row opens an edit/delete menu", async () => {
+    const profiles = [
+      draft(),
+      draft({ id: "local-mysql", name: "Local MySQL", engine: "mysql" }),
+    ];
+    const { props, user } = renderDialog({ profiles });
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: /Local MySQL/ }));
+
+    // A single (unselected) row offers Edit (load into the form) and Delete.
+    expect(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    ).toBeVisible();
+    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+
+    expect(props.onSelectProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "local-mysql" }),
+    );
   });
 
   it("shows structured connection errors with raw details", () => {

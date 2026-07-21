@@ -24,6 +24,16 @@ type KnowledgePanelProps = {
 
 const matchLimit = 200;
 
+// Knowledge packs carry a raw ISO timestamp (e.g. "2026-07-11T08:30:21Z").
+// Show it as a plain local date instead of leaking the ISO/UTC form to the UI.
+function formatUpdatedAt(value: string, locale?: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString(locale, { dateStyle: "medium" });
+}
+
 export function KnowledgePanel({
   editorEngine,
   activeConnectionName,
@@ -151,7 +161,11 @@ export function KnowledgePanel({
       <div className="knowledge-status">
         <span>{t("knowledge.factCount", { count: `${matches.length}` })}</span>
         {pack.updatedAt ? (
-          <span>{t("knowledge.updatedAt", { date: pack.updatedAt })}</span>
+          <span>
+            {t("knowledge.updatedAt", {
+              date: formatUpdatedAt(pack.updatedAt, locale),
+            })}
+          </span>
         ) : null}
       </div>
 
