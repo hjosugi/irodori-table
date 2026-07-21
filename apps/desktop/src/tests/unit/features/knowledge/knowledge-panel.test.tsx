@@ -3,6 +3,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KnowledgePanel } from "@/features/knowledge/KnowledgePanel";
 import type { KnowledgePack } from "@/features/knowledge/knowledge-pack";
+import { usePreferencesStore } from "@/features/preferences";
+
+// Mirror how KnowledgePanel renders pack.updatedAt (a plain local date, not the
+// raw ISO), so the assertions stay correct across locales and time zones.
+const expectedUpdatedAt = (iso: string) =>
+  new Date(iso).toLocaleDateString(usePreferencesStore.getState().locale, {
+    dateStyle: "medium",
+  });
 
 let container: HTMLDivElement;
 let root: Root;
@@ -120,7 +128,9 @@ describe("KnowledgePanel", () => {
       "PostgreSQL: SCRAM notes",
     ]);
     expect(container.textContent).toContain("Local Postgres");
-    expect(container.textContent).toContain("2026-07-11T00:00:00Z");
+    expect(container.textContent).toContain(
+      expectedUpdatedAt("2026-07-11T00:00:00Z"),
+    );
   });
 
   it("shows every product when the scope is switched to all", () => {
@@ -182,7 +192,9 @@ describe("KnowledgePanel", () => {
       .querySelector<HTMLButtonElement>(".knowledge-header button")
       ?.click();
     await vi.waitFor(() => {
-      expect(container.textContent).toContain("2026-08-01T00:00:00Z");
+      expect(container.textContent).toContain(
+        expectedUpdatedAt("2026-08-01T00:00:00Z"),
+      );
     });
     expect(factTitles()).toEqual(["PostgreSQL: MERGE improvements"]);
   });
