@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from "react";
+import { useExtensionRuntimeStore } from "@/features/extensions/runtime-store";
 import { useGitStore } from "@/features/git";
 import {
   activeWorkbenchViewForSide,
@@ -31,21 +33,63 @@ export function useSidebarViews() {
   );
   const viewOrder = useWorkbenchStore((state) => state.viewOrder);
   const viewHidden = useWorkbenchStore((state) => state.viewHidden);
+  const extensionRuntimeLoaded = useExtensionRuntimeStore(
+    (state) => state.loaded,
+  );
+  const enabledHostFeatures = useExtensionRuntimeStore(
+    (state) => state.enabledHostFeatures,
+  );
+  const refreshInstalledExtensions = useExtensionRuntimeStore(
+    (state) => state.refreshInstalledExtensions,
+  );
   const setSidebarWidth = useWorkbenchStore((state) => state.setSidebarWidth);
   const setInspectorWidth = useWorkbenchStore(
     (state) => state.setInspectorWidth,
   );
+  useEffect(() => {
+    if (!extensionRuntimeLoaded) {
+      void refreshInstalledExtensions().catch(() => undefined);
+    }
+  }, [extensionRuntimeLoaded, refreshInstalledExtensions]);
+
+  const unavailableFeatureViews = useMemo(
+    () => ({
+      knowledge: !enabledHostFeatures.includes("knowledge"),
+      lakehouse: !enabledHostFeatures.includes("datalake"),
+    }),
+    [enabledHostFeatures],
+  );
+  const effectiveViewHidden = useMemo(
+    () => ({
+      ...viewHidden,
+      knowledge: viewHidden.knowledge || unavailableFeatureViews.knowledge,
+      lakehouse: viewHidden.lakehouse || unavailableFeatureViews.lakehouse,
+    }),
+    [unavailableFeatureViews, viewHidden],
+  );
+  useEffect(() => {
+    if (!extensionRuntimeLoaded) {
+      return;
+    }
+    const state = useWorkbenchStore.getState();
+    if (unavailableFeatureViews.knowledge && state.viewVisibility.knowledge) {
+      state.setViewOpen("knowledge", false);
+    }
+    if (unavailableFeatureViews.lakehouse && state.viewVisibility.lakehouse) {
+      state.setViewOpen("lakehouse", false);
+    }
+  }, [extensionRuntimeLoaded, unavailableFeatureViews]);
   const leftSidebarViews = workbenchViewsForSide(
     viewPlacements,
     "left",
     viewOrder,
-    viewHidden,
+    effectiveViewHidden,
   );
   const rightSidebarViews = workbenchViewsForSide(
     viewPlacements,
     "right",
     viewOrder,
-    viewHidden,
+    effectiveViewHidden,
   );
   // All views assigned to a side (hidden ones included) for the tab context
   // menu's show/hide checklist.
@@ -53,25 +97,27 @@ export function useSidebarViews() {
     viewPlacements,
     "left",
     viewOrder,
+    unavailableFeatureViews,
   );
   const rightSidebarAllViews = workbenchViewsForSide(
     viewPlacements,
     "right",
     viewOrder,
+    unavailableFeatureViews,
   );
   const activeLeftSidebarView = activeWorkbenchViewForSide(
     viewVisibility,
     viewPlacements,
     "left",
     viewOrder,
-    viewHidden,
+    effectiveViewHidden,
   );
   const activeRightSidebarView = activeWorkbenchViewForSide(
     viewVisibility,
     viewPlacements,
     "right",
     viewOrder,
-    viewHidden,
+    effectiveViewHidden,
   );
 
   function viewOpenOnItsSide(viewId: WorkbenchViewId) {
@@ -82,6 +128,12 @@ export function useSidebarViews() {
   }
 
   function setActiveSidebarView(viewId: WorkbenchViewId) {
+    if (
+      (viewId === "knowledge" && unavailableFeatureViews.knowledge) ||
+      (viewId === "lakehouse" && unavailableFeatureViews.lakehouse)
+    ) {
+      return;
+    }
     // Read the latest placements so activation directly after a move/hide
     // works with the just-updated state instead of this render's snapshot.
     const placements = useWorkbenchStore.getState().viewPlacements;
@@ -151,7 +203,13 @@ export function useSidebarViews() {
       state.viewPlacements,
       side,
       state.viewOrder,
-      state.viewHidden,
+      {
+        ...state.viewHidden,
+        knowledge:
+          state.viewHidden.knowledge || unavailableFeatureViews.knowledge,
+        lakehouse:
+          state.viewHidden.lakehouse || unavailableFeatureViews.lakehouse,
+      },
     );
     if (remaining.length > 0) {
       setActiveSidebarView(
@@ -186,6 +244,12 @@ export function useSidebarViews() {
 
   function setViewHidden(viewId: WorkbenchViewId, hidden: boolean) {
     if (viewId === "objectBrowser") {
+      return;
+    }
+    if (
+      (viewId === "knowledge" && unavailableFeatureViews.knowledge) ||
+      (viewId === "lakehouse" && unavailableFeatureViews.lakehouse)
+    ) {
       return;
     }
     const side = viewPlacements[viewId] ?? "left";
@@ -241,7 +305,8 @@ export function useSidebarViews() {
     setViewPlacements,
     viewVisibility,
     setViewVisibility,
-    viewHidden,
+    viewHidden: effectiveViewHidden,
+    enabledHostFeatures,
     leftSidebarViews,
     rightSidebarViews,
     leftSidebarAllViews,

@@ -25,11 +25,21 @@ impl NativeExtensionConnection {
         extension: &InstalledExtension,
         profile: &ConnectionProfile,
     ) -> Result<Self, String> {
-        let connector = NativeConnector::load(Path::new(&extension.library_path))?;
-        if connector.engine() != extension.engine {
+        let library_path = extension
+            .library_path
+            .as_deref()
+            .ok_or_else(|| format!("extension {} is not a native connector", extension.id))?;
+        let engine = extension.engine.as_deref().ok_or_else(|| {
+            format!(
+                "extension {} does not declare a connector engine",
+                extension.id
+            )
+        })?;
+        let connector = NativeConnector::load(Path::new(library_path))?;
+        if connector.engine() != engine {
             return Err(format!(
                 "installed extension engine mismatch: registry={}, abi={}",
-                extension.engine,
+                engine,
                 connector.engine()
             ));
         }

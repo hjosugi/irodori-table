@@ -43,9 +43,132 @@ fn memgraph_release_request() -> ExtensionInstallRequest {
     }
 }
 
+fn knowledge_release_request() -> ExtensionInstallRequest {
+    ExtensionInstallRequest {
+        id: "irodori.knowledge".into(),
+        version: "0.1.0".into(),
+        kind: ExtensionInstallKind::GithubRelease,
+        repository: "hjosugi/irodori-extension-knowledge".into(),
+        asset_name: "irodori-extension-knowledge.tar.gz".into(),
+        tag: "v0.1.0".into(),
+        sha256: "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308".into(),
+        permissions: vec!["hostFeatures".into()],
+        manifest_path: None,
+    }
+}
+
+fn datalake_release_request() -> ExtensionInstallRequest {
+    ExtensionInstallRequest {
+        id: "irodori.datalake".into(),
+        version: "0.1.0".into(),
+        kind: ExtensionInstallKind::GithubRelease,
+        repository: "hjosugi/irodori-extension-datalake".into(),
+        asset_name: "irodori-extension-datalake.tar.gz".into(),
+        tag: "v0.1.0".into(),
+        sha256: "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde".into(),
+        permissions: vec!["hostFeatures".into()],
+        manifest_path: None,
+    }
+}
+
+#[tokio::test]
+#[ignore = "downloads pinned public feature releases; run with an isolated XDG_DATA_HOME"]
+async fn feature_releases_install_toggle_and_uninstall() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let app = tauri::Builder::default()
+        .any_thread()
+        .manage(extensions::ExtensionsState::default())
+        .build(tauri::generate_context!())
+        .expect("build tauri test app");
+    let handle = app.handle().clone();
+    let extension_state = app.state::<extensions::ExtensionsState>();
+
+    let installed = extensions::ext_install(
+        handle.clone(),
+        extension_state.clone(),
+        knowledge_release_request(),
+    )
+    .await
+    .expect("install knowledge extension");
+    assert_eq!(installed.runtime, "declarative");
+    assert_eq!(installed.host_features, vec!["knowledge"]);
+    assert!(installed.engine.is_none());
+    assert!(installed.library_path.is_none());
+
+    let disabled = extensions::ext_set_enabled(
+        handle.clone(),
+        extension_state.clone(),
+        installed.id.clone(),
+        false,
+    )
+    .await
+    .expect("disable knowledge extension");
+    assert!(!disabled.enabled);
+
+    let enabled = extensions::ext_set_enabled(
+        handle.clone(),
+        extension_state.clone(),
+        installed.id.clone(),
+        true,
+    )
+    .await
+    .expect("enable knowledge extension");
+    assert!(enabled.enabled);
+
+    assert!(
+        extensions::ext_uninstall(handle.clone(), extension_state.clone(), installed.id)
+            .await
+            .expect("uninstall knowledge extension")
+    );
+
+    let datalake = extensions::ext_install(
+        handle.clone(),
+        extension_state.clone(),
+        datalake_release_request(),
+    )
+    .await
+    .expect("install datalake extension");
+    assert_eq!(datalake.runtime, "declarative");
+    assert_eq!(datalake.host_features, vec!["datalake"]);
+    assert!(datalake.engine.is_none());
+    assert!(datalake.library_path.is_none());
+
+    let disabled = extensions::ext_set_enabled(
+        handle.clone(),
+        extension_state.clone(),
+        datalake.id.clone(),
+        false,
+    )
+    .await
+    .expect("disable datalake extension");
+    assert!(!disabled.enabled);
+
+    let enabled = extensions::ext_set_enabled(
+        handle.clone(),
+        extension_state.clone(),
+        datalake.id.clone(),
+        true,
+    )
+    .await
+    .expect("enable datalake extension");
+    assert!(enabled.enabled);
+
+    assert!(
+        extensions::ext_uninstall(handle.clone(), extension_state.clone(), datalake.id)
+            .await
+            .expect("uninstall datalake extension")
+    );
+
+    assert!(extensions::ext_list(handle, extension_state)
+        .await
+        .expect("list extensions")
+        .is_empty());
+}
+
 #[tokio::test]
 #[ignore = "requires a Memgraph server on 127.0.0.1:17687 and network access to GitHub Releases"]
 async fn memgraph_release_installs_connects_queries_metadata_and_uninstalls() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let app = tauri::Builder::default()
         .any_thread()
         .manage(extensions::ExtensionsState::default())
@@ -62,7 +185,7 @@ async fn memgraph_release_installs_connects_queries_metadata_and_uninstalls() {
     .await
     .expect("install memgraph extension");
     assert_eq!(installed.id, "irodori.memgraph");
-    assert_eq!(installed.engine, "memgraph");
+    assert_eq!(installed.engine.as_deref(), Some("memgraph"));
     assert!(installed.supported_calls.iter().any(|call| call == "query"));
 
     let db_state = db::DbState::default();

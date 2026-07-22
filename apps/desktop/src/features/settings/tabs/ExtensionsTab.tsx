@@ -20,6 +20,7 @@ import {
   type PluginStoreCatalog,
   type PluginStoreExtension,
 } from "@/features/extensions/plugin-store";
+import { useExtensionRuntimeStore } from "@/features/extensions/runtime-store";
 import {
   extInstall,
   extList,
@@ -226,7 +227,9 @@ function InstalledSection({
                     <span>{extension.version}</span>
                   </div>
                   <p>
-                    {extension.engine} · ABI {extension.abiVersion}
+                    {extension.runtime === "native"
+                      ? `${extension.engine ?? "connector"} · ABI ${extension.abiVersion ?? "?"}`
+                      : extension.hostFeatures.join(", ")}
                   </p>
                   <div className="extension-meta">
                     <span>
@@ -293,9 +296,12 @@ export function ExtensionsTab({ t, active }: ExtensionsTabProps) {
   const [pluginStore, setPluginStore] = useState<PluginStoreCatalog>(
     bundledPluginStoreCatalog,
   );
-  const [installedExtensions, setInstalledExtensions] = useState<
-    InstalledExtension[]
-  >([]);
+  const installedExtensions = useExtensionRuntimeStore(
+    (state) => state.installedExtensions,
+  );
+  const setInstalledExtensions = useExtensionRuntimeStore(
+    (state) => state.setInstalledExtensions,
+  );
   const [nativeTarget, setNativeTarget] = useState<string | null>(null);
   const [pluginStoreLoading, setPluginStoreLoading] = useState(false);
   const [pluginStoreError, setPluginStoreError] = useState<string | null>(null);

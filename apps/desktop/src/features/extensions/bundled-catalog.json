@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-19T20:45:11Z",
+  "updatedAt": "2026-07-21T20:51:44Z",
   "source": "bundled-extension-catalog",
   "extensions": [
     {
@@ -2262,6 +2262,106 @@
           "x86_64-windows": {
             "name": "irodori-extension-databricks-x86_64-windows.tar.gz",
             "sha256": "sha256:b5659e92e7387e7100ba8ded94bd0421bc8cde814ced73a1a0a49030c5139904"
+          }
+        }
+      }
+    },
+    {
+      "id": "irodori.knowledge",
+      "name": "Irodori Knowledge",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds the Knowledge workbench as an installable feature extension.",
+      "description": "Activates the trusted Knowledge panel and command compiled into Irodori Table. The declarative package does not execute downloaded code.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-knowledge",
+      "categories": ["feature", "productivity"],
+      "topics": ["knowledge", "documentation", "declarative-extension"],
+      "engines": [],
+      "permissions": ["hostFeatures"],
+      "runtime": "declarative",
+      "verified": true,
+      "publishedAt": "2026-07-21T20:51:44Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-knowledge/releases/tag/v0.1.0",
+        "tag": "v0.1.0",
+        "manifestPath": "irodori.extension.json",
+        "assets": {
+          "aarch64-linux": {
+            "name": "irodori-extension-knowledge.tar.gz",
+            "sha256": "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308"
+          },
+          "aarch64-macos": {
+            "name": "irodori-extension-knowledge.tar.gz",
+            "sha256": "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308"
+          },
+          "aarch64-windows": {
+            "name": "irodori-extension-knowledge.tar.gz",
+            "sha256": "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308"
+          },
+          "x86_64-linux": {
+            "name": "irodori-extension-knowledge.tar.gz",
+            "sha256": "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308"
+          },
+          "x86_64-macos": {
+            "name": "irodori-extension-knowledge.tar.gz",
+            "sha256": "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308"
+          },
+          "x86_64-windows": {
+            "name": "irodori-extension-knowledge.tar.gz",
+            "sha256": "sha256:0c06dde38713d8548d2b7d50988442924b3405608e7c4381ed9be86474fa1308"
+          }
+        }
+      }
+    },
+    {
+      "id": "irodori.datalake",
+      "name": "Irodori Datalake",
+      "publisher": "irodori",
+      "version": "0.1.0",
+      "apiVersion": "0.1",
+      "summary": "Adds the Datalake workbench as an installable feature extension.",
+      "description": "Activates the trusted Datalake panel compiled into Irodori Table. The declarative package does not execute downloaded code.",
+      "license": "MIT OR 0BSD",
+      "repository": "https://github.com/hjosugi/irodori-extension-datalake",
+      "categories": ["feature", "lakehouse"],
+      "topics": ["datalake", "lakehouse", "declarative-extension"],
+      "engines": [],
+      "permissions": ["hostFeatures"],
+      "runtime": "declarative",
+      "verified": true,
+      "publishedAt": "2026-07-21T20:51:44Z",
+      "install": {
+        "kind": "githubRelease",
+        "url": "https://github.com/hjosugi/irodori-extension-datalake/releases/tag/v0.1.0",
+        "tag": "v0.1.0",
+        "manifestPath": "irodori.extension.json",
+        "assets": {
+          "aarch64-linux": {
+            "name": "irodori-extension-datalake.tar.gz",
+            "sha256": "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde"
+          },
+          "aarch64-macos": {
+            "name": "irodori-extension-datalake.tar.gz",
+            "sha256": "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde"
+          },
+          "aarch64-windows": {
+            "name": "irodori-extension-datalake.tar.gz",
+            "sha256": "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde"
+          },
+          "x86_64-linux": {
+            "name": "irodori-extension-datalake.tar.gz",
+            "sha256": "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde"
+          },
+          "x86_64-macos": {
+            "name": "irodori-extension-datalake.tar.gz",
+            "sha256": "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde"
+          },
+          "x86_64-windows": {
+            "name": "irodori-extension-datalake.tar.gz",
+            "sha256": "sha256:16fd46dae9e49597067c89ec116274c2b595fd5c6da7857aae9c97af242e1bde"
           }
         }
       }

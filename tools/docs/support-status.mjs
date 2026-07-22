@@ -24,6 +24,7 @@ const connectorRepositoriesPath = resolve(
   root,
   "registry/catalog/connector-repositories.json",
 );
+const featureRepositoriesPath = resolve(root, "registry/catalog/feature-repositories.json");
 const supportStatusPath = resolve(root, "registry/data-source-support-status.md");
 
 function main() {
@@ -43,6 +44,7 @@ function main() {
     engines: engineRows,
   });
   const connectorRepositories = JSON.parse(read(connectorRepositoriesPath));
+  const featureRepositories = JSON.parse(read(featureRepositoriesPath));
   const supportStatus = read(supportStatusPath);
 
   const registryIds = parseDbEngineIds(engineSource);
@@ -75,7 +77,9 @@ function main() {
   );
   const engineRowsById = new Map(engineRows.map((engine) => [engine.id, engine]));
   const repositoryExtensionIds = new Set(
-    (connectorRepositories.repositories ?? []).map((repository) => repository.extensionId),
+    [connectorRepositories, featureRepositories].flatMap((inventory) =>
+      (inventory.repositories ?? []).map((repository) => repository.extensionId),
+    ),
   );
   const recognizedNoConnectorIds = new Set(
     engineRows
@@ -130,7 +134,7 @@ function main() {
           `registry/catalog/catalog.json includes heavy detail fields for extension '${extension.id}'`,
       ),
     ...setDiff(marketplaceExtensionIds, repositoryExtensionIds).map(
-      (id) => `registry/catalog/connector-repositories.json is missing extension '${id}'`,
+      (id) => `registry/catalog repository inventories are missing extension '${id}'`,
     ),
     ...setDiff(recognizedNoConnectorMarketplaceIds, marketplaceEngineIds).map(
       (id) => `recognized/no-connector engine '${id}' has no marketplace extension`,

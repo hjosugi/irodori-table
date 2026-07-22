@@ -110,11 +110,6 @@ export function normalizeWorkbenchViewOrder(value: unknown): WorkbenchViewId[] {
   return order;
 }
 
-// Views hidden at the code level until their workflow is production-ready.
-// Everything else about the view (panel, tab metadata, registry entries) is
-// kept intact, so re-enabling is a one-line revert: drop the id from this set.
-const temporarilyHiddenWorkbenchViews = new Set<WorkbenchViewId>(["lakehouse"]);
-
 export function workbenchViewsForSide(
   placements: WorkbenchViewPlacements,
   side: WorkbenchSide,
@@ -122,10 +117,7 @@ export function workbenchViewsForSide(
   hidden?: Partial<WorkbenchViewHidden>,
 ): WorkbenchViewId[] {
   return order.filter(
-    (viewId) =>
-      placements[viewId] === side &&
-      !hidden?.[viewId] &&
-      !temporarilyHiddenWorkbenchViews.has(viewId),
+    (viewId) => placements[viewId] === side && !hidden?.[viewId],
   );
 }
 

@@ -52,7 +52,7 @@ export type PluginStoreExtension = {
   engines: string[];
   contributes?: PluginStoreContributions;
   permissions: string[];
-  runtime: "typescript" | "javascript" | "wasm" | "native";
+  runtime: "declarative" | "typescript" | "javascript" | "wasm" | "native";
   verified: boolean;
   publishedAt: string;
   install?: PluginStoreInstallSource;

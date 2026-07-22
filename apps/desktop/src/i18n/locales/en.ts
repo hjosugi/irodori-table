@@ -719,9 +719,9 @@ export const en = {
     "Version {version} will be downloaded from its pinned GitHub release and verified before loading. Requested permissions: {permissions}",
   "settings.extensions.confirmUninstallTitle": "Uninstall {name}?",
   "settings.extensions.confirmUninstallMessage":
-    "The installed native extension will be disabled and removed from this device.",
+    "The installed extension will be disabled and removed from this device.",
   "settings.extensions.runtimeNotice":
-    "Native extensions run with this app's process privileges. Install only verified releases and review the requested permissions.",
+    "Native extensions run with this app's process privileges; declarative extensions only activate trusted built-in features. Install verified releases and review permissions.",
   "settings.jobs.title": "Background Jobs",
   "settings.jobs.description":
     "Active and recent local work tracked by the shared job runtime.",
