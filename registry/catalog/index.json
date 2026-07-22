@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-21T20:51:44Z",
+  "updatedAt": "2026-07-22T23:19:42Z",
   "source": "https://github.com/hjosugi/irodori-table/tree/main/registry/catalog",
   "extensions": [
     {
@@ -929,7 +929,7 @@
       "id": "irodori.mongodb",
       "name": "MongoDB Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "apiVersion": "0.1",
       "summary": "Adds MongoDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -956,36 +956,36 @@
       ],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T01:12:48Z",
+      "publishedAt": "2026-07-22T23:19:42Z",
       "install": {
         "kind": "githubRelease",
-        "url": "https://github.com/hjosugi/irodori-extension-mongodb/releases/tag/v0.1.3",
-        "tag": "v0.1.3",
+        "url": "https://github.com/hjosugi/irodori-extension-mongodb/releases/tag/v0.1.4",
+        "tag": "v0.1.4",
         "manifestPath": "irodori.extension.json",
         "assets": {
           "aarch64-linux": {
             "name": "irodori-extension-mongodb-aarch64-linux.tar.gz",
-            "sha256": "sha256:283c0f64bcd7973b33f9f0859c61f158df999b47f586d16ff87a150d7b36fd17"
+            "sha256": "sha256:b63a7f645d283b40a190608fce3b76cea70e5b05b3284d99ceae3b3c771fe2f9"
           },
           "aarch64-macos": {
             "name": "irodori-extension-mongodb-aarch64-macos.tar.gz",
-            "sha256": "sha256:f62fb3b3b5ec8e2882bef0b6d091aaed943b35623989690daac84a4951c4a6ab"
+            "sha256": "sha256:2cb9a61036e950f0854a9bd9a725db747798673bfd10c9b9e08619cbd14e6f58"
           },
           "aarch64-windows": {
             "name": "irodori-extension-mongodb-aarch64-windows.tar.gz",
-            "sha256": "sha256:5d330896aeb20bcae7b9b9b68e4feb7296bbd3504f462d4473e835f0e807f27e"
+            "sha256": "sha256:ad443d97ad62aace9421ded6bbf1b331b280fd1663377131e65614ba3545a430"
           },
           "x86_64-linux": {
             "name": "irodori-extension-mongodb.tar.gz",
-            "sha256": "sha256:1e4f6422aa0a9584810dbd5fefd616795ad2a257d7e53259c0f8060017e87af2"
+            "sha256": "sha256:b351edb632f04ce1f8e5b423b76675200cafd5c87e4ccebf4e4b07998c96df31"
           },
           "x86_64-macos": {
             "name": "irodori-extension-mongodb-x86_64-macos.tar.gz",
-            "sha256": "sha256:e48fd3af0fbba5540f15f40f742325c2bec56e9a1ab563b7e70efb450b7e301b"
+            "sha256": "sha256:5a5b57e172eada387518cec68963ba596ca109a9ed817b7b458b0bbbeea8f4cc"
           },
           "x86_64-windows": {
             "name": "irodori-extension-mongodb-x86_64-windows.tar.gz",
-            "sha256": "sha256:9c5eed63d5268289c5e1f8e9da79b69545facb49f9ad09db3a8f8d31bec80c18"
+            "sha256": "sha256:8bb7bb9010ed1de9876d337b4d969ddf1c4b256f36eb1f158fcc0e6d6da90654"
           }
         }
       }
@@ -1901,7 +1901,7 @@
       "id": "irodori.arangodb",
       "name": "ArangoDB Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "apiVersion": "0.1",
       "summary": "Adds ArangoDB connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -1928,36 +1928,36 @@
       ],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T00:39:25Z",
+      "publishedAt": "2026-07-22T23:17:45Z",
       "install": {
         "kind": "githubRelease",
-        "url": "https://github.com/hjosugi/irodori-extension-arangodb/releases/tag/v0.1.3",
-        "tag": "v0.1.3",
+        "url": "https://github.com/hjosugi/irodori-extension-arangodb/releases/tag/v0.1.4",
+        "tag": "v0.1.4",
         "manifestPath": "irodori.extension.json",
         "assets": {
           "aarch64-linux": {
             "name": "irodori-extension-arangodb-aarch64-linux.tar.gz",
-            "sha256": "sha256:938fe744d3448db2a6587243d59fd58ad35eefbaaad167149f59cd92508b63ce"
+            "sha256": "sha256:d5bf7d1dc0b32151ff4cb40a446c5e2b6fe4d379b50a1030551d61638db952d9"
           },
           "aarch64-macos": {
             "name": "irodori-extension-arangodb-aarch64-macos.tar.gz",
-            "sha256": "sha256:0f390923a3e20c0dcca406d8468b90d92d4f148fc82a413c7923bb7e82a28dbf"
+            "sha256": "sha256:75de8996b4f1fa7d8a36bca94280b59d07254d472888b9efaefa79ed2a66b2fd"
           },
           "aarch64-windows": {
             "name": "irodori-extension-arangodb-aarch64-windows.tar.gz",
-            "sha256": "sha256:99e5bbd3f51c00a2edb0b02b1e92310b973d986fa61ec1246f6210a0de6a863e"
+            "sha256": "sha256:f94a6a74b5e57b6091b0da4b6ffee0ce665c9c217e02d3a8bd0659e7331d09e7"
           },
           "x86_64-linux": {
             "name": "irodori-extension-arangodb.tar.gz",
-            "sha256": "sha256:71191417dc0e68438e37935a93153e61120226b816af5db7fc68649f8afa358d"
+            "sha256": "sha256:188aff9e68d1fe0e56fef03a9083de6737bb3021f235c92a3c2b976598a0d332"
           },
           "x86_64-macos": {
             "name": "irodori-extension-arangodb-x86_64-macos.tar.gz",
-            "sha256": "sha256:f9115b3f57bf3abe80b78d4b75db252bb0524566616d4edcae626640b816437a"
+            "sha256": "sha256:5d3f41dd70bd829cdba6762bd8ac873f849884dd5a7d43cd1c50ec142b783ff7"
           },
           "x86_64-windows": {
             "name": "irodori-extension-arangodb-x86_64-windows.tar.gz",
-            "sha256": "sha256:672b8f22aa793e07f1128857abccf2edd4049801a0fed63fe94c23f84a0eda26"
+            "sha256": "sha256:af7521ec41fdc0260d24ceec69fa37d6916b5f6efcdb6e52d68730cef1272749"
           }
         }
       }
@@ -2159,7 +2159,7 @@
       "id": "irodori.firebird",
       "name": "Firebird Connector",
       "publisher": "irodori",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "apiVersion": "0.1",
       "summary": "Adds Firebird connectivity as an installable connector extension.",
       "license": "MIT OR 0BSD",
@@ -2186,36 +2186,36 @@
       ],
       "runtime": "native",
       "verified": true,
-      "publishedAt": "2026-07-11T00:46:40Z",
+      "publishedAt": "2026-07-22T23:17:08Z",
       "install": {
         "kind": "githubRelease",
-        "url": "https://github.com/hjosugi/irodori-extension-firebird/releases/tag/v0.1.3",
-        "tag": "v0.1.3",
+        "url": "https://github.com/hjosugi/irodori-extension-firebird/releases/tag/v0.1.4",
+        "tag": "v0.1.4",
         "manifestPath": "irodori.extension.json",
         "assets": {
           "aarch64-linux": {
             "name": "irodori-extension-firebird-aarch64-linux.tar.gz",
-            "sha256": "sha256:ba901f92f6ae942097a0fc66ca7a1815b85d62c797e98fcc483ca89084d1503e"
+            "sha256": "sha256:e7b6bce7e9f69a10b69daa6120640eb0a7157f373300c31e450794e144afb400"
           },
           "aarch64-macos": {
             "name": "irodori-extension-firebird-aarch64-macos.tar.gz",
-            "sha256": "sha256:b4c028811af497c7b40d36736ed5d2068a4cbdd3715a3ad7c59a5293e72c6ef7"
+            "sha256": "sha256:8cd7e3de23de045246fa7ecb6f0d6748ec8cb99040e0621d56483bdc712c8408"
           },
           "aarch64-windows": {
             "name": "irodori-extension-firebird-aarch64-windows.tar.gz",
-            "sha256": "sha256:83a5bd19051467142304eb8f0ac6c58fdc739c94b679ec7e9a2f657deebe1c63"
+            "sha256": "sha256:c6d9f62f6b6c78ac3e9e1503103e9e031758bf20a96c328a92d6e9d2e1520621"
           },
           "x86_64-linux": {
             "name": "irodori-extension-firebird.tar.gz",
-            "sha256": "sha256:20622d11ab798c32ff1e0be06ceffdd08c89a9e827aa9e443eca6056d84f19c6"
+            "sha256": "sha256:261678b816426c574161854e5e515b4f9d1b2024e35b7c975768fcf39186bcd7"
           },
           "x86_64-macos": {
             "name": "irodori-extension-firebird-x86_64-macos.tar.gz",
-            "sha256": "sha256:83a805add79af1bc1f47fe2ca8b97b23071e62d943ac85786a4c6c03b22fb9c2"
+            "sha256": "sha256:23f5e5a2e0f2f1dcbbf20a604e4da1b6bca59ad73c938aea9b970ebb285f0104"
           },
           "x86_64-windows": {
             "name": "irodori-extension-firebird-x86_64-windows.tar.gz",
-            "sha256": "sha256:ff572f0f1ffef2ae65fc8785530f3cd1535c218747d667dd35a4fd7fef8a3e13"
+            "sha256": "sha256:3ca373f280d56f91d481a7914b8ae767b764a113202e47514ddc7eb664e1a19b"
           }
         }
       }
