@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWorkbenchContext } from "@/app/workbench-context";
 import { ConnectionManagerDialog } from "@/features/connections";
 import { ErdDialog, hasDiagram } from "@/features/erd";
+import { useExtensionRuntimeStore } from "@/features/extensions/runtime-store";
 import { ImportDialog } from "@/features/import";
 import { usePreferencesStore } from "@/features/preferences";
 import { QueryParameterDialog } from "@/features/query-editor";
@@ -143,6 +144,9 @@ export function WorkbenchDialogs() {
   const setResultMemoryBudget = useResultsStore(
     (state) => state.setResultMemoryBudget,
   );
+  const knowledgeFeatureEnabled = useExtensionRuntimeStore((state) =>
+    state.enabledHostFeatures.includes("knowledge"),
+  );
   const queryHistoryDialogOpen = useQueryHistoryStore((state) => state.open);
   const schemaDesignerOpen = useSchemaDesignerStore((state) => state.open);
   const setSchemaDesignerOpen = useSchemaDesignerStore(
@@ -154,7 +158,15 @@ export function WorkbenchDialogs() {
     () => localizeCommandCatalog(appCommandCatalog, t),
     [t],
   );
-  const paletteResults = localizedAppCommandCatalog.filter((command) =>
+  const availableAppCommandCatalog = useMemo(
+    () =>
+      localizedAppCommandCatalog.filter(
+        (command) =>
+          command.id !== "view.knowledge.toggle" || knowledgeFeatureEnabled,
+      ),
+    [knowledgeFeatureEnabled, localizedAppCommandCatalog],
+  );
+  const paletteResults = availableAppCommandCatalog.filter((command) =>
     `${command.title} ${command.category}`
       .toLowerCase()
       .includes(overlays.paletteQuery.trim().toLowerCase()),
@@ -257,7 +269,7 @@ export function WorkbenchDialogs() {
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           resetLayout={resetLayout}
-          commandCatalog={localizedAppCommandCatalog}
+          commandCatalog={availableAppCommandCatalog}
           keymap={keybindings.keymap}
           keymapOverrides={keybindings.keymapOverrides}
           keymapConflicts={keybindings.keymapConflicts}

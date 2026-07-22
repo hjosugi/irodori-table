@@ -256,11 +256,15 @@ export type DbColumnInspection = { schema: string, object: string, name: string,
 
 export type DbColumnReference = { schema: string, object: string, column: string, };
 
-export type InstalledExtension = { id: string, name: string, version: string, engine: string,
+export type InstalledExtension = { id: string, name: string, version: string, runtime: string, engine?: string,
 /**
  * Absolute path of the loaded cdylib inside the extensions dir.
  */
-libraryPath: string, sha256: string, enabled: boolean, installedAt: string, abiVersion: number,
+libraryPath?: string,
+/**
+ * Trusted host features activated by this extension.
+ */
+hostFeatures: Array<string>, sha256: string, enabled: boolean, installedAt: string, abiVersion?: number,
 /**
  * Calls the connector reports supporting (e.g. connect/query/metadata).
  */

@@ -1,9 +1,14 @@
 # Extensions
 
-Extensions are **native connector libraries** downloaded from pinned GitHub
-releases, checksum-verified, and loaded into the app process. Today every
-extension in the catalog is a database connector; there is no scripting or UI
-extension model.
+Extensions are downloaded from pinned GitHub releases and checksum-verified.
+Two production runtimes are supported:
+
+- **native** connector extensions load a database driver into the app process;
+- **declarative** feature extensions activate a named, trusted feature compiled
+  into the desktop host. Downloaded declarative packages do not execute code in
+  the application webview.
+
+Knowledge and Datalake are distributed as declarative feature extensions.
 
 Open **Settings ▸ Extensions** — from **Tools ▸ Open Extensions**, from the
 command palette as **Open Extensions**, or from the Settings dialog (`Mod+,`).
@@ -13,7 +18,8 @@ command palette as **Open Extensions**, or from the Settings dialog (`Mod+,`).
 Three sections:
 
 - **Installed** — what is on this device, with **Enabled** / **Disabled** state,
-  the verified digest as **SHA-256 {digest}…**, and the engine and ABI version.
+  the verified digest as **SHA-256 {digest}…**, and either the connector engine
+  and ABI version or the activated host feature.
 - **Marketplace** — everything in the catalog, filtered by **Search Extensions
   in Marketplace** (matches name, id, publisher, summary, engines, categories,
   and topics).
@@ -23,11 +29,11 @@ The header shows **Marketplace source: {source}** and **Platform: {target}**,
 where target is the architecture and OS pair the app resolved for itself. A
 standing warning reads:
 
-> Native extensions run with this app's process privileges. Install only
-> verified releases and review the requested permissions.
+> Native extensions run with this app's process privileges; declarative
+> extensions only activate trusted built-in features. Install verified releases
+> and review permissions.
 
-That is accurate. Treat installing an extension as running third-party native
-code.
+Treat installing a native extension as running third-party native code.
 
 ## Installing
 
@@ -41,11 +47,13 @@ being granted, then:
 1. The archive is downloaded from the pinned GitHub release.
 2. Its SHA-256 is compared against the catalog digest; a mismatch aborts.
 3. The manifest is validated — id, version, and permissions must match what you
-   approved exactly, the runtime must be native, and it must contribute exactly
-   one connector.
-4. The native library's embedded manifest must byte-match the archive manifest,
-   and its ABI version must be supported.
-5. A health probe must return OK before the extension is registered.
+   approved exactly.
+4. A native extension must contribute exactly one connector. Its library's
+   embedded manifest must byte-match the archive manifest, its ABI version must
+   be supported, and a health probe must return OK.
+5. A declarative extension must contribute exactly one supported host feature,
+   declare `hostFeatures`, and contain its declared data entry. No downloaded
+   executable code is loaded.
 
 Only then is it moved into place. Archives are capped at 512 MiB and are
 rejected if any entry uses an absolute path or `..`.
@@ -60,13 +68,15 @@ with one directory per id and version, and a registry at `installed.json`.
 
 ## Enabling, disabling, removing
 
-- **Disable** flips a flag in the registry; the files stay on disk and the
-  connector stops being offered to connections.
+- **Disable** flips a flag in the registry; the files stay on disk. A connector
+  stops being offered to connections, while a feature's panel and commands are
+  removed immediately.
 - **Enable** turns it back on.
 - **Uninstall** confirms with **Uninstall {name}?** and deletes the extension's
   directory.
 
-Only enabled extensions are consulted when a connection opens.
+Only enabled extensions contribute connectors or features. On restart, the
+registry restores the same enabled state.
 
 ## The catalog
 
@@ -101,7 +111,7 @@ Tables, Databricks, and MotherDuck are found by searching the marketplace.
   no button to get there.
 - **Uninstall removes every installed version** of that extension, not just the
   selected one.
-- **Rich catalog metadata is parsed and discarded.** Connectors declare
+- **Rich connector catalog metadata is parsed and discarded.** Connectors declare
   source-type contracts — catalog browsing, table-format metadata,
   execution-backend selection, query templates — and nothing in the app reads
   them. The Lakehouse panel ships its own hardcoded snippets rather than the

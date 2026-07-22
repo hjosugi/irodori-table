@@ -43,6 +43,8 @@ struct ManifestFile {
 #[serde(rename_all = "camelCase")]
 struct ManifestContributions {
     #[serde(default)]
+    host_features: Vec<String>,
+    #[serde(default)]
     connectors: Vec<ManifestConnector>,
 }
 
@@ -141,12 +143,10 @@ pub(crate) fn uninstall(
         .cloned();
     registry.extensions.retain(|extension| extension.id != id);
     if let Some(extension) = removed {
-        if let Some(version_dir) = Path::new(&extension.library_path)
-            .parent()
-            .and_then(Path::parent)
-        {
-            let _ = fs::remove_dir_all(version_dir);
-        }
+        let extension_dir = extensions_root(app)?.join(safe_component(&extension.id));
+        let version_dir = extension_dir.join(safe_component(&extension.version));
+        let _ = fs::remove_dir_all(version_dir);
+        let _ = fs::remove_dir(extension_dir);
         write_registry(app, &registry)?;
     }
     Ok(registry.extensions.len() != before)
@@ -218,38 +218,44 @@ fn install_archive(
             &manifest,
         )?;
 
-        let library_path = find_native_library(&staging, &manifest.entry)?;
-        let library_rel = library_path
-            .strip_prefix(&staging)
-            .map_err(|error| {
-                IrodoriError::validation(format!("invalid extension library path: {error}"))
-            })?
-            .to_path_buf();
-        let probe = probe_library(&library_path).map_err(IrodoriError::validation)?;
-        if probe.engine != manifest.contributes.connectors[0].engine {
-            return Err(IrodoriError::validation(format!(
-                "connector engine mismatch: manifest={}, abi={}",
-                manifest.contributes.connectors[0].engine, probe.engine
-            )));
-        }
-        if probe.manifest_json.trim() != manifest_json.trim() {
-            return Err(IrodoriError::validation(
-                "connector ABI manifest does not match archive manifest",
-            ));
-        }
-        let config: Value = serde_json::from_str(&probe.config_json).map_err(|error| {
-            IrodoriError::validation(format!("connector ABI config is invalid JSON: {error}"))
-        })?;
-        if config.get("extensionId").and_then(Value::as_str) != Some(manifest.id.as_str()) {
-            return Err(IrodoriError::validation(
-                "connector ABI config extensionId does not match archive manifest",
-            ));
-        }
-        if probe.health.get("ok").and_then(Value::as_bool) != Some(true) {
-            return Err(IrodoriError::validation(
-                "connector health check did not return ok=true",
-            ));
-        }
+        let native = if manifest.runtime == "native" {
+            let library_path = find_native_library(&staging, &manifest.entry)?;
+            let library_rel = library_path
+                .strip_prefix(&staging)
+                .map_err(|error| {
+                    IrodoriError::validation(format!("invalid extension library path: {error}"))
+                })?
+                .to_path_buf();
+            let probe = probe_library(&library_path).map_err(IrodoriError::validation)?;
+            if probe.engine != manifest.contributes.connectors[0].engine {
+                return Err(IrodoriError::validation(format!(
+                    "connector engine mismatch: manifest={}, abi={}",
+                    manifest.contributes.connectors[0].engine, probe.engine
+                )));
+            }
+            if probe.manifest_json.trim() != manifest_json.trim() {
+                return Err(IrodoriError::validation(
+                    "connector ABI manifest does not match archive manifest",
+                ));
+            }
+            let config: Value = serde_json::from_str(&probe.config_json).map_err(|error| {
+                IrodoriError::validation(format!("connector ABI config is invalid JSON: {error}"))
+            })?;
+            if config.get("extensionId").and_then(Value::as_str) != Some(manifest.id.as_str()) {
+                return Err(IrodoriError::validation(
+                    "connector ABI config extensionId does not match archive manifest",
+                ));
+            }
+            if probe.health.get("ok").and_then(Value::as_bool) != Some(true) {
+                return Err(IrodoriError::validation(
+                    "connector health check did not return ok=true",
+                ));
+            }
+            Some((library_rel, probe))
+        } else {
+            validate_declarative_entry(&staging, &manifest.entry)?;
+            None
+        };
 
         let final_dir = root
             .join(safe_component(&manifest.id))
@@ -261,19 +267,29 @@ fn install_archive(
             fs::create_dir_all(parent).map_err(to_error)?;
         }
         fs::rename(&staging, &final_dir).map_err(to_error)?;
-        let final_library = final_dir.join(library_rel);
+        let (engine, library_path, abi_version, supported_calls) = match native {
+            Some((library_rel, probe)) => (
+                Some(manifest.contributes.connectors[0].engine.clone()),
+                Some(final_dir.join(library_rel).to_string_lossy().to_string()),
+                Some(ABI_VERSION),
+                supported_calls(&probe.describe),
+            ),
+            None => (None, None, None, Vec::new()),
+        };
 
         let installed = InstalledExtension {
             id: manifest.id.clone(),
             name: manifest.name,
             version: manifest.version,
-            engine: manifest.contributes.connectors[0].engine.clone(),
-            library_path: final_library.to_string_lossy().to_string(),
+            runtime: manifest.runtime,
+            engine,
+            library_path,
+            host_features: manifest.contributes.host_features,
             sha256,
             enabled: true,
             installed_at: unix_timestamp().to_string(),
-            abi_version: ABI_VERSION,
-            supported_calls: supported_calls(&probe.describe),
+            abi_version,
+            supported_calls,
         };
         upsert_installed(app, installed.clone())?;
         Ok(installed)
@@ -314,16 +330,67 @@ fn validate_manifest(
             "extension permissions do not match the permissions approved by the user",
         ));
     }
-    if manifest.runtime != "native" {
+    match manifest.runtime.as_str() {
+        "native" => {
+            if manifest.contributes.connectors.len() != 1 {
+                return Err(IrodoriError::validation(
+                    "native connector extensions must contribute exactly one connector",
+                ));
+            }
+            if !manifest.contributes.host_features.is_empty() {
+                return Err(IrodoriError::validation(
+                    "native connector extensions cannot contribute host features",
+                ));
+            }
+        }
+        "declarative" => validate_declarative_manifest(manifest)?,
+        runtime => {
+            return Err(IrodoriError::validation(format!(
+                "extension runtime must be native or declarative; got {runtime}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_declarative_manifest(manifest: &ManifestFile) -> IrodoriResult<()> {
+    if !manifest.contributes.connectors.is_empty() {
+        return Err(IrodoriError::validation(
+            "declarative feature extensions cannot contribute connectors",
+        ));
+    }
+    if manifest.contributes.host_features.len() != 1 {
+        return Err(IrodoriError::validation(
+            "declarative feature extensions must contribute exactly one host feature",
+        ));
+    }
+    let feature = manifest.contributes.host_features[0].as_str();
+    if !matches!(feature, "knowledge" | "datalake") {
         return Err(IrodoriError::validation(format!(
-            "extension runtime must be native; got {}",
-            manifest.runtime
+            "unsupported host feature: {feature}"
         )));
     }
-    if manifest.contributes.connectors.len() != 1 {
+    if !manifest
+        .permissions
+        .iter()
+        .any(|scope| scope == "hostFeatures")
+    {
         return Err(IrodoriError::validation(
-            "native connector extensions must contribute exactly one connector",
+            "declarative feature extensions require the hostFeatures permission",
         ));
+    }
+    Ok(())
+}
+
+fn validate_declarative_entry(root: &Path, entry: &str) -> IrodoriResult<()> {
+    let relative = safe_archive_path(Path::new(entry)).ok_or_else(|| {
+        IrodoriError::validation("declarative extension entry must stay inside the archive")
+    })?;
+    let path = root.join(relative);
+    if !path.is_file() {
+        return Err(IrodoriError::validation(format!(
+            "declarative extension entry does not exist: {entry}"
+        )));
     }
     Ok(())
 }
@@ -632,6 +699,21 @@ fn to_error(error: impl std::fmt::Display) -> IrodoriError {
 mod tests {
     use super::*;
 
+    fn manifest(runtime: &str) -> ManifestFile {
+        ManifestFile {
+            id: "irodori.knowledge".into(),
+            name: "Irodori Knowledge".into(),
+            version: "0.1.0".into(),
+            runtime: runtime.into(),
+            entry: "feature.json".into(),
+            permissions: vec!["hostFeatures".into()],
+            contributes: ManifestContributions {
+                host_features: vec!["knowledge".into()],
+                connectors: vec![],
+            },
+        }
+    }
+
     #[test]
     fn archive_paths_reject_parent_traversal() {
         assert_eq!(
@@ -736,5 +818,48 @@ mod tests {
         );
         assert!(validated_sha256("").is_err());
         assert!(validated_sha256("abc").is_err());
+    }
+
+    #[test]
+    fn declarative_host_feature_manifest_is_accepted() {
+        assert!(validate_manifest(
+            "irodori.knowledge",
+            "0.1.0",
+            &["hostFeatures".into()],
+            &manifest("declarative"),
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn declarative_manifest_rejects_unknown_or_multiple_features() {
+        let mut unknown = manifest("declarative");
+        unknown.contributes.host_features = vec!["unknown".into()];
+        assert!(validate_declarative_manifest(&unknown).is_err());
+
+        let mut multiple = manifest("declarative");
+        multiple.contributes.host_features = vec!["knowledge".into(), "datalake".into()];
+        assert!(validate_declarative_manifest(&multiple).is_err());
+    }
+
+    #[test]
+    fn installed_registry_remains_backward_compatible_with_native_records() {
+        let installed: InstalledExtension = serde_json::from_value(serde_json::json!({
+            "id": "irodori.memgraph",
+            "name": "Memgraph Connector",
+            "version": "0.1.3",
+            "engine": "memgraph",
+            "libraryPath": "/tmp/extensions/memgraph/libirodori_extension_memgraph.so",
+            "sha256": "abc",
+            "enabled": true,
+            "installedAt": "0",
+            "abiVersion": 1,
+            "supportedCalls": ["query"]
+        }))
+        .unwrap();
+
+        assert_eq!(installed.runtime, "native");
+        assert_eq!(installed.engine.as_deref(), Some("memgraph"));
+        assert!(installed.host_features.is_empty());
     }
 }

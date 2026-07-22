@@ -47,6 +47,33 @@ describe("plugin store catalog", () => {
     }
   });
 
+  it("bundles platform-independent declarative feature releases", () => {
+    for (const id of ["irodori.knowledge", "irodori.datalake"]) {
+      const extension = bundledPluginStoreCatalog.extensions.find(
+        (candidate) => candidate.id === id,
+      );
+      expect(extension?.runtime, id).toBe("declarative");
+      expect(extension?.permissions, id).toEqual(["hostFeatures"]);
+      expect(extension?.engines, id).toEqual([]);
+
+      const assets = extension?.install?.assets ?? {};
+      expect(Object.keys(assets), id).toEqual([
+        "aarch64-linux",
+        "aarch64-macos",
+        "aarch64-windows",
+        "x86_64-linux",
+        "x86_64-macos",
+        "x86_64-windows",
+      ]);
+      expect(
+        new Set(Object.values(assets).map((asset) => asset.name)).size,
+      ).toBe(1);
+      expect(
+        new Set(Object.values(assets).map((asset) => asset.sha256)).size,
+      ).toBe(1);
+    }
+  });
+
   it("bundles source-type contracts for vector and lakehouse extensions", () => {
     const qdrant = bundledPluginStoreCatalog.extensions.find(
       (extension) => extension.id === "irodori.qdrant",

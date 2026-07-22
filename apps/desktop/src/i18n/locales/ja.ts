@@ -733,9 +733,9 @@ export const ja = {
   "settings.extensions.confirmUninstallTitle":
     "{name} をアンインストールしますか？",
   "settings.extensions.confirmUninstallMessage":
-    "インストール済みのnative extensionを無効化し、このデバイスから削除します。",
+    "インストール済みextensionを無効化し、このデバイスから削除します。",
   "settings.extensions.runtimeNotice":
-    "native extensionはアプリと同じプロセス権限で動作します。検証済みreleaseだけを使用し、要求権限を確認してください。",
+    "native extensionはアプリと同じプロセス権限で動作し、declarative extensionは信頼済みの内蔵機能だけを有効化します。検証済みreleaseを使用し、要求権限を確認してください。",
   "settings.jobs.title": "バックグラウンドジョブ",
   "settings.jobs.description":
     "共有ジョブランタイムが追跡する実行中・最近のローカル作業です。",

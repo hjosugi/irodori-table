@@ -18,6 +18,7 @@
         "registry/catalog/index.json",
         "registry/catalog/catalog.json",
         "registry/catalog/connector-repositories.json",
+        "registry/catalog/feature-repositories.json",
         "apps/desktop/src-tauri/src/db/engine.rs",
         "apps/desktop/src-tauri/src/db/profile.rs"
       ],

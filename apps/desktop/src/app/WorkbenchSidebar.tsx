@@ -120,15 +120,17 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
         />
       }
       lakehousePanel={
-        <LakehousePanel
-          editorEngine={editorEngine}
-          activeConnectionName={activeConnection.name}
-          activeConnectionOpen={activeConnectionOpen}
-          activeMetadata={activeMetadata}
-          onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
-          onLoadSql={setQuery}
-          onClose={() => sidebars.closeSidebarView("lakehouse")}
-        />
+        sidebars.enabledHostFeatures.includes("datalake") ? (
+          <LakehousePanel
+            editorEngine={editorEngine}
+            activeConnectionName={activeConnection.name}
+            activeConnectionOpen={activeConnectionOpen}
+            activeMetadata={activeMetadata}
+            onInsertSql={(sql) => activeEditorApi()?.insertText(sql)}
+            onLoadSql={setQuery}
+            onClose={() => sidebars.closeSidebarView("lakehouse")}
+          />
+        ) : null
       }
       biPanel={
         <BiPanel
@@ -179,11 +181,13 @@ export function WorkbenchSidebar({ side }: { side: "left" | "right" }) {
         />
       }
       knowledgePanel={
-        <KnowledgePanel
-          editorEngine={editorEngine}
-          activeConnectionName={activeConnection.name}
-          onClose={() => sidebars.closeSidebarView("knowledge")}
-        />
+        sidebars.enabledHostFeatures.includes("knowledge") ? (
+          <KnowledgePanel
+            editorEngine={editorEngine}
+            activeConnectionName={activeConnection.name}
+            onClose={() => sidebars.closeSidebarView("knowledge")}
+          />
+        ) : null
       }
       connections={connections.connections}
       profileById={profileById}

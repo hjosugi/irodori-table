@@ -1,11 +1,9 @@
-//! Native connector-extension host.
+//! Verified connector and declarative feature-extension host.
 //!
-//! Extensions are cdylibs published by the `irodori-extension-*` repos and
-//! described by `registry/catalog/index.json`. This module owns the install
-//! pipeline (download → integrity check → unpack → manifest validation), the
-//! on-disk registry of installed extensions, and the dynamic loading that
-//! `db::connection::connect_engine` dispatches to for engines without a
-//! built-in driver.
+//! Extensions are published by the `irodori-extension-*` repos and described
+//! by `registry/catalog/index.json`. Native connector extensions are cdylibs;
+//! declarative feature extensions activate trusted features compiled into the
+//! desktop host and never execute downloaded code in the application webview.
 
 mod abi;
 mod connection;
@@ -26,15 +24,31 @@ pub struct InstalledExtension {
     pub id: String,
     pub name: String,
     pub version: String,
-    pub engine: String,
+    #[serde(default = "default_extension_runtime")]
+    pub runtime: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub engine: Option<String>,
     /// Absolute path of the loaded cdylib inside the extensions dir.
-    pub library_path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub library_path: Option<String>,
+    /// Trusted host features activated by this extension.
+    #[serde(default)]
+    pub host_features: Vec<String>,
     pub sha256: String,
     pub enabled: bool,
     pub installed_at: String,
-    pub abi_version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub abi_version: Option<u32>,
     /// Calls the connector reports supporting (e.g. connect/query/metadata).
+    #[serde(default)]
     pub supported_calls: Vec<String>,
+}
+
+fn default_extension_runtime() -> String {
+    "native".to_string()
 }
 
 /// How a catalog entry's payload is delivered (the catalog's `install.kind`).

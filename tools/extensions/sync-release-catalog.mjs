@@ -6,6 +6,18 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const catalogPath = resolve(root, "registry/catalog/index.json");
+const repositoryInventories = [
+  "registry/catalog/connector-repositories.json",
+  "registry/catalog/feature-repositories.json",
+].map((path) => JSON.parse(readFileSync(resolve(root, path), "utf8")));
+const repositoriesByExtensionId = new Map(
+  repositoryInventories.flatMap((inventory) =>
+    (inventory.repositories ?? []).map((repository) => [
+      repository.extensionId,
+      `${inventory.owner ?? "hjosugi"}/${repository.name}`,
+    ]),
+  ),
+);
 const check = process.argv.includes("--check");
 const write = process.argv.includes("--write");
 
@@ -79,15 +91,17 @@ async function syncExtension(extension) {
 
   const assets = {};
   for (const asset of release.assets) {
-    const target = releaseAssetTarget(repository.split("/")[1], asset.name);
-    if (!target) {
+    const targets = releaseAssetTargets(repository.split("/")[1], asset.name, manifest.runtime);
+    if (targets.length === 0) {
       continue;
     }
     const digest = await releaseAssetDigest(repository, asset);
-    assets[target] = {
-      name: asset.name,
-      sha256: digest,
-    };
+    for (const target of targets) {
+      assets[target] = {
+        name: asset.name,
+        sha256: digest,
+      };
+    }
   }
   if (Object.keys(assets).length === 0) {
     throw new Error(`${repository}@${release.tag_name}: no supported assets`);
@@ -119,19 +133,29 @@ async function releaseManifest(repository, tag) {
   return response.json();
 }
 
-function releaseAssetTarget(repositoryName, assetName) {
+function releaseAssetTargets(repositoryName, assetName, runtime) {
   const baseName = `${repositoryName}.tar.gz`;
   if (assetName === baseName) {
+    if (runtime === "declarative") {
+      return [
+        "aarch64-linux",
+        "aarch64-macos",
+        "aarch64-windows",
+        "x86_64-linux",
+        "x86_64-macos",
+        "x86_64-windows",
+      ];
+    }
     // The first fleet release was produced by ubuntu-latest before target names
     // were added. Keep it installable on the platform it was actually built on.
-    return "x86_64-linux";
+    return ["x86_64-linux"];
   }
   const prefix = `${repositoryName}-`;
   if (!assetName.startsWith(prefix) || !assetName.endsWith(".tar.gz")) {
-    return null;
+    return [];
   }
   const target = assetName.slice(prefix.length, -".tar.gz".length);
-  return /^[a-z0-9_]+-(?:linux|macos|windows)$/.test(target) ? target : null;
+  return /^[a-z0-9_]+-(?:linux|macos|windows)$/.test(target) ? [target] : [];
 }
 
 async function releaseAssetDigest(repository, asset) {
@@ -187,80 +211,11 @@ function parseGitHubRepository(value) {
 }
 
 function catalogRepository(extensionId) {
-  switch (extensionId) {
-    case "irodori.duckdb":
-      return "hjosugi/irodori-extension-duckdb";
-    case "irodori.motherduck":
-      return "hjosugi/irodori-extension-motherduck";
-    case "irodori.hive":
-      return "hjosugi/irodori-extension-hive";
-    case "irodori.iceberg":
-      return "hjosugi/irodori-extension-iceberg";
-    case "irodori.s3-tables":
-      return "hjosugi/irodori-extension-s3-tables";
-    case "irodori.athena":
-      return "hjosugi/irodori-extension-athena";
-    case "irodori.delta-lake":
-      return "hjosugi/irodori-extension-delta-lake";
-    case "irodori.hudi":
-      return "hjosugi/irodori-extension-hudi";
-    case "irodori.cloud-spanner":
-      return "hjosugi/irodori-extension-cloud-spanner";
-    case "irodori.redis":
-      return "hjosugi/irodori-extension-redis";
-    case "irodori.dynamodb":
-      return "hjosugi/irodori-extension-dynamodb";
-    case "irodori.snowflake":
-      return "hjosugi/irodori-extension-snowflake";
-    case "irodori.bigquery":
-      return "hjosugi/irodori-extension-bigquery";
-    case "irodori.bigtable":
-      return "hjosugi/irodori-extension-bigtable";
-    case "irodori.mongodb":
-      return "hjosugi/irodori-extension-mongodb";
-    case "irodori.clickhouse":
-      return "hjosugi/irodori-extension-clickhouse";
-    case "irodori.cassandra":
-      return "hjosugi/irodori-extension-cassandra";
-    case "irodori.scylladb":
-      return "hjosugi/irodori-extension-scylladb";
-    case "irodori.neo4j":
-      return "hjosugi/irodori-extension-neo4j";
-    case "irodori.memgraph":
-      return "hjosugi/irodori-extension-memgraph";
-    case "irodori.elasticsearch":
-      return "hjosugi/irodori-extension-elasticsearch";
-    case "irodori.opensearch":
-      return "hjosugi/irodori-extension-opensearch";
-    case "irodori.sqlserver":
-      return "hjosugi/irodori-extension-sqlserver";
-    case "irodori.oracle":
-      return "hjosugi/irodori-extension-oracle";
-    case "irodori.influxdb":
-      return "hjosugi/irodori-extension-influxdb";
-    case "irodori.qdrant":
-      return "hjosugi/irodori-extension-qdrant";
-    case "irodori.milvus":
-      return "hjosugi/irodori-extension-milvus";
-    case "irodori.pinecone":
-      return "hjosugi/irodori-extension-pinecone";
-    case "irodori.couchbase":
-      return "hjosugi/irodori-extension-couchbase";
-    case "irodori.arangodb":
-      return "hjosugi/irodori-extension-arangodb";
-    case "irodori.questdb":
-      return "hjosugi/irodori-extension-questdb";
-    case "irodori.iotdb":
-      return "hjosugi/irodori-extension-iotdb";
-    case "irodori.trino-presto":
-      return "hjosugi/irodori-extension-trino-presto";
-    case "irodori.firebird":
-      return "hjosugi/irodori-extension-firebird";
-    case "irodori.databricks":
-      return "hjosugi/irodori-extension-databricks";
-    default:
-      throw new Error(`unsupported catalog extension id: ${extensionId}`);
+  const repository = repositoriesByExtensionId.get(extensionId);
+  if (!repository) {
+    throw new Error(`unsupported catalog extension id: ${extensionId}`);
   }
+  return repository;
 }
 
 function compareVersions(left, right) {
