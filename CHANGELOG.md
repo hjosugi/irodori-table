@@ -16,6 +16,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.8.0] - 2026-07-22
+
+### Added
+
+- Declarative feature extensions can activate named, trusted workbench features
+  compiled into Irodori Table without executing downloaded code.
+- The public Irodori Knowledge and Irodori Datalake extensions are available in
+  the marketplace on Linux, macOS, and Windows for x86_64 and Arm64.
+
+### Changed
+
+- Knowledge and Lakehouse/Datalake panels and commands are available only while
+  their matching extension is installed and enabled. Install them from
+  **Settings ▸ Extensions**; disabling or uninstalling one removes its UI
+  immediately. Existing native connector extensions remain compatible.
+
+### Security
+
+- Declarative packages use the same pinned-release download, SHA-256 integrity,
+  exact-permission, safe-path, and manifest validation as native extensions.
+
 ## [0.7.47] - 2026-07-21
 
 ### Changed
