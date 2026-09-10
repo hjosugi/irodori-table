@@ -9,6 +9,7 @@ import {
   connectionColorOptions,
   type ConnectionDraft,
 } from "@/features/connections/connection-profiles";
+import { sshTunnelDefaults } from "@/features/connections/connection-ssh";
 import { usePreferencesStore } from "@/features/preferences";
 import { parseConnectorConnectionModel } from "@/features/extensions/connection-model";
 import { componentRenderer } from "@/tests/helpers/render";
@@ -796,6 +797,91 @@ describe("ConnectionManagerDialog", () => {
       expect(props.onUpdateDraft).toHaveBeenCalledWith({
         options: { sslMode: "verify-full" },
       });
+    });
+  });
+  describe("SSH tunnel", () => {
+    const enabledTunnel = {
+      ...sshTunnelDefaults(),
+      enabled: true,
+      host: "bastion.example.com",
+      user: "deploy",
+    };
+
+    it("offers the tunnel for a field-mode network engine", () => {
+      renderDialog({ draft: draft({ engine: "postgres", mode: "fields" }) });
+
+      expect(
+        screen.getByLabelText("Use an SSH tunnel for this connection"),
+      ).not.toBeChecked();
+    });
+
+    // A DSN carries user, database, and driver options in one string, and the
+    // forwarder can only replace a host and a port.
+    it("hides the tunnel in URL mode and for file-backed engines", () => {
+      renderDialog({ draft: draft({ engine: "postgres", mode: "url" }) });
+      expect(
+        screen.queryByLabelText("Use an SSH tunnel for this connection"),
+      ).toBeNull();
+
+      renderDialog({ draft: draft({ engine: "sqlite", mode: "fields" }) });
+      expect(
+        screen.queryByLabelText("Use an SSH tunnel for this connection"),
+      ).toBeNull();
+    });
+
+    it("keeps the tunnel fields hidden until it is switched on", async () => {
+      const { props, user } = renderDialog();
+      expect(screen.queryByLabelText("SSH host")).toBeNull();
+
+      await user.click(
+        screen.getByLabelText("Use an SSH tunnel for this connection"),
+      );
+
+      expect(props.onUpdateDraft).toHaveBeenCalledWith({
+        ssh: { ...sshTunnelDefaults(), enabled: true },
+      });
+    });
+
+    it("edits the tunnel without dropping the rest of it", () => {
+      const { props } = renderDialog({ draft: draft({ ssh: enabledTunnel }) });
+
+      fireEvent.change(screen.getByLabelText("SSH port"), {
+        target: { value: "2222" },
+      });
+
+      expect(props.onUpdateDraft).toHaveBeenCalledWith({
+        ssh: { ...enabledTunnel, port: "2222" },
+      });
+    });
+
+    it("swaps the credential field with the authentication method", () => {
+      renderDialog({ draft: draft({ ssh: enabledTunnel }) });
+      expect(screen.getByLabelText("SSH password")).toBeVisible();
+      expect(screen.queryByLabelText("Private key file")).toBeNull();
+
+      renderDialog({
+        draft: draft({ ssh: { ...enabledTunnel, authMethod: "privateKey" } }),
+      });
+      expect(screen.getByLabelText("Private key file")).toBeVisible();
+      expect(screen.getByLabelText("Key passphrase")).toBeVisible();
+    });
+
+    it("asks for a host key only when verification is on", () => {
+      renderDialog({ draft: draft({ ssh: enabledTunnel }) });
+      expect(screen.queryByLabelText("Expected host key")).toBeNull();
+
+      renderDialog({
+        draft: draft({ ssh: { ...enabledTunnel, strictHostKey: true } }),
+      });
+      expect(screen.getByLabelText("Expected host key")).toBeVisible();
+    });
+
+    it("names the tunnel in the transport readout", () => {
+      renderDialog({ draft: draft({ ssh: enabledTunnel }) });
+
+      expect(
+        screen.getByText("SSH tunnel via bastion.example.com"),
+      ).toBeVisible();
     });
   });
 });

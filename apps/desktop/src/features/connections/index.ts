@@ -24,8 +24,25 @@ export {
   withUniqueProfileIds,
   type ConnectionDraft,
   type ConnectionInputMode,
+  type ConnectionSshAuthMethod,
+  type ConnectionSshTunnel,
   type WorkspaceConnection,
 } from "./connection-profiles";
+export {
+  defaultSshPort,
+  sanitizedSshTunnel,
+  sshAuthConfig,
+  sshAuthMethods,
+  sshTunnelAvailable,
+  sshTunnelDefaults,
+  sshTunnelEnabled,
+  sshTunnelFromJson,
+  sshTunnelSettings,
+  sshTunnelTransport,
+  supportsSshTunnel,
+  validateSshTunnelDraft,
+  type SshTunnelSecrets,
+} from "./connection-ssh";
 export {
   defaultPort,
   engineConnectionLayout,
@@ -34,6 +51,12 @@ export {
   type EngineConnectionSettings,
   type EngineConnectionInputMode,
 } from "./engine-connection-settings";
+export {
+  defaultSshTunnelIo,
+  prepareConnectionRequest,
+  type PreparedConnectionRequest,
+  type SshTunnelIo,
+} from "./ssh-tunnel-request";
 export {
   connectionTransferFormatOptions,
   exportConnectionProfiles,

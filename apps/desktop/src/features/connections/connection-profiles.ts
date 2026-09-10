@@ -24,6 +24,11 @@ import {
   engineConnectionLayout,
   engineOptionFields,
 } from "./engine-connection-settings";
+import {
+  sanitizedSshTunnel,
+  sshTunnelFromJson,
+  validateSshTunnelDraft,
+} from "./connection-ssh";
 import type {
   ConnectionDraft,
   ConnectionInputMode,
@@ -41,6 +46,8 @@ export {
 export type {
   ConnectionDraft,
   ConnectionInputMode,
+  ConnectionSshAuthMethod,
+  ConnectionSshTunnel,
   ConnectionTransportMode,
   WorkspaceConnection,
 } from "@/lib/workspace-connection";
@@ -227,6 +234,9 @@ export function isPristineDraftProfile(profile: ConnectionDraft): boolean {
   if (!match) {
     return false;
   }
+  if (profile.ssh) {
+    return false;
+  }
   const pristine = newDraft(Number(match[1]));
   return (Object.keys(pristine) as (keyof ConnectionDraft)[]).every(
     (key) => profile[key] === pristine[key],
@@ -324,6 +334,7 @@ export function loadProfiles() {
           port: profile.port ?? defaultPort(profile.engine),
           connectionTransport: profile.connectionTransport ?? "tcp",
           socketPath: profile.socketPath ?? "",
+          ssh: sshTunnelFromJson(profile.ssh),
         }),
       ),
     );
@@ -346,6 +357,7 @@ export function sanitizedProfile(profile: ConnectionDraft): ConnectionDraft {
     color: normalizeConnectionColor(persistent.color),
     url: redactPasswordFromConnectionUrl(persistent.url),
     password: "",
+    ssh: sanitizedSshTunnel(persistent.ssh),
   };
 }
 
@@ -592,6 +604,7 @@ export function settingsProfileFromJson(
       socketPath: jsonString(value.socketPath, defaults.socketPath),
       readOnly: value.readOnly === true,
       options: jsonOptions(value.options),
+      ssh: sshTunnelFromJson(value.ssh),
     }),
   );
 }
@@ -709,6 +722,10 @@ export function validateDraft(
     if (field.required && !resolvedDraft.options?.[field.key]?.trim()) {
       return `${translate(field.labelKey).toLowerCase()} is required`;
     }
+  }
+  const sshError = validateSshTunnelDraft(resolvedDraft, connectionModel);
+  if (sshError) {
+    return sshError;
   }
   if (connectionModel) {
     return validateConnectorConnectionDraft(connectionModel, resolvedDraft);

@@ -570,7 +570,8 @@
   text-transform: uppercase;
 }
 
-.connector-declared-section {
+.connector-declared-section,
+.connection-form-section {
   display: grid;
   gap: 9px;
   min-width: 0;
@@ -581,14 +582,16 @@
   background: color-mix(in srgb, var(--surface-muted) 62%, transparent);
 }
 
-.connector-declared-section .connection-form-grid {
+.connector-declared-section .connection-form-grid,
+.connection-form-section .connection-form-grid {
   grid-template-columns: repeat(
     auto-fit,
     minmax(min(240px, 100%), 1fr)
   );
 }
 
-.connector-declared-section legend {
+.connector-declared-section legend,
+.connection-form-section legend {
   padding: 0 5px;
   color: var(--text);
   font-size: var(--font-ui-md);
@@ -646,7 +649,44 @@
   grid-column: 1 / -1;
 }
 
-.connection-form-body .connector-declared-checkbox {
+.connection-ssh legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.connection-ssh .connection-form-grid {
+  align-items: end;
+}
+
+.connection-form-grid .connection-ssh-key {
+  grid-column: 1 / -1;
+}
+
+.connection-ssh-key-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.connection-ssh-key-input .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.connection-ssh-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+  line-height: 1.45;
+  text-transform: none;
+}
+
+.connection-form-body .connector-declared-checkbox,
+.connection-form-body .connection-form-checkbox {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -656,7 +696,8 @@
   text-transform: none;
 }
 
-.connector-declared-checkbox input {
+.connector-declared-checkbox input,
+.connection-form-checkbox input {
   width: 15px;
   height: 15px;
   padding: 0;
@@ -719,7 +760,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .connector-declared-section .connection-form-grid {
+  .connector-declared-section .connection-form-grid,
+  .connection-form-section .connection-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

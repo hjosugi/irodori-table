@@ -72,6 +72,41 @@ Engines that support socket transport show a **Direct TCP** / **Unix socket**
 toggle. Choosing **Unix socket** replaces the host and port inputs with a single
 socket-path field.
 
+### SSH tunnels
+
+Engines that dial a host and a port show an **SSH tunnel** block. Ticking
+**Use an SSH tunnel for this connection** reveals the SSH server fields; the app then
+opens a local forwarder for the connection and dials the database through it.
+
+| Field | Meaning |
+| --- | --- |
+| **SSH host** / **SSH port** | The SSH server to log in to. Port defaults to 22 |
+| **SSH user** | The login name on that server |
+| **Authentication** | **Password**, **Private key file**, or **SSH agent** |
+| **SSH password** | Shown for password authentication. Session only |
+| **Private key file** | Path to an OpenSSH private key. **Browse** opens the file picker |
+| **Key passphrase** | Shown for key authentication. Session only |
+| **Verify the SSH server host key** | Compares the server's key against **Expected host key** and refuses the session on a mismatch |
+| **Expected host key** | Hex or base64. Required once verification is on |
+
+**The host and port above the block stay the database endpoint, addressed as the
+SSH server sees it.** A database that the bastion reaches at `10.0.0.5:5432`
+goes in those fields even when that address means nothing on your own machine.
+
+The local forwarding port is taken automatically per connection, so nothing has
+to be reserved and two profiles can tunnel to the same database at once. The
+**Transport** row at the bottom of the form reads **SSH tunnel via {host}**
+while the block is on.
+
+Two limits are worth knowing before you rely on it:
+
+- **Field mode only.** A URL/DSN carries the user, database, and driver options
+  in the same string that holds the host, so the tunnel is offered for the
+  field form and hidden in URL mode.
+- **Windows caps the key size.** Private keys are handed to the OS credential
+  store for the length of one connect call, and Windows generic credentials stop
+  at 2560 bytes. Ed25519 and 2048-bit RSA keys fit; a 4096-bit RSA key does not.
+
 ### Connector settings
 
 Settings outside the standard profile columns appear in a **Connector settings**
@@ -111,6 +146,15 @@ The same rule applies to extension-declared tokens, private keys, passphrases,
 and custom driver options. They live only in the open form and are added to one
 connect request; save, import, and export never persist them. Non-secret options
 such as a region or warehouse can be saved with the profile.
+
+**SSH credentials follow the same rule**, by a slightly longer route. The tunnel
+config carries keychain handles rather than values, so the SSH password, the
+private key contents, and the key passphrase are written to the OS keychain just
+before the connect call and deleted again as soon as it returns — success or
+failure. Nothing survives the attempt. What *is* saved with the profile is the
+non-secret part: the SSH host, port, user, authentication method, the path to
+the key file, and the host key to verify against. The key file itself is read
+again on every connection.
 
 This is different from the AI provider API key, which *is* written to the OS
 keychain — see [AI chat](ai-chat.md).
@@ -179,12 +223,16 @@ local Postgres and MySQL profiles pointing at the sample containers from the
 
 ## Gaps
 
-- **No SSH tunnelling.** Tunnels have to be arranged outside the app. Structured
-  TLS controls cover the PostgreSQL/MySQL wires and the fields declared by an
-  installed connector; dedicated compiled connectors used without an extension
-  still need connector-specific TLS work.
+- **SSH tunnels are field-mode only**, and a URL/DSN profile has to be rewritten
+  as fields before it can use one. Structured TLS controls cover the
+  PostgreSQL/MySQL wires and the fields declared by an installed connector;
+  dedicated compiled connectors used without an extension still need
+  connector-specific TLS work.
+- **SSH tunnels have no jump-host chain and no local-port control.** One hop,
+  and the local port is always chosen for you.
 - **No connection folders.** Grouping is inferred from the profile name and
   cannot be set explicitly.
 - **No per-profile query timeout or session variables.**
-- **Passwords cannot be remembered**, even optionally. There is no keychain path
-  for connection secrets, though one exists for the AI provider key.
+- **Passwords cannot be remembered**, even optionally. Connection secrets reach
+  the keychain only for the length of one connect call, unlike the AI provider
+  key, which is stored.

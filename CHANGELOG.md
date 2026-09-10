@@ -16,6 +16,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stable auto-update channel follows published, non-prerelease GitHub
   Releases for `v*` tags.
 
+## [0.11.0] - 2026-09-10
+
+Connections can reach a database through an SSH tunnel from inside the app. The
+forwarder and the transport model already existed in the foundation crates; what
+was missing was any way to configure them.
+
+### Added
+
+- **SSH tunnels in the connection manager.** Engines that dial a host and a port
+  now show an **SSH tunnel** block: SSH host, port, and user, an authentication
+  method of **Password**, **Private key file**, or **SSH agent**, and an opt-in
+  **Verify the SSH server host key** paired with the expected key. Turning it on
+  opens a local forwarder for the connection and dials the database through it;
+  the **Transport** row reads **SSH tunnel via {host}** while it is on.
+
+  The database host and port keep their usual place in the form and are read as
+  the SSH server sees them, so a database the bastion reaches at
+  `10.0.0.5:5432` goes in those fields. The local forwarding port is taken per
+  connection, so nothing has to be reserved and two profiles can tunnel to the
+  same database at once.
+
+  Two limits are deliberate. The block is offered for the field form only: a
+  URL/DSN carries the user, database, and driver options in the same string as
+  the host, and the forwarder can only replace a host and a port. And Windows
+  generic credentials stop at 2560 bytes, which fits an Ed25519 or 2048-bit RSA
+  key but not a 4096-bit RSA one.
+
+- **A private key file picker** that grants its own read. The picked path is the
+  only path the app can read: `tauri-plugin-dialog` adds it to the filesystem
+  runtime scope, and the new `fs:read-text-file` grant carries no static scope of
+  its own.
+
+### Changed
+
+- **SSH credentials keep the session-only promise.** The transport model
+  addresses secrets by keychain handle rather than by value, so the SSH
+  password, the private key contents, and the key passphrase are written to the
+  OS keychain immediately before the connect call and deleted as soon as it
+  returns, on success and on failure alike. Saved with the profile are only the
+  non-secret parts: host, port, user, authentication method, the path to the key
+  file, and the host key to verify against. The key file is read again on every
+  connection.
+
 ## [0.10.4] - 2026-08-27
 
 An internal maintenance release with no user-facing behavior changes.

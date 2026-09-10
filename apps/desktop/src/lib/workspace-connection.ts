@@ -3,6 +3,30 @@ import type { DbEngine, WorkspaceSnapshot } from "@/generated/irodori-api";
 export type WorkspaceConnection = WorkspaceSnapshot["connections"][number];
 export type ConnectionInputMode = "url" | "fields";
 export type ConnectionTransportMode = "tcp" | "socket";
+export type ConnectionSshAuthMethod = "password" | "privateKey" | "agent";
+
+/**
+ * SSH tunnel settings for one profile. The host and port on the profile itself
+ * stay the database endpoint *as the SSH server sees it*, which is what the
+ * forwarder dials once the session is up.
+ *
+ * `password` and `passphrase` are session-only, exactly like the database
+ * password: sanitizedProfile blanks them before anything reaches localStorage
+ * or an export file. `privateKeyPath` is a path, not a secret, so it persists.
+ */
+export type ConnectionSshTunnel = {
+  enabled: boolean;
+  host: string;
+  port: string;
+  user: string;
+  authMethod: ConnectionSshAuthMethod;
+  password: string;
+  privateKeyPath: string;
+  passphrase: string;
+  /** Requires `hostKey`; the forwarder refuses the session without one. */
+  strictHostKey: boolean;
+  hostKey: string;
+};
 
 export type ConnectionDraft = {
   id: string;
@@ -46,4 +70,11 @@ export type ConnectionDraft = {
    * conservatively session-only and parsed only while building one request.
    */
   customOptionsJson?: string;
+  /**
+   * SSH tunnel settings, absent on profiles saved before the feature existed
+   * and on every profile that has never opened the section. Optional for the
+   * same reason `options` is: newDraft() must keep comparing equal by `===`
+   * for isPristineDraftProfile.
+   */
+  ssh?: ConnectionSshTunnel;
 };
