@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.11.0] - 2026-09-10
 
-Connections can reach a database through an SSH tunnel from inside the app. The
+Connections can reach a database through an SSH tunnel from inside the app, and
+MySQL-wire profiles can pick the charset their handshake settles on. The
 forwarder and the transport model already existed in the foundation crates; what
 was missing was any way to configure them.
 
