@@ -1060,7 +1060,7 @@ export const ja = {
   "connection.readOnlyBadge": "読み取り専用",
   "connection.transport": "トランスポート",
   "connection.ssh.section": "SSH トンネル",
-  "connection.ssh.enable": "SSH トンネル経由で接続する",
+  "connection.ssh.enable": "この接続で SSH トンネルを使う",
   "connection.ssh.host": "SSH ホスト名",
   "connection.ssh.hostPlaceholder": "ssh.example.com",
   "connection.ssh.port": "SSH ポート番号",
@@ -1079,9 +1079,9 @@ export const ja = {
   "connection.ssh.hostKey": "想定するホスト鍵",
   "connection.ssh.hostKeyPlaceholder": "16 進数または base64 のホスト鍵",
   "connection.ssh.targetHint":
-    "データベースのホスト名とポート番号は、SSH サーバーから見た値を指定してください。トンネルはローカルポートをその宛先に転送します。",
+    "上のホスト名とポート番号は、SSH サーバー側から見たデータベースの宛先として扱います。トンネルはそこへ転送します。",
   "connection.ssh.localPortHint":
-    "ローカル待ち受けポートは接続ごとに自動で決まります。",
+    "転送用のローカルポートは接続ごとに自動で確保します。事前に用意しておく必要はありません。",
   "connection.ssh.secretHint":
     "SSH パスワードと秘密鍵のパスフレーズは、データベースのパスワードと同じくこのセッションの間だけ保持します。鍵ファイルは接続のたびに読み直します。",
   "connection.ssh.agentHint":

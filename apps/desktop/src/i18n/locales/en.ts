@@ -1034,7 +1034,7 @@ export const en = {
   "connection.readOnlyBadge": "read-only",
   "connection.transport": "Transport",
   "connection.ssh.section": "SSH tunnel",
-  "connection.ssh.enable": "Connect through an SSH tunnel",
+  "connection.ssh.enable": "Use an SSH tunnel for this connection",
   "connection.ssh.host": "SSH host",
   "connection.ssh.hostPlaceholder": "ssh.example.com",
   "connection.ssh.port": "SSH port",
@@ -1053,9 +1053,9 @@ export const en = {
   "connection.ssh.hostKey": "Expected host key",
   "connection.ssh.hostKeyPlaceholder": "hex or base64 host key",
   "connection.ssh.targetHint":
-    "Give the database host and port as the SSH server sees them. The tunnel forwards a local port to that address.",
+    "The host and port above stay the database endpoint, addressed from the SSH server's side. The tunnel forwards to it.",
   "connection.ssh.localPortHint":
-    "The local listening port is picked automatically for each connection.",
+    "The local forwarding port is taken automatically for each connection, so nothing has to be reserved.",
   "connection.ssh.secretHint":
     "The SSH password and key passphrase are kept for this session only, like the database password. The key file is read again on every connection.",
   "connection.ssh.agentHint":

@@ -75,7 +75,7 @@ socket-path field.
 ### SSH tunnels
 
 Engines that dial a host and a port show an **SSH tunnel** block. Ticking
-**Connect through an SSH tunnel** reveals the SSH server fields; the app then
+**Use an SSH tunnel for this connection** reveals the SSH server fields; the app then
 opens a local forwarder for the connection and dials the database through it.
 
 | Field | Meaning |
@@ -93,7 +93,7 @@ opens a local forwarder for the connection and dials the database through it.
 SSH server sees it.** A database that the bastion reaches at `10.0.0.5:5432`
 goes in those fields even when that address means nothing on your own machine.
 
-The local listening port is picked automatically per connection, so nothing has
+The local forwarding port is taken automatically per connection, so nothing has
 to be reserved and two profiles can tunnel to the same database at once. The
 **Transport** row at the bottom of the form reads **SSH tunnel via {host}**
 while the block is on.

@@ -33,7 +33,7 @@ was missing was any way to configure them.
 
   The database host and port keep their usual place in the form and are read as
   the SSH server sees them, so a database the bastion reaches at
-  `10.0.0.5:5432` goes in those fields. The local listening port is picked per
+  `10.0.0.5:5432` goes in those fields. The local forwarding port is taken per
   connection, so nothing has to be reserved and two profiles can tunnel to the
   same database at once.
 

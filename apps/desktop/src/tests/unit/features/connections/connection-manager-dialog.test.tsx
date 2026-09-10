@@ -811,7 +811,7 @@ describe("ConnectionManagerDialog", () => {
       renderDialog({ draft: draft({ engine: "postgres", mode: "fields" }) });
 
       expect(
-        screen.getByLabelText("Connect through an SSH tunnel"),
+        screen.getByLabelText("Use an SSH tunnel for this connection"),
       ).not.toBeChecked();
     });
 
@@ -820,12 +820,12 @@ describe("ConnectionManagerDialog", () => {
     it("hides the tunnel in URL mode and for file-backed engines", () => {
       renderDialog({ draft: draft({ engine: "postgres", mode: "url" }) });
       expect(
-        screen.queryByLabelText("Connect through an SSH tunnel"),
+        screen.queryByLabelText("Use an SSH tunnel for this connection"),
       ).toBeNull();
 
       renderDialog({ draft: draft({ engine: "sqlite", mode: "fields" }) });
       expect(
-        screen.queryByLabelText("Connect through an SSH tunnel"),
+        screen.queryByLabelText("Use an SSH tunnel for this connection"),
       ).toBeNull();
     });
 
@@ -833,7 +833,9 @@ describe("ConnectionManagerDialog", () => {
       const { props, user } = renderDialog();
       expect(screen.queryByLabelText("SSH host")).toBeNull();
 
-      await user.click(screen.getByLabelText("Connect through an SSH tunnel"));
+      await user.click(
+        screen.getByLabelText("Use an SSH tunnel for this connection"),
+      );
 
       expect(props.onUpdateDraft).toHaveBeenCalledWith({
         ssh: { ...sshTunnelDefaults(), enabled: true },
