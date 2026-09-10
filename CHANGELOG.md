@@ -43,6 +43,13 @@ was missing was any way to configure them.
   generic credentials stop at 2560 bytes, which fits an Ed25519 or 2048-bit RSA
   key but not a 4096-bit RSA one.
 
+- **A MySQL connection character set.** Engines on the MySQL wire — MySQL,
+  MariaDB, TiDB — gain a **Character set** connector setting (`utf8mb4`,
+  `utf8mb3`, `latin1`, `binary`, or the driver default), appended to the
+  connection URL as `charset`. PostgreSQL does not get one: its client encoding
+  is a session setting rather than a connect parameter, so there would be
+  nothing to send.
+
 - **A private key file picker** that grants its own read. The picked path is the
   only path the app can read: `tauri-plugin-dialog` adds it to the filesystem
   runtime scope, and the new `fs:read-text-file` grant carries no static scope of

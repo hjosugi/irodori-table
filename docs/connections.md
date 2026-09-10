@@ -117,6 +117,13 @@ Built-in Snowflake keeps its native settings in the built-in config:
 | Engine | Fields |
 | --- | --- |
 | Snowflake | **Warehouse**, **Role**, **Schema** |
+| MySQL, MariaDB, TiDB | **Character set** |
+
+**Character set** is the charset the MySQL handshake settles on — `utf8mb4`,
+`utf8mb3`, `latin1` or `binary`, with the driver default when left empty. It is
+offered for the MySQL wire only: PostgreSQL takes its client encoding as a
+session setting rather than a connect parameter, so there is nothing to send at
+connect time.
 
 Engines with no declared settings do not grow an empty section. These values are
 forwarded under the exact option names declared by the built-in config or

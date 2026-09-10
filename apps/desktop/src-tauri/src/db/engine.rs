@@ -753,6 +753,21 @@ fn build_tcp_url(scheme: &str, p: &ConnectionProfile) -> String {
         return url;
     }
     SslSettings::from_profile(p).append_to(&mut url, wire);
+    // MySQL settles its connection charset during the handshake, and sqlx reads
+    // the wanted one from `charset` on the URL. Postgres has no counterpart to
+    // append here: its client encoding is a session setting rather than a
+    // connect parameter, so the option is offered for the MySQL wire only.
+    if matches!(wire, Wire::Mysql) {
+        if let Some(charset) = p
+            .options
+            .get("charset")
+            .map(String::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            append_query_param(&mut url, "charset", charset);
+        }
+    }
     if uses_transaction_pooler(p) {
         // Supavisor's transaction mode multiplexes one server connection across
         // clients, so a prepared statement named on one round trip is not there
@@ -1195,6 +1210,28 @@ mod tests {
             "mysql://db.example.test:3306/sample\
              ?ssl-mode=verify_identity\
              &ssl-ca=%2Fetc%2Fssl%2Fca.pem"
+        );
+    }
+
+    #[test]
+    fn mysql_charset_becomes_a_sqlx_query_parameter() {
+        let profile = with_options(DbEngine::Mysql, [("charset", "utf8mb4")]);
+
+        assert_eq!(
+            build_url(&profile).unwrap(),
+            "mysql://db.example.test:3306/sample?charset=utf8mb4"
+        );
+    }
+
+    #[test]
+    fn a_charset_on_a_postgres_profile_is_ignored() {
+        // Postgres takes its client encoding as a session setting, so appending
+        // an unknown parameter here would only make sqlx reject the URL.
+        let profile = with_options(DbEngine::Postgres, [("charset", "utf8mb4")]);
+
+        assert_eq!(
+            build_url(&profile).unwrap(),
+            "postgres://db.example.test:5432/sample"
         );
     }
 

@@ -1097,6 +1097,7 @@ export const en = {
   "connection.field.apiPort": "API port",
   "connection.field.baseUrl": "Base URL",
   "connection.field.bucketDatabase": "Bucket / database",
+  "connection.field.charset": "Character set",
   "connection.field.database": "Database",
   "connection.field.databaseAuthSource": "Database / auth source",
   "connection.field.databaseIndex": "Database index",

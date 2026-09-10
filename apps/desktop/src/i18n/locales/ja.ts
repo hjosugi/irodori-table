@@ -1123,6 +1123,7 @@ export const ja = {
   "connection.field.apiPort": "API ポート",
   "connection.field.baseUrl": "ベース URL",
   "connection.field.bucketDatabase": "バケット / データベース",
+  "connection.field.charset": "キャラクタセット",
   "connection.field.database": "データベース",
   "connection.field.databaseAuthSource": "データベース / 認証ソース",
   "connection.field.databaseIndex": "データベースインデックス",
