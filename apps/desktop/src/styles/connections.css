@@ -570,7 +570,8 @@
   text-transform: uppercase;
 }
 
-.connector-declared-section {
+.connector-declared-section,
+.connection-form-section {
   display: grid;
   gap: 9px;
   min-width: 0;
@@ -581,14 +582,16 @@
   background: color-mix(in srgb, var(--surface-muted) 62%, transparent);
 }
 
-.connector-declared-section .connection-form-grid {
+.connector-declared-section .connection-form-grid,
+.connection-form-section .connection-form-grid {
   grid-template-columns: repeat(
     auto-fit,
     minmax(min(240px, 100%), 1fr)
   );
 }
 
-.connector-declared-section legend {
+.connector-declared-section legend,
+.connection-form-section legend {
   padding: 0 5px;
   color: var(--text);
   font-size: var(--font-ui-md);
@@ -682,7 +685,8 @@
   text-transform: none;
 }
 
-.connection-form-body .connector-declared-checkbox {
+.connection-form-body .connector-declared-checkbox,
+.connection-form-body .connection-form-checkbox {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -692,7 +696,8 @@
   text-transform: none;
 }
 
-.connector-declared-checkbox input {
+.connector-declared-checkbox input,
+.connection-form-checkbox input {
   width: 15px;
   height: 15px;
   padding: 0;
@@ -755,7 +760,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .connector-declared-section .connection-form-grid {
+  .connector-declared-section .connection-form-grid,
+  .connection-form-section .connection-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

@@ -64,11 +64,11 @@ export function SshTunnelFields({
   }
 
   return (
-    <fieldset className="connector-declared-section connection-ssh full-row">
+    <fieldset className="connection-form-section connection-ssh full-row">
       <legend>
         <Waypoints size={13} aria-hidden="true" /> {t("connection.ssh.section")}
       </legend>
-      <label className="connector-declared-checkbox">
+      <label className="connection-form-checkbox">
         <input
           type="checkbox"
           checked={ssh.enabled}
@@ -190,7 +190,7 @@ export function SshTunnelFields({
               </>
             ) : null}
           </div>
-          <label className="connector-declared-checkbox">
+          <label className="connection-form-checkbox">
             <input
               type="checkbox"
               checked={ssh.strictHostKey}
