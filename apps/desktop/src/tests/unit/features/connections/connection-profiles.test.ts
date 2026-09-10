@@ -527,12 +527,37 @@ describe("connector options", () => {
     ] as const;
     const mysqlWire = ["mysql", "mariadb", "tidb"] as const;
 
-    for (const engine of [...postgresWire, ...mysqlWire]) {
+    for (const engine of postgresWire) {
       expect(
         engineOptionFields(engine).map((field) => field.key),
         `${engine} SSL options`,
       ).toEqual(expected);
     }
+    // The MySQL wire carries the same four plus its connection charset, which
+    // Postgres has no connect-time counterpart for.
+    for (const engine of mysqlWire) {
+      expect(
+        engineOptionFields(engine).map((field) => field.key),
+        `${engine} SSL options`,
+      ).toEqual([...expected, "charset"]);
+    }
+  });
+
+  it("offers a connection charset on the MySQL wire only (#229)", () => {
+    // Key must match what db/engine.rs appends to the URL, and sqlx-mysql only
+    // parses `charset` for the MySQL wire.
+    const charsetField = engineOptionFields("mysql").find(
+      (field) => field.key === "charset",
+    );
+    expect(charsetField?.choices).toEqual([
+      "utf8mb4",
+      "utf8mb3",
+      "latin1",
+      "binary",
+    ]);
+    expect(
+      engineOptionFields("postgres").some((field) => field.key === "charset"),
+    ).toBe(false);
   });
 
   it("constrains sslMode to the modes the Rust side can translate (#229)", () => {

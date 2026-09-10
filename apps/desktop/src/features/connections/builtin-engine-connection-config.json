@@ -286,6 +286,11 @@
           "key": "sslKey",
           "labelKey": "connection.field.sslKey",
           "placeholder": "/etc/ssl/private/client.key"
+        },
+        {
+          "key": "charset",
+          "labelKey": "connection.field.charset",
+          "choices": ["utf8mb4", "utf8mb3", "latin1", "binary"]
         }
       ]
     },
