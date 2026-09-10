@@ -60,6 +60,7 @@ account separation.
 | Secret | Storage |
 | --- | --- |
 | Connection password | **Not stored.** Blanked before profiles are persisted, and stripped from connection strings. Re-entered each session |
+| SSH tunnel password, private key, key passphrase | **OS keychain, for one connect call.** Written just before the call and deleted when it returns. The key *path* is saved with the profile; the key contents are not |
 | AI provider API key | **OS keychain.** Persisted and reloaded at startup |
 | Passkey credential | Local storage — public key and metadata only |
 
@@ -96,10 +97,16 @@ Two cases send data further than you might assume:
   storage.
 - **The Unlock button stays enabled even when the runtime reports passkeys as
   unavailable**, so it fails with a raw error and no in-app recovery.
-- **Connection secrets have no keychain path**, unlike the AI provider key.
+- **Connection secrets have no lasting keychain path**, unlike the AI provider
+  key. SSH tunnel credentials pass through the keychain because the transport
+  config addresses secrets by handle, but they are removed as soon as the
+  connect call returns.
 - **No SSH or proxy transport diagnostics.** Those stages report
   *"runtime dialer integration for SSH/proxy transports is pending"*; only
-  direct TCP is actually probed.
+  direct TCP is actually probed. An SSH tunnel still connects — it is the
+  pre-flight probe that has nothing to say about it.
+- **Host key verification is opt-in.** With **Verify the SSH server host key**
+  off, the tunnel accepts whatever key the server presents.
 - **The cloud-provider consent is per-machine and cannot be revoked in-app**
   once accepted, and any OpenAI-compatible endpoint is treated as cloud even
   when it is a local server.

@@ -71,6 +71,8 @@ import {
   connectionTransferFormatOptions,
   type ConnectionTransferFormat,
 } from "./connection-transfer";
+import { sshTunnelAvailable, sshTunnelSettings } from "./connection-ssh";
+import { SshTunnelFields } from "./SshTunnelFields";
 
 type ConnectionProfileGroup = {
   id: string;
@@ -598,6 +600,9 @@ export function ConnectionManagerDialog({
     socketSupported && draft.connectionTransport === "socket"
       ? "socket"
       : "tcp";
+  const sshAvailable = sshTunnelAvailable(draft, connectionModel);
+  const sshTunnel = sshTunnelSettings(draft);
+  const sshActive = sshAvailable && sshTunnel.enabled;
 
   useEffect(() => {
     if (!connectionModel || supportsUrlInput === supportsFieldsInput) {
@@ -1481,6 +1486,13 @@ export function ConnectionManagerDialog({
               </div>
             </div>
           ) : null}
+          {sshAvailable ? (
+            <SshTunnelFields
+              draft={draft}
+              t={t}
+              onUpdateDraft={onUpdateDraft}
+            />
+          ) : null}
           <label className="connection-readonly-toggle full-row">
             <input
               type="checkbox"
@@ -1498,15 +1510,19 @@ export function ConnectionManagerDialog({
             <ShieldCheck size={15} />
             <span>{t("connection.transport")}</span>
             <strong>
-              {draft.mode === "fields" && transportMode === "socket"
-                ? t(socketPathLabelKey(draft.engine))
-                : connectionModel
-                  ? connectorChoiceLabel(
-                      connectionModel.transports[0] ??
-                        connectionModel.defaults.wire ??
-                        "direct",
-                    )
-                  : engineSettings.transportLabel}
+              {sshActive
+                ? t("connection.ssh.summary", {
+                    host: sshTunnel.host.trim() || t("connection.ssh.host"),
+                  })
+                : draft.mode === "fields" && transportMode === "socket"
+                  ? t(socketPathLabelKey(draft.engine))
+                  : connectionModel
+                    ? connectorChoiceLabel(
+                        connectionModel.transports[0] ??
+                          connectionModel.defaults.wire ??
+                          "direct",
+                      )
+                    : engineSettings.transportLabel}
             </strong>
           </div>
           {error ? (

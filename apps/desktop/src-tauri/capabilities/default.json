@@ -8,6 +8,7 @@
     "opener:default",
     "dialog:default",
     "updater:default",
+    "fs:allow-read-text-file",
     {
       "identifier": "fs:allow-write-file",
       "allow": [

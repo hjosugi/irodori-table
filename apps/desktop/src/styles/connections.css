@@ -646,6 +646,42 @@
   grid-column: 1 / -1;
 }
 
+.connection-ssh legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.connection-ssh .connection-form-grid {
+  align-items: end;
+}
+
+.connection-form-grid .connection-ssh-key {
+  grid-column: 1 / -1;
+}
+
+.connection-ssh-key-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.connection-ssh-key-input .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.connection-ssh-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--font-ui-sm);
+  line-height: 1.45;
+  text-transform: none;
+}
+
 .connection-form-body .connector-declared-checkbox {
   display: flex;
   flex-direction: row;

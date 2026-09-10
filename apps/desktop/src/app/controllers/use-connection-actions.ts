@@ -9,6 +9,7 @@ import {
   isPristineDraftProfile,
   memoryDefaults,
   newDraft,
+  prepareConnectionRequest,
   profileFromDraft,
   repairBuiltinSampleProfile,
   sanitizedProfile,
@@ -32,6 +33,7 @@ import {
 } from "@/core";
 import type { Translator } from "@/i18n";
 import type {
+  ConnectionInfo,
   DatabaseMetadata,
   InstalledExtension,
 } from "@/generated/irodori-api";
@@ -358,10 +360,17 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     setConnectionError(null);
     const testId = `__test_${draft.id}_${Date.now()}`;
     try {
-      await queryService.connect({
-        ...profileFromDraft(draft, modelFor(draft)),
-        id: testId,
-      });
+      const model = modelFor(draft);
+      const request = await prepareConnectionRequest(
+        draft,
+        profileFromDraft(draft, model),
+        model,
+      );
+      try {
+        await queryService.connect({ ...request.profile, id: testId });
+      } finally {
+        await request.release();
+      }
       await queryService.disconnect(testId);
       setConnectionError(null);
       showActionNotice(
@@ -400,9 +409,18 @@ export function useConnectionActions(deps: ConnectionActionsDeps) {
     setConnectionError(null);
     try {
       const started = performance.now();
-      const info = await queryService.connect(
-        profileFromDraft(profile, modelFor(profile)),
+      const model = modelFor(profile);
+      const request = await prepareConnectionRequest(
+        profile,
+        profileFromDraft(profile, model),
+        model,
       );
+      let info: ConnectionInfo;
+      try {
+        info = await queryService.connect(request.profile);
+      } finally {
+        await request.release();
+      }
       await afterConnect?.(info.id);
       const elapsedMs = Math.max(1, Math.round(performance.now() - started));
       const nextConnection = describeConnection(
